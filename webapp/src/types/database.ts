@@ -194,6 +194,88 @@ export type Database = {
           },
         ]
       }
+      recurring_transaction_templates: {
+        Row: {
+          account_id: string
+          amount: number
+          category_id: string | null
+          created_at: string
+          currency_code: Database["public"]["Enums"]["currency_code"]
+          day_of_month: number | null
+          day_of_week: number | null
+          description: string | null
+          direction: Database["public"]["Enums"]["transaction_direction"]
+          end_date: string | null
+          frequency: Database["public"]["Enums"]["recurrence_frequency"]
+          id: string
+          is_active: boolean
+          merchant_name: string | null
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          currency_code?: Database["public"]["Enums"]["currency_code"]
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          direction: Database["public"]["Enums"]["transaction_direction"]
+          end_date?: string | null
+          frequency: Database["public"]["Enums"]["recurrence_frequency"]
+          id?: string
+          is_active?: boolean
+          merchant_name?: string | null
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          currency_code?: Database["public"]["Enums"]["currency_code"]
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          direction?: Database["public"]["Enums"]["transaction_direction"]
+          end_date?: string | null
+          frequency?: Database["public"]["Enums"]["recurrence_frequency"]
+          id?: string
+          is_active?: boolean
+          merchant_name?: string | null
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_transaction_templates_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -482,6 +564,12 @@ export type Database = {
         | "ML_MODEL"
         | "USER_OVERRIDE"
       connection_status: "CONNECTED" | "DISCONNECTED" | "ERROR" | "PENDING"
+      recurrence_frequency:
+        | "WEEKLY"
+        | "BIWEEKLY"
+        | "MONTHLY"
+        | "QUARTERLY"
+        | "ANNUAL"
       currency_code:
         | "COP"
         | "BRL"
@@ -643,6 +731,13 @@ export const Constants = {
         "USER_OVERRIDE",
       ],
       connection_status: ["CONNECTED", "DISCONNECTED", "ERROR", "PENDING"],
+      recurrence_frequency: [
+        "WEEKLY",
+        "BIWEEKLY",
+        "MONTHLY",
+        "QUARTERLY",
+        "ANNUAL",
+      ],
       currency_code: ["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"],
       data_provider: [
         "MANUAL",

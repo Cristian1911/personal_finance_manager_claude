@@ -26,6 +26,8 @@ import { DailySpendingChart } from "@/components/charts/daily-spending-chart";
 import { EnhancedCashflowChart } from "@/components/charts/enhanced-cashflow-chart";
 import { InteractiveMetricCard } from "@/components/dashboard/interactive-metric-card";
 import { MonthSelector } from "@/components/month-selector";
+import { UpcomingRecurringCard } from "@/components/recurring/upcoming-recurring-card";
+import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 
 export default async function DashboardPage({
   searchParams,
@@ -71,14 +73,15 @@ export default async function DashboardPage({
   // Fetch previous month param for trend calculation
   const prevMonthParam = formatMonthParam(subMonths(target, 1));
 
-  // Fetch chart data + previous month metrics in parallel
-  const [categoryData, cashflowData, dailyData, dailyCashflowData, prevMetrics] =
+  // Fetch chart data + previous month metrics + upcoming recurring in parallel
+  const [categoryData, cashflowData, dailyData, dailyCashflowData, prevMetrics, upcomingRecurrences] =
     await Promise.all([
       getCategorySpending(month),
       getMonthlyCashflow(month),
       getDailySpending(month),
       getDailyCashflow(month),
       getMonthMetrics(prevMonthParam),
+      getUpcomingRecurrences(30),
     ]);
 
   const allAccounts = accounts ?? [];
@@ -239,6 +242,9 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Upcoming recurring payments */}
+      <UpcomingRecurringCard upcoming={upcomingRecurrences} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Accounts Summary */}

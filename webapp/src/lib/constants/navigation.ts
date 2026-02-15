@@ -5,6 +5,7 @@ import {
   Wallet,
   Tag,
   Landmark,
+  Repeat2,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -21,6 +22,7 @@ export const MAIN_NAV: NavItem[] = [
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
   { title: "Deudas", href: "/deudas", icon: Landmark },
+  { title: "Recurrentes", href: "/recurrentes", icon: Repeat2 },
   { title: "Categorías", href: "/categories", icon: Tag },
 ];
 
