@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const formData = await request.formData();
+  const file = formData.get("file") as File | null;
+
+  if (!file || !file.name.toLowerCase().endsWith(".pdf")) {
+    return NextResponse.json(
+      { error: "El archivo debe ser un PDF" },
+      { status: 400 }
+    );
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    return NextResponse.json(
+      { error: "El archivo excede el tamaño máximo de 10MB" },
+      { status: 400 }
+    );
+  }
+
+  const proxyForm = new FormData();
+  proxyForm.append("file", file);
+
+  try {
+    const response = await fetch(`${PARSER_URL}/parse`, {
+      method: "POST",
+      body: proxyForm,
+    });
+
+    if (!response.ok) {
+      const detail = await response
+        .json()
+        .catch(() => ({ detail: "Error del parser" }));
+      return NextResponse.json(
+        { error: detail.detail || "Error procesando el PDF" },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "No se pudo conectar con el servicio de procesamiento de PDFs. Asegúrate de que esté ejecutándose.",
+      },
+      { status: 503 }
+    );
+  }
+}

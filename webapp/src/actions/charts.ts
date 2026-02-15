@@ -1,0 +1,285 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import {
+  formatDate,
+  parseMonth,
+  monthStartStr,
+  monthEndStr,
+  monthsBeforeStart,
+} from "@/lib/utils/date";
+
+// --- Types ---
+
+export interface CategorySpending {
+  categoryId: string | null;
+  name: string;
+  color: string;
+  amount: number;
+  count: number;
+  percentage: number;
+}
+
+export interface MonthlyCashflow {
+  month: string;
+  label: string;
+  income: number;
+  expenses: number;
+  net: number;
+}
+
+export interface DailySpending {
+  date: string;
+  label: string;
+  amount: number;
+}
+
+// --- Server Actions ---
+
+/**
+ * Expense breakdown by category for the given month (defaults to current).
+ * Returns top categories sorted by total amount descending.
+ */
+export async function getCategorySpending(month?: string): Promise<CategorySpending[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const target = parseMonth(month);
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("amount, category_id, categories!category_id(name_es, name, color)")
+    .eq("direction", "OUTFLOW")
+    .eq("is_excluded", false)
+    .gte("transaction_date", monthStartStr(target))
+    .lte("transaction_date", monthEndStr(target));
+
+  if (!transactions || transactions.length === 0) return [];
+
+  // Aggregate by category
+  const map = new Map<
+    string,
+    { name: string; color: string; amount: number; count: number; categoryId: string | null }
+  >();
+  let total = 0;
+
+  for (const tx of transactions) {
+    const id = tx.category_id ?? "uncategorized";
+    const cat = tx.categories as { name_es: string | null; name: string; color: string } | null;
+
+    if (!map.has(id)) {
+      map.set(id, {
+        categoryId: tx.category_id,
+        name: cat?.name_es ?? cat?.name ?? "Sin categoría",
+        color: cat?.color ?? "#94a3b8",
+        amount: 0,
+        count: 0,
+      });
+    }
+
+    const entry = map.get(id)!;
+    entry.amount += tx.amount;
+    entry.count += 1;
+    total += tx.amount;
+  }
+
+  return Array.from(map.values())
+    .map((e) => ({
+      ...e,
+      percentage: total > 0 ? (e.amount / total) * 100 : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+/**
+ * Monthly income vs expenses for the 6 months ending at the given month.
+ */
+export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflow[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const target = parseMonth(month);
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("transaction_date, amount, direction")
+    .eq("is_excluded", false)
+    .gte("transaction_date", monthsBeforeStart(target, 5))
+    .lte("transaction_date", monthEndStr(target))
+    .order("transaction_date");
+
+  if (!transactions || transactions.length === 0) return [];
+
+  const map = new Map<string, { income: number; expenses: number }>();
+
+  for (const tx of transactions) {
+    const month = tx.transaction_date.substring(0, 7); // "2026-02"
+
+    if (!map.has(month)) {
+      map.set(month, { income: 0, expenses: 0 });
+    }
+
+    const entry = map.get(month)!;
+    if (tx.direction === "INFLOW") {
+      entry.income += tx.amount;
+    } else {
+      entry.expenses += tx.amount;
+    }
+  }
+
+  return Array.from(map.entries())
+    .map(([month, data]) => ({
+      month,
+      label: formatDate(new Date(month + "-15"), "MMM yyyy"),
+      income: data.income,
+      expenses: data.expenses,
+      net: data.income - data.expenses,
+    }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+}
+
+/**
+ * Daily spending (OUTFLOW) for the given month (defaults to current).
+ */
+export async function getDailySpending(month?: string): Promise<DailySpending[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const target = parseMonth(month);
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("transaction_date, amount")
+    .eq("direction", "OUTFLOW")
+    .eq("is_excluded", false)
+    .gte("transaction_date", monthStartStr(target))
+    .lte("transaction_date", monthEndStr(target))
+    .order("transaction_date");
+
+  if (!transactions || transactions.length === 0) return [];
+
+  const map = new Map<string, number>();
+
+  for (const tx of transactions) {
+    map.set(tx.transaction_date, (map.get(tx.transaction_date) ?? 0) + tx.amount);
+  }
+
+  return Array.from(map.entries())
+    .map(([date, amount]) => ({
+      date,
+      label: formatDate(date, "dd MMM"),
+      amount,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export interface MonthMetrics {
+  income: number;
+  expenses: number;
+}
+
+/**
+ * Get total income and expenses for a given month.
+ * Used for computing trend percentages vs previous period.
+ */
+export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { income: 0, expenses: 0 };
+
+  const target = parseMonth(month);
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("amount, direction")
+    .eq("is_excluded", false)
+    .gte("transaction_date", monthStartStr(target))
+    .lte("transaction_date", monthEndStr(target));
+
+  if (!transactions) return { income: 0, expenses: 0 };
+
+  let income = 0;
+  let expenses = 0;
+  for (const tx of transactions) {
+    if (tx.direction === "INFLOW") income += tx.amount;
+    else expenses += tx.amount;
+  }
+
+  return { income, expenses };
+}
+
+export interface DailyCashflow {
+  date: string;
+  label: string;
+  income: number;
+  expenses: number;
+}
+
+/**
+ * Daily cashflow (income and expenses) for the given month.
+ * Returns data for each day with both income and expenses.
+ */
+export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const target = parseMonth(month);
+  const startStr = monthStartStr(target);
+  const endStr = monthEndStr(target);
+  
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("transaction_date, amount, direction")
+    .eq("is_excluded", false)
+    .gte("transaction_date", startStr)
+    .lte("transaction_date", endStr)
+    .order("transaction_date");
+
+  if (!transactions || transactions.length === 0) return [];
+
+  const map = new Map<string, { income: number; expenses: number }>();
+
+  for (const tx of transactions) {
+    const day = map.get(tx.transaction_date) ?? { income: 0, expenses: 0 };
+    if (tx.direction === "INFLOW") {
+      day.income += tx.amount;
+    } else {
+      day.expenses += tx.amount;
+    }
+    map.set(tx.transaction_date, day);
+  }
+
+  // Fill in all days of the month
+  const result: DailyCashflow[] = [];
+  const year = target.getFullYear();
+  const monthNum = target.getMonth();
+  const lastDay = new Date(year, monthNum + 1, 0).getDate();
+
+  for (let day = 1; day <= lastDay; day++) {
+    const dateStr = `${year}-${String(monthNum + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayData = map.get(dateStr) ?? { income: 0, expenses: 0 };
+    result.push({
+      date: dateStr,
+      label: formatDate(dateStr, "dd MMM"),
+      income: dayData.income,
+      expenses: dayData.expenses,
+    });
+  }
+
+  return result;
+}

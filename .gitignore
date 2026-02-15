@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Bank PDF examples (sensitive financial data)
+bank_pdf_examples/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Supabase local temp
+supabase/.temp/
+
+# Claude Code local settings (not shared)
+.claude/settings.local.json
+.claude/last_session_summary.md
+.claude/plans/
+
+# Keep skills, agents, and todo tracked
+# .claude/agents/ — tracked
+# .claude/skills/ — tracked
+# .claude/todo.md — tracked

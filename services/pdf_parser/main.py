@@ -1,0 +1,52 @@
+import tempfile
+from pathlib import Path
+
+import uvicorn
+from fastapi import FastAPI, HTTPException, UploadFile
+from pydantic import BaseModel
+
+from models import ParsedStatement
+from parsers import detect_and_parse
+
+app = FastAPI(
+    title="PFM PDF Parser",
+    description="Bank statement PDF parser for Personal Finance Manager",
+    version="0.1.0",
+)
+
+
+class ParseResponse(BaseModel):
+    statements: list[ParsedStatement]
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.post("/parse", response_model=ParseResponse)
+async def parse_pdf(file: UploadFile):
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="El archivo debe ser un PDF")
+
+    # Save to temp file for pdfplumber
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        statements = detect_and_parse(tmp_path)
+        return ParseResponse(statements=statements)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+
+def run():
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+
+if __name__ == "__main__":
+    run()
