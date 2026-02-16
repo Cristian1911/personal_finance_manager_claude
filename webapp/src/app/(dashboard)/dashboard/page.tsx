@@ -28,6 +28,7 @@ import { InteractiveMetricCard } from "@/components/dashboard/interactive-metric
 import { MonthSelector } from "@/components/month-selector";
 import { UpcomingRecurringCard } from "@/components/recurring/upcoming-recurring-card";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
+import { computeDebtBalance } from "@/lib/utils/debt";
 
 export default async function DashboardPage({
   searchParams,
@@ -96,7 +97,10 @@ export default async function DashboardPage({
   );
 
   const totalAssets = assetAccounts.reduce((sum, a) => sum + a.current_balance, 0);
-  const totalLiabilities = liabilityAccounts.reduce((sum, a) => sum + a.current_balance, 0);
+  const totalLiabilities = liabilityAccounts.reduce(
+    (sum, a) => sum + computeDebtBalance(a),
+    0
+  );
   const netWorth = totalAssets - totalLiabilities;
 
   const monthIncome = monthTx

@@ -30,12 +30,14 @@ export function UtilizationGauge({
   totalUsed: number;
   totalLimit: number;
 }) {
-  const color = getUtilizationColor(utilization);
-  const label = getUtilizationLabel(utilization);
+  // Clamp to 0-100 to prevent rendering issues with negative/overflow values
+  const safeUtilization = Math.max(0, Math.min(utilization, 100));
+  const color = getUtilizationColor(safeUtilization);
+  const label = getUtilizationLabel(safeUtilization);
 
   const data = [
-    { name: "used", value: utilization },
-    { name: "available", value: Math.max(100 - utilization, 0) },
+    { name: "used", value: safeUtilization },
+    { name: "available", value: 100 - safeUtilization },
   ];
 
   return (
@@ -69,7 +71,7 @@ export function UtilizationGauge({
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-2xl font-bold" style={{ color }}>
-                {utilization.toFixed(0)}%
+                {safeUtilization.toFixed(0)}%
               </span>
               <span className="text-xs text-muted-foreground">{label}</span>
             </div>

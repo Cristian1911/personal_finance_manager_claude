@@ -148,7 +148,12 @@ export async function importTransactions(
         const cc = meta.creditCardMetadata;
         if (cc.credit_limit != null) accountUpdate.credit_limit = cc.credit_limit;
         if (cc.interest_rate != null) accountUpdate.interest_rate = cc.interest_rate;
-        if (cc.total_payment_due != null) accountUpdate.current_balance = cc.total_payment_due;
+        if (cc.total_payment_due != null) {
+          accountUpdate.current_balance = cc.total_payment_due;
+        } else if (cc.credit_limit != null && cc.available_credit != null) {
+          // Fallback: derive debt from limit − available credit
+          accountUpdate.current_balance = Math.max(cc.credit_limit - cc.available_credit, 0);
+        }
         if (cc.available_credit != null) accountUpdate.available_balance = cc.available_credit;
         if (cc.payment_due_date) {
           accountUpdate.payment_day = new Date(cc.payment_due_date).getUTCDate();

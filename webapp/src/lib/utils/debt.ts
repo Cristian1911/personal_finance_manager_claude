@@ -36,6 +36,27 @@ export interface DebtInsight {
 }
 
 /**
+ * Compute the debt balance for a debt account.
+ *
+ * For credit cards: prefers (credit_limit − available_balance) when both are
+ * known, because `current_balance` might have been entered as available credit
+ * or as a negative number. Falls back to |current_balance|.
+ *
+ * For loans: uses |current_balance| (debt is always a positive amount).
+ */
+export function computeDebtBalance(a: Account): number {
+  if (
+    a.account_type === "CREDIT_CARD" &&
+    a.credit_limit != null &&
+    a.credit_limit > 0 &&
+    a.available_balance != null
+  ) {
+    return Math.max(a.credit_limit - a.available_balance, 0);
+  }
+  return Math.abs(a.current_balance);
+}
+
+/**
  * Extract debt-relevant accounts from a full account list.
  */
 export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
@@ -49,7 +70,7 @@ export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
       id: a.id,
       name: a.name,
       type: a.account_type as "CREDIT_CARD" | "LOAN",
-      balance: a.current_balance,
+      balance: computeDebtBalance(a),
       creditLimit: a.credit_limit,
       interestRate: a.interest_rate,
       monthlyPayment: a.monthly_payment,
@@ -63,10 +84,12 @@ export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
 
 /**
  * Calculate credit utilization percentage (0-100).
+ * Uses Math.abs so a negative balance (common when users enter debt as negative)
+ * still produces a correct utilization figure.
  */
 export function calcUtilization(balance: number, limit: number | null): number {
   if (!limit || limit <= 0) return 0;
-  return Math.min((balance / limit) * 100, 100);
+  return Math.min((Math.abs(balance) / limit) * 100, 100);
 }
 
 /**

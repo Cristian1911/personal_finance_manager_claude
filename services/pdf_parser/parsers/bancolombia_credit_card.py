@@ -282,18 +282,20 @@ def _extract_metadata(
                 if m:
                     summary["interest_charged"] = _parse_colombian_number(m.group(1))
 
-            # Interest rate table rows (US-format numbers: 1.8311%)
+            # Interest rate table rows (US-format numbers: monthly% annual%)
+            # e.g. "Compra 2 - 36 cuotas 1.8311% 24.3269%"
+            # group(1)=monthly, group(2)=annual — we store the annual (EA) rate
             if not meta.get("interest_rate"):
                 m = TASA_COMPRA_RE.search(stripped)
                 if m:
-                    rate = float(m.group(1))
-                    if rate > 0:
-                        meta["interest_rate"] = rate
+                    annual_rate = float(m.group(2))
+                    if annual_rate > 0:
+                        meta["interest_rate"] = annual_rate
 
             if not meta.get("late_interest_rate"):
                 m = TASA_MORA_RE.search(stripped)
                 if m:
-                    meta["late_interest_rate"] = float(m.group(1))
+                    meta["late_interest_rate"] = float(m.group(2))
 
             # --- State-machine: values on the line AFTER their label ---
 
