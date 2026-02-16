@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  REPO: ${{ github.repository }}
+  REPO: ${{ github.actor }}/${{ github.event.repository.name }}
 
 jobs:
   build-and-push:
