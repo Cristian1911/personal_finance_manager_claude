@@ -6,7 +6,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  REPO: ${{ github.actor }}/${{ github.event.repository.name }}
+  REPO: cristian1911/personal_finance_manager_claude
+
 
 jobs:
   build-and-push:
