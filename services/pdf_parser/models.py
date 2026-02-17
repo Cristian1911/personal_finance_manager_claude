@@ -9,6 +9,7 @@ from pydantic import BaseModel
 class StatementType(str, Enum):
     SAVINGS = "savings"
     CREDIT_CARD = "credit_card"
+    LOAN = "loan"
 
 
 class TransactionDirection(str, Enum):
@@ -46,6 +47,22 @@ class CreditCardMetadata(BaseModel):
     payment_due_date: date | None = None
 
 
+class LoanMetadata(BaseModel):
+    loan_number: str | None = None
+    loan_type: str | None = None  # e.g. "LÍNEA DE CRÉDITO PERSONAL TASA FIJA"
+    initial_amount: float | None = None  # value at disbursement
+    disbursement_date: date | None = None
+    remaining_balance: float | None = None  # remaining principal
+    interest_rate: float | None = None  # annual rate (EA)
+    late_interest_rate: float | None = None  # mora rate
+    total_payment_due: float | None = None  # total payment this period
+    minimum_payment: float | None = None  # minimum payment amount
+    payment_due_date: date | None = None  # payment deadline
+    installments_in_default: int | None = None  # number of missed payments
+    statement_cut_date: date | None = None  # period end date
+    last_payment_date: date | None = None  # last payment made
+
+
 class ParsedStatement(BaseModel):
     bank: str = "bancolombia"
     statement_type: StatementType
@@ -56,4 +73,5 @@ class ParsedStatement(BaseModel):
     currency: str = "COP"
     summary: StatementSummary | None = None
     credit_card_metadata: CreditCardMetadata | None = None
+    loan_metadata: LoanMetadata | None = None
     transactions: list[ParsedTransaction]

@@ -30,9 +30,25 @@ export type CreditCardMetadata = {
   payment_due_date: string | null;
 };
 
+export type LoanMetadata = {
+  loan_number: string | null;
+  loan_type: string | null;
+  initial_amount: number | null;
+  disbursement_date: string | null;
+  remaining_balance: number | null;
+  interest_rate: number | null;
+  late_interest_rate: number | null;
+  total_payment_due: number | null;
+  minimum_payment: number | null;
+  payment_due_date: string | null;
+  installments_in_default: number | null;
+  statement_cut_date: string | null;
+  last_payment_date: string | null;
+};
+
 export type ParsedStatement = {
   bank: string;
-  statement_type: "savings" | "credit_card";
+  statement_type: "savings" | "credit_card" | "loan";
   account_number: string | null;
   card_last_four: string | null;
   period_from: string | null;
@@ -40,6 +56,7 @@ export type ParsedStatement = {
   currency: string;
   summary: StatementSummary | null;
   credit_card_metadata: CreditCardMetadata | null;
+  loan_metadata: LoanMetadata | null;
   transactions: ParsedTransaction[];
 };
 
@@ -79,6 +96,7 @@ export type StatementMetaForImport = {
   statementIndex: number;
   summary: StatementSummary | null;
   creditCardMetadata: CreditCardMetadata | null;
+  loanMetadata: LoanMetadata | null;
   periodFrom: string | null;
   periodTo: string | null;
   currency: string;

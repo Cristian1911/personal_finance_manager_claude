@@ -5,6 +5,7 @@ import pdfplumber
 from models import ParsedStatement
 from parsers.bancolombia_savings import parse_savings
 from parsers.bancolombia_credit_card import parse_credit_card
+from parsers.bancolombia_loan import parse_loan
 from parsers.nu_credit_card import parse_nu_credit_card
 from parsers.lulo_savings import parse_lulo_savings
 from parsers.bogota_savings import parse_bogota_savings
@@ -46,10 +47,13 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
     if "CUENTA DE AHORROS" in sample_upper:
         return [parse_savings(pdf_path, password=password)]
 
+    if "LÍNEA DE CRÉDITO" in sample_upper and "OBLIGACIÓN" in sample_upper:
+        return [parse_loan(pdf_path, password=password)]
+
     if "TARJETA" in sample_upper or "MASTERCARD" in sample_upper:
         return parse_credit_card(pdf_path, password=password)
 
     raise ValueError(
         "No se pudo detectar el tipo de extracto. "
-        "Formatos soportados: Bancolombia, NU Colombia, Lulo Bank, Banco de Bogotá."
+        "Formatos soportados: Bancolombia (ahorros, crédito, préstamo), NU Colombia, Lulo Bank, Banco de Bogotá."
     )
