@@ -7,6 +7,7 @@ import { DebtInsights } from "@/components/debt/debt-insights";
 import { Button } from "@/components/ui/button";
 import { Calculator } from "lucide-react";
 import Link from "next/link";
+import type { CurrencyCode } from "@/types/domain";
 
 export default async function DeudasPage() {
   const overview = await getDebtOverview();
@@ -34,7 +35,9 @@ export default async function DeudasPage() {
 
   const creditCards = overview.accounts.filter((a) => a.type === "CREDIT_CARD");
   const loans = overview.accounts.filter((a) => a.type === "LOAN");
-  const totalCreditUsed = creditCards.reduce((sum, a) => sum + a.balance, 0);
+  const copCreditCards = creditCards.filter((a) => a.currency === "COP");
+  const totalCreditUsed = copCreditCards.reduce((sum, a) => sum + a.balance, 0);
+  const secondaryCurrencies = overview.debtByCurrency.filter((d) => d.currency !== "COP" && d.totalDebt > 0);
 
   return (
     <div className="space-y-6">
@@ -55,7 +58,10 @@ export default async function DeudasPage() {
 
       {/* Overview cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <DebtHeroCard totalDebt={overview.totalDebt} />
+        <DebtHeroCard
+          totalDebt={overview.totalDebt}
+          secondaryCurrencies={secondaryCurrencies}
+        />
         {overview.totalCreditLimit > 0 && (
           <UtilizationGauge
             utilization={overview.overallUtilization}

@@ -4,6 +4,24 @@
  */
 
 import type { Account } from "@/types/domain";
+import type { Json } from "@/types/database";
+
+export interface CurrencyBalance {
+  current_balance: number | null;
+  credit_limit: number | null;
+  available_balance: number | null;
+  interest_rate: number | null;
+  minimum_payment: number | null;
+  total_payment_due: number | null;
+}
+
+export interface CurrencyDebt {
+  currency: string;
+  balance: number;
+  creditLimit: number | null;
+  interestRate: number | null;
+  minimumPayment: number | null;
+}
 
 export interface DebtAccount {
   id: string;
@@ -18,6 +36,13 @@ export interface DebtAccount {
   currency: string;
   color: string | null;
   institutionName: string | null;
+  currencyBreakdown: CurrencyDebt[] | null;
+}
+
+export interface DebtByCurrency {
+  currency: string;
+  totalDebt: number;
+  totalCreditLimit: number;
 }
 
 export interface DebtOverview {
@@ -27,6 +52,7 @@ export interface DebtOverview {
   monthlyInterestEstimate: number;
   accounts: DebtAccount[];
   insights: DebtInsight[];
+  debtByCurrency: DebtByCurrency[];
 }
 
 export interface DebtInsight {
@@ -57,29 +83,119 @@ export function computeDebtBalance(a: Account): number {
 }
 
 /**
+ * Parse currency_balances JSONB into a typed map.
+ */
+function parseCurrencyBalances(
+  raw: Json | null
+): Record<string, CurrencyBalance> | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const result: Record<string, CurrencyBalance> = {};
+  for (const [currency, data] of Object.entries(raw)) {
+    if (!data || typeof data !== "object" || Array.isArray(data)) continue;
+    const d = data as Record<string, Json | undefined>;
+    result[currency] = {
+      current_balance: typeof d.current_balance === "number" ? d.current_balance : null,
+      credit_limit: typeof d.credit_limit === "number" ? d.credit_limit : null,
+      available_balance: typeof d.available_balance === "number" ? d.available_balance : null,
+      interest_rate: typeof d.interest_rate === "number" ? d.interest_rate : null,
+      minimum_payment: typeof d.minimum_payment === "number" ? d.minimum_payment : null,
+      total_payment_due: typeof d.total_payment_due === "number" ? d.total_payment_due : null,
+    };
+  }
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+/**
+ * Compute debt balance from a CurrencyBalance entry.
+ */
+function computeDebtFromCurrencyBalance(cb: CurrencyBalance): number {
+  if (cb.total_payment_due != null && cb.total_payment_due > 0) {
+    return cb.total_payment_due;
+  }
+  if (cb.credit_limit != null && cb.credit_limit > 0 && cb.available_balance != null) {
+    return Math.max(cb.credit_limit - cb.available_balance, 0);
+  }
+  return Math.abs(cb.current_balance ?? 0);
+}
+
+/**
  * Extract debt-relevant accounts from a full account list.
+ * Multi-currency accounts get a currencyBreakdown with per-currency details.
+ * The primary balance/creditLimit/interestRate come from the account's main currency.
  */
 export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
-  return accounts
-    .filter(
-      (a) =>
-        (a.account_type === "CREDIT_CARD" || a.account_type === "LOAN") &&
-        a.is_active
-    )
-    .map((a) => ({
-      id: a.id,
-      name: a.name,
-      type: a.account_type as "CREDIT_CARD" | "LOAN",
-      balance: computeDebtBalance(a),
-      creditLimit: a.credit_limit,
-      interestRate: a.interest_rate,
-      monthlyPayment: a.monthly_payment,
-      paymentDay: a.payment_day,
-      cutoffDay: a.cutoff_day,
-      currency: a.currency_code,
-      color: a.color,
-      institutionName: a.institution_name,
-    }));
+  const result: DebtAccount[] = [];
+
+  for (const a of accounts) {
+    if (
+      (a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN") ||
+      !a.is_active
+    ) {
+      continue;
+    }
+
+    const balances = parseCurrencyBalances(a.currency_balances);
+    const currencies = balances ? Object.keys(balances) : null;
+    const isMultiCurrency = currencies && currencies.length > 1;
+
+    if (isMultiCurrency && balances) {
+      // Build breakdown for each currency
+      const breakdown: CurrencyDebt[] = [];
+      for (const currency of currencies) {
+        const cb = balances[currency];
+        const bal = computeDebtFromCurrencyBalance(cb);
+        if (bal <= 0) continue;
+        breakdown.push({
+          currency,
+          balance: bal,
+          creditLimit: cb.credit_limit,
+          interestRate: cb.interest_rate,
+          minimumPayment: cb.minimum_payment,
+        });
+      }
+
+      // Primary values come from the account's main currency
+      const primaryCb = balances[a.currency_code];
+      const primaryBalance = primaryCb
+        ? computeDebtFromCurrencyBalance(primaryCb)
+        : computeDebtBalance(a);
+
+      result.push({
+        id: a.id,
+        name: a.name,
+        type: a.account_type as "CREDIT_CARD" | "LOAN",
+        balance: primaryBalance,
+        creditLimit: primaryCb?.credit_limit ?? a.credit_limit,
+        interestRate: primaryCb?.interest_rate ?? a.interest_rate,
+        monthlyPayment: primaryCb?.minimum_payment ?? a.monthly_payment,
+        paymentDay: a.payment_day,
+        cutoffDay: a.cutoff_day,
+        currency: a.currency_code,
+        color: a.color,
+        institutionName: a.institution_name,
+        currencyBreakdown: breakdown.length > 1 ? breakdown : null,
+      });
+    } else {
+      // Single currency — use primary account fields (existing behavior)
+      result.push({
+        id: a.id,
+        name: a.name,
+        type: a.account_type as "CREDIT_CARD" | "LOAN",
+        balance: computeDebtBalance(a),
+        creditLimit: a.credit_limit,
+        interestRate: a.interest_rate,
+        monthlyPayment: a.monthly_payment,
+        paymentDay: a.payment_day,
+        cutoffDay: a.cutoff_day,
+        currency: a.currency_code,
+        color: a.color,
+        institutionName: a.institution_name,
+        currencyBreakdown: null,
+      });
+    }
+  }
+
+  return result;
 }
 
 /**

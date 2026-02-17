@@ -79,12 +79,38 @@ export async function importTransactions(
   const accountUpdates: AccountUpdateResult[] = [];
 
   if (statementMeta && statementMeta.length > 0) {
+    // Pre-fetch accounts to get existing currency_balances and primary currency
+    const uniqueAccountIds = [...new Set(statementMeta.map((m) => m.accountId))];
+    const { data: accountRows } = await supabase
+      .from("accounts")
+      .select("id, name, currency_code, currency_balances")
+      .in("id", uniqueAccountIds);
+    const accountMap = new Map(
+      (accountRows ?? []).map((a) => [a.id, a])
+    );
+
+    // Accumulate currency_balances per account across all metas
+    const pendingBalances = new Map<
+      string,
+      Record<string, Record<string, number | null>>
+    >();
+    for (const id of uniqueAccountIds) {
+      const existing = accountMap.get(id)?.currency_balances;
+      pendingBalances.set(
+        id,
+        (existing && typeof existing === "object" && !Array.isArray(existing)
+          ? existing
+          : {}) as Record<string, Record<string, number | null>>
+      );
+    }
+
     for (const meta of statementMeta) {
-      // Fetch previous snapshot for this account
+      // Fetch previous snapshot for this account + currency
       const { data: prevSnapshot } = await supabase
         .from("statement_snapshots")
         .select("*")
         .eq("account_id", meta.accountId)
+        .eq("currency_code", meta.currency)
         .order("period_to", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -115,11 +141,12 @@ export async function importTransactions(
         source_filename: meta.sourceFilename ?? null,
       };
 
-      // Check if a snapshot for this account + period already exists
+      // Check if a snapshot for this account + period + currency already exists
       let existingQuery = supabase
         .from("statement_snapshots")
         .select("id")
-        .eq("account_id", meta.accountId);
+        .eq("account_id", meta.accountId)
+        .eq("currency_code", meta.currency);
       existingQuery = meta.periodFrom
         ? existingQuery.eq("period_from", meta.periodFrom)
         : existingQuery.is("period_from", null);
@@ -139,29 +166,57 @@ export async function importTransactions(
           .insert(snapshotRow);
       }
 
-      // Update account metadata from statement
+      // Build per-currency balance entry
+      const currencyEntry: Record<string, number | null> = {};
+      if (meta.creditCardMetadata) {
+        const cc = meta.creditCardMetadata;
+        currencyEntry.credit_limit = cc.credit_limit ?? null;
+        currencyEntry.available_balance = cc.available_credit ?? null;
+        currencyEntry.interest_rate = cc.interest_rate ?? null;
+        currencyEntry.minimum_payment = cc.minimum_payment ?? null;
+        currencyEntry.total_payment_due = cc.total_payment_due ?? null;
+        if (cc.total_payment_due != null) {
+          currencyEntry.current_balance = cc.total_payment_due;
+        } else if (cc.credit_limit != null && cc.available_credit != null) {
+          currencyEntry.current_balance = Math.max(cc.credit_limit - cc.available_credit, 0);
+        } else {
+          currencyEntry.current_balance = null;
+        }
+      } else if (meta.summary?.final_balance != null) {
+        currencyEntry.current_balance = meta.summary.final_balance;
+      }
+
+      // Merge into pending balances for this account
+      const balances = pendingBalances.get(meta.accountId)!;
+      balances[meta.currency] = currencyEntry;
+
+      // Update primary scalar fields only for the account's main currency
+      const account = accountMap.get(meta.accountId);
       const accountUpdate: Record<string, unknown> = {
         last_synced_at: new Date().toISOString(),
       };
 
-      if (meta.creditCardMetadata) {
+      const isPrimaryCurrency = account?.currency_code === meta.currency;
+
+      if (meta.creditCardMetadata && isPrimaryCurrency) {
         const cc = meta.creditCardMetadata;
         if (cc.credit_limit != null) accountUpdate.credit_limit = cc.credit_limit;
         if (cc.interest_rate != null) accountUpdate.interest_rate = cc.interest_rate;
         if (cc.total_payment_due != null) {
           accountUpdate.current_balance = cc.total_payment_due;
         } else if (cc.credit_limit != null && cc.available_credit != null) {
-          // Fallback: derive debt from limit − available credit
           accountUpdate.current_balance = Math.max(cc.credit_limit - cc.available_credit, 0);
         }
         if (cc.available_credit != null) accountUpdate.available_balance = cc.available_credit;
         if (cc.payment_due_date) {
           accountUpdate.payment_day = new Date(cc.payment_due_date).getUTCDate();
         }
-      } else if (meta.summary?.final_balance != null) {
-        // For savings accounts: update balance from statement
+      } else if (!meta.creditCardMetadata && meta.summary?.final_balance != null && isPrimaryCurrency) {
         accountUpdate.current_balance = meta.summary.final_balance;
       }
+
+      // Write currency_balances JSONB with all accumulated data so far
+      accountUpdate.currency_balances = balances;
 
       await supabase
         .from("accounts")
@@ -171,16 +226,9 @@ export async function importTransactions(
       // Compute diffs between previous and current snapshot
       const diffs = computeSnapshotDiffs(prevSnapshot, snapshotRow);
 
-      // Fetch account name for display
-      const { data: acct } = await supabase
-        .from("accounts")
-        .select("name")
-        .eq("id", meta.accountId)
-        .single();
-
       accountUpdates.push({
         accountId: meta.accountId,
-        accountName: acct?.name ?? "",
+        accountName: account?.name ?? "",
         diffs,
         isFirstImport: !prevSnapshot,
       });

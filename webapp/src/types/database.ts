@@ -22,6 +22,7 @@ export type Database = {
           connection_status: Database["public"]["Enums"]["connection_status"]
           created_at: string
           credit_limit: number | null
+          currency_balances: Json | null
           currency_code: Database["public"]["Enums"]["currency_code"]
           current_balance: number
           cutoff_day: number | null
@@ -54,6 +55,7 @@ export type Database = {
           connection_status?: Database["public"]["Enums"]["connection_status"]
           created_at?: string
           credit_limit?: number | null
+          currency_balances?: Json | null
           currency_code?: Database["public"]["Enums"]["currency_code"]
           current_balance?: number
           cutoff_day?: number | null
@@ -86,6 +88,7 @@ export type Database = {
           connection_status?: Database["public"]["Enums"]["connection_status"]
           created_at?: string
           credit_limit?: number | null
+          currency_balances?: Json | null
           currency_code?: Database["public"]["Enums"]["currency_code"]
           current_balance?: number
           cutoff_day?: number | null
@@ -194,6 +197,45 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          locale: string
+          onboarding_completed: boolean
+          preferred_currency: Database["public"]["Enums"]["currency_code"]
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          locale?: string
+          onboarding_completed?: boolean
+          preferred_currency?: Database["public"]["Enums"]["currency_code"]
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          locale?: string
+          onboarding_completed?: boolean
+          preferred_currency?: Database["public"]["Enums"]["currency_code"]
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       recurring_transaction_templates: {
         Row: {
           account_id: string
@@ -275,45 +317,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          email: string
-          full_name: string | null
-          id: string
-          locale: string
-          onboarding_completed: boolean
-          preferred_currency: Database["public"]["Enums"]["currency_code"]
-          timezone: string
-          updated_at: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          email: string
-          full_name?: string | null
-          id: string
-          locale?: string
-          onboarding_completed?: boolean
-          preferred_currency?: Database["public"]["Enums"]["currency_code"]
-          timezone?: string
-          updated_at?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string
-          full_name?: string | null
-          id?: string
-          locale?: string
-          onboarding_completed?: boolean
-          preferred_currency?: Database["public"]["Enums"]["currency_code"]
-          timezone?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       statement_snapshots: {
         Row: {
@@ -564,12 +567,6 @@ export type Database = {
         | "ML_MODEL"
         | "USER_OVERRIDE"
       connection_status: "CONNECTED" | "DISCONNECTED" | "ERROR" | "PENDING"
-      recurrence_frequency:
-        | "WEEKLY"
-        | "BIWEEKLY"
-        | "MONTHLY"
-        | "QUARTERLY"
-        | "ANNUAL"
       currency_code:
         | "COP"
         | "BRL"
@@ -586,6 +583,12 @@ export type Database = {
         | "PLAID"
         | "CSV_IMPORT"
         | "OCR"
+      recurrence_frequency:
+        | "WEEKLY"
+        | "BIWEEKLY"
+        | "MONTHLY"
+        | "QUARTERLY"
+        | "ANNUAL"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
     }
@@ -731,13 +734,6 @@ export const Constants = {
         "USER_OVERRIDE",
       ],
       connection_status: ["CONNECTED", "DISCONNECTED", "ERROR", "PENDING"],
-      recurrence_frequency: [
-        "WEEKLY",
-        "BIWEEKLY",
-        "MONTHLY",
-        "QUARTERLY",
-        "ANNUAL",
-      ],
       currency_code: ["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"],
       data_provider: [
         "MANUAL",
@@ -746,6 +742,13 @@ export const Constants = {
         "PLAID",
         "CSV_IMPORT",
         "OCR",
+      ],
+      recurrence_frequency: [
+        "WEEKLY",
+        "BIWEEKLY",
+        "MONTHLY",
+        "QUARTERLY",
+        "ANNUAL",
       ],
       transaction_direction: ["INFLOW", "OUTFLOW"],
       transaction_status: ["PENDING", "POSTED", "CANCELLED"],

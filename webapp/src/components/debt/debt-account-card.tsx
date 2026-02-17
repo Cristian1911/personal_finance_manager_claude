@@ -23,6 +23,7 @@ export function DebtAccountCard({ account }: { account: DebtAccount }) {
     account.interestRate
   );
   const daysUntil = daysUntilPayment(account.paymentDay);
+  const hasBreakdown = account.currencyBreakdown && account.currencyBreakdown.length > 1;
 
   const Icon = account.type === "CREDIT_CARD" ? CreditCard : HandCoins;
 
@@ -62,15 +63,51 @@ export function DebtAccountCard({ account }: { account: DebtAccount }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Balance */}
-        <div>
-          <p className="text-2xl font-bold">
-            {formatCurrency(account.balance, account.currency as CurrencyCode)}
-          </p>
-        </div>
+        {/* Balance — show primary + secondary currencies */}
+        {hasBreakdown ? (
+          <div className="space-y-1">
+            {account.currencyBreakdown!.map((cb) => (
+              <div key={cb.currency} className="flex items-baseline justify-between">
+                <p className={cb.currency === account.currency ? "text-2xl font-bold" : "text-lg font-semibold text-muted-foreground"}>
+                  {formatCurrency(cb.balance, cb.currency as CurrencyCode)}
+                </p>
+                <span className="text-xs text-muted-foreground">{cb.currency}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div>
+            <p className="text-2xl font-bold">
+              {formatCurrency(account.balance, account.currency as CurrencyCode)}
+            </p>
+          </div>
+        )}
 
         {/* Utilization bar for credit cards */}
-        {utilization !== null && account.creditLimit && (
+        {hasBreakdown && account.type === "CREDIT_CARD" ? (
+          <div className="space-y-2">
+            {account.currencyBreakdown!
+              .filter((cb) => cb.creditLimit && cb.creditLimit > 0)
+              .map((cb) => {
+                const util = calcUtilization(cb.balance, cb.creditLimit);
+                return (
+                  <div key={cb.currency} className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Uso {cb.currency}</span>
+                      <span>{util.toFixed(0)}%</span>
+                    </div>
+                    <Progress
+                      value={util}
+                      className="h-1.5"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Cupo: {formatCurrency(cb.creditLimit!, cb.currency as CurrencyCode)}
+                    </p>
+                  </div>
+                );
+              })}
+          </div>
+        ) : utilization !== null && account.creditLimit ? (
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Utilización</span>
@@ -84,7 +121,7 @@ export function DebtAccountCard({ account }: { account: DebtAccount }) {
               Cupo: {formatCurrency(account.creditLimit, account.currency as CurrencyCode)}
             </p>
           </div>
-        )}
+        ) : null}
 
         {/* Details grid */}
         <div className="grid grid-cols-2 gap-3 pt-1">

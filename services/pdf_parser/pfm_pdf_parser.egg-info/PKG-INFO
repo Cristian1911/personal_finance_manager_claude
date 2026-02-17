@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: pfm-pdf-parser
+Version: 0.1.0
+Summary: Bank PDF statement parser for Personal Finance Manager
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn>=0.30.0
+Requires-Dist: pdfplumber>=0.11.0
+Requires-Dist: python-multipart>=0.0.9

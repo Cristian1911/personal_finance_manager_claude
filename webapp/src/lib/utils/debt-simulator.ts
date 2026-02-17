@@ -158,6 +158,162 @@ export function runSimulation(input: SimulationInput): SimulationResult {
   };
 }
 
+// --- Lump Sum Allocation ---
+
+export interface LumpSumAllocation {
+  accountId: string;
+  accountName: string;
+  currency: string;
+  currentBalance: number;
+  interestRate: number;
+  payment: number;
+  newBalance: number;
+  monthlyInterestSaved: number;
+}
+
+export interface LumpSumResult {
+  allocations: LumpSumAllocation[];
+  totalMonthlyInterestBefore: number;
+  totalMonthlyInterestAfter: number;
+  totalMonthlyInterestSaved: number;
+}
+
+/**
+ * Given a lump sum, allocate it optimally across debt accounts (highest rate first).
+ */
+export function allocateLumpSum(
+  accounts: DebtAccount[],
+  lumpSum: number
+): LumpSumResult {
+  // Sort by interest rate descending (avalanche strategy)
+  const sorted = [...accounts]
+    .filter((a) => a.balance > 0 && a.currency === "COP")
+    .sort((a, b) => (b.interestRate ?? 0) - (a.interestRate ?? 0));
+
+  let remaining = lumpSum;
+  const allocations: LumpSumAllocation[] = [];
+  let totalBefore = 0;
+  let totalAfter = 0;
+
+  for (const a of sorted) {
+    const rate = a.interestRate ?? 0;
+    const monthlyBefore = (a.balance * (rate / 100)) / 12;
+    totalBefore += monthlyBefore;
+
+    if (remaining <= 0) {
+      totalAfter += monthlyBefore;
+      allocations.push({
+        accountId: a.id,
+        accountName: a.name,
+        currency: a.currency,
+        currentBalance: a.balance,
+        interestRate: rate,
+        payment: 0,
+        newBalance: a.balance,
+        monthlyInterestSaved: 0,
+      });
+      continue;
+    }
+
+    const payment = Math.min(remaining, a.balance);
+    remaining -= payment;
+    const newBalance = a.balance - payment;
+    const monthlyAfter = (newBalance * (rate / 100)) / 12;
+    totalAfter += monthlyAfter;
+
+    allocations.push({
+      accountId: a.id,
+      accountName: a.name,
+      currency: a.currency,
+      currentBalance: a.balance,
+      interestRate: rate,
+      payment,
+      newBalance,
+      monthlyInterestSaved: monthlyBefore - monthlyAfter,
+    });
+  }
+
+  return {
+    allocations,
+    totalMonthlyInterestBefore: totalBefore,
+    totalMonthlyInterestAfter: totalAfter,
+    totalMonthlyInterestSaved: totalBefore - totalAfter,
+  };
+}
+
+// --- Single Account Extra Payment ---
+
+export interface SingleAccountResult {
+  accountName: string;
+  currentBalance: number;
+  interestRate: number;
+  minimumPayment: number;
+  monthsWithoutExtra: number;
+  monthsWithExtra: number;
+  interestWithoutExtra: number;
+  interestWithExtra: number;
+  interestSaved: number;
+  monthsSaved: number;
+  timeline: { month: number; withoutExtra: number; withExtra: number }[];
+}
+
+/**
+ * Simulate paying off a single account with vs without an extra monthly payment.
+ */
+export function simulateSingleAccount(
+  account: DebtAccount,
+  extraMonthly: number
+): SingleAccountResult {
+  const rate = account.interestRate ?? 0;
+  const minPayment = getMinimumPayment(account);
+
+  function simulate(monthlyExtra: number) {
+    let balance = account.balance;
+    let totalInterest = 0;
+    const balances: number[] = [];
+
+    for (let m = 0; m < MAX_MONTHS && balance > 0.01; m++) {
+      const interest = (balance * (rate / 100)) / 12;
+      balance += interest;
+      totalInterest += interest;
+
+      const payment = Math.min(minPayment + monthlyExtra, balance);
+      balance -= payment;
+      if (balance < 0.01) balance = 0;
+      balances.push(balance);
+    }
+
+    return { months: balances.length, totalInterest, balances };
+  }
+
+  const without = simulate(0);
+  const withExtra = simulate(extraMonthly);
+  const maxLen = Math.max(without.months, withExtra.months);
+
+  const timeline: SingleAccountResult["timeline"] = [];
+  for (let i = 0; i < maxLen; i++) {
+    timeline.push({
+      month: i + 1,
+      withoutExtra: without.balances[i] ?? 0,
+      withExtra: withExtra.balances[i] ?? 0,
+    });
+  }
+
+  return {
+    accountName: account.name,
+    currentBalance: account.balance,
+    interestRate: rate,
+    minimumPayment: minPayment,
+    monthsWithoutExtra: without.months,
+    monthsWithExtra: withExtra.months,
+    interestWithoutExtra: without.totalInterest,
+    interestWithExtra: withExtra.totalInterest,
+    interestSaved: without.totalInterest - withExtra.totalInterest,
+    monthsSaved: without.months - withExtra.months,
+    timeline,
+  };
+}
+
 export function compareStrategies(
   accounts: DebtAccount[],
   extraMonthlyPayment: number
