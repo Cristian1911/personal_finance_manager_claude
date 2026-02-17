@@ -46,8 +46,8 @@ export function DeleteAccountButton({ accountId }: { accountId: string }) {
         <DialogHeader>
           <DialogTitle>Eliminar cuenta</DialogTitle>
           <DialogDescription>
-            ¿Estás seguro? Esta acción no se puede deshacer. Solo se puede
-            eliminar una cuenta si no tiene transacciones.
+            ¿Estás seguro? Esta acción no se puede deshacer. Se eliminarán
+            también todas las transacciones asociadas a esta cuenta.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

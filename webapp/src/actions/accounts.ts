@@ -146,24 +146,12 @@ export async function updateAccount(
 export async function deleteAccount(id: string): Promise<ActionResult> {
   const supabase = await createClient();
 
-  // Check for existing transactions
-  const { count } = await supabase
-    .from("transactions")
-    .select("*", { count: "exact", head: true })
-    .eq("account_id", id);
-
-  if (count && count > 0) {
-    return {
-      success: false,
-      error: `No se puede eliminar: la cuenta tiene ${count} transacciones. Elimina las transacciones primero.`,
-    };
-  }
-
   const { error } = await supabase.from("accounts").delete().eq("id", id);
 
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/accounts");
   revalidatePath("/dashboard");
+  revalidatePath("/transactions");
   return { success: true, data: undefined };
 }

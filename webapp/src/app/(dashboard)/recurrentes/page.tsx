@@ -18,9 +18,7 @@ export default async function RecurrentesPage() {
 
   const templates = templatesResult.success ? templatesResult.data : [];
   const accounts = accountsResult.success ? accountsResult.data : [];
-  const categories = categoriesResult.success
-    ? categoriesResult.data.flatMap((c) => [c, ...c.children])
-    : [];
+  const categories = categoriesResult.success ? categoriesResult.data : [];
 
   return (
     <div className="space-y-6">

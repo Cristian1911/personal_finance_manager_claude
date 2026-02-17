@@ -27,9 +27,7 @@ export default async function TransactionDetailPage({
 
   const tx = txResult.data;
   const accounts = accountsResult.success ? accountsResult.data : [];
-  const categories = categoriesResult.success
-    ? categoriesResult.data.flatMap((c) => [c, ...c.children])
-    : [];
+  const categories = categoriesResult.success ? categoriesResult.data : [];
 
   return (
     <div className="space-y-6 max-w-2xl">

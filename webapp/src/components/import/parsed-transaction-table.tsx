@@ -2,13 +2,7 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CategoryCombobox } from "@/components/ui/category-combobox";
 import {
   Table,
   TableBody,
@@ -18,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils/currency";
-import type { CurrencyCode, Category } from "@/types/domain";
+import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
 import type { ParsedTransaction } from "@/types/import";
 
 export function ParsedTransactionTable({
@@ -37,7 +31,7 @@ export function ParsedTransactionTable({
   selected: Set<number>;
   onToggle: (index: number) => void;
   onToggleAll: () => void;
-  categories?: Category[];
+  categories?: CategoryWithChildren[];
   categoryMap?: Map<string, string | null>;
   stmtIdx?: number;
   onCategoryChange?: (txIdx: number, categoryId: string | null) => void;
@@ -72,11 +66,6 @@ export function ParsedTransactionTable({
               ? categoryMap.get(`${stmtIdx}-${i}`) ?? null
               : null;
 
-            // Filter categories by direction
-            const filteredCategories = categories?.filter(
-              (cat) => !cat.direction || cat.direction === tx.direction
-            );
-
             return (
               <TableRow
                 key={i}
@@ -97,30 +86,13 @@ export function ParsedTransactionTable({
                 </TableCell>
                 {showCategories && (
                   <TableCell>
-                    <Select
-                      value={catId ?? "none"}
-                      onValueChange={(v) =>
-                        onCategoryChange(i, v === "none" ? null : v)
-                      }
-                    >
-                      <SelectTrigger className="w-[160px] h-8 text-xs">
-                        <SelectValue placeholder="Sin categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sin categoría</SelectItem>
-                        {filteredCategories?.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            <span className="flex items-center gap-2">
-                              <span
-                                className="inline-block h-2 w-2 rounded-full"
-                                style={{ backgroundColor: cat.color }}
-                              />
-                              {cat.name_es ?? cat.name}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CategoryCombobox
+                      categories={categories}
+                      value={catId}
+                      onValueChange={(v) => onCategoryChange(i, v)}
+                      direction={tx.direction}
+                      triggerClassName="w-[180px] h-8 text-xs"
+                    />
                   </TableCell>
                 )}
                 <TableCell>

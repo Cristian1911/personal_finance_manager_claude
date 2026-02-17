@@ -30,7 +30,7 @@ import {
 import { RecurringFormDialog } from "./recurring-form-dialog";
 import type {
   Account,
-  Category,
+  CategoryWithChildren,
   CurrencyCode,
   RecurringTemplateWithRelations,
 } from "@/types/domain";
@@ -42,7 +42,7 @@ export function RecurringList({
 }: {
   templates: RecurringTemplateWithRelations[];
   accounts: Account[];
-  categories: Category[];
+  categories: CategoryWithChildren[];
 }) {
   if (templates.length === 0) {
     return (
@@ -78,7 +78,7 @@ function RecurringCard({
 }: {
   template: RecurringTemplateWithRelations;
   accounts: Account[];
-  categories: Category[];
+  categories: CategoryWithChildren[];
 }) {
   const [isPending, startTransition] = useTransition();
 

@@ -7,7 +7,7 @@ import { ParsedTransactionTable } from "./parsed-transaction-table";
 import { importTransactions } from "@/actions/import-transactions";
 import { formatCurrency } from "@/lib/utils/currency";
 import { autoCategorize } from "@/lib/utils/auto-categorize";
-import type { CurrencyCode, Category } from "@/types/domain";
+import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
 import type { ActionResult } from "@/types/actions";
 import type {
   ParseResponse,
@@ -26,7 +26,7 @@ export function StepConfirm({
 }: {
   parseResult: ParseResponse;
   mappings: StatementAccountMapping[];
-  categories: Category[];
+  categories: CategoryWithChildren[];
   onComplete: (result: ImportResult) => void;
   onBack: () => void;
 }) {

@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import {
   createRecurringTemplate,
   updateRecurringTemplate,
 } from "@/actions/recurring-templates";
 import { Button } from "@/components/ui/button";
+import { CategoryCombobox } from "@/components/ui/category-combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -16,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ActionResult } from "@/types/actions";
-import type { Account, Category, RecurringTemplate } from "@/types/domain";
+import type { Account, CategoryWithChildren, RecurringTemplate, TransactionDirection } from "@/types/domain";
 
 const FREQUENCY_OPTIONS = [
   { value: "WEEKLY", label: "Semanal" },
@@ -34,7 +36,7 @@ export function RecurringForm({
 }: {
   template?: RecurringTemplate;
   accounts: Account[];
-  categories: Category[];
+  categories: CategoryWithChildren[];
   onSuccess?: () => void;
 }) {
   const action = template
@@ -54,6 +56,12 @@ export function RecurringForm({
   );
 
   const defaultAccount = accounts[0];
+  const [direction, setDirection] = useState<TransactionDirection>(
+    template?.direction ?? "OUTFLOW"
+  );
+  const [categoryId, setCategoryId] = useState<string | null>(
+    template?.category_id ?? null
+  );
 
   return (
     <form action={formAction} className="space-y-4">
@@ -79,7 +87,8 @@ export function RecurringForm({
           <Label htmlFor="direction">Tipo</Label>
           <Select
             name="direction"
-            defaultValue={template?.direction ?? "OUTFLOW"}
+            value={direction}
+            onValueChange={(v) => setDirection(v as TransactionDirection)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -181,22 +190,14 @@ export function RecurringForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="category_id">Categoría</Label>
-        <Select
+        <Label>Categoría</Label>
+        <CategoryCombobox
+          categories={categories}
+          value={categoryId}
+          onValueChange={setCategoryId}
+          direction={direction}
           name="category_id"
-          defaultValue={template?.category_id ?? ""}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Sin categoría" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id}>
-                {cat.name_es || cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
       </div>
 
       <div className="space-y-2">

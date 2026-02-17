@@ -43,8 +43,11 @@ CREATE POLICY "Users can manage own recurring templates"
   FOR ALL
   USING ((SELECT auth.uid()) = user_id);
 
--- Auto-update updated_at via moddatetime (extension enabled by default on Supabase)
+-- Enable moddatetime extension if not already active
+CREATE EXTENSION IF NOT EXISTS moddatetime WITH SCHEMA extensions;
+
+-- Auto-update updated_at via moddatetime
 CREATE TRIGGER set_updated_at
   BEFORE UPDATE ON recurring_transaction_templates
   FOR EACH ROW
-  EXECUTE FUNCTION moddatetime(updated_at);
+  EXECUTE FUNCTION extensions.moddatetime(updated_at);

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import { createTransaction, updateTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
+import { CategoryCombobox } from "@/components/ui/category-combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -13,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ActionResult } from "@/types/actions";
-import type { Account, Category, Transaction } from "@/types/domain";
+import type { Account, CategoryWithChildren, Transaction, TransactionDirection } from "@/types/domain";
 
 export function TransactionForm({
   transaction,
@@ -23,7 +25,7 @@ export function TransactionForm({
 }: {
   transaction?: Transaction;
   accounts: Account[];
-  categories: Category[];
+  categories: CategoryWithChildren[];
   onSuccess?: () => void;
 }) {
   const action = transaction
@@ -43,6 +45,12 @@ export function TransactionForm({
   );
 
   const defaultAccount = accounts[0];
+  const [direction, setDirection] = useState<TransactionDirection>(
+    transaction?.direction ?? "OUTFLOW"
+  );
+  const [categoryId, setCategoryId] = useState<string | null>(
+    transaction?.category_id ?? null
+  );
 
   return (
     <form action={formAction} className="space-y-4">
@@ -57,7 +65,8 @@ export function TransactionForm({
           <Label htmlFor="direction">Tipo</Label>
           <Select
             name="direction"
-            defaultValue={transaction?.direction ?? "OUTFLOW"}
+            value={direction}
+            onValueChange={(v) => setDirection(v as TransactionDirection)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -138,22 +147,14 @@ export function TransactionForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="category_id">Categoría</Label>
-        <Select
+        <Label>Categoría</Label>
+        <CategoryCombobox
+          categories={categories}
+          value={categoryId}
+          onValueChange={setCategoryId}
+          direction={direction}
           name="category_id"
-          defaultValue={transaction?.category_id ?? ""}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Sin categoría" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id}>
-                {cat.name_es || cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
       </div>
 
       <div className="space-y-2">

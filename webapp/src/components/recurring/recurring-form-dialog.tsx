@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { RecurringForm } from "./recurring-form";
 import { Plus } from "lucide-react";
-import type { Account, Category, RecurringTemplate } from "@/types/domain";
+import type { Account, CategoryWithChildren, RecurringTemplate } from "@/types/domain";
 
 export function RecurringFormDialog({
   template,
@@ -21,7 +21,7 @@ export function RecurringFormDialog({
 }: {
   template?: RecurringTemplate;
   accounts: Account[];
-  categories: Category[];
+  categories: CategoryWithChildren[];
   trigger?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);

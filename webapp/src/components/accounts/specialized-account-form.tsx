@@ -71,7 +71,7 @@ function CreditCardFields({ account, defaults }: { account?: Account; defaults: 
             id="interest_rate"
             name="interest_rate"
             type="number"
-            step="0.01"
+            step="any"
             min="0"
             max="100"
             defaultValue={account?.interest_rate ?? defaults.interest_rate ?? ""}
@@ -157,7 +157,7 @@ function LoanFields({ account, defaults }: { account?: Account; defaults: Accoun
           id="interest_rate"
           name="interest_rate"
           type="number"
-          step="0.01"
+          step="any"
           min="0"
           max="100"
           defaultValue={account?.interest_rate ?? defaults.interest_rate ?? ""}

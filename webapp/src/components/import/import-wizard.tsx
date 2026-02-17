@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Check } from "lucide-react";
-import type { Account, Category } from "@/types/domain";
+import type { Account, CategoryWithChildren } from "@/types/domain";
 import type {
   ParseResponse,
   StatementAccountMapping,
@@ -27,7 +27,7 @@ export function ImportWizard({
   categories,
 }: {
   accounts: Account[];
-  categories: Category[];
+  categories: CategoryWithChildren[];
 }) {
   const [step, setStep] = useState<Step>("upload");
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);

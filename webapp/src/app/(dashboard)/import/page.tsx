@@ -8,10 +8,7 @@ export default async function ImportPage() {
     getCategories(),
   ]);
   const accounts = accountResult.success ? accountResult.data : [];
-  // Flatten category tree to a flat list for the import wizard
-  const categories = categoryResult.success
-    ? categoryResult.data.flatMap((cat) => [cat, ...cat.children])
-    : [];
+  const categories = categoryResult.success ? categoryResult.data : [];
 
   return (
     <div className="space-y-6">
