@@ -54,14 +54,14 @@ def _resolve_year(tx_month: int, from_date: date, to_date: date) -> int:
     return to_date.year
 
 
-def parse_savings(pdf_path: str) -> ParsedStatement:
+def parse_savings(pdf_path: str, password: str | None = None) -> ParsedStatement:
     transactions: list[ParsedTransaction] = []
     period_from: date | None = None
     period_to: date | None = None
     account_number: str | None = None
     summary_data: dict[str, float] = {}
 
-    with pdfplumber.open(pdf_path) as pdf:
+    with pdfplumber.open(pdf_path, password=password) as pdf:
         for page in pdf.pages:
             text = page.extract_text()
             if not text:

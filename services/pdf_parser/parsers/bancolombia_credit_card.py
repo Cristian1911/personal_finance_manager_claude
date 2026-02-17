@@ -335,14 +335,14 @@ def _extract_metadata(
     return CreditCardMetadata(**meta), StatementSummary(**summary)
 
 
-def parse_credit_card(pdf_path: str) -> list[ParsedStatement]:
+def parse_credit_card(pdf_path: str, password: str | None = None) -> list[ParsedStatement]:
     """Parse a Bancolombia credit card PDF.
 
     Returns multiple statements if the PDF has multiple currency sections.
     """
     # Dedupe all pages and extract clean text
     page_texts: list[str] = []
-    with pdfplumber.open(pdf_path) as pdf:
+    with pdfplumber.open(pdf_path, password=password) as pdf:
         for page in pdf.pages:
             deduped = page.dedupe_chars()
             text = deduped.extract_text() or ""

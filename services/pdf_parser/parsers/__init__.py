@@ -5,15 +5,21 @@ import pdfplumber
 from models import ParsedStatement
 from parsers.bancolombia_savings import parse_savings
 from parsers.bancolombia_credit_card import parse_credit_card
+from parsers.nu_credit_card import parse_nu_credit_card
+from parsers.lulo_savings import parse_lulo_savings
+from parsers.bogota_savings import parse_bogota_savings
+from parsers.bogota_credit_card import parse_bogota_credit_card
 
 
-def detect_and_parse(pdf_path: str) -> list[ParsedStatement]:
+def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedStatement]:
     """Detect statement type and parse accordingly.
 
     Returns a list because credit card PDFs can contain
     multiple currency sections (e.g. COP + USD).
+
+    Detection order: specific banks first, then generic Bancolombia patterns.
     """
-    with pdfplumber.open(pdf_path) as pdf:
+    with pdfplumber.open(pdf_path, password=password) as pdf:
         # Sample first 3 pages to detect type
         sample_text = ""
         for page in pdf.pages[:3]:
@@ -22,14 +28,28 @@ def detect_and_parse(pdf_path: str) -> list[ParsedStatement]:
 
     sample_upper = sample_text.upper()
 
+    # NU Colombia
+    if "NU COLOMBIA" in sample_upper or "NUBANK" in sample_upper or "NU PAGOS" in sample_upper:
+        return parse_nu_credit_card(pdf_path, password=password)
+
+    # Lulo Bank
+    if "LULO BANK" in sample_upper or "LULO" in sample_upper:
+        return [parse_lulo_savings(pdf_path, password=password)]
+
+    # Banco de Bogotá
+    if "BANCO DE BOGOT" in sample_upper or "BANCO DE BOGOTA" in sample_upper:
+        if "TARJETA" in sample_upper or "MASTERCARD" in sample_upper or "VISA" in sample_upper:
+            return parse_bogota_credit_card(pdf_path, password=password)
+        return [parse_bogota_savings(pdf_path, password=password)]
+
+    # Bancolombia
     if "CUENTA DE AHORROS" in sample_upper:
-        return [parse_savings(pdf_path)]
+        return [parse_savings(pdf_path, password=password)]
 
     if "TARJETA" in sample_upper or "MASTERCARD" in sample_upper:
-        return parse_credit_card(pdf_path)
+        return parse_credit_card(pdf_path, password=password)
 
     raise ValueError(
         "No se pudo detectar el tipo de extracto. "
-        "Formatos soportados: Bancolombia Cuenta de Ahorros, "
-        "Bancolombia Tarjeta de Crédito."
+        "Formatos soportados: Bancolombia, NU Colombia, Lulo Bank, Banco de Bogotá."
     )

@@ -4,6 +4,8 @@ import { UtilizationGauge } from "@/components/debt/utilization-gauge";
 import { InterestCostCard } from "@/components/debt/interest-cost-card";
 import { DebtAccountCard } from "@/components/debt/debt-account-card";
 import { DebtInsights } from "@/components/debt/debt-insights";
+import { Button } from "@/components/ui/button";
+import { Calculator } from "lucide-react";
 import Link from "next/link";
 
 export default async function DeudasPage() {
@@ -36,11 +38,19 @@ export default async function DeudasPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Deudas</h1>
-        <p className="text-muted-foreground">
-          Visualiza y gestiona tus deudas
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Deudas</h1>
+          <p className="text-muted-foreground">
+            Visualiza y gestiona tus deudas
+          </p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link href="/deudas/simulador">
+            <Calculator className="h-4 w-4 mr-2" />
+            Simulador de pago
+          </Link>
+        </Button>
       </div>
 
       {/* Overview cards */}

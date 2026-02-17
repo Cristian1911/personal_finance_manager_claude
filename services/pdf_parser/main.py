@@ -2,7 +2,7 @@ import tempfile
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from models import ParsedStatement
@@ -25,7 +25,7 @@ def health():
 
 
 @app.post("/parse", response_model=ParseResponse)
-async def parse_pdf(file: UploadFile):
+async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="El archivo debe ser un PDF")
 
@@ -36,7 +36,7 @@ async def parse_pdf(file: UploadFile):
         tmp_path = tmp.name
 
     try:
-        statements = detect_and_parse(tmp_path)
+        statements = detect_and_parse(tmp_path, password=password)
         return ParseResponse(statements=statements)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

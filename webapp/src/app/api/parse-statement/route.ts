@@ -31,8 +31,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const password = formData.get("password") as string | null;
+
   const proxyForm = new FormData();
   proxyForm.append("file", file);
+  if (password) {
+    proxyForm.append("password", password);
+  }
 
   try {
     const response = await fetch(`${PARSER_URL}/parse`, {

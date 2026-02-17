@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, FileText, Loader2 } from "lucide-react";
+import { Upload, FileText, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ParseResponse } from "@/types/import";
 
@@ -11,6 +11,7 @@ export function StepUpload({
   onParsed: (data: ParseResponse) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  const [password, setPassword] = useState("");
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,6 +37,9 @@ export function StepUpload({
 
     const formData = new FormData();
     formData.append("file", file);
+    if (password) {
+      formData.append("password", password);
+    }
 
     try {
       const res = await fetch("/api/parse-statement", {
@@ -121,24 +125,41 @@ export function StepUpload({
       </div>
 
       {file && (
-        <div className="flex items-center gap-3 rounded-md border p-3">
-          <FileText className="h-5 w-5 text-muted-foreground" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{file.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {(file.size / 1024).toFixed(0)} KB
-            </p>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 rounded-md border p-3">
+            <FileText className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{file.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {(file.size / 1024).toFixed(0)} KB
+              </p>
+            </div>
+            <Button onClick={handleUpload} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                "Procesar extracto"
+              )}
+            </Button>
           </div>
-          <Button onClick={handleUpload} disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Procesando...
-              </>
-            ) : (
-              "Procesar extracto"
-            )}
-          </Button>
+          <div className="flex items-center gap-3 rounded-md border p-3">
+            <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div className="flex-1 min-w-0">
+              <input
+                type="password"
+                placeholder="Contraseña del PDF (opcional)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Algunos extractos están protegidos con contraseña (ej. número de cédula).
+          </p>
         </div>
       )}
 
