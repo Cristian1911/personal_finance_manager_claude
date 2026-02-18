@@ -68,7 +68,7 @@ jobs:
           project-name: personal-finance-manager
           docker-compose-path: docker-compose.prod.yml
           environment-variables: |
-            GITHUB_REPO=${{ github.repository }}
+            GITHUB_REPO=${{ env.REPO }}
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
