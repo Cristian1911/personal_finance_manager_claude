@@ -28,13 +28,14 @@ services:
       start_period: 10s
 
   nginx:
-    image: nginx:alpine
+    image: ghcr.io/${GITHUB_REPO}:nginx-latest
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
     volumes:
-      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./infra/certbot/conf:/etc/letsencrypt:ro
       - ./infra/certbot/www:/var/www/certbot:ro
     depends_on:
