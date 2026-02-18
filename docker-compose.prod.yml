@@ -28,7 +28,8 @@ services:
       start_period: 10s
 
   nginx:
-    image: ghcr.io/${GITHUB_REPO}:nginx-latest
+    build:
+      context: ./infra/nginx
     restart: unless-stopped
     ports:
       - "80:80"
