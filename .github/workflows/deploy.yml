@@ -11,8 +11,85 @@ env:
 
 
 jobs:
+  ghcr-preflight:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate GHCR PAT scopes and owner
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          GHCR_USERNAME: ${{ env.GHCR_USERNAME }}
+          REPO: ${{ env.REPO }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GHCR_PAT:-}" ]; then
+            echo "❌ GHCR_PAT is empty or missing."
+            exit 1
+          fi
+
+          response_headers=$(mktemp)
+          response_body=$(mktemp)
+
+          http_code=$(curl -sS -o "$response_body" -D "$response_headers" -w "%{http_code}" \
+            -H "Authorization: Bearer ${GHCR_PAT}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user)
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ GHCR_PAT is invalid or unauthorized for GitHub API (status $http_code)."
+            cat "$response_body"
+            exit 1
+          fi
+
+          scopes=$(grep -i '^x-oauth-scopes:' "$response_headers" | sed 's/^.*: //I' | tr -d '\r')
+          token_user=$(jq -r '.login // empty' "$response_body")
+
+          if [ -z "$token_user" ]; then
+            echo "❌ Could not resolve token owner from GitHub API."
+            exit 1
+          fi
+
+          if [[ ",$scopes," != *",read:packages,"* ]]; then
+            echo "❌ GHCR_PAT is missing scope: read:packages"
+            echo "Scopes found: ${scopes:-<none>}"
+            exit 1
+          fi
+
+          if [[ ",$scopes," != *",write:packages,"* ]]; then
+            echo "❌ GHCR_PAT is missing scope: write:packages"
+            echo "Scopes found: ${scopes:-<none>}"
+            exit 1
+          fi
+
+          if [ "$token_user" != "$GHCR_USERNAME" ]; then
+            echo "❌ Token owner mismatch."
+            echo "Expected owner: $GHCR_USERNAME"
+            echo "Token owner: $token_user"
+            exit 1
+          fi
+
+          package_name="${REPO##*/}"
+          package_status=$(curl -sS -o /tmp/pkg.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${GHCR_PAT}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/users/${GHCR_USERNAME}/packages/container/${package_name}")
+
+          if [ "$package_status" = "200" ]; then
+            echo "✅ Token scopes OK, owner OK, and package metadata is readable."
+          elif [ "$package_status" = "404" ]; then
+            echo "ℹ️ Package '${package_name}' not found yet for user '${GHCR_USERNAME}'."
+            echo "Build can still create it if token has write permissions."
+          else
+            echo "❌ Token cannot read package metadata (status $package_status)."
+            cat /tmp/pkg.json
+            exit 1
+          fi
+
   build-and-push:
     runs-on: ubuntu-latest
+    needs: ghcr-preflight
     permissions:
       contents: read
       packages: write
@@ -26,7 +103,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.GHCR_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
