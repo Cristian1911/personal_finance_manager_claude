@@ -44,6 +44,7 @@ jobs:
           fi
 
           scopes=$(grep -i '^x-oauth-scopes:' "$response_headers" | sed 's/^.*: //I' | tr -d '\r')
+          scopes_normalized=$(echo "$scopes" | tr -d ' ')
           token_user=$(jq -r '.login // empty' "$response_body")
 
           if [ -z "$token_user" ]; then
@@ -51,7 +52,7 @@ jobs:
             exit 1
           fi
 
-          if [[ ",$scopes," != *",read:packages,"* ]]; then
+          if [[ ",$scopes_normalized," != *",read:packages,"* ]]; then
             echo "❌ GHCR_PAT_READ is missing scope: read:packages"
             echo "Scopes found: ${scopes:-<none>}"
             exit 1
@@ -109,6 +110,7 @@ jobs:
           fi
 
           scopes=$(grep -i '^x-oauth-scopes:' "$response_headers" | sed 's/^.*: //I' | tr -d '\r')
+          scopes_normalized=$(echo "$scopes" | tr -d ' ')
           token_user=$(jq -r '.login // empty' "$response_body")
 
           if [ -z "$token_user" ]; then
@@ -116,7 +118,7 @@ jobs:
             exit 1
           fi
 
-          if [[ ",$scopes," != *",write:packages,"* ]]; then
+          if [[ ",$scopes_normalized," != *",write:packages,"* ]]; then
             echo "❌ GHCR_PAT_WRITE is missing scope: write:packages"
             echo "Scopes found: ${scopes:-<none>}"
             exit 1
