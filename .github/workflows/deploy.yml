@@ -3,6 +3,29 @@ name: Build & Deploy
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/deploy.yml'
+      - 'webapp/**'
+      - 'services/pdf_parser/**'
+      - 'docker-compose.prod.yml'
+      - 'infra/**'
+  workflow_dispatch:
+    inputs:
+      build_webapp:
+        description: 'Force build & push webapp image'
+        required: true
+        default: false
+        type: boolean
+      build_parser:
+        description: 'Force build & push parser image'
+        required: true
+        default: false
+        type: boolean
+      run_deploy:
+        description: 'Run deploy step after builds/preflight'
+        required: true
+        default: true
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
@@ -11,8 +34,85 @@ env:
 
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      webapp_changed: ${{ steps.filter.outputs.webapp_changed }}
+      parser_changed: ${{ steps.filter.outputs.parser_changed }}
+      deploy_changed: ${{ steps.filter.outputs.deploy_changed }}
+      any_deploy: ${{ steps.filter.outputs.any_deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed areas
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          event_name="${{ github.event_name }}"
+          force_webapp='${{ github.event.inputs.build_webapp || 'false' }}'
+          force_parser='${{ github.event.inputs.build_parser || 'false' }}'
+          force_deploy='${{ github.event.inputs.run_deploy || 'false' }}'
+
+          if [ "$event_name" = "workflow_dispatch" ]; then
+            files=""
+          else
+            before="${{ github.event.before }}"
+            after="${{ github.sha }}"
+
+            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+              files=$(git ls-files)
+            else
+              files=$(git diff --name-only "$before" "$after")
+            fi
+          fi
+
+          webapp_changed=false
+          parser_changed=false
+          deploy_changed=false
+
+          if echo "$files" | grep -qE '^webapp/'; then
+            webapp_changed=true
+          fi
+
+          if echo "$files" | grep -qE '^services/pdf_parser/'; then
+            parser_changed=true
+          fi
+
+          if echo "$files" | grep -qE '^(docker-compose.prod.yml|infra/|\.github/workflows/deploy.yml)'; then
+            deploy_changed=true
+          fi
+
+          if [ "$force_webapp" = "true" ]; then
+            webapp_changed=true
+          fi
+
+          if [ "$force_parser" = "true" ]; then
+            parser_changed=true
+          fi
+
+          if [ "$force_deploy" = "true" ]; then
+            deploy_changed=true
+          fi
+
+          any_deploy=false
+          if [ "$webapp_changed" = "true" ] || [ "$parser_changed" = "true" ] || [ "$deploy_changed" = "true" ]; then
+            any_deploy=true
+          fi
+
+          echo "webapp_changed=$webapp_changed" >> "$GITHUB_OUTPUT"
+          echo "parser_changed=$parser_changed" >> "$GITHUB_OUTPUT"
+          echo "deploy_changed=$deploy_changed" >> "$GITHUB_OUTPUT"
+          echo "any_deploy=$any_deploy" >> "$GITHUB_OUTPUT"
+
   ghcr-preflight:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.any_deploy == 'true'
 
     steps:
       - name: Validate GHCR read PAT and owner
@@ -133,9 +233,10 @@ jobs:
 
           echo "✅ GHCR_PAT_WRITE scope/owner OK."
 
-  build-and-push:
+  build-and-push-webapp:
     runs-on: ubuntu-latest
-    needs: ghcr-preflight
+    needs: [changes, ghcr-preflight]
+    if: needs.changes.outputs.webapp_changed == 'true'
     permissions:
       contents: read
       packages: write
@@ -167,6 +268,28 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  build-and-push-parser:
+    runs-on: ubuntu-latest
+    needs: [changes, ghcr-preflight]
+    if: needs.changes.outputs.parser_changed == 'true'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_PAT_WRITE }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build & push pdf-parser image
         uses: docker/build-push-action@v6
         with:
@@ -176,9 +299,64 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  ensure-public-package:
+    runs-on: ubuntu-latest
+    needs: [changes, ghcr-preflight, build-and-push-webapp, build-and-push-parser]
+    if: |
+      always() &&
+      needs.changes.outputs.any_deploy == 'true' &&
+      needs.ghcr-preflight.result == 'success' &&
+      needs.build-and-push-webapp.result != 'failure' &&
+      needs.build-and-push-parser.result != 'failure'
+
+    steps:
+      - name: Set GHCR package visibility to public
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT_WRITE }}
+          GHCR_USERNAME: ${{ env.GHCR_USERNAME }}
+          REPO: ${{ env.REPO }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          package_name="${REPO##*/}"
+
+          status=$(curl -sS -o /tmp/visibility.json -w "%{http_code}" \
+            -X PATCH \
+            -H "Authorization: Bearer ${GHCR_PAT}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d '{"visibility":"public"}' \
+            "https://api.github.com/user/packages/container/${package_name}/visibility")
+
+          if [ "$status" = "200" ]; then
+            echo "✅ Package '${package_name}' is public."
+          elif [ "$status" = "403" ]; then
+            echo "❌ Forbidden setting package visibility (status 403)."
+            echo "Likely missing package admin permission for this token (try adding delete:packages to GHCR_PAT_WRITE)."
+            cat /tmp/visibility.json
+            exit 1
+          elif [ "$status" = "404" ]; then
+            echo "❌ Package '${package_name}' not found for this user or token has no visibility admin access (status 404)."
+            cat /tmp/visibility.json
+            exit 1
+          else
+            echo "❌ Failed to set package visibility to public (status $status)."
+            cat /tmp/visibility.json
+            exit 1
+          fi
+
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: [changes, ghcr-preflight, build-and-push-webapp, build-and-push-parser, ensure-public-package]
+    if: |
+      always() &&
+      needs.changes.outputs.any_deploy == 'true' &&
+      needs.changes.outputs.deploy_changed == 'true' &&
+      needs.ghcr-preflight.result == 'success' &&
+      needs.build-and-push-webapp.result != 'failure' &&
+      needs.build-and-push-parser.result != 'failure' &&
+      needs.ensure-public-package.result == 'success'
 
     steps:
       - name: Checkout
@@ -209,5 +387,3 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
             DOMAIN=${{ vars.DOMAIN }}
-            GHCR_USERNAME=${{ env.GHCR_USERNAME }}
-            GHCR_TOKEN=${{ secrets.GHCR_PAT_READ }}
