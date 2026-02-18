@@ -129,11 +129,15 @@ export async function importTransactions(
         interest_charged: meta.summary?.interest_charged ?? null,
         credit_limit: meta.creditCardMetadata?.credit_limit ?? null,
         available_credit: meta.creditCardMetadata?.available_credit ?? null,
-        interest_rate: meta.creditCardMetadata?.interest_rate ?? null,
-        late_interest_rate: meta.creditCardMetadata?.late_interest_rate ?? null,
-        total_payment_due: meta.creditCardMetadata?.total_payment_due ?? null,
-        minimum_payment: meta.creditCardMetadata?.minimum_payment ?? null,
-        payment_due_date: meta.creditCardMetadata?.payment_due_date ?? null,
+        interest_rate: meta.creditCardMetadata?.interest_rate ?? meta.loanMetadata?.interest_rate ?? null,
+        late_interest_rate: meta.creditCardMetadata?.late_interest_rate ?? meta.loanMetadata?.late_interest_rate ?? null,
+        total_payment_due: meta.creditCardMetadata?.total_payment_due ?? meta.loanMetadata?.total_payment_due ?? null,
+        minimum_payment: meta.creditCardMetadata?.minimum_payment ?? meta.loanMetadata?.minimum_payment ?? null,
+        payment_due_date: meta.creditCardMetadata?.payment_due_date ?? meta.loanMetadata?.payment_due_date ?? null,
+        remaining_balance: meta.loanMetadata?.remaining_balance ?? null,
+        initial_amount: meta.loanMetadata?.initial_amount ?? null,
+        installments_in_default: meta.loanMetadata?.installments_in_default ?? null,
+        loan_number: meta.loanMetadata?.loan_number ?? null,
         transaction_count: meta.transactionCount,
         imported_count: imported,
         skipped_count: skipped,
@@ -182,6 +186,11 @@ export async function importTransactions(
         } else {
           currencyEntry.current_balance = null;
         }
+      } else if (meta.loanMetadata) {
+        const ln = meta.loanMetadata;
+        currencyEntry.current_balance = ln.remaining_balance ?? null;
+        currencyEntry.interest_rate = ln.interest_rate ?? null;
+        currencyEntry.total_payment_due = ln.total_payment_due ?? null;
       } else if (meta.summary?.final_balance != null) {
         currencyEntry.current_balance = meta.summary.final_balance;
       }
@@ -211,7 +220,14 @@ export async function importTransactions(
         if (cc.payment_due_date) {
           accountUpdate.payment_day = new Date(cc.payment_due_date).getUTCDate();
         }
-      } else if (!meta.creditCardMetadata && meta.summary?.final_balance != null && isPrimaryCurrency) {
+      } else if (meta.loanMetadata && isPrimaryCurrency) {
+        const ln = meta.loanMetadata;
+        if (ln.remaining_balance != null) accountUpdate.current_balance = ln.remaining_balance;
+        if (ln.interest_rate != null) accountUpdate.interest_rate = ln.interest_rate;
+        if (ln.payment_due_date) {
+          accountUpdate.payment_day = new Date(ln.payment_due_date).getUTCDate();
+        }
+      } else if (!meta.creditCardMetadata && !meta.loanMetadata && meta.summary?.final_balance != null && isPrimaryCurrency) {
         accountUpdate.current_balance = meta.summary.final_balance;
       }
 

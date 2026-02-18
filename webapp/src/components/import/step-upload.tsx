@@ -55,14 +55,18 @@ export function StepUpload({
         return;
       }
 
-      const totalTx = (data as ParseResponse).statements.reduce(
+      const parsed = data as ParseResponse;
+      const totalTx = parsed.statements.reduce(
         (sum: number, s: ParseResponse["statements"][number]) =>
           sum + s.transactions.length,
         0
       );
-      if (totalTx === 0) {
+      const hasMetadata = parsed.statements.some(
+        (s) => s.credit_card_metadata || s.loan_metadata || s.summary
+      );
+      if (totalTx === 0 && !hasMetadata) {
         setError(
-          "No se encontraron transacciones en este PDF. Verifica que sea un extracto bancario de un formato compatible."
+          "No se encontraron transacciones ni metadatos en este PDF. Verifica que sea un extracto bancario de un formato compatible."
         );
         setLoading(false);
         return;

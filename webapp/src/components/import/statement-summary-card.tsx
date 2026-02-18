@@ -14,6 +14,7 @@ import type { ParsedStatement } from "@/types/import";
 const STATEMENT_TYPE_LABELS: Record<string, string> = {
   savings: "Ahorros",
   credit_card: "Tarjeta de crédito",
+  loan: "Préstamo",
 };
 
 export function StatementSummaryCard({
@@ -134,6 +135,58 @@ export function StatementSummaryCard({
                 <p className="text-muted-foreground text-xs">Fecha límite de pago</p>
                 <p className="font-medium">
                   {statement.credit_card_metadata.payment_due_date}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        {statement.loan_metadata && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm mt-3 pt-3 border-t">
+            {statement.loan_metadata.loan_number && (
+              <div>
+                <p className="text-muted-foreground text-xs">Obligación</p>
+                <p className="font-medium">
+                  {statement.loan_metadata.loan_number}
+                </p>
+              </div>
+            )}
+            {statement.loan_metadata.remaining_balance != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Saldo capital</p>
+                <p className="font-medium text-red-600">
+                  {fmt(statement.loan_metadata.remaining_balance)}
+                </p>
+              </div>
+            )}
+            {statement.loan_metadata.interest_rate != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Tasa E.A.</p>
+                <p className="font-medium">
+                  {statement.loan_metadata.interest_rate}%
+                </p>
+              </div>
+            )}
+            {statement.loan_metadata.total_payment_due != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Cuota a pagar</p>
+                <p className="font-medium text-red-600">
+                  {fmt(statement.loan_metadata.total_payment_due)}
+                </p>
+              </div>
+            )}
+            {statement.loan_metadata.payment_due_date && (
+              <div>
+                <p className="text-muted-foreground text-xs">Fecha de pago</p>
+                <p className="font-medium">
+                  {statement.loan_metadata.payment_due_date}
+                </p>
+              </div>
+            )}
+            {statement.loan_metadata.installments_in_default != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Cuotas en mora</p>
+                <p className={`font-medium ${statement.loan_metadata.installments_in_default > 0 ? "text-red-600" : "text-emerald-600"}`}>
+                  {statement.loan_metadata.installments_in_default}
                 </p>
               </div>
             )}

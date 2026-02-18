@@ -62,6 +62,11 @@ export function ImportWizard({
         matched = accts.find(
           (a) => a.account_type === "SAVINGS" && a.mask === last4
         );
+      } else if (stmt.statement_type === "loan" && stmt.account_number) {
+        const last4 = stmt.account_number.slice(-4);
+        matched = accts.find(
+          (a) => a.account_type === "LOAN" && a.mask === last4
+        );
       }
 
       return {

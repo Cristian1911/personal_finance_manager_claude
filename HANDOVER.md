@@ -1,101 +1,72 @@
-# HANDOVER.md
+# HANDOVER
 
 ## 1. Session Summary
 
-This session executed the 4-feature implementation plan from the previous planning session. All features were fully implemented: 17 flat seed categories with RLS fix, transaction exclusion (`is_excluded`) with UI toggle and chart filtering, keyword-based auto-categorization on PDF import, and a complete debt dashboard at `/deudas`. Three Supabase migrations were pushed, TypeScript types regenerated, and the build passes cleanly.
+This session implemented two new PDF parsers (Nu Colombia credit card, Lulo Bank loan), completed the full frontend import flow for loan statements, added a database migration for loan-specific snapshot columns, and wired loan metadata through the entire import pipeline (summary card, auto-match, account creation defaults, snapshot storage, account updates, diff tracking, statement history timeline). All changes compile successfully but are **uncommitted**.
 
 ## 2. Changes Made
 
-### Feature 1: Seed Categories + RLS Fix
+### New PDF Parsers (Python)
 
-- **Created** `supabase/migrations/20260214100001_seed_categories.sql` — 17 flat system categories (12 OUTFLOW + 5 INFLOW) with deterministic UUIDs `a0000001-0001-4000-8000-00000000XXXX`
-- **Created** `supabase/migrations/20260214100002_fix_category_rls.sql` — SELECT policy: `user_id = auth.uid() OR user_id IS NULL`. INSERT/UPDATE/DELETE policies enforce `is_system = false`.
-- **Modified** `webapp/src/types/database.ts` — Regenerated from Supabase (includes `is_excluded` from Feature 2)
+- **`services/pdf_parser/parsers/nu_credit_card.py`** — Replaced stub with full implementation. Parses Nu Colombia credit card statements: card info, credit metadata, summary, and transactions from tabular layout. Colombian number format via `parse_co_number()`.
+- **`services/pdf_parser/parsers/lulo_loan.py`** — Created. Lulo Bank loan parser: extracts loan metadata (number, balance, rate, payment due) and past payment history as OUTFLOW transactions.
+- **`services/pdf_parser/parsers/lulo_savings.py`** — Deleted. Replaced by `lulo_loan.py` since the actual PDF is a loan, not savings.
+- **`services/pdf_parser/parsers/__init__.py`** — Updated imports (`lulo_savings` → `lulo_loan`), added `"NU FINANCIERA"` detection keyword.
 
-### Feature 2: Transaction Exclusion (`is_excluded`)
+### Database Migration
 
-- **Created** `supabase/migrations/20260214100003_add_transaction_is_excluded.sql` — `is_excluded boolean NOT NULL DEFAULT false` + partial index
-- **Modified** `webapp/src/lib/validators/transaction.ts` — Added `amountMin`, `amountMax`, `showExcluded` to `transactionFiltersSchema`
-- **Modified** `webapp/src/actions/transactions.ts` — Filter logic for new fields, `toggleExcludeTransaction()`, `bulkExcludeTransactions()`. Fixed fallback params type.
-- **Modified** `webapp/src/components/transactions/transaction-filters.tsx` — Amount range inputs + "Mostrar excluidas" Switch toggle
-- **Modified** `webapp/src/components/transactions/transaction-table.tsx` — Refactored to `TransactionRow` with `useTransition`. Eye/EyeOff toggle, opacity, "Excluida" badge, strikethrough.
-- **Modified** `webapp/src/app/(dashboard)/dashboard/page.tsx` — `.eq("is_excluded", false)` on `recentTransactions` and `monthTransactions` queries. Added debt summary card (Feature 4).
-- **Modified** `webapp/src/actions/charts.ts` — `.eq("is_excluded", false)` on all 5 chart functions
-- **Added** `webapp/src/components/ui/switch.tsx` — shadcn Switch component
-- **Added** `webapp/src/components/ui/tooltip.tsx` — shadcn Tooltip component
+- **`supabase/migrations/20260218002245_add_loan_columns_to_snapshots.sql`** — Created. Adds `remaining_balance`, `initial_amount`, `installments_in_default`, `loan_number` columns to `statement_snapshots`. **Already pushed to remote.**
+- **`webapp/src/types/database.ts`** — Regenerated from Supabase to include new columns.
 
-### Feature 3: Auto-Categorization on Import
+### Frontend: Loan Import Flow
 
-- **Created** `webapp/src/lib/utils/auto-categorize.ts` — ~100 Bancolombia-specific keywords mapped to seed category UUIDs. Exports `autoCategorize(description)`.
-- **Modified** `webapp/src/types/import.ts` — Added `category_id`, `categorization_source`, `categorization_confidence` to `TransactionToImport`
-- **Modified** `webapp/src/lib/validators/import.ts` — Same 3 optional fields on `transactionToImportSchema`
-- **Modified** `webapp/src/actions/import-transactions.ts` — Uses category fields from payload instead of hardcoded `SYSTEM_DEFAULT`
-- **Modified** `webapp/src/components/import/step-confirm.tsx` — Runs `autoCategorize()` on mount, manages `categoryOverrides` state, shows info banner with count
-- **Modified** `webapp/src/components/import/parsed-transaction-table.tsx` — Optional "Categoría" column with Select dropdown filtered by direction
-- **Modified** `webapp/src/components/import/import-wizard.tsx` — Accepts and passes `categories` prop
-- **Modified** `webapp/src/app/(dashboard)/import/page.tsx` — Fetches categories in parallel, flattens tree, passes to wizard
-
-### Feature 4: Debt Dashboard
-
-- **Created** `webapp/src/lib/utils/debt.ts` — `extractDebtAccounts`, `calcUtilization`, `estimateMonthlyInterest`, `toAlmuerzos`, `toHorasMinimo`, `daysUntilPayment`, `generateInsights` (5 rules)
-- **Created** `webapp/src/actions/debt.ts` — `getDebtOverview()` server action
-- **Created** `webapp/src/components/debt/debt-hero-card.tsx` — Total debt display with Landmark icon
-- **Created** `webapp/src/components/debt/utilization-gauge.tsx` — Semicircular Recharts gauge with used/total/available breakdown
-- **Created** `webapp/src/components/debt/interest-cost-card.tsx` — Monthly interest estimate with relatable equivalents (almuerzos, minimum wage hours)
-- **Created** `webapp/src/components/debt/debt-account-card.tsx` — Per-account detail: utilization bar, rate, interest, payment countdown
-- **Created** `webapp/src/components/debt/debt-insights.tsx` — Insight cards with warning/info/success styling
-- **Created** `webapp/src/app/(dashboard)/deudas/page.tsx` — Server component with empty state, overview cards, insights, per-account grids
-- **Modified** `webapp/src/lib/constants/navigation.ts` — Added `Landmark` import and "Deudas" nav item
+- **`webapp/src/lib/validators/import.ts`** — Added `loanMetadataSchema` Zod schema and `loanMetadata` field to `statementMetaSchema`.
+- **`webapp/src/components/import/statement-summary-card.tsx`** — Added `loan: "Préstamo"` label and loan metadata display section (loan number, balance, rate, payment due, installments in default).
+- **`webapp/src/components/import/import-wizard.tsx`** — Added loan auto-match logic: matches on `account_number` last 4 + `account_type === "LOAN"`.
+- **`webapp/src/components/import/create-account-dialog.tsx`** — Added loan branch in `deriveDefaults()`: sets LOAN type, pre-fills balance, loan_amount, interest_rate, payment_day.
+- **`webapp/src/components/import/step-confirm.tsx`** — Added `loanMetadata` to `buildStatementMeta()` payload.
+- **`webapp/src/actions/import-transactions.ts`** — Snapshot row includes loan columns. Currency balance entry handles loan metadata. Account scalar updates (current_balance, interest_rate, payment_day) work for loans.
+- **`webapp/src/lib/utils/snapshot-diff.ts`** — Added tracked fields: `remaining_balance` ("Saldo capital"), `initial_amount` ("Monto inicial"), `installments_in_default` ("Cuotas en mora").
+- **`webapp/src/components/accounts/statement-history-timeline.tsx`** — Added MetricRow for "Saldo capital" and inline display for "Cuotas en mora" with color coding.
 
 ## 3. Key Decisions
 
-- **Flat categories (no hierarchy)** — User chose to flatten. All 17 have `parent_id=NULL`. Users create sub-categories themselves.
-- **`is_excluded` boolean over soft-delete** — Simpler than status-based. Excluded transactions remain queryable but filtered from all metrics.
-- **Keyword-based auto-categorization, not ML** — Simple `string.includes()` on ~100 keywords. Confidence fixed at 0.7. ML deferred.
-- **Category overrides in client state** — `categoryOverrides` Map in `StepConfirm` tracks auto vs user-assigned to set correct `categorization_source`.
-- **Amber for debt warnings, not red** — Per prior UX research, red triggers avoidance ("ostrich effect").
-- **Relatable equivalents** — Almuerzos (~$20K COP) and minimum wage hours (~$7.2K COP) make interest costs tangible.
-- **Separate `/deudas` route** — Own page, not embedded in dashboard. Summary card on dashboard links to it.
-- **Debt simulator deferred** — Snowball vs Avalanche simulator deferred to follow-up sprint.
+- **Lulo stub renamed** `lulo_savings.py` → `lulo_loan.py` — actual PDF is "Extracto Crédito de Consumo". User approved.
+- **Lulo payment history imported as transactions** — each past payment becomes an OUTFLOW transaction. User chose this over metadata-only.
+- **New DB columns for loans** — `remaining_balance`, `initial_amount`, `installments_in_default`, `loan_number` are loan-specific. User approved adding columns vs reusing credit card columns.
+- **Shared snapshot columns reused** — `interest_rate`, `total_payment_due`, `minimum_payment`, `payment_due_date` already existed and are populated from loan metadata via `??` fallback chain.
+- **Nu parser handles multi-line table reconstruction** — PDF extraction splits table rows across multiple lines; parser rebuilds them.
+- **Number format varies by bank** — Bancolombia savings/loans use US format (1,234.56), Bancolombia credit cards + Nu + Lulo use Colombian (1.234,56).
 
 ## 4. Current State
 
-- **Build**: `cd webapp && pnpm build` passes with 0 errors
-- **No git repo**: Project is not under version control
-- **Supabase migrations**: 4 total, all pushed and applied:
-  - `20260214034921_add_account_specialized_fields.sql` (pre-existing)
-  - `20260214100001_seed_categories.sql`
-  - `20260214100002_fix_category_rls.sql`
-  - `20260214100003_add_transaction_is_excluded.sql`
-- **Types current**: `database.ts` includes `is_excluded`
+- **Build**: `pnpm build` passes with 0 errors
+- **Git branch**: `main`, ahead of origin by 1 commit (`ccae682` — BC loan parser from prior session)
+- **Uncommitted changes**: 12 modified/deleted + 2 new files (all this session's work)
+- **DB migration**: Already pushed to remote Supabase
+- **Parsers**: Tested standalone during development by pdf-parser-creator agents, not tested via running service + curl
 
 ## 5. Open Issues & Gotchas
 
-- **`supabase gen types` piping**: Using `tail -n +2` strips the first *content* line (`export type Json =`), not just the `compdef` warning. This session had to manually repair the file. Use `sed '1d'` instead, or verify the header after piping.
-- **RLS policy duplication risk**: Previous session's RLS policies were set via Supabase dashboard. This session's migration uses `DROP POLICY IF EXISTS` for common names, but the dashboard-created policies may have different names. Verify via Supabase dashboard that no duplicate/conflicting policies exist on the `categories` table.
-- **`bulkExcludeTransactions` not wired to UI**: The server action exists in `webapp/src/actions/transactions.ts` but no UI invokes it. Needs checkboxes + bulk action bar on the transactions list page.
-- **Auto-categorize keywords are static**: Hardcoded in `webapp/src/lib/utils/auto-categorize.ts`. No admin UI. Only covers Bancolombia descriptions.
-- **Debt insights use hardcoded COP values**: `toAlmuerzos()` assumes ~$20K COP/lunch, `toHorasMinimo()` assumes ~$7.2K COP/hr. Update if minimum wage changes or multi-currency debt is supported.
-- **No tests**: No test infrastructure. All verification is manual + build check.
+- **Parsers not tested via running service** — Should run `cd services/pdf_parser && uv run python main.py` and test both new PDFs with `curl -F file=@... http://localhost:8000/parse`.
+- **Lulo Bank detection is broad** — `__init__.py:37` checks for `"LULO"` in uppercase text. If Lulo Bank issues savings statements in the future, detection needs sub-type routing.
+- **`StatementSnapshot` type in `statement-snapshots.ts`** — The action's return type may not include the new loan columns (`remaining_balance`, `installments_in_default`). The timeline component references `snap.remaining_balance` and `snap.installments_in_default` — verify the action's select query and type export include them.
+- **`installments_in_default` display** — Uses inline rendering in timeline, not `MetricRow`, because `MetricRow` always formats with `formatCurrency()`. If more non-currency metrics are needed, consider a formatter prop on `MetricRow`.
+- **BC loan parser uses US number format** while Lulo loan parser uses Colombian format — be aware of inconsistency when adding future loan parsers.
 
 ## 6. Suggested Next Steps
 
-1. **Initialize git** — Set up `.gitignore` and make an initial commit.
-2. **Visual verification** — Run `pnpm dev` and verify all 4 features:
-   - `/categories` — 17 seed categories visible, non-editable
-   - `/transactions` — Eye toggle dims/excludes, amount range filter works, "Mostrar excluidas" toggle works
-   - `/import` — Upload a Bancolombia PDF, confirm "Categoría" column with auto-assigned categories
-   - `/deudas` — With a credit card/loan account, confirm gauge, interest card, insights render
-3. **Wire up bulk exclude UI** — Add checkboxes to transaction table + "Excluir seleccionadas" action bar
-4. **Debt simulator** (deferred) — Snowball vs Avalanche comparison with payment slider
-5. **Phase 1 Sprint 2** — Budget tracking, recurring transaction detection, or next roadmap items
+1. **Test parsers end-to-end**: `curl -F file=@bank_pdf_examples/nu_bank/nu_credit_card.pdf http://localhost:8000/parse` and same for Lulo loan.
+2. **Verify `StatementSnapshot` type** in `webapp/src/actions/statement-snapshots.ts` includes new loan columns. Update select query if needed.
+3. **Commit all changes** — stage everything and create a commit.
+4. **Manual UI test** — Upload Nu credit card and Lulo loan PDFs through import wizard. Verify metadata display, auto-match, account defaults, transaction import, snapshot diffs.
+5. **Check statement history timeline** — Import a loan statement, check account detail page for remaining_balance and installments_in_default rendering.
+6. **Push to remote** — `git push`.
 
 ## 7. Context for Claude
 
-- **Seed category UUIDs** follow `a0000001-0001-4000-8000-0000000000XX` (01–17). Referenced in both the migration and `auto-categorize.ts`. If UUIDs change, update both.
-- **Recharts** is a project dependency used for charts and the debt utilization gauge (`PieChart` with `startAngle={180}`, `endAngle={0}`).
-- **`InteractiveMetricCard`** at `webapp/src/components/dashboard/interactive-metric-card.tsx` supports types: `net-worth`, `income`, `expenses`, `balance`, `savings-rate`, `budget`.
-- **`CategoryWithChildren`** type exists for tree views, but categories are now flat. `getCategories()` still builds a tree — the import page flattens it with `flatMap`.
-- **`showExcluded` filter** uses `z.preprocess` to convert URL param string `"true"` to boolean.
-- **`formatCurrency()`** defaults to COP with 0 decimals.
-- **No tests exist** — verification is manual (browser + build check).
+- **PDF samples**: `bank_pdf_examples/nu_bank/nu_credit_card.pdf` and `bank_pdf_examples/lulo_bank/lulo_bank_loan.pdf`.
+- **Parser utils**: `services/pdf_parser/parsers/utils.py` has `parse_co_number()`, `parse_us_number()`, `SPANISH_MONTHS`, `resolve_year()`.
+- **Plan file**: `.claude/plans/curious-painting-pixel.md` contains the approved implementation plan.
+- **DB migration already applied**: `20260218002245` pushed to remote. Don't re-run `supabase db push` unless there are new migrations.
+- **Prior commit** `ccae682` added the Bancolombia loan parser — that parser was created in a session before this one.

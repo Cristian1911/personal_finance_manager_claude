@@ -328,15 +328,19 @@ export type Database = {
           final_balance: number | null
           id: string
           imported_count: number
+          initial_amount: number | null
+          installments_in_default: number | null
           interest_charged: number | null
           interest_rate: number | null
           late_interest_rate: number | null
+          loan_number: string | null
           minimum_payment: number | null
           payment_due_date: string | null
           period_from: string | null
           period_to: string | null
           previous_balance: number | null
           purchases_and_charges: number | null
+          remaining_balance: number | null
           skipped_count: number
           source_filename: string | null
           total_credits: number | null
@@ -354,15 +358,19 @@ export type Database = {
           final_balance?: number | null
           id?: string
           imported_count?: number
+          initial_amount?: number | null
+          installments_in_default?: number | null
           interest_charged?: number | null
           interest_rate?: number | null
           late_interest_rate?: number | null
+          loan_number?: string | null
           minimum_payment?: number | null
           payment_due_date?: string | null
           period_from?: string | null
           period_to?: string | null
           previous_balance?: number | null
           purchases_and_charges?: number | null
+          remaining_balance?: number | null
           skipped_count?: number
           source_filename?: string | null
           total_credits?: number | null
@@ -380,15 +388,19 @@ export type Database = {
           final_balance?: number | null
           id?: string
           imported_count?: number
+          initial_amount?: number | null
+          installments_in_default?: number | null
           interest_charged?: number | null
           interest_rate?: number | null
           late_interest_rate?: number | null
+          loan_number?: string | null
           minimum_payment?: number | null
           payment_due_date?: string | null
           period_from?: string | null
           period_to?: string | null
           previous_balance?: number | null
           purchases_and_charges?: number | null
+          remaining_balance?: number | null
           skipped_count?: number
           source_filename?: string | null
           total_credits?: number | null

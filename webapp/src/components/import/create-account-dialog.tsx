@@ -62,6 +62,21 @@ function deriveDefaults(stmt: ParsedStatement): AccountFormDefaults {
         defaults.current_balance = meta.total_payment_due;
       }
     }
+  } else if (stmt.statement_type === "loan") {
+    accountType = "LOAN";
+    name = `${bank} Préstamo${mask ? ` ****${mask}` : ""}`;
+
+    const meta = stmt.loan_metadata;
+    if (meta) {
+      if (meta.remaining_balance != null) defaults.current_balance = meta.remaining_balance;
+      if (meta.initial_amount != null) defaults.loan_amount = meta.initial_amount;
+      if (meta.interest_rate != null) defaults.interest_rate = meta.interest_rate;
+      if (meta.total_payment_due != null) defaults.monthly_payment = meta.total_payment_due;
+      if (meta.payment_due_date) {
+        const paymentDate = new Date(meta.payment_due_date);
+        defaults.payment_day = paymentDate.getDate();
+      }
+    }
   } else {
     accountType = "SAVINGS";
     name = `${bank} Ahorros${mask ? ` ****${mask}` : ""}`;

@@ -38,11 +38,28 @@ const creditCardMetadataSchema = z.object({
   payment_due_date: z.string().nullable(),
 });
 
+const loanMetadataSchema = z.object({
+  loan_number: z.string().nullable(),
+  loan_type: z.string().nullable(),
+  initial_amount: z.number().nullable(),
+  disbursement_date: z.string().nullable(),
+  remaining_balance: z.number().nullable(),
+  interest_rate: z.number().nullable(),
+  late_interest_rate: z.number().nullable(),
+  total_payment_due: z.number().nullable(),
+  minimum_payment: z.number().nullable(),
+  payment_due_date: z.string().nullable(),
+  installments_in_default: z.number().nullable(),
+  statement_cut_date: z.string().nullable(),
+  last_payment_date: z.string().nullable(),
+});
+
 const statementMetaSchema = z.object({
   accountId: uuidStr("Cuenta inválida"),
   statementIndex: z.number().int().min(0),
   summary: statementSummarySchema.nullable(),
   creditCardMetadata: creditCardMetadataSchema.nullable(),
+  loanMetadata: loanMetadataSchema.nullable().optional(),
   periodFrom: z.string().nullable(),
   periodTo: z.string().nullable(),
   currency: z.string(),
@@ -51,8 +68,6 @@ const statementMetaSchema = z.object({
 });
 
 export const importPayloadSchema = z.object({
-  transactions: z
-    .array(transactionToImportSchema)
-    .min(1, "Selecciona al menos una transacción"),
+  transactions: z.array(transactionToImportSchema),
   statementMeta: z.array(statementMetaSchema).optional(),
 });

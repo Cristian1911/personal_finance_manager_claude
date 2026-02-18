@@ -14,6 +14,9 @@ const TRACKED_FIELDS: { key: string; label: string }[] = [
   { key: "previous_balance", label: "Saldo anterior" },
   { key: "total_credits", label: "Total abonos" },
   { key: "total_debits", label: "Total cargos" },
+  { key: "remaining_balance", label: "Saldo capital" },
+  { key: "initial_amount", label: "Monto inicial" },
+  { key: "installments_in_default", label: "Cuotas en mora" },
 ];
 
 export function computeSnapshotDiffs(

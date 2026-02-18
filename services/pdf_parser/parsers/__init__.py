@@ -7,7 +7,7 @@ from parsers.bancolombia_savings import parse_savings
 from parsers.bancolombia_credit_card import parse_credit_card
 from parsers.bancolombia_loan import parse_loan
 from parsers.nu_credit_card import parse_nu_credit_card
-from parsers.lulo_savings import parse_lulo_savings
+from parsers.lulo_loan import parse_lulo_loan
 from parsers.bogota_savings import parse_bogota_savings
 from parsers.bogota_credit_card import parse_bogota_credit_card
 
@@ -30,12 +30,12 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
     sample_upper = sample_text.upper()
 
     # NU Colombia
-    if "NU COLOMBIA" in sample_upper or "NUBANK" in sample_upper or "NU PAGOS" in sample_upper:
+    if "NU FINANCIERA" in sample_upper or "NU COLOMBIA" in sample_upper or "NUBANK" in sample_upper or "NU PAGOS" in sample_upper:
         return parse_nu_credit_card(pdf_path, password=password)
 
     # Lulo Bank
     if "LULO BANK" in sample_upper or "LULO" in sample_upper:
-        return [parse_lulo_savings(pdf_path, password=password)]
+        return [parse_lulo_loan(pdf_path, password=password)]
 
     # Banco de Bogotá
     if "BANCO DE BOGOT" in sample_upper or "BANCO DE BOGOTA" in sample_upper:

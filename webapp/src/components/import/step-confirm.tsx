@@ -167,6 +167,7 @@ export function StepConfirm({
           statementIndex: stmtIdx,
           summary: stmt.summary,
           creditCardMetadata: stmt.credit_card_metadata,
+          loanMetadata: stmt.loan_metadata,
           periodFrom: stmt.period_from,
           periodTo: stmt.period_to,
           currency: stmt.currency,
@@ -213,25 +214,31 @@ export function StepConfirm({
           <div key={stmtIdx} className="space-y-2">
             <h3 className="text-sm font-medium">
               {stmt.bank} — {stmt.currency}
-              {mapping && (
+              {mapping && stmt.transactions.length > 0 && (
                 <span className="text-muted-foreground font-normal ml-2">
                   ({sel.size} de {stmt.transactions.length} seleccionadas)
                 </span>
               )}
             </h3>
-            <ParsedTransactionTable
-              transactions={stmt.transactions}
-              currency={stmt.currency}
-              selected={sel}
-              onToggle={(txIdx) => toggleTransaction(stmtIdx, txIdx)}
-              onToggleAll={() => toggleAllForStatement(stmtIdx)}
-              categories={categories}
-              categoryMap={categoryOverrides}
-              stmtIdx={stmtIdx}
-              onCategoryChange={(txIdx, catId) =>
-                setCategoryForTx(stmtIdx, txIdx, catId)
-              }
-            />
+            {stmt.transactions.length > 0 ? (
+              <ParsedTransactionTable
+                transactions={stmt.transactions}
+                currency={stmt.currency}
+                selected={sel}
+                onToggle={(txIdx) => toggleTransaction(stmtIdx, txIdx)}
+                onToggleAll={() => toggleAllForStatement(stmtIdx)}
+                categories={categories}
+                categoryMap={categoryOverrides}
+                stmtIdx={stmtIdx}
+                onCategoryChange={(txIdx, catId) =>
+                  setCategoryForTx(stmtIdx, txIdx, catId)
+                }
+              />
+            ) : (
+              <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
+                Este extracto no contiene transacciones. Se importarán solo los metadatos de la cuenta (saldo, tasa de interés, etc.)
+              </div>
+            )}
           </div>
         );
       })}
@@ -263,14 +270,19 @@ export function StepConfirm({
           <Button variant="outline" type="button" onClick={onBack}>
             Volver
           </Button>
-          <Button type="submit" disabled={pending || totals.count === 0}>
+          <Button
+            type="submit"
+            disabled={pending || (totals.count === 0 && buildStatementMeta().length === 0)}
+          >
             {pending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Importando...
               </>
-            ) : (
+            ) : totals.count > 0 ? (
               `Importar ${totals.count} transacciones`
+            ) : (
+              "Importar metadatos"
             )}
           </Button>
         </div>

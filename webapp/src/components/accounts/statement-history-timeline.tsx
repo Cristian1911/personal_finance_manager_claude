@@ -129,6 +129,20 @@ export function StatementHistoryTimeline({
                     previousValue={prev?.credit_limit}
                     currency={currency}
                   />
+                  <MetricRow
+                    label="Saldo capital"
+                    value={snap.remaining_balance}
+                    previousValue={prev?.remaining_balance}
+                    currency={currency}
+                  />
+                  {snap.installments_in_default != null && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Cuotas en mora</span>
+                      <span className={`font-medium ${snap.installments_in_default > 0 ? "text-red-500" : "text-emerald-600"}`}>
+                        {snap.installments_in_default}
+                      </span>
+                    </div>
+                  )}
                   {snap.payment_due_date && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
