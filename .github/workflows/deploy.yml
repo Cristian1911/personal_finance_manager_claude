@@ -7,6 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   REPO: cristian1911/personal_finance_manager_claude
+  GHCR_USERNAME: ${{ github.repository_owner }}
 
 
 jobs:
@@ -24,7 +25,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
+          username: ${{ env.GHCR_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
@@ -60,6 +61,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate GHCR token can read images
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Verify images are pullable from GHCR
+        run: |
+          docker manifest inspect ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest > /dev/null
+          docker manifest inspect ${{ env.REGISTRY }}/${{ env.REPO }}:parser-latest > /dev/null
+
       - name: Deploy to Hostinger VPS
         uses: hostinger/deploy-on-vps@v2
         with:
@@ -73,5 +86,5 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
             DOMAIN=${{ vars.DOMAIN }}
-            GHCR_USERNAME=${{ github.actor }}
+            GHCR_USERNAME=${{ env.GHCR_USERNAME }}
             GHCR_TOKEN=${{ secrets.GHCR_PAT }}
