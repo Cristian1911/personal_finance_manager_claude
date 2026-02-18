@@ -7,7 +7,6 @@ on:
 env:
   REGISTRY: ghcr.io
   REPO: cristian1911/personal_finance_manager_claude
-  SHORT_SHA: ${{ github.sha }}
 
 
 jobs:
@@ -36,9 +35,7 @@ jobs:
         with:
           context: ./webapp
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest
-            ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -51,9 +48,7 @@ jobs:
         with:
           context: ./services/pdf_parser
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.REPO }}:parser-latest
-            ${{ env.REGISTRY }}/${{ env.REPO }}:parser-${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.REPO }}:parser-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -74,7 +69,6 @@ jobs:
           docker-compose-path: docker-compose.prod.yml
           environment-variables: |
             GITHUB_REPO=${{ env.REPO }}
-            GITHUB_SHA=${{ github.sha }}
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
