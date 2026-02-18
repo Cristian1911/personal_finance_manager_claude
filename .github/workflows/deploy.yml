@@ -7,7 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   REPO: cristian1911/personal_finance_manager_claude
-  GHCR_USERNAME: ${{ github.repository_owner }}
+  GHCR_USERNAME: cristian1911
 
 
 jobs:
