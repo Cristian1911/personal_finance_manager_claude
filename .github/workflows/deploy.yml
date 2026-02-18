@@ -22,7 +22,7 @@ on:
         default: false
         type: boolean
       run_deploy:
-        description: 'Run deploy step after builds/preflight'
+        description: 'Run deploy step after builds'
         required: true
         default: true
         type: boolean
@@ -30,7 +30,7 @@ on:
 env:
   REGISTRY: ghcr.io
   REPO: cristian1911/personal_finance_manager_claude
-  GHCR_USERNAME: ${{ github.repository_owner }}
+  GHCR_USERNAME: cristian1911
 
 
 jobs:
@@ -108,134 +108,10 @@ jobs:
           echo "parser_changed=$parser_changed" >> "$GITHUB_OUTPUT"
           echo "deploy_changed=$deploy_changed" >> "$GITHUB_OUTPUT"
           echo "any_deploy=$any_deploy" >> "$GITHUB_OUTPUT"
-
-  ghcr-preflight:
-    runs-on: ubuntu-latest
-    needs: changes
-    if: needs.changes.outputs.any_deploy == 'true'
-
-    steps:
-      - name: Validate GHCR read PAT and owner
-        env:
-          GHCR_PAT: ${{ secrets.GHCR_PAT_READ }}
-          GHCR_USERNAME: ${{ env.GHCR_USERNAME }}
-          REPO: ${{ env.REPO }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ -z "${GHCR_PAT:-}" ]; then
-            echo "❌ GHCR_PAT_READ is empty or missing."
-            exit 1
-          fi
-
-          response_headers=$(mktemp)
-          response_body=$(mktemp)
-
-          http_code=$(curl -sS -o "$response_body" -D "$response_headers" -w "%{http_code}" \
-            -H "Authorization: Bearer ${GHCR_PAT}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/user)
-
-          if [ "$http_code" != "200" ]; then
-            echo "❌ GHCR_PAT_READ is invalid or unauthorized for GitHub API (status $http_code)."
-            cat "$response_body"
-            exit 1
-          fi
-
-          scopes=$(grep -i '^x-oauth-scopes:' "$response_headers" | sed 's/^.*: //I' | tr -d '\r')
-          scopes_normalized=$(echo "$scopes" | tr -d ' ')
-          token_user=$(jq -r '.login // empty' "$response_body")
-
-          if [ -z "$token_user" ]; then
-            echo "❌ Could not resolve token owner from GitHub API."
-            exit 1
-          fi
-
-          if [[ ",$scopes_normalized," != *",read:packages,"* ]]; then
-            echo "❌ GHCR_PAT_READ is missing scope: read:packages"
-            echo "Scopes found: ${scopes:-<none>}"
-            exit 1
-          fi
-
-          if [ "$token_user" != "$GHCR_USERNAME" ]; then
-            echo "❌ Token owner mismatch."
-            echo "Expected owner: $GHCR_USERNAME"
-            echo "Token owner: $token_user"
-            exit 1
-          fi
-
-          package_name="${REPO##*/}"
-          package_status=$(curl -sS -o /tmp/pkg.json -w "%{http_code}" \
-            -H "Authorization: Bearer ${GHCR_PAT}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/users/${GHCR_USERNAME}/packages/container/${package_name}")
-
-          if [ "$package_status" = "200" ]; then
-            echo "✅ GHCR_PAT_READ scope/owner OK and package metadata is readable."
-          elif [ "$package_status" = "404" ]; then
-            echo "ℹ️ Package '${package_name}' not found yet for user '${GHCR_USERNAME}'."
-            echo "Build can still create it if token has write permissions."
-          else
-            echo "❌ Token cannot read package metadata (status $package_status)."
-            cat /tmp/pkg.json
-            exit 1
-          fi
-
-      - name: Validate GHCR write PAT and owner
-        env:
-          GHCR_PAT: ${{ secrets.GHCR_PAT_WRITE }}
-          GHCR_USERNAME: ${{ env.GHCR_USERNAME }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ -z "${GHCR_PAT:-}" ]; then
-            echo "❌ GHCR_PAT_WRITE is empty or missing."
-            exit 1
-          fi
-
-          response_headers=$(mktemp)
-          response_body=$(mktemp)
-
-          http_code=$(curl -sS -o "$response_body" -D "$response_headers" -w "%{http_code}" \
-            -H "Authorization: Bearer ${GHCR_PAT}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/user)
-
-          if [ "$http_code" != "200" ]; then
-            echo "❌ GHCR_PAT_WRITE is invalid or unauthorized for GitHub API (status $http_code)."
-            cat "$response_body"
-            exit 1
-          fi
-
-          scopes=$(grep -i '^x-oauth-scopes:' "$response_headers" | sed 's/^.*: //I' | tr -d '\r')
-          scopes_normalized=$(echo "$scopes" | tr -d ' ')
-          token_user=$(jq -r '.login // empty' "$response_body")
-
-          if [ -z "$token_user" ]; then
-            echo "❌ Could not resolve write token owner from GitHub API."
-            exit 1
-          fi
-
-          if [[ ",$scopes_normalized," != *",write:packages,"* ]]; then
-            echo "❌ GHCR_PAT_WRITE is missing scope: write:packages"
-            echo "Scopes found: ${scopes:-<none>}"
-            exit 1
-          fi
-
-          if [ "$token_user" != "$GHCR_USERNAME" ]; then
-            echo "❌ Write token owner mismatch."
-            echo "Expected owner: $GHCR_USERNAME"
-            echo "Token owner: $token_user"
-            exit 1
-          fi
-
-          echo "✅ GHCR_PAT_WRITE scope/owner OK."
-
+     
   build-and-push-webapp:
     runs-on: ubuntu-latest
-    needs: [changes, ghcr-preflight]
+    needs: [changes]
     if: needs.changes.outputs.webapp_changed == 'true'
     permissions:
       contents: read
@@ -270,7 +146,7 @@ jobs:
 
   build-and-push-parser:
     runs-on: ubuntu-latest
-    needs: [changes, ghcr-preflight]
+    needs: [changes]
     if: needs.changes.outputs.parser_changed == 'true'
     permissions:
       contents: read
@@ -299,64 +175,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  ensure-public-package:
-    runs-on: ubuntu-latest
-    needs: [changes, ghcr-preflight, build-and-push-webapp, build-and-push-parser]
-    if: |
-      always() &&
-      needs.changes.outputs.any_deploy == 'true' &&
-      needs.ghcr-preflight.result == 'success' &&
-      needs.build-and-push-webapp.result != 'failure' &&
-      needs.build-and-push-parser.result != 'failure'
-
-    steps:
-      - name: Set GHCR package visibility to public
-        env:
-          GHCR_PAT: ${{ secrets.GHCR_PAT_WRITE }}
-          GHCR_USERNAME: ${{ env.GHCR_USERNAME }}
-          REPO: ${{ env.REPO }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          package_name="${REPO##*/}"
-
-          status=$(curl -sS -o /tmp/visibility.json -w "%{http_code}" \
-            -X PATCH \
-            -H "Authorization: Bearer ${GHCR_PAT}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            -d '{"visibility":"public"}' \
-            "https://api.github.com/user/packages/container/${package_name}/visibility")
-
-          if [ "$status" = "200" ]; then
-            echo "✅ Package '${package_name}' is public."
-          elif [ "$status" = "403" ]; then
-            echo "❌ Forbidden setting package visibility (status 403)."
-            echo "Likely missing package admin permission for this token (try adding delete:packages to GHCR_PAT_WRITE)."
-            cat /tmp/visibility.json
-            exit 1
-          elif [ "$status" = "404" ]; then
-            echo "❌ Package '${package_name}' not found for this user or token has no visibility admin access (status 404)."
-            cat /tmp/visibility.json
-            exit 1
-          else
-            echo "❌ Failed to set package visibility to public (status $status)."
-            cat /tmp/visibility.json
-            exit 1
-          fi
-
   deploy:
     runs-on: ubuntu-latest
-    needs: [changes, ghcr-preflight, build-and-push-webapp, build-and-push-parser, ensure-public-package]
+    needs: [changes, build-and-push-webapp, build-and-push-parser]
     if: |
       always() &&
       needs.changes.outputs.any_deploy == 'true' &&
       needs.changes.outputs.deploy_changed == 'true' &&
-      needs.ghcr-preflight.result == 'success' &&
       needs.build-and-push-webapp.result != 'failure' &&
-      needs.build-and-push-parser.result != 'failure' &&
-      needs.ensure-public-package.result == 'success'
+      needs.build-and-push-parser.result != 'failure'
 
     steps:
       - name: Checkout
@@ -387,3 +214,5 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
             DOMAIN=${{ vars.DOMAIN }}
+            GHCR_USERNAME=${{ env.GHCR_USERNAME }}
+            GHCR_TOKEN=${{ secrets.GHCR_PAT_READ }}
