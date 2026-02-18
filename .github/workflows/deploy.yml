@@ -57,23 +57,20 @@ jobs:
     needs: build-and-push
 
     steps:
-      - name: Deploy to Hostinger VPS via SSH
-        uses: appleboy/ssh-action@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Hostinger VPS
+        uses: hostinger/deploy-on-vps@v2
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            cd ~/pfm
-
-            # Log in to GHCR
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-            # Pull latest images
-            docker compose pull webapp pdf-parser
-
-            # Restart with zero-downtime
-            docker compose up -d --remove-orphans
-
-            # Clean up old images
-            docker image prune -f
+          api-key: ${{ secrets.HOSTINGER_API_KEY }}
+          virtual-machine: ${{ vars.HOSTINGER_VM_ID }}
+          project-name: personal-finance-manager
+          docker-compose-path: docker-compose.prod.yml
+          environment-variables: |
+            GITHUB_REPO=${{ github.repository }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+            GHCR_USERNAME=${{ github.actor }}
+            GHCR_TOKEN=${{ secrets.GHCR_PAT }}
