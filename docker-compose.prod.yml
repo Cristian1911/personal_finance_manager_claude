@@ -2,7 +2,8 @@
 # Copy this file to ~/pfm/docker-compose.yml on your VPS.
 services:
   webapp:
-    image: ghcr.io/${GITHUB_REPO}:webapp-latest
+    image: ghcr.io/${GITHUB_REPO}:webapp-${GITHUB_SHA}
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -16,7 +17,8 @@ services:
         condition: service_healthy
 
   pdf-parser:
-    image: ghcr.io/${GITHUB_REPO}:parser-latest
+    image: ghcr.io/${GITHUB_REPO}:parser-${GITHUB_SHA}
+    pull_policy: always
     restart: unless-stopped
     expose:
       - "8000"
