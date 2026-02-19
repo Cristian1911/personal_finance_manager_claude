@@ -52,12 +52,200 @@ function MetricRow({
   );
 }
 
+function TextRow({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium">{value}</span>
+    </div>
+  );
+}
+
+function CountRow({
+  label,
+  value,
+  warnIfPositive,
+}: {
+  label: string;
+  value: number | null;
+  warnIfPositive?: boolean;
+}) {
+  if (value === null) return null;
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={`font-medium ${
+          warnIfPositive && value > 0 ? "text-red-500" : "text-emerald-600"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function PercentRow({ label, value }: { label: string; value: number | null }) {
+  if (value === null) return null;
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium">{value.toFixed(2)}%</span>
+    </div>
+  );
+}
+
+function CreditCardMetrics({
+  snap,
+  prev,
+  currency,
+}: {
+  snap: StatementSnapshot;
+  prev: StatementSnapshot | null;
+  currency: CurrencyCode;
+}) {
+  return (
+    <>
+      <MetricRow
+        label="Total a pagar"
+        value={snap.total_payment_due}
+        previousValue={prev?.total_payment_due}
+        currency={currency}
+      />
+      <MetricRow
+        label="Pago mínimo"
+        value={snap.minimum_payment}
+        previousValue={prev?.minimum_payment}
+        currency={currency}
+      />
+      <MetricRow
+        label="Intereses"
+        value={snap.interest_charged}
+        previousValue={prev?.interest_charged}
+        currency={currency}
+      />
+      <MetricRow
+        label="Compras y cargos"
+        value={snap.purchases_and_charges}
+        previousValue={prev?.purchases_and_charges}
+        currency={currency}
+      />
+      <MetricRow
+        label="Cupo total"
+        value={snap.credit_limit}
+        previousValue={prev?.credit_limit}
+        currency={currency}
+      />
+      <MetricRow
+        label="Cupo disponible"
+        value={snap.available_credit}
+        previousValue={prev?.available_credit}
+        currency={currency}
+      />
+      <MetricRow
+        label="Saldo anterior"
+        value={snap.previous_balance}
+        previousValue={prev?.previous_balance}
+        currency={currency}
+      />
+    </>
+  );
+}
+
+function LoanMetrics({
+  snap,
+  prev,
+  currency,
+}: {
+  snap: StatementSnapshot;
+  prev: StatementSnapshot | null;
+  currency: CurrencyCode;
+}) {
+  return (
+    <>
+      <MetricRow
+        label="Saldo capital"
+        value={snap.remaining_balance}
+        previousValue={prev?.remaining_balance}
+        currency={currency}
+      />
+      <MetricRow
+        label="Monto inicial"
+        value={snap.initial_amount}
+        previousValue={prev?.initial_amount}
+        currency={currency}
+      />
+      <MetricRow
+        label="Total a pagar"
+        value={snap.total_payment_due}
+        previousValue={prev?.total_payment_due}
+        currency={currency}
+      />
+      <MetricRow
+        label="Pago mínimo"
+        value={snap.minimum_payment}
+        previousValue={prev?.minimum_payment}
+        currency={currency}
+      />
+      <PercentRow label="Tasa de interés" value={snap.interest_rate} />
+      <CountRow
+        label="Cuotas en mora"
+        value={snap.installments_in_default}
+        warnIfPositive
+      />
+      <TextRow label="N° préstamo" value={snap.loan_number} />
+    </>
+  );
+}
+
+function SavingsMetrics({
+  snap,
+  prev,
+  currency,
+}: {
+  snap: StatementSnapshot;
+  prev: StatementSnapshot | null;
+  currency: CurrencyCode;
+}) {
+  return (
+    <>
+      <MetricRow
+        label="Saldo final"
+        value={snap.final_balance}
+        previousValue={prev?.final_balance}
+        currency={currency}
+      />
+      <MetricRow
+        label="Saldo anterior"
+        value={snap.previous_balance}
+        previousValue={prev?.previous_balance}
+        currency={currency}
+      />
+      <MetricRow
+        label="Total abonos"
+        value={snap.total_credits}
+        previousValue={prev?.total_credits}
+        currency={currency}
+      />
+      <MetricRow
+        label="Total débitos"
+        value={snap.total_debits}
+        previousValue={prev?.total_debits}
+        currency={currency}
+      />
+    </>
+  );
+}
+
 export function StatementHistoryTimeline({
   snapshots,
   currency,
+  accountType,
 }: {
   snapshots: StatementSnapshot[];
   currency: CurrencyCode;
+  accountType: string;
 }) {
   if (snapshots.length === 0) {
     return (
@@ -99,61 +287,25 @@ export function StatementHistoryTimeline({
                 </div>
 
                 <div className="space-y-1">
-                  <MetricRow
-                    label="Total a pagar"
-                    value={snap.total_payment_due}
-                    previousValue={prev?.total_payment_due}
-                    currency={currency}
-                  />
-                  <MetricRow
-                    label="Pago minimo"
-                    value={snap.minimum_payment}
-                    previousValue={prev?.minimum_payment}
-                    currency={currency}
-                  />
-                  <MetricRow
-                    label="Intereses"
-                    value={snap.interest_charged}
-                    previousValue={prev?.interest_charged}
-                    currency={currency}
-                  />
-                  <MetricRow
-                    label="Compras y cargos"
-                    value={snap.purchases_and_charges}
-                    previousValue={prev?.purchases_and_charges}
-                    currency={currency}
-                  />
-                  <MetricRow
-                    label="Cupo total"
-                    value={snap.credit_limit}
-                    previousValue={prev?.credit_limit}
-                    currency={currency}
-                  />
-                  <MetricRow
-                    label="Saldo capital"
-                    value={snap.remaining_balance}
-                    previousValue={prev?.remaining_balance}
-                    currency={currency}
-                  />
-                  {snap.installments_in_default != null && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Cuotas en mora</span>
-                      <span className={`font-medium ${snap.installments_in_default > 0 ? "text-red-500" : "text-emerald-600"}`}>
-                        {snap.installments_in_default}
-                      </span>
-                    </div>
+                  {accountType === "CREDIT_CARD" && (
+                    <CreditCardMetrics snap={snap} prev={prev} currency={currency} />
                   )}
-                  {snap.payment_due_date && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Fecha de pago
-                      </span>
-                      <span className="font-medium">
-                        {formatDate(snap.payment_due_date, "dd MMM yyyy")}
-                      </span>
-                    </div>
+                  {accountType === "LOAN" && (
+                    <LoanMetrics snap={snap} prev={prev} currency={currency} />
+                  )}
+                  {(accountType === "SAVINGS" || accountType === "CHECKING") && (
+                    <SavingsMetrics snap={snap} prev={prev} currency={currency} />
                   )}
                 </div>
+
+                {snap.payment_due_date && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Fecha de pago</span>
+                    <span className="font-medium">
+                      {formatDate(snap.payment_due_date, "dd MMM yyyy")}
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

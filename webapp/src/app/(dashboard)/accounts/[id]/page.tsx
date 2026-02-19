@@ -105,6 +105,7 @@ export default async function AccountDetailPage({
           <StatementHistoryTimeline
             snapshots={snapshots}
             currency={account.currency_code}
+            accountType={account.account_type}
           />
         </div>
       )}
