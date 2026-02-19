@@ -11,15 +11,6 @@ import type { Account } from "@/types/domain";
 import type { AccountFormDefaults } from "@/types/account-form";
 import type { ParsedStatement } from "@/types/import";
 
-function parseMonthName(monthName: string | undefined): number | undefined {
-  if (!monthName) return undefined;
-  const months: Record<string, number> = {
-    "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
-    "jul": 7, "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12
-  };
-  const normalized = monthName.toLowerCase().replace(".", "").substring(0, 3);
-  return months[normalized];
-}
 
 function deriveDefaults(stmt: ParsedStatement): AccountFormDefaults {
   const bank = stmt.bank.charAt(0).toUpperCase() + stmt.bank.slice(1);
@@ -75,6 +66,11 @@ function deriveDefaults(stmt: ParsedStatement): AccountFormDefaults {
       if (meta.payment_due_date) {
         const paymentDate = new Date(meta.payment_due_date);
         defaults.payment_day = paymentDate.getDate();
+      }
+      if (meta.disbursement_date) {
+        const disbDate = new Date(meta.disbursement_date);
+        defaults.loan_start_month = disbDate.getUTCMonth() + 1;
+        defaults.loan_start_year = disbDate.getUTCFullYear();
       }
     }
   } else {

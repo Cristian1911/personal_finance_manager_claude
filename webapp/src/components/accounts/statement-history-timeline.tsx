@@ -188,6 +188,12 @@ function LoanMetrics({
         previousValue={prev?.minimum_payment}
         currency={currency}
       />
+      <MetricRow
+        label="Intereses cobrados"
+        value={snap.interest_charged}
+        previousValue={prev?.interest_charged}
+        currency={currency}
+      />
       <PercentRow label="Tasa de interés" value={snap.interest_rate} />
       <CountRow
         label="Cuotas en mora"

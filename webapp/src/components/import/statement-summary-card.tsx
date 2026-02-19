@@ -182,6 +182,14 @@ export function StatementSummaryCard({
                 </p>
               </div>
             )}
+            {statement.summary?.interest_charged != null && (
+              <div>
+                <p className="text-muted-foreground text-xs">Intereses cobrados</p>
+                <p className="font-medium text-red-600">
+                  {fmt(statement.summary.interest_charged)}
+                </p>
+              </div>
+            )}
             {statement.loan_metadata.installments_in_default != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Cuotas en mora</p>
