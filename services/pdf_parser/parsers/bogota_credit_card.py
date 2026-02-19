@@ -43,7 +43,7 @@ PAGO_TOTAL_RE = re.compile(r"Pago\s+Total\s*([\d,.]+)")
 # Summary table items
 SALDO_ANTERIOR_RE = re.compile(r"Saldo\s+Anterior\s*([\d,.]+)")
 COMPRAS_RE = re.compile(r"\+\s*Compras\s*([\d,.]+)")
-INTERESES_RE = re.compile(r"\+\s*Intereses\s+Corrientes\s*\(?2\)?\s*([\d,.]+)")
+INTERESES_RE = re.compile(r"\+\s*Intereses\s+[Cc]orrientes\s*\(?\d*\)?\s*([\d,.]+)")
 
 # Transaction lines:
 # 20032659 AVANCE CAJERO ATH 30/05/2025 30/05/2025 36 50,000 25.939 1,350 28 37,773
@@ -179,6 +179,11 @@ def parse_bogota_credit_card(
                      m = re.search(r"Pagos\s+y\s+Créditos\s*([\d,.]+)", stripped)
                      if m:
                          summary.total_credits = _parse_us_number(m.group(1))
+
+                if not summary.interest_charged:
+                    m = INTERESES_RE.search(stripped)
+                    if m:
+                        summary.interest_charged = _parse_us_number(m.group(1))
 
                 # Note: "Compras" matches both top summary and bottom details
                 # We prioritize logic where we can find it clearly

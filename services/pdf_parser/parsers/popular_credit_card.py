@@ -33,6 +33,12 @@ CARD_NUMBER_RE = re.compile(r"\b(\d{16})\b")
 # Date pattern: "17/FEB/2026" or "31/ENE/2026"
 DATE_RE = re.compile(r"(\d{1,2})/([A-Z]{3})/(\d{4})")
 
+# "Saldo anterior 13,101,891.00"
+PREV_BALANCE_RE = re.compile(r"Saldo\s+anterior\s+([\d,.]+)", re.IGNORECASE)
+
+# "+ Intereses corrientes 195,966.00"
+INTEREST_CHARGED_RE = re.compile(r"\+\s*Intereses\s+corrientes\s+([\d,.]+)", re.IGNORECASE)
+
 # Transaction line
 # 07/DIC/2024 001072 SOFISTIK DA 3,780,000.00 210,000.00 1,260,000.00 18 12 26.389
 TX_LINE_RE = re.compile(
@@ -110,6 +116,17 @@ def parse_popular_credit_card(
                     m = CARD_NUMBER_RE.search(stripped)
                     if m:
                         card_last_four = m.group(1)[-4:]
+
+                # Summary fields
+                if not summary.previous_balance:
+                    m = PREV_BALANCE_RE.search(stripped)
+                    if m:
+                        summary.previous_balance = _parse_us_number(m.group(1))
+
+                if not summary.interest_charged:
+                    m = INTEREST_CHARGED_RE.search(stripped)
+                    if m:
+                        summary.interest_charged = _parse_us_number(m.group(1))
 
                 # Standalone date line (e.g. "17/FEB/2026") → payment due date
                 if len(stripped) < 20 and DATE_RE.match(stripped):

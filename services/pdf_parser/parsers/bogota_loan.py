@@ -39,11 +39,11 @@ TOTAL_PAYMENT_RE = re.compile(r"VALOR\s+TOTAL\s+A\s+PAGAR\s*\$([\d,.]+)")
 # "MONTO APROBADO 40,000,000.00"
 INITIAL_AMOUNT_RE = re.compile(r"(?:MONTO|VALOR)\s+APROBADO\s+([\d,.]+)")
 
-# "TASA COBRADA E.A. 13.09" or similar
-# "TASA PACTADA TASA COBRADA ... E.A."
-# "13.09 13.09 0.00 ..."
-# This table is hard to regex line-by-line without context.
-# But we can look for "TASA COBRADA E.A." logic.
+# "TASA PACTADA E.A. 13.09" — agreed annual rate
+INTEREST_RATE_RE = re.compile(r"TASA\s+PACTADA\s+E\.A\.\s+([\d,.]+)")
+
+# "TASA INTERÉS MORA E.A. 19.65" — late/default annual rate
+LATE_RATE_RE = re.compile(r"TASA\s+INTER[EÉ]S\s+MORA\s+E\.A\.\s+([\d,.]+)")
 
 # Summary table
 # "+ CAPITAL 105,393.33"
@@ -74,9 +74,9 @@ def parse_bogota_loan(
     initial_amount: float | None = None
     remaining_balance: float | None = None
     interest_rate: float | None = None
+    late_interest_rate: float | None = None
     total_payment_due: float | None = None
     
-    # Components of payment for summary (optional?)
     capital_payment = 0.0
     interest_payment = 0.0
 
@@ -118,46 +118,51 @@ def parse_bogota_loan(
                             total_payment_due = _parse_us_number(m_val.group(1))
 
                 if not initial_amount:
-                     # Look for "40,000,000.00 244 91 147 PESOS" line under headers
-                     # "MONTO APROBADO" is header.
-                     # This is tricky without strict layout or knowing it's right under.
-                     pass
+                    m = INITIAL_AMOUNT_RE.search(stripped)
+                    if m:
+                        initial_amount = _parse_us_number(m.group(1))
+
+                if not interest_rate:
+                    m = INTEREST_RATE_RE.search(stripped)
+                    if m:
+                        interest_rate = _parse_us_number(m.group(1))
+
+                if not late_interest_rate:
+                    m = LATE_RATE_RE.search(stripped)
+                    if m:
+                        late_interest_rate = _parse_us_number(m.group(1))
 
                 m = REMAINING_BALANCE_RE.search(stripped)
                 if m:
                     remaining_balance = _parse_us_number(m.group(1))
-                    
-                # Concept table
+
                 m = SUMMARY_CAPITAL_RE.search(stripped)
                 if m:
                     capital_payment = _parse_us_number(m.group(1))
-                    
+
                 m = SUMMARY_INTEREST_RE.search(stripped)
                 if m:
                     interest_payment = _parse_us_number(m.group(1))
-
-                # Rate extraction is hard from the columnar table without careful parsing
-                # "13.09 13.09 0.00 19.65 0" -> Tasa Pactada EA, Tasa Cobrada EA...
-                # If we see a line with small numbers like 13.09, maybe?
-                # For now strip rate if not easy.
     
     # Re-scan for initial amount if possible using context?
     # Or just start with what we have.
 
     summary = StatementSummary(
         final_balance=remaining_balance,
-        purchases_and_charges=0.0, # Loans don't have "purchases"
+        purchases_and_charges=capital_payment,  # Principal portion of the period payment
         interest_charged=interest_payment,
     )
     
     metadata = LoanMetadata(
         loan_number=loan_number,
         loan_type=loan_type,
+        initial_amount=initial_amount,
         remaining_balance=remaining_balance,
+        interest_rate=interest_rate,
+        late_interest_rate=late_interest_rate,
         total_payment_due=total_payment_due,
         payment_due_date=payment_due_date,
         statement_cut_date=statement_cut_date,
-        # interest_rate=interest_rate # TODO
     )
 
     return ParsedStatement(

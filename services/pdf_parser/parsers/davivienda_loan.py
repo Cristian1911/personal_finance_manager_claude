@@ -42,6 +42,11 @@ PREV_BALANCE_RE = re.compile(r"Saldo\s+Anterior:.*\$\s*([\d,.]+)")
 # "Saldo a: Ene. 10/2026 $ 11,161,141.11"
 NEW_BALANCE_RE = re.compile(r"Saldo\s+a:.*\$\s*([\d,.]+)")
 
+# "Tasa Interés Cte.Cobrada Periodo 1.05" (monthly rate; label and value on same line)
+INTEREST_RATE_RE = re.compile(
+    r"Tasa\s+Inter[eé]s\s+Cte\.?\s*Cobrada\s+Periodo\s+([\d,.]+)", re.IGNORECASE
+)
+
 # Transaction line on page 2
 # "10Ene2026 $253,812.00 00277623 TRANSFERENCIA Z"
 # Date format: DDMmmYYYY (Title case month)
@@ -81,6 +86,7 @@ def parse_davivienda_loan(
     payment_due_date: date | None = None
     total_payment_due: float | None = None
     remaining_balance: float | None = None
+    interest_rate: float | None = None
     
     transactions: list[ParsedTransaction] = []
     summary = StatementSummary()
@@ -108,6 +114,11 @@ def parse_davivienda_loan(
                     m = TOTAL_PAYMENT_RE.search(stripped)
                     if m:
                         total_payment_due = _parse_us_number(m.group(1))
+
+                if not interest_rate:
+                    m = INTEREST_RATE_RE.search(stripped)
+                    if m:
+                        interest_rate = _parse_us_number(m.group(1))
 
                 # Summary
                 if not summary.previous_balance:
@@ -151,6 +162,7 @@ def parse_davivienda_loan(
         loan_number=loan_number,
         loan_type="CRÉDITO",
         remaining_balance=remaining_balance,
+        interest_rate=interest_rate,
         total_payment_due=total_payment_due,
         payment_due_date=payment_due_date,
     )

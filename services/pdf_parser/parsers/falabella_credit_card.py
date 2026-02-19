@@ -66,8 +66,13 @@ PERIOD_RE = re.compile(
     re.IGNORECASE,
 )
 
-# After normalization: "Paga antes del 20 FEB 2026"
-PAYMENT_DUE_RE = re.compile(r"Paga\s+antes\s+del\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})")
+# "Paga antes del" appears alone on one line; the date ("20 FEB 2026") is on the next.
+# We use a two-step flag: detect the label line, then parse the following date line.
+PAGA_ANTES_DEL_RE = re.compile(r"Paga\s+antes\s+del", re.IGNORECASE)
+PAYMENT_DUE_DATE_LINE_RE = re.compile(r"^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$")
+
+# Interest charged: "Intereses corrientes: 46.240,30"
+INTEREST_CHARGED_RE = re.compile(r"Intereses\s+corrientes:\s*([\d.,]+)", re.IGNORECASE)
 
 # Summary section (mixed — some lines are not doubled)
 CUPO_TOTAL_RE = re.compile(r"Cupo\s+total\s+de\s+tu\s+Tarjeta:\s*\$\s*([\d.,]+)")
@@ -113,6 +118,8 @@ def parse_falabella_credit_card(
     summary = StatementSummary()
     metadata = CreditCardMetadata()
 
+    paga_antes_del_seen = False
+
     with pdfplumber.open(pdf_path, password=password) as pdf:
         for page in pdf.pages:
             text = page.extract_text() or ""
@@ -137,14 +144,19 @@ def parse_falabella_credit_card(
                             period_from = date(int(m.group(3)), m1, int(m.group(1)))
                             period_to = date(int(m.group(6)), m2, int(m.group(4)))
 
+                # payment_due_date: "Paga antes del" on one line, "20 FEB 2026" on the next
                 if not metadata.payment_due_date:
-                    m = PAYMENT_DUE_RE.search(stripped)
-                    if m:
-                        month = SPANISH_MONTHS.get(m.group(2).lower(), 0)
-                        if month:
-                            metadata.payment_due_date = date(
-                                int(m.group(3)), month, int(m.group(1))
-                            )
+                    if paga_antes_del_seen:
+                        m = PAYMENT_DUE_DATE_LINE_RE.match(stripped)
+                        if m:
+                            month = SPANISH_MONTHS.get(m.group(2).lower(), 0)
+                            if month:
+                                metadata.payment_due_date = date(
+                                    int(m.group(3)), month, int(m.group(1))
+                                )
+                        paga_antes_del_seen = False
+                    elif PAGA_ANTES_DEL_RE.search(stripped):
+                        paga_antes_del_seen = True
 
                 # --- Summary / Credit limits ---
                 if not metadata.credit_limit:
@@ -177,6 +189,12 @@ def parse_falabella_credit_card(
                         val = _parse_colombian_number(m.group(1))
                         metadata.total_payment_due = val
                         summary.final_balance = val
+
+                # Interest charged: "Intereses corrientes: 46.240,30"
+                if not summary.interest_charged:
+                    m = INTEREST_CHARGED_RE.search(stripped)
+                    if m:
+                        summary.interest_charged = _parse_colombian_number(m.group(1))
 
                 # --- Transactions ---
                 m = TX_LINE_RE.match(stripped)
