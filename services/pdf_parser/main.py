@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from models import ParsedStatement
 from parsers import detect_and_parse
+from storage import save_unrecognized
 
 app = FastAPI(
     title="PFM PDF Parser",
@@ -39,6 +40,8 @@ async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
         statements = detect_and_parse(tmp_path, password=password)
         return ParseResponse(statements=statements)
     except ValueError as e:
+        location = save_unrecognized(content, file.filename)
+        print(f"[unrecognized] Saved unsupported PDF to {location}")
         raise HTTPException(status_code=422, detail=str(e))
     finally:
         Path(tmp_path).unlink(missing_ok=True)

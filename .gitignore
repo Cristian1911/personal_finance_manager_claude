@@ -2,8 +2,9 @@
 .DS_Store
 Thumbs.db
 
-# Bank PDF examples (sensitive financial data)
+# Bank PDF examples and unrecognized uploads (sensitive financial data)
 bank_pdf_examples/
+services/pdf_parser/unrecognized/
 
 # Python
 __pycache__/
