@@ -40,11 +40,24 @@ async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
         statements = detect_and_parse(tmp_path, password=password)
         return ParseResponse(statements=statements)
     except ValueError as e:
-        location = save_unrecognized(content, file.filename)
-        print(f"[unrecognized] Saved unsupported PDF to {location}")
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(
+            status_code=422,
+            detail={"message": str(e), "type": "unsupported_format"},
+        )
     finally:
         Path(tmp_path).unlink(missing_ok=True)
+
+
+@app.post("/save-unrecognized")
+async def save_for_support(file: UploadFile):
+    """Save an unsupported PDF (user-confirmed) to help build a new parser."""
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="El archivo debe ser un PDF")
+
+    content = await file.read()
+    location = save_unrecognized(content, file.filename)
+    print(f"[unrecognized] User-submitted unsupported PDF saved to {location}")
+    return {"saved": True}
 
 
 def run():

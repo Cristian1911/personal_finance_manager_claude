@@ -46,11 +46,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      const detail = await response
+      const body = await response
         .json()
         .catch(() => ({ detail: "Error del parser" }));
+      const detail = body.detail;
+      if (detail && typeof detail === "object" && detail.type) {
+        return NextResponse.json(
+          { error: detail.message || "Error procesando el PDF", errorType: detail.type },
+          { status: response.status }
+        );
+      }
       return NextResponse.json(
-        { error: detail.detail || "Error procesando el PDF" },
+        { error: (typeof detail === "string" ? detail : null) || "Error procesando el PDF" },
         { status: response.status }
       );
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, FileText, Loader2, Lock } from "lucide-react";
+import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ParseResponse } from "@/types/import";
 
@@ -15,10 +15,28 @@ export function StepUpload({
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [unsupportedFile, setUnsupportedFile] = useState<File | null>(null);
+  const [savingForSupport, setSavingForSupport] = useState(false);
+  const [savedForSupport, setSavedForSupport] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleSaveForSupport() {
+    if (!unsupportedFile) return;
+    setSavingForSupport(true);
+    const formData = new FormData();
+    formData.append("file", unsupportedFile);
+    try {
+      await fetch("/api/save-unrecognized", { method: "POST", body: formData });
+      setSavedForSupport(true);
+    } finally {
+      setSavingForSupport(false);
+    }
+  }
 
   function handleFile(f: File) {
     setError("");
+    setUnsupportedFile(null);
+    setSavedForSupport(false);
     if (!f.name.toLowerCase().endsWith(".pdf")) {
       setError("El archivo debe ser un PDF");
       return;
@@ -50,7 +68,12 @@ export function StepUpload({
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Error procesando el PDF");
+        if (data.errorType === "unsupported_format") {
+          setUnsupportedFile(file);
+          setSavedForSupport(false);
+        } else {
+          setError(data.error || "Error procesando el PDF");
+        }
         setLoading(false);
         return;
       }
@@ -170,6 +193,55 @@ export function StepUpload({
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm rounded-md p-3">
           {error}
+        </div>
+      )}
+
+      {unsupportedFile && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 space-y-3 dark:border-amber-900 dark:bg-amber-950/30">
+          <div className="flex gap-3">
+            <HelpCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Formato no compatible
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                Este PDF no pudo ser procesado. ¿Quieres enviarlo para que podamos añadir soporte para este banco o formato?
+              </p>
+            </div>
+          </div>
+          {savedForSupport ? (
+            <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+              <CheckCircle2 className="h-4 w-4" />
+              ¡Gracias! Lo revisaremos para añadir soporte pronto.
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900"
+                onClick={handleSaveForSupport}
+                disabled={savingForSupport}
+              >
+                {savingForSupport ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  "Sí, enviar para soporte"
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setUnsupportedFile(null)}
+                disabled={savingForSupport}
+              >
+                No, gracias
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
