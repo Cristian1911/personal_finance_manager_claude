@@ -28,6 +28,8 @@ import { InteractiveMetricCard } from "@/components/dashboard/interactive-metric
 import { MonthSelector } from "@/components/month-selector";
 import { UpcomingRecurringCard } from "@/components/recurring/upcoming-recurring-card";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
+import { getUpcomingPayments } from "@/actions/payment-reminders";
+import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-card";
 import { computeDebtBalance } from "@/lib/utils/debt";
 
 export default async function DashboardPage({
@@ -75,15 +77,23 @@ export default async function DashboardPage({
   const prevMonthParam = formatMonthParam(subMonths(target, 1));
 
   // Fetch chart data + previous month metrics + upcoming recurring in parallel
-  const [categoryData, cashflowData, dailyData, dailyCashflowData, prevMetrics, upcomingRecurrences] =
-    await Promise.all([
-      getCategorySpending(month),
-      getMonthlyCashflow(month),
-      getDailySpending(month),
-      getDailyCashflow(month),
-      getMonthMetrics(prevMonthParam),
-      getUpcomingRecurrences(30),
-    ]);
+  const [
+    categoryData,
+    cashflowData,
+    dailyData,
+    dailyCashflowData,
+    prevMetrics,
+    upcomingRecurrences,
+    upcomingPayments
+  ] = await Promise.all([
+    getCategorySpending(month),
+    getMonthlyCashflow(month),
+    getDailySpending(month),
+    getDailyCashflow(month),
+    getMonthMetrics(prevMonthParam),
+    getUpcomingRecurrences(30),
+    getUpcomingPayments(),
+  ]);
 
   const allAccounts = accounts ?? [];
   const monthTx = monthTransactions ?? [];
@@ -247,8 +257,13 @@ export default async function DashboardPage({
         </Card>
       )}
 
-      {/* Upcoming recurring payments */}
-      <UpcomingRecurringCard upcoming={upcomingRecurrences} />
+      {/* Upcoming recurring and payments */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <UpcomingRecurringCard upcoming={upcomingRecurrences} />
+        {upcomingPayments.length > 0 && (
+          <PaymentRemindersCard payments={upcomingPayments} />
+        )}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Accounts Summary */}
