@@ -8,7 +8,7 @@ Date format in table: DD/MM/YYYY
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 
 import pdfplumber
 
@@ -36,7 +36,7 @@ HEADER_DATES_RE = re.compile(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}/\d{2}/\d{4})")
 # Summary section patterns
 # "Cupo Total" and "Cupo Disponible" are column headers; values appear on the
 # "COMPRAS <cupo_total> <cupo_disponible> <utilizaciones>" row below them.
-CUPO_COMPRAS_RE = re.compile(r"^COMPRAS\s+([\d,.]+)\s+([\d,.]+)")
+CUPO_COMPRAS_RE = re.compile(r"^COMPRAS\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)")
 PAGO_MINIMO_RE = re.compile(r"Pago\s+Minimo\s*([\d,.]+)")
 PAGO_TOTAL_RE = re.compile(r"Pago\s+Total\s*([\d,.]+)")
 
@@ -140,6 +140,10 @@ def parse_bogota_credit_card(
                         try:
                             d1 = m.group(1).split("/")
                             period_to = date(int(d1[2]), int(d1[1]), int(d1[0]))
+                            try:
+                                period_from = period_to - timedelta(days=30)
+                            except Exception:
+                                pass
                             
                             d2 = m.group(2).split("/")
                             metadata.payment_due_date = date(int(d2[2]), int(d2[1]), int(d2[0]))
@@ -154,6 +158,11 @@ def parse_bogota_credit_card(
                         credit_limit = _parse_us_number(m.group(1))
                         if not available_credit:
                             available_credit = _parse_us_number(m.group(2))
+                        if not summary.purchases_and_charges:
+                            try:
+                                summary.purchases_and_charges = _parse_us_number(m.group(3))
+                            except IndexError:
+                                pass
 
                 if not min_payment:
                     # This often appears as "= Pago Minimo 104,000" in sample
@@ -232,10 +241,9 @@ def parse_bogota_credit_card(
                     # Map fields
                     term_str = nums[0]
                     amount_str = nums[1]
-                    # rate_str = nums[2]
-                    # pay_str = nums[3]
-                    rem_str = nums[4]
-                    balance_str = nums[5]
+                    rate_str = nums[2] if len(nums) > 2 else "0"
+                    rem_str = nums[4] if len(nums) > 4 else "00"
+                    balance_str = nums[5] if len(nums) > 5 else "0"
 
                     try:
                         d_parts = date_str.split("/")
@@ -243,6 +251,14 @@ def parse_bogota_credit_card(
                         
                         amount = _parse_us_number(amount_str)
                         balance = _parse_us_number(balance_str)
+                        
+                        if rate_str not in ["0.000", "0", "0.00"]:
+                            try:
+                                tx_rate = _parse_us_number(rate_str)
+                                if tx_rate > 0 and not metadata.interest_rate:
+                                    metadata.interest_rate = tx_rate
+                            except ValueError:
+                                pass
                         
                         direction = TransactionDirection.OUTFLOW
                         upper_desc = desc.upper()

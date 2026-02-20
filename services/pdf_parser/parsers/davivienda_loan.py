@@ -37,10 +37,10 @@ PAYMENT_DUE_RE = re.compile(
 TOTAL_PAYMENT_RE = re.compile(r"Total\s+Valor\s+a\s+Pagar\s*\$([\d,.]+)")
 
 # "Saldo Anterior: Dic. 10/2025 $ 11,169,385.60"
-PREV_BALANCE_RE = re.compile(r"Saldo\s+Anterior:.*\$\s*([\d,.]+)")
+PREV_BALANCE_RE = re.compile(r"Saldo\s+Anterior:\s+([A-Z][a-z]{2})\.\s+(\d{1,2})/(\d{4}).*\$\s*([\d,.]+)")
 
 # "Saldo a: Ene. 10/2026 $ 11,161,141.11"
-NEW_BALANCE_RE = re.compile(r"Saldo\s+a:.*\$\s*([\d,.]+)")
+NEW_BALANCE_RE = re.compile(r"Saldo\s+a:\s+([A-Z][a-z]{2})\.\s+(\d{1,2})/(\d{4}).*\$\s*([\d,.]+)")
 
 # "Tasa Interés Cte.Cobrada Periodo 1.05" (monthly rate; label and value on same line)
 INTEREST_RATE_RE = re.compile(
@@ -84,6 +84,8 @@ def parse_davivienda_loan(
     """Parse Davivienda loan statement."""
     loan_number: str | None = None
     payment_due_date: date | None = None
+    period_from: date | None = None
+    period_to: date | None = None
     total_payment_due: float | None = None
     remaining_balance: float | None = None
     interest_rate: float | None = None
@@ -124,11 +126,13 @@ def parse_davivienda_loan(
                 if not summary.previous_balance:
                     m = PREV_BALANCE_RE.search(stripped)
                     if m:
-                        summary.previous_balance = _parse_us_number(m.group(1))
+                        period_from = _parse_date_mmm_dd_yyyy(m.group(1), m.group(2), m.group(3))
+                        summary.previous_balance = _parse_us_number(m.group(4))
 
                 m_bal = NEW_BALANCE_RE.search(stripped)
-                if m_bal:
-                    remaining_balance = _parse_us_number(m_bal.group(1))
+                if m_bal and not remaining_balance:
+                    period_to = _parse_date_mmm_dd_yyyy(m_bal.group(1), m_bal.group(2), m_bal.group(3))
+                    remaining_balance = _parse_us_number(m_bal.group(4))
 
                 # Transactions
                 m_tx = TX_LINE_RE.match(stripped)
@@ -171,8 +175,8 @@ def parse_davivienda_loan(
         bank="davivienda",
         statement_type=StatementType.LOAN,
         account_number=loan_number,
-        period_from=None, 
-        period_to=payment_due_date, # Approximation
+        period_from=period_from, 
+        period_to=period_to if period_to else payment_due_date, # Approximation fallback
         currency="COP",
         summary=summary,
         loan_metadata=metadata,

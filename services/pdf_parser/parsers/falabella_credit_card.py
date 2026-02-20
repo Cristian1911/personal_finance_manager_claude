@@ -223,12 +223,31 @@ def parse_falabella_credit_card(
                         if inst_match:
                             installments = inst_match.group(1)
 
+                        # Try to parse balance from the end of the line
+                        balance_val = None
+                        rest_parts = rest_str.split()
+                        if rest_parts:
+                            try:
+                                balance_val = _parse_colombian_number(rest_parts[-1])
+                            except ValueError:
+                                pass
+
+                        # Try to parse interest rate e.g., 24,34%
+                        if not metadata.interest_rate:
+                            rate_match = re.search(r"([\d,.]+)\s*%", rest_str)
+                            if rate_match:
+                                try:
+                                    metadata.interest_rate = _parse_colombian_number(rate_match.group(1))
+                                except ValueError:
+                                    pass
+
                         transactions.append(
                             ParsedTransaction(
                                 date=tx_date,
                                 description=desc,
                                 amount=amount,
                                 direction=direction,
+                                balance=balance_val,
                                 installments=installments,
                                 currency="COP",
                             )
