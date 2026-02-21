@@ -146,3 +146,34 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
   revalidatePath("/categories");
   return { success: true, data: undefined };
 }
+
+export async function updateCategoryOrder(
+  items: { id: string; display_order: number; parent_id: string | null }[]
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  // Supabase doesn't have an easy bulk update via RPC without custom functions
+  // but for small amounts of categories we can update them in a loop
+  // A transaction isn't strictly necessary for display ordering if it fails midway,
+  // but Promise.all acts quickly.
+
+  const updates = items.map((item) =>
+    supabase
+      .from("categories")
+      .update({
+        display_order: item.display_order,
+        parent_id: item.parent_id,
+      })
+      .eq("id", item.id)
+  );
+
+  const results = await Promise.all(updates);
+
+  const hasError = results.some((r) => r.error);
+  if (hasError) {
+    return { success: false, error: "Error actualizando el orden de las categorías" };
+  }
+
+  revalidatePath("/categories");
+  return { success: true, data: undefined };
+}

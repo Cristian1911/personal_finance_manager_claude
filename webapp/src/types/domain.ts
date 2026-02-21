@@ -5,6 +5,7 @@ export type Profile = Tables<"profiles">;
 export type Account = Tables<"accounts">;
 export type Transaction = Tables<"transactions">;
 export type Category = Tables<"categories">;
+export type Budget = Tables<"budgets">;
 
 export type RecurringTemplate = Tables<"recurring_transaction_templates">;
 

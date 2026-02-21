@@ -18,6 +18,7 @@ export interface CategorySpending {
   amount: number;
   count: number;
   percentage: number;
+  budgetTarget?: number;
 }
 
 export interface MonthlyCashflow {
@@ -49,20 +50,38 @@ export async function getCategorySpending(month?: string): Promise<CategorySpend
   if (!user) return [];
 
   const target = parseMonth(month);
-  const { data: transactions } = await supabase
-    .from("transactions")
-    .select("amount, category_id, categories!category_id(name_es, name, color)")
-    .eq("direction", "OUTFLOW")
-    .eq("is_excluded", false)
-    .gte("transaction_date", monthStartStr(target))
-    .lte("transaction_date", monthEndStr(target));
+
+  // Fetch transactions and budgets in parallel
+  const [txRes, budgetsRes] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("amount, category_id, categories!category_id(name_es, name, color)")
+      .eq("direction", "OUTFLOW")
+      .eq("is_excluded", false)
+      .gte("transaction_date", monthStartStr(target))
+      .lte("transaction_date", monthEndStr(target)),
+
+    supabase
+      .from("budgets")
+      .select("category_id, amount")
+  ]);
+
+  const transactions = txRes.data;
+  const budgets = budgetsRes.data || [];
 
   if (!transactions || transactions.length === 0) return [];
+
+  const budgetMap = new Map<string, number>();
+  for (const b of budgets) {
+    if (b.category_id) {
+      budgetMap.set(b.category_id, Number(b.amount));
+    }
+  }
 
   // Aggregate by category
   const map = new Map<
     string,
-    { name: string; color: string; amount: number; count: number; categoryId: string | null }
+    { name: string; color: string; amount: number; count: number; categoryId: string | null; budgetTarget?: number }
   >();
   let total = 0;
 
@@ -77,6 +96,7 @@ export async function getCategorySpending(month?: string): Promise<CategorySpend
         color: cat?.color ?? "#94a3b8",
         amount: 0,
         count: 0,
+        budgetTarget: tx.category_id ? budgetMap.get(tx.category_id) : undefined,
       });
     }
 
@@ -241,7 +261,7 @@ export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]>
   const target = parseMonth(month);
   const startStr = monthStartStr(target);
   const endStr = monthEndStr(target);
-  
+
   const { data: transactions } = await supabase
     .from("transactions")
     .select("transaction_date, amount, direction")
@@ -282,4 +302,91 @@ export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]>
   }
 
   return result;
+}
+
+export interface NetWorthHistory {
+  month: string;
+  label: string;
+  netWorth: number;
+}
+
+/**
+ * Historical net worth over the past 6 months ending at the given month.
+ * Calculates current net worth, then steps backward using historical net cashflow.
+ */
+export async function getNetWorthHistory(month?: string): Promise<NetWorthHistory[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  // 1. Get current active accounts balances to compute current net worth
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("current_balance, account_type, credit_limit")
+    .eq("is_active", true);
+
+  // If no accounts, return early
+  if (!accounts || accounts.length === 0) return [];
+
+  const totalAssets = accounts
+    .filter((a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN")
+    .reduce((sum, a) => sum + a.current_balance, 0);
+
+  const totalLiabilities = accounts
+    .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
+    .reduce((sum, a) => {
+      // Logic from `computeDebtBalance` proxy
+      if (a.account_type === "CREDIT_CARD" && a.credit_limit) {
+        return sum + Math.max(0, a.credit_limit - a.current_balance);
+      }
+      return sum + Math.abs(a.current_balance);
+    }, 0);
+
+  const currentNetWorth = totalAssets - totalLiabilities;
+
+  // 2. Get monthly cashflow for the last 6 months
+  const cashflows = await getMonthlyCashflow(month);
+
+  if (cashflows.length === 0) {
+    // If no transaction history, just return current net worth for current month
+    const target = parseMonth(month);
+    const monthStr = target.toISOString().substring(0, 7);
+    return [
+      {
+        month: monthStr,
+        label: formatDate(new Date(monthStr + "-15"), "MMM yyyy"),
+        netWorth: currentNetWorth,
+      },
+    ];
+  }
+
+  // 3. Step backwards to reconstruct historical net worth
+  // Cashflows are sorted chronologically (oldest first).
+  // e.g., if we are in "2026-02", cashflows at the end might be "2026-02".
+  // N_{current} = currentNetWorth.
+  // For each month going backwards (n): N_{n-1} = N_n - NetCashflow_n.
+  // This means the Net Worth AT THE START of month n (which is the end of n-1)
+  // is the Net Worth at the end of month n MINUS the net cashflow that happened during month n.
+
+  const result: NetWorthHistory[] = [];
+  let runningNetWorth = currentNetWorth;
+
+  // Iterate backwards from the most recent month
+  for (let i = cashflows.length - 1; i >= 0; i--) {
+    const cf = cashflows[i];
+    result.push({
+      month: cf.month,
+      label: cf.label,
+      netWorth: runningNetWorth,
+    });
+    // Step backwards to find the net worth before this month's cashflows occurred.
+    // It becomes the running net worth for the end of the previous month.
+    runningNetWorth -= cf.net;
+  }
+
+  // Ensure result is chronologically sorted (oldest first)
+  return result.reverse();
 }

@@ -41,7 +41,7 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
         return parse_nu_credit_card(pdf_path, password=password)
 
     # Lulo Bank
-    if "LULO BANK" in sample_upper or "LULO" in sample_upper:
+    if "LULO BANK" in sample_upper or " LULO " in sample_upper:
         return [parse_lulo_loan(pdf_path, password=password)]
 
     # Davivienda
@@ -65,8 +65,9 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
         return [parse_bogota_savings(pdf_path, password=password)]
 
     # Bancolombia
-    if "CUENTA DE AHORROS" in sample_upper:
-        return [parse_savings(pdf_path, password=password)]
+    if "BANCOLOMBIA" in sample_upper or "CUENTA DE AHORROS" in sample_upper:
+        if "LÍNEA DE CRÉDITO" not in sample_upper and "OBLIGACIÓN" not in sample_upper and "TARJETA" not in sample_upper and "MASTERCARD" not in sample_upper:
+            return [parse_savings(pdf_path, password=password)]
 
     if "LÍNEA DE CRÉDITO" in sample_upper and "OBLIGACIÓN" in sample_upper:
         return [parse_loan(pdf_path, password=password)]

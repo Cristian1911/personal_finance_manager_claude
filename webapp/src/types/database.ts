@@ -124,6 +124,51 @@ export type Database = {
           },
         ]
       }
+      budgets: {
+        Row: {
+          id: string
+          user_id: string
+          category_id: string
+          amount: number
+          period: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category_id: string
+          amount: number
+          period?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category_id?: string
+          amount?: number
+          period?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           color: string
@@ -146,8 +191,8 @@ export type Database = {
           color?: string
           created_at?: string
           direction?:
-            | Database["public"]["Enums"]["transaction_direction"]
-            | null
+          | Database["public"]["Enums"]["transaction_direction"]
+          | null
           display_order?: number
           icon?: string
           id?: string
@@ -165,8 +210,8 @@ export type Database = {
           color?: string
           created_at?: string
           direction?:
-            | Database["public"]["Enums"]["transaction_direction"]
-            | null
+          | Database["public"]["Enums"]["transaction_direction"]
+          | null
           display_order?: number
           icon?: string
           id?: string
@@ -209,6 +254,9 @@ export type Database = {
           preferred_currency: Database["public"]["Enums"]["currency_code"]
           timezone: string
           updated_at: string
+          app_purpose: string | null
+          estimated_monthly_income: number | null
+          estimated_monthly_expenses: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -221,6 +269,9 @@ export type Database = {
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
           timezone?: string
           updated_at?: string
+          app_purpose?: string | null
+          estimated_monthly_income?: number | null
+          estimated_monthly_expenses?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -233,6 +284,9 @@ export type Database = {
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
           timezone?: string
           updated_at?: string
+          app_purpose?: string | null
+          estimated_monthly_income?: number | null
+          estimated_monthly_expenses?: number | null
         }
         Relationships: []
       }
@@ -566,41 +620,41 @@ export type Database = {
     }
     Enums: {
       account_type:
-        | "CHECKING"
-        | "SAVINGS"
-        | "CREDIT_CARD"
-        | "CASH"
-        | "INVESTMENT"
-        | "LOAN"
-        | "OTHER"
+      | "CHECKING"
+      | "SAVINGS"
+      | "CREDIT_CARD"
+      | "CASH"
+      | "INVESTMENT"
+      | "LOAN"
+      | "OTHER"
       categorization_source:
-        | "SYSTEM_DEFAULT"
-        | "USER_CREATED"
-        | "ML_MODEL"
-        | "USER_OVERRIDE"
+      | "SYSTEM_DEFAULT"
+      | "USER_CREATED"
+      | "ML_MODEL"
+      | "USER_OVERRIDE"
       connection_status: "CONNECTED" | "DISCONNECTED" | "ERROR" | "PENDING"
       currency_code:
-        | "COP"
-        | "BRL"
-        | "MXN"
-        | "USD"
-        | "EUR"
-        | "PEN"
-        | "CLP"
-        | "ARS"
+      | "COP"
+      | "BRL"
+      | "MXN"
+      | "USD"
+      | "EUR"
+      | "PEN"
+      | "CLP"
+      | "ARS"
       data_provider:
-        | "MANUAL"
-        | "BELVO"
-        | "PROMETEO"
-        | "PLAID"
-        | "CSV_IMPORT"
-        | "OCR"
+      | "MANUAL"
+      | "BELVO"
+      | "PROMETEO"
+      | "PLAID"
+      | "CSV_IMPORT"
+      | "OCR"
       recurrence_frequency:
-        | "WEEKLY"
-        | "BIWEEKLY"
-        | "MONTHLY"
-        | "QUARTERLY"
-        | "ANNUAL"
+      | "WEEKLY"
+      | "BIWEEKLY"
+      | "MONTHLY"
+      | "QUARTERLY"
+      | "ANNUAL"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
     }
@@ -616,116 +670,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
+  ? R
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+    DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
+    Insert: infer I
+  }
+  ? I
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
+    Update: infer U
+  }
+  ? U
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {
