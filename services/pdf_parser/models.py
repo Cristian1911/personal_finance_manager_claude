@@ -25,7 +25,8 @@ class ParsedTransaction(BaseModel):
     balance: float | None = None
     currency: str = "COP"
     authorization_number: str | None = None
-    installments: str | None = None  # e.g. "1/24"
+    installment_current: int | None = None  # e.g. 3 (cuota 3 of 24)
+    installment_total: int | None = None    # e.g. 24
 
 
 class StatementSummary(BaseModel):
