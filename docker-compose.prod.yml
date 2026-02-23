@@ -28,25 +28,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-
-  nginx:
-    build:
-      context: ./infra/nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      - DOMAIN=${DOMAIN}
-    volumes:
-      - ./infra/certbot/conf:/etc/letsencrypt:ro
-      - ./infra/certbot/www:/var/www/certbot:ro
-    depends_on:
-      - webapp
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./infra/certbot/conf:/etc/letsencrypt
-      - ./infra/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
