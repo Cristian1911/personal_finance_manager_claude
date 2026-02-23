@@ -161,8 +161,9 @@ def show_transaction_debug(tx: ParsedTransaction, index: int) -> None:
     print_debug("Currency", tx.currency, indent=2)
     if tx.authorization_number:
         print_debug("Authorization #", tx.authorization_number, indent=2)
-    if tx.installments:
-        print_debug("Installments", tx.installments, indent=2)
+    if tx.installment_current is not None:
+        total_str = f"/{tx.installment_total}" if tx.installment_total else ""
+        print_debug("Installment", f"{tx.installment_current}{total_str}", indent=2)
 
 
 def show_statement_debug(statement: ParsedStatement, index: int = 0) -> None:
