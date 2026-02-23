@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Label, Pie, PieChart } from "recharts";
+import { Progress } from "@/components/ui/progress";
 import {
   type ChartConfig,
   ChartContainer,
@@ -145,6 +146,35 @@ export function CategorySpendingChart({ data, monthLabel }: Props) {
             </Pie>
           </PieChart>
         </ChartContainer>
+
+        {/* Budget Progress Bars */}
+        {data.some((c) => c.budgetTarget && c.budgetTarget > 0) && (
+          <div className="mt-6 space-y-4">
+            <h4 className="text-sm font-medium text-muted-foreground border-b pb-2">Progreso de Presupuestos</h4>
+            <div className="space-y-4">
+              {data
+                .filter((c) => c.budgetTarget && c.budgetTarget > 0)
+                .map((category) => {
+                  const pct = Math.min((category.amount / category.budgetTarget!) * 100, 100);
+                  const isOver = category.amount > category.budgetTarget!;
+                  return (
+                    <div key={category.name} className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-medium flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: category.color }} />
+                          {category.name}
+                        </span>
+                        <span className={isOver ? "text-destructive font-semibold" : "text-muted-foreground"}>
+                          {formatCurrency(category.amount)} / {formatCurrency(category.budgetTarget!)}
+                        </span>
+                      </div>
+                      <Progress value={pct} className="h-1.5" />
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

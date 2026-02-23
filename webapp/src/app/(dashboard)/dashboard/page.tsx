@@ -19,15 +19,20 @@ import {
   getDailySpending,
   getDailyCashflow,
   getMonthMetrics,
+  getNetWorthHistory,
 } from "@/actions/charts";
+import { getBudgetSummary } from "@/actions/budgets";
 import { CategorySpendingChart } from "@/components/charts/category-spending-chart";
 import { MonthlyCashflowChart } from "@/components/charts/monthly-cashflow-chart";
 import { DailySpendingChart } from "@/components/charts/daily-spending-chart";
 import { EnhancedCashflowChart } from "@/components/charts/enhanced-cashflow-chart";
+import { NetWorthHistoryChart } from "@/components/charts/net-worth-history-chart";
 import { InteractiveMetricCard } from "@/components/dashboard/interactive-metric-card";
 import { MonthSelector } from "@/components/month-selector";
 import { UpcomingRecurringCard } from "@/components/recurring/upcoming-recurring-card";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
+import { getUpcomingPayments } from "@/actions/payment-reminders";
+import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-card";
 import { computeDebtBalance } from "@/lib/utils/debt";
 
 export default async function DashboardPage({
@@ -75,15 +80,27 @@ export default async function DashboardPage({
   const prevMonthParam = formatMonthParam(subMonths(target, 1));
 
   // Fetch chart data + previous month metrics + upcoming recurring in parallel
-  const [categoryData, cashflowData, dailyData, dailyCashflowData, prevMetrics, upcomingRecurrences] =
-    await Promise.all([
-      getCategorySpending(month),
-      getMonthlyCashflow(month),
-      getDailySpending(month),
-      getDailyCashflow(month),
-      getMonthMetrics(prevMonthParam),
-      getUpcomingRecurrences(30),
-    ]);
+  const [
+    categoryData,
+    cashflowData,
+    dailyData,
+    dailyCashflowData,
+    prevMetrics,
+    upcomingRecurrences,
+    upcomingPayments,
+    netWorthData,
+    budgetData,
+  ] = await Promise.all([
+    getCategorySpending(month),
+    getMonthlyCashflow(month),
+    getDailySpending(month),
+    getDailyCashflow(month),
+    getMonthMetrics(prevMonthParam),
+    getUpcomingRecurrences(30),
+    getUpcomingPayments(),
+    getNetWorthHistory(month),
+    getBudgetSummary(month),
+  ]);
 
   const allAccounts = accounts ?? [];
   const monthTx = monthTransactions ?? [];
@@ -210,12 +227,31 @@ export default async function DashboardPage({
                   : undefined,
           }}
         />
+        {budgetData.totalTarget > 0 && (
+          <InteractiveMetricCard
+            type="budget"
+            data={{
+              label: "Presupuesto Mensual",
+              value: budgetData.totalSpent,
+              target: budgetData.totalTarget,
+              progress: budgetData.progress,
+              alert: budgetData.progress >= 100
+                ? "Has superado tu presupuesto límite"
+                : budgetData.progress >= 80
+                  ? "Te acercas al límite de tu presupuesto mensual"
+                  : undefined,
+            }}
+          />
+        )}
       </div>
 
       {/* Charts */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Análisis</h2>
         <div className="grid gap-6 lg:grid-cols-2">
+          <div className="lg:col-span-2">
+            <NetWorthHistoryChart data={netWorthData} />
+          </div>
           <CategorySpendingChart data={categoryData} monthLabel={monthLabel} />
           <EnhancedCashflowChart data={dailyCashflowData} monthLabel={monthLabel} />
           <DailySpendingChart data={dailyData} monthLabel={monthLabel} />
@@ -247,8 +283,13 @@ export default async function DashboardPage({
         </Card>
       )}
 
-      {/* Upcoming recurring payments */}
-      <UpcomingRecurringCard upcoming={upcomingRecurrences} />
+      {/* Upcoming recurring and payments */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <UpcomingRecurringCard upcoming={upcomingRecurrences} />
+        {upcomingPayments.length > 0 && (
+          <PaymentRemindersCard payments={upcomingPayments} />
+        )}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Accounts Summary */}

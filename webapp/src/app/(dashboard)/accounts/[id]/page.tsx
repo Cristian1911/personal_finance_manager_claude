@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { BalanceHistoryChart } from "@/components/charts/balance-history-chart";
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   CHECKING: "Cuenta Corriente",
@@ -100,13 +101,17 @@ export default async function AccountDetailPage({
       </div>
 
       {showHistory && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Historial de extractos</h2>
-          <StatementHistoryTimeline
-            snapshots={snapshots}
-            currency={account.currency_code}
-            accountType={account.account_type}
-          />
+        <div className="space-y-6">
+          <BalanceHistoryChart snapshots={snapshots} currency={account.currency_code} />
+
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold">Historial de extractos</h2>
+            <StatementHistoryTimeline
+              snapshots={snapshots}
+              currency={account.currency_code}
+              accountType={account.account_type}
+            />
+          </div>
         </div>
       )}
     </div>
