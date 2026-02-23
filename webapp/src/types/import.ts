@@ -8,7 +8,8 @@ export type ParsedTransaction = {
   balance: number | null;
   currency: string;
   authorization_number: string | null;
-  installments: string | null; // e.g. "1/24"
+  installment_current: number | null;
+  installment_total: number | null;
 };
 
 export type StatementSummary = {
@@ -80,6 +81,9 @@ export type TransactionToImport = {
   category_id?: string | null;
   categorization_source?: "SYSTEM_DEFAULT" | "USER_CREATED" | "USER_OVERRIDE";
   categorization_confidence?: number | null;
+  installment_current?: number | null;
+  installment_total?: number | null;
+  installment_group_id?: string | null;
 };
 
 export type ImportResult = {
