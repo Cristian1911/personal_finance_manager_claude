@@ -6,7 +6,11 @@ import { cn } from "@/lib/utils";
 import { MAIN_NAV, BOTTOM_NAV } from "@/lib/constants/navigation";
 import { Wallet } from "lucide-react";
 
-export function Sidebar() {
+interface SidebarProps {
+  uncategorizedCount?: number;
+}
+
+export function Sidebar({ uncategorizedCount = 0 }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -19,6 +23,9 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {MAIN_NAV.map((item) => {
           const isActive = pathname.startsWith(item.href);
+          const showBadge =
+            item.badge === "uncategorized" && uncategorizedCount > 0;
+
           return (
             <Link
               key={item.href}
@@ -31,7 +38,12 @@ export function Sidebar() {
               )}
             >
               <item.icon className="h-4 w-4" />
-              {item.title}
+              <span className="flex-1">{item.title}</span>
+              {showBadge && (
+                <span className="inline-flex items-center justify-center min-w-[20px] h-5 rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                  {uncategorizedCount > 99 ? "99+" : uncategorizedCount}
+                </span>
+              )}
             </Link>
           );
         })}

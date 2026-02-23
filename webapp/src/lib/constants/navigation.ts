@@ -6,6 +6,7 @@ import {
   Tag,
   Landmark,
   Repeat2,
+  Inbox,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -14,11 +15,14 @@ export type NavItem = {
   title: string;
   href: string;
   icon: LucideIcon;
+  /** If true, the sidebar will show an uncategorized count badge */
+  badge?: "uncategorized";
 };
 
 export const MAIN_NAV: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Transacciones", href: "/transactions", icon: ArrowLeftRight },
+  { title: "Categorizar", href: "/categorizar", icon: Inbox, badge: "uncategorized" },
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
   { title: "Deudas", href: "/deudas", icon: Landmark },

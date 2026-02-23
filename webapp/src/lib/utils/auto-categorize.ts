@@ -1,15 +1,24 @@
 /**
- * Auto-categorization engine for Bancolombia transaction descriptions.
- * Maps keywords to seed category UUIDs. Returns category_id + confidence.
+ * Auto-categorization engine for transaction descriptions.
+ * Priority: user-learned rules (0.9) > system keywords (0.7).
  */
+
+import type { Enums } from "@/types/database";
+
+export type CategorizationSource = Enums<"categorization_source">;
 
 export interface CategorizationResult {
   category_id: string;
-  categorization_source: "SYSTEM_DEFAULT";
+  categorization_source: CategorizationSource;
   categorization_confidence: number;
 }
 
-// Seed category UUIDs (from seed migration)
+export interface UserRule {
+  pattern: string;
+  category_id: string;
+}
+
+// Seed category UUIDs (from seed migrations)
 const CAT = {
   VIVIENDA: "a0000001-0001-4000-8000-000000000001",
   ALIMENTACION: "a0000001-0001-4000-8000-000000000002",
@@ -28,10 +37,13 @@ const CAT = {
   INVERSIONES: "a0000001-0001-4000-8000-000000000015",
   REGALOS: "a0000001-0001-4000-8000-000000000016",
   OTROS_INGRESOS: "a0000001-0001-4000-8000-000000000017",
+  CUIDADO_PERSONAL: "a0000001-0001-4000-8000-000000000018",
+  PAGOS_DEUDA: "a0000001-0001-4000-8000-000000000019",
+  TRANSFERENCIAS: "a0000001-0001-4000-8000-000000000020",
+  MASCOTAS: "a0000001-0001-4000-8000-000000000021",
 } as const;
 
 // Keyword → category mapping. Order matters: first match wins.
-// Keywords are matched case-insensitively against the raw description.
 const KEYWORD_RULES: { keywords: string[]; categoryId: string }[] = [
   // Alimentación
   {
@@ -132,6 +144,37 @@ const KEYWORD_RULES: { keywords: string[]; categoryId: string }[] = [
     ],
     categoryId: CAT.COMPRAS,
   },
+  // Cuidado Personal
+  {
+    keywords: [
+      "peluqueria", "barberia", "salon", "spa", "manicure",
+      "pedicure", "estetica", "cosmetico", "perfumeria",
+    ],
+    categoryId: CAT.CUIDADO_PERSONAL,
+  },
+  // Pagos de Deuda
+  {
+    keywords: [
+      "pago tarjeta", "pago credito", "cuota credito", "abono capital",
+      "pago obligacion", "pago prestamo",
+    ],
+    categoryId: CAT.PAGOS_DEUDA,
+  },
+  // Transferencias
+  {
+    keywords: [
+      "transferencia", "envio dinero", "nequi", "daviplata", "pse",
+    ],
+    categoryId: CAT.TRANSFERENCIAS,
+  },
+  // Mascotas
+  {
+    keywords: [
+      "veterinar", "mascota", "pet ", "laika", "gabrica",
+      "concentrado", "perro", "gato",
+    ],
+    categoryId: CAT.MASCOTAS,
+  },
   // Ingresos
   {
     keywords: ["nomina", "salario", "sueldo", "pago mensual"],
@@ -144,12 +187,29 @@ const KEYWORD_RULES: { keywords: string[]; categoryId: string }[] = [
 ];
 
 /**
- * Attempt to auto-categorize a transaction based on its description.
- * Returns null if no keyword match is found.
+ * Auto-categorize using user-learned rules first, then system keywords.
+ * Pass userRules from the DB for personalized matching.
  */
-export function autoCategorize(description: string): CategorizationResult | null {
+export function autoCategorize(
+  description: string,
+  userRules?: UserRule[]
+): CategorizationResult | null {
   const lower = description.toLowerCase();
 
+  // 1. Check user-learned rules first (higher confidence)
+  if (userRules && userRules.length > 0) {
+    for (const rule of userRules) {
+      if (lower.includes(rule.pattern)) {
+        return {
+          category_id: rule.category_id,
+          categorization_source: "USER_LEARNED",
+          categorization_confidence: 0.9,
+        };
+      }
+    }
+  }
+
+  // 2. Fall back to system keyword rules
   for (const rule of KEYWORD_RULES) {
     for (const keyword of rule.keywords) {
       if (lower.includes(keyword)) {
@@ -186,6 +246,10 @@ const CATEGORY_NAMES: Record<string, string> = {
   [CAT.INVERSIONES]: "Inversiones",
   [CAT.REGALOS]: "Regalos",
   [CAT.OTROS_INGRESOS]: "Otros Ingresos",
+  [CAT.CUIDADO_PERSONAL]: "Cuidado Personal",
+  [CAT.PAGOS_DEUDA]: "Pagos de Deuda",
+  [CAT.TRANSFERENCIAS]: "Transferencias",
+  [CAT.MASCOTAS]: "Mascotas",
 };
 
 export function getCategoryName(categoryId: string): string {

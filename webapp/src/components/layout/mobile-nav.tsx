@@ -9,7 +9,11 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu, Wallet } from "lucide-react";
 
-export function MobileNav() {
+interface MobileNavProps {
+  uncategorizedCount?: number;
+}
+
+export function MobileNav({ uncategorizedCount = 0 }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -30,6 +34,9 @@ export function MobileNav() {
         <nav className="px-3 py-4 space-y-1">
           {MAIN_NAV.map((item) => {
             const isActive = pathname.startsWith(item.href);
+            const showBadge =
+              item.badge === "uncategorized" && uncategorizedCount > 0;
+
             return (
               <Link
                 key={item.href}
@@ -43,7 +50,12 @@ export function MobileNav() {
                 )}
               >
                 <item.icon className="h-4 w-4" />
-                {item.title}
+                <span className="flex-1">{item.title}</span>
+                {showBadge && (
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                    {uncategorizedCount > 99 ? "99+" : uncategorizedCount}
+                  </span>
+                )}
               </Link>
             );
           })}
