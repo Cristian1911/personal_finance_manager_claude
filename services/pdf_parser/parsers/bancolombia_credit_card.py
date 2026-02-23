@@ -197,10 +197,12 @@ def _parse_transaction_line(
 
     # Check for installments (e.g. "1/1", "1/24") after the amount
     rest = first_part[num_match.end() :].strip()
-    installments = None
-    inst_match = re.match(r"(\d+/\d+)", rest)
+    installment_current = None
+    installment_total = None
+    inst_match = re.match(r"(\d+)/(\d+)", rest)
     if inst_match:
-        installments = inst_match.group(1)
+        installment_current = int(inst_match.group(1))
+        installment_total = int(inst_match.group(2))
 
     # Last $ amount = saldo pendiente
     balance = None
@@ -229,7 +231,8 @@ def _parse_transaction_line(
         balance=balance,
         currency=currency,
         authorization_number=auth_num,
-        installments=installments,
+        installment_current=installment_current,
+        installment_total=installment_total,
     )
 
 
