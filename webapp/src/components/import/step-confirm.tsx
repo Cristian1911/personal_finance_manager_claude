@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useActionState, useMemo } from "react";
+import { useState, useActionState, useMemo, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ParsedTransactionTable } from "./parsed-transaction-table";
 import { importTransactions } from "@/actions/import-transactions";
 import { formatCurrency } from "@/lib/utils/currency";
 import { autoCategorize } from "@/lib/utils/auto-categorize";
+import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
 import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
 import type { ActionResult } from "@/types/actions";
 import type {
@@ -125,17 +126,26 @@ export function StepConfirm({
 
   const totals = buildTotals();
 
-  function buildPayload(): TransactionToImport[] {
+  async function buildPayload(): Promise<TransactionToImport[]> {
     const txs: TransactionToImport[] = [];
-    parseResult.statements.forEach((stmt, stmtIdx) => {
+    for (const [stmtIdx, stmt] of parseResult.statements.entries()) {
       const mapping = mappings.find((m) => m.statementIndex === stmtIdx);
-      if (!mapping) return;
+      if (!mapping) continue;
       const sel = selections.get(stmtIdx) ?? new Set();
-      sel.forEach((txIdx) => {
+      for (const txIdx of sel) {
         const tx = stmt.transactions[txIdx];
         const categoryId = getCategoryForTx(stmtIdx, txIdx);
         const autoResult = autoCategorize(tx.description);
         const wasAutoAssigned = autoResult?.category_id === categoryId;
+
+        let installmentGroupId: string | null = null;
+        if (tx.installment_current != null && tx.installment_total != null) {
+          installmentGroupId = await computeInstallmentGroupId({
+            accountId: mapping.accountId,
+            rawDescription: tx.description,
+            amount: tx.amount,
+          });
+        }
 
         txs.push({
           account_id: mapping.accountId,
@@ -151,11 +161,28 @@ export function StepConfirm({
               : "USER_OVERRIDE"
             : undefined,
           categorization_confidence: categoryId && wasAutoAssigned ? 0.7 : null,
+          installment_current: tx.installment_current,
+          installment_total: tx.installment_total,
+          installment_group_id: installmentGroupId,
         });
-      });
-    });
+      }
+    }
     return txs;
   }
+
+  // Pre-compute serialized payload whenever selections or categories change
+  const [serializedPayload, setSerializedPayload] = useState("");
+  useEffect(() => {
+    buildPayload().then((txs) => {
+      setSerializedPayload(
+        JSON.stringify({
+          transactions: txs,
+          statementMeta: buildStatementMeta(),
+        })
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selections, categoryOverrides, mappings]);
 
   function buildStatementMeta(): StatementMetaForImport[] {
     return parseResult.statements
@@ -261,10 +288,7 @@ export function StepConfirm({
         <input
           type="hidden"
           name="payload"
-          value={JSON.stringify({
-            transactions: buildPayload(),
-            statementMeta: buildStatementMeta(),
-          })}
+          value={serializedPayload}
         />
         <div className="flex items-center gap-3">
           <Button variant="outline" type="button" onClick={onBack}>
