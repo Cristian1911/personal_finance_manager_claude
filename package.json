@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "name": "venti5",
+  "scripts": {
+    "web": "pnpm --filter webapp dev",
+    "mobile": "pnpm --filter mobile start",
+    "build:web": "pnpm --filter webapp build"
+  }
+}
