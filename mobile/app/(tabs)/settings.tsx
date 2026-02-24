@@ -1,34 +1,23 @@
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   User,
   Mail,
-  CreditCard,
   RefreshCw,
   Clock,
   LogOut,
   Wallet,
   Shield,
   Trash2,
+  ChevronRight,
 } from "lucide-react-native";
-import { formatRelativeDate, formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { formatRelativeDate } from "@venti5/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { useAppStore } from "../../lib/store";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { clearDatabase, getDatabase } from "../../lib/db/database";
-import { getAllAccounts } from "../../lib/repositories/accounts";
-
-type AccountRow = {
-  id: string;
-  name: string;
-  account_type: string;
-  currency_code: string;
-  current_balance: number;
-  icon: string | null;
-  color: string | null;
-};
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -73,20 +62,11 @@ function SettingsRow({
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { session } = useAuth();
   const { status, lastSynced, sync } = useSync();
   const { profile, clear } = useAppStore();
-  const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [syncing, setSyncing] = useState(false);
-
-  useFocusEffect(
-    useCallback(() => {
-      (async () => {
-        const result = (await getAllAccounts()) as AccountRow[];
-        setAccounts(result);
-      })();
-    }, [])
-  );
 
   const handleClearSyncQueue = useCallback(() => {
     Alert.alert(
@@ -145,25 +125,6 @@ export default function SettingsScreen() {
       : status === "error"
         ? "Error de sincronizacion"
         : "Sincronizado";
-
-  const syncStatusIcon = status === "syncing" || syncing ? "..." : null;
-
-  const accountTypeLabel = (type: string) => {
-    switch (type) {
-      case "CHECKING":
-        return "Corriente";
-      case "SAVINGS":
-        return "Ahorros";
-      case "CREDIT_CARD":
-        return "T. Credito";
-      case "LOAN":
-        return "Prestamo";
-      case "INVESTMENT":
-        return "Inversion";
-      default:
-        return type;
-    }
-  };
 
   return (
     <ScrollView className="flex-1 bg-gray-50">
@@ -234,46 +195,18 @@ export default function SettingsScreen() {
       {/* Accounts section */}
       <SectionHeader title="Cuentas" />
       <View className="bg-white">
-        {accounts.length === 0 ? (
-          <View className="px-4 py-6 items-center">
-            <Text className="text-gray-400 font-inter text-sm">
-              Sin cuentas registradas
-            </Text>
+        <Pressable
+          className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+          onPress={() => router.navigate("/(tabs)/accounts")}
+        >
+          <View className="mr-3">
+            <Wallet size={18} color="#6B7280" />
           </View>
-        ) : (
-          accounts.map((account, index) => (
-            <View key={account.id}>
-              {index > 0 && <View className="h-px bg-gray-100 ml-12" />}
-              <View className="flex-row items-center px-4 py-3.5">
-                <View
-                  className="w-8 h-8 rounded-full items-center justify-center mr-3"
-                  style={{
-                    backgroundColor: (account.color || "#6B7280") + "20",
-                  }}
-                >
-                  <Wallet
-                    size={16}
-                    color={account.color || "#6B7280"}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-gray-900 font-inter-medium text-sm">
-                    {account.name}
-                  </Text>
-                  <Text className="text-gray-400 font-inter text-xs mt-0.5">
-                    {accountTypeLabel(account.account_type)}
-                  </Text>
-                </View>
-                <Text className="text-gray-900 font-inter-semibold text-sm">
-                  {formatCurrency(
-                    account.current_balance,
-                    (account.currency_code as CurrencyCode) || "COP"
-                  )}
-                </Text>
-              </View>
-            </View>
-          ))
-        )}
+          <Text className="flex-1 font-inter-medium text-sm text-gray-900">
+            Administrar cuentas
+          </Text>
+          <ChevronRight size={16} color="#9CA3AF" />
+        </Pressable>
       </View>
 
       {/* Session section */}

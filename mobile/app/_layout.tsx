@@ -103,6 +103,27 @@ function RootLayoutNav() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="account/[id]"
+          options={{
+            presentation: "modal",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="account/create"
+          options={{
+            presentation: "card",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="account/edit/[id]"
+          options={{
+            presentation: "card",
+            headerShown: false,
+          }}
+        />
       </Stack>
     </ThemeProvider>
   );

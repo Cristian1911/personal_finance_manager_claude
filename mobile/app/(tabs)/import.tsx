@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useState, useCallback } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import {
@@ -15,12 +15,18 @@ import {
   CheckCircle,
   Square,
   CheckSquare,
+  ChevronDown,
 } from "lucide-react-native";
 import { formatCurrency } from "@venti5/shared";
 import * as Crypto from "expo-crypto";
 import { getDatabase } from "../../lib/db/database";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
+import {
+  getAllAccounts,
+  type AccountRow,
+} from "../../lib/repositories/accounts";
+import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
 
 async function computeIdempotencyKey(params: {
   provider: string;
@@ -64,6 +70,105 @@ type ParsedStatement = {
 
 type Step = "pick" | "review" | "result";
 
+function AccountSelector({
+  accounts,
+  selected,
+  onSelect,
+}: {
+  accounts: AccountRow[];
+  selected: AccountRow | null;
+  onSelect: (account: AccountRow) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (accounts.length === 0) {
+    return (
+      <View className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+        <Text className="text-amber-800 font-inter-medium text-sm">
+          No tienes cuentas registradas.
+        </Text>
+        <Text className="text-amber-700 font-inter text-xs mt-1">
+          Crea una cuenta primero en la pestana Cuentas.
+        </Text>
+      </View>
+    );
+  }
+
+  const typeDef = selected
+    ? ACCOUNT_TYPES.find((t) => t.value === selected.account_type)
+    : null;
+  const Icon = typeDef?.icon;
+  const color = selected?.color ?? "#6B7280";
+
+  return (
+    <View className="mb-4">
+      <Text className="text-gray-700 font-inter-medium text-sm mb-1.5">
+        Cuenta de destino <Text className="text-red-500">*</Text>
+      </Text>
+      <Pressable
+        className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex-row items-center active:bg-gray-50"
+        onPress={() => setOpen(!open)}
+      >
+        {selected && Icon ? (
+          <>
+            <View
+              className="w-7 h-7 rounded-full items-center justify-center mr-3"
+              style={{ backgroundColor: color + "20" }}
+            >
+              <Icon size={14} color={color} />
+            </View>
+            <Text className="flex-1 text-gray-900 font-inter-medium text-sm">
+              {selected.name}
+            </Text>
+          </>
+        ) : (
+          <Text className="flex-1 text-gray-400 font-inter text-sm">
+            Seleccionar cuenta...
+          </Text>
+        )}
+        <ChevronDown size={16} color="#9CA3AF" />
+      </Pressable>
+
+      {open && (
+        <View className="bg-white border border-gray-200 rounded-xl mt-1 overflow-hidden">
+          {accounts.map((account, index) => {
+            const aTypeDef = ACCOUNT_TYPES.find(
+              (t) => t.value === account.account_type
+            );
+            const AIcon = aTypeDef?.icon;
+            const aColor = account.color ?? "#6B7280";
+            return (
+              <Pressable
+                key={account.id}
+                className={`flex-row items-center px-4 py-3 active:bg-gray-50 ${
+                  index > 0 ? "border-t border-gray-100" : ""
+                }`}
+                onPress={() => {
+                  onSelect(account);
+                  setOpen(false);
+                }}
+              >
+                <View
+                  className="w-7 h-7 rounded-full items-center justify-center mr-3"
+                  style={{ backgroundColor: aColor + "20" }}
+                >
+                  {AIcon && <AIcon size={14} color={aColor} />}
+                </View>
+                <Text className="flex-1 text-gray-900 font-inter-medium text-sm">
+                  {account.name}
+                </Text>
+                {selected?.id === account.id && (
+                  <CheckSquare size={16} color="#10B981" />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function ImportScreen() {
   const router = useRouter();
   const { session } = useAuth();
@@ -74,6 +179,17 @@ export default function ImportScreen() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [importing, setImporting] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<AccountRow | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        const result = await getAllAccounts();
+        setAccounts(result);
+      })();
+    }, [])
+  );
 
   const handlePickDocument = useCallback(async () => {
     try {
@@ -101,8 +217,9 @@ export default function ImportScreen() {
         type: "application/pdf",
       } as any);
 
-      // Get current access token for auth
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
       const accessToken = currentSession?.access_token;
 
       const response = await fetch(`${API_URL}/api/parse-statement`, {
@@ -116,8 +233,8 @@ export default function ImportScreen() {
       }
 
       const data = await response.json();
-      // API returns { statements: [...] }
-      const statements: ParsedStatement[] = data.statements ?? (Array.isArray(data) ? data : []);
+      const statements: ParsedStatement[] =
+        data.statements ?? (Array.isArray(data) ? data : []);
       const stmt = statements[0];
 
       if (!stmt) {
@@ -126,17 +243,17 @@ export default function ImportScreen() {
 
       if (!stmt.transactions?.length) {
         const typeLabel =
-          stmt.statement_type === "loan" ? "prestamo" :
-          stmt.statement_type === "credit_card" ? "tarjeta de credito" :
-          "extracto";
+          stmt.statement_type === "loan"
+            ? "prestamo"
+            : stmt.statement_type === "credit_card"
+              ? "tarjeta de credito"
+              : "extracto";
         throw new Error(
           `Este ${typeLabel} no contiene transacciones para importar`
         );
       }
 
       setParsedData(stmt);
-
-      // Select all by default
       const allIndices = new Set(
         stmt.transactions.map((_: ParsedTransaction, i: number) => i)
       );
@@ -144,30 +261,36 @@ export default function ImportScreen() {
       setStep("review");
     } catch (error) {
       console.error("Parse error:", error);
-      const message = error instanceof Error ? error.message : "No se pudo procesar el extracto. Verifica que sea un PDF valido.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo procesar el extracto. Verifica que sea un PDF valido.";
       Alert.alert("Error", message);
     } finally {
       setParsing(false);
     }
   }, [document]);
 
-  const toggleSelect = useCallback(
-    (index: number) => {
-      setSelected((prev) => {
-        const next = new Set(prev);
-        if (next.has(index)) {
-          next.delete(index);
-        } else {
-          next.add(index);
-        }
-        return next;
-      });
-    },
-    []
-  );
+  const toggleSelect = useCallback((index: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
 
   const handleImport = useCallback(async () => {
     if (!parsedData || !session?.user?.id) return;
+
+    if (!selectedAccount) {
+      Alert.alert("Error", "Selecciona una cuenta de destino.");
+      return;
+    }
+
     setImporting(true);
 
     try {
@@ -175,9 +298,6 @@ export default function ImportScreen() {
       const userId = session.user.id;
       const now = new Date().toISOString();
       let count = 0;
-
-      // Disable FK checks for import — account_id may not exist locally yet
-      await db.execAsync("PRAGMA foreign_keys = OFF");
 
       for (const index of selected) {
         const t = parsedData.transactions[index];
@@ -192,21 +312,20 @@ export default function ImportScreen() {
 
         const txId = Crypto.randomUUID();
 
-        // Insert transaction (skip duplicates)
         try {
-          await db.runAsync(
+          const result = await db.runAsync(
             `INSERT OR IGNORE INTO transactions
               (id, user_id, account_id, amount, direction, description, merchant_name, raw_description, transaction_date, status, idempotency_key, is_excluded, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'POSTED', ?, 0, ?, ?)`,
             [
               txId,
               userId,
-              "", // account_id will be matched later during sync
+              selectedAccount.id,
               t.amount,
               t.direction,
               t.description,
-              null, // merchant_name
-              null, // raw_description
+              null,
+              null,
               t.date,
               idempotencyKey,
               now,
@@ -214,35 +333,54 @@ export default function ImportScreen() {
             ]
           );
 
-          // Don't queue for sync yet — account_id is required by Supabase
-          // Transactions will be synced once an account is assigned
+          // Only queue for sync if the row was actually inserted (not a duplicate)
+          if (result.changes > 0) {
+            const syncPayload = {
+              id: txId,
+              user_id: userId,
+              account_id: selectedAccount.id,
+              amount: t.amount,
+              direction: t.direction,
+              description: t.description,
+              merchant_name: null,
+              raw_description: null,
+              transaction_date: t.date,
+              status: "POSTED",
+              idempotency_key: idempotencyKey,
+              is_excluded: false,
+              created_at: now,
+              updated_at: now,
+            };
 
-          count++;
+            await db.runAsync(
+              `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+               VALUES ('transactions', ?, 'INSERT', ?, ?)`,
+              [txId, JSON.stringify(syncPayload), now]
+            );
+
+            count++;
+          }
         } catch (err) {
-          // Skip duplicate idempotency key errors
           console.warn("Skip duplicate:", err);
         }
       }
-
-      await db.execAsync("PRAGMA foreign_keys = ON");
 
       setImportedCount(count);
       setStep("result");
     } catch (error) {
       console.error("Import error:", error);
-      const db2 = await getDatabase();
-      await db2.execAsync("PRAGMA foreign_keys = ON");
       Alert.alert("Error", "No se pudieron importar las transacciones.");
     } finally {
       setImporting(false);
     }
-  }, [parsedData, selected, session]);
+  }, [parsedData, selected, session, selectedAccount]);
 
   const resetFlow = useCallback(() => {
     setStep("pick");
     setDocument(null);
     setParsedData(null);
     setSelected(new Set());
+    setSelectedAccount(null);
     setImportedCount(0);
   }, []);
 
@@ -313,6 +451,7 @@ export default function ImportScreen() {
   if (step === "review") {
     const transactions = parsedData?.transactions ?? [];
     const selectedCount = selected.size;
+    const canImport = selectedCount > 0 && selectedAccount !== null;
 
     return (
       <View className="flex-1 bg-gray-50">
@@ -328,7 +467,16 @@ export default function ImportScreen() {
         <FlatList
           data={transactions}
           keyExtractor={(_, index) => String(index)}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          ListHeaderComponent={
+            <View className="px-4 pt-2 pb-1">
+              <AccountSelector
+                accounts={accounts}
+                selected={selectedAccount}
+                onSelect={setSelectedAccount}
+              />
+            </View>
+          }
           renderItem={({ item, index }) => {
             const isSelected = selected.has(index);
             const isInflow = item.direction === "INFLOW";
@@ -339,10 +487,7 @@ export default function ImportScreen() {
                 className="flex-row items-center px-4 py-3 bg-white active:bg-gray-50"
                 onPress={() => toggleSelect(index)}
               >
-                <Icon
-                  size={20}
-                  color={isSelected ? "#10B981" : "#D1D5DB"}
-                />
+                <Icon size={20} color={isSelected ? "#10B981" : "#D1D5DB"} />
                 <View className="flex-1 mx-3">
                   <Text
                     className="text-gray-900 font-inter-medium text-sm"
@@ -382,19 +527,17 @@ export default function ImportScreen() {
           </Pressable>
           <Pressable
             className={`flex-1 rounded-lg py-3 items-center ${
-              selectedCount > 0
-                ? "bg-primary active:bg-primary-dark"
-                : "bg-gray-200"
+              canImport ? "bg-primary active:bg-primary-dark" : "bg-gray-200"
             }`}
             onPress={handleImport}
-            disabled={selectedCount === 0 || importing}
+            disabled={!canImport || importing}
           >
             {importing ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text
                 className={`font-inter-bold text-sm ${
-                  selectedCount > 0 ? "text-white" : "text-gray-400"
+                  canImport ? "text-white" : "text-gray-400"
                 }`}
               >
                 Importar {selectedCount} transacciones
@@ -419,6 +562,11 @@ export default function ImportScreen() {
           ? "transaccion importada"
           : "transacciones importadas"}
       </Text>
+      {selectedAccount && (
+        <Text className="text-gray-400 font-inter text-sm mt-1">
+          en {selectedAccount.name}
+        </Text>
+      )}
 
       <Pressable
         className="bg-primary rounded-lg py-3.5 px-8 mt-8 active:bg-primary-dark"

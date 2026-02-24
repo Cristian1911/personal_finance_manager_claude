@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import {
   LayoutDashboard,
+  Wallet,
   Receipt,
   Upload,
   Settings,
@@ -23,6 +24,15 @@ export default function TabLayout() {
           title: "Inicio",
           tabBarIcon: ({ color, size }) => (
             <LayoutDashboard size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="accounts"
+        options={{
+          title: "Cuentas",
+          tabBarIcon: ({ color, size }) => (
+            <Wallet size={size} color={color} />
           ),
         }}
       />
