@@ -229,7 +229,7 @@ def _split_tx_rest(rest: str) -> tuple[str, list[str]] | None:
 def _parse_transaction(line: str) -> tuple[ParsedTransaction, float | None] | None:
     """Parse a single reconstructed transaction line.
 
-    Returns (ParsedTransaction, monthly_rate) or None if parsing fails.
+    Returns (ParsedTransaction, annual_rate) or None if parsing fails.
     """
     m = TX_START_RE.match(line)
     if not m:
@@ -256,7 +256,7 @@ def _parse_transaction(line: str) -> tuple[ParsedTransaction, float | None] | No
         return nums[i] if i < len(nums) else "0"
 
     try:
-        corriente  = _parse_num(n(2))
+        ea_rate    = _parse_num(n(1))  # Efectivo Anual — the annual interest rate
         cargos     = _parse_num(n(3))
         abonos     = _parse_num(n(4))
         pendiente  = _parse_num(n(5))
@@ -281,10 +281,6 @@ def _parse_transaction(line: str) -> tuple[ParsedTransaction, float | None] | No
         installment_total   = plazo
         installment_current = plazo - pendientes
 
-    monthly_rate: float | None = None
-    if corriente > 0:
-        monthly_rate = corriente
-
     return (
         ParsedTransaction(
             date=tx_date,
@@ -297,7 +293,7 @@ def _parse_transaction(line: str) -> tuple[ParsedTransaction, float | None] | No
             installment_current=installment_current,
             installment_total=installment_total,
         ),
-        monthly_rate,
+        ea_rate if ea_rate > 0 else None,
     )
 
 
@@ -437,10 +433,10 @@ def parse_confiar_credit_card(
         result = _parse_transaction(tx_line)
         if result is None:
             continue
-        tx, monthly_rate = result
+        tx, annual_rate = result
         transactions.append(tx)
-        if interest_rate is None and monthly_rate is not None:
-            interest_rate = monthly_rate
+        if interest_rate is None and annual_rate is not None:
+            interest_rate = annual_rate
 
     # ---- Assemble -----------------------------------------------------------
     return [
