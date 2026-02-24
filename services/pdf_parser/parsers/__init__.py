@@ -16,6 +16,7 @@ from parsers.bogota_loan import parse_bogota_loan
 from parsers.popular_credit_card import parse_popular_credit_card
 from parsers.davivienda_loan import parse_davivienda_loan
 from parsers.falabella_credit_card import parse_falabella_credit_card
+from parsers.confiar_credit_card import parse_confiar_credit_card
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +147,38 @@ DETECTORS: list[dict] = [
         ],
         "parse": lambda path, pw: [parse_bogota_savings(path, password=pw)],
     },
+    # -- Cooperativa Confiar Credit Card --
+    {
+        "name": "confiar_credit_card",
+        "signals": [
+            (5, lambda t: "CONFIAR" in t),
+            (5, lambda t: "RESUMEN DE LA CUENTA AL CORTE" in t),
+            (5, lambda t: "RESUMEN SALDOS" in t),
+            (3, lambda t: "TARJETA" in t and "CR" in t),
+        ],
+        "parse": lambda path, pw: parse_confiar_credit_card(path, password=pw),
+    },
 ]
 
 MIN_CONFIDENCE = 6
+
+
+def _ocr_sample_text(pdf_path: str, password: str | None = None) -> str:
+    """OCR the first 3 pages of an image-based PDF for detection signals."""
+    try:
+        from pdf2image import convert_from_path
+        import pytesseract
+
+        kwargs: dict = {"dpi": 200, "first_page": 1, "last_page": 3}
+        if password:
+            kwargs["userpw"] = password
+        pages = convert_from_path(pdf_path, **kwargs)
+        return "\n".join(
+            pytesseract.image_to_string(p, lang="spa", config="--psm 4")
+            for p in pages
+        )
+    except Exception:
+        return ""
 
 
 def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedStatement]:
@@ -170,6 +200,11 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
             except Exception:
                 pass
 
+    # Image-based PDFs (e.g. scanned with CamScanner) yield no text via
+    # pdfplumber.  Fall back to OCR so detectors can score on OCR'd content.
+    if not sample_text.strip():
+        sample_text = _ocr_sample_text(pdf_path, password)
+
     sample_upper = sample_text.upper()
 
     # Score every detector
@@ -179,12 +214,15 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
         if score > 0:
             scored.append((score, detector))
 
+    SUPPORTED = (
+        "Bancolombia (ahorros, crédito, préstamo), NU Colombia, Lulo Bank, "
+        "Banco de Bogotá, Banco Popular, Davivienda, Falabella, Cooperativa Confiar."
+    )
+
     if not scored:
         raise ValueError(
             "No se pudo detectar el tipo de extracto. "
-            "Formatos soportados: Bancolombia (ahorros, crédito, préstamo), "
-            "NU Colombia, Lulo Bank, Banco de Bogotá, Banco Popular, "
-            "Davivienda, Falabella."
+            f"Formatos soportados: {SUPPORTED}"
         )
 
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -194,9 +232,7 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
         raise ValueError(
             "No se pudo detectar el tipo de extracto con suficiente confianza "
             f"(mejor candidato: {best_detector['name']}, puntaje: {best_score}/{MIN_CONFIDENCE}). "
-            "Formatos soportados: Bancolombia (ahorros, crédito, préstamo), "
-            "NU Colombia, Lulo Bank, Banco de Bogotá, Banco Popular, "
-            "Davivienda, Falabella."
+            f"Formatos soportados: {SUPPORTED}"
         )
 
     return best_detector["parse"](pdf_path, password)
