@@ -183,9 +183,11 @@ def parse_popular_credit_card(
                         elif "PAGO" in desc.upper():
                              direction = TransactionDirection.INFLOW
                         
-                        installments = None
+                        installment_current = None
+                        installment_total = None
                         if term_total != "00":
-                             installments = f"{term_current}/{term_total}"
+                            installment_current = int(term_current)
+                            installment_total = int(term_total)
 
                         transactions.append(
                             ParsedTransaction(
@@ -195,7 +197,8 @@ def parse_popular_credit_card(
                                 direction=direction,
                                 balance=None, # Balance logic is tricky in this format
                                 authorization_number=auth,
-                                installments=installments,
+                                installment_current=installment_current,
+                                installment_total=installment_total,
                                 currency="COP",
                             )
                         )

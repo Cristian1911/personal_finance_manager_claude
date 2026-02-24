@@ -57,6 +57,7 @@ export function ParsedTransactionTable({
             <TableHead>Descripción</TableHead>
             {showCategories && <TableHead>Categoría</TableHead>}
             <TableHead>Tipo</TableHead>
+            <TableHead>Cuotas</TableHead>
             <TableHead className="text-right">Monto</TableHead>
           </TableRow>
         </TableHeader>
@@ -104,6 +105,13 @@ export function ParsedTransactionTable({
                   >
                     {tx.direction === "INFLOW" ? "Ingreso" : "Gasto"}
                   </Badge>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {tx.installment_current != null && tx.installment_total != null
+                    ? `${tx.installment_current}/${tx.installment_total}`
+                    : tx.installment_current != null
+                      ? `${tx.installment_current}/?`
+                      : null}
                 </TableCell>
                 <TableCell className="text-right whitespace-nowrap font-medium text-sm">
                   <span

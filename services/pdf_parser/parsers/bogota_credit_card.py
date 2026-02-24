@@ -265,9 +265,11 @@ def parse_bogota_credit_card(
                         if upper_desc.startswith("PAGO") or upper_desc.startswith("ABONO"):
                             direction = TransactionDirection.INFLOW
                         
-                        installments = None
+                        installment_current = None
+                        installment_total = None
                         if term_str != "00" and rem_str != "00":
-                            installments = f"{rem_str}/{term_str} left"
+                            installment_current = int(rem_str)
+                            installment_total = int(term_str)
 
                         transactions.append(
                             ParsedTransaction(
@@ -277,7 +279,8 @@ def parse_bogota_credit_card(
                                 direction=direction,
                                 balance=balance,
                                 authorization_number=auth,
-                                installments=installments,
+                                installment_current=installment_current,
+                                installment_total=installment_total,
                                 currency="COP",
                             )
                         )

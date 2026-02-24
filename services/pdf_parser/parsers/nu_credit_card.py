@@ -288,11 +288,13 @@ def _parse_transactions(text: str, to_date: date) -> list[ParsedTransaction]:
         if amount <= 0:
             continue
 
-        # Look for installments
-        installments = None
+        # Look for installments (e.g. "1 de 24")
+        installment_current = None
+        installment_total = None
         inst_match = INSTALLMENT_RE.search(desc_part)
         if inst_match:
-            installments = f"{inst_match.group(1)}/{inst_match.group(2)}"
+            installment_current = int(inst_match.group(1))
+            installment_total = int(inst_match.group(2))
 
         # Determine direction
         direction = (
@@ -306,7 +308,8 @@ def _parse_transactions(text: str, to_date: date) -> list[ParsedTransaction]:
                 amount=amount,
                 direction=direction,
                 currency="COP",
-                installments=installments,
+                installment_current=installment_current,
+                installment_total=installment_total,
             )
         )
 

@@ -44,6 +44,7 @@ export async function importTransactions(
       transactionDate: tx.transaction_date,
       amount: tx.amount,
       rawDescription: tx.raw_description,
+      installmentCurrent: tx.installment_current,
     });
 
     const { error } = await supabase.from("transactions").insert({
@@ -61,6 +62,9 @@ export async function importTransactions(
       categorization_source: tx.categorization_source ?? "SYSTEM_DEFAULT",
       categorization_confidence: tx.categorization_confidence ?? null,
       status: "POSTED",
+      installment_current: tx.installment_current ?? null,
+      installment_total: tx.installment_total ?? null,
+      installment_group_id: tx.installment_group_id ?? null,
     });
 
     if (error) {

@@ -218,10 +218,12 @@ def parse_falabella_credit_card(
                             direction = TransactionDirection.INFLOW
 
                         # Parse installments: "4 de 6" in rest
-                        installments = None
-                        inst_match = re.match(r"(\d+\s+de\s+\d+)", rest_str)
+                        installment_current = None
+                        installment_total = None
+                        inst_match = re.match(r"(\d+)\s+de\s+(\d+)", rest_str)
                         if inst_match:
-                            installments = inst_match.group(1)
+                            installment_current = int(inst_match.group(1))
+                            installment_total = int(inst_match.group(2))
 
                         # Try to parse balance from the end of the line
                         balance_val = None
@@ -248,7 +250,8 @@ def parse_falabella_credit_card(
                                 amount=amount,
                                 direction=direction,
                                 balance=balance_val,
-                                installments=installments,
+                                installment_current=installment_current,
+                                installment_total=installment_total,
                                 currency="COP",
                             )
                         )

@@ -17,6 +17,9 @@ export const transactionToImportSchema = z.object({
   ),
   categorization_source: z.enum(["SYSTEM_DEFAULT", "USER_CREATED", "USER_OVERRIDE"]).optional(),
   categorization_confidence: z.number().min(0).max(1).optional().nullable(),
+  installment_current: z.number().int().positive().optional().nullable(),
+  installment_total: z.number().int().positive().optional().nullable(),
+  installment_group_id: z.string().optional().nullable(),
 });
 
 const statementSummarySchema = z.object({

@@ -533,6 +533,9 @@ export type Database = {
           exchange_rate: number
           id: string
           idempotency_key: string
+          installment_current: number | null
+          installment_group_id: string | null
+          installment_total: number | null
           is_excluded: boolean
           is_recurring: boolean
           is_subscription: boolean
@@ -566,6 +569,9 @@ export type Database = {
           exchange_rate?: number
           id?: string
           idempotency_key: string
+          installment_current?: number | null
+          installment_group_id?: string | null
+          installment_total?: number | null
           is_excluded?: boolean
           is_recurring?: boolean
           is_subscription?: boolean
@@ -599,6 +605,9 @@ export type Database = {
           exchange_rate?: number
           id?: string
           idempotency_key?: string
+          installment_current?: number | null
+          installment_group_id?: string | null
+          installment_total?: number | null
           is_excluded?: boolean
           is_recurring?: boolean
           is_subscription?: boolean
