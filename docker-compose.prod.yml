@@ -23,6 +23,8 @@ services:
     image: ghcr.io/${GITHUB_REPO}:parser-latest
     pull_policy: always
     restart: unless-stopped
+    environment:
+      - LOG_LEVEL=${PDF_PARSER_LOG_LEVEL:-INFO}
     expose:
       - "8000"
     healthcheck:

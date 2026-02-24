@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 
 import pdfplumber
@@ -161,6 +162,7 @@ DETECTORS: list[dict] = [
 ]
 
 MIN_CONFIDENCE = 6
+logger = logging.getLogger("pdf_parser.detector")
 
 
 def _ocr_sample_text(pdf_path: str, password: str | None = None) -> str:
@@ -173,11 +175,18 @@ def _ocr_sample_text(pdf_path: str, password: str | None = None) -> str:
         if password:
             kwargs["userpw"] = password
         pages = convert_from_path(pdf_path, **kwargs)
-        return "\n".join(
+        text = "\n".join(
             pytesseract.image_to_string(p, lang="spa", config="--psm 4")
             for p in pages
         )
+        logger.info(
+            "OCR sample extracted for detection: pages=%s chars=%s",
+            len(pages),
+            len(text),
+        )
+        return text
     except Exception:
+        logger.exception("OCR sample extraction failed for detection")
         return ""
 
 
@@ -200,9 +209,13 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
             except Exception:
                 pass
 
+    extracted_chars = len(sample_text.strip())
+    logger.info("Text extraction for detection: chars=%s", extracted_chars)
+
     # Image-based PDFs (e.g. scanned with CamScanner) yield no text via
     # pdfplumber.  Fall back to OCR so detectors can score on OCR'd content.
     if not sample_text.strip():
+        logger.info("No text from pdfplumber; falling back to OCR for detection")
         sample_text = _ocr_sample_text(pdf_path, password)
 
     sample_upper = sample_text.upper()
@@ -220,6 +233,7 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
     )
 
     if not scored:
+        logger.warning("No detector match found")
         raise ValueError(
             "No se pudo detectar el tipo de extracto. "
             f"Formatos soportados: {SUPPORTED}"
@@ -227,12 +241,25 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
 
     scored.sort(key=lambda x: x[0], reverse=True)
     best_score, best_detector = scored[0]
+    top_candidates = [f"{d['name']}:{s}" for s, d in scored[:3]]
+    logger.info("Detector scores (top): %s", ", ".join(top_candidates))
 
     if best_score < MIN_CONFIDENCE:
+        logger.warning(
+            "Detector confidence too low: detector=%s score=%s min=%s",
+            best_detector["name"],
+            best_score,
+            MIN_CONFIDENCE,
+        )
         raise ValueError(
             "No se pudo detectar el tipo de extracto con suficiente confianza "
             f"(mejor candidato: {best_detector['name']}, puntaje: {best_score}/{MIN_CONFIDENCE}). "
             f"Formatos soportados: {SUPPORTED}"
         )
 
+    logger.info(
+        "Selected detector: %s (score=%s)",
+        best_detector["name"],
+        best_score,
+    )
     return best_detector["parse"](pdf_path, password)

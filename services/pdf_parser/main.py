@@ -1,4 +1,7 @@
 import tempfile
+import logging
+import os
+import shutil
 from pathlib import Path
 
 import uvicorn
@@ -9,6 +12,13 @@ from models import ParsedStatement
 from parsers import detect_and_parse
 from storage import save_unrecognized
 
+
+logging.basicConfig(
+    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("pdf_parser")
+
 app = FastAPI(
     title="PFM PDF Parser",
     description="Bank statement PDF parser for Personal Finance Manager",
@@ -18,6 +28,17 @@ app = FastAPI(
 
 class ParseResponse(BaseModel):
     statements: list[ParsedStatement]
+
+
+@app.on_event("startup")
+def startup_diagnostics() -> None:
+    tesseract_path = shutil.which("tesseract")
+    pdftoppm_path = shutil.which("pdftoppm")
+    logger.info(
+        "Startup diagnostics: tesseract=%s, pdftoppm=%s",
+        tesseract_path or "NOT_FOUND",
+        pdftoppm_path or "NOT_FOUND",
+    )
 
 
 @app.get("/health")
@@ -36,13 +57,36 @@ async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
         tmp.write(content)
         tmp_path = tmp.name
 
+    logger.info(
+        "Parsing request received: filename=%s size_bytes=%s password_provided=%s temp_file=%s",
+        file.filename,
+        len(content),
+        bool(password),
+        tmp_path,
+    )
+
     try:
         statements = detect_and_parse(tmp_path, password=password)
+        logger.info(
+            "Parsing succeeded: filename=%s statements=%s",
+            file.filename,
+            len(statements),
+        )
         return ParseResponse(statements=statements)
     except ValueError as e:
+        logger.warning("Parsing rejected for filename=%s: %s", file.filename, e)
         raise HTTPException(
             status_code=422,
             detail={"message": str(e), "type": "unsupported_format"},
+        )
+    except Exception:
+        logger.exception("Unexpected parser failure for filename=%s", file.filename)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Error interno procesando el PDF. Revisa logs del servicio pdf-parser para el stack trace.",
+                "type": "internal_error",
+            },
         )
     finally:
         Path(tmp_path).unlink(missing_ok=True)
@@ -56,7 +100,7 @@ async def save_for_support(file: UploadFile):
 
     content = await file.read()
     location = save_unrecognized(content, file.filename)
-    print(f"[unrecognized] User-submitted unsupported PDF saved to {location}")
+    logger.info("Unrecognized PDF saved: filename=%s path=%s", file.filename, location)
     return {"saved": True}
 
 

@@ -24,6 +24,7 @@ uses a state machine to handle this.
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date, datetime
 
@@ -39,6 +40,8 @@ from models import (
     TransactionDirection,
 )
 
+logger = logging.getLogger("pdf_parser.confiar")
+
 
 # ---------------------------------------------------------------------------
 # OCR helpers
@@ -49,11 +52,31 @@ def _ocr_pages(pdf_path: str, password: str | None = None) -> list[str]:
     kwargs: dict = {"dpi": 300}
     if password:
         kwargs["userpw"] = password
-    pages = convert_from_path(pdf_path, **kwargs)
-    return [
-        pytesseract.image_to_string(page_img, lang="spa", config="--psm 4")
-        for page_img in pages
-    ]
+    logger.info("Confiar OCR start: pdf=%s dpi=%s", pdf_path, kwargs["dpi"])
+    try:
+        pages = convert_from_path(pdf_path, **kwargs)
+    except Exception as exc:
+        logger.exception("Failed converting PDF to images (poppler/pdftoppm)")
+        raise RuntimeError(
+            "No se pudo convertir el PDF a imágenes para OCR. "
+            "Verifica que poppler-utils (pdftoppm) esté instalado en el contenedor."
+        ) from exc
+
+    logger.info("Confiar OCR pages rasterized: pages=%s", len(pages))
+    page_texts: list[str] = []
+    try:
+        for index, page_img in enumerate(pages, start=1):
+            text = pytesseract.image_to_string(page_img, lang="spa", config="--psm 4")
+            page_texts.append(text)
+            logger.info("Confiar OCR page done: page=%s chars=%s", index, len(text))
+    except Exception as exc:
+        logger.exception("Failed running tesseract OCR")
+        raise RuntimeError(
+            "No se pudo ejecutar OCR con Tesseract. "
+            "Verifica que tesseract-ocr y tesseract-ocr-spa estén instalados en el contenedor."
+        ) from exc
+
+    return page_texts
 
 
 def _clean_line(line: str) -> str:
@@ -437,6 +460,14 @@ def parse_confiar_credit_card(
         transactions.append(tx)
         if interest_rate is None and annual_rate is not None:
             interest_rate = annual_rate
+
+    logger.info(
+        "Confiar parse summary: card_last_four=%s period_to=%s due_date=%s transactions=%s",
+        card_last_four,
+        period_to,
+        payment_due_date,
+        len(transactions),
+    )
 
     # ---- Assemble -----------------------------------------------------------
     return [
