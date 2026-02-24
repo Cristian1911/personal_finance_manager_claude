@@ -1,4 +1,6 @@
 packages:
-  - "webapp"
-  - "mobile"
-  - "packages/*"
+  - webapp
+  - mobile
+  - packages/*
+
+onlyBuiltDependencies: canvas

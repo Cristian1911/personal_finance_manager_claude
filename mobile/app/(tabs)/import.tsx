@@ -16,26 +16,49 @@ import {
   Square,
   CheckSquare,
 } from "lucide-react-native";
-import { computeIdempotencyKey, formatCurrency } from "@venti5/shared";
+import { formatCurrency } from "@venti5/shared";
+import * as Crypto from "expo-crypto";
 import { getDatabase } from "../../lib/db/database";
 import { useAuth } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
+
+async function computeIdempotencyKey(params: {
+  provider: string;
+  transactionDate: string;
+  amount: number;
+  rawDescription: string;
+}): Promise<string> {
+  const payload = [
+    params.provider,
+    "",
+    params.transactionDate,
+    params.amount.toFixed(2),
+    params.rawDescription,
+    "",
+  ].join("|");
+  return await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    payload
+  );
+}
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
 type ParsedTransaction = {
-  transaction_date: string;
+  date: string;
   description: string;
-  raw_description?: string;
-  merchant_name?: string;
   amount: number;
   direction: "INFLOW" | "OUTFLOW";
-  provider?: string;
+  balance?: number | null;
+  currency?: string;
 };
 
 type ParsedStatement = {
-  account_type: string;
-  institution_name: string;
-  currency_code: string;
+  bank: string;
+  statement_type: string;
+  account_number?: string | null;
+  card_last_four?: string | null;
+  currency: string;
   transactions: ParsedTransaction[];
 };
 
@@ -78,8 +101,13 @@ export default function ImportScreen() {
         type: "application/pdf",
       } as any);
 
+      // Get current access token for auth
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const accessToken = currentSession?.access_token;
+
       const response = await fetch(`${API_URL}/api/parse-statement`, {
         method: "POST",
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         body: formData,
       });
 
@@ -88,8 +116,24 @@ export default function ImportScreen() {
       }
 
       const data = await response.json();
-      // API returns an array of parsed statements; take first
-      const stmt: ParsedStatement = Array.isArray(data) ? data[0] : data;
+      // API returns { statements: [...] }
+      const statements: ParsedStatement[] = data.statements ?? (Array.isArray(data) ? data : []);
+      const stmt = statements[0];
+
+      if (!stmt) {
+        throw new Error("No se encontro informacion en el extracto");
+      }
+
+      if (!stmt.transactions?.length) {
+        const typeLabel =
+          stmt.statement_type === "loan" ? "prestamo" :
+          stmt.statement_type === "credit_card" ? "tarjeta de credito" :
+          "extracto";
+        throw new Error(
+          `Este ${typeLabel} no contiene transacciones para importar`
+        );
+      }
+
       setParsedData(stmt);
 
       // Select all by default
@@ -100,10 +144,8 @@ export default function ImportScreen() {
       setStep("review");
     } catch (error) {
       console.error("Parse error:", error);
-      Alert.alert(
-        "Error",
-        "No se pudo procesar el extracto. Verifica que sea un PDF valido."
-      );
+      const message = error instanceof Error ? error.message : "No se pudo procesar el extracto. Verifica que sea un PDF valido.";
+      Alert.alert("Error", message);
     } finally {
       setParsing(false);
     }
@@ -134,18 +176,21 @@ export default function ImportScreen() {
       const now = new Date().toISOString();
       let count = 0;
 
+      // Disable FK checks for import — account_id may not exist locally yet
+      await db.execAsync("PRAGMA foreign_keys = OFF");
+
       for (const index of selected) {
         const t = parsedData.transactions[index];
         if (!t) continue;
 
         const idempotencyKey = await computeIdempotencyKey({
-          provider: parsedData.institution_name || "manual",
-          transactionDate: t.transaction_date,
+          provider: parsedData.bank || "manual",
+          transactionDate: t.date,
           amount: t.amount,
-          rawDescription: t.raw_description || t.description,
+          rawDescription: t.description,
         });
 
-        const txId = crypto.randomUUID();
+        const txId = Crypto.randomUUID();
 
         // Insert transaction (skip duplicates)
         try {
@@ -160,36 +205,17 @@ export default function ImportScreen() {
               t.amount,
               t.direction,
               t.description,
-              t.merchant_name || null,
-              t.raw_description || null,
-              t.transaction_date,
+              null, // merchant_name
+              null, // raw_description
+              t.date,
               idempotencyKey,
               now,
               now,
             ]
           );
 
-          // Add to sync queue
-          await db.runAsync(
-            `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
-            VALUES ('transactions', ?, 'INSERT', ?, ?)`,
-            [
-              txId,
-              JSON.stringify({
-                id: txId,
-                user_id: userId,
-                amount: t.amount,
-                direction: t.direction,
-                description: t.description,
-                merchant_name: t.merchant_name || null,
-                raw_description: t.raw_description || null,
-                transaction_date: t.transaction_date,
-                currency_code: parsedData.currency_code || "COP",
-                idempotency_key: idempotencyKey,
-              }),
-              now,
-            ]
-          );
+          // Don't queue for sync yet — account_id is required by Supabase
+          // Transactions will be synced once an account is assigned
 
           count++;
         } catch (err) {
@@ -198,10 +224,14 @@ export default function ImportScreen() {
         }
       }
 
+      await db.execAsync("PRAGMA foreign_keys = ON");
+
       setImportedCount(count);
       setStep("result");
     } catch (error) {
       console.error("Import error:", error);
+      const db2 = await getDatabase();
+      await db2.execAsync("PRAGMA foreign_keys = ON");
       Alert.alert("Error", "No se pudieron importar las transacciones.");
     } finally {
       setImporting(false);
@@ -318,10 +348,10 @@ export default function ImportScreen() {
                     className="text-gray-900 font-inter-medium text-sm"
                     numberOfLines={1}
                   >
-                    {item.merchant_name || item.description}
+                    {item.description}
                   </Text>
                   <Text className="text-gray-400 font-inter text-xs mt-0.5">
-                    {item.transaction_date}
+                    {item.date}
                   </Text>
                 </View>
                 <Text

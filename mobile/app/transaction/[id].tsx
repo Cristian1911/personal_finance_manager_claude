@@ -1,7 +1,18 @@
-import { View, Text, ScrollView, ActivityIndicator } from "react-native";
-import { useLocalSearchParams, Stack } from "expo-router";
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  Pressable,
+  Alert,
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { getTransactionById } from "../../lib/repositories/transactions";
+import { X, Trash2 } from "lucide-react-native";
+import {
+  getTransactionById,
+  deleteTransaction,
+} from "../../lib/repositories/transactions";
 import { formatCurrency, formatDate, type CurrencyCode } from "@venti5/shared";
 
 type TransactionDetail = {
@@ -43,6 +54,7 @@ function DetailRow({
 
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const [transaction, setTransaction] = useState<TransactionDetail | null>(
     null
   );
@@ -62,27 +74,59 @@ export default function TransactionDetailScreen() {
     })();
   }, [id]);
 
+  const handleDelete = () => {
+    if (!id) return;
+    Alert.alert(
+      "Eliminar transaccion",
+      "Esta accion no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteTransaction(id);
+              router.back();
+            } catch (error) {
+              console.error("Delete failed:", error);
+              Alert.alert("Error", "No se pudo eliminar la transaccion.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
-      <>
-        <Stack.Screen options={{ title: "Detalle" }} />
-        <View className="flex-1 items-center justify-center bg-white">
-          <ActivityIndicator size="large" color="#10B981" />
-        </View>
-      </>
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#10B981" />
+      </View>
     );
   }
 
   if (!transaction) {
     return (
-      <>
-        <Stack.Screen options={{ title: "Detalle" }} />
-        <View className="flex-1 items-center justify-center bg-white">
+      <View className="flex-1 bg-white">
+        <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
+          <Pressable
+            onPress={() => router.back()}
+            className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+          >
+            <X size={18} color="#6B7280" />
+          </Pressable>
+          <Text className="text-gray-900 font-inter-bold text-base">
+            Detalle
+          </Text>
+          <View className="w-8" />
+        </View>
+        <View className="flex-1 items-center justify-center px-8">
           <Text className="text-gray-400 font-inter text-base">
             Transaccion no encontrada
           </Text>
         </View>
-      </>
+      </View>
     );
   }
 
@@ -92,20 +136,34 @@ export default function TransactionDetailScreen() {
       ? "Confirmada"
       : transaction.status === "PENDING"
         ? "Pendiente"
-        : transaction.status ?? "Desconocido";
+        : transaction.status === "POSTED"
+          ? "Registrada"
+          : transaction.status ?? "Desconocido";
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: "Detalle",
-          headerStyle: { backgroundColor: "#FFFFFF" },
-          headerTintColor: "#111827",
-        }}
-      />
-      <ScrollView className="flex-1 bg-white">
+    <View className="flex-1 bg-white">
+      {/* Header with close + delete */}
+      <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
+        <Pressable
+          onPress={() => router.back()}
+          className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+        >
+          <X size={18} color="#6B7280" />
+        </Pressable>
+        <Text className="text-gray-900 font-inter-bold text-base">
+          Detalle
+        </Text>
+        <Pressable
+          onPress={handleDelete}
+          className="w-8 h-8 items-center justify-center rounded-full bg-red-50 active:bg-red-100"
+        >
+          <Trash2 size={16} color="#EF4444" />
+        </Pressable>
+      </View>
+
+      <ScrollView className="flex-1">
         {/* Amount header */}
-        <View className="items-center pt-8 pb-6 border-b border-gray-100">
+        <View className="items-center pt-6 pb-5 border-b border-gray-100 mx-4">
           <Text className="text-gray-500 font-inter text-sm mb-1">
             {isInflow ? "Ingreso" : "Gasto"}
           </Text>
@@ -128,7 +186,7 @@ export default function TransactionDetailScreen() {
         </View>
 
         {/* Details */}
-        <View className="px-4 pt-2">
+        <View className="px-4 pt-2 pb-8">
           <DetailRow
             label="Fecha"
             value={
@@ -145,9 +203,8 @@ export default function TransactionDetailScreen() {
             label="Descripcion original"
             value={transaction.raw_description}
           />
-          <DetailRow label="Direccion" value={transaction.direction} />
         </View>
       </ScrollView>
-    </>
+    </View>
   );
 }

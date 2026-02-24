@@ -45,6 +45,32 @@ export async function getTransactions(options?: {
   );
 }
 
+export async function deleteTransaction(id: string) {
+  const db = await getDatabase();
+
+  // Check if there's a pending INSERT that hasn't synced yet
+  const pendingInsert = await db.getFirstAsync<{ id: number }>(
+    `SELECT id FROM sync_queue
+     WHERE table_name = 'transactions' AND record_id = ? AND operation = 'INSERT' AND synced_at IS NULL`,
+    [id]
+  );
+
+  await db.runAsync("DELETE FROM transactions WHERE id = ?", [id]);
+
+  if (pendingInsert) {
+    // Never synced — just remove the pending INSERT from the queue
+    await db.runAsync("DELETE FROM sync_queue WHERE id = ?", [pendingInsert.id]);
+  } else {
+    // Already synced — queue a DELETE so Supabase removes it too
+    const now = new Date().toISOString();
+    await db.runAsync(
+      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+       VALUES ('transactions', ?, 'DELETE', ?, ?)`,
+      [id, JSON.stringify({ id }), now]
+    );
+  }
+}
+
 export async function getTransactionById(id: string) {
   const db = await getDatabase();
   return db.getFirstAsync(

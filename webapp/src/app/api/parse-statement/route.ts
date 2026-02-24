@@ -5,13 +5,24 @@ const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Support Bearer token auth (mobile) and cookie auth (web)
+  const authHeader = request.headers.get("authorization");
+  let user;
 
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  if (authHeader?.startsWith("Bearer ")) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser(authHeader.slice(7));
+    if (error || !data.user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    user = data.user;
+  } else {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    user = data.user;
   }
 
   const formData = await request.formData();

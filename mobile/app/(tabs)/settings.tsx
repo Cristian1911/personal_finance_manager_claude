@@ -10,13 +10,14 @@ import {
   LogOut,
   Wallet,
   Shield,
+  Trash2,
 } from "lucide-react-native";
 import { formatRelativeDate, formatCurrency, type CurrencyCode } from "@venti5/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { useAppStore } from "../../lib/store";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
-import { clearDatabase } from "../../lib/db/database";
+import { clearDatabase, getDatabase } from "../../lib/db/database";
 import { getAllAccounts } from "../../lib/repositories/accounts";
 
 type AccountRow = {
@@ -86,6 +87,29 @@ export default function SettingsScreen() {
       })();
     }, [])
   );
+
+  const handleClearSyncQueue = useCallback(() => {
+    Alert.alert(
+      "Limpiar cola de sincronizacion",
+      "Se eliminaran las operaciones pendientes. Los datos locales no se afectan.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Limpiar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const db = await getDatabase();
+              await db.runAsync("DELETE FROM sync_queue WHERE synced_at IS NULL");
+              Alert.alert("Listo", "Cola de sincronizacion limpiada.");
+            } catch (error) {
+              console.error("Clear sync queue error:", error);
+            }
+          },
+        },
+      ]
+    );
+  }, []);
 
   const handleSyncNow = useCallback(async () => {
     setSyncing(true);
@@ -193,6 +217,16 @@ export default function SettingsScreen() {
           <RefreshCw size={18} color="#10B981" />
           <Text className="ml-3 text-primary font-inter-bold text-sm">
             {syncing ? "Sincronizando..." : "Sincronizar ahora"}
+          </Text>
+        </Pressable>
+        <View className="h-px bg-gray-100 ml-12" />
+        <Pressable
+          className="flex-row items-center px-4 py-3.5 bg-white active:bg-gray-50"
+          onPress={handleClearSyncQueue}
+        >
+          <Trash2 size={18} color="#EF4444" />
+          <Text className="ml-3 text-red-500 font-inter-medium text-sm">
+            Limpiar cola de sincronizacion
           </Text>
         </Pressable>
       </View>
