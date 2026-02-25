@@ -29,6 +29,9 @@ jobs:
       parser_changed: ${{ steps.set-outputs.outputs.parser_changed }}
       any_deploy: ${{ steps.set-outputs.outputs.any_deploy }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Detect changed areas
         id: filter
         uses: dorny/paths-filter@v3
