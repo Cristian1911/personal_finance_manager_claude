@@ -64,11 +64,9 @@ const CREDIT_CARD_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
 function DayPicker({
   value,
   onSelect,
-  placeholder,
 }: {
   value: string;
   onSelect: (v: string) => void;
-  placeholder: string;
 }) {
   return (
     <ScrollView
@@ -179,7 +177,7 @@ export default function CreateAccountScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 pt-4 pb-2 bg-gray-50">
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => router.canGoBack() ? router.back() : router.navigate("/(tabs)/accounts")}
           className="w-8 h-8 items-center justify-center rounded-full bg-gray-200 active:bg-gray-300"
         >
           <X size={18} color="#6B7280" />
@@ -258,14 +256,12 @@ export default function CreateAccountScreen() {
               <DayPicker
                 value={cutoffDay}
                 onSelect={setCutoffDay}
-                placeholder="Seleccionar dia"
               />
             </FormField>
             <FormField label="Dia de pago">
               <DayPicker
                 value={paymentDay}
                 onSelect={setPaymentDay}
-                placeholder="Seleccionar dia"
               />
             </FormField>
           </>
@@ -285,7 +281,6 @@ export default function CreateAccountScreen() {
               <DayPicker
                 value={paymentDay}
                 onSelect={setPaymentDay}
-                placeholder="Seleccionar dia"
               />
             </FormField>
           </>

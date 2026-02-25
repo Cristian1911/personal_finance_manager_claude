@@ -113,7 +113,7 @@ function RootLayoutNav() {
         <Stack.Screen
           name="account/create"
           options={{
-            presentation: "card",
+            presentation: "modal",
             headerShown: false,
           }}
         />

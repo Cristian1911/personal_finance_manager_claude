@@ -24,6 +24,8 @@ import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import {
   getAllAccounts,
+  getAccountById,
+  createAccount,
   type AccountRow,
 } from "../../lib/repositories/accounts";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
@@ -241,6 +243,58 @@ export default function ImportScreen() {
         stmt.transactions.map((_: ParsedTransaction, i: number) => i)
       );
       setSelected(allIndices);
+
+      // Auto-match or auto-create an account from statement metadata
+      if (session?.user?.id) {
+        const typeMap: Record<string, string> = {
+          savings: "CHECKING",
+          credit_card: "CREDIT_CARD",
+          loan: "LOAN",
+        };
+        const accountType = typeMap[stmt.statement_type] ?? "CHECKING";
+        const currentAccounts = await getAllAccounts();
+        setAccounts(currentAccounts);
+
+        const match = currentAccounts.find(
+          (a) =>
+            a.institution_name?.toLowerCase() === stmt.bank?.toLowerCase() &&
+            a.account_type === accountType
+        );
+
+        if (match) {
+          setSelectedAccount(match);
+        } else {
+          // Build a name from statement data
+          let name: string;
+          if (stmt.card_last_four) {
+            name = `${stmt.bank} ****${stmt.card_last_four}`;
+          } else if (stmt.account_number) {
+            name = `${stmt.bank} ${stmt.account_number}`;
+          } else {
+            const label =
+              accountType === "CREDIT_CARD"
+                ? "TC"
+                : accountType === "LOAN"
+                  ? "Préstamo"
+                  : "Ahorros";
+            name = `${stmt.bank} ${label}`;
+          }
+          const newId = await createAccount({
+            user_id: session.user.id,
+            name,
+            account_type: accountType,
+            institution_name: stmt.bank ?? null,
+            currency_code: stmt.currency ?? "COP",
+            color: "#6366f1",
+          });
+          const newAccount = await getAccountById(newId);
+          if (newAccount) {
+            setAccounts((prev) => [...prev, newAccount]);
+            setSelectedAccount(newAccount);
+          }
+        }
+      }
+
       setStep("review");
     } catch (error) {
       console.error("Parse error:", error);
@@ -252,7 +306,7 @@ export default function ImportScreen() {
     } finally {
       setParsing(false);
     }
-  }, [document]);
+  }, [document, session]);
 
   const toggleSelect = useCallback((index: number) => {
     setSelected((prev) => {
