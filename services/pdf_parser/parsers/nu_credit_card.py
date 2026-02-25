@@ -8,6 +8,7 @@ Interest rates shown as monthly (M.V.)
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date
 
@@ -23,16 +24,21 @@ from models import (
 )
 from parsers.utils import SPANISH_MONTHS, parse_co_number
 
+logger = logging.getLogger("pdf_parser.nu_credit_card")
+
 # --- Regex patterns ---
+MONTH_TOKEN = r"(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)"
 
 # Card last four: "• • • • 7437" or "• • • • 2867"
-CARD_LAST_FOUR_RE = re.compile(r"•\s*(\d{4})")
+CARD_LAST_FOUR_RE = re.compile(
+    r"(?:•\s*){1,4}(\d{4})|(?:\+|\*)?\.{3,}\s*(\d{4})", re.IGNORECASE
+)
 
 # Period: "Periodo facturado\n12 ENE - 08 FEB 2026" or on same line
 PERIOD_RE = re.compile(
     r"Periodo\s+facturado\s*\n?\s*"
-    r"(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\s*-\s*"
-    r"(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\s+"
+    rf"(\d{{1,2}})\s*{MONTH_TOKEN}\s*-\s*"
+    rf"(\d{{1,2}})\s*{MONTH_TOKEN}\s+"
     r"(\d{4})",
     re.IGNORECASE,
 )
@@ -40,7 +46,7 @@ PERIOD_RE = re.compile(
 # Payment due date: on its own line "02 MAR 2026"
 # Pattern: "Fecha límite de pago" line, then the date on the next line
 PAYMENT_DUE_DATE_RE = re.compile(
-    r"(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\s+"
+    rf"(\d{{1,2}})\s*{MONTH_TOKEN}[a-z]*\s+"
     r"(\d{4})",
     re.IGNORECASE,
 )
@@ -63,14 +69,14 @@ TOTAL_PAYMENT_DUE_RE = re.compile(
 
 # Minimum payment: "PAGO MÍNIMO $[amount]"
 MINIMUM_PAYMENT_RE = re.compile(
-    r"PAGO\s+MÍNIMO\s*\$\s*([\d.,]+)", re.IGNORECASE
+    r"PAGO\s+M[ÍI]NIMO\s*\$\s*([\d.,]+)", re.IGNORECASE
 )
 
 # Interest charged: "Intereses + $[amount]" or "Intereses\n+ $[amount]"
 INTEREST_CHARGED_RE = re.compile(r"Intereses\s*\+?\s*\$\s*([\d.,]+)", re.IGNORECASE)
 
-# Transaction date pattern: "DD MMM" at start of line (will check for year on next line)
-TX_DATE_RE = re.compile(r"^(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)", re.IGNORECASE)
+# Transaction date pattern: "DD MMM" at start of line (allows OCR variants like 16FEB2025)
+TX_DATE_RE = re.compile(rf"^(\d{{1,2}})\s*{MONTH_TOKEN}", re.IGNORECASE)
 
 # Year pattern: "2026" (may be followed by description continuation)
 # Note: used with search(), not match(), so we can't use ^ anchor
@@ -81,6 +87,45 @@ AMOUNT_RE = re.compile(r"\$\s*([\d.,]+)")
 
 # Installment pattern: "X de Y"
 INSTALLMENT_RE = re.compile(r"(\d+)\s+de\s+(\d+)", re.IGNORECASE)
+
+
+def _ocr_pdf_pages(pdf_path: str, password: str | None = None) -> list[str]:
+    """OCR all pages and return one extracted text block per page."""
+    from pdf2image import convert_from_path
+    import pytesseract
+
+    kwargs: dict = {"dpi": 200}
+    if password:
+        kwargs["userpw"] = password
+
+    pages = convert_from_path(pdf_path, **kwargs)
+    texts: list[str] = []
+    for page in pages:
+        text = pytesseract.image_to_string(page, lang="spa", config="--psm 4")
+        texts.append(text or "")
+    return texts
+
+
+def _normalize_ocr_line(line: str) -> str:
+    """Normalize common OCR artifacts from Nu table rows."""
+    cleaned = line.strip()
+    if not cleaned:
+        return ""
+
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    cleaned = re.sub(r"[«»]", "", cleaned)
+    cleaned = cleaned.replace("  ", " ").strip()
+
+    # "16FEB2025" -> "16 FEB 2025"
+    cleaned = re.sub(
+        rf"^(\d{{1,2}})\s*{MONTH_TOKEN}\s*(\d{{4}})\b",
+        lambda m: f"{m.group(1)} {m.group(2).upper()} {m.group(3)}",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    # "1de 6" -> "1 de 6"
+    cleaned = re.sub(r"\b(\d+)\s*de\s*(\d+)\b", r"\1 de \2", cleaned, flags=re.IGNORECASE)
+    return cleaned
 
 
 def _build_transaction_text(lines: list[str]) -> str:
@@ -98,7 +143,7 @@ def _build_transaction_text(lines: list[str]) -> str:
     i = 0
     while i < len(lines):
         line = lines[i]
-        stripped = line.strip()
+        stripped = _normalize_ocr_line(line)
 
         # If this line starts with a date pattern
         if TX_DATE_RE.match(stripped):
@@ -107,12 +152,11 @@ def _build_transaction_text(lines: list[str]) -> str:
 
             # Look ahead for continuation (usually the year or description continuation)
             while i < len(lines):
-                next_line = lines[i].strip()
+                next_line = _normalize_ocr_line(lines[i])
 
                 # If it's a year, extract it and continue looking for more
                 if YEAR_RE.match(next_line):
                     transaction_parts.append(next_line)
-                    year_found = True
                     i += 1
                     # Continue to capture anything after the year (like "pago")
                     # But set a limit to avoid capturing too much
@@ -120,7 +164,7 @@ def _build_transaction_text(lines: list[str]) -> str:
                     for _ in range(max_continuation):
                         if i >= len(lines):
                             break
-                        next_next_line = lines[i].strip()
+                        next_next_line = _normalize_ocr_line(lines[i])
                         # Stop if we hit a date or empty line
                         if TX_DATE_RE.match(next_next_line) or not next_next_line:
                             break
@@ -323,7 +367,8 @@ def parse_nu_credit_card(
 
     Returns a list with a single ParsedStatement (NU is COP-only).
     """
-    # Extract text from all pages
+    # Extract text from all pages using pdfplumber first.
+    # Fallback to OCR for image-based statements (e.g., CamScanner).
     page_texts: list[str] = []
     with pdfplumber.open(pdf_path, password=password) as pdf:
         for page in pdf.pages:
@@ -331,6 +376,18 @@ def parse_nu_credit_card(
             page_texts.append(text)
 
     combined_text = "\n".join(page_texts)
+    if len(combined_text.strip()) < 40:
+        logger.info(
+            "Nu parser: low text extraction (%s chars), using OCR fallback",
+            len(combined_text.strip()),
+        )
+        try:
+            page_texts = _ocr_pdf_pages(pdf_path, password=password)
+            combined_text = "\n".join(page_texts)
+            logger.info("Nu parser: OCR extraction chars=%s", len(combined_text.strip()))
+        except Exception:
+            logger.exception("Nu parser: OCR fallback failed")
+
     combined_upper = combined_text.upper()
 
     # --- Extract metadata from first page summary ---
@@ -347,7 +404,8 @@ def parse_nu_credit_card(
     # Card last four (physical card preferred, fallback to virtual)
     card_matches = list(CARD_LAST_FOUR_RE.finditer(combined_text))
     if card_matches:
-        card_last_four = card_matches[0].group(1)  # Physical card is first
+        first = card_matches[0]
+        card_last_four = first.group(1) or first.group(2)
 
     # Period: look for "Periodo facturado: 12 ENE - 08 FEB 2026"
     period_match = PERIOD_RE.search(combined_upper)
@@ -365,11 +423,6 @@ def parse_nu_credit_card(
                 period_to = date(year, to_month, to_day)
         except (ValueError, IndexError):
             pass
-
-    # If period not found, use defaults for the sample PDF
-    if not period_from:
-        period_from = date(2026, 1, 12)
-        period_to = date(2026, 2, 8)
 
     # Credit limit: look for "Tu cupo definido" line, skip to next line break, then get $ value
     cupo_idx = combined_upper.find("TU CUPO DEFINIDO")
@@ -445,6 +498,22 @@ def parse_nu_credit_card(
             except (ValueError, IndexError):
                 pass
 
+    # If period not found, infer a reasonable range from payment due date.
+    # Nu periods are typically monthly, so default to previous-month span.
+    if not period_from and payment_due_date:
+        period_to = payment_due_date
+        inferred_month = payment_due_date.month - 1 or 12
+        inferred_year = (
+            payment_due_date.year
+            if payment_due_date.month > 1
+            else payment_due_date.year - 1
+        )
+        period_from = date(inferred_year, inferred_month, min(payment_due_date.day, 28))
+    if not period_to:
+        period_to = date.today()
+    if not period_from:
+        period_from = date(period_to.year, period_to.month, 1)
+
     # Interest charged
     m = INTEREST_CHARGED_RE.search(combined_text)
     if m:
@@ -453,9 +522,10 @@ def parse_nu_credit_card(
         except ValueError:
             pass
 
-    # Extract interest rate (monthly) from transaction table
-    # Look for percentages between 0.5 and 5%
+    # Extract Nu's monthly rate from transaction rows (M.V.) and convert to E.A.
+    # Example: 1.89% M.V. -> ((1 + 0.0189)^12 - 1) * 100 = 25.19% E.A.
     interest_rate: float | None = None
+    monthly_rate_mv: float | None = None
     rate_pattern = re.compile(r"(\d+\.?\d*)\s*%")
     rate_matches = rate_pattern.findall(combined_text)
     if rate_matches:
@@ -463,10 +533,17 @@ def parse_nu_credit_card(
             try:
                 rate_val = float(rate_str)
                 if 0.5 <= rate_val <= 5.0:
-                    interest_rate = rate_val
+                    monthly_rate_mv = rate_val
+                    interest_rate = round((((1 + (rate_val / 100)) ** 12) - 1) * 100, 2)
                     break
             except ValueError:
                 pass
+    if monthly_rate_mv is not None:
+        logger.info(
+            "Nu parser: converted interest rate from %.4f%% M.V. to %.4f%% E.A.",
+            monthly_rate_mv,
+            interest_rate,
+        )
 
     # --- Parse transactions from table ---
     # The transaction table starts after page 1 data

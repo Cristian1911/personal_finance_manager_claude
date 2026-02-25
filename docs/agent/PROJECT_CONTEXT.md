@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T22:22:40.024903+00:00`
+- Generated (UTC): `2026-02-25T23:12:53.274522+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -124,7 +124,13 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `webapp/src/components/debt/debt-simulator.tsx`
+- `docs/agent/PROJECT_CONTEXT.md`
+- `docs/agent/project_context.json`
+- `"pdfs_to_review/Nu_2026-03-07(1)_1 2.pdf"`
+- `services/pdf_parser/models.py`
+- `services/pdf_parser/parsers/nu_credit_card.py`
+- `services/pdf_parser/test_parser.py`
+- `webapp/src/actions/import-transactions.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

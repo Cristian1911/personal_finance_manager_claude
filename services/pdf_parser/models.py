@@ -41,8 +41,8 @@ class StatementSummary(BaseModel):
 class CreditCardMetadata(BaseModel):
     credit_limit: float | None = None
     available_credit: float | None = None
-    interest_rate: float | None = None  # monthly rate as reported by bank
-    late_interest_rate: float | None = None  # monthly mora rate
+    interest_rate: float | None = None  # annual effective rate (EA)
+    late_interest_rate: float | None = None  # annual mora rate (EA) when available
     total_payment_due: float | None = None
     minimum_payment: float | None = None
     payment_due_date: date | None = None
