@@ -15,6 +15,7 @@ on:
       - 'services/pdf_parser/**'
       - 'docker-compose.prod.yml'
       - 'infra/**'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -23,7 +24,7 @@ env:
 
 jobs:
   changes:
-    if: github.event.pull_request.merged == true
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
       webapp_changed: ${{ steps.filter.outputs.webapp }}
@@ -62,7 +63,7 @@ jobs:
           fi
 
   promote-webapp:
-    if: needs.changes.outputs.webapp_changed == 'true'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.webapp_changed == 'true'
     runs-on: ubuntu-latest
     needs: [changes]
     permissions:
@@ -86,7 +87,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-pr-${{ github.event.pull_request.number }}-latest
 
   promote-parser:
-    if: needs.changes.outputs.parser_changed == 'true'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.parser_changed == 'true'
     runs-on: ubuntu-latest
     needs: [changes]
     permissions:
@@ -111,6 +112,7 @@ jobs:
 
   deploy:
     if: |
+      github.event_name == 'pull_request' &&
       always() &&
       needs.changes.result != 'skipped' &&
       needs.changes.outputs.any_deploy == 'true' &&
@@ -118,6 +120,111 @@ jobs:
       needs.promote-parser.result != 'failure'
     runs-on: ubuntu-latest
     needs: [changes, promote-webapp, promote-parser]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate GHCR token can read images
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_PAT_READ }}
+
+      - name: Verify images are pullable from GHCR
+        run: |
+          docker manifest inspect ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest > /dev/null
+          docker manifest inspect ${{ env.REGISTRY }}/${{ env.REPO }}:parser-latest > /dev/null
+
+      - name: Deploy to Hostinger VPS
+        uses: hostinger/deploy-on-vps@v2
+        with:
+          api-key: ${{ secrets.HOSTINGER_API_KEY }}
+          virtual-machine: ${{ vars.HOSTINGER_VM_ID }}
+          project-name: personal-finance-manager
+          docker-compose-path: docker-compose.prod.yml
+          environment-variables: |
+            GITHUB_REPO=${{ env.REPO }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+            SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+            DOMAIN=${{ vars.DOMAIN }}
+            GHCR_USERNAME=${{ env.GHCR_USERNAME }}
+            GHCR_TOKEN=${{ secrets.GHCR_PAT_READ }}
+
+  manual-build-webapp:
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_PAT_WRITE }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push webapp latest image from main
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./webapp/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest
+          secrets: |
+            npm_token=${{ secrets.NPM_TOKEN }}
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  manual-build-parser:
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_PAT_WRITE }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push parser latest image from main
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/pdf_parser
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPO }}:parser-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-manual:
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    needs: [manual-build-webapp, manual-build-parser]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

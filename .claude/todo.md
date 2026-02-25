@@ -51,6 +51,24 @@
 
 ## Pending
 
+### Security Hardening (from 2026-02-25 audit)
+- [P1] Add upload size limits on `/api/save-unrecognized` and `pdf-parser:/save-unrecognized`
+  - Enforce max file size in both web route and FastAPI endpoint
+  - Reject oversized files before full in-memory read
+  - Add request timeout + basic per-user/IP rate limiting for PDF endpoints
+- [P1] Sanitize/escape free-text search used in Supabase `.or(...)` filters
+  - Harden `getTransactions()` search filter composition
+  - Add tests for special characters (`()`, `,`, `%`, quotes) to prevent filter injection/bypass
+- [P1] Add explicit ownership checks in mutating server actions
+  - Ensure all update/delete actions validate auth user and scope by `user_id` where possible
+  - Keep RLS as defense-in-depth, not sole enforcement in app code
+- [P2] Add security headers hardening in app/proxy
+  - Add CSP, HSTS, and Permissions-Policy
+  - Remove legacy `X-XSS-Protection` and align nginx + Next.js header strategy
+- [P2] Add automated security regression checks
+  - Add tests that verify unauthorized row mutations fail
+  - Add CI step for dependency vulnerability scanning when network is available
+
 ### Bank Parser Implementation
 - Fill in parsing logic for NU, Lulo, Banco de Bogotá once sample PDFs are provided
 - Each parser needs: regex patterns, number format, date format, transaction extraction
