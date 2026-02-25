@@ -35,15 +35,15 @@ export default function OnboardingPage() {
     const nextStep = () => {
         // Basic validation
         if (step === 1 && !purpose) {
-            toast.error("Please select a purpose to continue.");
+            toast.error("Elige un objetivo para continuar.");
             return;
         }
         if (step === 2 && (!income || !expenses)) {
-            toast.error("Please enter your estimated income and expenses.");
+            toast.error("Ingresa tus ingresos y gastos estimados.");
             return;
         }
         if (step === 3 && !fullName) {
-            toast.error("Please enter your name.");
+            toast.error("Ingresa tu nombre.");
             return;
         }
         setStep((prev) => Math.min(prev + 1, totalSteps));
@@ -53,7 +53,7 @@ export default function OnboardingPage() {
 
     const onSubmit = async () => {
         if (!accountName || !balance) {
-            toast.error("Please provide your account details.");
+            toast.error("Completa los datos de tu cuenta.");
             return;
         }
 
@@ -75,28 +75,46 @@ export default function OnboardingPage() {
                     current_balance: parseFloat(balance) || 0,
                 }
             );
-            toast.success("Setup complete!");
-            // Step 5 is success (simulated by state change or redirect)
+            toast.success("Configuracion completada");
             setStep(5);
             setTimeout(() => {
                 router.push("/dashboard");
             }, 1500);
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : "An unknown error occurred");
+            toast.error(error instanceof Error ? error.message : "Ocurrio un error inesperado");
         } finally {
             setLoading(false);
         }
     };
 
     const purposes = [
-        { id: "manage_debt", label: "Get out of debt", icon: Target },
-        { id: "track_spending", label: "Know my income/spending", icon: Wallet },
-        { id: "save_money", label: "Save for a goal", icon: PiggyBank },
-        { id: "improve_habits", label: "Improve financial habits", icon: TrendingUp },
+        { id: "manage_debt", label: "Salir de deudas", icon: Target },
+        { id: "track_spending", label: "Entender mis gastos", icon: Wallet },
+        { id: "save_money", label: "Ahorrar para una meta", icon: PiggyBank },
+        { id: "improve_habits", label: "Mejorar habitos financieros", icon: TrendingUp },
     ];
+
+    const incomeNumber = parseFloat(income) || 0;
+    const expensesNumber = parseFloat(expenses) || 0;
+    const availableToBudget = Math.max(incomeNumber - expensesNumber, 0);
+    const progressStep = Math.min(step, totalSteps);
 
     return (
         <div className="mx-auto w-full max-w-lg">
+            {step <= totalSteps && (
+                <div className="mb-4 rounded-xl border bg-card/80 p-4">
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                        <span className="font-medium text-muted-foreground">Onboarding Venti5</span>
+                        <span className="font-semibold">Paso {progressStep} de {totalSteps}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted">
+                        <div
+                            className="h-2 rounded-full bg-primary transition-all"
+                            style={{ width: `${(progressStep / totalSteps) * 100}%` }}
+                        />
+                    </div>
+                </div>
+            )}
             <AnimatePresence mode="wait">
                 {step === 1 && (
                     <motion.div
@@ -107,8 +125,8 @@ export default function OnboardingPage() {
                     >
                         <Card className="border-border">
                             <CardHeader>
-                                <CardTitle className="text-2xl">Welcome to your PF App!</CardTitle>
-                                <CardDescription>First, what brings you here?</CardDescription>
+                                <CardTitle className="text-2xl">Bienvenido a Venti5</CardTitle>
+                                <CardDescription>Antes de arrancar, cuentanos que quieres lograr.</CardDescription>
                             </CardHeader>
                             <CardContent className="grid gap-4">
                                 {purposes.map((p) => {
@@ -130,10 +148,10 @@ export default function OnboardingPage() {
                             </CardContent>
                             <CardFooter className="flex justify-between border-t p-6">
                                 <Button variant="ghost" disabled>
-                                    Back
+                                    Atras
                                 </Button>
                                 <Button onClick={nextStep} disabled={!purpose}>
-                                    Next <ArrowRight className="ml-2 h-4 w-4" />
+                                    Siguiente <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -149,40 +167,47 @@ export default function OnboardingPage() {
                     >
                         <Card className="border-border">
                             <CardHeader>
-                                <CardTitle className="text-2xl">Financial Awareness</CardTitle>
+                                <CardTitle className="text-2xl">Pulso mensual</CardTitle>
                                 <CardDescription>
-                                    Let&apos;s see how well you know your finances! What do you think
-                                    your average monthly income and spending are?
+                                    Arranquemos con una estimacion rapida de tus ingresos y gastos.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="grid gap-6">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="income">Estimated Monthly Income</Label>
+                                    <Label htmlFor="income">Ingreso mensual estimado</Label>
                                     <Input
                                         id="income"
                                         type="number"
-                                        placeholder="e.g. 5000"
+                                        placeholder="Ej: 5000"
                                         value={income}
                                         onChange={(e) => setIncome(e.target.value)}
                                     />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="expenses">Estimated Monthly Expenses</Label>
+                                    <Label htmlFor="expenses">Gasto mensual estimado</Label>
                                     <Input
                                         id="expenses"
                                         type="number"
-                                        placeholder="e.g. 4000"
+                                        placeholder="Ej: 4000"
                                         value={expenses}
                                         onChange={(e) => setExpenses(e.target.value)}
                                     />
                                 </div>
+                                {incomeNumber > 0 && (
+                                    <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                                        <p className="font-medium">Disponible para presupuesto: {availableToBudget.toLocaleString()}</p>
+                                        <p className="text-muted-foreground">
+                                            Esta referencia nos ayuda a sugerirte limites de gasto desde el dia 1.
+                                        </p>
+                                    </div>
+                                )}
                             </CardContent>
                             <CardFooter className="flex justify-between border-t p-6">
                                 <Button variant="ghost" onClick={prevStep}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atras
                                 </Button>
                                 <Button onClick={nextStep} disabled={!income || !expenses}>
-                                    Next <ArrowRight className="ml-2 h-4 w-4" />
+                                    Siguiente <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -198,24 +223,24 @@ export default function OnboardingPage() {
                     >
                         <Card className="border-border">
                             <CardHeader>
-                                <CardTitle className="text-2xl">Profile Basics</CardTitle>
-                                <CardDescription>How should we call you and display your money?</CardDescription>
+                                <CardTitle className="text-2xl">Tu perfil</CardTitle>
+                                <CardDescription>Personaliza como quieres ver tu dinero.</CardDescription>
                             </CardHeader>
                             <CardContent className="grid gap-6">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="fullName">Full Name</Label>
+                                    <Label htmlFor="fullName">Nombre completo</Label>
                                     <Input
                                         id="fullName"
-                                        placeholder="e.g. John Doe"
+                                        placeholder="Ej: Maria Perez"
                                         value={fullName}
                                         onChange={(e) => setFullName(e.target.value)}
                                     />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="currency">Preferred Currency</Label>
+                                    <Label htmlFor="currency">Moneda preferida</Label>
                                     <Select value={currency} onValueChange={setCurrency}>
                                         <SelectTrigger id="currency">
-                                            <SelectValue placeholder="Select a currency" />
+                                            <SelectValue placeholder="Selecciona una moneda" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="USD">USD ($)</SelectItem>
@@ -229,10 +254,10 @@ export default function OnboardingPage() {
                             </CardContent>
                             <CardFooter className="flex justify-between border-t p-6">
                                 <Button variant="ghost" onClick={prevStep}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atras
                                 </Button>
                                 <Button onClick={nextStep} disabled={!fullName}>
-                                    Next <ArrowRight className="ml-2 h-4 w-4" />
+                                    Siguiente <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -248,38 +273,37 @@ export default function OnboardingPage() {
                     >
                         <Card className="border-border">
                             <CardHeader>
-                                <CardTitle className="text-2xl">Add First Account</CardTitle>
+                                <CardTitle className="text-2xl">Primera cuenta</CardTitle>
                                 <CardDescription>
-                                    Let&apos;s find out the truth. Add your primary account to start
-                                    evaluating your numbers.
+                                    Agrega tu cuenta principal para empezar con datos reales.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="grid gap-6">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="accountName">Account Name</Label>
+                                    <Label htmlFor="accountName">Nombre de la cuenta</Label>
                                     <Input
                                         id="accountName"
-                                        placeholder="e.g. Main Checking, Chase Sapphire"
+                                        placeholder="Ej: Cuenta principal"
                                         value={accountName}
                                         onChange={(e) => setAccountName(e.target.value)}
                                     />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="accountType">Account Type</Label>
+                                    <Label htmlFor="accountType">Tipo de cuenta</Label>
                                     <Select value={accountType} onValueChange={setAccountType}>
                                         <SelectTrigger id="accountType">
-                                            <SelectValue placeholder="Select type" />
+                                            <SelectValue placeholder="Selecciona tipo" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="CHECKING">Checking</SelectItem>
-                                            <SelectItem value="SAVINGS">Savings</SelectItem>
-                                            <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
-                                            <SelectItem value="CASH">Cash</SelectItem>
+                                            <SelectItem value="CHECKING">Corriente</SelectItem>
+                                            <SelectItem value="SAVINGS">Ahorros</SelectItem>
+                                            <SelectItem value="CREDIT_CARD">Tarjeta de credito</SelectItem>
+                                            <SelectItem value="CASH">Efectivo</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="balance">Current Balance</Label>
+                                    <Label htmlFor="balance">Saldo actual</Label>
                                     <Input
                                         id="balance"
                                         type="number"
@@ -291,11 +315,11 @@ export default function OnboardingPage() {
                             </CardContent>
                             <CardFooter className="flex justify-between border-t p-6">
                                 <Button variant="ghost" onClick={prevStep} disabled={loading}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atras
                                 </Button>
                                 <Button onClick={onSubmit} disabled={loading || !accountName || !balance}>
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Finish Setup
+                                    Finalizar
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -313,9 +337,9 @@ export default function OnboardingPage() {
                                 <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-500/10 text-green-500">
                                     <CheckCircle2 size={48} />
                                 </div>
-                                <CardTitle className="text-3xl">You&apos;re all set!</CardTitle>
+                                <CardTitle className="text-3xl">Listo, {fullName.split(" ")[0] || "vamos"}.</CardTitle>
                                 <CardDescription className="text-lg mt-2">
-                                    Taking you to your new dashboard...
+                                    Preparando tu dashboard de Venti5...
                                 </CardDescription>
                             </CardHeader>
                         </Card>

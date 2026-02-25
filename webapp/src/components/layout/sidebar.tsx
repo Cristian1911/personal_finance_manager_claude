@@ -17,7 +17,7 @@ export function Sidebar({ uncategorizedCount = 0 }: SidebarProps) {
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r bg-card h-screen sticky top-0">
       <div className="flex items-center gap-2 px-6 h-16 border-b shrink-0">
         <Wallet className="h-6 w-6 text-primary" />
-        <span className="font-semibold text-lg">Finance Manager</span>
+        <span className="font-semibold text-lg">Venti5</span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

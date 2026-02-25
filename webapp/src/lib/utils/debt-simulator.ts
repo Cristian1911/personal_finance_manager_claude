@@ -4,7 +4,7 @@
  * Pure functions — no React or server dependencies.
  */
 
-import type { DebtAccount } from "./debt";
+import type { DebtAccount } from "@venti5/shared";
 
 export type PayoffStrategy = "snowball" | "avalanche";
 

@@ -28,7 +28,7 @@ export function MobileNav({ uncategorizedCount = 0 }: MobileNavProps) {
       <SheetContent side="left" className="w-64 p-0">
         <div className="flex items-center gap-2 px-6 h-16 border-b">
           <Wallet className="h-6 w-6 text-primary" />
-          <span className="font-semibold text-lg">Finance Manager</span>
+          <span className="font-semibold text-lg">Venti5</span>
         </div>
 
         <nav className="px-3 py-4 space-y-1">

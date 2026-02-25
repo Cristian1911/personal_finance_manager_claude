@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { extractPattern } from "@/lib/utils/pattern-extract";
+import { extractPattern } from "@venti5/shared";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithRelations } from "@/types/domain";
-import type { UserRule } from "@/lib/utils/auto-categorize";
+import type { UserRule } from "@venti5/shared";
 
 /**
  * Fetch all uncategorized, non-excluded transactions with account + category joins.

@@ -33,7 +33,7 @@ import { UpcomingRecurringCard } from "@/components/recurring/upcoming-recurring
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-card";
-import { computeDebtBalance } from "@/lib/utils/debt";
+import { computeDebtBalance } from "@venti5/shared";
 
 export default async function DashboardPage({
   searchParams,
