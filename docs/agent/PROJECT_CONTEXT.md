@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T15:18:13.427737+00:00`
+- Generated (UTC): `2026-02-25T15:22:17.773937+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -124,27 +124,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `.claude/skills/codebase-context/SKILL.md`
-- `.claude/skills/codebase-context/references/model-strategy.md`
-- `.nvmrc`
-- `CLAUDE.md`
-- `mobile/app/(auth)/forgot-password.tsx`
-- `mobile/app/(auth)/login.tsx`
-- `mobile/app/(auth)/reset-password.tsx`
-- `mobile/app/(auth)/signup.tsx`
-- `mobile/app/(tabs)/_layout.tsx`
-- `mobile/app/(tabs)/accounts.tsx`
-- `mobile/app/(tabs)/budgets.tsx`
-- `mobile/app/(tabs)/import.tsx`
-- `mobile/app/(tabs)/index.tsx`
-- `mobile/app/(tabs)/settings.tsx`
-- `mobile/app/(tabs)/transactions.tsx`
-- `mobile/app/_layout.tsx`
-- `mobile/app/onboarding.tsx`
-- `mobile/package.json`
-- `mobile/tailwind.config.js`
-- `package.json`
-- `webapp/src/app/globals.css`
+- `webapp/src/actions/categories.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

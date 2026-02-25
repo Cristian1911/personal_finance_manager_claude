@@ -58,6 +58,8 @@ export async function getCategoriesWithBudgets(
   direction?: TransactionDirection
 ): Promise<ActionResult<CategoryWithBudget[]>> {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autenticado" };
 
   let query = supabase
     .from("categories")
@@ -75,6 +77,7 @@ export async function getCategoriesWithBudgets(
   const { data: budgets } = await supabase
     .from("budgets")
     .select("category_id, amount, period")
+    .eq("user_id", user.id)
     .eq("period", "monthly");
 
   const budgetByCategory = new Map<string, number>();
