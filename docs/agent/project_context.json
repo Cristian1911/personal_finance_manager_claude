@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-25T22:11:08.382449+00:00",
+  "generated_at_utc": "2026-02-25T22:13:52.910277+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -243,6 +243,6 @@
     }
   ],
   "recent_changes": [
-    "docs/plans/2026-02-25-debt-fixes-plan.md"
+    "webapp/src/app/(dashboard)/dashboard/page.tsx"
   ]
 }

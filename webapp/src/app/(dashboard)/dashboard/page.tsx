@@ -71,7 +71,7 @@ export default async function DashboardPage({
   // Fetch selected month's transactions for summary (exclude excluded ones)
   const { data: monthTransactions } = await supabase
     .from("transactions")
-    .select("amount, direction")
+    .select("amount, direction, account_id")
     .eq("is_excluded", false)
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target));
@@ -113,6 +113,8 @@ export default async function DashboardPage({
     (a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN"
   );
 
+  const debtAccountIds = new Set(liabilityAccounts.map((a) => a.id));
+
   const totalAssets = assetAccounts.reduce((sum, a) => sum + a.current_balance, 0);
   const totalLiabilities = liabilityAccounts.reduce(
     (sum, a) => sum + computeDebtBalance(a),
@@ -121,11 +123,15 @@ export default async function DashboardPage({
   const netWorth = totalAssets - totalLiabilities;
 
   const monthIncome = monthTx
-    .filter((t) => t.direction === "INFLOW")
+    .filter((t) => t.direction === "INFLOW" && !debtAccountIds.has(t.account_id))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const monthExpenses = monthTx
     .filter((t) => t.direction === "OUTFLOW")
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const monthDebtPayments = monthTx
+    .filter((t) => t.direction === "INFLOW" && debtAccountIds.has(t.account_id))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const savingsRate =
