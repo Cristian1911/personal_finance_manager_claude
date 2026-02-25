@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T22:20:42.561386+00:00`
+- Generated (UTC): `2026-02-25T22:22:40.024903+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -124,7 +124,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `packages/shared/src/utils/debt-simulator.ts`
+- `webapp/src/components/debt/debt-simulator.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

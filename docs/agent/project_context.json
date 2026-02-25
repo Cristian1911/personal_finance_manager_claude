@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-25T22:20:42.561386+00:00",
+  "generated_at_utc": "2026-02-25T22:22:40.024903+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -243,6 +243,6 @@
     }
   ],
   "recent_changes": [
-    "packages/shared/src/utils/debt-simulator.ts"
+    "webapp/src/components/debt/debt-simulator.tsx"
   ]
 }
