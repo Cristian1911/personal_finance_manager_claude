@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-25T15:03:03.451870+00:00",
+  "generated_at_utc": "2026-02-25T15:08:08.526752+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,12 +9,12 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 408,
+    "text_files_scanned": 409,
     "languages": {
       "TypeScript/React": 134,
       "JSON": 116,
       "TypeScript": 79,
-      "Markdown": 19,
+      "Markdown": 20,
       "Python": 19,
       "SQL": 17,
       "Shell": 9,
@@ -32,7 +32,7 @@
     "packages": 14,
     "(root)": 10,
     ".claude": 9,
-    "docs": 7,
+    "docs": 8,
     "infra": 2,
     ".github": 1
   },
@@ -244,13 +244,8 @@
   "recent_changes": [
     ".claude/skills/codebase-context/SKILL.md",
     ".claude/skills/codebase-context/references/model-strategy.md",
-    ".claude/skills/codebase-context/scripts/build_context.py",
-    ".claude/skills/codebase-context/scripts/install_git_hook.sh",
-    ".githooks/pre-commit",
     "CLAUDE.md",
-    "docs/agent/PROJECT_CONTEXT.md",
-    "docs/agent/project_context.json",
-    "docs/plans/2026-02-25-category-management-design.md",
+    "docs/plans/2026-02-25-category-management-plan.md",
     "mobile/app/(auth)/forgot-password.tsx",
     "mobile/app/(auth)/login.tsx",
     "mobile/app/(auth)/reset-password.tsx",

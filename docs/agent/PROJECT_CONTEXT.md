@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T15:03:03.451870+00:00`
+- Generated (UTC): `2026-02-25T15:08:08.526752+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,11 +13,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 408
+- Text files scanned: 409
 - TypeScript/React: 134
 - JSON: 116
 - TypeScript: 79
-- Markdown: 19
+- Markdown: 20
 - Python: 19
 - SQL: 17
 - Shell: 9
@@ -34,7 +34,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - packages: 14 files
 - (root): 10 files
 - .claude: 9 files
-- docs: 7 files
+- docs: 8 files
 - infra: 2 files
 - .github: 1 files
 
@@ -126,13 +126,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 ## Recent Changes (git status)
 - `.claude/skills/codebase-context/SKILL.md`
 - `.claude/skills/codebase-context/references/model-strategy.md`
-- `.claude/skills/codebase-context/scripts/build_context.py`
-- `.claude/skills/codebase-context/scripts/install_git_hook.sh`
-- `.githooks/pre-commit`
 - `CLAUDE.md`
-- `docs/agent/PROJECT_CONTEXT.md`
-- `docs/agent/project_context.json`
-- `docs/plans/2026-02-25-category-management-design.md`
+- `docs/plans/2026-02-25-category-management-plan.md`
 - `mobile/app/(auth)/forgot-password.tsx`
 - `mobile/app/(auth)/login.tsx`
 - `mobile/app/(auth)/reset-password.tsx`
