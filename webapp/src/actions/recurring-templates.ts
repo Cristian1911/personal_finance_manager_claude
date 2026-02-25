@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
-import { getNextOccurrence, getOccurrencesBetween } from "@/lib/utils/recurrence";
+import { getNextOccurrence, getOccurrencesBetween } from "@venti5/shared";
 import { addDays } from "date-fns";
 import type { ActionResult } from "@/types/actions";
 import type {

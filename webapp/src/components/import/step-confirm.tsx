@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ParsedTransactionTable } from "./parsed-transaction-table";
 import { importTransactions } from "@/actions/import-transactions";
 import { formatCurrency } from "@/lib/utils/currency";
-import { autoCategorize } from "@/lib/utils/auto-categorize";
+import { autoCategorize } from "@venti5/shared";
 import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
 import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
 import type { ActionResult } from "@/types/actions";

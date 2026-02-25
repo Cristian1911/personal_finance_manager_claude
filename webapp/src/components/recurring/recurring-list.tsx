@@ -15,8 +15,7 @@ import {
   toggleRecurringTemplate,
 } from "@/actions/recurring-templates";
 import { formatCurrency } from "@/lib/utils/currency";
-import { frequencyLabel } from "@/lib/utils/recurrence";
-import { getNextOccurrence } from "@/lib/utils/recurrence";
+import { frequencyLabel, getNextOccurrence } from "@venti5/shared";
 import { formatDate } from "@/lib/utils/date";
 import {
   ArrowDownLeft,

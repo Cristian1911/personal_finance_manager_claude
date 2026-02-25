@@ -150,6 +150,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.95.3
         version: 2.97.0
+      '@venti5/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1

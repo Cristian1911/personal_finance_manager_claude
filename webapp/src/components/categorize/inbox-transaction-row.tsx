@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
 import { formatCurrency } from "@/lib/utils/currency";
-import { getCategoryName } from "@/lib/utils/auto-categorize";
+import { getCategoryName } from "@venti5/shared";
 import type { TransactionWithRelations, CategoryWithChildren, CurrencyCode } from "@/types/domain";
-import type { CategorizationResult } from "@/lib/utils/auto-categorize";
+import type { CategorizationResult } from "@venti5/shared";
 
 interface InboxTransactionRowProps {
   transaction: TransactionWithRelations;

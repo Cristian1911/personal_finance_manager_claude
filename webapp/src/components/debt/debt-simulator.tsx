@@ -20,8 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/utils/currency";
-import type { DebtAccount } from "@/lib/utils/debt";
 import {
+  type DebtAccount,
   compareStrategies,
   allocateLumpSum,
   simulateSingleAccount,
@@ -29,7 +29,7 @@ import {
   type LumpSumResult,
   type SingleAccountResult,
   type PayoffStrategy,
-} from "@/lib/utils/debt-simulator";
+} from "@venti5/shared";
 import {
   TrendingDown,
   Snowflake,
