@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T15:45:50.074248+00:00`
+- Generated (UTC): `2026-02-25T15:47:50.256246+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,8 +13,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 412
-- TypeScript/React: 137
+- Text files scanned: 413
+- TypeScript/React: 138
 - JSON: 116
 - TypeScript: 79
 - Markdown: 20
@@ -28,7 +28,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Top-level Areas
 - mobile: 169 files
-- webapp: 160 files
+- webapp: 161 files
 - services: 21 files
 - supabase: 18 files
 - packages: 14 files
@@ -100,6 +100,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/(auth)/signup/page.tsx`
 - `webapp/src/app/(dashboard)/accounts/[id]/page.tsx`
 - `webapp/src/app/(dashboard)/accounts/page.tsx`
+- `webapp/src/app/(dashboard)/categories/manage/page.tsx`
 - `webapp/src/app/(dashboard)/categories/page.tsx`
 - `webapp/src/app/(dashboard)/categorizar/page.tsx`
 - `webapp/src/app/(dashboard)/dashboard/page.tsx`
@@ -117,14 +118,14 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/layout.tsx`
 - `webapp/src/app/onboarding/layout.tsx`
 - `webapp/src/app/onboarding/page.tsx`
-- `webapp/src/app/page.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (387)
+- `webapp` -> `webapp` (391)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `webapp/src/components/categories/category-manage-tree.tsx`
+- `webapp/src/app/(dashboard)/categories/manage/page.tsx`
+- `webapp/src/app/(dashboard)/categories/page.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
