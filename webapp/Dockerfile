@@ -15,6 +15,7 @@ RUN pnpm install --frozen-lockfile --filter webapp...
 # --- Build ---
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/webapp/node_modules ./webapp/node_modules
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY webapp ./webapp
 COPY packages/shared ./packages/shared
