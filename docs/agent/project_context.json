@@ -1,0 +1,273 @@
+{
+  "generated_at_utc": "2026-02-25T15:03:03.451870+00:00",
+  "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
+  "technologies": [
+    "Next.js",
+    "Expo/React Native",
+    "FastAPI",
+    "Supabase",
+    "pnpm workspace"
+  ],
+  "totals": {
+    "text_files_scanned": 408,
+    "languages": {
+      "TypeScript/React": 134,
+      "JSON": 116,
+      "TypeScript": 79,
+      "Markdown": 19,
+      "Python": 19,
+      "SQL": 17,
+      "Shell": 9,
+      "YAML": 6,
+      "JavaScript": 5,
+      "CSS": 2,
+      "TOML": 2
+    }
+  },
+  "top_level_directories": {
+    "mobile": 169,
+    "webapp": 157,
+    "services": 21,
+    "supabase": 18,
+    "packages": 14,
+    "(root)": 10,
+    ".claude": 9,
+    "docs": 7,
+    "infra": 2,
+    ".github": 1
+  },
+  "commands": {
+    "root_scripts": {
+      "start": "pnpm --filter mobile start",
+      "web": "pnpm --filter webapp dev",
+      "mobile": "pnpm --filter mobile start",
+      "ios": "pnpm --filter mobile ios",
+      "android": "pnpm --filter mobile android",
+      "build:web": "pnpm --filter webapp build"
+    },
+    "webapp_scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start",
+      "lint": "eslint"
+    },
+    "mobile_scripts": {
+      "start": "expo start",
+      "android": "expo run:android",
+      "ios": "expo run:ios",
+      "web": "expo start --web"
+    }
+  },
+  "patterns": [
+    {
+      "name": "supabase-integration",
+      "description": "Supabase clients/services in app code",
+      "matched_files": 15,
+      "examples": [
+        "webapp/middleware.ts",
+        "webapp/src/app/page.tsx",
+        "webapp/src/app/auth/callback/route.ts",
+        "webapp/src/app/api/save-unrecognized/route.ts",
+        "webapp/src/app/api/parse-statement/route.ts",
+        "webapp/src/app/(dashboard)/layout.tsx",
+        "webapp/src/app/(dashboard)/settings/page.tsx",
+        "webapp/src/app/(dashboard)/dashboard/page.tsx",
+        "webapp/src/actions/statement-snapshots.ts",
+        "webapp/src/actions/recurring-templates.ts",
+        "webapp/src/actions/debt.ts",
+        "webapp/src/actions/categorize.ts",
+        "webapp/src/actions/budgets.ts",
+        "webapp/src/actions/payment-reminders.ts",
+        "webapp/src/actions/import-transactions.ts"
+      ]
+    },
+    {
+      "name": "next-app-router",
+      "description": "Next.js App Router pages/layouts",
+      "matched_files": 15,
+      "examples": [
+        "webapp/src/app/layout.tsx",
+        "webapp/src/app/page.tsx",
+        "webapp/src/app/auth/callback/route.ts",
+        "webapp/src/app/api/save-unrecognized/route.ts",
+        "webapp/src/app/api/parse-statement/route.ts",
+        "webapp/src/app/(auth)/layout.tsx",
+        "webapp/src/app/(auth)/signup/page.tsx",
+        "webapp/src/app/(auth)/forgot-password/page.tsx",
+        "webapp/src/app/(auth)/reset-password/page.tsx",
+        "webapp/src/app/(auth)/login/page.tsx",
+        "webapp/src/app/(dashboard)/layout.tsx",
+        "webapp/src/app/(dashboard)/settings/page.tsx",
+        "webapp/src/app/(dashboard)/deudas/page.tsx",
+        "webapp/src/app/(dashboard)/deudas/simulador/page.tsx",
+        "webapp/src/app/(dashboard)/recurrentes/page.tsx"
+      ]
+    },
+    {
+      "name": "expo-router",
+      "description": "Expo Router file-based routes",
+      "matched_files": 15,
+      "examples": [
+        "mobile/app/+not-found.tsx",
+        "mobile/app/onboarding.tsx",
+        "mobile/app/_layout.tsx",
+        "mobile/app/modal.tsx",
+        "mobile/app/+html.tsx",
+        "mobile/app/transaction/[id].tsx",
+        "mobile/app/(tabs)/settings.tsx",
+        "mobile/app/(tabs)/index.tsx",
+        "mobile/app/(tabs)/import.tsx",
+        "mobile/app/(tabs)/transactions.tsx",
+        "mobile/app/(tabs)/budgets.tsx",
+        "mobile/app/(tabs)/_layout.tsx",
+        "mobile/app/(tabs)/accounts.tsx",
+        "mobile/app/account/create.tsx",
+        "mobile/app/account/[id].tsx"
+      ]
+    },
+    {
+      "name": "fastapi-service",
+      "description": "FastAPI service modules",
+      "matched_files": 15,
+      "examples": [
+        "services/pdf_parser/test_parser.py",
+        "services/pdf_parser/models.py",
+        "services/pdf_parser/storage.py",
+        "services/pdf_parser/main.py",
+        "services/pdf_parser/parsers/davivienda_loan.py",
+        "services/pdf_parser/parsers/lulo_loan.py",
+        "services/pdf_parser/parsers/bogota_loan.py",
+        "services/pdf_parser/parsers/bancolombia_loan.py",
+        "services/pdf_parser/parsers/falabella_credit_card.py",
+        "services/pdf_parser/parsers/popular_credit_card.py",
+        "services/pdf_parser/parsers/__init__.py",
+        "services/pdf_parser/parsers/bancolombia_savings.py",
+        "services/pdf_parser/parsers/utils.py",
+        "services/pdf_parser/parsers/bancolombia_credit_card.py",
+        "services/pdf_parser/parsers/bogota_credit_card.py"
+      ]
+    },
+    {
+      "name": "server-actions",
+      "description": "Server Action handlers under webapp/src/actions",
+      "matched_files": 14,
+      "examples": [
+        "webapp/src/actions/statement-snapshots.ts",
+        "webapp/src/actions/recurring-templates.ts",
+        "webapp/src/actions/debt.ts",
+        "webapp/src/actions/categorize.ts",
+        "webapp/src/actions/budgets.ts",
+        "webapp/src/actions/payment-reminders.ts",
+        "webapp/src/actions/import-transactions.ts",
+        "webapp/src/actions/profile.ts",
+        "webapp/src/actions/onboarding.ts",
+        "webapp/src/actions/categories.ts",
+        "webapp/src/actions/transactions.ts",
+        "webapp/src/actions/accounts.ts",
+        "webapp/src/actions/charts.ts",
+        "webapp/src/actions/auth.ts"
+      ]
+    },
+    {
+      "name": "zod-validators",
+      "description": "Validation layer using Zod",
+      "matched_files": 9,
+      "examples": [
+        "webapp/src/actions/profile.ts",
+        "webapp/src/lib/validators/account.ts",
+        "webapp/src/lib/validators/category.ts",
+        "webapp/src/lib/validators/transaction.ts",
+        "webapp/src/lib/validators/budget.ts",
+        "webapp/src/lib/validators/recurring-template.ts",
+        "webapp/src/lib/validators/import.ts",
+        "webapp/src/lib/validators/auth.ts",
+        ".claude/skills/codebase-context/scripts/build_context.py"
+      ]
+    },
+    {
+      "name": "repository-pattern",
+      "description": "Repository pattern in mobile/lib/repositories",
+      "matched_files": 4,
+      "examples": [
+        "mobile/lib/repositories/budgets.ts",
+        "mobile/lib/repositories/categories.ts",
+        "mobile/lib/repositories/transactions.ts",
+        "mobile/lib/repositories/accounts.ts"
+      ]
+    }
+  ],
+  "entrypoints": [
+    "mobile/app/(auth)/_layout.tsx",
+    "mobile/app/(tabs)/_layout.tsx",
+    "mobile/app/_layout.tsx",
+    "packages/shared/src/types/domain.ts",
+    "services/pdf_parser/main.py",
+    "webapp/src/app/(auth)/forgot-password/page.tsx",
+    "webapp/src/app/(auth)/layout.tsx",
+    "webapp/src/app/(auth)/login/page.tsx",
+    "webapp/src/app/(auth)/reset-password/page.tsx",
+    "webapp/src/app/(auth)/signup/page.tsx",
+    "webapp/src/app/(dashboard)/accounts/[id]/page.tsx",
+    "webapp/src/app/(dashboard)/accounts/page.tsx",
+    "webapp/src/app/(dashboard)/categories/page.tsx",
+    "webapp/src/app/(dashboard)/categorizar/page.tsx",
+    "webapp/src/app/(dashboard)/dashboard/page.tsx",
+    "webapp/src/app/(dashboard)/deudas/page.tsx",
+    "webapp/src/app/(dashboard)/deudas/simulador/page.tsx",
+    "webapp/src/app/(dashboard)/import/page.tsx",
+    "webapp/src/app/(dashboard)/layout.tsx",
+    "webapp/src/app/(dashboard)/recurrentes/page.tsx",
+    "webapp/src/app/(dashboard)/settings/page.tsx",
+    "webapp/src/app/(dashboard)/transactions/[id]/page.tsx",
+    "webapp/src/app/(dashboard)/transactions/page.tsx",
+    "webapp/src/app/api/parse-statement/route.ts",
+    "webapp/src/app/api/save-unrecognized/route.ts",
+    "webapp/src/app/auth/callback/route.ts",
+    "webapp/src/app/layout.tsx",
+    "webapp/src/app/onboarding/layout.tsx",
+    "webapp/src/app/onboarding/page.tsx",
+    "webapp/src/app/page.tsx",
+    "webapp/src/types/domain.ts"
+  ],
+  "dependency_edges": [
+    {
+      "from": "webapp",
+      "to": "webapp",
+      "count": 372
+    },
+    {
+      "from": "mobile",
+      "to": "mobile",
+      "count": 1
+    }
+  ],
+  "recent_changes": [
+    ".claude/skills/codebase-context/SKILL.md",
+    ".claude/skills/codebase-context/references/model-strategy.md",
+    ".claude/skills/codebase-context/scripts/build_context.py",
+    ".claude/skills/codebase-context/scripts/install_git_hook.sh",
+    ".githooks/pre-commit",
+    "CLAUDE.md",
+    "docs/agent/PROJECT_CONTEXT.md",
+    "docs/agent/project_context.json",
+    "docs/plans/2026-02-25-category-management-design.md",
+    "mobile/app/(auth)/forgot-password.tsx",
+    "mobile/app/(auth)/login.tsx",
+    "mobile/app/(auth)/reset-password.tsx",
+    "mobile/app/(auth)/signup.tsx",
+    "mobile/app/(tabs)/_layout.tsx",
+    "mobile/app/(tabs)/accounts.tsx",
+    "mobile/app/(tabs)/budgets.tsx",
+    "mobile/app/(tabs)/import.tsx",
+    "mobile/app/(tabs)/index.tsx",
+    "mobile/app/(tabs)/settings.tsx",
+    "mobile/app/(tabs)/transactions.tsx",
+    "mobile/app/_layout.tsx",
+    "mobile/app/onboarding.tsx",
+    "mobile/package.json",
+    "mobile/tailwind.config.js",
+    "package.json",
+    "webapp/src/app/globals.css",
+    ".nvmrc"
+  ]
+}

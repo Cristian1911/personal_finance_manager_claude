@@ -5,6 +5,8 @@
 - `cd webapp && pnpm build` — production build (uses Turbopack)
 - `cd services/pdf_parser && uv run python main.py` — start PDF parser on :8000
 - Package manager: **pnpm** (not npm), **uv** for Python
+- Living context docs: `python3 .claude/skills/codebase-context/scripts/build_context.py`
+- Install auto-refresh hook: `bash .claude/skills/codebase-context/scripts/install_git_hook.sh`
 
 ## Project Structure
 - `webapp/` — Next.js 15 (App Router) + TypeScript + Tailwind v4 + shadcn/ui
@@ -59,3 +61,7 @@
 - Radix Select sends empty string (not null/undefined) when no value — use `z.preprocess` to normalize
 - Shell `compdef` warning leaks into stdout redirects — always strip first line if piping to file
 - When piping `supabase gen types` to file, verify `export type Json =` header is intact
+
+## Agent Context Workflow
+- Use `.claude/skills/codebase-context/skill.md` when starting work or after code edits.
+- Keep `docs/agent/PROJECT_CONTEXT.md` and `docs/agent/project_context.json` updated.
