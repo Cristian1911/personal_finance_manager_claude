@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-25T20:56:52.428292+00:00",
+  "generated_at_utc": "2026-02-25T22:09:02.321318+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,12 +9,12 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 414,
+    "text_files_scanned": 415,
     "languages": {
       "TypeScript/React": 138,
       "JSON": 116,
       "TypeScript": 79,
-      "Markdown": 20,
+      "Markdown": 21,
       "Python": 19,
       "SQL": 17,
       "Shell": 9,
@@ -32,7 +32,7 @@
     "packages": 14,
     "(root)": 10,
     ".claude": 9,
-    "docs": 8,
+    "docs": 9,
     "infra": 2,
     ".github": 2
   },
@@ -243,9 +243,6 @@
     }
   ],
   "recent_changes": [
-    ".gitignore",
-    "docs/agent/PROJECT_CONTEXT.md",
-    "docs/agent/project_context.json",
-    "webapp/Dockerfile"
+    "docs/plans/2026-02-25-debt-fixes-design.md"
   ]
 }
