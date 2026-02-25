@@ -9,7 +9,7 @@ import {
   estimateMonthlyInterest,
   daysUntilPayment,
   type DebtAccount,
-} from "@/lib/utils/debt";
+} from "@venti5/shared";
 import type { CurrencyCode } from "@/types/domain";
 import { CreditCard, HandCoins, Calendar } from "lucide-react";
 

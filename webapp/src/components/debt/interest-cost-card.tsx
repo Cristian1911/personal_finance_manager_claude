@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
-import { toAlmuerzos, toHorasMinimo } from "@/lib/utils/debt";
+import { toAlmuerzos, toHorasMinimo } from "@venti5/shared";
 import { Flame } from "lucide-react";
 
 export function InterestCostCard({

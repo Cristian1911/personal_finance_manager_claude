@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
-import { computeSnapshotDiffs } from "@/lib/utils/snapshot-diff";
+import { computeSnapshotDiffs } from "@venti5/shared";
 import type { ActionResult } from "@/types/actions";
 import type { ImportResult, AccountUpdateResult } from "@/types/import";
 

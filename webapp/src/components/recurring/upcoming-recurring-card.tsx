@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { frequencyLabel } from "@/lib/utils/recurrence";
+import { frequencyLabel } from "@venti5/shared";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import type { CurrencyCode, UpcomingRecurrence } from "@/types/domain";

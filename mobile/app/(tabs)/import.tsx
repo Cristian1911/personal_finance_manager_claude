@@ -17,7 +17,7 @@ import {
   CheckSquare,
   ChevronDown,
 } from "lucide-react-native";
-import { formatCurrency } from "@venti5/shared";
+import { formatCurrency, computeIdempotencyKey } from "@venti5/shared";
 import * as Crypto from "expo-crypto";
 import { getDatabase } from "../../lib/db/database";
 import { useAuth } from "../../lib/auth";
@@ -28,25 +28,8 @@ import {
 } from "../../lib/repositories/accounts";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
 
-async function computeIdempotencyKey(params: {
-  provider: string;
-  transactionDate: string;
-  amount: number;
-  rawDescription: string;
-}): Promise<string> {
-  const payload = [
-    params.provider,
-    "",
-    params.transactionDate,
-    params.amount.toFixed(2),
-    params.rawDescription,
-    "",
-  ].join("|");
-  return await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    payload
-  );
-}
+const expoHashFn = (payload: string) =>
+  Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -303,12 +286,15 @@ export default function ImportScreen() {
         const t = parsedData.transactions[index];
         if (!t) continue;
 
-        const idempotencyKey = await computeIdempotencyKey({
-          provider: parsedData.bank || "manual",
-          transactionDate: t.date,
-          amount: t.amount,
-          rawDescription: t.description,
-        });
+        const idempotencyKey = await computeIdempotencyKey(
+          {
+            provider: parsedData.bank || "manual",
+            transactionDate: t.date,
+            amount: t.amount,
+            rawDescription: t.description,
+          },
+          expoHashFn
+        );
 
         const txId = Crypto.randomUUID();
 
