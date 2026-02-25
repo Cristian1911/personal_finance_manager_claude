@@ -56,7 +56,23 @@ export const MIGRATIONS = [
     id TEXT PRIMARY KEY,
     email TEXT,
     full_name TEXT,
+    app_purpose TEXT,
+    estimated_monthly_income REAL,
+    estimated_monthly_expenses REAL,
+    preferred_currency TEXT DEFAULT 'COP',
+    timezone TEXT,
+    locale TEXT,
+    onboarding_completed INTEGER NOT NULL DEFAULT 0,
     plan TEXT NOT NULL DEFAULT 'free',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS budgets (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    amount REAL NOT NULL,
+    period TEXT NOT NULL DEFAULT 'monthly',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`,
@@ -88,5 +104,6 @@ export const MIGRATIONS = [
   `CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account_id)`,
   `CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(transaction_date)`,
   `CREATE INDEX IF NOT EXISTS idx_transactions_idempotency ON transactions(idempotency_key)`,
+  `CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sync_queue_unsynced ON sync_queue(synced_at) WHERE synced_at IS NULL`,
 ];

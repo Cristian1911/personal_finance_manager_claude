@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Finance Manager",
-  description: "Tu salud financiera, bajo control",
+  title: "Venti5",
+  description: "Controla tu dinero con claridad diaria",
 };
 
 export default function RootLayout({

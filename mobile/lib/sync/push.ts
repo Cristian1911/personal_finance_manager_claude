@@ -11,6 +11,16 @@ type SyncQueueItem = {
   synced_at: string | null;
 };
 
+type SyncTableName =
+  | "profiles"
+  | "categories"
+  | "accounts"
+  | "budgets"
+  | "category_rules"
+  | "recurring_transaction_templates"
+  | "statement_snapshots"
+  | "transactions";
+
 /**
  * Push all pending local changes to Supabase.
  * Reads from sync_queue and executes each operation against the remote DB.
@@ -29,18 +39,19 @@ export async function pushPendingChanges(): Promise<number> {
   for (const item of pending) {
     try {
       const payload = JSON.parse(item.payload);
+      const tableName = item.table_name as SyncTableName;
 
       switch (item.operation) {
         case "INSERT": {
           const { error } = await supabase
-            .from(item.table_name)
+            .from(tableName)
             .insert(payload);
           if (error) throw error;
           break;
         }
         case "UPDATE": {
           const { error } = await supabase
-            .from(item.table_name)
+            .from(tableName)
             .update(payload)
             .eq("id", item.record_id);
           if (error) throw error;
@@ -48,7 +59,7 @@ export async function pushPendingChanges(): Promise<number> {
         }
         case "DELETE": {
           const { error } = await supabase
-            .from(item.table_name)
+            .from(tableName)
             .delete()
             .eq("id", item.record_id);
           if (error) throw error;

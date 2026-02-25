@@ -24,6 +24,7 @@ export async function clearDatabase(): Promise<void> {
     DELETE FROM transactions;
     DELETE FROM accounts;
     DELETE FROM categories;
+    DELETE FROM budgets;
     DELETE FROM profiles;
     DELETE FROM statement_snapshots;
     DELETE FROM sync_queue;

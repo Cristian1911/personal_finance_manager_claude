@@ -6,6 +6,7 @@ const SYNC_TABLES = [
   "profiles",
   "accounts",
   "categories",
+  "budgets",
   "transactions",
   "statement_snapshots",
 ] as const;
@@ -15,6 +16,7 @@ type SyncTable = (typeof SYNC_TABLES)[number];
 /** Boolean fields per table that need integer conversion for SQLite */
 const BOOLEAN_FIELDS: Record<string, string[]> = {
   accounts: ["is_active"],
+  profiles: ["onboarding_completed"],
   categories: ["is_system"],
   transactions: ["is_excluded"],
 };
@@ -51,7 +53,7 @@ async function pullTable(
   const lastSyncedAt = meta?.last_synced_at;
 
   // Query Supabase for new/updated rows
-  let query = supabase.from(table).select("*");
+  let query: any = supabase.from(table).select("*");
   if (lastSyncedAt) {
     query = query.gt("updated_at", lastSyncedAt);
   }

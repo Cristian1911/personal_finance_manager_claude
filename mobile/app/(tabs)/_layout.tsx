@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Wallet,
   Receipt,
+  PiggyBank,
   Upload,
   Settings,
 } from "lucide-react-native";
@@ -42,6 +43,15 @@ export default function TabLayout() {
           title: "Transacciones",
           tabBarIcon: ({ color, size }) => (
             <Receipt size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="budgets"
+        options={{
+          title: "Presupuestos",
+          tabBarIcon: ({ color, size }) => (
+            <PiggyBank size={size} color={color} />
           ),
         }}
       />

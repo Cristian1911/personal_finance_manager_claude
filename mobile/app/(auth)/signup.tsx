@@ -58,11 +58,14 @@ export default function SignupScreen() {
       className="flex-1 bg-white"
     >
       <View className="flex-1 justify-center px-8">
+        <Text className="text-base font-inter-bold text-center text-emerald-600 mb-3">
+          Venti5
+        </Text>
         <Text className="text-3xl font-bold text-center text-gray-900 mb-2">
           Crear cuenta
         </Text>
         <Text className="text-base text-center text-gray-500 mb-10">
-          Regístrate para empezar
+          Empieza con claridad financiera
         </Text>
 
         {error && (
@@ -116,7 +119,7 @@ export default function SignupScreen() {
 
         <TouchableOpacity
           className={`rounded-lg py-3.5 items-center ${
-            loading ? "bg-blue-400" : "bg-blue-600"
+            loading ? "bg-emerald-400" : "bg-emerald-600"
           }`}
           onPress={handleSignup}
           disabled={loading}
@@ -137,7 +140,7 @@ export default function SignupScreen() {
         >
           <Text className="text-sm text-gray-500">
             ¿Ya tienes cuenta?{" "}
-            <Text className="text-blue-600 font-medium">Inicia sesión</Text>
+            <Text className="text-emerald-600 font-medium">Inicia sesión</Text>
           </Text>
         </TouchableOpacity>
       </View>

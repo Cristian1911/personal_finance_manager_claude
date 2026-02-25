@@ -12,11 +12,11 @@ export default function AuthLayout({
           <div className="flex items-center gap-2">
             <Wallet className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold tracking-tight">
-              Finance Manager
+              Venti5
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Tu salud financiera, bajo control
+            Controla tu dinero con claridad diaria
           </p>
         </div>
         <div className="bg-card rounded-lg border shadow-sm p-6">

@@ -40,11 +40,14 @@ export default function LoginScreen() {
       className="flex-1 bg-white"
     >
       <View className="flex-1 justify-center px-8">
+        <Text className="text-base font-inter-bold text-center text-emerald-600 mb-3">
+          Venti5
+        </Text>
         <Text className="text-3xl font-bold text-center text-gray-900 mb-2">
           Bienvenido
         </Text>
         <Text className="text-base text-center text-gray-500 mb-10">
-          Inicia sesion en tu cuenta
+          Tu dinero, con identidad y foco
         </Text>
 
         {error && (
@@ -84,7 +87,7 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           className={`rounded-lg py-3.5 items-center ${
-            loading ? "bg-blue-400" : "bg-blue-600"
+            loading ? "bg-emerald-400" : "bg-emerald-600"
           }`}
           onPress={handleLogin}
           disabled={loading}
@@ -103,7 +106,7 @@ export default function LoginScreen() {
           className="mt-4 items-center"
           onPress={() => router.push("/(auth)/forgot-password")}
         >
-          <Text className="text-sm text-blue-600 font-medium">
+          <Text className="text-sm text-emerald-600 font-medium">
             ¿Olvidaste tu contraseña?
           </Text>
         </TouchableOpacity>
@@ -114,7 +117,7 @@ export default function LoginScreen() {
         >
           <Text className="text-sm text-gray-500">
             ¿No tienes cuenta?{" "}
-            <Text className="text-blue-600 font-medium">Regístrate</Text>
+            <Text className="text-emerald-600 font-medium">Regístrate</Text>
           </Text>
         </TouchableOpacity>
       </View>
