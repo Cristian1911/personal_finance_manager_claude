@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,11 +41,21 @@ export function CategoryFormModal({
     category?.parent_id ?? defaultParentId ?? "__none__"
   );
 
+  // Reset form state when the target category changes (e.g. switching between edit targets)
+  useEffect(() => {
+    setName(category?.name ?? "");
+    setNameEs(category?.name_es ?? "");
+    setIcon(category?.icon ?? "tag");
+    setColor(category?.color ?? "#6b7280");
+    setDirection(category?.direction ?? "OUTFLOW");
+    setParentId(category?.parent_id ?? defaultParentId ?? "__none__");
+  }, [category?.id, defaultParentId]);
+
   function generateSlug(value: string) {
     return value
-      .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-]/g, "")
       .slice(0, 50);

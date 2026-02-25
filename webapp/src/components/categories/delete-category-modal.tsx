@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { getCategoryTransactionCount, reassignAndDeleteCategory } from "@/actions/categories";
@@ -49,13 +50,21 @@ export function DeleteCategoryModal({
       setTxCount(null);
       return;
     }
+    let cancelled = false;
     getCategoryTransactionCount(category.id).then((res) => {
-      if (res.success) setTxCount(res.data);
+      if (cancelled) return;
+      if (res.success) {
+        setTxCount(res.data);
+      } else {
+        toast.error("No se pudo verificar las transacciones");
+        setTxCount(0); // allow user to proceed or close
+      }
     });
+    return () => { cancelled = true; };
   }, [open, category.id]);
 
   function handleNext() {
-    if (txCount && txCount > 0 && !reassignTo) {
+    if (txCount !== null && txCount > 0 && !reassignTo) {
       toast.error("Selecciona una categoría de destino");
       return;
     }
@@ -120,7 +129,7 @@ export function DeleteCategoryModal({
                   reasignarlas antes de eliminar.
                 </p>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Reasignar a:</label>
+                  <Label>Reasignar a:</Label>
                   <Select value={reassignTo} onValueChange={setReassignTo}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar categoría..." />
@@ -144,9 +153,9 @@ export function DeleteCategoryModal({
               <Button
                 variant="destructive"
                 onClick={txCount && txCount > 0 ? handleNext : handleConfirm}
-                disabled={isPending || txCount === null || (txCount > 0 && !reassignTo)}
+                disabled={isPending || txCount === null || (txCount !== null && txCount > 0 && !reassignTo)}
               >
-                {txCount && txCount > 0 ? "Siguiente" : "Eliminar"}
+                {txCount !== null && txCount > 0 ? "Siguiente" : "Eliminar"}
               </Button>
             </DialogFooter>
           </div>

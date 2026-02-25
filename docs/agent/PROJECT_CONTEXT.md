@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T15:35:48.722373+00:00`
+- Generated (UTC): `2026-02-25T15:44:40.767763+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -120,7 +120,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/page.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (382)
+- `webapp` -> `webapp` (383)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
