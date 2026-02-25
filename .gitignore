@@ -26,3 +26,4 @@ supabase/.temp/
 # .claude/agents/ — tracked
 # .claude/skills/ — tracked
 # .claude/todo.md — tracked
+node_modules
