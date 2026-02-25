@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-25T15:47:50.256246+00:00",
+  "generated_at_utc": "2026-02-25T17:19:05.459194+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -243,7 +243,8 @@
     }
   ],
   "recent_changes": [
-    "webapp/src/app/(dashboard)/categories/manage/page.tsx",
-    "webapp/src/app/(dashboard)/categories/page.tsx"
+    ".dockerignore",
+    ".github/workflows/deploy.yml",
+    "webapp/Dockerfile"
   ]
 }
