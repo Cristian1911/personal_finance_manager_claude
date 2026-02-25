@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T17:47:43.833324+00:00`
+- Generated (UTC): `2026-02-25T18:09:10.974688+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,7 +13,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 413
+- Text files scanned: 414
 - TypeScript/React: 138
 - JSON: 116
 - TypeScript: 79
@@ -21,7 +21,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - Python: 19
 - SQL: 17
 - Shell: 9
-- YAML: 6
+- YAML: 7
 - JavaScript: 5
 - CSS: 2
 - TOML: 2
@@ -36,7 +36,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - .claude: 9 files
 - docs: 8 files
 - infra: 2 files
-- .github: 1 files
+- .github: 2 files
 
 ## Key Commands
 ### root_scripts

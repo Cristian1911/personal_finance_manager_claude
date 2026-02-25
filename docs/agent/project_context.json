@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-25T17:47:43.833324+00:00",
+  "generated_at_utc": "2026-02-25T18:09:10.974688+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,7 +9,7 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 413,
+    "text_files_scanned": 414,
     "languages": {
       "TypeScript/React": 138,
       "JSON": 116,
@@ -18,7 +18,7 @@
       "Python": 19,
       "SQL": 17,
       "Shell": 9,
-      "YAML": 6,
+      "YAML": 7,
       "JavaScript": 5,
       "CSS": 2,
       "TOML": 2
@@ -34,7 +34,7 @@
     ".claude": 9,
     "docs": 8,
     "infra": 2,
-    ".github": 1
+    ".github": 2
   },
   "commands": {
     "root_scripts": {

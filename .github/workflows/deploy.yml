@@ -1,10 +1,12 @@
-name: Build & Deploy
+name: Deploy After PR Merge
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
     paths:
       - '.github/workflows/deploy.yml'
+      - '.github/workflows/pr-build-images.yml'
       - 'webapp/**'
       - 'packages/shared/**'
       - 'package.json'
@@ -13,154 +15,60 @@ on:
       - 'services/pdf_parser/**'
       - 'docker-compose.prod.yml'
       - 'infra/**'
-  workflow_dispatch:
-    inputs:
-      build_webapp:
-        description: 'Force build & push webapp image'
-        required: true
-        default: false
-        type: boolean
-      build_parser:
-        description: 'Force build & push parser image'
-        required: true
-        default: false
-        type: boolean
-      run_deploy:
-        description: 'Run deploy step after builds'
-        required: true
-        default: true
-        type: boolean
 
 env:
   REGISTRY: ghcr.io
   REPO: cristian1911/personal_finance_manager_claude
   GHCR_USERNAME: cristian1911
 
-
 jobs:
   changes:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
-      webapp_changed: ${{ steps.filter.outputs.webapp_changed }}
-      parser_changed: ${{ steps.filter.outputs.parser_changed }}
-      deploy_changed: ${{ steps.filter.outputs.deploy_changed }}
-      any_deploy: ${{ steps.filter.outputs.any_deploy }}
+      webapp_changed: ${{ steps.filter.outputs.webapp }}
+      parser_changed: ${{ steps.filter.outputs.parser }}
+      deploy_changed: ${{ steps.filter.outputs.deploy }}
+      any_deploy: ${{ steps.any.outputs.any_deploy }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Detect changed areas
         id: filter
-        shell: bash
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            webapp:
+              - 'webapp/**'
+              - 'packages/shared/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+            parser:
+              - 'services/pdf_parser/**'
+            deploy:
+              - 'docker-compose.prod.yml'
+              - 'infra/**'
+              - '.github/workflows/deploy.yml'
+              - '.github/workflows/pr-build-images.yml'
+
+      - name: Compute deploy flag
+        id: any
         run: |
-          set -euo pipefail
-
-          event_name="${{ github.event_name }}"
-          force_webapp='${{ github.event.inputs.build_webapp || 'false' }}'
-          force_parser='${{ github.event.inputs.build_parser || 'false' }}'
-          force_deploy='${{ github.event.inputs.run_deploy || 'false' }}'
-
-          if [ "$event_name" = "workflow_dispatch" ]; then
-            files=""
+          if [ "${{ steps.filter.outputs.webapp }}" = "true" ] || \
+             [ "${{ steps.filter.outputs.parser }}" = "true" ] || \
+             [ "${{ steps.filter.outputs.deploy }}" = "true" ]; then
+            echo "any_deploy=true" >> "$GITHUB_OUTPUT"
           else
-            before="${{ github.event.before }}"
-            after="${{ github.sha }}"
-
-            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
-              files=$(git ls-files)
-            else
-              files=$(git diff --name-only "$before" "$after")
-            fi
+            echo "any_deploy=false" >> "$GITHUB_OUTPUT"
           fi
 
-          webapp_changed=false
-          parser_changed=false
-          deploy_changed=false
-
-          if echo "$files" | grep -qE '^(webapp/|packages/shared/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$)'; then
-            webapp_changed=true
-          fi
-
-          if echo "$files" | grep -qE '^services/pdf_parser/'; then
-            parser_changed=true
-          fi
-
-          if echo "$files" | grep -qE '^(docker-compose.prod.yml|infra/|\.github/workflows/deploy.yml)'; then
-            deploy_changed=true
-          fi
-
-          if [ "$force_webapp" = "true" ]; then
-            webapp_changed=true
-          fi
-
-          if [ "$force_parser" = "true" ]; then
-            parser_changed=true
-          fi
-
-          if [ "$force_deploy" = "true" ]; then
-            deploy_changed=true
-          fi
-
-          any_deploy=false
-          if [ "$webapp_changed" = "true" ] || [ "$parser_changed" = "true" ] || [ "$deploy_changed" = "true" ]; then
-            any_deploy=true
-          fi
-
-          echo "webapp_changed=$webapp_changed" >> "$GITHUB_OUTPUT"
-          echo "parser_changed=$parser_changed" >> "$GITHUB_OUTPUT"
-          echo "deploy_changed=$deploy_changed" >> "$GITHUB_OUTPUT"
-          echo "any_deploy=$any_deploy" >> "$GITHUB_OUTPUT"
-     
-  build-and-push-webapp:
-    runs-on: ubuntu-latest
-    needs: [changes]
+  promote-webapp:
     if: needs.changes.outputs.webapp_changed == 'true'
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ env.GHCR_USERNAME }}
-          password: ${{ secrets.GHCR_PAT_WRITE }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build & push webapp image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./webapp/Dockerfile
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest
-          build-args: |
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-and-push-parser:
     runs-on: ubuntu-latest
     needs: [changes]
-    if: needs.changes.outputs.parser_changed == 'true'
     permissions:
       contents: read
       packages: write
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -171,27 +79,45 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build & push pdf-parser image
-        uses: docker/build-push-action@v6
+      - name: Promote webapp PR image to production tag
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest \
+            ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-pr-${{ github.event.pull_request.number }}-latest
+
+  promote-parser:
+    if: needs.changes.outputs.parser_changed == 'true'
+    runs-on: ubuntu-latest
+    needs: [changes]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          context: ./services/pdf_parser
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.REPO }}:parser-latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_PAT_WRITE }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Promote parser PR image to production tag
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.REGISTRY }}/${{ env.REPO }}:parser-latest \
+            ${{ env.REGISTRY }}/${{ env.REPO }}:parser-pr-${{ github.event.pull_request.number }}-latest
 
   deploy:
-    runs-on: ubuntu-latest
-    needs: [changes, build-and-push-webapp, build-and-push-parser]
     if: |
       always() &&
+      needs.changes.result != 'skipped' &&
       needs.changes.outputs.any_deploy == 'true' &&
-      (needs.changes.outputs.deploy_changed == 'true' || 
-       needs.changes.outputs.webapp_changed == 'true' || 
-       needs.changes.outputs.parser_changed == 'true') &&
-      needs.build-and-push-webapp.result != 'failure' &&
-      needs.build-and-push-parser.result != 'failure'
-
+      needs.promote-webapp.result != 'failure' &&
+      needs.promote-parser.result != 'failure'
+    runs-on: ubuntu-latest
+    needs: [changes, promote-webapp, promote-parser]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
