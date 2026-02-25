@@ -103,11 +103,11 @@ export default function MobileOnboardingScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-gray-50"
+      className="flex-1 bg-gray-100"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
-        <View className="mb-6 rounded-3xl bg-emerald-600 p-5">
+        <View className="mb-6 rounded-3xl bg-primary p-5">
           <Text className="text-2xl font-inter-bold text-white">Venti5</Text>
           <Text className="mt-1 text-sm font-inter text-emerald-50">
             Configura tu punto de partida en menos de 2 minutos.
@@ -123,9 +123,9 @@ export default function MobileOnboardingScreen() {
                 <Pressable
                   key={item.id}
                   onPress={() => setPurpose(item.id)}
-                  className={`rounded-full border px-3 py-2 ${selected ? "border-emerald-600 bg-emerald-50" : "border-gray-200 bg-white"}`}
+                  className={`rounded-full border px-3 py-2 ${selected ? "border-primary bg-primary-light" : "border-gray-200 bg-white"}`}
                 >
-                  <Text className={selected ? "text-emerald-700 font-inter-semibold" : "text-gray-700 font-inter-medium"}>
+                  <Text className={selected ? "text-primary-dark font-inter-semibold" : "text-gray-700 font-inter-medium"}>
                     {item.label}
                   </Text>
                 </Pressable>
@@ -199,7 +199,7 @@ export default function MobileOnboardingScreen() {
         )}
 
         <Pressable
-          className={`mt-5 rounded-xl py-3.5 items-center ${loading ? "bg-emerald-400" : "bg-emerald-600"}`}
+          className={`mt-5 rounded-xl py-3.5 items-center ${loading ? "bg-primary-light" : "bg-primary"}`}
           onPress={handleFinish}
           disabled={loading}
         >

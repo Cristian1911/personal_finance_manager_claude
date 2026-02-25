@@ -118,17 +118,17 @@ export default function BudgetsScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-gray-100">
+        <ActivityIndicator size="large" color="#047857" />
       </View>
     );
   }
 
   return (
     <ScrollView
-      className="flex-1 bg-gray-50"
+      className="flex-1 bg-gray-100"
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#10B981" />
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#047857" />
       }
       contentContainerStyle={{ paddingBottom: 40 }}
     >
@@ -181,7 +181,7 @@ export default function BudgetsScreen() {
                   <View className="flex-row items-center gap-2">
                     <View
                       className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: item.category_color ?? "#10B981" }}
+                      style={{ backgroundColor: item.category_color ?? "#047857" }}
                     />
                     <Text className="text-gray-900 font-inter-semibold">{item.category_name}</Text>
                   </View>

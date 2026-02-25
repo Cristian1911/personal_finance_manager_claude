@@ -96,7 +96,7 @@ export default function ResetPasswordScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-white"
+      className="flex-1 bg-gray-100"
     >
       <View className="flex-1 justify-center px-8">
         <Text className="text-3xl font-bold text-center text-gray-900 mb-2">
@@ -142,7 +142,7 @@ export default function ResetPasswordScreen() {
 
         <TouchableOpacity
           className={`rounded-lg py-3.5 items-center ${
-            loading ? "bg-blue-400" : "bg-blue-600"
+            loading ? "bg-primary-light" : "bg-primary"
           }`}
           onPress={handleResetPassword}
           disabled={loading}
@@ -161,7 +161,7 @@ export default function ResetPasswordScreen() {
           className="mt-6 items-center"
           onPress={() => router.replace("/(auth)/login")}
         >
-          <Text className="text-sm text-blue-600 font-medium">
+          <Text className="text-sm text-primary font-medium">
             Volver al inicio de sesión
           </Text>
         </TouchableOpacity>

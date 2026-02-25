@@ -116,12 +116,12 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-gray-50"
+      className="flex-1 bg-gray-100"
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor="#10B981"
+          tintColor="#047857"
         />
       }
     >

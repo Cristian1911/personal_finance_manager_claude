@@ -61,13 +61,3 @@ Escalate model only when needed:
 
 - Default to the fast tier; escalate only for ambiguous architecture decisions, cross-module redesign, or security-sensitive diffs.
 - Fall back to the fast tier for routine refresh loops and commit-time regeneration.
-
-1. Fast/cheap scans and frequent refreshes: `gpt-5-mini`
-2. Deep architecture synthesis or complex refactor plans: `gpt-5`
-3. Large repo batch indexing with minimal reasoning: `gpt-5-nano` (optional)
-
-Escalate model only when needed:
-
-- Stay on `gpt-5-mini` if output quality is enough.
-- Escalate to `gpt-5` only for ambiguous architecture decisions, risky migrations, or cross-module redesign.
-- Fall back from `gpt-5` to `gpt-5-mini` for repetitive regeneration to control cost.

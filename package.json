@@ -1,9 +1,15 @@
 {
   "private": true,
   "name": "venti5",
+  "engines": {
+    "node": ">=20 <21"
+  },
   "scripts": {
+    "start": "pnpm --filter mobile start",
     "web": "pnpm --filter webapp dev",
     "mobile": "pnpm --filter mobile start",
+    "ios": "pnpm --filter mobile ios",
+    "android": "pnpm --filter mobile android",
     "build:web": "pnpm --filter webapp build"
   }
 }

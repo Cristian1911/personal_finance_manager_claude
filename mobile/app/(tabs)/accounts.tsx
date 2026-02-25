@@ -63,14 +63,14 @@ export default function AccountsScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-gray-100">
+        <ActivityIndicator size="large" color="#047857" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-100">
       <FlatList
         data={accounts}
         keyExtractor={(item) => item.id}
@@ -79,7 +79,7 @@ export default function AccountsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#10B981"
+            tintColor="#047857"
           />
         }
         ListHeaderComponent={

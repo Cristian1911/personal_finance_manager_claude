@@ -55,7 +55,7 @@ export default function SignupScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-white"
+      className="flex-1 bg-gray-100"
     >
       <View className="flex-1 justify-center px-8">
         <Text className="text-base font-inter-bold text-center text-emerald-600 mb-3">
@@ -119,7 +119,7 @@ export default function SignupScreen() {
 
         <TouchableOpacity
           className={`rounded-lg py-3.5 items-center ${
-            loading ? "bg-emerald-400" : "bg-emerald-600"
+            loading ? "bg-primary-light" : "bg-primary"
           }`}
           onPress={handleSignup}
           disabled={loading}

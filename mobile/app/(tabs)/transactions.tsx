@@ -110,12 +110,12 @@ export default function TransactionsScreen() {
   }, [loadingMore, hasMore, searchQuery, loadTransactions]);
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-100">
       <SearchBar onSearch={handleSearch} />
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#10B981" />
+          <ActivityIndicator size="large" color="#047857" />
         </View>
       ) : sections.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
@@ -143,7 +143,7 @@ export default function TransactionsScreen() {
             />
           )}
           renderSectionHeader={({ section: { title } }) => (
-            <View className="px-4 py-2 bg-gray-50">
+            <View className="px-4 py-2 bg-gray-100">
               <Text className="text-gray-500 font-inter-semibold text-xs uppercase">
                 {title}
               </Text>
@@ -154,7 +154,7 @@ export default function TransactionsScreen() {
           ListFooterComponent={
             loadingMore ? (
               <View className="py-4">
-                <ActivityIndicator size="small" color="#10B981" />
+                <ActivityIndicator size="small" color="#047857" />
               </View>
             ) : null
           }

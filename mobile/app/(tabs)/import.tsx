@@ -91,7 +91,7 @@ function AccountSelector({
         Cuenta de destino <Text className="text-red-500">*</Text>
       </Text>
       <Pressable
-        className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex-row items-center active:bg-gray-50"
+        className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex-row items-center active:bg-gray-100"
         onPress={() => setOpen(!open)}
       >
         {selected && Icon ? (
@@ -125,7 +125,7 @@ function AccountSelector({
             return (
               <Pressable
                 key={account.id}
-                className={`flex-row items-center px-4 py-3 active:bg-gray-50 ${
+                className={`flex-row items-center px-4 py-3 active:bg-gray-100 ${
                   index > 0 ? "border-t border-gray-100" : ""
                 }`}
                 onPress={() => {
@@ -143,7 +143,7 @@ function AccountSelector({
                   {account.name}
                 </Text>
                 {selected?.id === account.id && (
-                  <CheckSquare size={16} color="#10B981" />
+                  <CheckSquare size={16} color="#047857" />
                 )}
               </Pressable>
             );
@@ -427,13 +427,13 @@ export default function ImportScreen() {
   // ===== STEP 1: Pick PDF =====
   if (step === "pick") {
     return (
-      <View className="flex-1 bg-gray-50 p-4">
+      <View className="flex-1 bg-gray-100 p-4">
         <Text className="text-gray-900 font-inter-bold text-xl mb-6">
           Importar extracto
         </Text>
 
         <Pressable
-          className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center justify-center bg-white active:bg-gray-50"
+          className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center justify-center bg-white active:bg-gray-100"
           onPress={handlePickDocument}
         >
           <Upload size={40} color="#9CA3AF" />
@@ -447,7 +447,7 @@ export default function ImportScreen() {
 
         {document && (
           <View className="bg-white rounded-lg p-4 mt-4 flex-row items-center">
-            <FileText size={20} color="#10B981" />
+            <FileText size={20} color="#047857" />
             <View className="ml-3 flex-1">
               <Text
                 className="text-gray-900 font-inter-medium text-sm"
@@ -494,7 +494,7 @@ export default function ImportScreen() {
     const canImport = selectedCount > 0 && selectedAccount !== null;
 
     return (
-      <View className="flex-1 bg-gray-50">
+      <View className="flex-1 bg-gray-100">
         <View className="px-4 pt-4 pb-2">
           <Text className="text-gray-900 font-inter-bold text-xl">
             Revisar transacciones
@@ -524,10 +524,10 @@ export default function ImportScreen() {
 
             return (
               <Pressable
-                className="flex-row items-center px-4 py-3 bg-white active:bg-gray-50"
+                className="flex-row items-center px-4 py-3 bg-white active:bg-gray-100"
                 onPress={() => toggleSelect(index)}
               >
-                <Icon size={20} color={isSelected ? "#10B981" : "#D1D5DB"} />
+                <Icon size={20} color={isSelected ? "#047857" : "#D1D5DB"} />
                 <View className="flex-1 mx-3">
                   <Text
                     className="text-gray-900 font-inter-medium text-sm"
@@ -558,7 +558,7 @@ export default function ImportScreen() {
         {/* Bottom buttons */}
         <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex-row gap-3">
           <Pressable
-            className="flex-1 rounded-lg py-3 items-center border border-gray-300 active:bg-gray-50"
+            className="flex-1 rounded-lg py-3 items-center border border-gray-300 active:bg-gray-100"
             onPress={resetFlow}
           >
             <Text className="text-gray-700 font-inter-medium text-sm">
@@ -591,8 +591,8 @@ export default function ImportScreen() {
 
   // ===== STEP 3: Result =====
   return (
-    <View className="flex-1 bg-gray-50 items-center justify-center px-8">
-      <CheckCircle size={64} color="#10B981" />
+    <View className="flex-1 bg-gray-100 items-center justify-center px-8">
+      <CheckCircle size={64} color="#047857" />
       <Text className="text-gray-900 font-inter-bold text-xl mt-6">
         Importacion exitosa
       </Text>

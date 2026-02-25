@@ -127,7 +127,7 @@ export default function SettingsScreen() {
         : "Sincronizado";
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
+    <ScrollView className="flex-1 bg-gray-100">
       {/* Profile section */}
       <SectionHeader title="Perfil" />
       <View className="bg-white">
@@ -175,7 +175,7 @@ export default function SettingsScreen() {
           onPress={handleSyncNow}
           disabled={syncing}
         >
-          <RefreshCw size={18} color="#10B981" />
+          <RefreshCw size={18} color="#047857" />
           <Text className="ml-3 text-primary font-inter-bold text-sm">
             {syncing ? "Sincronizando..." : "Sincronizar ahora"}
           </Text>

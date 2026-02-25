@@ -13,10 +13,10 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/components/useColorScheme";
@@ -71,6 +71,7 @@ function RootLayoutNav() {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
@@ -106,6 +107,7 @@ function RootLayoutNav() {
   }, [loading, session]);
 
   useEffect(() => {
+    if (!rootNavigationState?.key) return;
     if (loading || checkingOnboarding) return;
 
     const firstSegment = (segments[0] as string) ?? "";
@@ -127,15 +129,9 @@ function RootLayoutNav() {
     if (!needsOnboarding && (inAuthGroup || inOnboarding)) {
       router.replace("/(tabs)");
     }
-  }, [session, loading, checkingOnboarding, needsOnboarding, segments, router]);
+  }, [session, loading, checkingOnboarding, needsOnboarding, segments, router, rootNavigationState?.key]);
 
-  if (loading || checkingOnboarding) {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#10B981" />
-      </View>
-    );
-  }
+  const isLoading = loading || checkingOnboarding;
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
@@ -172,6 +168,20 @@ function RootLayoutNav() {
           }}
         />
       </Stack>
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#047857" />
+        </View>
+      )}
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

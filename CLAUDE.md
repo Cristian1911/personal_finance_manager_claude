@@ -63,5 +63,5 @@
 - When piping `supabase gen types` to file, verify `export type Json =` header is intact
 
 ## Agent Context Workflow
-- Use `.claude/skills/codebase-context/skill.md` when starting work or after code edits.
+- Use `.claude/skills/codebase-context/SKILL.md` when starting work or after code edits.
 - Keep `docs/agent/PROJECT_CONTEXT.md` and `docs/agent/project_context.json` updated.
