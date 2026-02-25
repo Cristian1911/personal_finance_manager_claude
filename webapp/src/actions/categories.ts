@@ -189,7 +189,6 @@ export async function updateCategory(
     .from("categories")
     .update(parsed.data)
     .eq("id", id)
-    .eq("is_system", false)
     .select()
     .single();
 
@@ -242,5 +241,47 @@ export async function updateCategoryOrder(
   }
 
   revalidatePath("/categories");
+  return { success: true, data: undefined };
+}
+
+export async function getCategoryTransactionCount(
+  categoryId: string
+): Promise<ActionResult<number>> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("category_id", categoryId);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: count ?? 0 };
+}
+
+export async function reassignAndDeleteCategory(
+  id: string,
+  reassignToCategoryId?: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  // Reassign transactions if target provided
+  if (reassignToCategoryId) {
+    const { error: reassignError } = await supabase
+      .from("transactions")
+      .update({ category_id: reassignToCategoryId })
+      .eq("category_id", id);
+
+    if (reassignError) return { success: false, error: reassignError.message };
+  }
+
+  // Delete the category (cascade removes budgets)
+  const { error: deleteError } = await supabase
+    .from("categories")
+    .delete()
+    .eq("id", id);
+
+  if (deleteError) return { success: false, error: deleteError.message };
+
+  revalidatePath("/categories");
+  revalidatePath("/categories/manage");
   return { success: true, data: undefined };
 }
