@@ -11,18 +11,35 @@ import {
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  async function handleLogin() {
-    setLoading(true);
+  async function handleSignup() {
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    if (!email.trim() || !password || !confirmPassword) {
+      setError("Todos los campos son obligatorios");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
     });
@@ -30,6 +47,7 @@ export default function LoginScreen() {
     if (error) {
       setError(error.message);
     }
+    // On success, onAuthStateChange in auth.tsx handles redirect to (tabs)
 
     setLoading(false);
   }
@@ -41,10 +59,10 @@ export default function LoginScreen() {
     >
       <View className="flex-1 justify-center px-8">
         <Text className="text-3xl font-bold text-center text-gray-900 mb-2">
-          Bienvenido
+          Crear cuenta
         </Text>
         <Text className="text-base text-center text-gray-500 mb-10">
-          Inicia sesion en tu cuenta
+          Regístrate para empezar
         </Text>
 
         {error && (
@@ -54,7 +72,7 @@ export default function LoginScreen() {
         )}
 
         <Text className="text-sm font-medium text-gray-700 mb-1">
-          Correo electronico
+          Correo electrónico
         </Text>
         <TextInput
           className="border border-gray-300 rounded-lg px-4 py-3 mb-4 text-base text-gray-900 bg-gray-50"
@@ -69,24 +87,38 @@ export default function LoginScreen() {
         />
 
         <Text className="text-sm font-medium text-gray-700 mb-1">
-          Contrasena
+          Contraseña
         </Text>
         <TextInput
-          className="border border-gray-300 rounded-lg px-4 py-3 mb-6 text-base text-gray-900 bg-gray-50"
-          placeholder="Tu contrasena"
+          className="border border-gray-300 rounded-lg px-4 py-3 mb-4 text-base text-gray-900 bg-gray-50"
+          placeholder="Mínimo 6 caracteres"
           placeholderTextColor="#9CA3AF"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          autoComplete="password"
-          textContentType="password"
+          autoComplete="new-password"
+          textContentType="newPassword"
+        />
+
+        <Text className="text-sm font-medium text-gray-700 mb-1">
+          Confirmar contraseña
+        </Text>
+        <TextInput
+          className="border border-gray-300 rounded-lg px-4 py-3 mb-6 text-base text-gray-900 bg-gray-50"
+          placeholder="Repite tu contraseña"
+          placeholderTextColor="#9CA3AF"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+          autoComplete="new-password"
+          textContentType="newPassword"
         />
 
         <TouchableOpacity
           className={`rounded-lg py-3.5 items-center ${
             loading ? "bg-blue-400" : "bg-blue-600"
           }`}
-          onPress={handleLogin}
+          onPress={handleSignup}
           disabled={loading}
           activeOpacity={0.8}
         >
@@ -94,27 +126,18 @@ export default function LoginScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text className="text-white font-semibold text-base">
-              Iniciar sesion
+              Crear cuenta
             </Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          className="mt-4 items-center"
-          onPress={() => router.push("/(auth)/forgot-password")}
-        >
-          <Text className="text-sm text-blue-600 font-medium">
-            ¿Olvidaste tu contraseña?
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="mt-4 items-center"
-          onPress={() => router.push("/(auth)/signup")}
+          className="mt-6 items-center"
+          onPress={() => router.replace("/(auth)/login")}
         >
           <Text className="text-sm text-gray-500">
-            ¿No tienes cuenta?{" "}
-            <Text className="text-blue-600 font-medium">Regístrate</Text>
+            ¿Ya tienes cuenta?{" "}
+            <Text className="text-blue-600 font-medium">Inicia sesión</Text>
           </Text>
         </TouchableOpacity>
       </View>
