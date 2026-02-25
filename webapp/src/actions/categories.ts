@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { categorySchema } from "@/lib/validators/category";
 import type { ActionResult } from "@/types/actions";
-import type { Category, CategoryWithChildren, TransactionDirection } from "@/types/domain";
+import type { Category, CategoryWithChildren, CategoryWithBudget, TransactionDirection } from "@/types/domain";
 
 export async function getCategories(
   direction?: TransactionDirection
@@ -49,6 +49,70 @@ function buildCategoryTree(categories: Category[]): CategoryWithChildren[] {
     } else if (!cat.parent_id) {
       roots.push(node);
     }
+  }
+
+  return roots;
+}
+
+export async function getCategoriesWithBudgets(
+  direction?: TransactionDirection
+): Promise<ActionResult<CategoryWithBudget[]>> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("display_order", { ascending: true });
+
+  if (direction) {
+    query = query.or(`direction.eq.${direction},direction.is.null`);
+  }
+
+  const { data: categories, error } = await query;
+  if (error) return { success: false, error: error.message };
+
+  const { data: budgets } = await supabase
+    .from("budgets")
+    .select("category_id, amount, period")
+    .eq("period", "monthly");
+
+  const budgetByCategory = new Map<string, number>();
+  for (const b of budgets ?? []) {
+    budgetByCategory.set(b.category_id, Number(b.amount));
+  }
+
+  const allCategories = categories ?? [];
+  const tree = buildCategoryTreeWithBudgets(allCategories, budgetByCategory);
+  return { success: true, data: tree };
+}
+
+function buildCategoryTreeWithBudgets(
+  categories: Category[],
+  budgetByCategory: Map<string, number>
+): CategoryWithBudget[] {
+  const map = new Map<string, CategoryWithBudget>();
+  const roots: CategoryWithBudget[] = [];
+
+  for (const cat of categories) {
+    map.set(cat.id, { ...cat, children: [], childBudgetTotal: 0 });
+  }
+
+  for (const cat of categories) {
+    const node = map.get(cat.id)!;
+    if (cat.parent_id && map.has(cat.parent_id)) {
+      map.get(cat.parent_id)!.children.push(node);
+    } else if (!cat.parent_id) {
+      roots.push(node);
+    }
+  }
+
+  // Compute parent totals after tree is built
+  for (const root of roots) {
+    root.childBudgetTotal = root.children.reduce(
+      (sum, child) => sum + (budgetByCategory.get(child.id) ?? 0),
+      0
+    );
   }
 
   return roots;

@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T15:08:08.526752+00:00`
+- Generated (UTC): `2026-02-25T15:17:42.931542+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -127,7 +127,6 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `.claude/skills/codebase-context/SKILL.md`
 - `.claude/skills/codebase-context/references/model-strategy.md`
 - `CLAUDE.md`
-- `docs/plans/2026-02-25-category-management-plan.md`
 - `mobile/app/(auth)/forgot-password.tsx`
 - `mobile/app/(auth)/login.tsx`
 - `mobile/app/(auth)/reset-password.tsx`
@@ -144,7 +143,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile/package.json`
 - `mobile/tailwind.config.js`
 - `package.json`
+- `webapp/src/actions/categories.ts`
 - `webapp/src/app/globals.css`
+- `webapp/src/types/domain.ts`
 - `.nvmrc`
 
 ## Agent Playbook
