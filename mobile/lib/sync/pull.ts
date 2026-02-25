@@ -57,13 +57,6 @@ async function pullTable(
   if (lastSyncedAt) {
     query = query.gt("updated_at", lastSyncedAt);
   }
-  // Categories may not have updated_at, use created_at as fallback
-  if (table === "categories" && lastSyncedAt) {
-    query = supabase
-      .from(table)
-      .select("*")
-      .gt("created_at", lastSyncedAt);
-  }
 
   const { data, error } = await query.order("created_at", { ascending: true });
   if (error) throw new Error(`Pull ${table} failed: ${error.message}`);

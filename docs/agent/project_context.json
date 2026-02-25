@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-25T17:19:05.459194+00:00",
+  "generated_at_utc": "2026-02-25T17:36:19.196871+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -243,8 +243,9 @@
     }
   ],
   "recent_changes": [
-    ".dockerignore",
-    ".github/workflows/deploy.yml",
-    "webapp/Dockerfile"
+    ".claude/skills/codebase-context/scripts/build_context.py",
+    "mobile/app/(tabs)/index.tsx",
+    "mobile/lib/repositories/categories.ts",
+    "mobile/lib/sync/pull.ts"
   ]
 }
