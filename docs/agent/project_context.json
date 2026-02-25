@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-25T22:16:14.009762+00:00",
+  "generated_at_utc": "2026-02-25T22:18:36.570910+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -243,6 +243,6 @@
     }
   ],
   "recent_changes": [
-    "webapp/src/actions/charts.ts"
+    "webapp/src/actions/import-transactions.ts"
   ]
 }

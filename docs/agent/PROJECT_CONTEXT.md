@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T22:16:14.009762+00:00`
+- Generated (UTC): `2026-02-25T22:18:36.570910+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -124,7 +124,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `webapp/src/actions/charts.ts`
+- `webapp/src/actions/import-transactions.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

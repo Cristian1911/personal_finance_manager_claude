@@ -224,6 +224,7 @@ export async function importTransactions(
         if (cc.payment_due_date) {
           accountUpdate.payment_day = new Date(cc.payment_due_date).getUTCDate();
         }
+        if (cc.minimum_payment != null) accountUpdate.monthly_payment = cc.minimum_payment;
       } else if (meta.loanMetadata && isPrimaryCurrency) {
         const ln = meta.loanMetadata;
         if (ln.remaining_balance != null) accountUpdate.current_balance = ln.remaining_balance;
@@ -231,6 +232,7 @@ export async function importTransactions(
         if (ln.payment_due_date) {
           accountUpdate.payment_day = new Date(ln.payment_due_date).getUTCDate();
         }
+        if (ln.minimum_payment != null) accountUpdate.monthly_payment = ln.minimum_payment;
       } else if (!meta.creditCardMetadata && !meta.loanMetadata && meta.summary?.final_balance != null && isPrimaryCurrency) {
         accountUpdate.current_balance = meta.summary.final_balance;
       }
