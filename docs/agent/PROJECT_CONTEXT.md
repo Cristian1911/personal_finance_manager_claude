@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T17:52:16.801742+00:00`
+- Generated (UTC): `2026-02-25T18:01:03.235474+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,7 +13,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 413
+- Text files scanned: 414
 - TypeScript/React: 138
 - JSON: 116
 - TypeScript: 79
@@ -21,7 +21,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - Python: 19
 - SQL: 17
 - Shell: 9
-- YAML: 6
+- YAML: 7
 - JavaScript: 5
 - CSS: 2
 - TOML: 2
@@ -36,7 +36,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - .claude: 9 files
 - docs: 8 files
 - infra: 2 files
-- .github: 1 files
+- .github: 2 files
 
 ## Key Commands
 ### root_scripts
@@ -125,7 +125,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Recent Changes (git status)
 - `.github/workflows/deploy.yml`
-- `webapp/Dockerfile`
+- `.github/workflows/pr-build-images.yml`
+- `docs/agent/PROJECT_CONTEXT.md`
+- `docs/agent/project_context.json`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
