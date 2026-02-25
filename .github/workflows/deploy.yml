@@ -142,6 +142,8 @@ jobs:
           file: ./webapp/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest
+          secrets: |
+            npm_token=${{ secrets.NPM_TOKEN }}
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}

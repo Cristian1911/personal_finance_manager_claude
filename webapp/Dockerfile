@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM node:22-alpine AS base
 
 # Install pnpm
@@ -10,7 +11,14 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY webapp/package.json ./webapp/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
-RUN pnpm install --frozen-lockfile --filter webapp...
+RUN --mount=type=secret,id=npm_token \
+    set -eu; \
+    printf "registry=https://registry.npmjs.org/\n@types:registry=https://registry.npmjs.org/\nalways-auth=false\n" > .npmrc; \
+    if [ -s /run/secrets/npm_token ]; then \
+      token="$(cat /run/secrets/npm_token)"; \
+      printf "//registry.npmjs.org/:_authToken=%s\n" "$token" >> .npmrc; \
+    fi; \
+    pnpm install --frozen-lockfile --filter webapp...
 
 # --- Build ---
 FROM base AS builder
