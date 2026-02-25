@@ -248,9 +248,13 @@ export async function getCategoryTransactionCount(
   categoryId: string
 ): Promise<ActionResult<number>> {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autenticado" };
+
   const { count, error } = await supabase
     .from("transactions")
     .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
     .eq("category_id", categoryId);
 
   if (error) return { success: false, error: error.message };
@@ -262,18 +266,22 @@ export async function reassignAndDeleteCategory(
   reassignToCategoryId?: string
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autenticado" };
 
   // Reassign transactions if target provided
   if (reassignToCategoryId) {
     const { error: reassignError } = await supabase
       .from("transactions")
       .update({ category_id: reassignToCategoryId })
+      .eq("user_id", user.id)
       .eq("category_id", id);
 
     if (reassignError) return { success: false, error: reassignError.message };
   }
 
-  // Delete the category (cascade removes budgets)
+  // Note: Two-step operation (reassign then delete) is intentionally non-atomic.
+  // RLS enforces ownership on the category delete.
   const { error: deleteError } = await supabase
     .from("categories")
     .delete()
