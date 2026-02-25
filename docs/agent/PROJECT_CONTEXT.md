@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T15:26:57.826027+00:00`
+- Generated (UTC): `2026-02-25T15:35:48.722373+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,8 +13,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 409
-- TypeScript/React: 134
+- Text files scanned: 411
+- TypeScript/React: 136
 - JSON: 116
 - TypeScript: 79
 - Markdown: 20
@@ -28,7 +28,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Top-level Areas
 - mobile: 169 files
-- webapp: 157 files
+- webapp: 159 files
 - services: 21 files
 - supabase: 18 files
 - packages: 14 files
@@ -120,11 +120,12 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/page.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (372)
+- `webapp` -> `webapp` (382)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `webapp/src/actions/categories.ts`
+- `webapp/src/components/categories/category-form-modal.tsx`
+- `webapp/src/components/categories/delete-category-modal.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
