@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T17:36:19.196871+00:00`
+- Generated (UTC): `2026-02-25T17:47:43.833324+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -124,10 +124,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `.claude/skills/codebase-context/scripts/build_context.py`
-- `mobile/app/(tabs)/index.tsx`
-- `mobile/lib/repositories/categories.ts`
-- `mobile/lib/sync/pull.ts`
+- `webapp/Dockerfile`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
