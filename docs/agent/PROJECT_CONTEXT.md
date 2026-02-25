@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T22:09:02.321318+00:00`
+- Generated (UTC): `2026-02-25T22:11:08.382449+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,11 +13,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 415
+- Text files scanned: 416
 - TypeScript/React: 138
 - JSON: 116
 - TypeScript: 79
-- Markdown: 21
+- Markdown: 22
 - Python: 19
 - SQL: 17
 - Shell: 9
@@ -33,8 +33,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - supabase: 18 files
 - packages: 14 files
 - (root): 10 files
+- docs: 10 files
 - .claude: 9 files
-- docs: 9 files
 - infra: 2 files
 - .github: 2 files
 
@@ -124,7 +124,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `docs/plans/2026-02-25-debt-fixes-design.md`
+- `docs/plans/2026-02-25-debt-fixes-plan.md`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
