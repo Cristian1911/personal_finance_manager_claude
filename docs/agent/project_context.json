@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-25T18:01:03.235474+00:00",
+  "generated_at_utc": "2026-02-25T18:03:31.703588+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -243,9 +243,6 @@
     }
   ],
   "recent_changes": [
-    ".github/workflows/deploy.yml",
-    ".github/workflows/pr-build-images.yml",
-    "docs/agent/PROJECT_CONTEXT.md",
-    "docs/agent/project_context.json"
+    "webapp/Dockerfile"
   ]
 }

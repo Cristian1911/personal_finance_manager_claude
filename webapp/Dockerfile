@@ -18,7 +18,8 @@ RUN --mount=type=secret,id=npm_token \
       token="$(cat /run/secrets/npm_token)"; \
       printf "//registry.npmjs.org/:_authToken=%s\n" "$token" >> .npmrc; \
     fi; \
-    pnpm install --frozen-lockfile --filter webapp...
+    pnpm install --frozen-lockfile --filter webapp...; \
+    rm .npmrc
 
 # --- Build ---
 FROM base AS builder
