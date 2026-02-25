@@ -6,6 +6,10 @@ on:
     paths:
       - '.github/workflows/deploy.yml'
       - 'webapp/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - 'services/pdf_parser/**'
       - 'docker-compose.prod.yml'
       - 'infra/**'
@@ -75,7 +79,7 @@ jobs:
           parser_changed=false
           deploy_changed=false
 
-          if echo "$files" | grep -qE '^webapp/'; then
+          if echo "$files" | grep -qE '^(webapp/|packages/shared/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$)'; then
             webapp_changed=true
           fi
 
@@ -134,7 +138,8 @@ jobs:
       - name: Build & push webapp image
         uses: docker/build-push-action@v6
         with:
-          context: ./webapp
+          context: .
+          file: ./webapp/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest
           build-args: |

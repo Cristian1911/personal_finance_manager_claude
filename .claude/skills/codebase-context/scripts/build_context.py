@@ -12,7 +12,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Tuple, TypedDict
 
 
 IGNORE_DIRS = {
@@ -84,6 +84,43 @@ class Pattern:
     description: str
     path_regex: re.Pattern[str] | None = None
     content_regex: re.Pattern[str] | None = None
+
+
+class PatternSummary(TypedDict):
+    name: str
+    description: str
+    matched_files: int
+    examples: List[str]
+
+
+DependencyEdge = TypedDict(
+    "DependencyEdge",
+    {"from": str, "to": str, "count": int},
+)
+
+
+class Totals(TypedDict):
+    text_files_scanned: int
+    languages: Dict[str, int]
+
+
+class Commands(TypedDict):
+    root_scripts: Dict[str, str]
+    webapp_scripts: Dict[str, str]
+    mobile_scripts: Dict[str, str]
+
+
+class ProjectContext(TypedDict):
+    generated_at_utc: str
+    project_root: str
+    technologies: List[str]
+    totals: Totals
+    top_level_directories: Dict[str, int]
+    commands: Commands
+    patterns: List[PatternSummary]
+    entrypoints: List[str]
+    dependency_edges: List[DependencyEdge]
+    recent_changes: List[str]
 
 
 PATTERNS = [
@@ -224,7 +261,7 @@ def git_changed_files(root: Path) -> List[str]:
     return changed[:100]
 
 
-def build_context(project_root: Path) -> Dict[str, object]:
+def build_context(project_root: Path) -> ProjectContext:
     files = list(iter_files(project_root))
     language_counter: Counter[str] = Counter()
     top_level_counter: Counter[str] = Counter()
@@ -264,7 +301,7 @@ def build_context(project_root: Path) -> Dict[str, object]:
     web_scripts = read_package_scripts(project_root / "webapp/package.json")
     mobile_scripts = read_package_scripts(project_root / "mobile/package.json")
 
-    patterns_summary = []
+    patterns_summary: List[PatternSummary] = []
     lookup = {p.name: p.description for p in PATTERNS}
     for name, examples in sorted(pattern_files.items(), key=lambda x: len(x[1]), reverse=True):
         patterns_summary.append(
@@ -276,7 +313,7 @@ def build_context(project_root: Path) -> Dict[str, object]:
             }
         )
 
-    dep_summary = [
+    dep_summary: List[DependencyEdge] = [
         {"from": src, "to": dst, "count": count}
         for (src, dst), count in dependency_edges.most_common(20)
     ]
@@ -302,10 +339,10 @@ def build_context(project_root: Path) -> Dict[str, object]:
     }
 
 
-def render_markdown(context: Dict[str, object]) -> str:
-    totals = context["totals"]  # type: ignore[index]
-    lang_items = totals["languages"]  # type: ignore[index]
-    dir_items = context["top_level_directories"]  # type: ignore[index]
+def render_markdown(context: ProjectContext) -> str:
+    totals = context["totals"]
+    lang_items = totals["languages"]
+    dir_items = context["top_level_directories"]
 
     lines = []
     lines.append("# PROJECT_CONTEXT")
@@ -316,11 +353,11 @@ def render_markdown(context: Dict[str, object]) -> str:
     lines.append(f"- Project root: `{context['project_root']}`")
     lines.append("")
     lines.append("## Stack Snapshot")
-    for tech in context["technologies"]:  # type: ignore[index]
+    for tech in context["technologies"]:
         lines.append(f"- {tech}")
     lines.append("")
     lines.append("## File/Lang Distribution")
-    lines.append(f"- Text files scanned: {totals['text_files_scanned']}")  # type: ignore[index]
+    lines.append(f"- Text files scanned: {totals['text_files_scanned']}")
     for lang, count in list(lang_items.items())[:12]:
         lines.append(f"- {lang}: {count}")
     lines.append("")
@@ -329,7 +366,7 @@ def render_markdown(context: Dict[str, object]) -> str:
         lines.append(f"- {area}: {count} files")
     lines.append("")
     lines.append("## Key Commands")
-    commands = context["commands"]  # type: ignore[index]
+    commands = context["commands"]
     for scope, scripts in commands.items():
         if not scripts:
             continue
@@ -338,7 +375,7 @@ def render_markdown(context: Dict[str, object]) -> str:
             lines.append(f"- `{name}`: `{cmd}`")
     lines.append("")
     lines.append("## Patterns Detected")
-    for pat in context["patterns"]:  # type: ignore[index]
+    for pat in context["patterns"]:
         lines.append(
             f"- `{pat['name']}` ({pat['matched_files']} files): {pat['description']}"
         )
@@ -346,15 +383,15 @@ def render_markdown(context: Dict[str, object]) -> str:
             lines.append(f"  - e.g. `{ex}`")
     lines.append("")
     lines.append("## Entrypoints")
-    for path in context["entrypoints"][:30]:  # type: ignore[index]
+    for path in context["entrypoints"][:30]:
         lines.append(f"- `{path}`")
     lines.append("")
     lines.append("## Dependency Signals (Folder-level)")
-    for edge in context["dependency_edges"][:20]:  # type: ignore[index]
+    for edge in context["dependency_edges"][:20]:
         lines.append(f"- `{edge['from']}` -> `{edge['to']}` ({edge['count']})")
     lines.append("")
     lines.append("## Recent Changes (git status)")
-    changed = context["recent_changes"]  # type: ignore[index]
+    changed = context["recent_changes"]
     if changed:
         for path in changed[:30]:
             lines.append(f"- `{path}`")
@@ -397,7 +434,10 @@ def main() -> int:
 
     json_path = output_dir / "project_context.json"
     md_path = output_dir / "PROJECT_CONTEXT.md"
-    json_path.write_text(json.dumps(context, indent=2, ensure_ascii=True) + "\n")
+    json_path.write_text(
+        json.dumps(context, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     md_path.write_text(render_markdown(context), encoding="utf-8")
 
     print(f"Wrote {md_path}")
