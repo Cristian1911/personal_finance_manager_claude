@@ -8,6 +8,7 @@ import {
   Repeat2,
   Inbox,
   Settings,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,4 +33,5 @@ export const MAIN_NAV: NavItem[] = [
 
 export const BOTTOM_NAV: NavItem[] = [
   { title: "Configuración", href: "/settings", icon: Settings },
+  { title: "Analytics", href: "/settings/analytics", icon: BarChart3 },
 ];

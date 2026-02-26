@@ -364,6 +364,7 @@ const STRATEGY_LABELS: Record<PayoffStrategy, string> = {
 };
 
 const strategyChartConfig = {
+  baseline: { label: "Solo mínimo", color: "var(--chart-3)" },
   snowball: { label: "Bola de Nieve", color: "var(--chart-1)" },
   avalanche: { label: "Avalancha", color: "var(--chart-2)" },
 } satisfies ChartConfig;
@@ -386,13 +387,15 @@ function StrategiesTab({ accounts }: Props) {
   const chartData = useMemo(() => {
     if (!comparison) return [];
     const maxLen = Math.max(
+      comparison.baseline.timeline.length,
       comparison.snowball.timeline.length,
       comparison.avalanche.timeline.length
     );
-    const data: { month: string; snowball: number; avalanche: number }[] = [];
+    const data: { month: string; baseline: number; snowball: number; avalanche: number }[] = [];
     for (let i = 0; i < maxLen; i++) {
       data.push({
         month: `${i + 1}`,
+        baseline: comparison.baseline.timeline[i]?.totalBalance ?? 0,
         snowball: comparison.snowball.timeline[i]?.totalBalance ?? 0,
         avalanche: comparison.avalanche.timeline[i]?.totalBalance ?? 0,
       });
@@ -558,6 +561,10 @@ function StrategiesTab({ accounts }: Props) {
                 >
                   <AreaChart data={chartData} accessibilityLayer>
                     <defs>
+                      <linearGradient id="fillBaseline" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--color-baseline)" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="var(--color-baseline)" stopOpacity={0.02} />
+                      </linearGradient>
                       <linearGradient id="fillSnowball" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--color-snowball)" stopOpacity={0.3} />
                         <stop offset="95%" stopColor="var(--color-snowball)" stopOpacity={0.05} />
@@ -594,11 +601,16 @@ function StrategiesTab({ accounts }: Props) {
                     <ChartTooltip
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
-                        const d = payload[0].payload as { month: string; snowball: number; avalanche: number };
+                        const d = payload[0].payload as { month: string; baseline: number; snowball: number; avalanche: number };
                         return (
                           <div className="rounded-lg border bg-background p-2.5 shadow-sm text-xs">
                             <p className="font-medium mb-1.5">Mes {d.month}</p>
                             <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-baseline)" }} />
+                                <span className="text-muted-foreground">Solo mínimo:</span>
+                                <span className="font-medium ml-auto">{formatCurrency(d.baseline)}</span>
+                              </div>
                               <div className="flex items-center gap-2">
                                 <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-snowball)" }} />
                                 <span className="text-muted-foreground">Bola de Nieve:</span>
@@ -615,6 +627,7 @@ function StrategiesTab({ accounts }: Props) {
                       }}
                     />
                     <ChartLegend content={<ChartLegendContent />} />
+                    <Area type="monotone" dataKey="baseline" stroke="var(--color-baseline)" fill="url(#fillBaseline)" strokeWidth={1.5} strokeDasharray="4 4" />
                     <Area type="monotone" dataKey="snowball" stroke="var(--color-snowball)" fill="url(#fillSnowball)" strokeWidth={2} />
                     <Area type="monotone" dataKey="avalanche" stroke="var(--color-avalanche)" fill="url(#fillAvalanche)" strokeWidth={2} />
                   </AreaChart>

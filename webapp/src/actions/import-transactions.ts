@@ -7,6 +7,54 @@ import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { computeSnapshotDiffs } from "@venti5/shared";
 import type { ActionResult } from "@/types/actions";
 import type { ImportResult, AccountUpdateResult } from "@/types/import";
+import { trackProductEvent } from "@/actions/product-events";
+
+type DebtKind = "credit_card" | "loan";
+
+const MIN_EA_RATE: Record<DebtKind, number> = {
+  credit_card: 10,
+  loan: 3,
+};
+
+const MAX_EA_RATE = 150;
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function mvToEaPercent(monthlyPercent: number): number {
+  return round2((((1 + monthlyPercent / 100) ** 12) - 1) * 100);
+}
+
+function sanitizeEaRate(
+  rawRate: number | null | undefined,
+  kind: DebtKind,
+  details: string[],
+  accountId: string,
+  label: string
+): number | null {
+  if (rawRate == null || !Number.isFinite(rawRate)) return null;
+
+  let rate = rawRate;
+
+  // Heuristic: rates in the 0.5%-5% range are often monthly (M.V.) parsed as annual.
+  if (rate >= 0.5 && rate <= 5) {
+    const converted = mvToEaPercent(rate);
+    details.push(
+      `Cuenta ${accountId}: ${label} ${rate}% parece M.V.; convertido a ${converted}% E.A.`
+    );
+    rate = converted;
+  }
+
+  if (rate < MIN_EA_RATE[kind] || rate > MAX_EA_RATE) {
+    details.push(
+      `Cuenta ${accountId}: ${label} ${rate}% E.A. fuera de rango (${MIN_EA_RATE[kind]}%-${MAX_EA_RATE}%). Se ignora.`
+    );
+    return null;
+  }
+
+  return round2(rate);
+}
 
 export async function importTransactions(
   _prevState: ActionResult<ImportResult>,
@@ -28,6 +76,14 @@ export async function importTransactions(
   }
 
   if (!parsed.success) {
+    await trackProductEvent({
+      event_name: "import_completed",
+      flow: "import",
+      step: "persist",
+      entry_point: "cta",
+      success: false,
+      error_code: "invalid_payload",
+    });
     return { success: false, error: parsed.error.issues[0].message };
   }
 
@@ -87,7 +143,7 @@ export async function importTransactions(
     const uniqueAccountIds = [...new Set(statementMeta.map((m) => m.accountId))];
     const { data: accountRows } = await supabase
       .from("accounts")
-      .select("id, name, currency_code, currency_balances")
+      .select("id, name, currency_code, currency_balances, account_type")
       .in("id", uniqueAccountIds);
     const accountMap = new Map(
       (accountRows ?? []).map((a) => [a.id, a])
@@ -109,6 +165,35 @@ export async function importTransactions(
     }
 
     for (const meta of statementMeta) {
+      const normalizedCcInterestRate = sanitizeEaRate(
+        meta.creditCardMetadata?.interest_rate,
+        "credit_card",
+        details,
+        meta.accountId,
+        "tasa de interés"
+      );
+      const normalizedCcLateInterestRate = sanitizeEaRate(
+        meta.creditCardMetadata?.late_interest_rate,
+        "credit_card",
+        details,
+        meta.accountId,
+        "tasa de mora"
+      );
+      const normalizedLoanInterestRate = sanitizeEaRate(
+        meta.loanMetadata?.interest_rate,
+        "loan",
+        details,
+        meta.accountId,
+        "tasa de interés"
+      );
+      const normalizedLoanLateInterestRate = sanitizeEaRate(
+        meta.loanMetadata?.late_interest_rate,
+        "loan",
+        details,
+        meta.accountId,
+        "tasa de mora"
+      );
+
       // Fetch previous snapshot for this account + currency
       const { data: prevSnapshot } = await supabase
         .from("statement_snapshots")
@@ -133,8 +218,9 @@ export async function importTransactions(
         interest_charged: meta.summary?.interest_charged ?? null,
         credit_limit: meta.creditCardMetadata?.credit_limit ?? null,
         available_credit: meta.creditCardMetadata?.available_credit ?? null,
-        interest_rate: meta.creditCardMetadata?.interest_rate ?? meta.loanMetadata?.interest_rate ?? null,
-        late_interest_rate: meta.creditCardMetadata?.late_interest_rate ?? meta.loanMetadata?.late_interest_rate ?? null,
+        interest_rate: normalizedCcInterestRate ?? normalizedLoanInterestRate ?? null,
+        late_interest_rate:
+          normalizedCcLateInterestRate ?? normalizedLoanLateInterestRate ?? null,
         total_payment_due: meta.creditCardMetadata?.total_payment_due ?? meta.loanMetadata?.total_payment_due ?? null,
         minimum_payment: meta.creditCardMetadata?.minimum_payment ?? meta.loanMetadata?.minimum_payment ?? null,
         payment_due_date: meta.creditCardMetadata?.payment_due_date ?? meta.loanMetadata?.payment_due_date ?? null,
@@ -180,7 +266,7 @@ export async function importTransactions(
         const cc = meta.creditCardMetadata;
         currencyEntry.credit_limit = cc.credit_limit ?? null;
         currencyEntry.available_balance = cc.available_credit ?? null;
-        currencyEntry.interest_rate = cc.interest_rate ?? null;
+        currencyEntry.interest_rate = normalizedCcInterestRate;
         currencyEntry.minimum_payment = cc.minimum_payment ?? null;
         currencyEntry.total_payment_due = cc.total_payment_due ?? null;
         if (cc.total_payment_due != null) {
@@ -193,7 +279,7 @@ export async function importTransactions(
       } else if (meta.loanMetadata) {
         const ln = meta.loanMetadata;
         currencyEntry.current_balance = ln.remaining_balance ?? null;
-        currencyEntry.interest_rate = ln.interest_rate ?? null;
+        currencyEntry.interest_rate = normalizedLoanInterestRate;
         currencyEntry.total_payment_due = ln.total_payment_due ?? null;
       } else if (meta.summary?.final_balance != null) {
         currencyEntry.current_balance = meta.summary.final_balance;
@@ -214,7 +300,9 @@ export async function importTransactions(
       if (meta.creditCardMetadata && isPrimaryCurrency) {
         const cc = meta.creditCardMetadata;
         if (cc.credit_limit != null) accountUpdate.credit_limit = cc.credit_limit;
-        if (cc.interest_rate != null) accountUpdate.interest_rate = cc.interest_rate;
+        if (normalizedCcInterestRate != null) {
+          accountUpdate.interest_rate = normalizedCcInterestRate;
+        }
         if (cc.total_payment_due != null) {
           accountUpdate.current_balance = cc.total_payment_due;
         } else if (cc.credit_limit != null && cc.available_credit != null) {
@@ -224,13 +312,17 @@ export async function importTransactions(
         if (cc.payment_due_date) {
           accountUpdate.payment_day = new Date(cc.payment_due_date).getUTCDate();
         }
+        if (cc.minimum_payment != null) accountUpdate.monthly_payment = cc.minimum_payment;
       } else if (meta.loanMetadata && isPrimaryCurrency) {
         const ln = meta.loanMetadata;
         if (ln.remaining_balance != null) accountUpdate.current_balance = ln.remaining_balance;
-        if (ln.interest_rate != null) accountUpdate.interest_rate = ln.interest_rate;
+        if (normalizedLoanInterestRate != null) {
+          accountUpdate.interest_rate = normalizedLoanInterestRate;
+        }
         if (ln.payment_due_date) {
           accountUpdate.payment_day = new Date(ln.payment_due_date).getUTCDate();
         }
+        if (ln.minimum_payment != null) accountUpdate.monthly_payment = ln.minimum_payment;
       } else if (!meta.creditCardMetadata && !meta.loanMetadata && meta.summary?.final_balance != null && isPrimaryCurrency) {
         accountUpdate.current_balance = meta.summary.final_balance;
       }
@@ -259,6 +351,21 @@ export async function importTransactions(
   revalidatePath("/dashboard");
   revalidatePath("/accounts");
   revalidatePath("/deudas");
+
+  await trackProductEvent({
+    event_name: "import_completed",
+    flow: "import",
+    step: "persist",
+    entry_point: "cta",
+    success: true,
+    metadata: {
+      imported,
+      skipped,
+      errors,
+      account_updates: accountUpdates.length,
+      statement_meta_count: statementMeta?.length ?? 0,
+    },
+  });
 
   return {
     success: true,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { finishOnboarding } from "@/actions/onboarding";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, ArrowRight, ArrowLeft, Target, Wallet, PiggyBank, TrendingUp, CheckCircle2 } from "lucide-react";
+import { trackClientEvent } from "@/lib/utils/analytics";
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -29,8 +30,20 @@ export default function OnboardingPage() {
     const [accountName, setAccountName] = useState("");
     const [accountType, setAccountType] = useState("CHECKING");
     const [balance, setBalance] = useState("");
+    const startedAtRef = useRef<number>(Date.now());
 
     const totalSteps = 4;
+
+    useEffect(() => {
+        void trackClientEvent({
+            event_name: "onboarding_started",
+            flow: "onboarding",
+            step: "step_1",
+            entry_point: "redirect",
+            success: true,
+            metadata: { step_number: 1, total_steps: totalSteps },
+        });
+    }, []);
 
     const nextStep = () => {
         // Basic validation
@@ -46,6 +59,14 @@ export default function OnboardingPage() {
             toast.error("Ingresa tu nombre.");
             return;
         }
+        void trackClientEvent({
+            event_name: "onboarding_step_completed",
+            flow: "onboarding",
+            step: `step_${step}`,
+            entry_point: "cta",
+            success: true,
+            metadata: { step_number: step, total_steps: totalSteps },
+        });
         setStep((prev) => Math.min(prev + 1, totalSteps));
     };
 
@@ -76,11 +97,29 @@ export default function OnboardingPage() {
                 }
             );
             toast.success("Configuracion completada");
+            void trackClientEvent({
+                event_name: "onboarding_completed",
+                flow: "onboarding",
+                step: "completed",
+                entry_point: "cta",
+                success: true,
+                duration_ms: Date.now() - startedAtRef.current,
+                metadata: { total_steps: totalSteps },
+            });
             setStep(5);
             setTimeout(() => {
                 router.push("/dashboard");
             }, 1500);
         } catch (error) {
+            void trackClientEvent({
+                event_name: "onboarding_completed",
+                flow: "onboarding",
+                step: "completed",
+                entry_point: "cta",
+                success: false,
+                duration_ms: Date.now() - startedAtRef.current,
+                error_code: "finish_onboarding_failed",
+            });
             toast.error(error instanceof Error ? error.message : "Ocurrio un error inesperado");
         } finally {
             setLoading(false);

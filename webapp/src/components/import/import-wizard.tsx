@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import type { Account, CategoryWithChildren } from "@/types/domain";
 import type {
@@ -12,6 +12,7 @@ import { StepUpload } from "./step-upload";
 import { StepReview } from "./step-review";
 import { StepConfirm } from "./step-confirm";
 import { StepResults } from "./step-results";
+import { trackClientEvent } from "@/lib/utils/analytics";
 
 type Step = "upload" | "review" | "confirm" | "results";
 
@@ -36,6 +37,16 @@ export function ImportWizard({
   const [accountsList, setAccountsList] = useState<Account[]>(accounts);
 
   const currentIndex = STEPS.findIndex((s) => s.key === step);
+
+  useEffect(() => {
+    void trackClientEvent({
+      event_name: "import_flow_opened",
+      flow: "import",
+      step: "upload",
+      entry_point: "cta",
+      success: true,
+    });
+  }, []);
 
   function autoMatchAccounts(
     result: ParseResponse,
@@ -94,6 +105,17 @@ export function ImportWizard({
 
   function handleReviewConfirm(updatedMappings: StatementAccountMapping[]) {
     setMappings(updatedMappings);
+    void trackClientEvent({
+      event_name: "import_account_mapping_completed",
+      flow: "import",
+      step: "review",
+      entry_point: "cta",
+      success: true,
+      metadata: {
+        statements_count: updatedMappings.length,
+        auto_matched_count: updatedMappings.filter((m) => m.autoMatched).length,
+      },
+    });
     setStep("confirm");
   }
 

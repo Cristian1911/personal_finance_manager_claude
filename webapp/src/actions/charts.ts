@@ -128,7 +128,7 @@ export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflo
   const target = parseMonth(month);
   const { data: transactions } = await supabase
     .from("transactions")
-    .select("transaction_date, amount, direction")
+    .select("transaction_date, amount, direction, accounts!account_id(account_type)")
     .eq("is_excluded", false)
     .gte("transaction_date", monthsBeforeStart(target, 5))
     .lte("transaction_date", monthEndStr(target))
@@ -146,11 +146,15 @@ export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflo
     }
 
     const entry = map.get(month)!;
-    if (tx.direction === "INFLOW") {
+    const acctType = (tx.accounts as { account_type: string } | null)?.account_type;
+    const isDebtAccount = acctType === "CREDIT_CARD" || acctType === "LOAN";
+
+    if (tx.direction === "INFLOW" && !isDebtAccount) {
       entry.income += tx.amount;
-    } else {
+    } else if (tx.direction === "OUTFLOW") {
       entry.expenses += tx.amount;
     }
+    // Debt INFLOW is neither income nor expense in this context
   }
 
   return Array.from(map.entries())
@@ -222,7 +226,7 @@ export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
   const target = parseMonth(month);
   const { data: transactions } = await supabase
     .from("transactions")
-    .select("amount, direction")
+    .select("amount, direction, accounts!account_id(account_type)")
     .eq("is_excluded", false)
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target));
@@ -232,8 +236,10 @@ export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
   let income = 0;
   let expenses = 0;
   for (const tx of transactions) {
-    if (tx.direction === "INFLOW") income += tx.amount;
-    else expenses += tx.amount;
+    const acctType = (tx.accounts as { account_type: string } | null)?.account_type;
+    const isDebtAccount = acctType === "CREDIT_CARD" || acctType === "LOAN";
+    if (tx.direction === "INFLOW" && !isDebtAccount) income += tx.amount;
+    else if (tx.direction === "OUTFLOW") expenses += tx.amount;
   }
 
   return { income, expenses };
@@ -264,7 +270,7 @@ export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]>
 
   const { data: transactions } = await supabase
     .from("transactions")
-    .select("transaction_date, amount, direction")
+    .select("transaction_date, amount, direction, accounts!account_id(account_type)")
     .eq("is_excluded", false)
     .gte("transaction_date", startStr)
     .lte("transaction_date", endStr)
@@ -276,11 +282,15 @@ export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]>
 
   for (const tx of transactions) {
     const day = map.get(tx.transaction_date) ?? { income: 0, expenses: 0 };
-    if (tx.direction === "INFLOW") {
+    const acctType = (tx.accounts as { account_type: string } | null)?.account_type;
+    const isDebtAccount = acctType === "CREDIT_CARD" || acctType === "LOAN";
+
+    if (tx.direction === "INFLOW" && !isDebtAccount) {
       day.income += tx.amount;
-    } else {
+    } else if (tx.direction === "OUTFLOW") {
       day.expenses += tx.amount;
     }
+    // Debt INFLOW is neither income nor expense in this context
     map.set(tx.transaction_date, day);
   }
 

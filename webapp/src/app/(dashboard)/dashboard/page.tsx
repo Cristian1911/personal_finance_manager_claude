@@ -11,8 +11,21 @@ import {
   monthEndStr,
   formatMonthLabel,
 } from "@/lib/utils/date";
-import { ArrowDownLeft, ArrowUpRight, Landmark } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownLeft,
+  ArrowRight,
+  ArrowUpRight,
+  FileUp,
+  Landmark,
+  Sparkles,
+  Tags,
+  Target,
+  TrendingDown,
+  WalletCards,
+} from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   getCategorySpending,
   getMonthlyCashflow,
@@ -34,6 +47,7 @@ import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-card";
 import { computeDebtBalance } from "@venti5/shared";
+import { trackProductEvent } from "@/actions/product-events";
 
 export default async function DashboardPage({
   searchParams,
@@ -68,10 +82,16 @@ export default async function DashboardPage({
     .order("created_at", { ascending: false })
     .limit(5);
 
+  const { count: uncategorizedCount } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .is("category_id", null)
+    .eq("is_excluded", false);
+
   // Fetch selected month's transactions for summary (exclude excluded ones)
   const { data: monthTransactions } = await supabase
     .from("transactions")
-    .select("amount, direction")
+    .select("amount, direction, account_id")
     .eq("is_excluded", false)
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target));
@@ -104,6 +124,7 @@ export default async function DashboardPage({
 
   const allAccounts = accounts ?? [];
   const monthTx = monthTransactions ?? [];
+  const starterMode = allAccounts.length > 0 && (recentTransactions?.length ?? 0) === 0;
 
   // Calculate metrics
   const assetAccounts = allAccounts.filter(
@@ -113,6 +134,8 @@ export default async function DashboardPage({
     (a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN"
   );
 
+  const debtAccountIds = new Set(liabilityAccounts.map((a) => a.id));
+
   const totalAssets = assetAccounts.reduce((sum, a) => sum + a.current_balance, 0);
   const totalLiabilities = liabilityAccounts.reduce(
     (sum, a) => sum + computeDebtBalance(a),
@@ -121,11 +144,15 @@ export default async function DashboardPage({
   const netWorth = totalAssets - totalLiabilities;
 
   const monthIncome = monthTx
-    .filter((t) => t.direction === "INFLOW")
+    .filter((t) => t.direction === "INFLOW" && !debtAccountIds.has(t.account_id))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const monthExpenses = monthTx
     .filter((t) => t.direction === "OUTFLOW")
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const monthDebtPayments = monthTx
+    .filter((t) => t.direction === "INFLOW" && debtAccountIds.has(t.account_id))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const savingsRate =
@@ -167,6 +194,118 @@ export default async function DashboardPage({
     totalLiabilities > 0
       ? `Activos: ${formatCurrency(totalAssets)} | Deudas: ${formatCurrency(totalLiabilities)}`
       : undefined;
+  const monthNet = monthIncome - monthExpenses;
+  const budgetConfigured = budgetData.totalTarget > 0;
+  const budgetPressureHigh = budgetConfigured && budgetData.progress >= 90;
+  const cashflowPressure = monthIncome > 0 && monthExpenses > monthIncome;
+  const uncategorizedTotal = uncategorizedCount ?? 0;
+
+  await trackProductEvent({
+    event_name: "dashboard_viewed",
+    flow: "dashboard",
+    step: "main",
+    entry_point: "direct",
+    success: true,
+    metadata: {
+      starter_mode: starterMode,
+      month: monthLabel,
+      uncategorized_count: uncategorizedTotal,
+    },
+  });
+
+  if (!starterMode && (recentTransactions?.length ?? 0) > 0) {
+    await trackProductEvent({
+      event_name: "first_financial_insight_rendered",
+      flow: "dashboard",
+      step: "main",
+      entry_point: "direct",
+      success: true,
+      metadata: {
+        recent_transactions_count: recentTransactions?.length ?? 0,
+        accounts_count: allAccounts.length,
+      },
+    });
+  }
+
+  if (starterMode) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Tu base ya está lista. Falta activar tu flujo.</p>
+          </div>
+        </div>
+
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Primeros pasos recomendados
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            <Link
+              href="/import"
+              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+            >
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <FileUp className="h-4 w-4 text-primary" />
+                Importar extracto PDF
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Carga tus movimientos reales para activar métricas, categorías y alertas.
+              </p>
+            </Link>
+            <Link
+              href="/transactions"
+              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+            >
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <WalletCards className="h-4 w-4 text-primary" />
+                Registrar primer movimiento
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Si aún no tienes PDF, crea movimientos manuales para empezar.
+              </p>
+            </Link>
+            <Link
+              href="/categorizar"
+              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+            >
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <Tags className="h-4 w-4 text-primary" />
+                Definir categorías base
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Etiqueta tus primeras compras para entrenar sugerencias automáticas.
+              </p>
+            </Link>
+            <Link
+              href="/categories"
+              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+            >
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <Landmark className="h-4 w-4 text-primary" />
+                Crear presupuesto mensual
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Establece límites desde el inicio para detectar desvíos temprano.
+              </p>
+            </Link>
+          </CardContent>
+          <CardContent className="pt-0">
+            <Link href="/import">
+              <Button className="gap-2">
+                Empezar ahora
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -244,6 +383,123 @@ export default async function DashboardPage({
           />
         )}
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className={cashflowPressure ? "border-red-500/30" : "border-emerald-500/30"}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Control de flujo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-2xl font-semibold">
+              {monthNet >= 0 ? "+" : "-"}
+              {formatCurrency(Math.abs(monthNet))}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {cashflowPressure
+                ? "Tus gastos van por encima de tus ingresos este mes."
+                : "Tu flujo mensual está positivo."}
+            </p>
+            <Link href="/transactions" className="text-xs text-primary hover:underline">
+              Revisar salidas mayores
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className={budgetPressureHigh ? "border-amber-500/30" : undefined}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Ejecución de presupuesto</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-2xl font-semibold">
+              {budgetConfigured ? `${Math.round(budgetData.progress)}%` : "Sin meta"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {budgetConfigured
+                ? budgetPressureHigh
+                  ? "Estás cerca del límite mensual."
+                  : "Vas dentro de un ritmo controlado."
+                : "Configura una meta para anticipar desvíos."}
+            </p>
+            <Link href="/categories" className="text-xs text-primary hover:underline">
+              {budgetConfigured ? "Ajustar categorías y metas" : "Configurar presupuesto"}
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className={uncategorizedTotal > 0 ? "border-blue-500/30" : undefined}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Calidad de datos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-2xl font-semibold">{uncategorizedTotal}</p>
+            <p className="text-sm text-muted-foreground">
+              {uncategorizedTotal > 0
+                ? "Transacciones sin categoría impactan reportes y alertas."
+                : "Todo está categorizado y listo para análisis."}
+            </p>
+            <Link href="/categorizar" className="text-xs text-primary hover:underline">
+              {uncategorizedTotal > 0 ? "Limpiar pendientes" : "Abrir inbox de categorías"}
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg">Plan de acción</CardTitle>
+          <span className="text-xs text-muted-foreground">
+            Prioriza estas tareas para mejorar resultados
+          </span>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-3">
+          <Link
+            href="/categorizar"
+            className="rounded-lg border p-3 hover:bg-accent/50 transition-colors"
+          >
+            <div className="mb-2 flex items-center gap-2">
+              <Tags className="h-4 w-4 text-primary" />
+              <p className="text-sm font-medium">Ordenar categorías</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {uncategorizedTotal > 0
+                ? `${uncategorizedTotal} pendientes para mejorar tus insights`
+                : "Sin pendientes actuales"}
+            </p>
+          </Link>
+          <Link
+            href="/deudas"
+            className="rounded-lg border p-3 hover:bg-accent/50 transition-colors"
+          >
+            <div className="mb-2 flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-primary" />
+              <p className="text-sm font-medium">Reducir costo de deuda</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {totalLiabilities > 0
+                ? `Saldo activo: ${formatCurrency(totalLiabilities)}`
+                : "No tienes deudas registradas"}
+            </p>
+          </Link>
+          <Link
+            href="/categories"
+            className="rounded-lg border p-3 hover:bg-accent/50 transition-colors"
+          >
+            <div className="mb-2 flex items-center gap-2">
+              {budgetPressureHigh ? (
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              ) : (
+                <Target className="h-4 w-4 text-primary" />
+              )}
+              <p className="text-sm font-medium">Corregir ritmo mensual</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {budgetConfigured
+                ? `Consumo actual: ${Math.round(budgetData.progress)}% del presupuesto`
+                : "Sin presupuesto definido"}
+            </p>
+          </Link>
+        </CardContent>
+      </Card>
 
       {/* Charts */}
       <div>

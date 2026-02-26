@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Lightbulb, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryPickerDialog } from "@/components/categorize/category-picker-dialog";
 import { formatCurrency } from "@/lib/utils/currency";
 import { getCategoryName } from "@venti5/shared";
 import type { TransactionWithRelations, CategoryWithChildren, CurrencyCode } from "@/types/domain";
@@ -14,6 +14,7 @@ interface InboxTransactionRowProps {
   transaction: TransactionWithRelations;
   suggestion: CategorizationResult | null;
   categories: CategoryWithChildren[];
+  similarCount?: number;
   isSelected: boolean;
   onToggleSelect: () => void;
   onCategorize: (categoryId: string) => void;
@@ -24,6 +25,7 @@ export function InboxTransactionRow({
   transaction: tx,
   suggestion,
   categories,
+  similarCount = 0,
   isSelected,
   onToggleSelect,
   onCategorize,
@@ -85,6 +87,11 @@ export function InboxTransactionRow({
               {tx.account.name}
             </span>
           )}
+          {similarCount > 1 && (
+            <span className="rounded-full border px-2 py-0.5 text-[11px]">
+              {similarCount} similares
+            </span>
+          )}
         </div>
 
         {/* Suggestion or manual pick */}
@@ -108,7 +115,7 @@ export function InboxTransactionRow({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <CategoryCombobox
+              <CategoryPickerDialog
                 categories={categories}
                 value={manualValue}
                 onValueChange={(id) => {
@@ -117,7 +124,7 @@ export function InboxTransactionRow({
                 }}
                 direction={tx.direction}
                 placeholder="Elegir categoría"
-                triggerClassName="h-7 text-xs px-2.5 w-[180px]"
+                triggerClassName="h-8 text-xs px-2.5 w-[240px]"
               />
             </div>
           )}

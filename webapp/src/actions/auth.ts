@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { loginSchema, signupSchema, forgotPasswordSchema, resetPasswordSchema } from "@/lib/validators/auth";
+import { trackProductEvent } from "@/actions/product-events";
 
 export type AuthActionResult = {
   error?: string;
@@ -19,6 +20,14 @@ export async function signIn(
   });
 
   if (!parsed.success) {
+    await trackProductEvent({
+      event_name: "auth_login_completed",
+      flow: "onboarding",
+      step: "login",
+      entry_point: "cta",
+      success: false,
+      error_code: "invalid_payload",
+    });
     return { error: parsed.error.issues[0].message };
   }
 
@@ -26,9 +35,26 @@ export async function signIn(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
+    await trackProductEvent({
+      event_name: "auth_login_completed",
+      flow: "onboarding",
+      step: "login",
+      entry_point: "cta",
+      success: false,
+      error_code: "login_failed",
+      metadata: { email: parsed.data.email },
+    });
     return { error: error.message };
   }
 
+  await trackProductEvent({
+    event_name: "auth_login_completed",
+    flow: "onboarding",
+    step: "login",
+    entry_point: "cta",
+    success: true,
+    metadata: { email: parsed.data.email },
+  });
   redirect("/dashboard");
 }
 
@@ -43,6 +69,14 @@ export async function signUp(
   });
 
   if (!parsed.success) {
+    await trackProductEvent({
+      event_name: "auth_signup_completed",
+      flow: "onboarding",
+      step: "signup",
+      entry_point: "cta",
+      success: false,
+      error_code: "invalid_payload",
+    });
     return { error: parsed.error.issues[0].message };
   }
 
@@ -57,9 +91,26 @@ export async function signUp(
   });
 
   if (error) {
+    await trackProductEvent({
+      event_name: "auth_signup_completed",
+      flow: "onboarding",
+      step: "signup",
+      entry_point: "cta",
+      success: false,
+      error_code: "signup_failed",
+      metadata: { email: parsed.data.email },
+    });
     return { error: error.message };
   }
 
+  await trackProductEvent({
+    event_name: "auth_signup_completed",
+    flow: "onboarding",
+    step: "signup",
+    entry_point: "cta",
+    success: true,
+    metadata: { email: parsed.data.email },
+  });
   return { success: true };
 }
 

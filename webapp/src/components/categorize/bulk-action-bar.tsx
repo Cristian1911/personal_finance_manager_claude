@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryPickerDialog } from "@/components/categorize/category-picker-dialog";
 import type { CategoryWithChildren } from "@/types/domain";
 
 interface BulkActionBarProps {
@@ -35,7 +35,7 @@ export function BulkActionBar({
 
       <div className="h-5 w-px bg-border" />
 
-      <CategoryCombobox
+      <CategoryPickerDialog
         categories={categories}
         value={value}
         onValueChange={(id) => {
@@ -46,7 +46,7 @@ export function BulkActionBar({
           }
         }}
         placeholder="Asignar categoría"
-        triggerClassName="h-8 text-sm w-[200px]"
+        triggerClassName="h-8 text-sm w-[240px]"
       />
 
       <Button

@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ParseResponse } from "@/types/import";
+import { trackClientEvent } from "@/lib/utils/analytics";
 
 export function StepUpload({
   onParsed,
@@ -46,6 +47,17 @@ export function StepUpload({
       return;
     }
     setFile(f);
+    void trackClientEvent({
+      event_name: "import_file_selected",
+      flow: "import",
+      step: "upload",
+      entry_point: "cta",
+      success: true,
+      metadata: {
+        filename: f.name,
+        file_size_bytes: f.size,
+      },
+    });
   }
 
   async function handleUpload() {
@@ -60,6 +72,15 @@ export function StepUpload({
     }
 
     try {
+      void trackClientEvent({
+        event_name: "import_parse_requested",
+        flow: "import",
+        step: "parse",
+        entry_point: "cta",
+        success: true,
+        metadata: { has_password: !!password },
+      });
+
       const res = await fetch("/api/parse-statement", {
         method: "POST",
         body: formData,
@@ -69,9 +90,25 @@ export function StepUpload({
 
       if (!res.ok) {
         if (data.errorType === "unsupported_format") {
+          void trackClientEvent({
+            event_name: "import_parse_failed",
+            flow: "import",
+            step: "parse",
+            entry_point: "cta",
+            success: false,
+            error_code: "unsupported_format",
+          });
           setUnsupportedFile(file);
           setSavedForSupport(false);
         } else {
+          void trackClientEvent({
+            event_name: "import_parse_failed",
+            flow: "import",
+            step: "parse",
+            entry_point: "cta",
+            success: false,
+            error_code: "parse_api_error",
+          });
           setError(data.error || "Error procesando el PDF");
         }
         setLoading(false);
@@ -88,6 +125,14 @@ export function StepUpload({
         (s) => s.credit_card_metadata || s.loan_metadata || s.summary
       );
       if (totalTx === 0 && !hasMetadata) {
+        void trackClientEvent({
+          event_name: "import_parse_failed",
+          flow: "import",
+          step: "parse",
+          entry_point: "cta",
+          success: false,
+          error_code: "empty_parse_result",
+        });
         setError(
           "No se encontraron transacciones ni metadatos en este PDF. Verifica que sea un extracto bancario de un formato compatible."
         );
@@ -95,8 +140,28 @@ export function StepUpload({
         return;
       }
 
+      void trackClientEvent({
+        event_name: "import_parse_succeeded",
+        flow: "import",
+        step: "parse",
+        entry_point: "cta",
+        success: true,
+        metadata: {
+          statements_count: parsed.statements.length,
+          transactions_detected: totalTx,
+          has_metadata: hasMetadata,
+        },
+      });
       onParsed(data as ParseResponse);
     } catch {
+      void trackClientEvent({
+        event_name: "import_parse_failed",
+        flow: "import",
+        step: "parse",
+        entry_point: "cta",
+        success: false,
+        error_code: "network_error",
+      });
       setError("Error de conexión. Intenta de nuevo.");
     } finally {
       setLoading(false);

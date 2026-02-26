@@ -33,6 +33,7 @@ export interface SimulationResult {
 }
 
 export interface SimulationComparison {
+  baseline: SimulationResult;
   snowball: SimulationResult;
   avalanche: SimulationResult;
   interestSaved: number;
@@ -41,13 +42,14 @@ export interface SimulationComparison {
 }
 
 const MAX_MONTHS = 360;
-const DEFAULT_MIN_PAYMENT_RATE = 0.02;
+const DEFAULT_MIN_PAYMENT_RATE = 0.05; // 5% is more realistic for Colombian banks
+const DEFAULT_MIN_PAYMENT_FLOOR = 50000; // $50,000 COP minimum
 
 function getMinimumPayment(account: DebtAccount): number {
   if (account.monthlyPayment && account.monthlyPayment > 0) {
     return account.monthlyPayment;
   }
-  return Math.max(account.balance * DEFAULT_MIN_PAYMENT_RATE, 10000);
+  return Math.max(account.balance * DEFAULT_MIN_PAYMENT_RATE, DEFAULT_MIN_PAYMENT_FLOOR);
 }
 
 function getPriorityAccountId(
@@ -318,6 +320,12 @@ export function compareStrategies(
   accounts: DebtAccount[],
   extraMonthlyPayment: number
 ): SimulationComparison {
+  // Baseline: only minimum payments, no extra, no strategy
+  const baseline = runSimulation({
+    accounts,
+    extraMonthlyPayment: 0,
+    strategy: "avalanche", // strategy doesn't matter with 0 extra
+  });
   const snowball = runSimulation({
     accounts,
     extraMonthlyPayment,
@@ -333,6 +341,7 @@ export function compareStrategies(
   const monthsDifference = snowball.totalMonths - avalanche.totalMonths;
 
   return {
+    baseline,
     snowball,
     avalanche,
     interestSaved,
