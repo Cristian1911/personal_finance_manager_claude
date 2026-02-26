@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-26T16:22:46.291001+00:00",
+  "generated_at_utc": "2026-02-26T16:23:07.173551+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -246,12 +246,6 @@
     }
   ],
   "recent_changes": [
-    "mobile/app/(tabs)/budgets.tsx",
-    "mobile/app/(tabs)/index.tsx",
-    "mobile/app/(tabs)/transactions.tsx",
-    "mobile/app/_layout.tsx",
-    "mobile/components/common/MonthSelector.tsx",
-    "mobile/components/transactions/CategoryPicker.tsx",
     "mobile/lib/auth.tsx",
     "mobile/lib/supabase.ts",
     "mobile/lib/sync/engine.ts",

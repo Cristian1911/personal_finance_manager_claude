@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T16:22:46.291001+00:00`
+- Generated (UTC): `2026-02-26T16:23:07.173551+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -124,12 +124,6 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/app/(tabs)/budgets.tsx`
-- `mobile/app/(tabs)/index.tsx`
-- `mobile/app/(tabs)/transactions.tsx`
-- `mobile/app/_layout.tsx`
-- `mobile/components/common/MonthSelector.tsx`
-- `mobile/components/transactions/CategoryPicker.tsx`
 - `mobile/lib/auth.tsx`
 - `mobile/lib/supabase.ts`
 - `mobile/lib/sync/engine.ts`
