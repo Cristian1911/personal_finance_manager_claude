@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T21:07:36.614058+00:00`
+- Generated (UTC): `2026-02-26T23:19:48.460926+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,13 +13,13 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 457
+- Text files scanned: 458
 - TypeScript/React: 143
 - JSON: 140
 - TypeScript: 84
 - Markdown: 24
 - SQL: 21
-- Python: 19
+- Python: 20
 - Shell: 9
 - YAML: 8
 - JavaScript: 5
@@ -30,7 +30,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - mobile: 197 files
 - webapp: 166 files
 - supabase: 22 files
-- services: 21 files
+- services: 22 files
 - packages: 14 files
 - docs: 12 files
 - (root): 11 files
@@ -126,13 +126,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
+- `.github/workflows/mobile-apk.yml`
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `mobile/app/bug-report.tsx`
-- `mobile/lib/auth.tsx`
-- `packages/shared/src/types/database.ts`
-- `webapp/src/actions/recurring-templates.ts`
-- `webapp/src/types/database.ts`
+- `services/pdf_parser/main.py`
+- `services/pdf_parser/parsers/opendataloader_fallback.py`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

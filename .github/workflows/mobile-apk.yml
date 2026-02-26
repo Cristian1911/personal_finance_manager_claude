@@ -120,6 +120,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Android native project
+        env:
+          EXPO_NO_GIT_STATUS: '1'
+        run: pnpm --filter mobile exec expo prebuild --platform android --non-interactive --no-install
+
       - name: Configure Android SDK path for Gradle
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > mobile/android/local.properties
 
@@ -169,9 +174,9 @@ jobs:
           {
             echo "## Mobile APK build"
             echo ""
-            echo "- Variant: \\`${APK_VARIANT}\\`"
-            echo "- API target: \\`${API_TARGET}\\`"
-            echo "- Artifact: \\`${APK_NAME:-n/a}\\`"
+            printf -- "- Variant: \`%s\`\n" "${APK_VARIANT:-n/a}"
+            printf -- "- API target: \`%s\`\n" "${API_TARGET:-n/a}"
+            printf -- "- Artifact: \`%s\`\n" "${APK_NAME:-n/a}"
             echo ""
             echo "Release download page: https://github.com/${{ github.repository }}/releases/tag/android-apk-latest"
           } >> "$GITHUB_STEP_SUMMARY"
