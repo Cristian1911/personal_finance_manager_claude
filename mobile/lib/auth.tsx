@@ -82,52 +82,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await SecureStore.setItemAsync(LAST_AUTH_USER_KEY, nextUserId).catch(() => {});
   }
 
-  useEffect(() => {
-    (async () => {
-      const [resolvedSession, demoEnabled] = await Promise.all([
-        resolveSessionSafely(),
-        isDemoModeEnabled(),
-      ]);
-      if (resolvedSession?.user && demoEnabled) {
-        await clearDatabase();
-        await disableDemoMode().catch(() => {});
-      }
-      await handleUserBoundary(resolvedSession);
-      setSession(resolvedSession);
-      setDemoMode(demoEnabled && !resolvedSession?.user);
-      setLoading(false);
+  function triggerInitialSyncOnce(nextSession: Session | null, logLabel: string) {
+    if (!nextSession?.user) return;
+    const userId = nextSession.user.id;
+    if (autoSyncedUserRef.current === userId) return;
+    autoSyncedUserRef.current = userId;
+    syncAll().catch((error) => {
+      console.warn(logLabel, error);
+    });
+  }
 
-      if (resolvedSession?.user) {
-        const userId = resolvedSession.user.id;
-        if (autoSyncedUserRef.current !== userId) {
-          autoSyncedUserRef.current = userId;
-          syncAll().catch((error) => {
-            console.warn("Initial sync failed:", error);
-          });
-        }
-      }
-    })();
+  async function initializeAuthState() {
+    const [resolvedSession, demoEnabled] = await Promise.all([
+      resolveSessionSafely(),
+      isDemoModeEnabled(),
+    ]);
+
+    if (resolvedSession?.user && demoEnabled) {
+      await clearDatabase();
+      await disableDemoMode().catch(() => {});
+    }
+
+    await handleUserBoundary(resolvedSession);
+    setSession(resolvedSession);
+    setDemoMode(demoEnabled && !resolvedSession?.user);
+    setLoading(false);
+
+    triggerInitialSyncOnce(resolvedSession, "Initial sync failed:");
+  }
+
+  async function handleAuthStateChange(nextSession: Session | null) {
+    if (nextSession?.user && demoModeRef.current) {
+      await clearDatabase();
+    }
+
+    await handleUserBoundary(nextSession);
+    setSession(nextSession);
+
+    if (!nextSession) return;
+
+    setDemoMode(false);
+    disableDemoMode().catch(() => {});
+    triggerInitialSyncOnce(nextSession, "Post-auth sync failed:");
+  }
+
+  useEffect(() => {
+    initializeAuthState();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      if (nextSession?.user && demoModeRef.current) {
-        await clearDatabase();
-      }
-      await handleUserBoundary(nextSession);
-      setSession(nextSession);
-      if (nextSession) {
-        setDemoMode(false);
-        disableDemoMode().catch(() => {});
-
-        const userId = nextSession.user.id;
-        if (autoSyncedUserRef.current !== userId) {
-          autoSyncedUserRef.current = userId;
-          syncAll().catch((error) => {
-            console.warn("Post-auth sync failed:", error);
-          });
-        }
-      }
+      await handleAuthStateChange(nextSession);
     });
 
     return () => subscription.unsubscribe();

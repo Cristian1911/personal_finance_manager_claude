@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-26T20:05:17.438601+00:00",
+  "generated_at_utc": "2026-02-26T21:07:36.614058+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -239,7 +239,7 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 417
+      "count": 418
     },
     {
       "from": "mobile",
@@ -248,13 +248,12 @@
     }
   ],
   "recent_changes": [
-    ".github/workflows/mobile-apk.yml",
-    "app.json",
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "mobile/app.json",
-    "mobile/eas.json",
-    "mobile/lib/db/database.ts",
-    "mobile/package.json"
+    "mobile/app/bug-report.tsx",
+    "mobile/lib/auth.tsx",
+    "packages/shared/src/types/database.ts",
+    "webapp/src/actions/recurring-templates.ts",
+    "webapp/src/types/database.ts"
   ]
 }

@@ -114,7 +114,7 @@ export default function BugReportScreen() {
         },
       };
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("bug_reports")
         .insert(payload)
         .select("id")

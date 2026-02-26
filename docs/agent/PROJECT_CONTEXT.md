@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T20:05:17.438601+00:00`
+- Generated (UTC): `2026-02-26T21:07:36.614058+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -122,18 +122,17 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/onboarding/layout.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (417)
+- `webapp` -> `webapp` (418)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `.github/workflows/mobile-apk.yml`
-- `app.json`
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `mobile/app.json`
-- `mobile/eas.json`
-- `mobile/lib/db/database.ts`
-- `mobile/package.json`
+- `mobile/app/bug-report.tsx`
+- `mobile/lib/auth.tsx`
+- `packages/shared/src/types/database.ts`
+- `webapp/src/actions/recurring-templates.ts`
+- `webapp/src/types/database.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

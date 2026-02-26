@@ -8,6 +8,7 @@ import { getNextOccurrence, getOccurrencesBetween } from "@venti5/shared";
 import { addDays } from "date-fns";
 import { z } from "zod";
 import type { ActionResult } from "@/types/actions";
+import type { Database } from "@/types/database";
 import type {
   RecurringTemplate,
   RecurringTemplateWithRelations,
@@ -274,6 +275,338 @@ const recurringOccurrencePaymentSchema = z.object({
   sourceAccountId: z.string().uuid().nullable().optional(),
 });
 
+type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
+type RecurringOccurrencePaymentInput = z.infer<typeof recurringOccurrencePaymentSchema>;
+type RecurringPaymentTemplate = {
+  id: string;
+  user_id: string;
+  account_id: string;
+  transfer_source_account_id: string | null;
+  amount: number;
+  currency_code: Database["public"]["Enums"]["currency_code"];
+  direction: "INFLOW" | "OUTFLOW";
+  merchant_name: string | null;
+  description: string | null;
+  category_id: string | null;
+  start_date: string;
+  end_date: string | null;
+  frequency: Database["public"]["Enums"]["recurrence_frequency"];
+  account: {
+    id: string;
+    name: string;
+    account_type: string;
+  };
+};
+type PaymentAccountRow = {
+  id: string;
+  name: string;
+  account_type: string;
+  current_balance: number;
+};
+type RecurringTxDraft = {
+  account_id: string;
+  amount: number;
+  direction: "INFLOW" | "OUTFLOW";
+  raw_description: string;
+  merchant_name: string;
+  category_id: string | null;
+  notes: string;
+};
+type CreatedTxDelta = {
+  account_id: string;
+  amount: number;
+  direction: "INFLOW" | "OUTFLOW";
+};
+
+async function fetchRecurringPaymentTemplate(params: {
+  supabase: ServerSupabase;
+  templateId: string;
+  userId: string;
+}): Promise<RecurringPaymentTemplate | null> {
+  const { data } = await params.supabase
+    .from("recurring_transaction_templates")
+    .select(
+      `id, user_id, account_id, transfer_source_account_id, amount, currency_code, direction, merchant_name, description, category_id, start_date, end_date, frequency,
+       account:accounts!recurring_transaction_templates_account_id_fkey(id, name, account_type)`
+    )
+    .eq("id", params.templateId)
+    .eq("user_id", params.userId)
+    .single();
+
+  return (data as RecurringPaymentTemplate | null) ?? null;
+}
+
+function validateOccurrenceMatchesTemplate(
+  template: RecurringPaymentTemplate,
+  occurrenceDate: string
+): string | null {
+  const targetDate = new Date(`${occurrenceDate}T12:00:00`);
+  const occurrences = getOccurrencesBetween(
+    template.start_date,
+    template.frequency,
+    template.end_date,
+    targetDate,
+    targetDate
+  );
+  if (!occurrences.includes(occurrenceDate)) {
+    return "La fecha no coincide con la recurrencia de la plantilla.";
+  }
+  return null;
+}
+
+function resolveSourceAccountSelection(params: {
+  template: RecurringPaymentTemplate;
+  sourceAccountId?: string | null;
+}): {
+  isDebtPaymentTemplate: boolean;
+  effectiveSourceAccountId: string | null;
+  error: string | null;
+} {
+  const isDebtPaymentTemplate = DEBT_ACCOUNT_TYPES.has(params.template.account.account_type);
+  const effectiveSourceAccountId =
+    params.sourceAccountId ?? params.template.transfer_source_account_id ?? null;
+
+  if (isDebtPaymentTemplate && !effectiveSourceAccountId) {
+    return {
+      isDebtPaymentTemplate,
+      effectiveSourceAccountId,
+      error: "Debes indicar la cuenta origen para registrar el pago de deuda.",
+    };
+  }
+  if (isDebtPaymentTemplate && effectiveSourceAccountId === params.template.account_id) {
+    return {
+      isDebtPaymentTemplate,
+      effectiveSourceAccountId,
+      error: "La cuenta origen no puede ser la misma cuenta de deuda.",
+    };
+  }
+
+  return { isDebtPaymentTemplate, effectiveSourceAccountId, error: null };
+}
+
+async function persistTemplateSourceAccountIfNeeded(params: {
+  supabase: ServerSupabase;
+  userId: string;
+  template: RecurringPaymentTemplate;
+  isDebtPaymentTemplate: boolean;
+  effectiveSourceAccountId: string | null;
+}): Promise<void> {
+  if (
+    params.isDebtPaymentTemplate &&
+    params.effectiveSourceAccountId &&
+    params.effectiveSourceAccountId !== params.template.transfer_source_account_id
+  ) {
+    await params.supabase
+      .from("recurring_transaction_templates")
+      .update({ transfer_source_account_id: params.effectiveSourceAccountId })
+      .eq("id", params.template.id)
+      .eq("user_id", params.userId);
+  }
+}
+
+async function loadPaymentAccounts(params: {
+  supabase: ServerSupabase;
+  userId: string;
+  targetAccountId: string;
+  effectiveSourceAccountId: string | null;
+}): Promise<{
+  accountMap: Map<string, PaymentAccountRow> | null;
+  targetAccount: PaymentAccountRow | null;
+  error: string | null;
+}> {
+  const accountIds = [
+    params.targetAccountId,
+    ...(params.effectiveSourceAccountId ? [params.effectiveSourceAccountId] : []),
+  ];
+
+  const { data: accountRows, error } = await params.supabase
+    .from("accounts")
+    .select("id, name, account_type, current_balance")
+    .in("id", accountIds)
+    .eq("user_id", params.userId);
+
+  if (error || !accountRows) {
+    return {
+      accountMap: null,
+      targetAccount: null,
+      error: "No se pudieron cargar las cuentas involucradas.",
+    };
+  }
+
+  const accountMap = new Map(
+    (accountRows as PaymentAccountRow[]).map((acc) => [acc.id, acc])
+  );
+  const targetAccount = accountMap.get(params.targetAccountId) ?? null;
+
+  if (!targetAccount) {
+    return {
+      accountMap: null,
+      targetAccount: null,
+      error: "No se encontró la cuenta destino del pago.",
+    };
+  }
+
+  return { accountMap, targetAccount, error: null };
+}
+
+function buildRecurringPaymentTransactions(params: {
+  template: RecurringPaymentTemplate;
+  actualAmount: number;
+  isDebtPaymentTemplate: boolean;
+  effectiveSourceAccountId: string | null;
+  targetAccount: PaymentAccountRow;
+  accountMap: Map<string, PaymentAccountRow>;
+}): { txs: RecurringTxDraft[] | null; error: string | null } {
+  const baseLabel =
+    params.template.merchant_name || params.template.description || "Pago recurrente";
+
+  if (params.isDebtPaymentTemplate) {
+    const sourceAccount = params.effectiveSourceAccountId
+      ? params.accountMap.get(params.effectiveSourceAccountId)
+      : null;
+
+    if (!sourceAccount) {
+      return {
+        txs: null,
+        error: "No se encontró la cuenta origen para esta transferencia.",
+      };
+    }
+
+    return {
+      txs: [
+        {
+          account_id: sourceAccount.id,
+          amount: params.actualAmount,
+          direction: "OUTFLOW",
+          raw_description: `Transferencia a ${params.targetAccount.name} - ${baseLabel}`,
+          merchant_name: `Transferencia a ${params.targetAccount.name}`,
+          category_id: TRANSFER_CATEGORY_ID,
+          notes: "Pago recurrente marcado desde checklist",
+        },
+        {
+          account_id: params.targetAccount.id,
+          amount: params.actualAmount,
+          direction: "INFLOW",
+          raw_description: `Abono deuda desde ${sourceAccount.name} - ${baseLabel}`,
+          merchant_name: baseLabel,
+          category_id: DEBT_PAYMENT_CATEGORY_ID,
+          notes: "Abono de deuda marcado desde checklist recurrente",
+        },
+      ],
+      error: null,
+    };
+  }
+
+  return {
+    txs: [
+      {
+        account_id: params.template.account_id,
+        amount: params.actualAmount,
+        direction: params.template.direction,
+        raw_description: baseLabel,
+        merchant_name: baseLabel,
+        category_id: params.template.category_id,
+        notes: "Transacción recurrente marcada desde checklist",
+      },
+    ],
+    error: null,
+  };
+}
+
+async function insertRecurringTransactions(params: {
+  supabase: ServerSupabase;
+  userId: string;
+  template: RecurringPaymentTemplate;
+  payload: RecurringOccurrencePaymentInput;
+  effectivePaymentDate: string;
+  recurrenceGroupId: string;
+  txs: RecurringTxDraft[];
+}): Promise<{
+  created: number;
+  alreadyRecorded: number;
+  createdTxs: CreatedTxDelta[];
+  error: string | null;
+}> {
+  let created = 0;
+  let alreadyRecorded = 0;
+  const createdTxs: CreatedTxDelta[] = [];
+
+  for (const tx of params.txs) {
+    const recurrenceIdentity =
+      `${params.template.id}|${params.payload.occurrenceDate}|${tx.account_id}|${tx.direction}`;
+    const idempotencyKey = await computeIdempotencyKey({
+      provider: "RECURRING_CHECKLIST",
+      providerTransactionId: recurrenceIdentity,
+      transactionDate: params.payload.occurrenceDate,
+      amount: tx.amount,
+      rawDescription: tx.raw_description,
+    });
+
+    const { error } = await params.supabase.from("transactions").insert({
+      user_id: params.userId,
+      account_id: tx.account_id,
+      amount: tx.amount,
+      currency_code: params.template.currency_code,
+      direction: tx.direction,
+      transaction_date: params.effectivePaymentDate,
+      raw_description: tx.raw_description,
+      clean_description: tx.merchant_name,
+      merchant_name: tx.merchant_name,
+      category_id: tx.category_id,
+      notes: tx.notes,
+      idempotency_key: idempotencyKey,
+      provider: "MANUAL",
+      status: "POSTED",
+      is_recurring: true,
+      recurrence_group_id: params.recurrenceGroupId,
+      categorization_source: tx.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
+    });
+
+    if (error) {
+      if (error.code === "23505") {
+        alreadyRecorded++;
+        continue;
+      }
+      return { created, alreadyRecorded, createdTxs, error: error.message };
+    }
+
+    created++;
+    createdTxs.push({
+      account_id: tx.account_id,
+      amount: tx.amount,
+      direction: tx.direction,
+    });
+  }
+
+  return { created, alreadyRecorded, createdTxs, error: null };
+}
+
+async function updateBalancesForCreatedTransactions(params: {
+  supabase: ServerSupabase;
+  userId: string;
+  accountMap: Map<string, PaymentAccountRow>;
+  createdTxs: CreatedTxDelta[];
+}): Promise<void> {
+  for (const tx of params.createdTxs) {
+    const account = params.accountMap.get(tx.account_id);
+    if (!account) continue;
+
+    const nextBalance = applyBalanceDelta({
+      currentBalance: account.current_balance,
+      accountType: account.account_type,
+      direction: tx.direction,
+      amount: tx.amount,
+    });
+
+    account.current_balance = nextBalance;
+    await params.supabase
+      .from("accounts")
+      .update({ current_balance: nextBalance })
+      .eq("id", account.id)
+      .eq("user_id", params.userId);
+  }
+}
+
 export async function recordRecurringOccurrencePayment(input: {
   templateId: string;
   occurrenceDate: string;
@@ -294,205 +627,86 @@ export async function recordRecurringOccurrencePayment(input: {
   }
 
   const payload = parsed.data;
-  const effectivePaymentDate = payload.paymentDate ?? payload.occurrenceDate;
-
-  const { data: template, error: templateError } = await supabase
-    .from("recurring_transaction_templates")
-    .select(
-      `id, user_id, account_id, transfer_source_account_id, amount, currency_code, direction, merchant_name, description, category_id, start_date, end_date, frequency,
-       account:accounts!recurring_transaction_templates_account_id_fkey(id, name, account_type)`
-    )
-    .eq("id", payload.templateId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (templateError || !template) {
+  const template = await fetchRecurringPaymentTemplate({
+    supabase,
+    templateId: payload.templateId,
+    userId: user.id,
+  });
+  if (!template) {
     return { success: false, error: "No se encontró la plantilla recurrente." };
   }
 
-  const targetDate = new Date(`${payload.occurrenceDate}T12:00:00`);
-  const occurrences = getOccurrencesBetween(
-    template.start_date,
-    template.frequency,
-    template.end_date,
-    targetDate,
-    targetDate
+  const occurrenceValidationError = validateOccurrenceMatchesTemplate(
+    template,
+    payload.occurrenceDate
   );
-  if (!occurrences.includes(payload.occurrenceDate)) {
-    return { success: false, error: "La fecha no coincide con la recurrencia de la plantilla." };
+  if (occurrenceValidationError) {
+    return { success: false, error: occurrenceValidationError };
   }
 
-  const targetAccountType = template.account.account_type;
-  const isDebtPaymentTemplate = DEBT_ACCOUNT_TYPES.has(targetAccountType);
-  const effectiveSourceAccountId =
-    payload.sourceAccountId ?? template.transfer_source_account_id ?? null;
-
-  if (isDebtPaymentTemplate && !effectiveSourceAccountId) {
-    return { success: false, error: "Debes indicar la cuenta origen para registrar el pago de deuda." };
-  }
-  if (isDebtPaymentTemplate && effectiveSourceAccountId === template.account_id) {
-    return { success: false, error: "La cuenta origen no puede ser la misma cuenta de deuda." };
+  const sourceSelection = resolveSourceAccountSelection({
+    template,
+    sourceAccountId: payload.sourceAccountId,
+  });
+  if (sourceSelection.error) {
+    return { success: false, error: sourceSelection.error };
   }
 
-  if (
-    isDebtPaymentTemplate &&
-    effectiveSourceAccountId &&
-    effectiveSourceAccountId !== template.transfer_source_account_id
-  ) {
-    await supabase
-      .from("recurring_transaction_templates")
-      .update({ transfer_source_account_id: effectiveSourceAccountId })
-      .eq("id", template.id)
-      .eq("user_id", user.id);
+  await persistTemplateSourceAccountIfNeeded({
+    supabase,
+    userId: user.id,
+    template,
+    isDebtPaymentTemplate: sourceSelection.isDebtPaymentTemplate,
+    effectiveSourceAccountId: sourceSelection.effectiveSourceAccountId,
+  });
+
+  const loadedAccounts = await loadPaymentAccounts({
+    supabase,
+    userId: user.id,
+    targetAccountId: template.account_id,
+    effectiveSourceAccountId: sourceSelection.effectiveSourceAccountId,
+  });
+  if (loadedAccounts.error || !loadedAccounts.accountMap || !loadedAccounts.targetAccount) {
+    return { success: false, error: loadedAccounts.error ?? "No se pudieron cargar las cuentas involucradas." };
   }
 
-  const accountIds = [
-    template.account_id,
-    ...(effectiveSourceAccountId ? [effectiveSourceAccountId] : []),
-  ];
-
-  const { data: accountRows, error: accountRowsError } = await supabase
-    .from("accounts")
-    .select("id, name, account_type, current_balance")
-    .in("id", accountIds)
-    .eq("user_id", user.id);
-
-  if (accountRowsError || !accountRows) {
-    return { success: false, error: "No se pudieron cargar las cuentas involucradas." };
+  const builtTxs = buildRecurringPaymentTransactions({
+    template,
+    actualAmount: payload.actualAmount,
+    isDebtPaymentTemplate: sourceSelection.isDebtPaymentTemplate,
+    effectiveSourceAccountId: sourceSelection.effectiveSourceAccountId,
+    targetAccount: loadedAccounts.targetAccount,
+    accountMap: loadedAccounts.accountMap,
+  });
+  if (builtTxs.error || !builtTxs.txs) {
+    return { success: false, error: builtTxs.error ?? "No se pudieron construir las transacciones del pago." };
   }
 
-  const accountMap = new Map(accountRows.map((acc) => [acc.id, acc]));
-  const targetAccount = accountMap.get(template.account_id);
-  if (!targetAccount) {
-    return { success: false, error: "No se encontró la cuenta destino del pago." };
-  }
-
+  const effectivePaymentDate = payload.paymentDate ?? payload.occurrenceDate;
   const recurrenceGroupId = await computeRecurringGroupUuid(
     template.id,
     payload.occurrenceDate
   );
-  const baseLabel = template.merchant_name || template.description || "Pago recurrente";
-  const txs: Array<{
-    account_id: string;
-    amount: number;
-    direction: "INFLOW" | "OUTFLOW";
-    raw_description: string;
-    merchant_name: string;
-    category_id: string | null;
-    notes: string;
-  }> = [];
 
-  if (isDebtPaymentTemplate) {
-    const sourceAccount = effectiveSourceAccountId
-      ? accountMap.get(effectiveSourceAccountId)
-      : null;
-
-    if (!sourceAccount) {
-      return { success: false, error: "No se encontró la cuenta origen para esta transferencia." };
-    }
-
-    txs.push({
-      account_id: sourceAccount.id,
-      amount: payload.actualAmount,
-      direction: "OUTFLOW",
-      raw_description: `Transferencia a ${targetAccount.name} - ${baseLabel}`,
-      merchant_name: `Transferencia a ${targetAccount.name}`,
-      category_id: TRANSFER_CATEGORY_ID,
-      notes: "Pago recurrente marcado desde checklist",
-    });
-
-    txs.push({
-      account_id: targetAccount.id,
-      amount: payload.actualAmount,
-      direction: "INFLOW",
-      raw_description: `Abono deuda desde ${sourceAccount.name} - ${baseLabel}`,
-      merchant_name: baseLabel,
-      category_id: DEBT_PAYMENT_CATEGORY_ID,
-      notes: "Abono de deuda marcado desde checklist recurrente",
-    });
-  } else {
-    txs.push({
-      account_id: template.account_id,
-      amount: payload.actualAmount,
-      direction: template.direction,
-      raw_description: baseLabel,
-      merchant_name: baseLabel,
-      category_id: template.category_id,
-      notes: "Transacción recurrente marcada desde checklist",
-    });
+  const inserted = await insertRecurringTransactions({
+    supabase,
+    userId: user.id,
+    template,
+    payload,
+    effectivePaymentDate,
+    recurrenceGroupId,
+    txs: builtTxs.txs,
+  });
+  if (inserted.error) {
+    return { success: false, error: inserted.error };
   }
 
-  let created = 0;
-  let alreadyRecorded = 0;
-  const createdTxs: Array<{
-    account_id: string;
-    amount: number;
-    direction: "INFLOW" | "OUTFLOW";
-  }> = [];
-
-  for (const tx of txs) {
-    const recurrenceIdentity =
-      `${template.id}|${payload.occurrenceDate}|${tx.account_id}|${tx.direction}`;
-    const idempotencyKey = await computeIdempotencyKey({
-      provider: "RECURRING_CHECKLIST",
-      providerTransactionId: recurrenceIdentity,
-      transactionDate: payload.occurrenceDate,
-      amount: tx.amount,
-      rawDescription: tx.raw_description,
-    });
-
-    const { error } = await supabase.from("transactions").insert({
-      user_id: user.id,
-      account_id: tx.account_id,
-      amount: tx.amount,
-      currency_code: template.currency_code,
-      direction: tx.direction,
-      transaction_date: effectivePaymentDate,
-      raw_description: tx.raw_description,
-      clean_description: tx.merchant_name,
-      merchant_name: tx.merchant_name,
-      category_id: tx.category_id,
-      notes: tx.notes,
-      idempotency_key: idempotencyKey,
-      provider: "MANUAL",
-      status: "POSTED",
-      is_recurring: true,
-      recurrence_group_id: recurrenceGroupId,
-      categorization_source: tx.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
-    });
-
-    if (error) {
-      if (error.code === "23505") {
-        alreadyRecorded++;
-        continue;
-      }
-      return { success: false, error: error.message };
-    }
-
-    created++;
-    createdTxs.push({
-      account_id: tx.account_id,
-      amount: tx.amount,
-      direction: tx.direction,
-    });
-  }
-
-  for (const tx of createdTxs) {
-    const account = accountMap.get(tx.account_id);
-    if (!account) continue;
-    const nextBalance = applyBalanceDelta({
-      currentBalance: account.current_balance,
-      accountType: account.account_type,
-      direction: tx.direction,
-      amount: tx.amount,
-    });
-    account.current_balance = nextBalance;
-    await supabase
-      .from("accounts")
-      .update({ current_balance: nextBalance })
-      .eq("id", account.id)
-      .eq("user_id", user.id);
-  }
+  await updateBalancesForCreatedTransactions({
+    supabase,
+    userId: user.id,
+    accountMap: loadedAccounts.accountMap,
+    createdTxs: inserted.createdTxs,
+  });
 
   revalidatePath("/recurrentes");
   revalidatePath("/dashboard");
@@ -500,7 +714,13 @@ export async function recordRecurringOccurrencePayment(input: {
   revalidatePath("/accounts");
   revalidatePath("/deudas");
 
-  return { success: true, data: { created, alreadyRecorded } };
+  return {
+    success: true,
+    data: {
+      created: inserted.created,
+      alreadyRecorded: inserted.alreadyRecorded,
+    },
+  };
 }
 
 /**

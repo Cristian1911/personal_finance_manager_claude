@@ -162,6 +162,59 @@ export type Database = {
           },
         ]
       }
+      bug_reports: {
+        Row: {
+          attachment_path: string | null
+          created_at: string
+          description: string | null
+          device_context: Json
+          id: string
+          route_hint: string | null
+          selected_area_hint: string | null
+          source: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachment_path?: string | null
+          created_at?: string
+          description?: string | null
+          device_context?: Json
+          id?: string
+          route_hint?: string | null
+          selected_area_hint?: string | null
+          source?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachment_path?: string | null
+          created_at?: string
+          description?: string | null
+          device_context?: Json
+          id?: string
+          route_hint?: string | null
+          selected_area_hint?: string | null
+          source?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bug_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           color: string
