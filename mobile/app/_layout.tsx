@@ -17,6 +17,7 @@ import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-rout
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/components/useColorScheme";
@@ -68,7 +69,7 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { session, loading } = useAuth();
+  const { session, loading, demoMode } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
@@ -80,6 +81,12 @@ function RootLayoutNav() {
 
     async function checkOnboarding() {
       if (loading) return;
+      if (demoMode) {
+        if (!mounted) return;
+        setNeedsOnboarding(false);
+        setCheckingOnboarding(false);
+        return;
+      }
       if (!session) {
         if (!mounted) return;
         setNeedsOnboarding(false);
@@ -104,7 +111,7 @@ function RootLayoutNav() {
     return () => {
       mounted = false;
     };
-  }, [loading, session]);
+  }, [loading, session, demoMode]);
 
   useEffect(() => {
     if (!rootNavigationState?.key) return;
@@ -114,8 +121,15 @@ function RootLayoutNav() {
     const inAuthGroup = firstSegment === "(auth)";
     const inOnboarding = firstSegment === "onboarding";
 
-    if (!session && !inAuthGroup) {
+    if (!session && !demoMode && !inAuthGroup) {
       router.replace("/(auth)/login");
+      return;
+    }
+
+    if (!session && demoMode) {
+      if (inAuthGroup || inOnboarding) {
+        router.replace("/(tabs)");
+      }
       return;
     }
 
@@ -129,51 +143,72 @@ function RootLayoutNav() {
     if (!needsOnboarding && (inAuthGroup || inOnboarding)) {
       router.replace("/(tabs)");
     }
-  }, [session, loading, checkingOnboarding, needsOnboarding, segments, router, rootNavigationState?.key]);
+  }, [session, demoMode, loading, checkingOnboarding, needsOnboarding, segments, router, rootNavigationState?.key]);
 
   const isLoading = loading || checkingOnboarding;
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="transaction/[id]"
-          options={{
-            presentation: "modal",
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="account/[id]"
-          options={{
-            presentation: "modal",
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="account/create"
-          options={{
-            presentation: "modal",
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="account/edit/[id]"
-          options={{
-            presentation: "card",
-            headerShown: false,
-          }}
-        />
-      </Stack>
-      {isLoading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#047857" />
-        </View>
-      )}
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="transaction/[id]"
+            options={{
+              presentation: "formSheet",
+              headerShown: false,
+              sheetAllowedDetents: [0.72, 1.0],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
+            name="account/[id]"
+            options={{
+              presentation: "formSheet",
+              headerShown: false,
+              sheetAllowedDetents: [0.72, 1.0],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
+            name="account/create"
+            options={{
+              presentation: "formSheet",
+              headerShown: false,
+              sheetAllowedDetents: [0.72, 1.0],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
+            name="account/edit/[id]"
+            options={{
+              presentation: "card",
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="bug-report"
+            options={{
+              presentation: "formSheet",
+              headerShown: false,
+              sheetAllowedDetents: [0.6, 0.95],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+            }}
+          />
+        </Stack>
+        {isLoading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#047857" />
+          </View>
+        )}
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

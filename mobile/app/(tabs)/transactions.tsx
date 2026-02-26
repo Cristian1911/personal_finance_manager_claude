@@ -5,6 +5,7 @@ import { getTransactions } from "../../lib/repositories/transactions";
 import { formatDate } from "@venti5/shared";
 import { SearchBar } from "../../components/transactions/SearchBar";
 import { TransactionRow } from "../../components/transactions/TransactionRow";
+import { MonthSelector } from "../../components/common/MonthSelector";
 
 type TransactionItem = {
   id: string;
@@ -17,6 +18,7 @@ type TransactionItem = {
   category_name_es: string | null;
   category_color: string | null;
   category_icon: string | null;
+  account_type: string | null;
 };
 
 type Section = {
@@ -33,6 +35,9 @@ export default function TransactionsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState(
+    () => new Date().toISOString().slice(0, 7)
+  );
 
   const groupByDate = (items: TransactionItem[]): Section[] => {
     const groups = new Map<string, TransactionItem[]>();
@@ -68,6 +73,7 @@ export default function TransactionsScreen() {
         const newOffset = reset ? 0 : offset;
         const results = (await getTransactions({
           search: search || undefined,
+          month: currentMonth,
           limit: PAGE_SIZE,
           offset: newOffset,
         })) as TransactionItem[];
@@ -90,13 +96,13 @@ export default function TransactionsScreen() {
         setLoadingMore(false);
       }
     },
-    [offset, sections]
+    [offset, sections, currentMonth]
   );
 
   useFocusEffect(
     useCallback(() => {
       loadTransactions(searchQuery, true);
-    }, [searchQuery])
+    }, [searchQuery, currentMonth])
   );
 
   const handleSearch = useCallback((query: string) => {
@@ -112,6 +118,9 @@ export default function TransactionsScreen() {
   return (
     <View className="flex-1 bg-gray-100">
       <SearchBar onSearch={handleSearch} />
+      <View className="px-4 pb-2">
+        <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
+      </View>
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
@@ -140,6 +149,7 @@ export default function TransactionsScreen() {
               category_name_es={item.category_name_es}
               category_color={item.category_color}
               category_icon={item.category_icon}
+              account_type={item.account_type}
             />
           )}
           renderSectionHeader={({ section: { title } }) => (

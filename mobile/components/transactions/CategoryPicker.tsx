@@ -105,96 +105,98 @@ export function CategoryPicker({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      transparent
       onRequestClose={handleClose}
     >
-      <View className="flex-1 bg-white">
-        {/* Header */}
-        <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
-          <Text className="text-gray-900 font-inter-bold text-base">
-            Categoría
-          </Text>
+      <View className="flex-1 justify-end bg-black/35">
+        <View className="max-h-[72%] min-h-[320px] rounded-t-2xl bg-white">
+          {/* Header */}
+          <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
+            <Text className="text-gray-900 font-inter-bold text-base">
+              Categoría
+            </Text>
+            <Pressable
+              onPress={handleClose}
+              className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+            >
+              <X size={18} color="#6B7280" />
+            </Pressable>
+          </View>
+
+          {/* Search */}
+          <View className="px-4 py-3 border-b border-gray-100">
+            <TextInput
+              className="bg-gray-100 rounded-xl px-4 py-2.5 text-gray-900 font-inter text-sm"
+              placeholder="Buscar categoría..."
+              placeholderTextColor="#9CA3AF"
+              value={search}
+              onChangeText={setSearch}
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* "None" option */}
           <Pressable
-            onPress={handleClose}
-            className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+            onPress={() => handleSelect(null, null)}
+            className="flex-row items-center px-4 py-3.5 border-b border-gray-100 active:bg-gray-50"
           >
-            <X size={18} color="#6B7280" />
+            <View className="w-3 h-3 rounded-full bg-gray-300 mr-3" />
+            <Text className="text-gray-500 font-inter text-sm flex-1">
+              Sin categoría
+            </Text>
+            {selectedId === null && <Check size={16} color="#10B981" />}
           </Pressable>
-        </View>
 
-        {/* Search */}
-        <View className="px-4 py-3 border-b border-gray-100">
-          <TextInput
-            className="bg-gray-100 rounded-xl px-4 py-2.5 text-gray-900 font-inter text-sm"
-            placeholder="Buscar categoría..."
-            placeholderTextColor="#9CA3AF"
-            value={search}
-            onChangeText={setSearch}
-            autoCorrect={false}
-            autoCapitalize="none"
-          />
-        </View>
+          <FlatList
+            data={listItems}
+            keyExtractor={(item) => item.item.id}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => {
+              if (item.type === "header") {
+                return (
+                  <View className="px-4 pt-4 pb-1.5 bg-gray-50">
+                    <Text className="text-gray-400 font-inter-semibold text-xs uppercase tracking-wide">
+                      {displayName(item.item)}
+                    </Text>
+                  </View>
+                );
+              }
 
-        {/* "None" option */}
-        <Pressable
-          onPress={() => handleSelect(null, null)}
-          className="flex-row items-center px-4 py-3.5 border-b border-gray-100 active:bg-gray-50"
-        >
-          <View className="w-3 h-3 rounded-full bg-gray-300 mr-3" />
-          <Text className="text-gray-500 font-inter text-sm flex-1">
-            Sin categoría
-          </Text>
-          {selectedId === null && <Check size={16} color="#10B981" />}
-        </Pressable>
+              const isSelected = item.item.id === selectedId;
+              const paddingLeft = item.indented ? "pl-8" : "pl-4";
 
-        <FlatList
-          data={listItems}
-          keyExtractor={(item) => item.item.id}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => {
-            if (item.type === "header") {
               return (
-                <View className="px-4 pt-4 pb-1.5 bg-gray-50">
-                  <Text className="text-gray-400 font-inter-semibold text-xs uppercase tracking-wide">
+                <Pressable
+                  onPress={() =>
+                    handleSelect(item.item.id, displayName(item.item))
+                  }
+                  className={`flex-row items-center ${paddingLeft} pr-4 py-3.5 active:bg-gray-50`}
+                >
+                  {item.item.color ? (
+                    <View
+                      className="w-3 h-3 rounded-full mr-3"
+                      style={{ backgroundColor: item.item.color }}
+                    />
+                  ) : (
+                    <View className="w-3 h-3 rounded-full bg-gray-200 mr-3" />
+                  )}
+                  <Text
+                    className={`font-inter text-sm flex-1 ${
+                      isSelected ? "text-primary font-inter-medium" : "text-gray-900"
+                    }`}
+                  >
                     {displayName(item.item)}
                   </Text>
-                </View>
+                  {isSelected && <Check size={16} color="#10B981" />}
+                </Pressable>
               );
-            }
-
-            const isSelected = item.item.id === selectedId;
-            const paddingLeft = item.indented ? "pl-8" : "pl-4";
-
-            return (
-              <Pressable
-                onPress={() =>
-                  handleSelect(item.item.id, displayName(item.item))
-                }
-                className={`flex-row items-center ${paddingLeft} pr-4 py-3.5 active:bg-gray-50`}
-              >
-                {item.item.color ? (
-                  <View
-                    className="w-3 h-3 rounded-full mr-3"
-                    style={{ backgroundColor: item.item.color }}
-                  />
-                ) : (
-                  <View className="w-3 h-3 rounded-full bg-gray-200 mr-3" />
-                )}
-                <Text
-                  className={`font-inter text-sm flex-1 ${
-                    isSelected ? "text-primary font-inter-medium" : "text-gray-900"
-                  }`}
-                >
-                  {displayName(item.item)}
-                </Text>
-                {isSelected && <Check size={16} color="#10B981" />}
-              </Pressable>
-            );
-          }}
-          ItemSeparatorComponent={() => (
-            <View className="h-px bg-gray-50 ml-4" />
-          )}
-        />
+            }}
+            ItemSeparatorComponent={() => (
+              <View className="h-px bg-gray-50 ml-4" />
+            )}
+          />
+        </View>
       </View>
     </Modal>
   );

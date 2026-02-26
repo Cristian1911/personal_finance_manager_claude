@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T16:21:49.958966+00:00`
+- Generated (UTC): `2026-02-26T16:22:46.291001+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -124,29 +124,16 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/app/(auth)/login.tsx`
 - `mobile/app/(tabs)/budgets.tsx`
-- `mobile/app/(tabs)/import.tsx`
 - `mobile/app/(tabs)/index.tsx`
-- `mobile/app/(tabs)/settings.tsx`
 - `mobile/app/(tabs)/transactions.tsx`
 - `mobile/app/_layout.tsx`
-- `mobile/app/account/[id].tsx`
-- `mobile/app/bug-report.tsx`
-- `mobile/app/onboarding.tsx`
-- `mobile/app/transaction/[id].tsx`
+- `mobile/components/common/MonthSelector.tsx`
 - `mobile/components/transactions/CategoryPicker.tsx`
-- `mobile/components/transactions/TransactionRow.tsx`
 - `mobile/lib/auth.tsx`
-- `mobile/lib/demo-data.ts`
-- `mobile/lib/demo-mode.ts`
-- `mobile/lib/repositories/transactions.ts`
 - `mobile/lib/supabase.ts`
 - `mobile/lib/sync/engine.ts`
 - `mobile/lib/sync/pull.ts`
-- `mobile/lib/transaction-semantics.ts`
-- `supabase/migrations/20260226090000_create_bug_reports.sql`
-- `mobile/components/common/`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

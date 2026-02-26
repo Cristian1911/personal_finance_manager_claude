@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
-import { formatCurrency, type CurrencyCode, formatMonthLabel } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode } from "@venti5/shared";
 import { useSync } from "../../lib/sync/hooks";
 import {
   deleteBudget,
@@ -18,6 +18,7 @@ import {
   upsertBudget,
 } from "../../lib/repositories/budgets";
 import { useAuth } from "../../lib/auth";
+import { MonthSelector } from "../../components/common/MonthSelector";
 
 function getProgressColor(progress: number) {
   if (progress >= 100) return "bg-red-500";
@@ -34,8 +35,9 @@ export default function BudgetsScreen() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [amountInput, setAmountInput] = useState("");
-
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const [currentMonth, setCurrentMonth] = useState(
+    () => new Date().toISOString().slice(0, 7)
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -133,9 +135,7 @@ export default function BudgetsScreen() {
       contentContainerStyle={{ paddingBottom: 40 }}
     >
       <View className="px-4 pt-4">
-        <Text className="text-gray-500 font-inter-medium text-sm capitalize">
-          {formatMonthLabel(new Date())}
-        </Text>
+        <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
       </View>
 
       <View className="mx-4 mt-3 rounded-2xl bg-white p-5 shadow-sm">
@@ -157,6 +157,9 @@ export default function BudgetsScreen() {
       <View className="px-4 pt-5 pb-2">
         <Text className="text-gray-500 font-inter-semibold text-xs uppercase">
           Presupuestos por categoria
+        </Text>
+        <Text className="mt-1 text-xs text-gray-500 font-inter">
+          Toca una categoria para definir o editar su tope mensual.
         </Text>
       </View>
 
@@ -244,7 +247,7 @@ export default function BudgetsScreen() {
                 ) : (
                   <Pressable className="mt-3 items-start" onPress={() => beginEdit(item)}>
                     <Text className="text-sm text-emerald-700 font-inter-semibold">
-                      {item.id ? "Editar presupuesto" : "Agregar presupuesto"}
+                      {item.id ? "Editar presupuesto" : "Definir presupuesto"}
                     </Text>
                   </Pressable>
                 )}
