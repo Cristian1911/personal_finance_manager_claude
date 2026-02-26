@@ -469,6 +469,7 @@ export type Database = {
           is_active: boolean
           merchant_name: string | null
           start_date: string
+          transfer_source_account_id: string | null
           updated_at: string
           user_id: string
         }
@@ -488,6 +489,7 @@ export type Database = {
           is_active?: boolean
           merchant_name?: string | null
           start_date: string
+          transfer_source_account_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -507,6 +509,7 @@ export type Database = {
           is_active?: boolean
           merchant_name?: string | null
           start_date?: string
+          transfer_source_account_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -530,6 +533,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_transfer_source_account_id_fkey"
+            columns: ["transfer_source_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
         ]

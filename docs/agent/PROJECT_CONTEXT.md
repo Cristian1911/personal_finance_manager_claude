@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T06:30:41.645457+00:00`
+- Generated (UTC): `2026-02-26T16:19:30.461189+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,13 +13,13 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 424
-- TypeScript/React: 140
+- Text files scanned: 432
+- TypeScript/React: 143
 - JSON: 116
-- TypeScript: 81
+- TypeScript: 84
 - Markdown: 24
+- SQL: 21
 - Python: 19
-- SQL: 19
 - Shell: 9
 - YAML: 7
 - JavaScript: 5
@@ -27,10 +27,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - TOML: 2
 
 ## Top-level Areas
-- mobile: 169 files
-- webapp: 165 files
+- mobile: 174 files
+- webapp: 166 files
+- supabase: 22 files
 - services: 21 files
-- supabase: 20 files
 - packages: 14 files
 - docs: 12 files
 - (root): 10 files
@@ -78,10 +78,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `services/pdf_parser/test_parser.py`
   - e.g. `services/pdf_parser/models.py`
   - e.g. `services/pdf_parser/storage.py`
-- `zod-validators` (9 files): Validation layer using Zod
+- `zod-validators` (10 files): Validation layer using Zod
+  - e.g. `webapp/src/actions/recurring-templates.ts`
   - e.g. `webapp/src/actions/profile.ts`
   - e.g. `webapp/src/lib/validators/account.ts`
-  - e.g. `webapp/src/lib/validators/category.ts`
 - `repository-pattern` (4 files): Repository pattern in mobile/lib/repositories
   - e.g. `mobile/lib/repositories/budgets.ts`
   - e.g. `mobile/lib/repositories/categories.ts`
@@ -120,17 +120,40 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/onboarding/layout.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (409)
+- `webapp` -> `webapp` (417)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `services/pdf_parser/parsers/nu_credit_card.py`
-- `webapp/src/actions/import-transactions.ts`
-- `webapp/src/actions/product-events.ts`
-- `webapp/src/app/(dashboard)/settings/analytics/page.tsx`
+- `mobile/app/(auth)/login.tsx`
+- `mobile/app/(tabs)/budgets.tsx`
+- `mobile/app/(tabs)/import.tsx`
+- `mobile/app/(tabs)/index.tsx`
+- `mobile/app/(tabs)/settings.tsx`
+- `mobile/app/(tabs)/transactions.tsx`
+- `mobile/app/_layout.tsx`
+- `mobile/app/account/[id].tsx`
+- `mobile/app/onboarding.tsx`
+- `mobile/app/transaction/[id].tsx`
+- `mobile/components/transactions/CategoryPicker.tsx`
+- `mobile/components/transactions/TransactionRow.tsx`
+- `mobile/lib/auth.tsx`
+- `mobile/lib/repositories/transactions.ts`
+- `mobile/lib/supabase.ts`
+- `mobile/lib/sync/engine.ts`
+- `mobile/lib/sync/pull.ts`
+- `packages/shared/src/types/database.ts`
+- `packages/shared/src/types/domain.ts`
+- `supabase/migrations/20260226100000_add_transfer_source_account_to_recurring_templates.sql`
+- `webapp/src/actions/recurring-templates.ts`
+- `webapp/src/app/(dashboard)/recurrentes/page.tsx`
+- `webapp/src/components/recurring/recurring-calendar-checklist.tsx`
+- `webapp/src/components/recurring/recurring-form.tsx`
+- `webapp/src/components/recurring/recurring-list.tsx`
+- `webapp/src/lib/validators/recurring-template.ts`
 - `webapp/src/types/database.ts`
+- `webapp/src/types/domain.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

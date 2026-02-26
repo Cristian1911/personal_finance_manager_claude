@@ -3,6 +3,7 @@ import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
 import { RecurringList } from "@/components/recurring/recurring-list";
+import { RecurringCalendarChecklist } from "@/components/recurring/recurring-calendar-checklist";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
 import { ArrowUpRight, ArrowDownLeft, Repeat2 } from "lucide-react";
@@ -88,6 +89,8 @@ export default async function RecurrentesPage() {
           </Card>
         </div>
       )}
+
+      <RecurringCalendarChecklist templates={templates} accounts={accounts} />
 
       <RecurringList
         templates={templates}
