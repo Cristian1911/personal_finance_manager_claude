@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T05:47:14.906061+00:00`
+- Generated (UTC): `2026-02-26T06:16:45.631287+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,13 +13,13 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 419
-- TypeScript/React: 139
+- Text files scanned: 424
+- TypeScript/React: 140
 - JSON: 116
-- TypeScript: 79
-- Markdown: 23
+- TypeScript: 81
+- Markdown: 24
 - Python: 19
-- SQL: 18
+- SQL: 19
 - Shell: 9
 - YAML: 7
 - JavaScript: 5
@@ -28,11 +28,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Top-level Areas
 - mobile: 169 files
-- webapp: 162 files
+- webapp: 165 files
 - services: 21 files
-- supabase: 19 files
+- supabase: 20 files
 - packages: 14 files
-- docs: 11 files
+- docs: 12 files
 - (root): 10 files
 - .claude: 9 files
 - infra: 2 files
@@ -66,6 +66,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `webapp/src/app/layout.tsx`
   - e.g. `webapp/src/app/page.tsx`
   - e.g. `webapp/src/app/auth/callback/route.ts`
+- `server-actions` (15 files): Server Action handlers under webapp/src/actions
+  - e.g. `webapp/src/actions/statement-snapshots.ts`
+  - e.g. `webapp/src/actions/recurring-templates.ts`
+  - e.g. `webapp/src/actions/debt.ts`
 - `expo-router` (15 files): Expo Router file-based routes
   - e.g. `mobile/app/+not-found.tsx`
   - e.g. `mobile/app/onboarding.tsx`
@@ -74,10 +78,6 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `services/pdf_parser/test_parser.py`
   - e.g. `services/pdf_parser/models.py`
   - e.g. `services/pdf_parser/storage.py`
-- `server-actions` (14 files): Server Action handlers under webapp/src/actions
-  - e.g. `webapp/src/actions/statement-snapshots.ts`
-  - e.g. `webapp/src/actions/recurring-templates.ts`
-  - e.g. `webapp/src/actions/debt.ts`
 - `zod-validators` (9 files): Validation layer using Zod
   - e.g. `webapp/src/actions/profile.ts`
   - e.g. `webapp/src/lib/validators/account.ts`
@@ -109,6 +109,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/(dashboard)/import/page.tsx`
 - `webapp/src/app/(dashboard)/layout.tsx`
 - `webapp/src/app/(dashboard)/recurrentes/page.tsx`
+- `webapp/src/app/(dashboard)/settings/analytics/page.tsx`
 - `webapp/src/app/(dashboard)/settings/page.tsx`
 - `webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
 - `webapp/src/app/(dashboard)/transactions/page.tsx`
@@ -117,25 +118,30 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/auth/callback/route.ts`
 - `webapp/src/app/layout.tsx`
 - `webapp/src/app/onboarding/layout.tsx`
-- `webapp/src/app/onboarding/page.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (394)
+- `webapp` -> `webapp` (408)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `design/mockups.pen`
-- `design/pencil-brand-identity.pen`
-- `design/web-mockups.pen`
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `docs/plans/2026-02-25-uiux-redesign-week1-tracking-spec.md`
-- `supabase/migrations/20260225201000_create_product_events.sql`
+- `docs/plans/2026-02-25-uiux-redesign-week1-operational-checklist.md`
+- `supabase/migrations/20260225204500_create_product_event_analytics_views.sql`
+- `webapp/src/actions/auth.ts`
+- `webapp/src/actions/import-transactions.ts`
+- `webapp/src/actions/product-events.ts`
 - `webapp/src/app/(dashboard)/dashboard/page.tsx`
-- `webapp/src/components/categorize/bulk-action-bar.tsx`
+- `webapp/src/app/(dashboard)/settings/analytics/page.tsx`
+- `webapp/src/app/onboarding/page.tsx`
 - `webapp/src/components/categorize/category-inbox.tsx`
 - `webapp/src/components/categorize/category-picker-dialog.tsx`
-- `webapp/src/components/categorize/inbox-transaction-row.tsx`
+- `webapp/src/components/import/import-wizard.tsx`
+- `webapp/src/components/import/step-confirm.tsx`
+- `webapp/src/components/import/step-upload.tsx`
+- `webapp/src/components/ui/skeleton.tsx`
+- `webapp/src/lib/constants/navigation.ts`
+- `webapp/src/lib/utils/analytics.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

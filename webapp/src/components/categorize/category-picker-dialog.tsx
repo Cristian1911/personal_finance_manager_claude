@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { trackClientEvent } from "@/lib/utils/analytics";
 import type {
   Category,
   CategoryWithChildren,
@@ -92,13 +93,32 @@ export function CategoryPickerDialog({
 
   function handleOpen(nextOpen: boolean) {
     setOpen(nextOpen);
-    if (nextOpen) setActiveSectionId(selectedSectionId);
+    if (nextOpen) {
+      setActiveSectionId(selectedSectionId);
+      void trackClientEvent({
+        event_name: "category_picker_opened",
+        flow: "categorize",
+        step: "picker",
+        entry_point: "cta",
+        success: true,
+      });
+    }
   }
 
   const activeSection =
     sections.find((s) => s.id === activeSectionId) ?? sections[0];
 
   function selectCategory(categoryId: string | null) {
+    void trackClientEvent({
+      event_name: "category_selected",
+      flow: "categorize",
+      step: "picker",
+      entry_point: "cta",
+      success: true,
+      metadata: {
+        selected_category_id: categoryId,
+      },
+    });
     onValueChange(categoryId);
     setOpen(false);
   }

@@ -8,6 +8,7 @@ import { importTransactions } from "@/actions/import-transactions";
 import { formatCurrency } from "@/lib/utils/currency";
 import { autoCategorize } from "@venti5/shared";
 import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
+import { trackClientEvent } from "@/lib/utils/analytics";
 import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
 import type { ActionResult } from "@/types/actions";
 import type {
@@ -284,7 +285,22 @@ export function StepConfirm({
         </div>
       </div>
 
-      <form action={formAction}>
+      <form
+        action={formAction}
+        onSubmit={() => {
+          void trackClientEvent({
+            event_name: "import_confirm_submitted",
+            flow: "import",
+            step: "confirm",
+            entry_point: "cta",
+            success: true,
+            metadata: {
+              selected_transactions: totals.count,
+              statement_meta_count: buildStatementMeta().length,
+            },
+          });
+        }}
+      >
         <input
           type="hidden"
           name="payload"

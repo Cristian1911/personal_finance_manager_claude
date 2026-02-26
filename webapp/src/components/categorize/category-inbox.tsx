@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition, useCallback } from "react";
+import { useState, useMemo, useTransition, useCallback, useEffect, useRef } from "react";
 import { Inbox, Sparkles, CheckCheck, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InboxTransactionRow } from "./inbox-transaction-row";
@@ -8,6 +8,7 @@ import { BulkActionBar } from "./bulk-action-bar";
 import { autoCategorize, extractPattern } from "@venti5/shared";
 import { categorizeTransaction, bulkCategorize } from "@/actions/categorize";
 import { formatDate } from "@/lib/utils/date";
+import { trackClientEvent } from "@/lib/utils/analytics";
 import type { TransactionWithRelations, CategoryWithChildren } from "@/types/domain";
 import type { UserRule, CategorizationResult } from "@venti5/shared";
 
@@ -39,6 +40,34 @@ export function CategoryInbox({
   }, [transactions, userRules]);
 
   const suggestedCount = suggestions.size;
+  const didTrackSeenRef = useRef(false);
+
+  useEffect(() => {
+    if (didTrackSeenRef.current) return;
+    didTrackSeenRef.current = true;
+    void trackClientEvent({
+      event_name: "uncategorized_item_seen",
+      flow: "categorize",
+      step: "inbox",
+      entry_point: "direct",
+      success: true,
+      metadata: { pending_uncategorized: initialTransactions.length },
+    });
+  }, [initialTransactions.length]);
+
+  useEffect(() => {
+    void trackClientEvent({
+      event_name: "category_suggestion_shown",
+      flow: "categorize",
+      step: "inbox",
+      entry_point: "direct",
+      success: true,
+      metadata: {
+        suggestions_count: suggestedCount,
+        pending_uncategorized: transactions.length,
+      },
+    });
+  }, [suggestedCount, transactions.length]);
 
   const patternGroups = useMemo(() => {
     const groups = new Map<string, string[]>();
@@ -138,6 +167,23 @@ export function CategoryInbox({
               (a, b) => b.transaction_date.localeCompare(a.transaction_date)
             ) : prev;
           });
+          void trackClientEvent({
+            event_name: "transaction_categorized",
+            flow: "categorize",
+            step: "single",
+            entry_point: "cta",
+            success: false,
+            error_code: "categorize_failed",
+          });
+        } else {
+          void trackClientEvent({
+            event_name: "transaction_categorized",
+            flow: "categorize",
+            step: "single",
+            entry_point: "cta",
+            success: true,
+            metadata: { category_id: categoryId },
+          });
         }
       });
     },
@@ -164,6 +210,23 @@ export function CategoryInbox({
       const result = await bulkCategorize(items);
       if (!result.success) {
         setTransactions(initialTransactions);
+        void trackClientEvent({
+          event_name: "bulk_categorize_applied",
+          flow: "categorize",
+          step: "bulk_suggestions",
+          entry_point: "cta",
+          success: false,
+          error_code: "bulk_categorize_failed",
+        });
+      } else {
+        void trackClientEvent({
+          event_name: "bulk_categorize_applied",
+          flow: "categorize",
+          step: "bulk_suggestions",
+          entry_point: "cta",
+          success: true,
+          metadata: { count: items.length, source: "suggestions" },
+        });
       }
     });
   }, [suggestions, initialTransactions]);
@@ -175,12 +238,29 @@ export function CategoryInbox({
     setTransactions((prev) => prev.filter((t) => !ids.has(t.id)));
     setSelected(new Set());
 
-    startTransition(async () => {
-      const result = await bulkCategorize(groupedSuggestionItems);
-      if (!result.success) {
-        setTransactions(initialTransactions);
-      }
-    });
+      startTransition(async () => {
+        const result = await bulkCategorize(groupedSuggestionItems);
+        if (!result.success) {
+          setTransactions(initialTransactions);
+          void trackClientEvent({
+            event_name: "bulk_categorize_applied",
+            flow: "categorize",
+            step: "bulk_merchant",
+            entry_point: "cta",
+            success: false,
+            error_code: "bulk_categorize_failed",
+          });
+        } else {
+          void trackClientEvent({
+            event_name: "bulk_categorize_applied",
+            flow: "categorize",
+            step: "bulk_merchant",
+            entry_point: "cta",
+            success: true,
+            metadata: { count: groupedSuggestionItems.length, source: "merchant_batch" },
+          });
+        }
+      });
   }, [groupedSuggestionItems, initialTransactions]);
 
   const handleBulkAssign = useCallback(
@@ -201,6 +281,23 @@ export function CategoryInbox({
         const result = await bulkCategorize(items);
         if (!result.success) {
           setTransactions(initialTransactions);
+          void trackClientEvent({
+            event_name: "bulk_categorize_applied",
+            flow: "categorize",
+            step: "bulk_manual",
+            entry_point: "cta",
+            success: false,
+            error_code: "bulk_categorize_failed",
+          });
+        } else {
+          void trackClientEvent({
+            event_name: "bulk_categorize_applied",
+            flow: "categorize",
+            step: "bulk_manual",
+            entry_point: "cta",
+            success: true,
+            metadata: { count: items.length, source: "bulk" },
+          });
         }
       });
     },

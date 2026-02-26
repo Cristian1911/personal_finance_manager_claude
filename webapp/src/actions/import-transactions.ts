@@ -7,6 +7,7 @@ import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { computeSnapshotDiffs } from "@venti5/shared";
 import type { ActionResult } from "@/types/actions";
 import type { ImportResult, AccountUpdateResult } from "@/types/import";
+import { trackProductEvent } from "@/actions/product-events";
 
 type DebtKind = "credit_card" | "loan";
 
@@ -75,6 +76,14 @@ export async function importTransactions(
   }
 
   if (!parsed.success) {
+    await trackProductEvent({
+      event_name: "import_completed",
+      flow: "import",
+      step: "persist",
+      entry_point: "cta",
+      success: false,
+      error_code: "invalid_payload",
+    });
     return { success: false, error: parsed.error.issues[0].message };
   }
 
@@ -342,6 +351,21 @@ export async function importTransactions(
   revalidatePath("/dashboard");
   revalidatePath("/accounts");
   revalidatePath("/deudas");
+
+  await trackProductEvent({
+    event_name: "import_completed",
+    flow: "import",
+    step: "persist",
+    entry_point: "cta",
+    success: true,
+    metadata: {
+      imported,
+      skipped,
+      errors,
+      account_updates: accountUpdates.length,
+      statement_meta_count: statementMeta?.length ?? 0,
+    },
+  });
 
   return {
     success: true,

@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-26T05:47:14.906061+00:00",
+  "generated_at_utc": "2026-02-26T06:16:45.631287+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,14 +9,14 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 419,
+    "text_files_scanned": 424,
     "languages": {
-      "TypeScript/React": 139,
+      "TypeScript/React": 140,
       "JSON": 116,
-      "TypeScript": 79,
-      "Markdown": 23,
+      "TypeScript": 81,
+      "Markdown": 24,
       "Python": 19,
-      "SQL": 18,
+      "SQL": 19,
       "Shell": 9,
       "YAML": 7,
       "JavaScript": 5,
@@ -26,11 +26,11 @@
   },
   "top_level_directories": {
     "mobile": 169,
-    "webapp": 162,
+    "webapp": 165,
     "services": 21,
-    "supabase": 19,
+    "supabase": 20,
     "packages": 14,
-    "docs": 11,
+    "docs": 12,
     "(root)": 10,
     ".claude": 9,
     "infra": 2,
@@ -71,14 +71,14 @@
         "webapp/src/app/api/parse-statement/route.ts",
         "webapp/src/app/(dashboard)/layout.tsx",
         "webapp/src/app/(dashboard)/settings/page.tsx",
+        "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
         "webapp/src/app/(dashboard)/dashboard/page.tsx",
         "webapp/src/actions/statement-snapshots.ts",
         "webapp/src/actions/recurring-templates.ts",
         "webapp/src/actions/debt.ts",
         "webapp/src/actions/categorize.ts",
-        "webapp/src/actions/budgets.ts",
-        "webapp/src/actions/payment-reminders.ts",
-        "webapp/src/actions/import-transactions.ts"
+        "webapp/src/actions/product-events.ts",
+        "webapp/src/actions/budgets.ts"
       ]
     },
     {
@@ -98,9 +98,31 @@
         "webapp/src/app/(auth)/login/page.tsx",
         "webapp/src/app/(dashboard)/layout.tsx",
         "webapp/src/app/(dashboard)/settings/page.tsx",
+        "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
         "webapp/src/app/(dashboard)/deudas/page.tsx",
-        "webapp/src/app/(dashboard)/deudas/simulador/page.tsx",
-        "webapp/src/app/(dashboard)/recurrentes/page.tsx"
+        "webapp/src/app/(dashboard)/deudas/simulador/page.tsx"
+      ]
+    },
+    {
+      "name": "server-actions",
+      "description": "Server Action handlers under webapp/src/actions",
+      "matched_files": 15,
+      "examples": [
+        "webapp/src/actions/statement-snapshots.ts",
+        "webapp/src/actions/recurring-templates.ts",
+        "webapp/src/actions/debt.ts",
+        "webapp/src/actions/categorize.ts",
+        "webapp/src/actions/product-events.ts",
+        "webapp/src/actions/budgets.ts",
+        "webapp/src/actions/payment-reminders.ts",
+        "webapp/src/actions/import-transactions.ts",
+        "webapp/src/actions/profile.ts",
+        "webapp/src/actions/onboarding.ts",
+        "webapp/src/actions/categories.ts",
+        "webapp/src/actions/transactions.ts",
+        "webapp/src/actions/accounts.ts",
+        "webapp/src/actions/charts.ts",
+        "webapp/src/actions/auth.ts"
       ]
     },
     {
@@ -145,27 +167,6 @@
         "services/pdf_parser/parsers/utils.py",
         "services/pdf_parser/parsers/bancolombia_credit_card.py",
         "services/pdf_parser/parsers/bogota_credit_card.py"
-      ]
-    },
-    {
-      "name": "server-actions",
-      "description": "Server Action handlers under webapp/src/actions",
-      "matched_files": 14,
-      "examples": [
-        "webapp/src/actions/statement-snapshots.ts",
-        "webapp/src/actions/recurring-templates.ts",
-        "webapp/src/actions/debt.ts",
-        "webapp/src/actions/categorize.ts",
-        "webapp/src/actions/budgets.ts",
-        "webapp/src/actions/payment-reminders.ts",
-        "webapp/src/actions/import-transactions.ts",
-        "webapp/src/actions/profile.ts",
-        "webapp/src/actions/onboarding.ts",
-        "webapp/src/actions/categories.ts",
-        "webapp/src/actions/transactions.ts",
-        "webapp/src/actions/accounts.ts",
-        "webapp/src/actions/charts.ts",
-        "webapp/src/actions/auth.ts"
       ]
     },
     {
@@ -218,6 +219,7 @@
     "webapp/src/app/(dashboard)/import/page.tsx",
     "webapp/src/app/(dashboard)/layout.tsx",
     "webapp/src/app/(dashboard)/recurrentes/page.tsx",
+    "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
     "webapp/src/app/(dashboard)/settings/page.tsx",
     "webapp/src/app/(dashboard)/transactions/[id]/page.tsx",
     "webapp/src/app/(dashboard)/transactions/page.tsx",
@@ -234,7 +236,7 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 394
+      "count": 408
     },
     {
       "from": "mobile",
@@ -243,17 +245,23 @@
     }
   ],
   "recent_changes": [
-    "design/mockups.pen",
-    "design/pencil-brand-identity.pen",
-    "design/web-mockups.pen",
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "docs/plans/2026-02-25-uiux-redesign-week1-tracking-spec.md",
-    "supabase/migrations/20260225201000_create_product_events.sql",
+    "docs/plans/2026-02-25-uiux-redesign-week1-operational-checklist.md",
+    "supabase/migrations/20260225204500_create_product_event_analytics_views.sql",
+    "webapp/src/actions/auth.ts",
+    "webapp/src/actions/import-transactions.ts",
+    "webapp/src/actions/product-events.ts",
     "webapp/src/app/(dashboard)/dashboard/page.tsx",
-    "webapp/src/components/categorize/bulk-action-bar.tsx",
+    "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
+    "webapp/src/app/onboarding/page.tsx",
     "webapp/src/components/categorize/category-inbox.tsx",
     "webapp/src/components/categorize/category-picker-dialog.tsx",
-    "webapp/src/components/categorize/inbox-transaction-row.tsx"
+    "webapp/src/components/import/import-wizard.tsx",
+    "webapp/src/components/import/step-confirm.tsx",
+    "webapp/src/components/import/step-upload.tsx",
+    "webapp/src/components/ui/skeleton.tsx",
+    "webapp/src/lib/constants/navigation.ts",
+    "webapp/src/lib/utils/analytics.ts"
   ]
 }

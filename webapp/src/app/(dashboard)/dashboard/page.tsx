@@ -47,6 +47,7 @@ import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-card";
 import { computeDebtBalance } from "@venti5/shared";
+import { trackProductEvent } from "@/actions/product-events";
 
 export default async function DashboardPage({
   searchParams,
@@ -198,6 +199,33 @@ export default async function DashboardPage({
   const budgetPressureHigh = budgetConfigured && budgetData.progress >= 90;
   const cashflowPressure = monthIncome > 0 && monthExpenses > monthIncome;
   const uncategorizedTotal = uncategorizedCount ?? 0;
+
+  await trackProductEvent({
+    event_name: "dashboard_viewed",
+    flow: "dashboard",
+    step: "main",
+    entry_point: "direct",
+    success: true,
+    metadata: {
+      starter_mode: starterMode,
+      month: monthLabel,
+      uncategorized_count: uncategorizedTotal,
+    },
+  });
+
+  if (!starterMode && (recentTransactions?.length ?? 0) > 0) {
+    await trackProductEvent({
+      event_name: "first_financial_insight_rendered",
+      flow: "dashboard",
+      step: "main",
+      entry_point: "direct",
+      success: true,
+      metadata: {
+        recent_transactions_count: recentTransactions?.length ?? 0,
+        accounts_count: allAccounts.length,
+      },
+    });
+  }
 
   if (starterMode) {
     return (
