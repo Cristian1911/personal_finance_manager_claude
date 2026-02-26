@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-25T23:12:53.274522+00:00`
+- Generated (UTC): `2026-02-26T05:47:14.906061+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,13 +13,13 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 416
-- TypeScript/React: 138
+- Text files scanned: 419
+- TypeScript/React: 139
 - JSON: 116
 - TypeScript: 79
-- Markdown: 22
+- Markdown: 23
 - Python: 19
-- SQL: 17
+- SQL: 18
 - Shell: 9
 - YAML: 7
 - JavaScript: 5
@@ -28,12 +28,12 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Top-level Areas
 - mobile: 169 files
-- webapp: 161 files
+- webapp: 162 files
 - services: 21 files
-- supabase: 18 files
+- supabase: 19 files
 - packages: 14 files
+- docs: 11 files
 - (root): 10 files
-- docs: 10 files
 - .claude: 9 files
 - infra: 2 files
 - .github: 2 files
@@ -120,17 +120,22 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/onboarding/page.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (391)
+- `webapp` -> `webapp` (394)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
+- `design/mockups.pen`
+- `design/pencil-brand-identity.pen`
+- `design/web-mockups.pen`
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `"pdfs_to_review/Nu_2026-03-07(1)_1 2.pdf"`
-- `services/pdf_parser/models.py`
-- `services/pdf_parser/parsers/nu_credit_card.py`
-- `services/pdf_parser/test_parser.py`
-- `webapp/src/actions/import-transactions.ts`
+- `docs/plans/2026-02-25-uiux-redesign-week1-tracking-spec.md`
+- `supabase/migrations/20260225201000_create_product_events.sql`
+- `webapp/src/app/(dashboard)/dashboard/page.tsx`
+- `webapp/src/components/categorize/bulk-action-bar.tsx`
+- `webapp/src/components/categorize/category-inbox.tsx`
+- `webapp/src/components/categorize/category-picker-dialog.tsx`
+- `webapp/src/components/categorize/inbox-transaction-row.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
