@@ -10,6 +10,7 @@ import {
   Wallet,
   Shield,
   Trash2,
+  Bug,
   ChevronRight,
 } from "lucide-react-native";
 import { formatRelativeDate } from "@venti5/shared";
@@ -18,6 +19,7 @@ import { useAppStore } from "../../lib/store";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { clearDatabase, getDatabase } from "../../lib/db/database";
+import { disableDemoMode } from "../../lib/demo-mode";
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -63,7 +65,7 @@ function SettingsRow({
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, demoMode, setDemoMode } = useAuth();
   const { status, lastSynced, sync } = useSync();
   const { profile, clear } = useAppStore();
   const [syncing, setSyncing] = useState(false);
@@ -118,6 +120,31 @@ export default function SettingsScreen() {
       },
     ]);
   }, [clear]);
+
+  const handleExitDemoMode = useCallback(() => {
+    Alert.alert(
+      "Salir de modo demo",
+      "Se borraran los datos de prueba y volveras al login.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Salir",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await disableDemoMode();
+              setDemoMode(false);
+              await clearDatabase();
+              clear();
+              router.replace("/(auth)/login");
+            } catch (error) {
+              console.error("Exit demo mode error:", error);
+            }
+          },
+        },
+      ]
+    );
+  }, [clear, router, setDemoMode]);
 
   const syncStatusLabel =
     status === "syncing" || syncing
@@ -212,11 +239,29 @@ export default function SettingsScreen() {
       {/* Session section */}
       <SectionHeader title="Sesion" />
       <View className="bg-white mb-8">
+        {demoMode ? (
+          <SettingsRow
+            icon={<LogOut size={18} color="#EF4444" />}
+            label="Salir modo demo"
+            onPress={handleExitDemoMode}
+            destructive
+          />
+        ) : (
+          <SettingsRow
+            icon={<LogOut size={18} color="#EF4444" />}
+            label="Cerrar sesion"
+            onPress={handleSignOut}
+            destructive
+          />
+        )}
+      </View>
+
+      <SectionHeader title="Soporte" />
+      <View className="bg-white mb-8">
         <SettingsRow
-          icon={<LogOut size={18} color="#EF4444" />}
-          label="Cerrar sesion"
-          onPress={handleSignOut}
-          destructive
+          icon={<Bug size={18} color="#6B7280" />}
+          label="Quick capture de bug"
+          onPress={() => router.push("/bug-report" as never)}
         />
       </View>
     </ScrollView>

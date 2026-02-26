@@ -29,6 +29,10 @@ import {
   type AccountRow,
 } from "../../lib/repositories/accounts";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
+import {
+  DEBT_PAYMENT_CATEGORY_ID,
+  isDebtInflow,
+} from "../../lib/transaction-semantics";
 
 const expoHashFn = (payload: string) =>
   Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
@@ -321,7 +325,14 @@ export default function ImportScreen() {
   }, []);
 
   const handleImport = useCallback(async () => {
-    if (!parsedData || !session?.user?.id) return;
+    if (!parsedData) return;
+    if (!session?.user?.id) {
+      Alert.alert(
+        "Inicia sesion",
+        "La importacion de extractos requiere una cuenta autenticada."
+      );
+      return;
+    }
 
     if (!selectedAccount) {
       Alert.alert("Error", "Selecciona una cuenta de destino.");
@@ -339,6 +350,11 @@ export default function ImportScreen() {
       for (const index of selected) {
         const t = parsedData.transactions[index];
         if (!t) continue;
+        const isDebtPayment = isDebtInflow({
+          direction: t.direction,
+          accountType: selectedAccount.account_type,
+        });
+        const forcedCategoryId = isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : null;
 
         const idempotencyKey = await computeIdempotencyKey(
           {
@@ -355,12 +371,13 @@ export default function ImportScreen() {
         try {
           const result = await db.runAsync(
             `INSERT OR IGNORE INTO transactions
-              (id, user_id, account_id, amount, direction, description, merchant_name, raw_description, transaction_date, status, idempotency_key, is_excluded, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'POSTED', ?, 0, ?, ?)`,
+              (id, user_id, account_id, category_id, amount, direction, description, merchant_name, raw_description, transaction_date, status, idempotency_key, is_excluded, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'POSTED', ?, 0, ?, ?)`,
             [
               txId,
               userId,
               selectedAccount.id,
+              forcedCategoryId,
               t.amount,
               t.direction,
               t.description,
@@ -379,6 +396,7 @@ export default function ImportScreen() {
               id: txId,
               user_id: userId,
               account_id: selectedAccount.id,
+              category_id: forcedCategoryId,
               amount: t.amount,
               direction: t.direction,
               description: t.description,
@@ -520,6 +538,10 @@ export default function ImportScreen() {
           renderItem={({ item, index }) => {
             const isSelected = selected.has(index);
             const isInflow = item.direction === "INFLOW";
+            const isDebtPayment = isDebtInflow({
+              direction: item.direction,
+              accountType: selectedAccount?.account_type,
+            });
             const Icon = isSelected ? CheckSquare : Square;
 
             return (
@@ -537,11 +559,16 @@ export default function ImportScreen() {
                   </Text>
                   <Text className="text-gray-400 font-inter text-xs mt-0.5">
                     {item.date}
+                    {isDebtPayment ? " • Abono a deuda" : ""}
                   </Text>
                 </View>
                 <Text
                   className={`font-inter-bold text-sm ${
-                    isInflow ? "text-green-600" : "text-gray-900"
+                    isDebtPayment
+                      ? "text-sky-600"
+                      : isInflow
+                        ? "text-green-600"
+                        : "text-gray-900"
                   }`}
                 >
                   {isInflow ? "+" : "-"}

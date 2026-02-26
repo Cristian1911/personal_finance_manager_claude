@@ -1,6 +1,7 @@
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { isDebtInflow } from "../../lib/transaction-semantics";
 
 type TransactionRowProps = {
   id: string;
@@ -12,6 +13,7 @@ type TransactionRowProps = {
   category_name_es: string | null;
   category_color: string | null;
   category_icon: string | null;
+  account_type?: string | null;
 };
 
 export function TransactionRow({
@@ -24,12 +26,15 @@ export function TransactionRow({
   category_name_es,
   category_color,
   category_icon,
+  account_type,
 }: TransactionRowProps) {
   const router = useRouter();
   const displayName = merchant_name || description || "Sin descripcion";
   const isInflow = direction === "INFLOW";
-  const color = category_color || "#6B7280";
-  const initial = category_icon || (category_name_es?.[0] ?? "?");
+  const isDebtPayment = isDebtInflow({ direction, accountType: account_type });
+  const semanticCategory = isDebtPayment ? "Abono a deuda" : category_name_es;
+  const color = isDebtPayment ? "#0EA5E9" : (category_color || "#6B7280");
+  const initial = isDebtPayment ? "AB" : category_icon || (semanticCategory?.[0] ?? "?");
 
   return (
     <Pressable
@@ -57,9 +62,9 @@ export function TransactionRow({
         >
           {displayName}
         </Text>
-        {category_name_es && (
+        {semanticCategory && (
           <Text className="text-gray-400 font-inter text-xs mt-0.5">
-            {category_name_es}
+            {semanticCategory}
           </Text>
         )}
       </View>
@@ -67,7 +72,7 @@ export function TransactionRow({
       {/* Amount */}
       <Text
         className={`font-inter-bold text-sm ${
-          isInflow ? "text-green-600" : "text-gray-900"
+          isDebtPayment ? "text-sky-600" : isInflow ? "text-green-600" : "text-gray-900"
         }`}
       >
         {isInflow ? "+" : "-"}

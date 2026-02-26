@@ -10,13 +10,18 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
+import { seedDemoData } from "../../lib/demo-data";
+import { enableDemoMode } from "../../lib/demo-mode";
+import { useAuth } from "../../lib/auth";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { setDemoMode } = useAuth();
 
   async function handleLogin() {
     setLoading(true);
@@ -32,6 +37,22 @@ export default function LoginScreen() {
     }
 
     setLoading(false);
+  }
+
+  async function handleTryDemo() {
+    setDemoLoading(true);
+    setError(null);
+    try {
+      await seedDemoData();
+      await enableDemoMode();
+      setDemoMode(true);
+      router.replace("/(tabs)");
+    } catch (err) {
+      console.error("Demo mode setup error:", err);
+      setError("No se pudo iniciar el modo demo.");
+    } finally {
+      setDemoLoading(false);
+    }
   }
 
   return (
@@ -98,6 +119,23 @@ export default function LoginScreen() {
           ) : (
             <Text className="text-white font-semibold text-base">
               Iniciar sesion
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className={`mt-3 rounded-lg py-3.5 items-center border ${
+            demoLoading ? "border-gray-200 bg-gray-100" : "border-gray-300 bg-white"
+          }`}
+          onPress={handleTryDemo}
+          disabled={demoLoading || loading}
+          activeOpacity={0.8}
+        >
+          {demoLoading ? (
+            <ActivityIndicator color="#6B7280" />
+          ) : (
+            <Text className="text-gray-700 font-semibold text-base">
+              Probar demo sin cuenta
             </Text>
           )}
         </TouchableOpacity>

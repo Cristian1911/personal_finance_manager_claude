@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T16:19:30.461189+00:00`
+- Generated (UTC): `2026-02-26T16:21:49.958966+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -124,8 +124,6 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `docs/agent/PROJECT_CONTEXT.md`
-- `docs/agent/project_context.json`
 - `mobile/app/(auth)/login.tsx`
 - `mobile/app/(tabs)/budgets.tsx`
 - `mobile/app/(tabs)/import.tsx`
@@ -134,26 +132,21 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile/app/(tabs)/transactions.tsx`
 - `mobile/app/_layout.tsx`
 - `mobile/app/account/[id].tsx`
+- `mobile/app/bug-report.tsx`
 - `mobile/app/onboarding.tsx`
 - `mobile/app/transaction/[id].tsx`
 - `mobile/components/transactions/CategoryPicker.tsx`
 - `mobile/components/transactions/TransactionRow.tsx`
 - `mobile/lib/auth.tsx`
+- `mobile/lib/demo-data.ts`
+- `mobile/lib/demo-mode.ts`
 - `mobile/lib/repositories/transactions.ts`
 - `mobile/lib/supabase.ts`
 - `mobile/lib/sync/engine.ts`
 - `mobile/lib/sync/pull.ts`
-- `packages/shared/src/types/database.ts`
-- `packages/shared/src/types/domain.ts`
-- `supabase/migrations/20260226100000_add_transfer_source_account_to_recurring_templates.sql`
-- `webapp/src/actions/recurring-templates.ts`
-- `webapp/src/app/(dashboard)/recurrentes/page.tsx`
-- `webapp/src/components/recurring/recurring-calendar-checklist.tsx`
-- `webapp/src/components/recurring/recurring-form.tsx`
-- `webapp/src/components/recurring/recurring-list.tsx`
-- `webapp/src/lib/validators/recurring-template.ts`
-- `webapp/src/types/database.ts`
-- `webapp/src/types/domain.ts`
+- `mobile/lib/transaction-semantics.ts`
+- `supabase/migrations/20260226090000_create_bug_reports.sql`
+- `mobile/components/common/`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

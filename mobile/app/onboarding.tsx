@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   View,
@@ -28,6 +29,7 @@ export default function MobileOnboardingScreen() {
   const [purpose, setPurpose] = useState(PURPOSES[0].id);
   const [income, setIncome] = useState("");
   const [expenses, setExpenses] = useState("");
+  const [createInitialAccount, setCreateInitialAccount] = useState(false);
   const [accountName, setAccountName] = useState("Cuenta principal");
   const [balance, setBalance] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,15 +43,22 @@ export default function MobileOnboardingScreen() {
     if (!session?.user?.id) return;
 
     setError(null);
-    if (!fullName.trim() || !accountName.trim()) {
-      setError("Completa tu nombre y una cuenta inicial.");
+    if (!fullName.trim()) {
+      setError("Completa tu nombre.");
       return;
     }
 
-    const balanceNumber = Number(balance);
-    if (!Number.isFinite(balanceNumber)) {
-      setError("Ingresa un saldo inicial valido.");
-      return;
+    let balanceNumber = 0;
+    if (createInitialAccount) {
+      if (!accountName.trim()) {
+        setError("Ingresa un nombre para tu cuenta inicial.");
+        return;
+      }
+      balanceNumber = Number(balance);
+      if (!Number.isFinite(balanceNumber)) {
+        setError("Ingresa un saldo inicial valido.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -75,22 +84,24 @@ export default function MobileOnboardingScreen() {
         throw profileError;
       }
 
-      const { error: accountError } = await supabase.from("accounts").insert({
-        user_id: session.user.id,
-        name: accountName.trim(),
-        account_type: "CHECKING",
-        current_balance: balanceNumber,
-        currency_code: "COP",
-        is_active: true,
-        display_order: 0,
-        provider: "MANUAL",
-        connection_status: "CONNECTED",
-        created_at: now,
-        updated_at: now,
-      });
+      if (createInitialAccount) {
+        const { error: accountError } = await supabase.from("accounts").insert({
+          user_id: session.user.id,
+          name: accountName.trim(),
+          account_type: "CHECKING",
+          current_balance: balanceNumber,
+          currency_code: "COP",
+          is_active: true,
+          display_order: 0,
+          provider: "MANUAL",
+          connection_status: "CONNECTED",
+          created_at: now,
+          updated_at: now,
+        });
 
-      if (accountError) {
-        throw accountError;
+        if (accountError) {
+          throw accountError;
+        }
       }
 
       router.replace("/(tabs)");
@@ -171,25 +182,47 @@ export default function MobileOnboardingScreen() {
         <View className="mt-3 rounded-2xl bg-white p-4 shadow-sm">
           <Text className="text-base font-inter-semibold text-gray-900">Cuenta inicial</Text>
           <Text className="mt-1 text-xs text-gray-500 font-inter">
-            Puedes cambiarla o agregar mas cuentas despues.
+            Es opcional. Puedes crearla ahora o mas adelante.
           </Text>
 
-          <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">Nombre de la cuenta</Text>
-          <TextInput
-            value={accountName}
-            onChangeText={setAccountName}
-            placeholder="Cuenta principal"
-            className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
-          />
+          <View className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-sm font-inter-medium text-gray-800">
+                Crear cuenta inicial ahora
+              </Text>
+              <Text className="text-xs text-gray-500 font-inter mt-0.5">
+                Si no, podras hacerlo despues desde la pestana Cuentas.
+              </Text>
+            </View>
+            <Switch
+              value={createInitialAccount}
+              onValueChange={setCreateInitialAccount}
+              trackColor={{ false: "#E5E7EB", true: "#10B981" }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor="#E5E7EB"
+            />
+          </View>
 
-          <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">Saldo actual</Text>
-          <TextInput
-            value={balance}
-            onChangeText={setBalance}
-            keyboardType="numeric"
-            placeholder="Ej: 1200000"
-            className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
-          />
+          {createInitialAccount && (
+            <>
+              <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">Nombre de la cuenta</Text>
+              <TextInput
+                value={accountName}
+                onChangeText={setAccountName}
+                placeholder="Cuenta principal"
+                className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+              />
+
+              <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">Saldo actual</Text>
+              <TextInput
+                value={balance}
+                onChangeText={setBalance}
+                keyboardType="numeric"
+                placeholder="Ej: 1200000"
+                className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+              />
+            </>
+          )}
         </View>
 
         {error && (
