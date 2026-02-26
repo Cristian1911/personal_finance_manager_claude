@@ -18,6 +18,24 @@ const MIN_EA_RATE: Record<DebtKind, number> = {
 
 const MAX_EA_RATE = 150;
 
+const IMPORT_DETAIL_MESSAGES = {
+  monthlyToAnnual: (
+    accountId: string,
+    label: string,
+    monthlyRate: number,
+    annualRate: number
+  ) =>
+    `Cuenta ${accountId}: ${label} ${monthlyRate}% parece M.V.; convertido a ${annualRate}% E.A.`,
+  rateOutOfRange: (
+    accountId: string,
+    label: string,
+    rate: number,
+    minRate: number,
+    maxRate: number
+  ) =>
+    `Cuenta ${accountId}: ${label} ${rate}% E.A. fuera de rango (${minRate}%-${maxRate}%). Se ignora.`,
+} as const;
+
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -40,15 +58,19 @@ function sanitizeEaRate(
   // Heuristic: rates in the 0.5%-5% range are often monthly (M.V.) parsed as annual.
   if (rate >= 0.5 && rate <= 5) {
     const converted = mvToEaPercent(rate);
-    details.push(
-      `Cuenta ${accountId}: ${label} ${rate}% parece M.V.; convertido a ${converted}% E.A.`
-    );
+    details.push(IMPORT_DETAIL_MESSAGES.monthlyToAnnual(accountId, label, rate, converted));
     rate = converted;
   }
 
   if (rate < MIN_EA_RATE[kind] || rate > MAX_EA_RATE) {
     details.push(
-      `Cuenta ${accountId}: ${label} ${rate}% E.A. fuera de rango (${MIN_EA_RATE[kind]}%-${MAX_EA_RATE}%). Se ignora.`
+      IMPORT_DETAIL_MESSAGES.rateOutOfRange(
+        accountId,
+        label,
+        rate,
+        MIN_EA_RATE[kind],
+        MAX_EA_RATE
+      )
     );
     return null;
   }

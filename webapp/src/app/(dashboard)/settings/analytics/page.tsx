@@ -49,32 +49,20 @@ export default async function AnalyticsPage() {
 
   if (!user) redirect("/login");
 
-  const db = supabase as unknown as {
-    schema: (name: string) => {
-      from: (table: string) => {
-        select: (query: string) => {
-          order: (column: string, options?: { ascending?: boolean }) => {
-            limit: (count: number) => Promise<{ data: unknown[] | null }>;
-          };
-        };
-      };
-    };
-  };
-
   const [dailyCountsRes, activationRes, importRes, categorizeRes] = await Promise.all([
-    db
+    supabase
       .schema("analytics")
       .from("product_event_daily_counts")
       .select("day,event_name,flow,event_count,user_count")
       .order("day", { ascending: false })
       .limit(50),
-    db
+    supabase
       .schema("analytics")
       .from("activation_d7")
       .select("cohort_day,signups,activated_d7,activation_d7_pct")
       .order("cohort_day", { ascending: false })
       .limit(30),
-    db
+    supabase
       .schema("analytics")
       .from("import_funnel_daily")
       .select(
@@ -82,7 +70,7 @@ export default async function AnalyticsPage() {
       )
       .order("day", { ascending: false })
       .limit(30),
-    db
+    supabase
       .schema("analytics")
       .from("categorization_funnel_daily")
       .select(
@@ -92,10 +80,43 @@ export default async function AnalyticsPage() {
       .limit(30),
   ]);
 
-  const dailyCounts = (dailyCountsRes.data ?? []) as DailyEventCountRow[];
-  const activation = (activationRes.data ?? []) as ActivationRow[];
-  const importFunnel = (importRes.data ?? []) as ImportFunnelRow[];
-  const categorizeFunnel = (categorizeRes.data ?? []) as CategorizationFunnelRow[];
+  const dailyCounts = (dailyCountsRes.data ?? []).map((r) => ({
+    day: r.day ?? "",
+    event_name: r.event_name ?? "",
+    flow: r.flow ?? "unknown",
+    event_count: r.event_count ?? 0,
+    user_count: r.user_count ?? 0,
+  })) as DailyEventCountRow[];
+
+  const activation = (activationRes.data ?? []).map((r) => ({
+    cohort_day: r.cohort_day ?? "",
+    signups: r.signups ?? 0,
+    activated_d7: r.activated_d7 ?? 0,
+    activation_d7_pct: r.activation_d7_pct ?? 0,
+  })) as ActivationRow[];
+
+  const importFunnel = (importRes.data ?? []).map((r) => ({
+    day: r.day ?? "",
+    sessions: r.sessions ?? 0,
+    opened: r.opened ?? 0,
+    file_selected: r.file_selected ?? 0,
+    parse_requested: r.parse_requested ?? 0,
+    parse_succeeded: r.parse_succeeded ?? 0,
+    confirm_submitted: r.confirm_submitted ?? 0,
+    completed: r.completed ?? 0,
+    open_to_complete_pct: r.open_to_complete_pct ?? 0,
+  })) as ImportFunnelRow[];
+
+  const categorizeFunnel = (categorizeRes.data ?? []).map((r) => ({
+    day: r.day ?? "",
+    users_with_activity: r.users_with_activity ?? 0,
+    seen: r.seen ?? 0,
+    picker_opened: r.picker_opened ?? 0,
+    selected: r.selected ?? 0,
+    categorized: r.categorized ?? 0,
+    bulk_categorized: r.bulk_categorized ?? 0,
+    seen_to_categorized_pct: r.seen_to_categorized_pct ?? 0,
+  })) as CategorizationFunnelRow[];
 
   const latestImport = importFunnel[0];
   const latestCategorize = categorizeFunnel[0];
@@ -241,4 +262,3 @@ export default async function AnalyticsPage() {
     </div>
   );
 }
-

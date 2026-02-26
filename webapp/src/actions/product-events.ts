@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/types/database";
 
 export type ProductEventInput = {
   event_name: string;
@@ -12,7 +13,7 @@ export type ProductEventInput = {
   success?: boolean;
   duration_ms?: number;
   error_code?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Json;
 };
 
 export async function trackProductEvent(input: ProductEventInput): Promise<void> {
@@ -37,16 +38,8 @@ export async function trackProductEvent(input: ProductEventInput): Promise<void>
     metadata: input.metadata ?? {},
   };
 
-  // The generated DB types may lag behind migrations; keep this path resilient.
-  const db = supabase as unknown as {
-    from: (table: string) => {
-      insert: (values: Record<string, unknown>) => Promise<{ error?: { message: string } }>;
-    };
-  };
-
-  const { error } = await db.from("product_events").insert(payload);
+  const { error } = await supabase.from("product_events").insert(payload);
   if (error) {
     console.error("trackProductEvent error:", error.message);
   }
 }
-

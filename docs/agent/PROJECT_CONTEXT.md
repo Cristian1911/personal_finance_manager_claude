@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T06:16:45.631287+00:00`
+- Generated (UTC): `2026-02-26T06:30:41.645457+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -120,28 +120,17 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/onboarding/layout.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (408)
+- `webapp` -> `webapp` (409)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `docs/plans/2026-02-25-uiux-redesign-week1-operational-checklist.md`
-- `supabase/migrations/20260225204500_create_product_event_analytics_views.sql`
-- `webapp/src/actions/auth.ts`
+- `services/pdf_parser/parsers/nu_credit_card.py`
 - `webapp/src/actions/import-transactions.ts`
 - `webapp/src/actions/product-events.ts`
-- `webapp/src/app/(dashboard)/dashboard/page.tsx`
 - `webapp/src/app/(dashboard)/settings/analytics/page.tsx`
-- `webapp/src/app/onboarding/page.tsx`
-- `webapp/src/components/categorize/category-inbox.tsx`
-- `webapp/src/components/categorize/category-picker-dialog.tsx`
-- `webapp/src/components/import/import-wizard.tsx`
-- `webapp/src/components/import/step-confirm.tsx`
-- `webapp/src/components/import/step-upload.tsx`
-- `webapp/src/components/ui/skeleton.tsx`
-- `webapp/src/lib/constants/navigation.ts`
-- `webapp/src/lib/utils/analytics.ts`
+- `webapp/src/types/database.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
