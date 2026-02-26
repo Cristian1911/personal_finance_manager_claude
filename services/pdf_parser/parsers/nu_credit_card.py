@@ -509,9 +509,7 @@ def parse_nu_credit_card(
             else payment_due_date.year - 1
         )
         period_from = date(inferred_year, inferred_month, min(payment_due_date.day, 28))
-    if not period_to:
-        period_to = date.today()
-    if not period_from:
+    if not period_from and period_to:
         period_from = date(period_to.year, period_to.month, 1)
 
     # Interest charged
@@ -554,7 +552,8 @@ def parse_nu_credit_card(
     # Split into lines for intelligent reconstruction
     lines = transaction_section.split("\n")
     reconstructed = _build_transaction_text(lines)
-    transactions = _parse_transactions(reconstructed, period_to)
+    parse_reference_date = period_to or payment_due_date or date.today()
+    transactions = _parse_transactions(reconstructed, parse_reference_date)
 
     # Calculate purchases_and_charges: sum of OUTFLOW transactions
     purchases_and_charges = sum(
