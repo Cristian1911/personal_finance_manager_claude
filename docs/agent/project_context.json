@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-26T16:23:07.173551+00:00",
+  "generated_at_utc": "2026-02-26T20:05:17.438601+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,32 +9,32 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 432,
+    "text_files_scanned": 457,
     "languages": {
       "TypeScript/React": 143,
-      "JSON": 116,
+      "JSON": 140,
       "TypeScript": 84,
       "Markdown": 24,
       "SQL": 21,
       "Python": 19,
       "Shell": 9,
-      "YAML": 7,
+      "YAML": 8,
       "JavaScript": 5,
       "CSS": 2,
       "TOML": 2
     }
   },
   "top_level_directories": {
-    "mobile": 174,
+    "mobile": 197,
     "webapp": 166,
     "supabase": 22,
     "services": 21,
     "packages": 14,
     "docs": 12,
-    "(root)": 10,
+    "(root)": 11,
     ".claude": 9,
-    "infra": 2,
-    ".github": 2
+    ".github": 3,
+    "infra": 2
   },
   "commands": {
     "root_scripts": {
@@ -55,7 +55,9 @@
       "start": "expo start",
       "android": "expo run:android",
       "ios": "expo run:ios",
-      "web": "expo start --web"
+      "web": "expo start --web",
+      "build:apk:local": "eas build --platform android --profile preview-local",
+      "build:apk:device": "eas build --platform android --profile preview-device"
     }
   },
   "patterns": [
@@ -246,9 +248,13 @@
     }
   ],
   "recent_changes": [
-    "mobile/lib/auth.tsx",
-    "mobile/lib/supabase.ts",
-    "mobile/lib/sync/engine.ts",
-    "mobile/lib/sync/pull.ts"
+    ".github/workflows/mobile-apk.yml",
+    "app.json",
+    "docs/agent/PROJECT_CONTEXT.md",
+    "docs/agent/project_context.json",
+    "mobile/app.json",
+    "mobile/eas.json",
+    "mobile/lib/db/database.ts",
+    "mobile/package.json"
   ]
 }

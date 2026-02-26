@@ -12,19 +12,25 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview-local": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://10.0.2.2:3000"
+      }
+    },
+    "preview-device": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pfm.sanson1911.cloud"
+      }
     },
     "production": {
       "autoIncrement": true
-    }
-  },
-  "submit": {
-    "production": {
-      "ios": {
-        "appleId": "",
-        "ascAppId": "",
-        "appleTeamId": ""
-      }
     }
   }
 }

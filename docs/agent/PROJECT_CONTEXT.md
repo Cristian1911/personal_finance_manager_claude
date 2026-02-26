@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T16:23:07.173551+00:00`
+- Generated (UTC): `2026-02-26T20:05:17.438601+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,30 +13,30 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 432
+- Text files scanned: 457
 - TypeScript/React: 143
-- JSON: 116
+- JSON: 140
 - TypeScript: 84
 - Markdown: 24
 - SQL: 21
 - Python: 19
 - Shell: 9
-- YAML: 7
+- YAML: 8
 - JavaScript: 5
 - CSS: 2
 - TOML: 2
 
 ## Top-level Areas
-- mobile: 174 files
+- mobile: 197 files
 - webapp: 166 files
 - supabase: 22 files
 - services: 21 files
 - packages: 14 files
 - docs: 12 files
-- (root): 10 files
+- (root): 11 files
 - .claude: 9 files
+- .github: 3 files
 - infra: 2 files
-- .github: 2 files
 
 ## Key Commands
 ### root_scripts
@@ -56,6 +56,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `android`: `expo run:android`
 - `ios`: `expo run:ios`
 - `web`: `expo start --web`
+- `build:apk:local`: `eas build --platform android --profile preview-local`
+- `build:apk:device`: `eas build --platform android --profile preview-device`
 
 ## Patterns Detected
 - `supabase-integration` (15 files): Supabase clients/services in app code
@@ -124,10 +126,14 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/lib/auth.tsx`
-- `mobile/lib/supabase.ts`
-- `mobile/lib/sync/engine.ts`
-- `mobile/lib/sync/pull.ts`
+- `.github/workflows/mobile-apk.yml`
+- `app.json`
+- `docs/agent/PROJECT_CONTEXT.md`
+- `docs/agent/project_context.json`
+- `mobile/app.json`
+- `mobile/eas.json`
+- `mobile/lib/db/database.ts`
+- `mobile/package.json`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
