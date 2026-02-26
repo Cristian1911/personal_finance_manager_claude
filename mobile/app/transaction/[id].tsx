@@ -26,6 +26,11 @@ import {
   type CategoryRow,
 } from "../../components/transactions/CategoryPicker";
 import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import {
+  DEBT_PAYMENT_CATEGORY_ID,
+  getTransactionTypeLabel,
+  isDebtInflow,
+} from "../../lib/transaction-semantics";
 
 type TransactionDetail = {
   id: string;
@@ -44,6 +49,7 @@ type TransactionDetail = {
   account_name: string | null;
   account_icon: string | null;
   account_color: string | null;
+  account_type: string | null;
   notes: string | null;
   is_excluded: number; // SQLite stores boolean as 0/1
 };
@@ -57,9 +63,9 @@ function DetailRow({
 }) {
   if (!value) return null;
   return (
-    <View className="flex-row justify-between py-3 border-b border-gray-100">
-      <Text className="text-gray-500 font-inter text-sm">{label}</Text>
-      <Text className="text-gray-900 font-inter-medium text-sm text-right flex-1 ml-4">
+    <View className="flex-row items-start py-3 border-b border-gray-100">
+      <Text className="text-gray-500 font-inter text-sm w-20 mt-0.5">{label}</Text>
+      <Text className="text-gray-900 font-inter-medium text-sm text-right flex-1 ml-4 leading-5">
         {value}
       </Text>
     </View>
@@ -164,12 +170,24 @@ export default function TransactionDetailScreen() {
 
   const enterEditMode = () => {
     if (!transaction) return;
+    const txIsDebtPayment = isDebtInflow({
+      direction: transaction.direction,
+      accountType: transaction.account_type,
+    });
     setEditMerchantName(transaction.merchant_name ?? "");
     setEditDescription(transaction.description ?? "");
     setEditAmount(String(Math.abs(transaction.amount)));
     setEditDate(parseLocalDate(transaction.transaction_date));
-    setEditCategoryId(transaction.category_id);
-    setEditCategoryName(transaction.category_name_es);
+    setEditCategoryId(
+      txIsDebtPayment
+        ? DEBT_PAYMENT_CATEGORY_ID
+        : transaction.category_id
+    );
+    setEditCategoryName(
+      txIsDebtPayment
+        ? "Abono a deuda"
+        : transaction.category_name_es
+    );
     setEditNotes(transaction.notes ?? "");
     setEditIsExcluded(!!transaction.is_excluded);
     setIsEditing(true);
@@ -192,7 +210,7 @@ export default function TransactionDetailScreen() {
         description: editDescription.trim() || null,
         amount: amountNum,
         transaction_date: toDateString(editDate),
-        category_id: editCategoryId,
+        category_id: isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : editCategoryId,
         notes: editNotes.trim() || null,
         is_excluded: editIsExcluded,
       });
@@ -278,6 +296,10 @@ export default function TransactionDetailScreen() {
   }
 
   const isInflow = transaction.direction === "INFLOW";
+  const isDebtPayment = isDebtInflow({
+    direction: transaction.direction,
+    accountType: transaction.account_type,
+  });
   const isExcluded = !!transaction.is_excluded;
   const statusLabel =
     transaction.status === "CLEARED"
@@ -423,19 +445,30 @@ export default function TransactionDetailScreen() {
 
             {/* Category */}
             <FormField label="Categoría">
-              <Pressable
-                onPress={() => setShowCategoryPicker(true)}
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-gray-50"
-              >
-                <Text
-                  className={`font-inter text-sm ${
-                    editCategoryName ? "text-gray-900" : "text-gray-400"
-                  }`}
+              {isDebtPayment ? (
+                <View className="bg-sky-50 border border-sky-200 rounded-xl px-4 py-3 flex-row items-center justify-between">
+                  <Text className="font-inter-medium text-sm text-sky-700">
+                    Abono a deuda
+                  </Text>
+                  <Text className="font-inter text-xs text-sky-600">
+                    Categoria fija
+                  </Text>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => setShowCategoryPicker(true)}
+                  className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-gray-50"
                 >
-                  {editCategoryName ?? "Sin categoría"}
-                </Text>
-                <Tag size={16} color="#9CA3AF" />
-              </Pressable>
+                  <Text
+                    className={`font-inter text-sm ${
+                      editCategoryName ? "text-gray-900" : "text-gray-400"
+                    }`}
+                  >
+                    {editCategoryName ?? "Sin categoría"}
+                  </Text>
+                  <Tag size={16} color="#9CA3AF" />
+                </Pressable>
+              )}
             </FormField>
 
             {/* Notes */}
@@ -477,7 +510,10 @@ export default function TransactionDetailScreen() {
           {/* Amount hero */}
           <View className="items-center pt-6 pb-5 border-b border-gray-100 mx-4">
             <Text className="text-gray-500 font-inter text-sm mb-1">
-              {isInflow ? "Ingreso" : "Gasto"}
+              {getTransactionTypeLabel({
+                direction: transaction.direction,
+                accountType: transaction.account_type,
+              })}
             </Text>
             {isExcluded && (
               <View className="flex-row items-center bg-amber-50 px-3 py-1 rounded-full mb-2">
@@ -490,7 +526,9 @@ export default function TransactionDetailScreen() {
               className={`font-inter-bold text-4xl ${
                 isExcluded
                   ? "text-gray-300"
-                  : isInflow
+                  : isDebtPayment
+                    ? "text-sky-600"
+                    : isInflow
                     ? "text-green-600"
                     : "text-gray-900"
               }`}
@@ -527,7 +565,10 @@ export default function TransactionDetailScreen() {
               }
             />
             <DetailRow label="Cuenta" value={transaction.account_name} />
-            <DetailRow label="Categoria" value={transaction.category_name_es} />
+            <DetailRow
+              label="Categoria"
+              value={isDebtPayment ? "Abono a deuda" : transaction.category_name_es}
+            />
             <DetailRow label="Estado" value={statusLabel} />
             <DetailRow label="Descripcion" value={transaction.description} />
             <DetailRow

@@ -2,12 +2,23 @@ import * as SQLite from "expo-sqlite";
 import { MIGRATIONS } from "./schema";
 
 let db: SQLite.SQLiteDatabase | null = null;
+let dbInitPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
-  db = await SQLite.openDatabaseAsync("venti5.db");
-  await runMigrations(db);
-  return db;
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      const database = await SQLite.openDatabaseAsync("venti5.db");
+      await runMigrations(database);
+      db = database;
+      return database;
+    })().catch((error) => {
+      // Allow retry if open/migrations fail.
+      dbInitPromise = null;
+      throw error;
+    });
+  }
+  return dbInitPromise;
 }
 
 async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {

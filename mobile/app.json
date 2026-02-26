@@ -37,6 +37,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "302625b0-80c8-4a61-bc51-fa28ff033e1e"
+      }
+    },
+    "owner": "venti5"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-26T06:30:41.645457+00:00",
+  "generated_at_utc": "2026-02-26T21:07:36.614058+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,32 +9,32 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 424,
+    "text_files_scanned": 457,
     "languages": {
-      "TypeScript/React": 140,
-      "JSON": 116,
-      "TypeScript": 81,
+      "TypeScript/React": 143,
+      "JSON": 140,
+      "TypeScript": 84,
       "Markdown": 24,
+      "SQL": 21,
       "Python": 19,
-      "SQL": 19,
       "Shell": 9,
-      "YAML": 7,
+      "YAML": 8,
       "JavaScript": 5,
       "CSS": 2,
       "TOML": 2
     }
   },
   "top_level_directories": {
-    "mobile": 169,
-    "webapp": 165,
+    "mobile": 197,
+    "webapp": 166,
+    "supabase": 22,
     "services": 21,
-    "supabase": 20,
     "packages": 14,
     "docs": 12,
-    "(root)": 10,
+    "(root)": 11,
     ".claude": 9,
-    "infra": 2,
-    ".github": 2
+    ".github": 3,
+    "infra": 2
   },
   "commands": {
     "root_scripts": {
@@ -55,7 +55,9 @@
       "start": "expo start",
       "android": "expo run:android",
       "ios": "expo run:ios",
-      "web": "expo start --web"
+      "web": "expo start --web",
+      "build:apk:local": "eas build --platform android --profile preview-local",
+      "build:apk:device": "eas build --platform android --profile preview-device"
     }
   },
   "patterns": [
@@ -133,6 +135,7 @@
         "mobile/app/+not-found.tsx",
         "mobile/app/onboarding.tsx",
         "mobile/app/_layout.tsx",
+        "mobile/app/bug-report.tsx",
         "mobile/app/modal.tsx",
         "mobile/app/+html.tsx",
         "mobile/app/transaction/[id].tsx",
@@ -143,8 +146,7 @@
         "mobile/app/(tabs)/budgets.tsx",
         "mobile/app/(tabs)/_layout.tsx",
         "mobile/app/(tabs)/accounts.tsx",
-        "mobile/app/account/create.tsx",
-        "mobile/app/account/[id].tsx"
+        "mobile/app/account/create.tsx"
       ]
     },
     {
@@ -172,8 +174,9 @@
     {
       "name": "zod-validators",
       "description": "Validation layer using Zod",
-      "matched_files": 9,
+      "matched_files": 10,
       "examples": [
+        "webapp/src/actions/recurring-templates.ts",
         "webapp/src/actions/profile.ts",
         "webapp/src/lib/validators/account.ts",
         "webapp/src/lib/validators/category.ts",
@@ -236,7 +239,7 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 409
+      "count": 418
     },
     {
       "from": "mobile",
@@ -247,10 +250,10 @@
   "recent_changes": [
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "services/pdf_parser/parsers/nu_credit_card.py",
-    "webapp/src/actions/import-transactions.ts",
-    "webapp/src/actions/product-events.ts",
-    "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
+    "mobile/app/bug-report.tsx",
+    "mobile/lib/auth.tsx",
+    "packages/shared/src/types/database.ts",
+    "webapp/src/actions/recurring-templates.ts",
     "webapp/src/types/database.ts"
   ]
 }

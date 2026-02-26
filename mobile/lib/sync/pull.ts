@@ -13,6 +13,8 @@ const SYNC_TABLES = [
 
 type SyncTable = (typeof SYNC_TABLES)[number];
 
+const TABLE_COLUMNS_CACHE = new Map<string, Set<string>>();
+
 /** Boolean fields per table that need integer conversion for SQLite */
 const BOOLEAN_FIELDS: Record<string, string[]> = {
   accounts: ["is_active"],
@@ -41,6 +43,27 @@ export async function pullAll(): Promise<Record<string, number>> {
   return counts;
 }
 
+function inferMonthPeriod(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  if (/^\d{4}-\d{2}/.test(value)) return value.slice(0, 7);
+  return null;
+}
+
+async function getTableColumns(
+  db: Awaited<ReturnType<typeof getDatabase>>,
+  table: string
+): Promise<Set<string>> {
+  const cached = TABLE_COLUMNS_CACHE.get(table);
+  if (cached) return cached;
+
+  const rows = await db.getAllAsync<{ name: string }>(
+    `PRAGMA table_info(${table})`
+  );
+  const columns = new Set(rows.map((row) => row.name));
+  TABLE_COLUMNS_CACHE.set(table, columns);
+  return columns;
+}
+
 async function pullTable(
   db: Awaited<ReturnType<typeof getDatabase>>,
   table: SyncTable
@@ -62,9 +85,19 @@ async function pullTable(
   if (error) throw new Error(`Pull ${table} failed: ${error.message}`);
   if (!data || data.length === 0) return 0;
 
-  // Upsert each row into SQLite
+  // Upsert each row into SQLite (skip only invalid rows, don't fail whole sync)
+  let upserted = 0;
   for (const row of data) {
-    await upsertRow(db, table, row);
+    try {
+      await upsertRow(db, table, row);
+      upserted++;
+    } catch (error) {
+      console.warn(
+        `Skipping invalid ${table} row during pull:`,
+        (row as { id?: string }).id ?? "<no-id>",
+        error
+      );
+    }
   }
 
   // Update sync metadata
@@ -76,7 +109,7 @@ async function pullTable(
     [table, now]
   );
 
-  return data.length;
+  return upserted;
 }
 
 async function upsertRow(
@@ -85,6 +118,16 @@ async function upsertRow(
   row: Record<string, unknown>
 ): Promise<void> {
   const processed = { ...row };
+
+  if (table === "statement_snapshots") {
+    const inferredPeriod =
+      inferMonthPeriod(processed.period) ??
+      inferMonthPeriod(processed.statement_date) ??
+      inferMonthPeriod(processed.created_at) ??
+      inferMonthPeriod(processed.updated_at) ??
+      new Date().toISOString().slice(0, 7);
+    processed.period = inferredPeriod;
+  }
 
   // Convert booleans to integers for SQLite
   const boolFields = BOOLEAN_FIELDS[table] ?? [];
@@ -102,7 +145,9 @@ async function upsertRow(
     }
   }
 
-  const columns = Object.keys(processed);
+  const tableColumns = await getTableColumns(db, table);
+  const columns = Object.keys(processed).filter((col) => tableColumns.has(col));
+  if (columns.length === 0) return;
   const placeholders = columns.map(() => "?").join(", ");
   const values = columns.map((col) => processed[col] ?? null);
 

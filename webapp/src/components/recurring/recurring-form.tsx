@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useActionState } from "react";
 import {
   createRecurringTemplate,
@@ -56,12 +56,49 @@ export function RecurringForm({
   );
 
   const defaultAccount = accounts[0];
+  const defaultStartDate = new Date().toISOString().split("T")[0];
   const [direction, setDirection] = useState<TransactionDirection>(
     template?.direction ?? "OUTFLOW"
+  );
+  const [accountId, setAccountId] = useState<string>(
+    template?.account_id ?? defaultAccount?.id ?? ""
+  );
+  const [startDate, setStartDate] = useState<string>(
+    template?.start_date ?? defaultStartDate
   );
   const [categoryId, setCategoryId] = useState<string | null>(
     template?.category_id ?? null
   );
+  const [transferSourceAccountId, setTransferSourceAccountId] = useState<string>(
+    template?.transfer_source_account_id ?? ""
+  );
+  const selectedAccount = accounts.find((acc) => acc.id === accountId) ?? null;
+  const cutoffDay = selectedAccount?.cutoff_day ?? null;
+  const paymentDay = selectedAccount?.payment_day ?? null;
+  const isDebtAccount =
+    selectedAccount?.account_type === "CREDIT_CARD" ||
+    selectedAccount?.account_type === "LOAN";
+
+  useEffect(() => {
+    if (isDebtAccount && direction !== "INFLOW") {
+      setDirection("INFLOW");
+    }
+  }, [isDebtAccount, direction]);
+
+  function nextOccurrenceForDay(dayOfMonth: number): string {
+    const now = new Date();
+    const currentDay = now.getDate();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    const targetThisMonth = new Date(year, month, Math.min(dayOfMonth, 28));
+    if (dayOfMonth >= currentDay) {
+      return targetThisMonth.toISOString().split("T")[0];
+    }
+
+    const targetNextMonth = new Date(year, month + 1, Math.min(dayOfMonth, 28));
+    return targetNextMonth.toISOString().split("T")[0];
+  }
 
   return (
     <form action={formAction} className="space-y-4">
@@ -86,9 +123,10 @@ export function RecurringForm({
         <div className="space-y-2">
           <Label htmlFor="direction">Tipo</Label>
           <Select
-            name="direction"
+            name={isDebtAccount ? undefined : "direction"}
             value={direction}
             onValueChange={(v) => setDirection(v as TransactionDirection)}
+            disabled={isDebtAccount}
           >
             <SelectTrigger>
               <SelectValue />
@@ -98,6 +136,14 @@ export function RecurringForm({
               <SelectItem value="INFLOW">Ingreso</SelectItem>
             </SelectContent>
           </Select>
+          {isDebtAccount && (
+            <p className="text-xs text-muted-foreground">
+              Para cuentas de deuda este recurrente se maneja como abono (INFLOW).
+            </p>
+          )}
+          {isDebtAccount && (
+            <input type="hidden" name="direction" value="INFLOW" />
+          )}
         </div>
 
         <div className="space-y-2">
@@ -112,6 +158,9 @@ export function RecurringForm({
             placeholder="0.00"
             required
           />
+          <p className="text-xs text-muted-foreground">
+            Este valor es referencia. En el checklist podras registrar el monto real del pago.
+          </p>
         </div>
       </div>
 
@@ -120,7 +169,8 @@ export function RecurringForm({
           <Label htmlFor="account_id">Cuenta</Label>
           <Select
             name="account_id"
-            defaultValue={template?.account_id ?? defaultAccount?.id}
+            value={accountId}
+            onValueChange={setAccountId}
           >
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar cuenta" />
@@ -155,12 +205,75 @@ export function RecurringForm({
         </div>
       </div>
 
+      {isDebtAccount &&
+        (cutoffDay != null || paymentDay != null) && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-3 space-y-2">
+            <p className="text-sm font-medium text-blue-900">
+              Sugerencias para obligaciones
+            </p>
+            <p className="text-xs text-blue-800">
+              Corte: dia {cutoffDay ?? "--"} · Pago: dia{" "}
+              {paymentDay ?? "--"}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {cutoffDay != null && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStartDate(nextOccurrenceForDay(cutoffDay))}
+                >
+                  Usar dia de corte
+                </Button>
+              )}
+              {paymentDay != null && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStartDate(nextOccurrenceForDay(paymentDay))}
+                >
+                  Usar dia de pago
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+      {isDebtAccount && (
+        <div className="space-y-2">
+          <Label htmlFor="transfer_source_account_id">
+            Cuenta origen del pago
+          </Label>
+          <Select
+            name="transfer_source_account_id"
+            value={transferSourceAccountId}
+            onValueChange={setTransferSourceAccountId}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar cuenta origen" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts
+                .filter((acc) => acc.id !== accountId)
+                .map((acc) => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Al marcar este recurrente como pagado se crea una transferencia:
+            salida desde esta cuenta y abono en la deuda.
+          </p>
+        </div>
+      )}
+
       <input
         type="hidden"
         name="currency_code"
-        value={
-          template?.currency_code ?? defaultAccount?.currency_code ?? "COP"
-        }
+        value={selectedAccount?.currency_code ?? template?.currency_code ?? "COP"}
       />
 
       <div className="grid grid-cols-2 gap-4">
@@ -170,10 +283,8 @@ export function RecurringForm({
             id="start_date"
             name="start_date"
             type="date"
-            defaultValue={
-              template?.start_date ??
-              new Date().toISOString().split("T")[0]
-            }
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
             required
           />
         </div>
@@ -189,16 +300,25 @@ export function RecurringForm({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Categoría</Label>
-        <CategoryCombobox
-          categories={categories}
-          value={categoryId}
-          onValueChange={setCategoryId}
-          direction={direction}
-          name="category_id"
-        />
-      </div>
+      {isDebtAccount ? (
+        <div className="space-y-2">
+          <Label>Categoría</Label>
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            Se asignará automáticamente como abono de deuda al registrar cada pago.
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label>Categoría</Label>
+          <CategoryCombobox
+            categories={categories}
+            value={categoryId}
+            onValueChange={setCategoryId}
+            direction={direction}
+            name="category_id"
+          />
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="description">Notas</Label>

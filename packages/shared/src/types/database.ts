@@ -162,6 +162,59 @@ export type Database = {
           },
         ]
       }
+      bug_reports: {
+        Row: {
+          attachment_path: string | null
+          created_at: string
+          description: string | null
+          device_context: Json
+          id: string
+          route_hint: string | null
+          selected_area_hint: string | null
+          source: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachment_path?: string | null
+          created_at?: string
+          description?: string | null
+          device_context?: Json
+          id?: string
+          route_hint?: string | null
+          selected_area_hint?: string | null
+          source?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachment_path?: string | null
+          created_at?: string
+          description?: string | null
+          device_context?: Json
+          id?: string
+          route_hint?: string | null
+          selected_area_hint?: string | null
+          source?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bug_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           color: string
@@ -345,6 +398,7 @@ export type Database = {
           is_active: boolean
           merchant_name: string | null
           start_date: string
+          transfer_source_account_id: string | null
           updated_at: string
           user_id: string
         }
@@ -364,6 +418,7 @@ export type Database = {
           is_active?: boolean
           merchant_name?: string | null
           start_date: string
+          transfer_source_account_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -383,6 +438,7 @@ export type Database = {
           is_active?: boolean
           merchant_name?: string | null
           start_date?: string
+          transfer_source_account_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -406,6 +462,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_transfer_source_account_id_fkey"
+            columns: ["transfer_source_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
         ]

@@ -35,9 +35,11 @@ export async function getTransactions(options?: {
   const offset = options?.offset ?? 0;
 
   return db.getAllAsync(
-    `SELECT t.*, c.name as category_name, c.name_es as category_name_es, c.icon as category_icon, c.color as category_color
+    `SELECT t.*, c.name as category_name, c.name_es as category_name_es, c.icon as category_icon, c.color as category_color,
+            a.account_type as account_type
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
+     LEFT JOIN accounts a ON t.account_id = a.id
      ${where}
      ORDER BY t.transaction_date DESC, t.created_at DESC
      LIMIT ? OFFSET ?`,
@@ -196,7 +198,7 @@ export async function getTransactionById(id: string) {
   const db = await getDatabase();
   return db.getFirstAsync(
     `SELECT t.*, c.name as category_name, c.name_es as category_name_es, c.icon as category_icon, c.color as category_color,
-            a.name as account_name, a.icon as account_icon, a.color as account_color
+            a.name as account_name, a.icon as account_icon, a.color as account_color, a.account_type as account_type
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
      LEFT JOIN accounts a ON t.account_id = a.id

@@ -5,6 +5,10 @@ const uuidStr = (msg = "UUID inválido") => z.string().regex(UUID_RE, msg);
 
 export const recurringTemplateSchema = z.object({
   account_id: uuidStr("Cuenta inválida"),
+  transfer_source_account_id: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    uuidStr().optional().nullable()
+  ),
   amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
   currency_code: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
   direction: z.enum(["INFLOW", "OUTFLOW"]),

@@ -10,13 +10,13 @@ import {
   getAllCategories,
   type CategoryRow,
 } from "../../lib/repositories/categories";
-import { formatMonthLabel } from "@venti5/shared";
 import { BalanceCard } from "../../components/dashboard/BalanceCard";
 import { MonthSummary } from "../../components/dashboard/MonthSummary";
 import {
   CategoryBreakdown,
   type CategorySpend,
 } from "../../components/dashboard/CategoryBreakdown";
+import { MonthSelector } from "../../components/common/MonthSelector";
 
 export default function DashboardScreen() {
   const { sync, status } = useSync();
@@ -28,8 +28,9 @@ export default function DashboardScreen() {
   const [monthExpenses, setMonthExpenses] = useState(0);
   const [topCategories, setTopCategories] = useState<CategorySpend[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-
-  const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+  const [currentMonth, setCurrentMonth] = useState(
+    () => new Date().toISOString().slice(0, 7) // "YYYY-MM"
+  );
 
   type TransactionListRow = {
     id: string;
@@ -219,9 +220,7 @@ export default function DashboardScreen() {
     >
       {/* Month label */}
       <View className="px-4 pt-4">
-        <Text className="text-gray-500 font-inter-medium text-sm capitalize">
-          {formatMonthLabel(new Date())}
-        </Text>
+        <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
       </View>
 
       <BalanceCard totalBalance={totalBalance} accountCount={accountCount} />

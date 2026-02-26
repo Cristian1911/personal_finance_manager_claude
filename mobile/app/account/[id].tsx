@@ -17,6 +17,7 @@ import {
 import { getTransactions } from "../../lib/repositories/transactions";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { isDebtInflow } from "../../lib/transaction-semantics";
 
 type TransactionRow = {
   id: string;
@@ -26,6 +27,7 @@ type TransactionRow = {
   direction: "INFLOW" | "OUTFLOW";
   transaction_date: string;
   category_name_es: string | null;
+  account_type: string | null;
 };
 
 function InfoCard({
@@ -47,9 +49,9 @@ function InfoCard({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <View className="flex-row justify-between py-3 border-b border-gray-100">
-      <Text className="text-gray-500 font-inter text-sm">{label}</Text>
-      <Text className="text-gray-900 font-inter-medium text-sm text-right flex-1 ml-4">
+    <View className="flex-row items-start py-3 border-b border-gray-100">
+      <Text className="text-gray-500 font-inter text-sm w-24 mt-0.5">{label}</Text>
+      <Text className="text-gray-900 font-inter-medium text-sm text-right flex-1 ml-4 leading-5">
         {value}
       </Text>
     </View>
@@ -258,6 +260,10 @@ export default function AccountDetailScreen() {
             <View className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               {recentTx.map((tx, index) => {
                 const isInflow = tx.direction === "INFLOW";
+                const isDebtPayment = isDebtInflow({
+                  direction: tx.direction,
+                  accountType: tx.account_type ?? account.account_type,
+                });
                 return (
                   <Pressable
                     key={tx.id}
@@ -274,15 +280,19 @@ export default function AccountDetailScreen() {
                       >
                         {tx.merchant_name ?? tx.description ?? "Sin descripcion"}
                       </Text>
-                      {tx.category_name_es && (
+                      {(tx.category_name_es || isDebtPayment) && (
                         <Text className="text-gray-400 font-inter text-xs mt-0.5">
-                          {tx.category_name_es}
+                          {isDebtPayment ? "Abono a deuda" : tx.category_name_es}
                         </Text>
                       )}
                     </View>
                     <Text
                       className={`font-inter-semibold text-sm ml-3 ${
-                        isInflow ? "text-green-600" : "text-gray-900"
+                        isDebtPayment
+                          ? "text-sky-600"
+                          : isInflow
+                            ? "text-green-600"
+                            : "text-gray-900"
                       }`}
                     >
                       {isInflow ? "+" : "-"}

@@ -1,0 +1,177 @@
+name: Build Mobile APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: APK variant to build
+        type: choice
+        required: true
+        default: debug
+        options:
+          - debug
+          - release
+      api_target:
+        description: API URL target embedded in build
+        type: choice
+        required: true
+        default: device
+        options:
+          - device
+          - local
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/mobile-apk.yml'
+      - 'mobile/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  build-android-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK components
+        run: |
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.1.12297006" \
+            "cmake;3.22.1"
+
+      - name: Resolve build options
+        run: |
+          VARIANT="${{ github.event.inputs.variant }}"
+          API_TARGET="${{ github.event.inputs.api_target }}"
+
+          if [ -z "$VARIANT" ]; then
+            VARIANT="debug"
+          fi
+          if [ -z "$API_TARGET" ]; then
+            API_TARGET="device"
+          fi
+
+          echo "APK_VARIANT=$VARIANT" >> "$GITHUB_ENV"
+          echo "API_TARGET=$API_TARGET" >> "$GITHUB_ENV"
+
+          if [ "$VARIANT" = "release" ]; then
+            echo "GRADLE_TASK=assembleRelease" >> "$GITHUB_ENV"
+            echo "APK_PATH=mobile/android/app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_ENV"
+          else
+            echo "GRADLE_TASK=assembleDebug" >> "$GITHUB_ENV"
+            echo "APK_PATH=mobile/android/app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_ENV"
+          fi
+
+      - name: Set EXPO_PUBLIC_API_URL
+        env:
+          DEVICE_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+        run: |
+          if [ "$API_TARGET" = "local" ]; then
+            echo "EXPO_PUBLIC_API_URL=http://10.0.2.2:3000" >> "$GITHUB_ENV"
+          else
+            if [ -z "$DEVICE_API_URL" ]; then
+              echo "Missing required secret EXPO_PUBLIC_API_URL for device builds." >&2
+              exit 1
+            fi
+            echo "EXPO_PUBLIC_API_URL=$DEVICE_API_URL" >> "$GITHUB_ENV"
+          fi
+
+      - name: Validate required app secrets
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Missing required secrets: NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure Android SDK path for Gradle
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > mobile/android/local.properties
+
+      - name: Build APK
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          cd mobile/android
+          ./gradlew app:$GRADLE_TASK -x lint -x test --no-daemon
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p dist
+          APK_NAME="venti5-${APK_VARIANT}-${API_TARGET}-${GITHUB_RUN_NUMBER}.apk"
+          cp "$APK_PATH" "dist/$APK_NAME"
+          echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-apk-${{ env.APK_VARIANT }}-${{ env.API_TARGET }}-${{ github.run_number }}
+          path: dist/${{ env.APK_NAME }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish latest APK release
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: android-apk-latest
+          name: Android APK (latest)
+          prerelease: true
+          allowUpdates: true
+          replacesArtifacts: true
+          artifacts: dist/${{ env.APK_NAME }}
+          body: |
+            Latest Android APK built from `${{ github.sha }}`.
+
+            - Variant: `${{ env.APK_VARIANT }}`
+            - API target: `${{ env.API_TARGET }}`
+            - Run: `${{ github.run_number }}`
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Mobile APK build"
+            echo ""
+            echo "- Variant: \\`${APK_VARIANT}\\`"
+            echo "- API target: \\`${API_TARGET}\\`"
+            echo "- Artifact: \\`${APK_NAME:-n/a}\\`"
+            echo ""
+            echo "Release download page: https://github.com/${{ github.repository }}/releases/tag/android-apk-latest"
+          } >> "$GITHUB_STEP_SUMMARY"

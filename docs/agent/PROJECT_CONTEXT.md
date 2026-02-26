@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T06:30:41.645457+00:00`
+- Generated (UTC): `2026-02-26T21:07:36.614058+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,30 +13,30 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 424
-- TypeScript/React: 140
-- JSON: 116
-- TypeScript: 81
+- Text files scanned: 457
+- TypeScript/React: 143
+- JSON: 140
+- TypeScript: 84
 - Markdown: 24
+- SQL: 21
 - Python: 19
-- SQL: 19
 - Shell: 9
-- YAML: 7
+- YAML: 8
 - JavaScript: 5
 - CSS: 2
 - TOML: 2
 
 ## Top-level Areas
-- mobile: 169 files
-- webapp: 165 files
+- mobile: 197 files
+- webapp: 166 files
+- supabase: 22 files
 - services: 21 files
-- supabase: 20 files
 - packages: 14 files
 - docs: 12 files
-- (root): 10 files
+- (root): 11 files
 - .claude: 9 files
+- .github: 3 files
 - infra: 2 files
-- .github: 2 files
 
 ## Key Commands
 ### root_scripts
@@ -56,6 +56,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `android`: `expo run:android`
 - `ios`: `expo run:ios`
 - `web`: `expo start --web`
+- `build:apk:local`: `eas build --platform android --profile preview-local`
+- `build:apk:device`: `eas build --platform android --profile preview-device`
 
 ## Patterns Detected
 - `supabase-integration` (15 files): Supabase clients/services in app code
@@ -78,10 +80,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `services/pdf_parser/test_parser.py`
   - e.g. `services/pdf_parser/models.py`
   - e.g. `services/pdf_parser/storage.py`
-- `zod-validators` (9 files): Validation layer using Zod
+- `zod-validators` (10 files): Validation layer using Zod
+  - e.g. `webapp/src/actions/recurring-templates.ts`
   - e.g. `webapp/src/actions/profile.ts`
   - e.g. `webapp/src/lib/validators/account.ts`
-  - e.g. `webapp/src/lib/validators/category.ts`
 - `repository-pattern` (4 files): Repository pattern in mobile/lib/repositories
   - e.g. `mobile/lib/repositories/budgets.ts`
   - e.g. `mobile/lib/repositories/categories.ts`
@@ -120,16 +122,16 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/onboarding/layout.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (409)
+- `webapp` -> `webapp` (418)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `services/pdf_parser/parsers/nu_credit_card.py`
-- `webapp/src/actions/import-transactions.ts`
-- `webapp/src/actions/product-events.ts`
-- `webapp/src/app/(dashboard)/settings/analytics/page.tsx`
+- `mobile/app/bug-report.tsx`
+- `mobile/lib/auth.tsx`
+- `packages/shared/src/types/database.ts`
+- `webapp/src/actions/recurring-templates.ts`
 - `webapp/src/types/database.ts`
 
 ## Agent Playbook

@@ -80,6 +80,10 @@ function RecurringCard({
   categories: CategoryWithChildren[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const isDebtPayment =
+    template.account.account_type === "CREDIT_CARD" ||
+    template.account.account_type === "LOAN";
+  const isIncome = template.direction === "INFLOW" && !isDebtPayment;
 
   const nextDate = getNextOccurrence(
     template.start_date,
@@ -104,7 +108,7 @@ function RecurringCard({
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            {template.direction === "INFLOW" ? (
+            {isIncome ? (
               <div className="p-2 rounded-lg bg-green-500/10">
                 <ArrowDownLeft className="h-5 w-5 text-green-600" />
               </div>
@@ -169,7 +173,7 @@ function RecurringCard({
               template.direction === "INFLOW" ? "text-green-600" : ""
             }`}
           >
-            {template.direction === "INFLOW" ? "+" : "-"}
+            {isIncome ? "+" : "-"}
             {formatCurrency(template.amount, template.currency_code as CurrencyCode)}
           </span>
           <Badge variant="secondary">{frequencyLabel(template.frequency)}</Badge>
@@ -178,7 +182,9 @@ function RecurringCard({
         <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
           {template.category && (
             <span>
-              {template.category.name_es || template.category.name}
+              {isDebtPayment
+                ? "Abono de deuda (transferencia)"
+                : template.category.name_es || template.category.name}
             </span>
           )}
           {nextDate ? (
