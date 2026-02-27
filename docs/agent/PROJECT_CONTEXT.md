@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-27T23:48:49.337573+00:00`
+- Generated (UTC): `2026-02-27T23:54:13.959885+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,10 +13,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 471
+- Text files scanned: 473
 - TypeScript/React: 151
 - JSON: 140
-- TypeScript: 88
+- TypeScript: 90
 - Markdown: 24
 - SQL: 22
 - Python: 20
@@ -28,7 +28,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Top-level Areas
 - mobile: 201 files
-- webapp: 172 files
+- webapp: 174 files
 - supabase: 23 files
 - services: 22 files
 - packages: 16 files
@@ -122,40 +122,18 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/layout.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (441)
+- `webapp` -> `webapp` (449)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `.gitignore`
-- `docs/agent/PROJECT_CONTEXT.md`
-- `docs/agent/project_context.json`
-- `mobile/app/(tabs)/import.tsx`
-- `mobile/app/(tabs)/index.tsx`
-- `mobile/app/(tabs)/transactions.tsx`
-- `mobile/app/_layout.tsx`
-- `mobile/app/bug-report.tsx`
-- `mobile/app/capture.tsx`
-- `mobile/app/subscriptions.tsx`
-- `mobile/components/common/FloatingCaptureButton.tsx`
-- `mobile/components/common/KeyboardScreen.tsx`
-- `mobile/lib/db/database.ts`
-- `mobile/lib/db/schema.ts`
-- `mobile/lib/repositories/transactions.ts`
-- `packages/shared/src/index.ts`
-- `packages/shared/src/types/database.ts`
-- `packages/shared/src/types/domain.ts`
-- `packages/shared/src/utils/quick-capture.ts`
-- `packages/shared/src/utils/reconciliation.ts`
-- `supabase/migrations/20260227130000_add_transaction_capture_and_reconciliation.sql`
-- `webapp/src/actions/budgets.ts`
-- `webapp/src/actions/categories.ts`
 - `webapp/src/actions/categorize.ts`
-- `webapp/src/actions/charts.ts`
-- `webapp/src/actions/import-transactions.ts`
-- `webapp/src/actions/transactions.ts`
+- `webapp/src/actions/product-events.ts`
 - `webapp/src/app/(dashboard)/dashboard/page.tsx`
-- `webapp/src/app/(dashboard)/transactions/page.tsx`
-- `webapp/src/components/import/import-wizard.tsx`
+- `webapp/src/app/(dashboard)/layout.tsx`
+- `webapp/src/app/page.tsx`
+- `webapp/src/lib/supabase/admin.ts`
+- `webapp/src/lib/supabase/auth.ts`
+- `webapp/src/lib/supabase/middleware.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

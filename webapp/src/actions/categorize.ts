@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getUserSafely } from "@/lib/supabase/auth";
 import { extractPattern } from "@venti5/shared";
 import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
@@ -15,9 +16,7 @@ export async function getUncategorizedTransactions(): Promise<
   TransactionWithRelations[]
 > {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUserSafely(supabase);
   if (!user) return [];
 
   const { data, error } = await applyVisibleTransactionFilter(
@@ -43,9 +42,7 @@ export async function getUncategorizedTransactions(): Promise<
  */
 export async function getUncategorizedCount(): Promise<number> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUserSafely(supabase);
   if (!user) return 0;
 
   const { count, error } = await applyVisibleTransactionFilter(
@@ -57,7 +54,9 @@ export async function getUncategorizedCount(): Promise<number> {
   );
 
   if (error) {
-    console.error("Error counting uncategorized:", error);
+    if (error.message) {
+      console.warn("Error counting uncategorized:", error.message);
+    }
     return 0;
   }
 

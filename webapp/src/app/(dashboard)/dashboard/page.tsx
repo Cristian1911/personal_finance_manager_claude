@@ -49,6 +49,7 @@ import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-c
 import { computeDebtBalance } from "@venti5/shared";
 import { trackProductEvent } from "@/actions/product-events";
 import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
+import { getUserSafely } from "@/lib/supabase/auth";
 
 export default async function DashboardPage({
   searchParams,
@@ -61,9 +62,7 @@ export default async function DashboardPage({
   const monthLabel = formatMonthLabel(target);
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUserSafely(supabase);
 
   if (!user) return null;
 
@@ -85,13 +84,17 @@ export default async function DashboardPage({
       .limit(5)
   );
 
-  const { count: uncategorizedCount } = await applyVisibleTransactionFilter(
+  const { count: uncategorizedCount, error: uncategorizedError } =
+    await applyVisibleTransactionFilter(
     supabase
       .from("transactions")
       .select("id", { count: "exact", head: true })
       .is("category_id", null)
       .eq("is_excluded", false)
   );
+  if (uncategorizedError?.message) {
+    console.warn("Dashboard uncategorized count unavailable:", uncategorizedError.message);
+  }
 
   // Fetch selected month's transactions for summary (exclude excluded ones)
   const { data: monthTransactions } = await applyVisibleTransactionFilter(

@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getUserSafely, isIgnorableAuthError } from "@/lib/supabase/auth";
 import type { Json } from "@/types/database";
 
 export type ProductEventInput = {
@@ -18,9 +20,7 @@ export type ProductEventInput = {
 
 export async function trackProductEvent(input: ProductEventInput): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUserSafely(supabase);
 
   if (!user || !input.event_name) return;
 
@@ -38,8 +38,15 @@ export async function trackProductEvent(input: ProductEventInput): Promise<void>
     metadata: input.metadata ?? {},
   };
 
-  const { error } = await supabase.from("product_events").insert(payload);
+  const db = createAdminClient() ?? supabase;
+  const { error } = await db.from("product_events").insert(payload);
   if (error) {
-    console.error("trackProductEvent error:", error.message);
+    const dbError = error as { code?: string; message?: string };
+    if (isIgnorableAuthError(dbError)) return;
+    if (dbError.code === "42501") {
+      console.warn("trackProductEvent skipped by RLS");
+      return;
+    }
+    console.error("trackProductEvent error:", dbError.message ?? "unknown");
   }
 }
