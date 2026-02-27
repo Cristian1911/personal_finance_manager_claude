@@ -10,6 +10,11 @@ from pydantic import BaseModel
 
 from models import ParsedStatement
 from parsers import detect_and_parse
+from parsers.opendataloader_fallback import (
+    get_opendataloaders_binary,
+    is_opendataloader_fallback_enabled,
+    try_parse_with_opendataloader,
+)
 from storage import save_unrecognized
 
 
@@ -30,14 +35,33 @@ class ParseResponse(BaseModel):
     statements: list[ParsedStatement]
 
 
+def _attempt_fallback_parse(
+    tmp_path: str, password: str | None, filename: str, reason: str
+) -> ParseResponse | None:
+    fallback_statements = try_parse_with_opendataloader(tmp_path, password=password)
+    if not fallback_statements:
+        return None
+
+    logger.info(
+        "Parsing recovered via OpenDataLoader fallback (%s): filename=%s statements=%s",
+        reason,
+        filename,
+        len(fallback_statements),
+    )
+    return ParseResponse(statements=fallback_statements)
+
+
 @app.on_event("startup")
 def startup_diagnostics() -> None:
     tesseract_path = shutil.which("tesseract")
     pdftoppm_path = shutil.which("pdftoppm")
+    opendataloaders_path = get_opendataloaders_binary()
     logger.info(
-        "Startup diagnostics: tesseract=%s, pdftoppm=%s",
+        "Startup diagnostics: tesseract=%s, pdftoppm=%s, opendataloaders=%s, opendataloader_fallback_enabled=%s",
         tesseract_path or "NOT_FOUND",
         pdftoppm_path or "NOT_FOUND",
+        opendataloaders_path or "NOT_FOUND",
+        is_opendataloader_fallback_enabled(),
     )
 
 
@@ -74,12 +98,30 @@ async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
         )
         return ParseResponse(statements=statements)
     except ValueError as e:
+        fallback_response = _attempt_fallback_parse(
+            tmp_path=tmp_path,
+            password=password,
+            filename=file.filename,
+            reason="unsupported format",
+        )
+        if fallback_response:
+            return fallback_response
+
         logger.warning("Parsing rejected for filename=%s: %s", file.filename, e)
         raise HTTPException(
             status_code=422,
             detail={"message": str(e), "type": "unsupported_format"},
         )
     except Exception:
+        fallback_response = _attempt_fallback_parse(
+            tmp_path=tmp_path,
+            password=password,
+            filename=file.filename,
+            reason="unexpected failure",
+        )
+        if fallback_response:
+            return fallback_response
+
         logger.exception("Unexpected parser failure for filename=%s", file.filename)
         raise HTTPException(
             status_code=500,

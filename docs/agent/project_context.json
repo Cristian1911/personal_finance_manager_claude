@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-26T21:07:36.614058+00:00",
+  "generated_at_utc": "2026-02-27T16:02:16.480889+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,14 +9,14 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 457,
+    "text_files_scanned": 462,
     "languages": {
-      "TypeScript/React": 143,
+      "TypeScript/React": 146,
       "JSON": 140,
-      "TypeScript": 84,
+      "TypeScript": 85,
       "Markdown": 24,
       "SQL": 21,
-      "Python": 19,
+      "Python": 20,
       "Shell": 9,
       "YAML": 8,
       "JavaScript": 5,
@@ -25,10 +25,10 @@
     }
   },
   "top_level_directories": {
-    "mobile": 197,
-    "webapp": 166,
+    "mobile": 198,
+    "webapp": 169,
     "supabase": 22,
-    "services": 21,
+    "services": 22,
     "packages": 14,
     "docs": 12,
     "(root)": 11,
@@ -70,6 +70,7 @@
         "webapp/src/app/page.tsx",
         "webapp/src/app/auth/callback/route.ts",
         "webapp/src/app/api/save-unrecognized/route.ts",
+        "webapp/src/app/api/bug-reports/route.ts",
         "webapp/src/app/api/parse-statement/route.ts",
         "webapp/src/app/(dashboard)/layout.tsx",
         "webapp/src/app/(dashboard)/settings/page.tsx",
@@ -79,8 +80,7 @@
         "webapp/src/actions/recurring-templates.ts",
         "webapp/src/actions/debt.ts",
         "webapp/src/actions/categorize.ts",
-        "webapp/src/actions/product-events.ts",
-        "webapp/src/actions/budgets.ts"
+        "webapp/src/actions/product-events.ts"
       ]
     },
     {
@@ -92,6 +92,7 @@
         "webapp/src/app/page.tsx",
         "webapp/src/app/auth/callback/route.ts",
         "webapp/src/app/api/save-unrecognized/route.ts",
+        "webapp/src/app/api/bug-reports/route.ts",
         "webapp/src/app/api/parse-statement/route.ts",
         "webapp/src/app/(auth)/layout.tsx",
         "webapp/src/app/(auth)/signup/page.tsx",
@@ -101,8 +102,7 @@
         "webapp/src/app/(dashboard)/layout.tsx",
         "webapp/src/app/(dashboard)/settings/page.tsx",
         "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
-        "webapp/src/app/(dashboard)/deudas/page.tsx",
-        "webapp/src/app/(dashboard)/deudas/simulador/page.tsx"
+        "webapp/src/app/(dashboard)/deudas/page.tsx"
       ]
     },
     {
@@ -132,6 +132,7 @@
       "description": "Expo Router file-based routes",
       "matched_files": 15,
       "examples": [
+        "mobile/app/subscriptions.tsx",
         "mobile/app/+not-found.tsx",
         "mobile/app/onboarding.tsx",
         "mobile/app/_layout.tsx",
@@ -145,8 +146,7 @@
         "mobile/app/(tabs)/transactions.tsx",
         "mobile/app/(tabs)/budgets.tsx",
         "mobile/app/(tabs)/_layout.tsx",
-        "mobile/app/(tabs)/accounts.tsx",
-        "mobile/app/account/create.tsx"
+        "mobile/app/(tabs)/accounts.tsx"
       ]
     },
     {
@@ -163,12 +163,12 @@
         "services/pdf_parser/parsers/bogota_loan.py",
         "services/pdf_parser/parsers/bancolombia_loan.py",
         "services/pdf_parser/parsers/falabella_credit_card.py",
+        "services/pdf_parser/parsers/opendataloader_fallback.py",
         "services/pdf_parser/parsers/popular_credit_card.py",
         "services/pdf_parser/parsers/__init__.py",
         "services/pdf_parser/parsers/bancolombia_savings.py",
         "services/pdf_parser/parsers/utils.py",
-        "services/pdf_parser/parsers/bancolombia_credit_card.py",
-        "services/pdf_parser/parsers/bogota_credit_card.py"
+        "services/pdf_parser/parsers/bancolombia_credit_card.py"
       ]
     },
     {
@@ -226,6 +226,7 @@
     "webapp/src/app/(dashboard)/settings/page.tsx",
     "webapp/src/app/(dashboard)/transactions/[id]/page.tsx",
     "webapp/src/app/(dashboard)/transactions/page.tsx",
+    "webapp/src/app/api/bug-reports/route.ts",
     "webapp/src/app/api/parse-statement/route.ts",
     "webapp/src/app/api/save-unrecognized/route.ts",
     "webapp/src/app/auth/callback/route.ts",
@@ -239,7 +240,7 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 418
+      "count": 425
     },
     {
       "from": "mobile",
@@ -250,10 +251,11 @@
   "recent_changes": [
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "mobile/app/bug-report.tsx",
-    "mobile/lib/auth.tsx",
-    "packages/shared/src/types/database.ts",
-    "webapp/src/actions/recurring-templates.ts",
-    "webapp/src/types/database.ts"
+    "mobile/app/(tabs)/settings.tsx",
+    "mobile/app/_layout.tsx",
+    "mobile/app/subscriptions.tsx",
+    "services/pdf_parser/main.py",
+    "webapp/src/app/layout.tsx",
+    "webapp/src/components/app/server-action-recovery.tsx"
   ]
 }

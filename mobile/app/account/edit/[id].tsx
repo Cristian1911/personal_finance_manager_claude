@@ -223,6 +223,7 @@ export default function EditAccountScreen() {
         className="flex-1"
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
         {/* Account type — disabled in edit mode */}
         <FormField label="Tipo de cuenta">

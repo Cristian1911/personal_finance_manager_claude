@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -127,135 +129,142 @@ export default function BudgetsScreen() {
   }
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       className="flex-1 bg-gray-100"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#047857" />
-      }
-      contentContainerStyle={{ paddingBottom: 40 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View className="px-4 pt-4">
-        <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
-      </View>
-
-      <View className="mx-4 mt-3 rounded-2xl bg-white p-5 shadow-sm">
-        <Text className="text-sm text-gray-500 font-inter-medium">Control mensual</Text>
-        <Text className="mt-1 text-2xl text-gray-900 font-inter-bold">
-          {formatCurrency(totals.spent, "COP" as CurrencyCode)}
-        </Text>
-        <Text className="mt-1 text-xs text-gray-500 font-inter">
-          de {formatCurrency(totals.target, "COP" as CurrencyCode)} presupuestado
-        </Text>
-        <View className="mt-4 h-2 rounded-full bg-gray-200">
-          <View
-            className={`${getProgressColor(totals.progress)} h-2 rounded-full`}
-            style={{ width: `${Math.min(totals.progress, 100)}%` }}
-          />
+      <ScrollView
+        className="flex-1 bg-gray-100"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#047857" />
+        }
+        contentContainerStyle={{ paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+      >
+        <View className="px-4 pt-4">
+          <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
         </View>
-      </View>
 
-      <View className="px-4 pt-5 pb-2">
-        <Text className="text-gray-500 font-inter-semibold text-xs uppercase">
-          Presupuestos por categoria
-        </Text>
-        <Text className="mt-1 text-xs text-gray-500 font-inter">
-          Toca una categoria para definir o editar su tope mensual.
-        </Text>
-      </View>
-
-      {items.length === 0 ? (
-        <View className="mx-4 mt-2 rounded-2xl bg-white p-6">
-          <Text className="text-center text-base text-gray-700 font-inter-medium">
-            Aun no hay presupuestos configurados
+        <View className="mx-4 mt-3 rounded-2xl bg-white p-5 shadow-sm">
+          <Text className="text-sm text-gray-500 font-inter-medium">Control mensual</Text>
+          <Text className="mt-1 text-2xl text-gray-900 font-inter-bold">
+            {formatCurrency(totals.spent, "COP" as CurrencyCode)}
           </Text>
-          <Text className="mt-1 text-center text-sm text-gray-500 font-inter">
-            Crea presupuestos desde Categorias en web y aqui podras revisarlos.
+          <Text className="mt-1 text-xs text-gray-500 font-inter">
+            de {formatCurrency(totals.target, "COP" as CurrencyCode)} presupuestado
+          </Text>
+          <View className="mt-4 h-2 rounded-full bg-gray-200">
+            <View
+              className={`${getProgressColor(totals.progress)} h-2 rounded-full`}
+              style={{ width: `${Math.min(totals.progress, 100)}%` }}
+            />
+          </View>
+        </View>
+
+        <View className="px-4 pt-5 pb-2">
+          <Text className="text-gray-500 font-inter-semibold text-xs uppercase">
+            Presupuestos por categoria
+          </Text>
+          <Text className="mt-1 text-xs text-gray-500 font-inter">
+            Toca una categoria para definir o editar su tope mensual.
           </Text>
         </View>
-      ) : (
-        <View className="px-4">
-          {items.map((item) => {
-            const rowId = item.id ?? item.category_id;
-            const isEditing = editingId === rowId;
-            const isSaving = savingId === rowId;
-            return (
-              <View key={rowId} className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
-                <View className="mb-2 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <View
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: item.category_color ?? "#047857" }}
-                    />
-                    <Text className="text-gray-900 font-inter-semibold">{item.category_name}</Text>
+
+        {items.length === 0 ? (
+          <View className="mx-4 mt-2 rounded-2xl bg-white p-6">
+            <Text className="text-center text-base text-gray-700 font-inter-medium">
+              Aun no hay presupuestos configurados
+            </Text>
+            <Text className="mt-1 text-center text-sm text-gray-500 font-inter">
+              Crea presupuestos desde Categorias en web y aqui podras revisarlos.
+            </Text>
+          </View>
+        ) : (
+          <View className="px-4">
+            {items.map((item) => {
+              const rowId = item.id ?? item.category_id;
+              const isEditing = editingId === rowId;
+              const isSaving = savingId === rowId;
+              return (
+                <View key={rowId} className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
+                  <View className="mb-2 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-2">
+                      <View
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: item.category_color ?? "#047857" }}
+                      />
+                      <Text className="text-gray-900 font-inter-semibold">{item.category_name}</Text>
+                    </View>
+                    <Text className="text-xs text-gray-500 font-inter-medium">
+                      {Math.round(item.progress)}%
+                    </Text>
                   </View>
-                  <Text className="text-xs text-gray-500 font-inter-medium">
-                    {Math.round(item.progress)}%
+
+                  <Text className="text-sm text-gray-600 font-inter">
+                    {formatCurrency(item.spent, "COP" as CurrencyCode)} / {formatCurrency(item.amount, "COP" as CurrencyCode)}
                   </Text>
-                </View>
 
-                <Text className="text-sm text-gray-600 font-inter">
-                  {formatCurrency(item.spent, "COP" as CurrencyCode)} / {formatCurrency(item.amount, "COP" as CurrencyCode)}
-                </Text>
-
-                <View className="mt-3 h-2 rounded-full bg-gray-200">
-                  <View
-                    className={`${getProgressColor(item.progress)} h-2 rounded-full`}
-                    style={{ width: `${Math.min(item.progress, 100)}%` }}
-                  />
-                </View>
-
-                {isEditing ? (
-                  <View className="mt-3">
-                    <TextInput
-                      value={amountInput}
-                      onChangeText={setAmountInput}
-                      keyboardType="numeric"
-                      placeholder="Monto mensual"
-                      className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+                  <View className="mt-3 h-2 rounded-full bg-gray-200">
+                    <View
+                      className={`${getProgressColor(item.progress)} h-2 rounded-full`}
+                      style={{ width: `${Math.min(item.progress, 100)}%` }}
                     />
-                    <View className="mt-2 flex-row gap-2">
-                      <Pressable
-                        className="flex-1 rounded-xl bg-emerald-600 py-2.5 items-center active:bg-emerald-700"
-                        onPress={() => handleSave(item)}
-                        disabled={isSaving}
-                      >
-                        <Text className="text-white font-inter-semibold">
-                          {isSaving ? "Guardando..." : "Guardar"}
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        className="rounded-xl border border-gray-300 px-4 py-2.5 items-center"
-                        onPress={() => {
-                          setEditingId(null);
-                          setAmountInput("");
-                        }}
-                        disabled={isSaving}
-                      >
-                        <Text className="text-gray-700 font-inter-medium">Cancelar</Text>
-                      </Pressable>
-                      {!!item.id && (
+                  </View>
+
+                  {isEditing ? (
+                    <View className="mt-3">
+                      <TextInput
+                        value={amountInput}
+                        onChangeText={setAmountInput}
+                        keyboardType="numeric"
+                        placeholder="Monto mensual"
+                        className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+                      />
+                      <View className="mt-2 flex-row gap-2">
                         <Pressable
-                          className="rounded-xl border border-red-200 px-4 py-2.5 items-center"
-                          onPress={() => handleDelete(item)}
+                          className="flex-1 rounded-xl bg-emerald-600 py-2.5 items-center active:bg-emerald-700"
+                          onPress={() => handleSave(item)}
                           disabled={isSaving}
                         >
-                          <Text className="text-red-600 font-inter-medium">Eliminar</Text>
+                          <Text className="text-white font-inter-semibold">
+                            {isSaving ? "Guardando..." : "Guardar"}
+                          </Text>
                         </Pressable>
-                      )}
+                        <Pressable
+                          className="rounded-xl border border-gray-300 px-4 py-2.5 items-center"
+                          onPress={() => {
+                            setEditingId(null);
+                            setAmountInput("");
+                          }}
+                          disabled={isSaving}
+                        >
+                          <Text className="text-gray-700 font-inter-medium">Cancelar</Text>
+                        </Pressable>
+                        {!!item.id && (
+                          <Pressable
+                            className="rounded-xl border border-red-200 px-4 py-2.5 items-center"
+                            onPress={() => handleDelete(item)}
+                            disabled={isSaving}
+                          >
+                            <Text className="text-red-600 font-inter-medium">Eliminar</Text>
+                          </Pressable>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                ) : (
-                  <Pressable className="mt-3 items-start" onPress={() => beginEdit(item)}>
-                    <Text className="text-sm text-emerald-700 font-inter-semibold">
-                      {item.id ? "Editar presupuesto" : "Definir presupuesto"}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            );
-          })}
-        </View>
-      )}
-    </ScrollView>
+                  ) : (
+                    <Pressable className="mt-3 items-start" onPress={() => beginEdit(item)}>
+                      <Text className="text-sm text-emerald-700 font-inter-semibold">
+                        {item.id ? "Editar presupuesto" : "Definir presupuesto"}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

@@ -17,6 +17,44 @@ import { ArrowLeft, Paperclip, Send } from "lucide-react-native";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 
+const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
+
+function formatBytes(size: number): string {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function getFallbackMimeType(fileName: string | null | undefined): string | null {
+  const normalized = (fileName || "").toLowerCase();
+  if (normalized.endsWith(".jpg") || normalized.endsWith(".jpeg")) return "image/jpeg";
+  if (normalized.endsWith(".png")) return "image/png";
+  if (normalized.endsWith(".webp")) return "image/webp";
+  if (normalized.endsWith(".pdf")) return "application/pdf";
+  return null;
+}
+
+function resolveAttachmentMimeType(
+  mimeType: string | null | undefined,
+  fileName: string | null | undefined
+): string | null {
+  const normalized = mimeType?.trim().toLowerCase();
+  if (
+    normalized &&
+    normalized !== "application/octet-stream" &&
+    normalized !== "binary/octet-stream"
+  ) {
+    return normalized;
+  }
+  return getFallbackMimeType(fileName);
+}
+
 export default function BugReportScreen() {
   const router = useRouter();
   const { session } = useAuth();
@@ -35,6 +73,19 @@ export default function BugReportScreen() {
     [title, description]
   );
 
+  function validateAttachment(
+    candidate: DocumentPicker.DocumentPickerAsset
+  ): string | null {
+    const mimeType = resolveAttachmentMimeType(candidate.mimeType, candidate.name);
+    if (!mimeType || !ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
+      return "Formato no soportado. Usa JPG, PNG, WEBP o PDF.";
+    }
+    if (typeof candidate.size === "number" && candidate.size > MAX_ATTACHMENT_SIZE_BYTES) {
+      return "El adjunto no puede superar 10MB.";
+    }
+    return null;
+  }
+
   async function handlePickAttachment() {
     setPicking(true);
     try {
@@ -44,7 +95,13 @@ export default function BugReportScreen() {
       });
 
       if (!result.canceled && result.assets.length > 0) {
-        setAttachment(result.assets[0]);
+        const selected = result.assets[0];
+        const validationError = validateAttachment(selected);
+        if (validationError) {
+          Alert.alert("Adjunto no valido", validationError);
+          return;
+        }
+        setAttachment(selected);
       }
     } catch (err) {
       console.error("Attachment picker error:", err);
@@ -76,18 +133,37 @@ export default function BugReportScreen() {
       let attachmentPath: string | null = null;
 
       if (attachment) {
+        const validationError = validateAttachment(attachment);
+        if (validationError) {
+          throw new Error(validationError);
+        }
+
+        const contentType = resolveAttachmentMimeType(
+          attachment.mimeType,
+          attachment.name
+        );
+        if (!contentType) {
+          throw new Error("No se pudo determinar el tipo de archivo adjunto.");
+        }
+
         const safeName = (attachment.name || "capture")
           .replace(/[^a-zA-Z0-9_.-]/g, "-")
           .slice(0, 80);
         const path = `${session.user.id}/${Date.now()}-${safeName}`;
 
         const fileResponse = await fetch(attachment.uri);
-        const fileBlob = await fileResponse.blob();
+        if (!fileResponse.ok) {
+          throw new Error("No se pudo leer el archivo adjunto.");
+        }
+        const fileBytes = await fileResponse.arrayBuffer();
+        if (fileBytes.byteLength === 0) {
+          throw new Error("El archivo adjunto está vacío.");
+        }
 
         const { error: uploadError } = await supabase.storage
           .from("bug-reports")
-          .upload(path, fileBlob, {
-            contentType: attachment.mimeType ?? undefined,
+          .upload(path, fileBytes, {
+            contentType,
             upsert: false,
           });
 
@@ -160,7 +236,9 @@ export default function BugReportScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
         <View className="rounded-xl border border-gray-200 bg-white p-4">
           <Text className="text-gray-900 font-inter-semibold text-base">
@@ -234,6 +312,20 @@ export default function BugReportScreen() {
               <Text className="text-sky-700 font-inter text-xs" numberOfLines={2}>
                 Archivo: {attachment.name}
               </Text>
+              {typeof attachment.size === "number" && (
+                <Text className="text-sky-700 font-inter text-xs mt-1">
+                  Tamaño: {formatBytes(attachment.size)}
+                </Text>
+              )}
+              <Pressable
+                onPress={() => setAttachment(null)}
+                className="mt-2 self-start rounded-md border border-sky-300 px-2 py-1 active:bg-sky-100"
+                disabled={submitting}
+              >
+                <Text className="text-sky-700 font-inter-medium text-xs">
+                  Quitar adjunto
+                </Text>
+              </Pressable>
             </View>
           )}
         </View>

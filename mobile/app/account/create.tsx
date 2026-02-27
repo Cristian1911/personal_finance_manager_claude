@@ -192,6 +192,7 @@ export default function CreateAccountScreen() {
         className="flex-1"
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
         {/* Account type */}
         <FormField label="Tipo de cuenta" required>

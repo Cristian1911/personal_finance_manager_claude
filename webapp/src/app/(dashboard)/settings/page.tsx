@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileForm } from "@/components/settings/profile-form";
+import { BugReportForm } from "@/components/settings/bug-report-form";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -48,6 +49,18 @@ export default async function SettingsPage() {
           <p className="text-sm text-muted-foreground">
             Miembro desde: {new Date(profile.created_at).toLocaleDateString("es-CO")}
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Reportar bug</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Envía evidencia y contexto para que podamos reproducir y corregir el problema.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <BugReportForm />
         </CardContent>
       </Card>
     </div>

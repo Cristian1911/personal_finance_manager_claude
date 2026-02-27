@@ -11,6 +11,7 @@ import {
   Shield,
   Trash2,
   Bug,
+  Repeat,
   ChevronRight,
 } from "lucide-react-native";
 import { formatRelativeDate } from "@venti5/shared";
@@ -231,6 +232,19 @@ export default function SettingsScreen() {
           </View>
           <Text className="flex-1 font-inter-medium text-sm text-gray-900">
             Administrar cuentas
+          </Text>
+          <ChevronRight size={16} color="#9CA3AF" />
+        </Pressable>
+        <View className="h-px bg-gray-100 ml-12" />
+        <Pressable
+          className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+          onPress={() => router.push("/subscriptions" as never)}
+        >
+          <View className="mr-3">
+            <Repeat size={18} color="#6B7280" />
+          </View>
+          <Text className="flex-1 font-inter-medium text-sm text-gray-900">
+            Suscripciones
           </Text>
           <ChevronRight size={16} color="#9CA3AF" />
         </Pressable>

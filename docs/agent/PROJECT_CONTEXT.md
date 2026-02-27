@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T21:07:36.614058+00:00`
+- Generated (UTC): `2026-02-27T16:02:16.480889+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,13 +13,13 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 457
-- TypeScript/React: 143
+- Text files scanned: 462
+- TypeScript/React: 146
 - JSON: 140
-- TypeScript: 84
+- TypeScript: 85
 - Markdown: 24
 - SQL: 21
-- Python: 19
+- Python: 20
 - Shell: 9
 - YAML: 8
 - JavaScript: 5
@@ -27,10 +27,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - TOML: 2
 
 ## Top-level Areas
-- mobile: 197 files
-- webapp: 166 files
+- mobile: 198 files
+- webapp: 169 files
 - supabase: 22 files
-- services: 21 files
+- services: 22 files
 - packages: 14 files
 - docs: 12 files
 - (root): 11 files
@@ -73,9 +73,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `webapp/src/actions/recurring-templates.ts`
   - e.g. `webapp/src/actions/debt.ts`
 - `expo-router` (15 files): Expo Router file-based routes
+  - e.g. `mobile/app/subscriptions.tsx`
   - e.g. `mobile/app/+not-found.tsx`
   - e.g. `mobile/app/onboarding.tsx`
-  - e.g. `mobile/app/_layout.tsx`
 - `fastapi-service` (15 files): FastAPI service modules
   - e.g. `services/pdf_parser/test_parser.py`
   - e.g. `services/pdf_parser/models.py`
@@ -115,24 +115,25 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/(dashboard)/settings/page.tsx`
 - `webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
 - `webapp/src/app/(dashboard)/transactions/page.tsx`
+- `webapp/src/app/api/bug-reports/route.ts`
 - `webapp/src/app/api/parse-statement/route.ts`
 - `webapp/src/app/api/save-unrecognized/route.ts`
 - `webapp/src/app/auth/callback/route.ts`
 - `webapp/src/app/layout.tsx`
-- `webapp/src/app/onboarding/layout.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (418)
+- `webapp` -> `webapp` (425)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `mobile/app/bug-report.tsx`
-- `mobile/lib/auth.tsx`
-- `packages/shared/src/types/database.ts`
-- `webapp/src/actions/recurring-templates.ts`
-- `webapp/src/types/database.ts`
+- `mobile/app/(tabs)/settings.tsx`
+- `mobile/app/_layout.tsx`
+- `mobile/app/subscriptions.tsx`
+- `services/pdf_parser/main.py`
+- `webapp/src/app/layout.tsx`
+- `webapp/src/components/app/server-action-recovery.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
