@@ -117,7 +117,11 @@ export default function MobileOnboardingScreen() {
       className="flex-1 bg-gray-100"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+      >
         <View className="mb-6 rounded-3xl bg-primary p-5">
           <Text className="text-2xl font-inter-bold text-white">Venti5</Text>
           <Text className="mt-1 text-sm font-inter text-emerald-50">

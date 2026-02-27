@@ -40,6 +40,21 @@ function getFallbackMimeType(fileName: string | null | undefined): string | null
   return null;
 }
 
+function resolveAttachmentMimeType(
+  mimeType: string | null | undefined,
+  fileName: string | null | undefined
+): string | null {
+  const normalized = mimeType?.trim().toLowerCase();
+  if (
+    normalized &&
+    normalized !== "application/octet-stream" &&
+    normalized !== "binary/octet-stream"
+  ) {
+    return normalized;
+  }
+  return getFallbackMimeType(fileName);
+}
+
 export default function BugReportScreen() {
   const router = useRouter();
   const { session } = useAuth();
@@ -61,7 +76,7 @@ export default function BugReportScreen() {
   function validateAttachment(
     candidate: DocumentPicker.DocumentPickerAsset
   ): string | null {
-    const mimeType = candidate.mimeType || getFallbackMimeType(candidate.name);
+    const mimeType = resolveAttachmentMimeType(candidate.mimeType, candidate.name);
     if (!mimeType || !ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
       return "Formato no soportado. Usa JPG, PNG, WEBP o PDF.";
     }
@@ -123,8 +138,10 @@ export default function BugReportScreen() {
           throw new Error(validationError);
         }
 
-        const contentType =
-          attachment.mimeType || getFallbackMimeType(attachment.name);
+        const contentType = resolveAttachmentMimeType(
+          attachment.mimeType,
+          attachment.name
+        );
         if (!contentType) {
           throw new Error("No se pudo determinar el tipo de archivo adjunto.");
         }
@@ -135,11 +152,17 @@ export default function BugReportScreen() {
         const path = `${session.user.id}/${Date.now()}-${safeName}`;
 
         const fileResponse = await fetch(attachment.uri);
-        const fileBlob = await fileResponse.blob();
+        if (!fileResponse.ok) {
+          throw new Error("No se pudo leer el archivo adjunto.");
+        }
+        const fileBytes = await fileResponse.arrayBuffer();
+        if (fileBytes.byteLength === 0) {
+          throw new Error("El archivo adjunto está vacío.");
+        }
 
         const { error: uploadError } = await supabase.storage
           .from("bug-reports")
-          .upload(path, fileBlob, {
+          .upload(path, fileBytes, {
             contentType,
             upsert: false,
           });
@@ -213,7 +236,9 @@ export default function BugReportScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
         <View className="rounded-xl border border-gray-200 bg-white p-4">
           <Text className="text-gray-900 font-inter-semibold text-base">

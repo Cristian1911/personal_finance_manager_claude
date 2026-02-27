@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-27T01:26:09.812725+00:00`
+- Generated (UTC): `2026-02-27T14:32:50.208666+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -126,8 +126,18 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/package.json`
-- `pnpm-lock.yaml`
+- `docs/agent/PROJECT_CONTEXT.md`
+- `docs/agent/project_context.json`
+- `mobile/app/(auth)/forgot-password.tsx`
+- `mobile/app/(auth)/login.tsx`
+- `mobile/app/(auth)/reset-password.tsx`
+- `mobile/app/(auth)/signup.tsx`
+- `mobile/app/(tabs)/budgets.tsx`
+- `mobile/app/account/create.tsx`
+- `mobile/app/account/edit/[id].tsx`
+- `mobile/app/bug-report.tsx`
+- `mobile/app/onboarding.tsx`
+- `mobile/app/transaction/[id].tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
