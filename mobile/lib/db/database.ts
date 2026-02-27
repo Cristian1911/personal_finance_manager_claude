@@ -1,5 +1,5 @@
 import * as SQLite from "expo-sqlite";
-import { MIGRATIONS } from "./schema";
+import { DB_MIGRATIONS, LATEST_DB_VERSION } from "./schema";
 
 let db: SQLite.SQLiteDatabase | null = null;
 let dbInitPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -24,8 +24,26 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
   await database.execAsync("PRAGMA journal_mode = WAL;");
   await database.execAsync("PRAGMA foreign_keys = ON;");
-  for (const migration of MIGRATIONS) {
-    await database.execAsync(migration);
+
+  const versionRow = await database.getFirstAsync<{ user_version: number }>(
+    "PRAGMA user_version"
+  );
+  const currentVersion = versionRow?.user_version ?? 0;
+
+  for (const migration of DB_MIGRATIONS) {
+    if (migration.version <= currentVersion) continue;
+    await database.withTransactionAsync(async () => {
+      for (const statement of migration.statements) {
+        try {
+          await database.execAsync(statement);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (message.includes("duplicate column name")) continue;
+          throw error;
+        }
+      }
+      await database.execAsync(`PRAGMA user_version = ${migration.version}`);
+    });
   }
 }
 
@@ -41,4 +59,5 @@ export async function clearDatabase(): Promise<void> {
     DELETE FROM sync_queue;
     DELETE FROM sync_metadata;
   `);
+  await database.execAsync(`PRAGMA user_version = ${LATEST_DB_VERSION}`);
 }

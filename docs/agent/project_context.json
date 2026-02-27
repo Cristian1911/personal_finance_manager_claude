@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-27T16:02:16.480889+00:00",
+  "generated_at_utc": "2026-02-27T23:48:49.337573+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,13 +9,13 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 462,
+    "text_files_scanned": 471,
     "languages": {
-      "TypeScript/React": 146,
+      "TypeScript/React": 151,
       "JSON": 140,
-      "TypeScript": 85,
+      "TypeScript": 88,
       "Markdown": 24,
-      "SQL": 21,
+      "SQL": 22,
       "Python": 20,
       "Shell": 9,
       "YAML": 8,
@@ -25,11 +25,11 @@
     }
   },
   "top_level_directories": {
-    "mobile": 198,
-    "webapp": 169,
-    "supabase": 22,
+    "mobile": 201,
+    "webapp": 172,
+    "supabase": 23,
     "services": 22,
-    "packages": 14,
+    "packages": 16,
     "docs": 12,
     "(root)": 11,
     ".claude": 9,
@@ -139,14 +139,14 @@
         "mobile/app/bug-report.tsx",
         "mobile/app/modal.tsx",
         "mobile/app/+html.tsx",
+        "mobile/app/capture.tsx",
         "mobile/app/transaction/[id].tsx",
         "mobile/app/(tabs)/settings.tsx",
         "mobile/app/(tabs)/index.tsx",
         "mobile/app/(tabs)/import.tsx",
         "mobile/app/(tabs)/transactions.tsx",
         "mobile/app/(tabs)/budgets.tsx",
-        "mobile/app/(tabs)/_layout.tsx",
-        "mobile/app/(tabs)/accounts.tsx"
+        "mobile/app/(tabs)/_layout.tsx"
       ]
     },
     {
@@ -240,7 +240,7 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 425
+      "count": 441
     },
     {
       "from": "mobile",
@@ -249,13 +249,45 @@
     }
   ],
   "recent_changes": [
+    ".gitignore",
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "mobile/app/(tabs)/settings.tsx",
+    "mobile/app/(tabs)/import.tsx",
+    "mobile/app/(tabs)/index.tsx",
+    "mobile/app/(tabs)/transactions.tsx",
     "mobile/app/_layout.tsx",
+    "mobile/app/bug-report.tsx",
+    "mobile/app/capture.tsx",
     "mobile/app/subscriptions.tsx",
-    "services/pdf_parser/main.py",
-    "webapp/src/app/layout.tsx",
-    "webapp/src/components/app/server-action-recovery.tsx"
+    "mobile/components/common/FloatingCaptureButton.tsx",
+    "mobile/components/common/KeyboardScreen.tsx",
+    "mobile/lib/db/database.ts",
+    "mobile/lib/db/schema.ts",
+    "mobile/lib/repositories/transactions.ts",
+    "packages/shared/src/index.ts",
+    "packages/shared/src/types/database.ts",
+    "packages/shared/src/types/domain.ts",
+    "packages/shared/src/utils/quick-capture.ts",
+    "packages/shared/src/utils/reconciliation.ts",
+    "supabase/migrations/20260227130000_add_transaction_capture_and_reconciliation.sql",
+    "webapp/src/actions/budgets.ts",
+    "webapp/src/actions/categories.ts",
+    "webapp/src/actions/categorize.ts",
+    "webapp/src/actions/charts.ts",
+    "webapp/src/actions/import-transactions.ts",
+    "webapp/src/actions/transactions.ts",
+    "webapp/src/app/(dashboard)/dashboard/page.tsx",
+    "webapp/src/app/(dashboard)/transactions/page.tsx",
+    "webapp/src/components/import/import-wizard.tsx",
+    "webapp/src/components/import/reconciliation-step.tsx",
+    "webapp/src/components/import/step-confirm.tsx",
+    "webapp/src/components/import/step-results.tsx",
+    "webapp/src/components/transactions/quick-capture-bar.tsx",
+    "webapp/src/lib/utils/transactions.ts",
+    "webapp/src/lib/validators/import.ts",
+    "webapp/src/lib/validators/transaction.ts",
+    "webapp/src/types/database.ts",
+    "webapp/src/types/domain.ts",
+    "webapp/src/types/import.ts"
   ]
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { extractPattern } from "@venti5/shared";
+import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithRelations } from "@/types/domain";
 import type { UserRule } from "@venti5/shared";
@@ -19,13 +20,15 @@ export async function getUncategorizedTransactions(): Promise<
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)")
-    .is("category_id", null)
-    .eq("is_excluded", false)
-    .order("transaction_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  const { data, error } = await applyVisibleTransactionFilter(
+    supabase
+      .from("transactions")
+      .select("*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)")
+      .is("category_id", null)
+      .eq("is_excluded", false)
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false })
+  );
 
   if (error) {
     console.error("Error fetching uncategorized transactions:", error);
@@ -45,11 +48,13 @@ export async function getUncategorizedCount(): Promise<number> {
   } = await supabase.auth.getUser();
   if (!user) return 0;
 
-  const { count, error } = await supabase
-    .from("transactions")
-    .select("id", { count: "exact", head: true })
-    .is("category_id", null)
-    .eq("is_excluded", false);
+  const { count, error } = await applyVisibleTransactionFilter(
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .is("category_id", null)
+      .eq("is_excluded", false)
+  );
 
   if (error) {
     console.error("Error counting uncategorized:", error);

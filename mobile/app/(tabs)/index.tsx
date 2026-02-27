@@ -1,7 +1,7 @@
-import { ScrollView, RefreshControl, Text, View } from "react-native";
-import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
-import type { Account, Category, Transaction } from "@venti5/shared";
+import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
+import { formatCurrency, type Account, type Category, type CurrencyCode, type Transaction } from "@venti5/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { useAppStore } from "../../lib/store";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
@@ -17,8 +17,10 @@ import {
   type CategorySpend,
 } from "../../components/dashboard/CategoryBreakdown";
 import { MonthSelector } from "../../components/common/MonthSelector";
+import { FloatingCaptureButton } from "../../components/common/FloatingCaptureButton";
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const { sync, status } = useSync();
   const { setAccounts, setTransactions, setCategories } = useAppStore();
 
@@ -28,6 +30,7 @@ export default function DashboardScreen() {
   const [monthExpenses, setMonthExpenses] = useState(0);
   const [topCategories, setTopCategories] = useState<CategorySpend[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [accountRows, setAccountRows] = useState<AccountRow[]>([]);
   const [currentMonth, setCurrentMonth] = useState(
     () => new Date().toISOString().slice(0, 7) // "YYYY-MM"
   );
@@ -48,6 +51,12 @@ export default function DashboardScreen() {
     idempotency_key: string | null;
     is_excluded: number | boolean;
     notes: string | null;
+    currency_code: string;
+    provider: string;
+    capture_method: string;
+    capture_input_text: string | null;
+    reconciled_into_transaction_id: string | null;
+    reconciliation_score: number | null;
     created_at: string;
     updated_at: string;
     category_name_es: string | null;
@@ -81,7 +90,7 @@ export default function DashboardScreen() {
     direction: row.direction as Transaction["direction"],
     status: row.status as Transaction["status"],
     posting_date: row.post_date,
-    currency_code: "COP",
+    currency_code: (row.currency_code as Transaction["currency_code"]) ?? "COP",
     exchange_rate: 1,
     idempotency_key: row.idempotency_key ?? "",
     categorization_confidence: null,
@@ -95,11 +104,15 @@ export default function DashboardScreen() {
     is_subscription: false,
     merchant_category_code: null,
     merchant_logo_url: null,
-    provider: "MANUAL",
+    provider: row.provider as Transaction["provider"],
     provider_transaction_id: null,
     recurrence_group_id: null,
     secondary_category_id: null,
     tags: null,
+    capture_method: row.capture_method as Transaction["capture_method"],
+    capture_input_text: row.capture_input_text,
+    reconciled_into_transaction_id: row.reconciled_into_transaction_id,
+    reconciliation_score: row.reconciliation_score,
   });
 
   const toDomainCategory = (row: CategoryRow): Category => ({
@@ -127,6 +140,7 @@ export default function DashboardScreen() {
       const domainAccounts = accounts.map(toDomainAccount);
       const domainTransactions = transactionRows.map(toDomainTransaction);
       const domainCategories = categories.map(toDomainCategory);
+      setAccountRows(accounts);
 
       // Update store
       setAccounts(domainAccounts);
@@ -207,27 +221,135 @@ export default function DashboardScreen() {
     }
   }, [sync, loadData]);
 
+  const upcomingPayments = useMemo(() => {
+    const today = new Date();
+    return accountRows
+      .filter((account) => account.is_active === 1 && account.payment_day)
+      .map((account) => {
+        const dueDate = new Date(today.getFullYear(), today.getMonth(), account.payment_day ?? 1);
+        if (dueDate < today) {
+          dueDate.setMonth(dueDate.getMonth() + 1);
+        }
+        const diffDays = Math.ceil(
+          (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return {
+          id: account.id,
+          name: account.name,
+          dueDate,
+          diffDays,
+          currency: (account.currency_code as CurrencyCode) ?? "COP",
+          balance:
+            account.account_type === "CREDIT_CARD"
+              ? account.current_balance
+              : account.credit_limit ?? account.current_balance,
+        };
+      })
+      .filter((item) => item.diffDays >= 0 && item.diffDays <= 21)
+      .sort((a, b) => a.diffDays - b.diffDays)
+      .slice(0, 3);
+  }, [accountRows]);
+
+  const monthPacingCopy = useMemo(() => {
+    const today = new Date();
+    const isCurrentMonth = currentMonth === today.toISOString().slice(0, 7);
+    if (!isCurrentMonth) return null;
+
+    const dayOfMonth = today.getDate();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const elapsedPct = Math.round((dayOfMonth / daysInMonth) * 100);
+    return `Vas en ${elapsedPct}% del mes y has gastado ${formatCurrency(monthExpenses)}.`;
+  }, [currentMonth, monthExpenses]);
+
   return (
-    <ScrollView
-      className="flex-1 bg-gray-100"
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          tintColor="#047857"
-        />
-      }
-    >
-      {/* Month label */}
-      <View className="px-4 pt-4">
-        <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
-      </View>
+    <View className="flex-1 bg-gray-100">
+      <ScrollView
+        className="flex-1"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#047857"
+          />
+        }
+      >
+        <View className="px-4 pt-4">
+          <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
+        </View>
 
-      <BalanceCard totalBalance={totalBalance} accountCount={accountCount} />
+        <BalanceCard totalBalance={totalBalance} accountCount={accountCount} />
 
-      <MonthSummary income={monthIncome} expenses={monthExpenses} />
+        <View className="mx-4 mt-4 rounded-lg bg-white p-4 shadow-sm">
+          <Text className="text-sm font-inter-semibold text-gray-900">
+            Acciones rápidas
+          </Text>
+          <View className="mt-3 flex-row gap-2">
+            <Pressable
+              onPress={() => router.push("/capture" as any)}
+              className="flex-1 rounded-xl bg-primary px-4 py-3 active:bg-emerald-700"
+            >
+              <Text className="text-center font-inter-semibold text-white">
+                Registrar gasto
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(tabs)/import")}
+              className="flex-1 rounded-xl bg-gray-900 px-4 py-3 active:bg-gray-700"
+            >
+              <Text className="text-center font-inter-semibold text-white">
+                Importar extracto
+              </Text>
+            </Pressable>
+          </View>
+          <Text className="mt-3 text-xs font-inter text-gray-500">
+            Mantén el mes vivo registrando movimientos antes del extracto.
+          </Text>
+        </View>
 
-      <CategoryBreakdown categories={topCategories} />
-    </ScrollView>
+        <View className="mx-4 mt-4 rounded-lg bg-white p-4 shadow-sm">
+          <Text className="text-sm font-inter-semibold text-gray-900">
+            Próximos pagos
+          </Text>
+          {upcomingPayments.length === 0 ? (
+            <Text className="mt-2 text-xs font-inter text-gray-500">
+              No hay vencimientos cercanos registrados.
+            </Text>
+          ) : (
+            <View className="mt-3 gap-3">
+              {upcomingPayments.map((payment) => (
+                <View
+                  key={payment.id}
+                  className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-3"
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text className="font-inter-semibold text-sm text-gray-900">
+                      {payment.name}
+                    </Text>
+                    <Text className="font-inter-medium text-xs text-amber-700">
+                      {payment.diffDays === 0
+                        ? "Vence hoy"
+                        : `Vence en ${payment.diffDays} días`}
+                    </Text>
+                  </View>
+                  <Text className="mt-1 text-xs font-inter text-gray-500">
+                    Saldo o referencia: {formatCurrency(Math.abs(payment.balance ?? 0), payment.currency)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {monthPacingCopy ? (
+            <Text className="mt-3 text-xs font-inter text-gray-500">
+              {monthPacingCopy}
+            </Text>
+          ) : null}
+        </View>
+
+        <MonthSummary income={monthIncome} expenses={monthExpenses} />
+
+        <CategoryBreakdown categories={topCategories} />
+      </ScrollView>
+      <FloatingCaptureButton />
+    </View>
   );
 }

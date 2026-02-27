@@ -5,6 +5,7 @@ import { getCategories } from "@/actions/categories";
 import { TransactionTable } from "@/components/transactions/transaction-table";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
+import { QuickCaptureBar } from "@/components/transactions/quick-capture-bar";
 import { Pagination } from "@/components/transactions/pagination";
 import { MonthSelector } from "@/components/month-selector";
 
@@ -45,6 +46,8 @@ export default async function TransactionsPage({
       <Suspense>
         <TransactionFilters accounts={accounts} />
       </Suspense>
+
+      <QuickCaptureBar accounts={accounts} categories={categories} />
 
       <TransactionTable transactions={transactionsResult.data} />
 

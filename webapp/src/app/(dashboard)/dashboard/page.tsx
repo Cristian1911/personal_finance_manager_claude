@@ -48,6 +48,7 @@ import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-card";
 import { computeDebtBalance } from "@venti5/shared";
 import { trackProductEvent } from "@/actions/product-events";
+import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
 
 export default async function DashboardPage({
   searchParams,
@@ -74,27 +75,33 @@ export default async function DashboardPage({
     .order("display_order");
 
   // Fetch recent transactions (exclude excluded ones)
-  const { data: recentTransactions } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("is_excluded", false)
-    .order("transaction_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const { data: recentTransactions } = await applyVisibleTransactionFilter(
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("is_excluded", false)
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(5)
+  );
 
-  const { count: uncategorizedCount } = await supabase
-    .from("transactions")
-    .select("id", { count: "exact", head: true })
-    .is("category_id", null)
-    .eq("is_excluded", false);
+  const { count: uncategorizedCount } = await applyVisibleTransactionFilter(
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .is("category_id", null)
+      .eq("is_excluded", false)
+  );
 
   // Fetch selected month's transactions for summary (exclude excluded ones)
-  const { data: monthTransactions } = await supabase
-    .from("transactions")
-    .select("amount, direction, account_id")
-    .eq("is_excluded", false)
-    .gte("transaction_date", monthStartStr(target))
-    .lte("transaction_date", monthEndStr(target));
+  const { data: monthTransactions } = await applyVisibleTransactionFilter(
+    supabase
+      .from("transactions")
+      .select("amount, direction, account_id")
+      .eq("is_excluded", false)
+      .gte("transaction_date", monthStartStr(target))
+      .lte("transaction_date", monthEndStr(target))
+  );
 
   // Fetch previous month param for trend calculation
   const prevMonthParam = formatMonthParam(subMonths(target, 1));

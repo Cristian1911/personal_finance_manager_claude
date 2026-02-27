@@ -72,6 +72,7 @@ export type StatementAccountMapping = {
 };
 
 export type TransactionToImport = {
+  import_key?: string;
   account_id: string;
   amount: number;
   currency_code: string;
@@ -84,6 +85,7 @@ export type TransactionToImport = {
   installment_current?: number | null;
   installment_total?: number | null;
   installment_group_id?: string | null;
+  notes?: string | null;
 };
 
 export type ImportResult = {
@@ -91,7 +93,47 @@ export type ImportResult = {
   skipped: number;
   errors: number;
   details: string[];
+  autoMerged: number;
+  manualMerged: number;
+  leftAsSeparate: number;
   accountUpdates?: AccountUpdateResult[];
+};
+
+export type ReconciliationDecisionInput = {
+  statementIndex: number;
+  transactionIndex: number;
+  candidateTransactionId: string;
+  decision: "AUTO_MERGE" | "MERGE" | "KEEP_BOTH";
+  score: number;
+};
+
+export type ReconciliationPreviewCandidate = {
+  id: string;
+  raw_description: string | null;
+  merchant_name: string | null;
+  transaction_date: string;
+  amount: number;
+  category_id: string | null;
+  notes: string | null;
+  score: number;
+  decision: "AUTO_MERGE" | "REVIEW";
+};
+
+export type ReconciliationPreviewItem = {
+  statementIndex: number;
+  transactionIndex: number;
+  importedTransaction: TransactionToImport;
+  candidate: ReconciliationPreviewCandidate;
+};
+
+export type ReconciliationPreviewResult = {
+  autoMerge: ReconciliationPreviewItem[];
+  review: ReconciliationPreviewItem[];
+  unmatched: Array<{
+    statementIndex: number;
+    transactionIndex: number;
+    importedTransaction: TransactionToImport;
+  }>;
 };
 
 // Metadata sent alongside transactions during import
