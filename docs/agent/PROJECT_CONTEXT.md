@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-27T14:32:50.208666+00:00`
+- Generated (UTC): `2026-02-27T16:02:16.480889+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,8 +13,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 460
-- TypeScript/React: 144
+- Text files scanned: 462
+- TypeScript/React: 146
 - JSON: 140
 - TypeScript: 85
 - Markdown: 24
@@ -27,8 +27,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - TOML: 2
 
 ## Top-level Areas
-- mobile: 197 files
-- webapp: 168 files
+- mobile: 198 files
+- webapp: 169 files
 - supabase: 22 files
 - services: 22 files
 - packages: 14 files
@@ -73,9 +73,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `webapp/src/actions/recurring-templates.ts`
   - e.g. `webapp/src/actions/debt.ts`
 - `expo-router` (15 files): Expo Router file-based routes
+  - e.g. `mobile/app/subscriptions.tsx`
   - e.g. `mobile/app/+not-found.tsx`
   - e.g. `mobile/app/onboarding.tsx`
-  - e.g. `mobile/app/_layout.tsx`
 - `fastapi-service` (15 files): FastAPI service modules
   - e.g. `services/pdf_parser/test_parser.py`
   - e.g. `services/pdf_parser/models.py`
@@ -122,22 +122,18 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/layout.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (424)
+- `webapp` -> `webapp` (425)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `mobile/app/(auth)/forgot-password.tsx`
-- `mobile/app/(auth)/login.tsx`
-- `mobile/app/(auth)/reset-password.tsx`
-- `mobile/app/(auth)/signup.tsx`
-- `mobile/app/(tabs)/budgets.tsx`
-- `mobile/app/account/create.tsx`
-- `mobile/app/account/edit/[id].tsx`
-- `mobile/app/bug-report.tsx`
-- `mobile/app/onboarding.tsx`
-- `mobile/app/transaction/[id].tsx`
+- `mobile/app/(tabs)/settings.tsx`
+- `mobile/app/_layout.tsx`
+- `mobile/app/subscriptions.tsx`
+- `services/pdf_parser/main.py`
+- `webapp/src/app/layout.tsx`
+- `webapp/src/components/app/server-action-recovery.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

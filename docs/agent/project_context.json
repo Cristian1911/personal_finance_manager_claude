@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-27T14:32:50.208666+00:00",
+  "generated_at_utc": "2026-02-27T16:02:16.480889+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,9 +9,9 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 460,
+    "text_files_scanned": 462,
     "languages": {
-      "TypeScript/React": 144,
+      "TypeScript/React": 146,
       "JSON": 140,
       "TypeScript": 85,
       "Markdown": 24,
@@ -25,8 +25,8 @@
     }
   },
   "top_level_directories": {
-    "mobile": 197,
-    "webapp": 168,
+    "mobile": 198,
+    "webapp": 169,
     "supabase": 22,
     "services": 22,
     "packages": 14,
@@ -132,6 +132,7 @@
       "description": "Expo Router file-based routes",
       "matched_files": 15,
       "examples": [
+        "mobile/app/subscriptions.tsx",
         "mobile/app/+not-found.tsx",
         "mobile/app/onboarding.tsx",
         "mobile/app/_layout.tsx",
@@ -145,8 +146,7 @@
         "mobile/app/(tabs)/transactions.tsx",
         "mobile/app/(tabs)/budgets.tsx",
         "mobile/app/(tabs)/_layout.tsx",
-        "mobile/app/(tabs)/accounts.tsx",
-        "mobile/app/account/create.tsx"
+        "mobile/app/(tabs)/accounts.tsx"
       ]
     },
     {
@@ -240,7 +240,7 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 424
+      "count": 425
     },
     {
       "from": "mobile",
@@ -251,15 +251,11 @@
   "recent_changes": [
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "mobile/app/(auth)/forgot-password.tsx",
-    "mobile/app/(auth)/login.tsx",
-    "mobile/app/(auth)/reset-password.tsx",
-    "mobile/app/(auth)/signup.tsx",
-    "mobile/app/(tabs)/budgets.tsx",
-    "mobile/app/account/create.tsx",
-    "mobile/app/account/edit/[id].tsx",
-    "mobile/app/bug-report.tsx",
-    "mobile/app/onboarding.tsx",
-    "mobile/app/transaction/[id].tsx"
+    "mobile/app/(tabs)/settings.tsx",
+    "mobile/app/_layout.tsx",
+    "mobile/app/subscriptions.tsx",
+    "services/pdf_parser/main.py",
+    "webapp/src/app/layout.tsx",
+    "webapp/src/components/app/server-action-recovery.tsx"
   ]
 }

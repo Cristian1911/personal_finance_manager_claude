@@ -201,6 +201,16 @@ function RootLayoutNav() {
               sheetGrabberVisible: true,
             }}
           />
+          <Stack.Screen
+            name="subscriptions"
+            options={{
+              presentation: "formSheet",
+              headerShown: false,
+              sheetAllowedDetents: [0.65, 1.0],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+            }}
+          />
         </Stack>
         {isLoading && (
           <View style={styles.loadingOverlay}>
