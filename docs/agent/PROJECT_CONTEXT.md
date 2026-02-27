@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-26T23:19:48.460926+00:00`
+- Generated (UTC): `2026-02-27T01:11:37.034978+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -127,10 +127,6 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Recent Changes (git status)
 - `.github/workflows/mobile-apk.yml`
-- `docs/agent/PROJECT_CONTEXT.md`
-- `docs/agent/project_context.json`
-- `services/pdf_parser/main.py`
-- `services/pdf_parser/parsers/opendataloader_fallback.py`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

@@ -7,10 +7,10 @@ on:
         description: APK variant to build
         type: choice
         required: true
-        default: debug
+        default: release
         options:
-          - debug
           - release
+          - debug
       api_target:
         description: API URL target embedded in build
         type: choice
@@ -76,7 +76,7 @@ jobs:
           API_TARGET="${{ github.event.inputs.api_target }}"
 
           if [ -z "$VARIANT" ]; then
-            VARIANT="debug"
+            VARIANT="release"
           fi
           if [ -z "$API_TARGET" ]; then
             API_TARGET="device"
