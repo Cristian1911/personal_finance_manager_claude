@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-27T01:11:37.034978+00:00`
+- Generated (UTC): `2026-02-27T01:21:41.712304+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,10 +13,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 458
-- TypeScript/React: 143
+- Text files scanned: 460
+- TypeScript/React: 144
 - JSON: 140
-- TypeScript: 84
+- TypeScript: 85
 - Markdown: 24
 - SQL: 21
 - Python: 20
@@ -28,7 +28,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Top-level Areas
 - mobile: 197 files
-- webapp: 166 files
+- webapp: 168 files
 - supabase: 22 files
 - services: 22 files
 - packages: 14 files
@@ -115,18 +115,23 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/(dashboard)/settings/page.tsx`
 - `webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
 - `webapp/src/app/(dashboard)/transactions/page.tsx`
+- `webapp/src/app/api/bug-reports/route.ts`
 - `webapp/src/app/api/parse-statement/route.ts`
 - `webapp/src/app/api/save-unrecognized/route.ts`
 - `webapp/src/app/auth/callback/route.ts`
 - `webapp/src/app/layout.tsx`
-- `webapp/src/app/onboarding/layout.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (418)
+- `webapp` -> `webapp` (424)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `.github/workflows/mobile-apk.yml`
+- `docs/agent/PROJECT_CONTEXT.md`
+- `docs/agent/project_context.json`
+- `mobile/app/bug-report.tsx`
+- `webapp/src/app/(dashboard)/settings/page.tsx`
+- `webapp/src/app/api/bug-reports/route.ts`
+- `webapp/src/components/settings/bug-report-form.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

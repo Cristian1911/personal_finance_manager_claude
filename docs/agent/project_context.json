@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-27T01:11:37.034978+00:00",
+  "generated_at_utc": "2026-02-27T01:21:41.712304+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,11 +9,11 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 458,
+    "text_files_scanned": 460,
     "languages": {
-      "TypeScript/React": 143,
+      "TypeScript/React": 144,
       "JSON": 140,
-      "TypeScript": 84,
+      "TypeScript": 85,
       "Markdown": 24,
       "SQL": 21,
       "Python": 20,
@@ -26,7 +26,7 @@
   },
   "top_level_directories": {
     "mobile": 197,
-    "webapp": 166,
+    "webapp": 168,
     "supabase": 22,
     "services": 22,
     "packages": 14,
@@ -70,6 +70,7 @@
         "webapp/src/app/page.tsx",
         "webapp/src/app/auth/callback/route.ts",
         "webapp/src/app/api/save-unrecognized/route.ts",
+        "webapp/src/app/api/bug-reports/route.ts",
         "webapp/src/app/api/parse-statement/route.ts",
         "webapp/src/app/(dashboard)/layout.tsx",
         "webapp/src/app/(dashboard)/settings/page.tsx",
@@ -79,8 +80,7 @@
         "webapp/src/actions/recurring-templates.ts",
         "webapp/src/actions/debt.ts",
         "webapp/src/actions/categorize.ts",
-        "webapp/src/actions/product-events.ts",
-        "webapp/src/actions/budgets.ts"
+        "webapp/src/actions/product-events.ts"
       ]
     },
     {
@@ -92,6 +92,7 @@
         "webapp/src/app/page.tsx",
         "webapp/src/app/auth/callback/route.ts",
         "webapp/src/app/api/save-unrecognized/route.ts",
+        "webapp/src/app/api/bug-reports/route.ts",
         "webapp/src/app/api/parse-statement/route.ts",
         "webapp/src/app/(auth)/layout.tsx",
         "webapp/src/app/(auth)/signup/page.tsx",
@@ -101,8 +102,7 @@
         "webapp/src/app/(dashboard)/layout.tsx",
         "webapp/src/app/(dashboard)/settings/page.tsx",
         "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
-        "webapp/src/app/(dashboard)/deudas/page.tsx",
-        "webapp/src/app/(dashboard)/deudas/simulador/page.tsx"
+        "webapp/src/app/(dashboard)/deudas/page.tsx"
       ]
     },
     {
@@ -226,6 +226,7 @@
     "webapp/src/app/(dashboard)/settings/page.tsx",
     "webapp/src/app/(dashboard)/transactions/[id]/page.tsx",
     "webapp/src/app/(dashboard)/transactions/page.tsx",
+    "webapp/src/app/api/bug-reports/route.ts",
     "webapp/src/app/api/parse-statement/route.ts",
     "webapp/src/app/api/save-unrecognized/route.ts",
     "webapp/src/app/auth/callback/route.ts",
@@ -239,7 +240,7 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 418
+      "count": 424
     },
     {
       "from": "mobile",
@@ -248,6 +249,11 @@
     }
   ],
   "recent_changes": [
-    ".github/workflows/mobile-apk.yml"
+    "docs/agent/PROJECT_CONTEXT.md",
+    "docs/agent/project_context.json",
+    "mobile/app/bug-report.tsx",
+    "webapp/src/app/(dashboard)/settings/page.tsx",
+    "webapp/src/app/api/bug-reports/route.ts",
+    "webapp/src/components/settings/bug-report-form.tsx"
   ]
 }
