@@ -110,6 +110,12 @@ importers:
         specifier: ^5.0.11
         version: 5.0.11(@types/react@19.1.17)(react@19.1.0)(use-sync-external-store@1.6.0(react@19.1.0))
     devDependencies:
+      '@babel/core':
+        specifier: ^7.29.0
+        version: 7.29.0
+      '@babel/plugin-transform-react-jsx':
+        specifier: ^7.28.6
+        version: 7.28.6(@babel/core@7.29.0)
       '@types/react':
         specifier: ~19.1.0
         version: 19.1.17

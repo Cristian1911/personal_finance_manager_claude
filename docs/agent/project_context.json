@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-27T01:21:41.712304+00:00",
+  "generated_at_utc": "2026-02-27T01:26:09.812725+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -249,11 +249,7 @@
     }
   ],
   "recent_changes": [
-    "docs/agent/PROJECT_CONTEXT.md",
-    "docs/agent/project_context.json",
-    "mobile/app/bug-report.tsx",
-    "webapp/src/app/(dashboard)/settings/page.tsx",
-    "webapp/src/app/api/bug-reports/route.ts",
-    "webapp/src/components/settings/bug-report-form.tsx"
+    "mobile/package.json",
+    "pnpm-lock.yaml"
   ]
 }
