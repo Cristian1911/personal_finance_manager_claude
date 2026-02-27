@@ -2,8 +2,8 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-27T16:02:16.480889+00:00`
-- Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
+- Generated (UTC): `2026-02-27T18:01:05.426308+00:00`
+- Project root: `/Users/cristian/Documents/developing/venti5-apk-startup-diagnosis`
 
 ## Stack Snapshot
 - Next.js
@@ -13,28 +13,28 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 462
+- Text files scanned: 328
 - TypeScript/React: 146
-- JSON: 140
-- TypeScript: 85
-- Markdown: 24
+- TypeScript: 83
+- Markdown: 23
 - SQL: 21
 - Python: 20
-- Shell: 9
+- JSON: 15
 - YAML: 8
 - JavaScript: 5
+- Shell: 3
 - CSS: 2
 - TOML: 2
 
 ## Top-level Areas
-- mobile: 198 files
-- webapp: 169 files
+- webapp: 168 files
+- mobile: 68 files
 - supabase: 22 files
-- services: 22 files
+- services: 21 files
 - packages: 14 files
 - docs: 12 files
 - (root): 11 files
-- .claude: 9 files
+- .claude: 7 files
 - .github: 3 files
 - infra: 2 files
 
@@ -128,12 +128,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 ## Recent Changes (git status)
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `mobile/app/(tabs)/settings.tsx`
 - `mobile/app/_layout.tsx`
-- `mobile/app/subscriptions.tsx`
-- `services/pdf_parser/main.py`
-- `webapp/src/app/layout.tsx`
-- `webapp/src/components/app/server-action-recovery.tsx`
+- `mobile/lib/supabase.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

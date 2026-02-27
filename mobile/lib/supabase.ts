@@ -6,6 +6,20 @@ import type { Database } from "@venti5/shared";
 // Supabase sessions can exceed SecureStore's 2048-byte limit.
 // This adapter chunks large values across multiple keys.
 const CHUNK_SIZE = 2000;
+const FALLBACK_SUPABASE_URL = "https://invalid.localhost";
+const FALLBACK_SUPABASE_ANON_KEY = "invalid-anon-key";
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+if (!isSupabaseConfigured) {
+  console.warn(
+    "[supabase] Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. " +
+      "App will run in limited mode until environment variables are configured."
+  );
+}
 
 async function clearChunkedKey(key: string): Promise<void> {
   const chunkCountStr = await SecureStore.getItemAsync(`${key}__chunks`);
@@ -67,8 +81,8 @@ const ExpoSecureStoreAdapter = {
 };
 
 export const supabase = createClient<Database>(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+  supabaseUrl ?? FALLBACK_SUPABASE_URL,
+  supabaseAnonKey ?? FALLBACK_SUPABASE_ANON_KEY,
   {
     auth: {
       storage: ExpoSecureStoreAdapter,

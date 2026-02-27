@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-02-27T16:02:16.480889+00:00",
-  "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
+  "generated_at_utc": "2026-02-27T18:01:05.426308+00:00",
+  "project_root": "/Users/cristian/Documents/developing/venti5-apk-startup-diagnosis",
   "technologies": [
     "Next.js",
     "Expo/React Native",
@@ -9,30 +9,30 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 462,
+    "text_files_scanned": 328,
     "languages": {
       "TypeScript/React": 146,
-      "JSON": 140,
-      "TypeScript": 85,
-      "Markdown": 24,
+      "TypeScript": 83,
+      "Markdown": 23,
       "SQL": 21,
       "Python": 20,
-      "Shell": 9,
+      "JSON": 15,
       "YAML": 8,
       "JavaScript": 5,
+      "Shell": 3,
       "CSS": 2,
       "TOML": 2
     }
   },
   "top_level_directories": {
-    "mobile": 198,
-    "webapp": 169,
+    "webapp": 168,
+    "mobile": 68,
     "supabase": 22,
-    "services": 22,
+    "services": 21,
     "packages": 14,
     "docs": 12,
     "(root)": 11,
-    ".claude": 9,
+    ".claude": 7,
     ".github": 3,
     "infra": 2
   },
@@ -251,11 +251,7 @@
   "recent_changes": [
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "mobile/app/(tabs)/settings.tsx",
     "mobile/app/_layout.tsx",
-    "mobile/app/subscriptions.tsx",
-    "services/pdf_parser/main.py",
-    "webapp/src/app/layout.tsx",
-    "webapp/src/components/app/server-action-recovery.tsx"
+    "mobile/lib/supabase.ts"
   ]
 }

@@ -16,7 +16,7 @@ import {
 import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 
@@ -65,6 +65,23 @@ export default function RootLayout() {
       <RootLayoutNav />
     </AuthProvider>
   );
+}
+
+function buildSheetOptions(detents: [number, number]) {
+  if (Platform.OS !== "ios") {
+    return {
+      presentation: "modal" as const,
+      headerShown: false,
+    };
+  }
+
+  return {
+    presentation: "formSheet" as const,
+    headerShown: false,
+    sheetAllowedDetents: detents,
+    sheetInitialDetentIndex: 0,
+    sheetGrabberVisible: true,
+  };
 }
 
 function RootLayoutNav() {
@@ -156,33 +173,15 @@ function RootLayoutNav() {
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
           <Stack.Screen
             name="transaction/[id]"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.72, 1.0],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
+            options={buildSheetOptions([0.72, 1.0])}
           />
           <Stack.Screen
             name="account/[id]"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.72, 1.0],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
+            options={buildSheetOptions([0.72, 1.0])}
           />
           <Stack.Screen
             name="account/create"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.72, 1.0],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
+            options={buildSheetOptions([0.72, 1.0])}
           />
           <Stack.Screen
             name="account/edit/[id]"
@@ -193,23 +192,11 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="bug-report"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.6, 0.95],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
+            options={buildSheetOptions([0.6, 0.95])}
           />
           <Stack.Screen
             name="subscriptions"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.65, 1.0],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
+            options={buildSheetOptions([0.65, 1.0])}
           />
         </Stack>
         {isLoading && (
