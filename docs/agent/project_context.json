@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T04:46:27.730041+00:00",
+  "generated_at_utc": "2026-02-28T04:47:46.208772+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration",
   "technologies": [
     "Next.js",
@@ -254,6 +254,7 @@
     }
   ],
   "recent_changes": [
-    "mobile/components/common/KeyboardScreen.tsx"
+    "mobile/app/_layout.tsx",
+    "mobile/lib/supabase.ts"
   ]
 }
