@@ -56,6 +56,12 @@
     "production": {
       "autoIncrement": true
     },
+    "production-android": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pfm.sanson1911.cloud"
+      }
+    },
     "production-ios": {
       "extends": "production",
       "env": {
