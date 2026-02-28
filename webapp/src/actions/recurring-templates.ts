@@ -79,10 +79,16 @@ export async function getRecurringTemplate(
   id: string
 ): Promise<ActionResult<RecurringTemplateWithRelations>> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
 
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
+    .eq("user_id", user.id)
     .eq("id", id)
     .single();
 
@@ -238,9 +244,16 @@ export async function deleteRecurringTemplate(
   id: string
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
   const { error } = await supabase
     .from("recurring_transaction_templates")
     .delete()
+    .eq("user_id", user.id)
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };
@@ -255,9 +268,16 @@ export async function toggleRecurringTemplate(
   isActive: boolean
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
   const { error } = await supabase
     .from("recurring_transaction_templates")
     .update({ is_active: isActive })
+    .eq("user_id", user.id)
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };

@@ -19,6 +19,7 @@ export async function getStatementSnapshots(
   const { data, error } = await supabase
     .from("statement_snapshots")
     .select("*")
+    .eq("user_id", user.id)
     .eq("account_id", accountId)
     .order("period_to", { ascending: false });
 

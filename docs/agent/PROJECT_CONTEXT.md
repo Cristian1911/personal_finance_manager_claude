@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:41:20.557054+00:00`
+- Generated (UTC): `2026-02-28T04:44:10.324026+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration`
 
 ## Stack Snapshot
@@ -13,11 +13,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 345
+- Text files scanned: 346
 - TypeScript/React: 152
 - TypeScript: 91
 - Markdown: 24
-- SQL: 22
+- SQL: 23
 - Python: 20
 - JSON: 15
 - YAML: 9
@@ -29,7 +29,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 ## Top-level Areas
 - webapp: 175 files
 - mobile: 72 files
-- supabase: 23 files
+- supabase: 24 files
 - services: 21 files
 - packages: 17 files
 - docs: 13 files
@@ -130,20 +130,14 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `.github/workflows/deploy.yml`
-- `.github/workflows/mobile-apk.yml`
-- `.github/workflows/pr-build-images.yml`
-- `docker-compose.prod.yml`
-- `docker-compose.yml`
-- `mobile/lib/supabase.ts`
-- `services/pdf_parser/main.py`
-- `services/pdf_parser/storage.py`
-- `webapp/src/app/api/parse-statement/route.ts`
-- `webapp/src/app/api/save-unrecognized/route.ts`
-- `webapp/src/lib/supabase/admin.ts`
-- `webapp/src/lib/supabase/client.ts`
-- `webapp/src/lib/supabase/middleware.ts`
-- `webapp/src/lib/supabase/server.ts`
+- `supabase/migrations/20260227000000_enable_rls_core_tables.sql`
+- `webapp/src/actions/accounts.ts`
+- `webapp/src/actions/budgets.ts`
+- `webapp/src/actions/categories.ts`
+- `webapp/src/actions/categorize.ts`
+- `webapp/src/actions/recurring-templates.ts`
+- `webapp/src/actions/statement-snapshots.ts`
+- `webapp/src/actions/transactions.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T04:41:20.557054+00:00",
+  "generated_at_utc": "2026-02-28T04:44:10.324026+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration",
   "technologies": [
     "Next.js",
@@ -9,12 +9,12 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 345,
+    "text_files_scanned": 346,
     "languages": {
       "TypeScript/React": 152,
       "TypeScript": 91,
       "Markdown": 24,
-      "SQL": 22,
+      "SQL": 23,
       "Python": 20,
       "JSON": 15,
       "YAML": 9,
@@ -27,7 +27,7 @@
   "top_level_directories": {
     "webapp": 175,
     "mobile": 72,
-    "supabase": 23,
+    "supabase": 24,
     "services": 21,
     "packages": 17,
     "docs": 13,
@@ -254,19 +254,13 @@
     }
   ],
   "recent_changes": [
-    ".github/workflows/deploy.yml",
-    ".github/workflows/mobile-apk.yml",
-    ".github/workflows/pr-build-images.yml",
-    "docker-compose.prod.yml",
-    "docker-compose.yml",
-    "mobile/lib/supabase.ts",
-    "services/pdf_parser/main.py",
-    "services/pdf_parser/storage.py",
-    "webapp/src/app/api/parse-statement/route.ts",
-    "webapp/src/app/api/save-unrecognized/route.ts",
-    "webapp/src/lib/supabase/admin.ts",
-    "webapp/src/lib/supabase/client.ts",
-    "webapp/src/lib/supabase/middleware.ts",
-    "webapp/src/lib/supabase/server.ts"
+    "supabase/migrations/20260227000000_enable_rls_core_tables.sql",
+    "webapp/src/actions/accounts.ts",
+    "webapp/src/actions/budgets.ts",
+    "webapp/src/actions/categories.ts",
+    "webapp/src/actions/categorize.ts",
+    "webapp/src/actions/recurring-templates.ts",
+    "webapp/src/actions/statement-snapshots.ts",
+    "webapp/src/actions/transactions.ts"
   ]
 }
