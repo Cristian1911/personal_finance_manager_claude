@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T04:55:32.052990+00:00",
+  "generated_at_utc": "2026-02-28T04:56:16.851613+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration",
   "technologies": [
     "Next.js",
@@ -254,9 +254,8 @@
     }
   ],
   "recent_changes": [
-    "mobile/app/_layout.tsx",
-    "mobile/app/bug-report.tsx",
-    "mobile/components/BugFAB.tsx",
-    "mobile/lib/bugReportMode.tsx"
+    "webapp/src/components/categorize/category-picker-dialog.tsx",
+    "webapp/src/components/dashboard/purchase-decision-card.tsx",
+    "webapp/src/components/ui/dialog.tsx"
   ]
 }

@@ -141,17 +141,19 @@ export function PurchaseDecisionCard({
               <Scale className="h-4 w-4" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+          <DialogContent className="h-[min(94vh,64rem)] w-[min(98vw,88rem)] max-w-[min(98vw,88rem)] overflow-hidden p-0 sm:p-0">
             <DialogHeader>
-              <DialogTitle>Analizador de decisiones financieras</DialogTitle>
-              <DialogDescription>
+              <div className="border-b px-4 py-4 sm:px-6">
+                <DialogTitle>Analizador de decisiones financieras</DialogTitle>
+                <DialogDescription>
                 El resultado usa tu flujo del mes, deudas activas, pagos próximos y presupuesto de
                 categoría.
-              </DialogDescription>
+                </DialogDescription>
+              </div>
             </DialogHeader>
 
-            <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-              <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+            <div className="grid h-full gap-0 2xl:grid-cols-[380px_minmax(0,1fr)]">
+              <div className="space-y-4 overflow-y-auto border-b bg-muted/30 p-4 sm:p-6 2xl:border-r 2xl:border-b-0">
                 <div className="space-y-2">
                   <Label htmlFor="purchase-amount">Monto</Label>
                   <Input
@@ -270,7 +272,7 @@ export function PurchaseDecisionCard({
                 </Button>
               </div>
 
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4 overflow-y-auto p-4 sm:p-6">
                 {result ? (
                   <>
                     <div
@@ -304,7 +306,7 @@ export function PurchaseDecisionCard({
                       <p className="text-sm leading-6">{result.summary}</p>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                       <MetricTile
                         label="Buffer proyectado"
                         value={formatCurrency(result.metrics.projectedLiquidBuffer)}

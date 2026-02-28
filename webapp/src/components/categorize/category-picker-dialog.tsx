@@ -149,7 +149,7 @@ export function CategoryPickerDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpen}>
-        <DialogContent className="max-w-4xl overflow-hidden p-0">
+        <DialogContent className="h-[min(94vh,60rem)] w-[min(98vw,84rem)] max-w-[min(98vw,84rem)] overflow-hidden p-0 sm:p-0">
           <DialogHeader className="border-b px-6 py-4">
             <DialogTitle>Selecciona una categoría</DialogTitle>
             <DialogDescription>
@@ -157,9 +157,9 @@ export function CategoryPickerDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid min-h-[420px] md:grid-cols-[280px_minmax(0,1fr)]">
-            <div className="border-r bg-muted/20 p-4">
-              <div className="space-y-2">
+          <div className="grid h-full min-h-[420px] grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)]">
+            <div className="overflow-y-auto border-b bg-muted/20 p-4 xl:border-r xl:border-b-0">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                 {sections.map((section) => {
                   const isActive = section.id === activeSection?.id;
                   return (
@@ -193,8 +193,8 @@ export function CategoryPickerDialog({
               </div>
             </div>
 
-            <div className="min-w-0 p-4">
-              <div className="mb-4 flex items-center justify-between">
+            <div className="min-w-0 overflow-y-auto p-4 sm:p-5">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-sm font-semibold">
                   {activeSection?.label ?? "Categorías"}
                 </h3>
@@ -209,7 +209,7 @@ export function CategoryPickerDialog({
                 </Button>
               </div>
 
-              <div className="space-y-2">
+              <div className="grid gap-3 lg:grid-cols-2">
                 {activeSection?.categories.map((category) => {
                   const isSelected = value === category.id;
                   return (
