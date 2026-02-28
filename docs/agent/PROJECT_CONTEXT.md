@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:51:21.535795+00:00`
+- Generated (UTC): `2026-02-28T04:52:04.917908+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration`
 
 ## Stack Snapshot
@@ -130,7 +130,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/app/_layout.tsx`
+- `mobile/app/bug-report.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
