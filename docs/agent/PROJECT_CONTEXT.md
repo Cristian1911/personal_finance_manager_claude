@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:47:46.208772+00:00`
+- Generated (UTC): `2026-02-28T04:50:13.207703+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration`
 
 ## Stack Snapshot
@@ -130,8 +130,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/app/_layout.tsx`
-- `mobile/lib/supabase.ts`
+- `mobile/package.json`
+- `pnpm-lock.yaml`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
