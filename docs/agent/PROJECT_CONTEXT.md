@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T03:30:50.981448+00:00`
+- Generated (UTC): `2026-02-28T03:33:43.564459+00:00`
 - Project root: `/Users/cristian/Documents/developing/venti5-apk-startup-diagnosis`
 
 ## Stack Snapshot
@@ -126,7 +126,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/app/_layout.tsx`
+- `mobile/app/bug-report.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
