@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T02:51:49.974533+00:00",
+  "generated_at_utc": "2026-02-28T02:54:18.055188+00:00",
   "project_root": "/Users/cristian/Documents/developing/venti5-apk-startup-diagnosis",
   "technologies": [
     "Next.js",
@@ -9,11 +9,11 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 329,
+    "text_files_scanned": 330,
     "languages": {
       "TypeScript/React": 146,
       "TypeScript": 83,
-      "Markdown": 24,
+      "Markdown": 25,
       "SQL": 21,
       "Python": 20,
       "JSON": 15,
@@ -29,8 +29,8 @@
     "mobile": 68,
     "supabase": 22,
     "services": 21,
+    "docs": 14,
     "packages": 14,
-    "docs": 13,
     "(root)": 11,
     ".claude": 7,
     ".github": 3,
@@ -249,6 +249,6 @@
     }
   ],
   "recent_changes": [
-    "docs/plans/2026-02-27-bug-report-mode-design.md"
+    "docs/plans/2026-02-27-bug-report-mode.md"
   ]
 }

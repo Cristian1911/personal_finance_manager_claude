@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T02:51:49.974533+00:00`
+- Generated (UTC): `2026-02-28T02:54:18.055188+00:00`
 - Project root: `/Users/cristian/Documents/developing/venti5-apk-startup-diagnosis`
 
 ## Stack Snapshot
@@ -13,10 +13,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 329
+- Text files scanned: 330
 - TypeScript/React: 146
 - TypeScript: 83
-- Markdown: 24
+- Markdown: 25
 - SQL: 21
 - Python: 20
 - JSON: 15
@@ -31,8 +31,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - mobile: 68 files
 - supabase: 22 files
 - services: 21 files
+- docs: 14 files
 - packages: 14 files
-- docs: 13 files
 - (root): 11 files
 - .claude: 7 files
 - .github: 3 files
@@ -126,7 +126,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `docs/plans/2026-02-27-bug-report-mode-design.md`
+- `docs/plans/2026-02-27-bug-report-mode.md`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
