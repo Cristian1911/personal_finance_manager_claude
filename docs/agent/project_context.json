@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T03:01:44.753725+00:00",
+  "generated_at_utc": "2026-02-28T03:18:03.749751+00:00",
   "project_root": "/Users/cristian/Documents/developing/venti5-apk-startup-diagnosis",
   "technologies": [
     "Next.js",
@@ -9,12 +9,12 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 330,
+    "text_files_scanned": 331,
     "languages": {
       "TypeScript/React": 146,
       "TypeScript": 83,
       "Markdown": 25,
-      "SQL": 21,
+      "SQL": 22,
       "Python": 20,
       "JSON": 15,
       "YAML": 8,
@@ -27,7 +27,7 @@
   "top_level_directories": {
     "webapp": 168,
     "mobile": 68,
-    "supabase": 22,
+    "supabase": 23,
     "services": 21,
     "docs": 14,
     "packages": 14,
@@ -249,7 +249,7 @@
     }
   ],
   "recent_changes": [
-    "mobile/package.json",
-    "pnpm-lock.yaml"
+    "supabase/migrations/20260227100000_add_github_issue_url_to_bug_reports.sql",
+    "webapp/src/types/database.ts"
   ]
 }
