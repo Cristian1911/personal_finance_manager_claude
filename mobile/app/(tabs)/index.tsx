@@ -239,10 +239,7 @@ export default function DashboardScreen() {
           dueDate,
           diffDays,
           currency: (account.currency_code as CurrencyCode) ?? "COP",
-          balance:
-            account.account_type === "CREDIT_CARD"
-              ? account.current_balance
-              : account.credit_limit ?? account.current_balance,
+          balance: account.current_balance,
         };
       })
       .filter((item) => item.diffDays >= 0 && item.diffDays <= 21)

@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T00:05:29.205462+00:00`
+- Generated (UTC): `2026-02-28T00:22:18.132607+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,11 +13,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 473
+- Text files scanned: 474
 - TypeScript/React: 151
 - JSON: 140
 - TypeScript: 90
-- Markdown: 24
+- Markdown: 25
 - SQL: 22
 - Python: 20
 - Shell: 9
@@ -32,7 +32,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - supabase: 23 files
 - services: 22 files
 - packages: 16 files
-- docs: 12 files
+- docs: 13 files
 - (root): 11 files
 - .claude: 9 files
 - .github: 3 files
@@ -126,7 +126,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `webapp/src/components/categorize/category-picker-dialog.tsx`
+- `mobile/app/(tabs)/index.tsx`
+- `docs/plans/SECURITY_MIGRATION.md`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

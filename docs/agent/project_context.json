@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T00:05:29.205462+00:00",
+  "generated_at_utc": "2026-02-28T00:22:18.132607+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,12 +9,12 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 473,
+    "text_files_scanned": 474,
     "languages": {
       "TypeScript/React": 151,
       "JSON": 140,
       "TypeScript": 90,
-      "Markdown": 24,
+      "Markdown": 25,
       "SQL": 22,
       "Python": 20,
       "Shell": 9,
@@ -30,7 +30,7 @@
     "supabase": 23,
     "services": 22,
     "packages": 16,
-    "docs": 12,
+    "docs": 13,
     "(root)": 11,
     ".claude": 9,
     ".github": 3,
@@ -249,6 +249,7 @@
     }
   ],
   "recent_changes": [
-    "webapp/src/components/categorize/category-picker-dialog.tsx"
+    "mobile/app/(tabs)/index.tsx",
+    "docs/plans/SECURITY_MIGRATION.md"
   ]
 }
