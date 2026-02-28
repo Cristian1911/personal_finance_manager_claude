@@ -12,68 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  analytics: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      activation_d7: {
-        Row: {
-          activated_d7: number | null
-          activation_d7_pct: number | null
-          cohort_day: string | null
-          signups: number | null
-        }
-        Relationships: []
-      }
-      categorization_funnel_daily: {
-        Row: {
-          bulk_categorized: number | null
-          categorized: number | null
-          day: string | null
-          picker_opened: number | null
-          seen: number | null
-          seen_to_categorized_pct: number | null
-          selected: number | null
-          users_with_activity: number | null
-        }
-        Relationships: []
-      }
-      import_funnel_daily: {
-        Row: {
-          completed: number | null
-          confirm_submitted: number | null
-          day: string | null
-          file_selected: number | null
-          open_to_complete_pct: number | null
-          opened: number | null
-          parse_requested: number | null
-          parse_succeeded: number | null
-          sessions: number | null
-        }
-        Relationships: []
-      }
-      product_event_daily_counts: {
-        Row: {
-          day: string | null
-          event_count: number | null
-          event_name: string | null
-          flow: string | null
-          user_count: number | null
-        }
-        Relationships: []
-      }
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       accounts: {
@@ -186,6 +124,21 @@ export type Database = {
           },
         ]
       }
+      admin_config: {
+        Row: {
+          id: string
+          prompt_text: string | null
+        }
+        Insert: {
+          id: string
+          prompt_text?: string | null
+        }
+        Update: {
+          id?: string
+          prompt_text?: string | null
+        }
+        Relationships: []
+      }
       budgets: {
         Row: {
           amount: number
@@ -230,6 +183,7 @@ export type Database = {
           created_at: string
           description: string | null
           device_context: Json
+          github_issue_url: string | null
           id: string
           route_hint: string | null
           selected_area_hint: string | null
@@ -244,6 +198,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           device_context?: Json
+          github_issue_url?: string | null
           id?: string
           route_hint?: string | null
           selected_area_hint?: string | null
@@ -258,6 +213,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           device_context?: Json
+          github_issue_url?: string | null
           id?: string
           route_hint?: string | null
           selected_area_hint?: string | null
@@ -582,17 +538,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "recurring_transaction_templates_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "recurring_transaction_templates_transfer_source_account_id_fkey"
             columns: ["transfer_source_account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -738,6 +694,8 @@ export type Database = {
           provider: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id: string | null
           raw_description: string | null
+          reconciled_into_transaction_id: string | null
+          reconciliation_score: number | null
           recurrence_group_id: string | null
           secondary_category_id: string | null
           status: Database["public"]["Enums"]["transaction_status"]
@@ -778,6 +736,8 @@ export type Database = {
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id?: string | null
           raw_description?: string | null
+          reconciled_into_transaction_id?: string | null
+          reconciliation_score?: number | null
           recurrence_group_id?: string | null
           secondary_category_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
@@ -818,6 +778,8 @@ export type Database = {
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id?: string | null
           raw_description?: string | null
+          reconciled_into_transaction_id?: string | null
+          reconciliation_score?: number | null
           recurrence_group_id?: string | null
           secondary_category_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
@@ -839,6 +801,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_reconciled_into_transaction_id_fkey"
+            columns: ["reconciled_into_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
           {
@@ -908,6 +877,12 @@ export type Database = {
         | "MONTHLY"
         | "QUARTERLY"
         | "ANNUAL"
+      transaction_capture_method:
+        | "MANUAL_FORM"
+        | "TEXT_QUICK_CAPTURE"
+        | "PDF_IMPORT"
+        | "OCR_BATCH"
+        | "OCR_SINGLE"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
     }
@@ -1035,9 +1010,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  analytics: {
-    Enums: {},
-  },
   public: {
     Enums: {
       account_type: [
@@ -1072,6 +1044,13 @@ export const Constants = {
         "MONTHLY",
         "QUARTERLY",
         "ANNUAL",
+      ],
+      transaction_capture_method: [
+        "MANUAL_FORM",
+        "TEXT_QUICK_CAPTURE",
+        "PDF_IMPORT",
+        "OCR_BATCH",
+        "OCR_SINGLE",
       ],
       transaction_direction: ["INFLOW", "OUTFLOW"],
       transaction_status: ["PENDING", "POSTED", "CANCELLED"],

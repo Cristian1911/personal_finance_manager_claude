@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:50:13.207703+00:00`
+- Generated (UTC): `2026-02-28T04:51:20.752432+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration`
 
 ## Stack Snapshot
@@ -13,11 +13,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 347
+- Text files scanned: 348
 - TypeScript/React: 152
 - TypeScript: 91
+- SQL: 25
 - Markdown: 24
-- SQL: 24
 - Python: 20
 - JSON: 15
 - YAML: 9
@@ -29,7 +29,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 ## Top-level Areas
 - webapp: 175 files
 - mobile: 72 files
-- supabase: 25 files
+- supabase: 26 files
 - services: 21 files
 - packages: 17 files
 - docs: 13 files
@@ -130,8 +130,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/package.json`
-- `pnpm-lock.yaml`
+- `supabase/migrations/20260227100000_add_github_issue_url_to_bug_reports.sql`
+- `webapp/src/types/database.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
