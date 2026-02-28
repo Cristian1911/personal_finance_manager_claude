@@ -8,7 +8,7 @@ import {
   monthEndStr,
   monthsBeforeStart,
 } from "@/lib/utils/date";
-import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 
 // --- Types ---
 
@@ -54,7 +54,7 @@ export async function getCategorySpending(month?: string): Promise<CategorySpend
 
   // Fetch transactions and budgets in parallel
   const [txRes, budgetsRes] = await Promise.all([
-    applyVisibleTransactionFilter(
+    executeVisibleTransactionQuery(() =>
       supabase
       .from("transactions")
       .select("amount, category_id, categories!category_id(name_es, name, color)")
@@ -129,7 +129,7 @@ export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflo
   if (!user) return [];
 
   const target = parseMonth(month);
-  const { data: transactions } = await applyVisibleTransactionFilter(
+  const { data: transactions } = await executeVisibleTransactionQuery(() =>
     supabase
     .from("transactions")
     .select("transaction_date, amount, direction, accounts!account_id(account_type)")
@@ -185,7 +185,7 @@ export async function getDailySpending(month?: string): Promise<DailySpending[]>
   if (!user) return [];
 
   const target = parseMonth(month);
-  const { data: transactions } = await applyVisibleTransactionFilter(
+  const { data: transactions } = await executeVisibleTransactionQuery(() =>
     supabase
     .from("transactions")
     .select("transaction_date, amount")
@@ -231,7 +231,7 @@ export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
   if (!user) return { income: 0, expenses: 0 };
 
   const target = parseMonth(month);
-  const { data: transactions } = await applyVisibleTransactionFilter(
+  const { data: transactions } = await executeVisibleTransactionQuery(() =>
     supabase
     .from("transactions")
     .select("amount, direction, accounts!account_id(account_type)")
@@ -277,7 +277,7 @@ export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]>
   const startStr = monthStartStr(target);
   const endStr = monthEndStr(target);
 
-  const { data: transactions } = await applyVisibleTransactionFilter(
+  const { data: transactions } = await executeVisibleTransactionQuery(() =>
     supabase
     .from("transactions")
     .select("transaction_date, amount, direction, accounts!account_id(account_type)")

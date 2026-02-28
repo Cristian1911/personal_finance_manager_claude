@@ -9,7 +9,7 @@ import {
   transactionSchema,
 } from "@/lib/validators/transaction";
 import { parseMonth, monthStartStr, monthEndStr } from "@/lib/utils/date";
-import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import type { ActionResult, PaginatedResult } from "@/types/actions";
 import type { Transaction } from "@/types/domain";
 
@@ -94,36 +94,38 @@ export async function getTransactions(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  let query = applyVisibleTransactionFilter(
-    supabase
-      .from("transactions")
-      .select("*", { count: "exact" })
-      .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .range(from, to)
-  );
-
   if (params.month && !params.dateFrom && !params.dateTo) {
     const target = parseMonth(params.month);
     params.dateFrom = monthStartStr(target);
     params.dateTo = monthEndStr(target);
   }
 
-  if (params.accountId) query = query.eq("account_id", params.accountId);
-  if (params.categoryId) query = query.eq("category_id", params.categoryId);
-  if (params.direction) query = query.eq("direction", params.direction);
-  if (params.dateFrom) query = query.gte("transaction_date", params.dateFrom);
-  if (params.dateTo) query = query.lte("transaction_date", params.dateTo);
-  if (params.search) {
-    query = query.or(
-      `merchant_name.ilike.%${params.search}%,raw_description.ilike.%${params.search}%,clean_description.ilike.%${params.search}%`
-    );
-  }
-  if (params.amountMin !== undefined) query = query.gte("amount", params.amountMin);
-  if (params.amountMax !== undefined) query = query.lte("amount", params.amountMax);
-  if (!params.showExcluded) query = query.eq("is_excluded", false);
+  const buildQuery = () => {
+    let query = supabase
+      .from("transactions")
+      .select("*", { count: "exact" })
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-  const { data, error, count } = await query;
+    if (params.accountId) query = query.eq("account_id", params.accountId);
+    if (params.categoryId) query = query.eq("category_id", params.categoryId);
+    if (params.direction) query = query.eq("direction", params.direction);
+    if (params.dateFrom) query = query.gte("transaction_date", params.dateFrom);
+    if (params.dateTo) query = query.lte("transaction_date", params.dateTo);
+    if (params.search) {
+      query = query.or(
+        `merchant_name.ilike.%${params.search}%,raw_description.ilike.%${params.search}%,clean_description.ilike.%${params.search}%`
+      );
+    }
+    if (params.amountMin !== undefined) query = query.gte("amount", params.amountMin);
+    if (params.amountMax !== undefined) query = query.lte("amount", params.amountMax);
+    if (!params.showExcluded) query = query.eq("is_excluded", false);
+
+    return query;
+  };
+
+  const { data, error, count } = await executeVisibleTransactionQuery(buildQuery);
   if (error) return { data: [], count: 0, page, pageSize, totalPages: 0 };
 
   return {
@@ -137,11 +139,9 @@ export async function getTransactions(
 
 export async function getTransaction(id: string): Promise<ActionResult<Transaction>> {
   const supabase = await createClient();
-  const { data, error } = await applyVisibleTransactionFilter(
-    supabase.from("transactions").select("*")
-  )
-    .eq("id", id)
-    .single();
+  const { data, error } = await executeVisibleTransactionQuery(() =>
+    supabase.from("transactions").select("*").eq("id", id).single()
+  );
 
   if (error) return { success: false, error: error.message };
   return { success: true, data };

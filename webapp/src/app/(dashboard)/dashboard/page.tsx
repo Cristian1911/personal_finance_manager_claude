@@ -48,8 +48,19 @@ import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-card";
 import { computeDebtBalance } from "@venti5/shared";
 import { trackProductEvent } from "@/actions/product-events";
-import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { getUserSafely } from "@/lib/supabase/auth";
+
+type DashboardTransactionRow = {
+  id: string;
+  amount: number;
+  direction: "INFLOW" | "OUTFLOW";
+  account_id: string;
+  merchant_name?: string | null;
+  clean_description?: string | null;
+  transaction_date?: string;
+  currency_code?: string;
+};
 
 export default async function DashboardPage({
   searchParams,
@@ -74,7 +85,7 @@ export default async function DashboardPage({
     .order("display_order");
 
   // Fetch recent transactions (exclude excluded ones)
-  const { data: recentTransactions } = await applyVisibleTransactionFilter(
+  const { data: recentTransactions } = await executeVisibleTransactionQuery(() =>
     supabase
       .from("transactions")
       .select("*")
@@ -85,7 +96,7 @@ export default async function DashboardPage({
   );
 
   const { count: uncategorizedCount, error: uncategorizedError } =
-    await applyVisibleTransactionFilter(
+    await executeVisibleTransactionQuery(() =>
     supabase
       .from("transactions")
       .select("id", { count: "exact", head: true })
@@ -97,7 +108,7 @@ export default async function DashboardPage({
   }
 
   // Fetch selected month's transactions for summary (exclude excluded ones)
-  const { data: monthTransactions } = await applyVisibleTransactionFilter(
+  const { data: monthTransactions } = await executeVisibleTransactionQuery(() =>
     supabase
       .from("transactions")
       .select("amount, direction, account_id")
@@ -133,8 +144,9 @@ export default async function DashboardPage({
   ]);
 
   const allAccounts = accounts ?? [];
-  const monthTx = monthTransactions ?? [];
-  const starterMode = allAccounts.length > 0 && (recentTransactions?.length ?? 0) === 0;
+  const monthTx = (monthTransactions ?? []) as DashboardTransactionRow[];
+  const recentTx = (recentTransactions ?? []) as DashboardTransactionRow[];
+  const starterMode = allAccounts.length > 0 && recentTx.length === 0;
 
   // Calculate metrics
   const assetAccounts = allAccounts.filter(
@@ -223,7 +235,7 @@ export default async function DashboardPage({
     },
   });
 
-  if (!starterMode && (recentTransactions?.length ?? 0) > 0) {
+  if (!starterMode && recentTx.length > 0) {
     await trackProductEvent({
       event_name: "first_financial_insight_rendered",
       flow: "dashboard",
@@ -231,7 +243,7 @@ export default async function DashboardPage({
       entry_point: "direct",
       success: true,
       metadata: {
-        recent_transactions_count: recentTransactions?.length ?? 0,
+        recent_transactions_count: recentTx.length,
         accounts_count: allAccounts.length,
       },
     });
@@ -630,7 +642,7 @@ export default async function DashboardPage({
               </p>
             ) : (
               <div className="space-y-3">
-                {recentTransactions.map((tx) => (
+                {recentTx.map((tx) => (
                   <Link
                     key={tx.id}
                     href={`/transactions/${tx.id}`}
@@ -649,7 +661,7 @@ export default async function DashboardPage({
                             "Sin descripción"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(tx.transaction_date)}
+                          {tx.transaction_date ? formatDate(tx.transaction_date) : "Sin fecha"}
                         </p>
                       </div>
                     </div>
@@ -657,7 +669,7 @@ export default async function DashboardPage({
                       className={`text-sm font-medium ${tx.direction === "INFLOW" ? "text-green-600" : ""}`}
                     >
                       {tx.direction === "INFLOW" ? "+" : "-"}
-                      {formatCurrency(tx.amount, tx.currency_code)}
+                      {formatCurrency(tx.amount, tx.currency_code as Parameters<typeof formatCurrency>[1])}
                     </span>
                   </Link>
                 ))}

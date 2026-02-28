@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getUserSafely } from "@/lib/supabase/auth";
 import { extractPattern } from "@venti5/shared";
-import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithRelations } from "@/types/domain";
 import type { UserRule } from "@venti5/shared";
@@ -19,7 +19,7 @@ export async function getUncategorizedTransactions(): Promise<
   const user = await getUserSafely(supabase);
   if (!user) return [];
 
-  const { data, error } = await applyVisibleTransactionFilter(
+  const { data, error } = await executeVisibleTransactionQuery(() =>
     supabase
       .from("transactions")
       .select("*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)")
@@ -45,7 +45,7 @@ export async function getUncategorizedCount(): Promise<number> {
   const user = await getUserSafely(supabase);
   if (!user) return 0;
 
-  const { count, error } = await applyVisibleTransactionFilter(
+  const { count, error } = await executeVisibleTransactionQuery(() =>
     supabase
       .from("transactions")
       .select("id", { count: "exact", head: true })

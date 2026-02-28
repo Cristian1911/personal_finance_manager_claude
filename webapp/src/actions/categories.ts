@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { categorySchema } from "@/lib/validators/category";
 import type { ActionResult } from "@/types/actions";
 import type { Category, CategoryWithChildren, CategoryWithBudget, TransactionDirection } from "@/types/domain";
@@ -252,7 +252,7 @@ export async function getCategoryTransactionCount(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const { count, error } = await applyVisibleTransactionFilter(
+  const { count, error } = await executeVisibleTransactionQuery(() =>
     supabase
       .from("transactions")
       .select("id", { count: "exact", head: true })

@@ -10,7 +10,10 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
-import { applyVisibleTransactionFilter } from "@/lib/utils/transactions";
+import {
+  applyVisibleTransactionFilter,
+  isMissingReconciliationColumnError,
+} from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type {
   AccountUpdateResult,
@@ -114,7 +117,7 @@ async function fetchReconciliationCandidates(
   const from = dateValues[0];
   const to = dateValues[dateValues.length - 1];
 
-  const { data } = await applyVisibleTransactionFilter(
+  const { data, error } = await applyVisibleTransactionFilter(
     supabase
       .from("transactions")
       .select(
@@ -125,6 +128,13 @@ async function fetchReconciliationCandidates(
       .gte("transaction_date", from)
       .lte("transaction_date", to)
   );
+  if (error) {
+    const queryError = error as any;
+    if (isMissingReconciliationColumnError(queryError) || queryError?.code === "42703") {
+      return new Map();
+    }
+    throw queryError;
+  }
 
   const grouped = new Map<string, ReconciliationCandidate[]>();
   for (const row of data ?? []) {
@@ -516,7 +526,7 @@ export async function importTransactions(
       continue;
     }
 
-    const { data: manualTx } = await applyVisibleTransactionFilter(
+    const { data: manualTx, error: manualTxError } = await applyVisibleTransactionFilter(
       supabase
         .from("transactions")
         .select(
@@ -524,6 +534,9 @@ export async function importTransactions(
         )
         .eq("id", decision.candidateTransactionId)
     ).maybeSingle();
+    if (manualTxError && !isMissingReconciliationColumnError(manualTxError)) {
+      throw manualTxError;
+    }
 
     if (!manualTx) {
       leftAsSeparate++;

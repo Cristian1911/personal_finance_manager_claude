@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-27T23:54:13.959885+00:00`
+- Generated (UTC): `2026-02-28T00:03:25.163401+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -122,18 +122,18 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/layout.tsx`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (449)
+- `webapp` -> `webapp` (448)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
+- `webapp/src/actions/budgets.ts`
+- `webapp/src/actions/categories.ts`
 - `webapp/src/actions/categorize.ts`
-- `webapp/src/actions/product-events.ts`
+- `webapp/src/actions/charts.ts`
+- `webapp/src/actions/import-transactions.ts`
+- `webapp/src/actions/transactions.ts`
 - `webapp/src/app/(dashboard)/dashboard/page.tsx`
-- `webapp/src/app/(dashboard)/layout.tsx`
-- `webapp/src/app/page.tsx`
-- `webapp/src/lib/supabase/admin.ts`
-- `webapp/src/lib/supabase/auth.ts`
-- `webapp/src/lib/supabase/middleware.ts`
+- `webapp/src/lib/utils/transactions.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
