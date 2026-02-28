@@ -7,6 +7,12 @@ const GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN")!;
 const GITHUB_REPO = Deno.env.get("GITHUB_REPO")!; // e.g. "owner/repo"
 
 Deno.serve(async (req) => {
+  // Verify the request comes from Supabase infrastructure
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (authHeader !== `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   try {
     const { record } = await req.json();
 
@@ -71,10 +77,13 @@ Deno.serve(async (req) => {
     const issue = await issueRes.json();
 
     // Write back the issue URL to the bug_reports row
-    await supabase
+    const { error: updateError } = await supabase
       .from("bug_reports")
       .update({ github_issue_url: issue.html_url })
       .eq("id", record.id);
+    if (updateError) {
+      console.error("Failed to write back github_issue_url:", updateError.message);
+    }
 
     return new Response(JSON.stringify({ issue_url: issue.html_url }), {
       status: 200,

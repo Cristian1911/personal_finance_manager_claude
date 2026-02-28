@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:52:30.382542+00:00`
+- Generated (UTC): `2026-02-28T04:52:30.645464+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration`
 
 ## Stack Snapshot
