@@ -11,6 +11,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Repeat, Trash2 } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode, type Database } from "@venti5/shared";
 import { supabase } from "../lib/supabase";
+import { parseLocalizedAmount } from "../lib/amount";
 import { useAuth } from "../lib/auth";
 import { KeyboardScreen } from "../components/common/KeyboardScreen";
 
@@ -179,8 +180,7 @@ export default function SubscriptionsScreen() {
       return;
     }
 
-    const normalizedAmount = amountInput.replace(",", ".");
-    const parsedAmount = Number(normalizedAmount);
+    const parsedAmount = parseLocalizedAmount(amountInput);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       Alert.alert("Monto inválido", "El monto debe ser mayor a 0.");
       return;

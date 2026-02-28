@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T02:31:35.982535+00:00`
+- Generated (UTC): `2026-02-28T03:00:03.381520+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,9 +13,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 820
+- Text files scanned: 821
 - TypeScript/React: 303
-- TypeScript: 181
+- TypeScript: 182
 - JSON: 155
 - Markdown: 49
 - SQL: 46
@@ -28,7 +28,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Top-level Areas
 - .worktrees: 343 files
-- mobile: 201 files
+- mobile: 202 files
 - webapp: 176 files
 - supabase: 23 files
 - services: 22 files
@@ -128,15 +128,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `docs/agent/PROJECT_CONTEXT.md`
-- `docs/agent/project_context.json`
-- `docs/plans/SECURITY_MIGRATION.md`
-- `packages/shared/src/index.ts`
-- `packages/shared/src/utils/purchase-decision.ts`
-- `webapp/src/actions/purchase-decision.ts`
-- `webapp/src/app/(dashboard)/dashboard/page.tsx`
-- `webapp/src/components/dashboard/purchase-decision-card.tsx`
-- `webapp/src/lib/supabase/auth.ts`
+- `mobile/app/(tabs)/budgets.tsx`
+- `mobile/app/capture.tsx`
+- `mobile/app/subscriptions.tsx`
+- `mobile/app/transaction/[id].tsx`
+- `mobile/lib/amount.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

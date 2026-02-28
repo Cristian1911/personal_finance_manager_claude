@@ -19,6 +19,7 @@ import {
   type BudgetProgressRow,
   upsertBudget,
 } from "../../lib/repositories/budgets";
+import { parseLocalizedAmount } from "../../lib/amount";
 import { useAuth } from "../../lib/auth";
 import { MonthSelector } from "../../components/common/MonthSelector";
 
@@ -83,7 +84,7 @@ export default function BudgetsScreen() {
   const handleSave = useCallback(
     async (item: BudgetProgressRow) => {
       if (!session?.user?.id) return;
-      const parsed = Number(amountInput);
+      const parsed = parseLocalizedAmount(amountInput);
       if (!Number.isFinite(parsed) || parsed <= 0) return;
 
       const recordId = item.id ?? item.category_id;

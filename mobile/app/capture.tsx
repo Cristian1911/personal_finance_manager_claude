@@ -12,6 +12,7 @@ import * as SecureStore from "expo-secure-store";
 import { autoCategorize, parseQuickCaptureText, type TransactionDirection } from "@venti5/shared";
 import { KeyboardScreen } from "../components/common/KeyboardScreen";
 import { CategoryPicker, type CategoryRow as PickerCategoryRow } from "../components/transactions/CategoryPicker";
+import { parseLocalizedAmount } from "../lib/amount";
 import { useAuth } from "../lib/auth";
 import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import { getAllCategories, type CategoryRow } from "../lib/repositories/categories";
@@ -107,7 +108,7 @@ export default function CaptureScreen() {
       return;
     }
 
-    const parsedAmount = Number(amountInput.replace(",", "."));
+    const parsedAmount = parseLocalizedAmount(amountInput);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       Alert.alert("Monto inválido", "Ingresa un monto mayor a cero.");
       return;

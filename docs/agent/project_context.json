@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T02:31:35.982535+00:00",
+  "generated_at_utc": "2026-02-28T03:00:03.381520+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,10 +9,10 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 820,
+    "text_files_scanned": 821,
     "languages": {
       "TypeScript/React": 303,
-      "TypeScript": 181,
+      "TypeScript": 182,
       "JSON": 155,
       "Markdown": 49,
       "SQL": 46,
@@ -26,7 +26,7 @@
   },
   "top_level_directories": {
     ".worktrees": 343,
-    "mobile": 201,
+    "mobile": 202,
     "webapp": 176,
     "supabase": 23,
     "services": 22,
@@ -298,14 +298,10 @@
     }
   ],
   "recent_changes": [
-    "docs/agent/PROJECT_CONTEXT.md",
-    "docs/agent/project_context.json",
-    "docs/plans/SECURITY_MIGRATION.md",
-    "packages/shared/src/index.ts",
-    "packages/shared/src/utils/purchase-decision.ts",
-    "webapp/src/actions/purchase-decision.ts",
-    "webapp/src/app/(dashboard)/dashboard/page.tsx",
-    "webapp/src/components/dashboard/purchase-decision-card.tsx",
-    "webapp/src/lib/supabase/auth.ts"
+    "mobile/app/(tabs)/budgets.tsx",
+    "mobile/app/capture.tsx",
+    "mobile/app/subscriptions.tsx",
+    "mobile/app/transaction/[id].tsx",
+    "mobile/lib/amount.ts"
   ]
 }
