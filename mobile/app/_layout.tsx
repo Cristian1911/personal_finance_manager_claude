@@ -211,6 +211,16 @@ function RootLayoutNav() {
               sheetGrabberVisible: true,
             }}
           />
+          <Stack.Screen
+            name="capture"
+            options={{
+              presentation: "formSheet",
+              headerShown: false,
+              sheetAllowedDetents: [0.72, 1.0],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+            }}
+          />
         </Stack>
         {isLoading && (
           <View style={styles.loadingOverlay}>

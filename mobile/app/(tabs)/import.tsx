@@ -5,6 +5,8 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  ScrollView,
+  TextInput,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useState, useCallback } from "react";
@@ -17,9 +19,7 @@ import {
   CheckSquare,
   ChevronDown,
 } from "lucide-react-native";
-import { formatCurrency, computeIdempotencyKey } from "@venti5/shared";
-import * as Crypto from "expo-crypto";
-import { getDatabase } from "../../lib/db/database";
+import { formatCurrency, type ReconciliationCandidate } from "@venti5/shared";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import {
@@ -30,12 +30,15 @@ import {
 } from "../../lib/repositories/accounts";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import {
+  applyReconciliationMerge,
+  createTransaction,
+  getReconciliationCandidateById,
+  getReconciliationCandidates,
+} from "../../lib/repositories/transactions";
+import {
   DEBT_PAYMENT_CATEGORY_ID,
   isDebtInflow,
 } from "../../lib/transaction-semantics";
-
-const expoHashFn = (payload: string) =>
-  Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -57,7 +60,25 @@ type ParsedStatement = {
   transactions: ParsedTransaction[];
 };
 
-type Step = "pick" | "review" | "result";
+type Step = "pick" | "review" | "reconcile" | "result";
+type ReviewChoice = "MERGE" | "KEEP_BOTH";
+
+type ReconciliationPreviewItem = {
+  importIndex: number;
+  transaction: ParsedTransaction;
+  candidate: ReconciliationCandidate;
+  score: number;
+  decision: "AUTO_MERGE" | "REVIEW";
+};
+
+type ReconciliationPreview = {
+  autoMerge: ReconciliationPreviewItem[];
+  review: ReconciliationPreviewItem[];
+  unmatched: Array<{
+    importIndex: number;
+    transaction: ParsedTransaction;
+  }>;
+};
 
 function AccountSelector({
   accounts,
@@ -163,6 +184,7 @@ export default function ImportScreen() {
   const { session } = useAuth();
   const [step, setStep] = useState<Step>("pick");
   const [document, setDocument] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [password, setPassword] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedStatement | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -170,6 +192,14 @@ export default function ImportScreen() {
   const [importedCount, setImportedCount] = useState(0);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<AccountRow | null>(null);
+  const [reconciliationPreview, setReconciliationPreview] =
+    useState<ReconciliationPreview | null>(null);
+  const [reviewDecisions, setReviewDecisions] = useState<Record<number, ReviewChoice>>({});
+  const [importSummary, setImportSummary] = useState({
+    autoMerged: 0,
+    manualMerged: 0,
+    leftAsSeparate: 0,
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -189,6 +219,7 @@ export default function ImportScreen() {
 
       if (!result.canceled && result.assets.length > 0) {
         setDocument(result.assets[0]);
+        setPassword("");
       }
     } catch (error) {
       console.error("Error picking document:", error);
@@ -205,6 +236,9 @@ export default function ImportScreen() {
         name: document.name || "statement.pdf",
         type: "application/pdf",
       } as any);
+      if (password.trim()) {
+        formData.append("password", password.trim());
+      }
 
       const {
         data: { session: currentSession },
@@ -218,7 +252,16 @@ export default function ImportScreen() {
       });
 
       if (!response.ok) {
-        throw new Error(`Parse failed: ${response.status}`);
+        const payload = await response
+          .json()
+          .catch(() => ({ error: `Parse failed: ${response.status}` }));
+        const errorMessage =
+          typeof payload?.error === "string"
+            ? payload.error
+            : typeof payload?.detail === "string"
+              ? payload.detail
+              : `Parse failed: ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -310,7 +353,7 @@ export default function ImportScreen() {
     } finally {
       setParsing(false);
     }
-  }, [document, session]);
+  }, [document, password, session]);
 
   const toggleSelect = useCallback((index: number) => {
     setSelected((prev) => {
@@ -324,7 +367,7 @@ export default function ImportScreen() {
     });
   }, []);
 
-  const handleImport = useCallback(async () => {
+  const handlePrepareImport = useCallback(async () => {
     if (!parsedData) return;
     if (!session?.user?.id) {
       Alert.alert(
@@ -340,14 +383,122 @@ export default function ImportScreen() {
     }
 
     setImporting(true);
+    try {
+      const results = await Promise.all(
+        Array.from(selected)
+          .sort((a, b) => a - b)
+          .map(async (index) => {
+            const transaction = parsedData.transactions[index];
+            if (!transaction) return null;
+
+            const ranked = await getReconciliationCandidates({
+              userId: session.user.id,
+              accountId: selectedAccount.id,
+              direction: transaction.direction,
+              amount: transaction.amount,
+              transactionDate: transaction.date,
+              rawDescription: transaction.description,
+            });
+
+            if (!ranked.bestMatch) {
+              return { type: "UNMATCHED" as const, importIndex: index, transaction };
+            }
+
+            const candidate = await getReconciliationCandidateById(
+              ranked.bestMatch.candidateId
+            );
+            if (!candidate) {
+              return { type: "UNMATCHED" as const, importIndex: index, transaction };
+            }
+
+            if (ranked.bestMatch.decision === "AUTO_MERGE") {
+              return {
+                type: "AUTO_MERGE" as const,
+                importIndex: index,
+                transaction,
+                candidate,
+                score: ranked.bestMatch.score,
+              };
+            }
+
+            if (ranked.bestMatch.decision === "REVIEW") {
+              return {
+                type: "REVIEW" as const,
+                importIndex: index,
+                transaction,
+                candidate,
+                score: ranked.bestMatch.score,
+              };
+            }
+
+            return { type: "UNMATCHED" as const, importIndex: index, transaction };
+          })
+      );
+
+      const preview: ReconciliationPreview = {
+        autoMerge: [],
+        review: [],
+        unmatched: [],
+      };
+      const nextReviewDecisions: Record<number, ReviewChoice> = {};
+
+      for (const result of results) {
+        if (!result) continue;
+        if (result.type === "AUTO_MERGE") {
+          preview.autoMerge.push({
+            importIndex: result.importIndex,
+            transaction: result.transaction,
+            candidate: result.candidate,
+            score: result.score,
+            decision: "AUTO_MERGE",
+          });
+        } else if (result.type === "REVIEW") {
+          preview.review.push({
+            importIndex: result.importIndex,
+            transaction: result.transaction,
+            candidate: result.candidate,
+            score: result.score,
+            decision: "REVIEW",
+          });
+          nextReviewDecisions[result.importIndex] = "KEEP_BOTH";
+        } else {
+          preview.unmatched.push({
+            importIndex: result.importIndex,
+            transaction: result.transaction,
+          });
+        }
+      }
+
+      setReconciliationPreview(preview);
+      setReviewDecisions(nextReviewDecisions);
+      setStep("reconcile");
+    } catch (error) {
+      console.error("Prepare import error:", error);
+      Alert.alert("Error", "No se pudo calcular la reconciliación.");
+    } finally {
+      setImporting(false);
+    }
+  }, [parsedData, selected, selectedAccount, session?.user?.id]);
+
+  const handleImport = useCallback(async () => {
+    if (!parsedData || !selectedAccount || !session?.user?.id) return;
+
+    setImporting(true);
 
     try {
-      const db = await getDatabase();
       const userId = session.user.id;
-      const now = new Date().toISOString();
       let count = 0;
+      let autoMerged = 0;
+      let manualMerged = 0;
+      let leftAsSeparate = 0;
+      const autoMergeMap = new Map(
+        (reconciliationPreview?.autoMerge ?? []).map((item) => [item.importIndex, item])
+      );
+      const reviewMap = new Map(
+        (reconciliationPreview?.review ?? []).map((item) => [item.importIndex, item])
+      );
 
-      for (const index of selected) {
+      for (const index of Array.from(selected).sort((a, b) => a - b)) {
         const t = parsedData.transactions[index];
         if (!t) continue;
         const isDebtPayment = isDebtInflow({
@@ -356,74 +507,57 @@ export default function ImportScreen() {
         });
         const forcedCategoryId = isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : null;
 
-        const idempotencyKey = await computeIdempotencyKey(
-          {
-            provider: parsedData.bank || "manual",
-            transactionDate: t.date,
-            amount: t.amount,
-            rawDescription: t.description,
-          },
-          expoHashFn
-        );
-
-        const txId = Crypto.randomUUID();
-
         try {
-          const result = await db.runAsync(
-            `INSERT OR IGNORE INTO transactions
-              (id, user_id, account_id, category_id, amount, direction, description, merchant_name, raw_description, transaction_date, status, idempotency_key, is_excluded, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'POSTED', ?, 0, ?, ?)`,
-            [
-              txId,
-              userId,
-              selectedAccount.id,
-              forcedCategoryId,
-              t.amount,
-              t.direction,
-              t.description,
-              null,
-              null,
-              t.date,
-              idempotencyKey,
-              now,
-              now,
-            ]
-          );
+          const txId = await createTransaction({
+            user_id: userId,
+            account_id: selectedAccount.id,
+            category_id: forcedCategoryId,
+            amount: t.amount,
+            currency_code: parsedData.currency ?? selectedAccount.currency_code ?? "COP",
+            direction: t.direction,
+            description: t.description,
+            merchant_name: t.description,
+            raw_description: t.description,
+            transaction_date: t.date,
+            provider: "OCR",
+            capture_method: "PDF_IMPORT",
+          });
 
-          // Only queue for sync if the row was actually inserted (not a duplicate)
-          if (result.changes > 0) {
-            const syncPayload = {
-              id: txId,
-              user_id: userId,
-              account_id: selectedAccount.id,
-              category_id: forcedCategoryId,
-              amount: t.amount,
-              direction: t.direction,
-              description: t.description,
-              merchant_name: null,
-              raw_description: null,
-              transaction_date: t.date,
-              status: "POSTED",
-              idempotency_key: idempotencyKey,
-              is_excluded: false,
-              created_at: now,
-              updated_at: now,
-            };
+          count++;
 
-            await db.runAsync(
-              `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
-               VALUES ('transactions', ?, 'INSERT', ?, ?)`,
-              [txId, JSON.stringify(syncPayload), now]
-            );
+          const autoMatch = autoMergeMap.get(index);
+          if (autoMatch) {
+            await applyReconciliationMerge({
+              manualTransaction: autoMatch.candidate,
+              pdfTransactionId: txId,
+              score: autoMatch.score,
+              pdfCategoryId: forcedCategoryId,
+              pdfNotes: null,
+            });
+            autoMerged++;
+            continue;
+          }
 
-            count++;
+          const reviewMatch = reviewMap.get(index);
+          if (reviewMatch && (reviewDecisions[index] ?? "KEEP_BOTH") === "MERGE") {
+            await applyReconciliationMerge({
+              manualTransaction: reviewMatch.candidate,
+              pdfTransactionId: txId,
+              score: reviewMatch.score,
+              pdfCategoryId: forcedCategoryId,
+              pdfNotes: null,
+            });
+            manualMerged++;
+          } else {
+            leftAsSeparate++;
           }
         } catch (err) {
-          console.warn("Skip duplicate:", err);
+          console.warn("Skip imported transaction:", err);
         }
       }
 
       setImportedCount(count);
+      setImportSummary({ autoMerged, manualMerged, leftAsSeparate });
       setStep("result");
     } catch (error) {
       console.error("Import error:", error);
@@ -431,15 +565,23 @@ export default function ImportScreen() {
     } finally {
       setImporting(false);
     }
-  }, [parsedData, selected, session, selectedAccount]);
+  }, [parsedData, reconciliationPreview, reviewDecisions, selected, session, selectedAccount]);
 
   const resetFlow = useCallback(() => {
     setStep("pick");
     setDocument(null);
+    setPassword("");
     setParsedData(null);
     setSelected(new Set());
     setSelectedAccount(null);
+    setReconciliationPreview(null);
+    setReviewDecisions({});
     setImportedCount(0);
+    setImportSummary({
+      autoMerged: 0,
+      manualMerged: 0,
+      leftAsSeparate: 0,
+    });
   }, []);
 
   // ===== STEP 1: Pick PDF =====
@@ -464,20 +606,40 @@ export default function ImportScreen() {
         </Pressable>
 
         {document && (
-          <View className="bg-white rounded-lg p-4 mt-4 flex-row items-center">
-            <FileText size={20} color="#047857" />
-            <View className="ml-3 flex-1">
-              <Text
-                className="text-gray-900 font-inter-medium text-sm"
-                numberOfLines={1}
-              >
-                {document.name}
-              </Text>
-              {document.size && (
-                <Text className="text-gray-400 font-inter text-xs mt-0.5">
-                  {(document.size / 1024).toFixed(1)} KB
+          <View className="bg-white rounded-lg p-4 mt-4">
+            <View className="flex-row items-center">
+              <FileText size={20} color="#047857" />
+              <View className="ml-3 flex-1">
+                <Text
+                  className="text-gray-900 font-inter-medium text-sm"
+                  numberOfLines={1}
+                >
+                  {document.name}
                 </Text>
-              )}
+                {document.size && (
+                  <Text className="text-gray-400 font-inter text-xs mt-0.5">
+                    {(document.size / 1024).toFixed(1)} KB
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View className="mt-4">
+              <Text className="text-gray-700 font-inter-medium text-sm mb-1.5">
+                Contraseña del PDF
+              </Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Si el extracto está cifrado, ingrésala aquí"
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+              />
+              <Text className="text-gray-400 font-inter text-xs mt-2">
+                Déjalo vacío si el PDF no tiene contraseña.
+              </Text>
             </View>
           </View>
         )}
@@ -596,7 +758,7 @@ export default function ImportScreen() {
             className={`flex-1 rounded-lg py-3 items-center ${
               canImport ? "bg-primary active:bg-primary-dark" : "bg-gray-200"
             }`}
-            onPress={handleImport}
+            onPress={handlePrepareImport}
             disabled={!canImport || importing}
           >
             {importing ? (
@@ -607,7 +769,180 @@ export default function ImportScreen() {
                   canImport ? "text-white" : "text-gray-400"
                 }`}
               >
-                Importar {selectedCount} transacciones
+                Revisar conciliación
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (step === "reconcile") {
+    const preview = reconciliationPreview ?? {
+      autoMerge: [],
+      review: [],
+      unmatched: [],
+    };
+
+    return (
+      <View className="flex-1 bg-gray-100">
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        >
+          <Text className="text-gray-900 font-inter-bold text-xl">
+            Reconciliación
+          </Text>
+          <Text className="mt-1 text-gray-500 font-inter text-sm">
+            Evita duplicados antes de guardar el extracto.
+          </Text>
+
+          <View className="mt-4 flex-row gap-3">
+            <View className="flex-1 rounded-xl bg-white p-4">
+              <Text className="text-xs font-inter text-gray-500">Auto-merge</Text>
+              <Text className="mt-1 text-2xl font-inter-bold text-gray-900">
+                {preview.autoMerge.length}
+              </Text>
+            </View>
+            <View className="flex-1 rounded-xl bg-white p-4">
+              <Text className="text-xs font-inter text-gray-500">Revisión</Text>
+              <Text className="mt-1 text-2xl font-inter-bold text-gray-900">
+                {preview.review.length}
+              </Text>
+            </View>
+            <View className="flex-1 rounded-xl bg-white p-4">
+              <Text className="text-xs font-inter text-gray-500">Sin match</Text>
+              <Text className="mt-1 text-2xl font-inter-bold text-gray-900">
+                {preview.unmatched.length}
+              </Text>
+            </View>
+          </View>
+
+          {preview.autoMerge.length > 0 ? (
+            <View className="mt-5 rounded-xl bg-white p-4">
+              <Text className="text-sm font-inter-semibold text-gray-900">
+                Coincidencias de alta confianza
+              </Text>
+              <View className="mt-3 gap-3">
+                {preview.autoMerge.map((item) => (
+                  <View
+                    key={`auto-${item.importIndex}`}
+                    className="rounded-xl border border-emerald-100 bg-emerald-50 p-3"
+                  >
+                    <Text className="font-inter-medium text-sm text-gray-900">
+                      {item.transaction.description}
+                    </Text>
+                    <Text className="mt-1 text-xs font-inter text-gray-600">
+                      Se fusiona con{" "}
+                      {item.candidate.raw_description ??
+                        item.candidate.merchant_name ??
+                        "movimiento manual"}
+                    </Text>
+                    <Text className="mt-1 text-xs font-inter text-emerald-700">
+                      Score {Math.round(item.score * 100)}%
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {preview.review.length > 0 ? (
+            <View className="mt-5 rounded-xl bg-white p-4">
+              <Text className="text-sm font-inter-semibold text-gray-900">
+                Revisión manual
+              </Text>
+              <View className="mt-3 gap-4">
+                {preview.review.map((item) => {
+                  const choice = reviewDecisions[item.importIndex] ?? "KEEP_BOTH";
+                  return (
+                    <View
+                      key={`review-${item.importIndex}`}
+                      className="rounded-xl border border-gray-200 p-3"
+                    >
+                      <Text className="font-inter-medium text-sm text-gray-900">
+                        {item.transaction.description}
+                      </Text>
+                      <Text className="mt-1 text-xs font-inter text-gray-500">
+                        Posible duplicado:{" "}
+                        {item.candidate.raw_description ??
+                          item.candidate.merchant_name ??
+                          "movimiento manual"}
+                      </Text>
+                      <Text className="mt-1 text-xs font-inter text-gray-500">
+                        Score {Math.round(item.score * 100)}%
+                      </Text>
+
+                      <View className="mt-3 flex-row gap-2">
+                        <Pressable
+                          onPress={() =>
+                            setReviewDecisions((prev) => ({
+                              ...prev,
+                              [item.importIndex]: "MERGE",
+                            }))
+                          }
+                          className={`flex-1 rounded-xl px-3 py-2 ${
+                            choice === "MERGE" ? "bg-primary" : "bg-gray-100"
+                          }`}
+                        >
+                          <Text
+                            className={`text-center font-inter-medium text-xs ${
+                              choice === "MERGE" ? "text-white" : "text-gray-700"
+                            }`}
+                          >
+                            Fusionar
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() =>
+                            setReviewDecisions((prev) => ({
+                              ...prev,
+                              [item.importIndex]: "KEEP_BOTH",
+                            }))
+                          }
+                          className={`flex-1 rounded-xl px-3 py-2 ${
+                            choice === "KEEP_BOTH" ? "bg-gray-900" : "bg-gray-100"
+                          }`}
+                        >
+                          <Text
+                            className={`text-center font-inter-medium text-xs ${
+                              choice === "KEEP_BOTH" ? "text-white" : "text-gray-700"
+                            }`}
+                          >
+                            Mantener ambas
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+        </ScrollView>
+
+        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex-row gap-3">
+          <Pressable
+            className="flex-1 rounded-lg py-3 items-center border border-gray-300 active:bg-gray-100"
+            onPress={() => setStep("review")}
+          >
+            <Text className="text-gray-700 font-inter-medium text-sm">
+              Volver
+            </Text>
+          </Pressable>
+          <Pressable
+            className={`flex-1 rounded-lg py-3 items-center ${
+              importing ? "bg-gray-300" : "bg-primary active:bg-primary-dark"
+            }`}
+            onPress={handleImport}
+            disabled={importing}
+          >
+            {importing ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text className="font-inter-bold text-sm text-white">
+                Confirmar importación
               </Text>
             )}
           </Pressable>
@@ -628,6 +963,10 @@ export default function ImportScreen() {
         {importedCount === 1
           ? "transaccion importada"
           : "transacciones importadas"}
+      </Text>
+      <Text className="text-gray-400 font-inter text-sm mt-2 text-center">
+        {importSummary.autoMerged} auto-merge, {importSummary.manualMerged} merge manual,{" "}
+        {importSummary.leftAsSeparate} separadas
       </Text>
       {selectedAccount && (
         <Text className="text-gray-400 font-inter text-sm mt-1">

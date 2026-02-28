@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { categorySchema } from "@/lib/validators/category";
 import type { ActionResult } from "@/types/actions";
 import type { Category, CategoryWithChildren, CategoryWithBudget, TransactionDirection } from "@/types/domain";
@@ -251,11 +252,13 @@ export async function getCategoryTransactionCount(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const { count, error } = await supabase
-    .from("transactions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("category_id", categoryId);
+  const { count, error } = await executeVisibleTransactionQuery(() =>
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("category_id", categoryId)
+  );
 
   if (error) return { success: false, error: error.message };
   return { success: true, data: count ?? 0 };
@@ -275,6 +278,7 @@ export async function reassignAndDeleteCategory(
       .from("transactions")
       .update({ category_id: reassignToCategoryId })
       .eq("user_id", user.id)
+      .is("reconciled_into_transaction_id", null)
       .eq("category_id", id);
 
     if (reassignError) return { success: false, error: reassignError.message };

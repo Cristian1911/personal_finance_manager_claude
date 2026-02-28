@@ -8,6 +8,7 @@ import {
   monthEndStr,
   monthsBeforeStart,
 } from "@/lib/utils/date";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 
 // --- Types ---
 
@@ -53,13 +54,15 @@ export async function getCategorySpending(month?: string): Promise<CategorySpend
 
   // Fetch transactions and budgets in parallel
   const [txRes, budgetsRes] = await Promise.all([
-    supabase
+    executeVisibleTransactionQuery(() =>
+      supabase
       .from("transactions")
       .select("amount, category_id, categories!category_id(name_es, name, color)")
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
       .gte("transaction_date", monthStartStr(target))
-      .lte("transaction_date", monthEndStr(target)),
+      .lte("transaction_date", monthEndStr(target))
+    ),
 
     supabase
       .from("budgets")
@@ -126,13 +129,15 @@ export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflo
   if (!user) return [];
 
   const target = parseMonth(month);
-  const { data: transactions } = await supabase
+  const { data: transactions } = await executeVisibleTransactionQuery(() =>
+    supabase
     .from("transactions")
     .select("transaction_date, amount, direction, accounts!account_id(account_type)")
     .eq("is_excluded", false)
     .gte("transaction_date", monthsBeforeStart(target, 5))
     .lte("transaction_date", monthEndStr(target))
-    .order("transaction_date");
+    .order("transaction_date")
+  );
 
   if (!transactions || transactions.length === 0) return [];
 
@@ -180,14 +185,16 @@ export async function getDailySpending(month?: string): Promise<DailySpending[]>
   if (!user) return [];
 
   const target = parseMonth(month);
-  const { data: transactions } = await supabase
+  const { data: transactions } = await executeVisibleTransactionQuery(() =>
+    supabase
     .from("transactions")
     .select("transaction_date, amount")
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target))
-    .order("transaction_date");
+    .order("transaction_date")
+  );
 
   if (!transactions || transactions.length === 0) return [];
 
@@ -224,12 +231,14 @@ export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
   if (!user) return { income: 0, expenses: 0 };
 
   const target = parseMonth(month);
-  const { data: transactions } = await supabase
+  const { data: transactions } = await executeVisibleTransactionQuery(() =>
+    supabase
     .from("transactions")
     .select("amount, direction, accounts!account_id(account_type)")
     .eq("is_excluded", false)
     .gte("transaction_date", monthStartStr(target))
-    .lte("transaction_date", monthEndStr(target));
+    .lte("transaction_date", monthEndStr(target))
+  );
 
   if (!transactions) return { income: 0, expenses: 0 };
 
@@ -268,13 +277,15 @@ export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]>
   const startStr = monthStartStr(target);
   const endStr = monthEndStr(target);
 
-  const { data: transactions } = await supabase
+  const { data: transactions } = await executeVisibleTransactionQuery(() =>
+    supabase
     .from("transactions")
     .select("transaction_date, amount, direction, accounts!account_id(account_type)")
     .eq("is_excluded", false)
     .gte("transaction_date", startStr)
     .lte("transaction_date", endStr)
-    .order("transaction_date");
+    .order("transaction_date")
+  );
 
   if (!transactions || transactions.length === 0) return [];
 

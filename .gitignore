@@ -9,6 +9,10 @@ node_modules/
 bank_pdf_examples/
 services/pdf_parser/unrecognized/
 
+# env files (can opt-in for committing if needed)
+.env*
+*/.env*
+
 # Python
 __pycache__/
 *.pyc
@@ -16,6 +20,9 @@ __pycache__/
 
 # Supabase local temp
 supabase/.temp/
+
+# Git worktrees
+.worktrees/
 
 # Claude Code local settings (not shared)
 .claude/settings.local.json

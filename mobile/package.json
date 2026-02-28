@@ -8,7 +8,11 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build:apk:local": "eas build --platform android --profile preview-local",
-    "build:apk:device": "eas build --platform android --profile preview-device"
+    "build:apk:device": "eas build --platform android --profile preview-device",
+    "build:ios:simulator:local": "eas build --platform ios --profile preview-ios-simulator-local",
+    "build:ios:simulator:device": "eas build --platform ios --profile preview-ios-simulator-device",
+    "build:ios:device": "eas build --platform ios --profile preview-ios-device",
+    "build:ios:production": "eas build --platform ios --profile production-ios"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

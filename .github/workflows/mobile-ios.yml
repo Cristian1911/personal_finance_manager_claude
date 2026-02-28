@@ -1,0 +1,179 @@
+name: Build Mobile iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: iOS artifact target
+        type: choice
+        required: true
+        default: simulator
+        options:
+          - simulator
+          - internal
+          - production
+      api_target:
+        description: API URL embedded in the build
+        type: choice
+        required: true
+        default: device
+        options:
+          - device
+          - local
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  build-ios:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Missing required secret EXPO_TOKEN." >&2
+            exit 1
+          fi
+          if [ -z "$EXPO_PUBLIC_SUPABASE_URL" ] || [ -z "$EXPO_PUBLIC_SUPABASE_ANON_KEY" ]; then
+            echo "Missing required secrets: NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install EAS CLI
+        run: npm install --global eas-cli
+
+      - name: Resolve build profile
+        run: |
+          TARGET="${{ github.event.inputs.target }}"
+          API_TARGET="${{ github.event.inputs.api_target }}"
+
+          if [ -z "$TARGET" ]; then
+            TARGET="simulator"
+          fi
+          if [ -z "$API_TARGET" ]; then
+            API_TARGET="device"
+          fi
+
+          if [ "$TARGET" = "simulator" ]; then
+            if [ "$API_TARGET" = "local" ]; then
+              PROFILE="preview-ios-simulator-local"
+            else
+              PROFILE="preview-ios-simulator-device"
+            fi
+            ARTIFACT_EXT="tar.gz"
+          elif [ "$TARGET" = "internal" ]; then
+            if [ "$API_TARGET" = "local" ]; then
+              echo "Local API target is only supported for simulator builds." >&2
+              exit 1
+            fi
+            PROFILE="preview-ios-device"
+            ARTIFACT_EXT="ipa"
+          else
+            if [ "$API_TARGET" = "local" ]; then
+              echo "Local API target is only supported for simulator builds." >&2
+              exit 1
+            fi
+            PROFILE="production-ios"
+            ARTIFACT_EXT="ipa"
+          fi
+
+          echo "IOS_TARGET=$TARGET" >> "$GITHUB_ENV"
+          echo "API_TARGET=$API_TARGET" >> "$GITHUB_ENV"
+          echo "EAS_PROFILE=$PROFILE" >> "$GITHUB_ENV"
+          echo "ARTIFACT_EXT=$ARTIFACT_EXT" >> "$GITHUB_ENV"
+
+      - name: Trigger and wait for EAS iOS build
+        working-directory: mobile
+        run: |
+          eas build \
+            --platform ios \
+            --profile "$EAS_PROFILE" \
+            --non-interactive \
+            --wait \
+            --json > "$RUNNER_TEMP/eas-ios-build.json"
+
+      - name: Extract build metadata
+        run: |
+          node <<'EOF'
+          const fs = require("fs");
+          const path = process.env.RUNNER_TEMP + "/eas-ios-build.json";
+          const raw = fs.readFileSync(path, "utf8");
+          const parsed = JSON.parse(raw);
+          const build = Array.isArray(parsed) ? parsed[0] : parsed;
+          if (!build || !build.id) {
+            console.error("Could not extract EAS build metadata.");
+            process.exit(1);
+          }
+          const envPath = process.env.GITHUB_ENV;
+          fs.appendFileSync(envPath, `EAS_BUILD_ID=${build.id}\n`);
+          fs.appendFileSync(envPath, `EAS_BUILD_STATUS=${build.status ?? "unknown"}\n`);
+          if (build.artifacts?.buildUrl) {
+            fs.appendFileSync(envPath, `EAS_ARTIFACT_URL=${build.artifacts.buildUrl}\n`);
+          }
+          if (build.logs?.buildLogsUrl) {
+            fs.appendFileSync(envPath, `EAS_LOGS_URL=${build.logs.buildLogsUrl}\n`);
+          }
+          EOF
+
+      - name: Download build artifact
+        working-directory: mobile
+        run: |
+          mkdir -p ../dist
+          ARTIFACT_NAME="venti5-ios-${IOS_TARGET}-${API_TARGET}-${GITHUB_RUN_NUMBER}.${ARTIFACT_EXT}"
+          eas build:download \
+            --platform ios \
+            --id "$EAS_BUILD_ID" \
+            --path "../dist/$ARTIFACT_NAME" \
+            --non-interactive
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-ios-${{ env.IOS_TARGET }}-${{ env.API_TARGET }}-${{ github.run_number }}
+          path: dist/${{ env.ARTIFACT_NAME }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Mobile iOS build"
+            echo ""
+            printf -- "- Target: \`%s\`\n" "${IOS_TARGET:-n/a}"
+            printf -- "- API target: \`%s\`\n" "${API_TARGET:-n/a}"
+            printf -- "- EAS profile: \`%s\`\n" "${EAS_PROFILE:-n/a}"
+            printf -- "- Build ID: \`%s\`\n" "${EAS_BUILD_ID:-n/a}"
+            printf -- "- Artifact: \`%s\`\n" "${ARTIFACT_NAME:-n/a}"
+            if [ -n "${EAS_ARTIFACT_URL:-}" ]; then
+              printf -- "- Artifact URL: %s\n" "${EAS_ARTIFACT_URL}"
+            fi
+            if [ -n "${EAS_LOGS_URL:-}" ]; then
+              printf -- "- Logs: %s\n" "${EAS_LOGS_URL}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

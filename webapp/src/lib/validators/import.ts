@@ -5,6 +5,7 @@ const UUID_RE =
 const uuidStr = (msg = "UUID inválido") => z.string().regex(UUID_RE, msg);
 
 export const transactionToImportSchema = z.object({
+  import_key: z.string().optional(),
   account_id: uuidStr("Cuenta inválida"),
   amount: z.number().positive("El monto debe ser mayor a 0"),
   currency_code: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
@@ -20,6 +21,15 @@ export const transactionToImportSchema = z.object({
   installment_current: z.number().int().positive().optional().nullable(),
   installment_total: z.number().int().positive().optional().nullable(),
   installment_group_id: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export const reconciliationDecisionSchema = z.object({
+  statementIndex: z.number().int().min(0),
+  transactionIndex: z.number().int().min(0),
+  candidateTransactionId: uuidStr("Transacción candidata inválida"),
+  decision: z.enum(["AUTO_MERGE", "MERGE", "KEEP_BOTH"]),
+  score: z.number().min(0).max(1),
 });
 
 const statementSummarySchema = z.object({
@@ -73,4 +83,5 @@ const statementMetaSchema = z.object({
 export const importPayloadSchema = z.object({
   transactions: z.array(transactionToImportSchema),
   statementMeta: z.array(statementMetaSchema).optional(),
+  reconciliationDecisions: z.array(reconciliationDecisionSchema).optional(),
 });

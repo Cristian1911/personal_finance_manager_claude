@@ -31,6 +31,7 @@ import {
   getTransactionTypeLabel,
   isDebtInflow,
 } from "../../lib/transaction-semantics";
+import { parseLocalizedAmount } from "../../lib/amount";
 
 type TransactionDetail = {
   id: string;
@@ -198,7 +199,7 @@ export default function TransactionDetailScreen() {
 
   const handleSave = async () => {
     if (!id) return;
-    const amountNum = parseFloat(editAmount.replace(",", "."));
+    const amountNum = parseLocalizedAmount(editAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
       Alert.alert("Error", "El monto debe ser un número positivo.");
       return;
