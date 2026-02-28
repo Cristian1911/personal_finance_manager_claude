@@ -149,7 +149,7 @@ export function CategoryPickerDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpen}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+        <DialogContent className="max-w-4xl overflow-hidden p-0">
           <DialogHeader className="border-b px-6 py-4">
             <DialogTitle>Selecciona una categoría</DialogTitle>
             <DialogDescription>
@@ -157,7 +157,7 @@ export function CategoryPickerDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid min-h-[420px] md:grid-cols-[280px_1fr]">
+          <div className="grid min-h-[420px] md:grid-cols-[280px_minmax(0,1fr)]">
             <div className="border-r bg-muted/20 p-4">
               <div className="space-y-2">
                 {sections.map((section) => {
@@ -193,7 +193,7 @@ export function CategoryPickerDialog({
               </div>
             </div>
 
-            <div className="p-4">
+            <div className="min-w-0 p-4">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">
                   {activeSection?.label ?? "Categorías"}
@@ -209,7 +209,7 @@ export function CategoryPickerDialog({
                 </Button>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
                 {activeSection?.categories.map((category) => {
                   const isSelected = value === category.id;
                   return (
@@ -217,21 +217,28 @@ export function CategoryPickerDialog({
                       key={category.id}
                       onClick={() => selectCategory(category.id)}
                       className={cn(
-                        "rounded-lg border bg-background px-3 py-3 text-left transition-colors hover:bg-accent/50",
+                        "flex w-full items-start gap-3 rounded-lg border bg-background px-3 py-3 text-left transition-colors hover:bg-accent/50",
                         isSelected && "border-primary bg-primary/10"
                       )}
                     >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: category.color }}
-                        />
-                        <span className="text-sm font-medium truncate">
-                          {category.name_es ?? category.name}
-                        </span>
-                        {isSelected && (
-                          <Check className="ml-auto h-4 w-4 text-primary" />
-                        )}
+                      <span
+                        className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: category.color }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-2">
+                          <span className="text-sm font-medium leading-5 text-foreground">
+                            {category.name_es ?? category.name}
+                          </span>
+                          {isSelected && (
+                            <Check className="ml-auto mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {activeSection?.label === "Otros"
+                            ? "Categoría individual"
+                            : `Subcategoría de ${activeSection?.label}`}
+                        </p>
                       </div>
                     </button>
                   );

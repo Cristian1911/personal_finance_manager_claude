@@ -3,8 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { budgetSchema } from "@/lib/validators/budget";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
+
+type BudgetSummaryTransactionRow = {
+    amount: number;
+};
 
 export async function getBudgets(): Promise<ActionResult<Budget[]>> {
     const supabase = await createClient();
@@ -94,16 +99,21 @@ export async function getBudgetSummary(month?: string): Promise<BudgetSummary> {
     const { monthStartStr, monthEndStr, parseMonth } = await import("@/lib/utils/date");
     const target = parseMonth(month);
 
-    const { data: transactions } = await supabase
-        .from("transactions")
-        .select("amount")
-        .eq("direction", "OUTFLOW")
-        .eq("is_excluded", false)
-        .in("category_id", budgetedCategoryIds)
-        .gte("transaction_date", monthStartStr(target))
-        .lte("transaction_date", monthEndStr(target));
+    const { data: transactions } = await executeVisibleTransactionQuery(() =>
+        supabase
+            .from("transactions")
+            .select("amount")
+            .eq("direction", "OUTFLOW")
+            .eq("is_excluded", false)
+            .in("category_id", budgetedCategoryIds)
+            .gte("transaction_date", monthStartStr(target))
+            .lte("transaction_date", monthEndStr(target))
+    );
 
-    const totalSpent = transactions?.reduce((sum, tx) => sum + Number(tx.amount), 0) ?? 0;
+    const totalSpent = (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(
+        (sum: number, tx: BudgetSummaryTransactionRow) => sum + Number(tx.amount),
+        0
+    ) ?? 0;
     const progress = totalTarget > 0 ? (totalSpent / totalTarget) * 100 : 0;
 
     return { totalTarget, totalSpent, progress };

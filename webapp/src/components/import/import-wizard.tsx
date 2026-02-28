@@ -5,21 +5,26 @@ import { Check } from "lucide-react";
 import type { Account, CategoryWithChildren } from "@/types/domain";
 import type {
   ParseResponse,
+  ReconciliationPreviewResult,
   StatementAccountMapping,
   ImportResult,
+  StatementMetaForImport,
+  TransactionToImport,
 } from "@/types/import";
 import { StepUpload } from "./step-upload";
 import { StepReview } from "./step-review";
 import { StepConfirm } from "./step-confirm";
+import { ReconciliationStep } from "./reconciliation-step";
 import { StepResults } from "./step-results";
 import { trackClientEvent } from "@/lib/utils/analytics";
 
-type Step = "upload" | "review" | "confirm" | "results";
+type Step = "upload" | "review" | "confirm" | "reconcile" | "results";
 
 const STEPS: { key: Step; label: string }[] = [
   { key: "upload", label: "Subir PDF" },
   { key: "review", label: "Revisar" },
   { key: "confirm", label: "Confirmar" },
+  { key: "reconcile", label: "Reconciliar" },
   { key: "results", label: "Resultados" },
 ];
 
@@ -35,6 +40,10 @@ export function ImportWizard({
   const [mappings, setMappings] = useState<StatementAccountMapping[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [accountsList, setAccountsList] = useState<Account[]>(accounts);
+  const [preparedTransactions, setPreparedTransactions] = useState<TransactionToImport[]>([]);
+  const [preparedStatementMeta, setPreparedStatementMeta] = useState<StatementMetaForImport[]>([]);
+  const [reconciliationPreview, setReconciliationPreview] =
+    useState<ReconciliationPreviewResult | null>(null);
 
   const currentIndex = STEPS.findIndex((s) => s.key === step);
 
@@ -124,11 +133,25 @@ export function ImportWizard({
     setStep("results");
   }
 
+  function handlePrepared(payload: {
+    transactions: TransactionToImport[];
+    statementMeta: StatementMetaForImport[];
+    reconciliationPreview: ReconciliationPreviewResult;
+  }) {
+    setPreparedTransactions(payload.transactions);
+    setPreparedStatementMeta(payload.statementMeta);
+    setReconciliationPreview(payload.reconciliationPreview);
+    setStep("reconcile");
+  }
+
   function handleReset() {
     setStep("upload");
     setParseResult(null);
     setMappings([]);
     setImportResult(null);
+    setPreparedTransactions([]);
+    setPreparedStatementMeta([]);
+    setReconciliationPreview(null);
   }
 
   return (
@@ -187,8 +210,17 @@ export function ImportWizard({
           parseResult={parseResult}
           mappings={mappings}
           categories={categories}
-          onComplete={handleImportComplete}
+          onContinue={handlePrepared}
           onBack={() => setStep("review")}
+        />
+      )}
+      {step === "reconcile" && reconciliationPreview && (
+        <ReconciliationStep
+          transactions={preparedTransactions}
+          statementMeta={preparedStatementMeta}
+          preview={reconciliationPreview}
+          onComplete={handleImportComplete}
+          onBack={() => setStep("confirm")}
         />
       )}
       {step === "results" && importResult && (

@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-27T16:02:16.480889+00:00",
+  "generated_at_utc": "2026-02-28T03:00:03.381520+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,28 +9,29 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 462,
+    "text_files_scanned": 821,
     "languages": {
-      "TypeScript/React": 146,
-      "JSON": 140,
-      "TypeScript": 85,
-      "Markdown": 24,
-      "SQL": 21,
-      "Python": 20,
-      "Shell": 9,
-      "YAML": 8,
-      "JavaScript": 5,
-      "CSS": 2,
-      "TOML": 2
+      "TypeScript/React": 303,
+      "TypeScript": 182,
+      "JSON": 155,
+      "Markdown": 49,
+      "SQL": 46,
+      "Python": 40,
+      "YAML": 16,
+      "Shell": 12,
+      "JavaScript": 10,
+      "CSS": 4,
+      "TOML": 4
     }
   },
   "top_level_directories": {
-    "mobile": 198,
-    "webapp": 169,
-    "supabase": 22,
+    ".worktrees": 343,
+    "mobile": 202,
+    "webapp": 176,
+    "supabase": 23,
     "services": 22,
-    "packages": 14,
-    "docs": 12,
+    "packages": 17,
+    "docs": 13,
     "(root)": 11,
     ".claude": 9,
     ".github": 3,
@@ -124,7 +125,29 @@
         "webapp/src/actions/transactions.ts",
         "webapp/src/actions/accounts.ts",
         "webapp/src/actions/charts.ts",
-        "webapp/src/actions/auth.ts"
+        "webapp/src/actions/purchase-decision.ts"
+      ]
+    },
+    {
+      "name": "zod-validators",
+      "description": "Validation layer using Zod",
+      "matched_files": 15,
+      "examples": [
+        "webapp/src/actions/recurring-templates.ts",
+        "webapp/src/actions/profile.ts",
+        "webapp/src/actions/purchase-decision.ts",
+        "webapp/src/lib/validators/account.ts",
+        "webapp/src/lib/validators/category.ts",
+        "webapp/src/lib/validators/transaction.ts",
+        "webapp/src/lib/validators/budget.ts",
+        "webapp/src/lib/validators/recurring-template.ts",
+        "webapp/src/lib/validators/import.ts",
+        "webapp/src/lib/validators/auth.ts",
+        ".claude/skills/codebase-context/scripts/build_context.py",
+        ".worktrees/security/webapp/src/actions/recurring-templates.ts",
+        ".worktrees/security/webapp/src/actions/profile.ts",
+        ".worktrees/security/webapp/src/lib/validators/account.ts",
+        ".worktrees/security/webapp/src/lib/validators/category.ts"
       ]
     },
     {
@@ -139,14 +162,14 @@
         "mobile/app/bug-report.tsx",
         "mobile/app/modal.tsx",
         "mobile/app/+html.tsx",
+        "mobile/app/capture.tsx",
         "mobile/app/transaction/[id].tsx",
         "mobile/app/(tabs)/settings.tsx",
         "mobile/app/(tabs)/index.tsx",
         "mobile/app/(tabs)/import.tsx",
         "mobile/app/(tabs)/transactions.tsx",
         "mobile/app/(tabs)/budgets.tsx",
-        "mobile/app/(tabs)/_layout.tsx",
-        "mobile/app/(tabs)/accounts.tsx"
+        "mobile/app/(tabs)/_layout.tsx"
       ]
     },
     {
@@ -154,6 +177,7 @@
       "description": "FastAPI service modules",
       "matched_files": 15,
       "examples": [
+        ".worktrees/security/services/pdf_parser/main.py",
         "services/pdf_parser/test_parser.py",
         "services/pdf_parser/models.py",
         "services/pdf_parser/storage.py",
@@ -167,40 +191,60 @@
         "services/pdf_parser/parsers/popular_credit_card.py",
         "services/pdf_parser/parsers/__init__.py",
         "services/pdf_parser/parsers/bancolombia_savings.py",
-        "services/pdf_parser/parsers/utils.py",
-        "services/pdf_parser/parsers/bancolombia_credit_card.py"
-      ]
-    },
-    {
-      "name": "zod-validators",
-      "description": "Validation layer using Zod",
-      "matched_files": 10,
-      "examples": [
-        "webapp/src/actions/recurring-templates.ts",
-        "webapp/src/actions/profile.ts",
-        "webapp/src/lib/validators/account.ts",
-        "webapp/src/lib/validators/category.ts",
-        "webapp/src/lib/validators/transaction.ts",
-        "webapp/src/lib/validators/budget.ts",
-        "webapp/src/lib/validators/recurring-template.ts",
-        "webapp/src/lib/validators/import.ts",
-        "webapp/src/lib/validators/auth.ts",
-        ".claude/skills/codebase-context/scripts/build_context.py"
+        "services/pdf_parser/parsers/utils.py"
       ]
     },
     {
       "name": "repository-pattern",
       "description": "Repository pattern in mobile/lib/repositories",
-      "matched_files": 4,
+      "matched_files": 8,
       "examples": [
         "mobile/lib/repositories/budgets.ts",
         "mobile/lib/repositories/categories.ts",
         "mobile/lib/repositories/transactions.ts",
-        "mobile/lib/repositories/accounts.ts"
+        "mobile/lib/repositories/accounts.ts",
+        ".worktrees/security/mobile/lib/repositories/budgets.ts",
+        ".worktrees/security/mobile/lib/repositories/categories.ts",
+        ".worktrees/security/mobile/lib/repositories/transactions.ts",
+        ".worktrees/security/mobile/lib/repositories/accounts.ts"
       ]
     }
   ],
   "entrypoints": [
+    ".worktrees/security/mobile/app/(auth)/_layout.tsx",
+    ".worktrees/security/mobile/app/(tabs)/_layout.tsx",
+    ".worktrees/security/mobile/app/_layout.tsx",
+    ".worktrees/security/packages/shared/src/types/domain.ts",
+    ".worktrees/security/services/pdf_parser/main.py",
+    ".worktrees/security/webapp/src/app/(auth)/forgot-password/page.tsx",
+    ".worktrees/security/webapp/src/app/(auth)/layout.tsx",
+    ".worktrees/security/webapp/src/app/(auth)/login/page.tsx",
+    ".worktrees/security/webapp/src/app/(auth)/reset-password/page.tsx",
+    ".worktrees/security/webapp/src/app/(auth)/signup/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/accounts/[id]/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/accounts/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/categories/manage/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/categories/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/categorizar/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/dashboard/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/deudas/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/deudas/simulador/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/import/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/layout.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/recurrentes/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/settings/analytics/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/settings/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/transactions/[id]/page.tsx",
+    ".worktrees/security/webapp/src/app/(dashboard)/transactions/page.tsx",
+    ".worktrees/security/webapp/src/app/api/bug-reports/route.ts",
+    ".worktrees/security/webapp/src/app/api/parse-statement/route.ts",
+    ".worktrees/security/webapp/src/app/api/save-unrecognized/route.ts",
+    ".worktrees/security/webapp/src/app/auth/callback/route.ts",
+    ".worktrees/security/webapp/src/app/layout.tsx",
+    ".worktrees/security/webapp/src/app/onboarding/layout.tsx",
+    ".worktrees/security/webapp/src/app/onboarding/page.tsx",
+    ".worktrees/security/webapp/src/app/page.tsx",
+    ".worktrees/security/webapp/src/types/domain.ts",
     "mobile/app/(auth)/_layout.tsx",
     "mobile/app/(tabs)/_layout.tsx",
     "mobile/app/_layout.tsx",
@@ -240,7 +284,12 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 425
+      "count": 469
+    },
+    {
+      "from": ".worktrees",
+      "to": ".worktrees",
+      "count": 449
     },
     {
       "from": "mobile",
@@ -249,13 +298,10 @@
     }
   ],
   "recent_changes": [
-    "docs/agent/PROJECT_CONTEXT.md",
-    "docs/agent/project_context.json",
-    "mobile/app/(tabs)/settings.tsx",
-    "mobile/app/_layout.tsx",
+    "mobile/app/(tabs)/budgets.tsx",
+    "mobile/app/capture.tsx",
     "mobile/app/subscriptions.tsx",
-    "services/pdf_parser/main.py",
-    "webapp/src/app/layout.tsx",
-    "webapp/src/components/app/server-action-recovery.tsx"
+    "mobile/app/transaction/[id].tsx",
+    "mobile/lib/amount.ts"
   ]
 }

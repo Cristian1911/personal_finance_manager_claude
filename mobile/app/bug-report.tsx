@@ -2,10 +2,8 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -13,9 +11,10 @@ import {
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import * as DocumentPicker from "expo-document-picker";
-import { ArrowLeft, Paperclip, Send } from "lucide-react-native";
+import { Paperclip, Send } from "lucide-react-native";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
+import { KeyboardScreen } from "../components/common/KeyboardScreen";
 
 const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
@@ -217,29 +216,30 @@ export default function BugReportScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-gray-100"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View className="flex-row items-center justify-between px-4 pt-4 pb-2 bg-white border-b border-gray-100">
+    <KeyboardScreen
+      title="Quick Capture de Bug"
+      onBack={() => router.back()}
+      footer={
         <Pressable
-          onPress={() => router.back()}
-          className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+          className={`rounded-xl py-3.5 items-center flex-row justify-center ${
+            canSubmit && !submitting ? "bg-primary" : "bg-gray-300"
+          }`}
+          onPress={handleSubmit}
+          disabled={!canSubmit || submitting}
         >
-          <ArrowLeft size={18} color="#6B7280" />
+          {submitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Send size={16} color="#FFFFFF" />
+              <Text className="ml-2 text-white font-inter-bold text-base">
+                Enviar ticket
+              </Text>
+            </>
+          )}
         </Pressable>
-        <Text className="text-gray-900 font-inter-bold text-base">
-          Quick Capture de Bug
-        </Text>
-        <View className="w-8" />
-      </View>
-
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-      >
+      }
+    >
         <View className="rounded-xl border border-gray-200 bg-white p-4">
           <Text className="text-gray-900 font-inter-semibold text-base">
             Describe lo que fallo
@@ -330,25 +330,6 @@ export default function BugReportScreen() {
           )}
         </View>
 
-        <Pressable
-          className={`mt-5 rounded-xl py-3.5 items-center flex-row justify-center ${
-            canSubmit && !submitting ? "bg-primary" : "bg-gray-300"
-          }`}
-          onPress={handleSubmit}
-          disabled={!canSubmit || submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Send size={16} color="#FFFFFF" />
-              <Text className="ml-2 text-white font-inter-bold text-base">
-                Enviar ticket
-              </Text>
-            </>
-          )}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   );
 }
