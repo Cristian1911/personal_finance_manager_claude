@@ -62,6 +62,22 @@ export async function POST(request: NextRequest) {
         .json()
         .catch(() => ({ detail: "Error del parser" }));
       const detail = body.detail;
+
+      // Map raw server-config errors to user-friendly messages
+      if (
+        response.status === 503 &&
+        typeof detail === "string" &&
+        detail.toLowerCase().includes("not configured")
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "El servicio de procesamiento de PDFs no está disponible. Intenta más tarde.",
+          },
+          { status: 503 }
+        );
+      }
+
       if (detail && typeof detail === "object" && detail.type) {
         return NextResponse.json(
           { error: detail.message || "Error procesando el PDF", errorType: detail.type },

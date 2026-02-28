@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "build:apk:local": "eas build --platform android --profile preview-local",
     "build:apk:device": "eas build --platform android --profile preview-device",
+    "build:aab:production": "eas build --platform android --profile production-android",
     "build:ios:simulator:local": "eas build --platform ios --profile preview-ios-simulator-local",
     "build:ios:simulator:device": "eas build --platform ios --profile preview-ios-simulator-device",
     "build:ios:device": "eas build --platform ios --profile preview-ios-device",
