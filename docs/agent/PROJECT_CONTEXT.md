@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T00:03:25.163401+00:00`
+- Generated (UTC): `2026-02-28T00:05:29.205462+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -126,14 +126,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `webapp/src/actions/budgets.ts`
-- `webapp/src/actions/categories.ts`
-- `webapp/src/actions/categorize.ts`
-- `webapp/src/actions/charts.ts`
-- `webapp/src/actions/import-transactions.ts`
-- `webapp/src/actions/transactions.ts`
-- `webapp/src/app/(dashboard)/dashboard/page.tsx`
-- `webapp/src/lib/utils/transactions.ts`
+- `webapp/src/components/categorize/category-picker-dialog.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
