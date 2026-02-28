@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-02-28T03:00:03.381520+00:00",
-  "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
+  "generated_at_utc": "2026-02-28T05:00:57.452027+00:00",
+  "project_root": "/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration",
   "technologies": [
     "Next.js",
     "Expo/React Native",
@@ -9,32 +9,31 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 821,
+    "text_files_scanned": 352,
     "languages": {
-      "TypeScript/React": 303,
-      "TypeScript": 182,
-      "JSON": 155,
-      "Markdown": 49,
-      "SQL": 46,
-      "Python": 40,
-      "YAML": 16,
-      "Shell": 12,
-      "JavaScript": 10,
-      "CSS": 4,
-      "TOML": 4
+      "TypeScript/React": 154,
+      "TypeScript": 93,
+      "SQL": 25,
+      "Markdown": 24,
+      "Python": 20,
+      "JSON": 15,
+      "YAML": 9,
+      "JavaScript": 5,
+      "Shell": 3,
+      "CSS": 2,
+      "TOML": 2
     }
   },
   "top_level_directories": {
-    ".worktrees": 343,
-    "mobile": 202,
-    "webapp": 176,
-    "supabase": 23,
-    "services": 22,
+    "webapp": 175,
+    "mobile": 75,
+    "supabase": 27,
+    "services": 21,
     "packages": 17,
     "docs": 13,
     "(root)": 11,
-    ".claude": 9,
-    ".github": 3,
+    ".claude": 7,
+    ".github": 4,
     "infra": 2
   },
   "commands": {
@@ -58,7 +57,11 @@
       "ios": "expo run:ios",
       "web": "expo start --web",
       "build:apk:local": "eas build --platform android --profile preview-local",
-      "build:apk:device": "eas build --platform android --profile preview-device"
+      "build:apk:device": "eas build --platform android --profile preview-device",
+      "build:ios:simulator:local": "eas build --platform ios --profile preview-ios-simulator-local",
+      "build:ios:simulator:device": "eas build --platform ios --profile preview-ios-simulator-device",
+      "build:ios:device": "eas build --platform ios --profile preview-ios-device",
+      "build:ios:production": "eas build --platform ios --profile production-ios"
     }
   },
   "patterns": [
@@ -129,28 +132,6 @@
       ]
     },
     {
-      "name": "zod-validators",
-      "description": "Validation layer using Zod",
-      "matched_files": 15,
-      "examples": [
-        "webapp/src/actions/recurring-templates.ts",
-        "webapp/src/actions/profile.ts",
-        "webapp/src/actions/purchase-decision.ts",
-        "webapp/src/lib/validators/account.ts",
-        "webapp/src/lib/validators/category.ts",
-        "webapp/src/lib/validators/transaction.ts",
-        "webapp/src/lib/validators/budget.ts",
-        "webapp/src/lib/validators/recurring-template.ts",
-        "webapp/src/lib/validators/import.ts",
-        "webapp/src/lib/validators/auth.ts",
-        ".claude/skills/codebase-context/scripts/build_context.py",
-        ".worktrees/security/webapp/src/actions/recurring-templates.ts",
-        ".worktrees/security/webapp/src/actions/profile.ts",
-        ".worktrees/security/webapp/src/lib/validators/account.ts",
-        ".worktrees/security/webapp/src/lib/validators/category.ts"
-      ]
-    },
-    {
       "name": "expo-router",
       "description": "Expo Router file-based routes",
       "matched_files": 15,
@@ -177,7 +158,6 @@
       "description": "FastAPI service modules",
       "matched_files": 15,
       "examples": [
-        ".worktrees/security/services/pdf_parser/main.py",
         "services/pdf_parser/test_parser.py",
         "services/pdf_parser/models.py",
         "services/pdf_parser/storage.py",
@@ -191,60 +171,41 @@
         "services/pdf_parser/parsers/popular_credit_card.py",
         "services/pdf_parser/parsers/__init__.py",
         "services/pdf_parser/parsers/bancolombia_savings.py",
-        "services/pdf_parser/parsers/utils.py"
+        "services/pdf_parser/parsers/utils.py",
+        "services/pdf_parser/parsers/bancolombia_credit_card.py"
+      ]
+    },
+    {
+      "name": "zod-validators",
+      "description": "Validation layer using Zod",
+      "matched_files": 11,
+      "examples": [
+        "webapp/src/actions/recurring-templates.ts",
+        "webapp/src/actions/profile.ts",
+        "webapp/src/actions/purchase-decision.ts",
+        "webapp/src/lib/validators/account.ts",
+        "webapp/src/lib/validators/category.ts",
+        "webapp/src/lib/validators/transaction.ts",
+        "webapp/src/lib/validators/budget.ts",
+        "webapp/src/lib/validators/recurring-template.ts",
+        "webapp/src/lib/validators/import.ts",
+        "webapp/src/lib/validators/auth.ts",
+        ".claude/skills/codebase-context/scripts/build_context.py"
       ]
     },
     {
       "name": "repository-pattern",
       "description": "Repository pattern in mobile/lib/repositories",
-      "matched_files": 8,
+      "matched_files": 4,
       "examples": [
         "mobile/lib/repositories/budgets.ts",
         "mobile/lib/repositories/categories.ts",
         "mobile/lib/repositories/transactions.ts",
-        "mobile/lib/repositories/accounts.ts",
-        ".worktrees/security/mobile/lib/repositories/budgets.ts",
-        ".worktrees/security/mobile/lib/repositories/categories.ts",
-        ".worktrees/security/mobile/lib/repositories/transactions.ts",
-        ".worktrees/security/mobile/lib/repositories/accounts.ts"
+        "mobile/lib/repositories/accounts.ts"
       ]
     }
   ],
   "entrypoints": [
-    ".worktrees/security/mobile/app/(auth)/_layout.tsx",
-    ".worktrees/security/mobile/app/(tabs)/_layout.tsx",
-    ".worktrees/security/mobile/app/_layout.tsx",
-    ".worktrees/security/packages/shared/src/types/domain.ts",
-    ".worktrees/security/services/pdf_parser/main.py",
-    ".worktrees/security/webapp/src/app/(auth)/forgot-password/page.tsx",
-    ".worktrees/security/webapp/src/app/(auth)/layout.tsx",
-    ".worktrees/security/webapp/src/app/(auth)/login/page.tsx",
-    ".worktrees/security/webapp/src/app/(auth)/reset-password/page.tsx",
-    ".worktrees/security/webapp/src/app/(auth)/signup/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/accounts/[id]/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/accounts/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/categories/manage/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/categories/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/categorizar/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/dashboard/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/deudas/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/deudas/simulador/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/import/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/layout.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/recurrentes/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/settings/analytics/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/settings/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/transactions/[id]/page.tsx",
-    ".worktrees/security/webapp/src/app/(dashboard)/transactions/page.tsx",
-    ".worktrees/security/webapp/src/app/api/bug-reports/route.ts",
-    ".worktrees/security/webapp/src/app/api/parse-statement/route.ts",
-    ".worktrees/security/webapp/src/app/api/save-unrecognized/route.ts",
-    ".worktrees/security/webapp/src/app/auth/callback/route.ts",
-    ".worktrees/security/webapp/src/app/layout.tsx",
-    ".worktrees/security/webapp/src/app/onboarding/layout.tsx",
-    ".worktrees/security/webapp/src/app/onboarding/page.tsx",
-    ".worktrees/security/webapp/src/app/page.tsx",
-    ".worktrees/security/webapp/src/types/domain.ts",
     "mobile/app/(auth)/_layout.tsx",
     "mobile/app/(tabs)/_layout.tsx",
     "mobile/app/_layout.tsx",
@@ -287,21 +248,16 @@
       "count": 469
     },
     {
-      "from": ".worktrees",
-      "to": ".worktrees",
-      "count": 449
-    },
-    {
       "from": "mobile",
       "to": "mobile",
       "count": 1
     }
   ],
   "recent_changes": [
-    "mobile/app/(tabs)/budgets.tsx",
-    "mobile/app/capture.tsx",
-    "mobile/app/subscriptions.tsx",
-    "mobile/app/transaction/[id].tsx",
-    "mobile/lib/amount.ts"
+    "docs/agent/PROJECT_CONTEXT.md",
+    "docs/agent/project_context.json",
+    "mobile/lib/bugReportMode.tsx",
+    "mobile/react-native-view-shot.d.ts",
+    "webapp/src/types/database.ts"
   ]
 }

@@ -21,7 +21,7 @@ import {
   createTransaction,
 } from "../lib/repositories/transactions";
 
-const DEFAULT_ACCOUNT_KEY = "venti5:last_capture_account_id";
+const DEFAULT_ACCOUNT_KEY = "venti5.last_capture_account_id";
 
 type Mode = "quick" | "manual";
 

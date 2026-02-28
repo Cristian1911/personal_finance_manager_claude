@@ -16,13 +16,15 @@ import {
 import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
+import { BugReportProvider, BugReportViewShot } from "../lib/bugReportMode";
+import { BugFAB } from "../components/BugFAB";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -62,9 +64,28 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <BugReportProvider>
+        <RootLayoutNav />
+      </BugReportProvider>
     </AuthProvider>
   );
+}
+
+function buildSheetOptions(detents: [number, number]) {
+  if (Platform.OS !== "ios") {
+    return {
+      presentation: "modal" as const,
+      headerShown: false,
+    };
+  }
+
+  return {
+    presentation: "formSheet" as const,
+    headerShown: false,
+    sheetAllowedDetents: detents,
+    sheetInitialDetentIndex: 0,
+    sheetGrabberVisible: true,
+  };
 }
 
 function RootLayoutNav() {
@@ -150,78 +171,45 @@ function RootLayoutNav() {
   return (
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="transaction/[id]"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.72, 1.0],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
-            name="account/[id]"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.72, 1.0],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
-            name="account/create"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.72, 1.0],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
-            name="account/edit/[id]"
-            options={{
-              presentation: "card",
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="bug-report"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.6, 0.95],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
-            name="subscriptions"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.65, 1.0],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
-            name="capture"
-            options={{
-              presentation: "formSheet",
-              headerShown: false,
-              sheetAllowedDetents: [0.72, 1.0],
-              sheetInitialDetentIndex: 0,
-              sheetGrabberVisible: true,
-            }}
-          />
-        </Stack>
+        <BugReportViewShot>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="transaction/[id]"
+              options={buildSheetOptions([0.72, 1.0])}
+            />
+            <Stack.Screen
+              name="account/[id]"
+              options={buildSheetOptions([0.72, 1.0])}
+            />
+            <Stack.Screen
+              name="account/create"
+              options={buildSheetOptions([0.72, 1.0])}
+            />
+            <Stack.Screen
+              name="account/edit/[id]"
+              options={{
+                presentation: "card",
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="bug-report"
+              options={buildSheetOptions([0.6, 0.95])}
+            />
+            <Stack.Screen
+              name="subscriptions"
+              options={buildSheetOptions([0.65, 1.0])}
+            />
+            <Stack.Screen
+              name="capture"
+              options={buildSheetOptions([0.72, 1.0])}
+            />
+          </Stack>
+        </BugReportViewShot>
+        <BugFAB />
         {isLoading && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#047857" />

@@ -26,9 +26,16 @@ export async function getAccounts(): Promise<ActionResult<Account[]>> {
 
 export async function getAccount(id: string): Promise<ActionResult<Account>> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
+    .eq("user_id", user.id)
     .eq("id", id)
     .single();
 
@@ -120,6 +127,11 @@ export async function updateAccount(
   formData: FormData
 ): Promise<ActionResult<Account>> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
 
   const data = buildAccountInsertData(formData);
 
@@ -132,6 +144,7 @@ export async function updateAccount(
   const { data: result, error } = await supabase
     .from("accounts")
     .update(parsed.data)
+    .eq("user_id", user.id)
     .eq("id", id)
     .select()
     .single();
@@ -145,8 +158,13 @@ export async function updateAccount(
 
 export async function deleteAccount(id: string): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const { error } = await supabase.from("accounts").delete().eq("id", id);
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase.from("accounts").delete().eq("user_id", user.id).eq("id", id);
 
   if (error) return { success: false, error: error.message };
 

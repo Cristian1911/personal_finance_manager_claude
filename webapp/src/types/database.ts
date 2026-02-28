@@ -186,6 +186,21 @@ export type Database = {
           },
         ]
       }
+      admin_config: {
+        Row: {
+          id: string
+          prompt_text: string | null
+        }
+        Insert: {
+          id: string
+          prompt_text?: string | null
+        }
+        Update: {
+          id?: string
+          prompt_text?: string | null
+        }
+        Relationships: []
+      }
       budgets: {
         Row: {
           amount: number
@@ -230,6 +245,7 @@ export type Database = {
           created_at: string
           description: string | null
           device_context: Json
+          github_issue_url: string | null
           id: string
           route_hint: string | null
           selected_area_hint: string | null
@@ -244,6 +260,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           device_context?: Json
+          github_issue_url?: string | null
           id?: string
           route_hint?: string | null
           selected_area_hint?: string | null
@@ -258,6 +275,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           device_context?: Json
+          github_issue_url?: string | null
           id?: string
           route_hint?: string | null
           selected_area_hint?: string | null
@@ -582,17 +600,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "recurring_transaction_templates_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "recurring_transaction_templates_transfer_source_account_id_fkey"
             columns: ["transfer_source_account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -842,6 +860,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "transactions_reconciled_into_transaction_id_fkey"
+            columns: ["reconciled_into_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transactions_secondary_category_id_fkey"
             columns: ["secondary_category_id"]
             isOneToOne: false
@@ -1072,6 +1097,13 @@ export const Constants = {
         "MONTHLY",
         "QUARTERLY",
         "ANNUAL",
+      ],
+      transaction_capture_method: [
+        "MANUAL_FORM",
+        "TEXT_QUICK_CAPTURE",
+        "PDF_IMPORT",
+        "OCR_BATCH",
+        "OCR_SINGLE",
       ],
       transaction_direction: ["INFLOW", "OUTFLOW"],
       transaction_status: ["PENDING", "POSTED", "CANCELLED"],

@@ -13,10 +13,16 @@ type BudgetSummaryTransactionRow = {
 
 export async function getBudgets(): Promise<ActionResult<Budget[]>> {
     const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: "No autenticado" };
 
     const { data, error } = await supabase
         .from("budgets")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
     if (error) return { success: false, error: error.message };
@@ -66,8 +72,13 @@ export async function upsertBudget(
 
 export async function deleteBudget(id: string): Promise<ActionResult> {
     const supabase = await createClient();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
-    const { error } = await supabase.from("budgets").delete().eq("id", id);
+    if (!user) return { success: false, error: "No autenticado" };
+
+    const { error } = await supabase.from("budgets").delete().eq("user_id", user.id).eq("id", id);
 
     if (error) return { success: false, error: error.message };
 
@@ -90,7 +101,7 @@ export async function getBudgetSummary(month?: string): Promise<BudgetSummary> {
 
     if (!user) return { totalTarget: 0, totalSpent: 0, progress: 0 };
 
-    const { data: budgets } = await supabase.from("budgets").select("amount, category_id");
+    const { data: budgets } = await supabase.from("budgets").select("amount, category_id").eq("user_id", user.id);
     if (!budgets || budgets.length === 0) return { totalTarget: 0, totalSpent: 0, progress: 0 };
 
     const totalTarget = budgets.reduce((sum, b) => sum + Number(b.amount), 0);

@@ -1,6 +1,6 @@
 """Persistent storage for unrecognized PDFs.
 
-Uploads to Supabase Storage when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+Uploads to Supabase Storage when SUPABASE_URL and SUPABASE_SECRET_KEY
 are set (production). Falls back to a local directory otherwise (development).
 
 Required Supabase setup:
@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SECRET_KEY")
 BUCKET = "unrecognized-statements"
 
 UNRECOGNIZED_DIR = Path(os.getenv("UNRECOGNIZED_DIR", "./unrecognized"))

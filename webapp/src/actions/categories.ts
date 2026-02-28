@@ -170,6 +170,11 @@ export async function updateCategory(
   formData: FormData
 ): Promise<ActionResult<Category>> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
 
   const parsed = categorySchema.safeParse({
     name: formData.get("name"),
@@ -189,6 +194,7 @@ export async function updateCategory(
   const { data, error } = await supabase
     .from("categories")
     .update(parsed.data)
+    .eq("user_id", user.id)
     .eq("id", id)
     .select()
     .single();
@@ -201,10 +207,16 @@ export async function updateCategory(
 
 export async function deleteCategory(id: string): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
 
   const { error } = await supabase
     .from("categories")
     .delete()
+    .eq("user_id", user.id)
     .eq("id", id)
     .eq("is_system", false);
 
@@ -218,6 +230,11 @@ export async function updateCategoryOrder(
   items: { id: string; display_order: number; parent_id: string | null }[]
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
 
   // Supabase doesn't have an easy bulk update via RPC without custom functions
   // but for small amounts of categories we can update them in a loop
@@ -231,6 +248,7 @@ export async function updateCategoryOrder(
         display_order: item.display_order,
         parent_id: item.parent_id,
       })
+      .eq("user_id", user.id)
       .eq("id", item.id)
   );
 

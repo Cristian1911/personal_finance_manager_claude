@@ -139,8 +139,14 @@ export async function getTransactions(
 
 export async function getTransaction(id: string): Promise<ActionResult<Transaction>> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
   const { data, error } = await executeVisibleTransactionQuery(() =>
-    supabase.from("transactions").select("*").eq("id", id).single()
+    supabase.from("transactions").select("*").eq("user_id", user.id).eq("id", id).single()
   );
 
   if (error) return { success: false, error: error.message };
@@ -274,7 +280,13 @@ export async function updateTransaction(
 
 export async function deleteTransaction(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("transactions").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase.from("transactions").delete().eq("user_id", user.id).eq("id", id);
 
   if (error) return { success: false, error: error.message };
 
@@ -289,9 +301,16 @@ export async function toggleExcludeTransaction(
   excluded: boolean
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
   const { error } = await supabase
     .from("transactions")
     .update({ is_excluded: excluded })
+    .eq("user_id", user.id)
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };
@@ -306,9 +325,16 @@ export async function bulkExcludeTransactions(
   excluded: boolean
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
   const { error } = await supabase
     .from("transactions")
     .update({ is_excluded: excluded })
+    .eq("user_id", user.id)
     .in("id", ids);
 
   if (error) return { success: false, error: error.message };

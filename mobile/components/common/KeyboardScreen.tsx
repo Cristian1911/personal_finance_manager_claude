@@ -9,6 +9,11 @@ import {
 } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
 
+// iOS formSheet raises itself above the keyboard natively — KeyboardAvoidingView
+// is not only unnecessary there but causes an RNScreens layout warning.
+// On Android the sheet behaves like a regular overlay, so we keep it.
+const Wrapper = Platform.OS === "android" ? KeyboardAvoidingView : View;
+
 export function KeyboardScreen({
   title,
   onBack,
@@ -21,9 +26,9 @@ export function KeyboardScreen({
   footer?: ReactNode;
 }) {
   return (
-    <KeyboardAvoidingView
+    <Wrapper
       className="flex-1 bg-gray-100"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior="height"
     >
       <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-4 pb-2 pt-4">
         <Pressable
@@ -48,6 +53,6 @@ export function KeyboardScreen({
       {footer ? (
         <View className="border-t border-gray-200 bg-white p-4">{footer}</View>
       ) : null}
-    </KeyboardAvoidingView>
+    </Wrapper>
   );
 }

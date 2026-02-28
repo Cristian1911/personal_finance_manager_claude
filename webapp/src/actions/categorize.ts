@@ -118,6 +118,7 @@ export async function categorizeTransaction(
       categorization_source: "USER_OVERRIDE",
       categorization_confidence: null,
     })
+    .eq("user_id", user.id)
     .eq("id", txId);
 
   if (updateError) {
@@ -182,6 +183,7 @@ export async function bulkCategorize(
         categorization_source: "USER_OVERRIDE",
         categorization_confidence: null,
       })
+      .eq("user_id", user.id)
       .eq("id", txId);
 
     if (!error) {

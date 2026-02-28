@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   Pressable,
   Text,
@@ -15,6 +16,7 @@ import { Paperclip, Send } from "lucide-react-native";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { KeyboardScreen } from "../components/common/KeyboardScreen";
+import { useBugReport } from "../lib/bugReportMode";
 
 const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
@@ -57,6 +59,7 @@ function resolveAttachmentMimeType(
 export default function BugReportScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { pendingScreenshotUri, setPendingScreenshotUri } = useBugReport();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -131,32 +134,48 @@ export default function BugReportScreen() {
     try {
       let attachmentPath: string | null = null;
 
-      if (attachment) {
-        const validationError = validateAttachment(attachment);
+      // If a screenshot was captured via bug mode, treat it as the attachment
+      const screenshotAsset: DocumentPicker.DocumentPickerAsset | null =
+        pendingScreenshotUri
+          ? {
+              uri: pendingScreenshotUri,
+              name: `screenshot-${Date.now()}.jpg`,
+              mimeType: "image/jpeg",
+              lastModified: Date.now(),
+            }
+          : null;
+
+      const effectiveAttachment = attachment ?? screenshotAsset;
+
+      if (effectiveAttachment) {
+        const validationError = validateAttachment(effectiveAttachment);
         if (validationError) {
           throw new Error(validationError);
         }
 
         const contentType = resolveAttachmentMimeType(
-          attachment.mimeType,
-          attachment.name
+          effectiveAttachment.mimeType,
+          effectiveAttachment.name
         );
         if (!contentType) {
           throw new Error("No se pudo determinar el tipo de archivo adjunto.");
         }
 
-        const safeName = (attachment.name || "capture")
+        const safeName = (effectiveAttachment.name || "capture")
           .replace(/[^a-zA-Z0-9_.-]/g, "-")
           .slice(0, 80);
         const path = `${session.user.id}/${Date.now()}-${safeName}`;
 
-        const fileResponse = await fetch(attachment.uri);
+        const fileResponse = await fetch(effectiveAttachment.uri);
         if (!fileResponse.ok) {
           throw new Error("No se pudo leer el archivo adjunto.");
         }
         const fileBytes = await fileResponse.arrayBuffer();
         if (fileBytes.byteLength === 0) {
           throw new Error("El archivo adjunto está vacío.");
+        }
+        if (fileBytes.byteLength > MAX_ATTACHMENT_SIZE_BYTES) {
+          throw new Error("La captura supera el límite de 10MB.");
         }
 
         const { error: uploadError } = await supabase.storage
@@ -203,6 +222,7 @@ export default function BugReportScreen() {
         "Reporte enviado",
         `Ticket ${data?.id ?? "creado"}. Ya puedes trabajarlo desde tu workspace.`
       );
+      setPendingScreenshotUri(null);
       router.back();
     } catch (err) {
       console.error("Bug report submit error:", err);
@@ -290,24 +310,37 @@ export default function BugReportScreen() {
             className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
           />
 
-          <Pressable
-            className="mt-4 rounded-xl border border-gray-300 bg-white px-3 py-3 flex-row items-center justify-center active:bg-gray-50"
-            onPress={handlePickAttachment}
-            disabled={picking || submitting}
-          >
-            {picking ? (
-              <ActivityIndicator color="#6B7280" />
-            ) : (
-              <>
-                <Paperclip size={16} color="#6B7280" />
-                <Text className="ml-2 text-gray-700 font-inter-medium text-sm">
-                  Adjuntar captura o PDF
-                </Text>
-              </>
-            )}
-          </Pressable>
+          {pendingScreenshotUri ? (
+            <View className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+              <Image
+                source={{ uri: pendingScreenshotUri }}
+                style={{ width: "100%", aspectRatio: 9 / 16 }}
+                resizeMode="cover"
+              />
+              <Text className="text-center text-xs text-gray-500 font-inter py-2">
+                Captura adjunta automáticamente
+              </Text>
+            </View>
+          ) : (
+            <Pressable
+              className="mt-4 rounded-xl border border-gray-300 bg-white px-3 py-3 flex-row items-center justify-center active:bg-gray-50"
+              onPress={handlePickAttachment}
+              disabled={picking || submitting}
+            >
+              {picking ? (
+                <ActivityIndicator color="#6B7280" />
+              ) : (
+                <>
+                  <Paperclip size={16} color="#6B7280" />
+                  <Text className="ml-2 text-gray-700 font-inter-medium text-sm">
+                    Adjuntar captura o PDF
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          )}
 
-          {attachment && (
+          {!pendingScreenshotUri && attachment && (
             <View className="mt-2 rounded-lg bg-sky-50 border border-sky-200 px-3 py-2">
               <Text className="text-sky-700 font-inter text-xs" numberOfLines={2}>
                 Archivo: {attachment.name}
