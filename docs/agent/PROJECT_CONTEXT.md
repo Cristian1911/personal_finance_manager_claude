@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T02:31:35.982535+00:00`
+- Generated (UTC): `2026-02-28T02:43:25.698432+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -128,15 +128,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `docs/agent/PROJECT_CONTEXT.md`
-- `docs/agent/project_context.json`
-- `docs/plans/SECURITY_MIGRATION.md`
-- `packages/shared/src/index.ts`
-- `packages/shared/src/utils/purchase-decision.ts`
-- `webapp/src/actions/purchase-decision.ts`
-- `webapp/src/app/(dashboard)/dashboard/page.tsx`
+- `webapp/src/components/categorize/category-picker-dialog.tsx`
 - `webapp/src/components/dashboard/purchase-decision-card.tsx`
-- `webapp/src/lib/supabase/auth.ts`
+- `webapp/src/components/ui/dialog.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
