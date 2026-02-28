@@ -21,6 +21,9 @@ __pycache__/
 # Supabase local temp
 supabase/.temp/
 
+# Git worktrees
+.worktrees/
+
 # Claude Code local settings (not shared)
 .claude/settings.local.json
 .claude/last_session_summary.md

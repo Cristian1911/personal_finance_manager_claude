@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T00:22:56.661120+00:00`
+- Generated (UTC): `2026-02-28T00:51:28.212114+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -126,6 +126,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
+- `.gitignore`
 - `docs/plans/SECURITY_MIGRATION.md`
 
 ## Agent Playbook

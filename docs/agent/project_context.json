@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T00:22:56.661120+00:00",
+  "generated_at_utc": "2026-02-28T00:51:28.212114+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -249,6 +249,7 @@
     }
   ],
   "recent_changes": [
+    ".gitignore",
     "docs/plans/SECURITY_MIGRATION.md"
   ]
 }
