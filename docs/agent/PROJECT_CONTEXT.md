@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:44:10.324026+00:00`
+- Generated (UTC): `2026-02-28T04:44:44.222869+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration`
 
 ## Stack Snapshot
@@ -13,11 +13,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 346
+- Text files scanned: 347
 - TypeScript/React: 152
 - TypeScript: 91
 - Markdown: 24
-- SQL: 23
+- SQL: 24
 - Python: 20
 - JSON: 15
 - YAML: 9
@@ -29,7 +29,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 ## Top-level Areas
 - webapp: 175 files
 - mobile: 72 files
-- supabase: 24 files
+- supabase: 25 files
 - services: 21 files
 - packages: 17 files
 - docs: 13 files
@@ -130,14 +130,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `supabase/migrations/20260227000000_enable_rls_core_tables.sql`
-- `webapp/src/actions/accounts.ts`
-- `webapp/src/actions/budgets.ts`
-- `webapp/src/actions/categories.ts`
-- `webapp/src/actions/categorize.ts`
-- `webapp/src/actions/recurring-templates.ts`
-- `webapp/src/actions/statement-snapshots.ts`
-- `webapp/src/actions/transactions.ts`
+- `mobile/app/capture.tsx`
+- `mobile/components/common/KeyboardScreen.tsx`
+- `supabase/migrations/20260227000001_add_updated_at_to_statement_snapshots.sql`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

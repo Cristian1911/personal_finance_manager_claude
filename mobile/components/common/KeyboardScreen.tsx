@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import {
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -21,9 +20,8 @@ export function KeyboardScreen({
   footer?: ReactNode;
 }) {
   return (
-    <KeyboardAvoidingView
+    <View
       className="flex-1 bg-gray-100"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-4 pb-2 pt-4">
         <Pressable
@@ -48,6 +46,6 @@ export function KeyboardScreen({
       {footer ? (
         <View className="border-t border-gray-200 bg-white p-4">{footer}</View>
       ) : null}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
