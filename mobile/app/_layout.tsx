@@ -23,6 +23,8 @@ import "react-native-reanimated";
 import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
+import { BugReportProvider } from "../lib/bugReportMode";
+import { BugFAB } from "../components/BugFAB";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -62,7 +64,9 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <BugReportProvider>
+        <RootLayoutNav />
+      </BugReportProvider>
     </AuthProvider>
   );
 }
@@ -209,6 +213,7 @@ function RootLayoutNav() {
             }}
           />
         </Stack>
+        <BugFAB />
         {isLoading && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#047857" />
