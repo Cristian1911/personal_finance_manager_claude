@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T04:51:21.018127+00:00",
+  "generated_at_utc": "2026-02-28T04:51:21.278387+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration",
   "technologies": [
     "Next.js",
@@ -9,9 +9,9 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 349,
+    "text_files_scanned": 350,
     "languages": {
-      "TypeScript/React": 153,
+      "TypeScript/React": 154,
       "TypeScript": 91,
       "SQL": 25,
       "Markdown": 24,
@@ -26,7 +26,7 @@
   },
   "top_level_directories": {
     "webapp": 175,
-    "mobile": 73,
+    "mobile": 74,
     "supabase": 26,
     "services": 21,
     "packages": 17,
@@ -254,6 +254,6 @@
     }
   ],
   "recent_changes": [
-    "mobile/lib/bugReportMode.tsx"
+    "mobile/components/BugFAB.tsx"
   ]
 }
