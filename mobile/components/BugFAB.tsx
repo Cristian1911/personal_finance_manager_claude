@@ -9,15 +9,16 @@ import { useBugReport } from "../lib/bugReportMode";
 export function BugFAB() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { isBugMode, toggleBugMode, captureScreen } = useBugReport();
+  const { isBugMode, toggleBugMode, captureScreen, setPendingScreenshotUri } = useBugReport();
   const [capturing, setCapturing] = useState(false);
 
   async function handleCapture() {
     setCapturing(true);
     try {
       const uri = await captureScreen();
+      setPendingScreenshotUri(uri);
       toggleBugMode();
-      router.push(`/bug-report?screenshotUri=${encodeURIComponent(uri)}` as never);
+      router.push("/bug-report" as never);
     } catch (err) {
       Alert.alert("Error", "No se pudo capturar la pantalla.");
     } finally {

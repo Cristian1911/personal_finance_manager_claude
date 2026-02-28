@@ -6,14 +6,17 @@ type BugReportContextValue = {
   isBugMode: boolean;
   toggleBugMode: () => void;
   captureScreen: () => Promise<string>;
-  viewShotRef: React.RefObject<ViewShot | null>;
+  pendingScreenshotUri: string | null;
+  setPendingScreenshotUri: (uri: string | null) => void;
 };
 
 const BugReportContext = createContext<BugReportContextValue | null>(null);
 
+const viewShotRef = { current: null as ViewShot | null };
+
 export function BugReportProvider({ children }: { children: ReactNode }) {
   const [isBugMode, setIsBugMode] = useState(false);
-  const viewShotRef = useRef<ViewShot>(null);
+  const [pendingScreenshotUri, setPendingScreenshotUri] = useState<string | null>(null);
 
   function toggleBugMode() {
     setIsBugMode((prev) => !prev);
@@ -26,15 +29,23 @@ export function BugReportProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <BugReportContext.Provider value={{ isBugMode, toggleBugMode, captureScreen, viewShotRef }}>
-      <ViewShot
-        ref={viewShotRef}
-        options={{ format: "jpg", quality: 0.85 }}
-        style={{ flex: 1 }}
-      >
-        {children}
-      </ViewShot>
+    <BugReportContext.Provider
+      value={{ isBugMode, toggleBugMode, captureScreen, pendingScreenshotUri, setPendingScreenshotUri }}
+    >
+      {children}
     </BugReportContext.Provider>
+  );
+}
+
+export function BugReportViewShot({ children }: { children: ReactNode }) {
+  return (
+    <ViewShot
+      ref={(ref) => { viewShotRef.current = ref; }}
+      options={{ format: "jpg", quality: 0.85 }}
+      style={{ flex: 1 }}
+    >
+      {children}
+    </ViewShot>
   );
 }
 

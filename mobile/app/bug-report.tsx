@@ -9,13 +9,14 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import * as DocumentPicker from "expo-document-picker";
 import { Paperclip, Send } from "lucide-react-native";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { KeyboardScreen } from "../components/common/KeyboardScreen";
+import { useBugReport } from "../lib/bugReportMode";
 
 const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
@@ -58,8 +59,7 @@ function resolveAttachmentMimeType(
 export default function BugReportScreen() {
   const router = useRouter();
   const { session } = useAuth();
-  const { screenshotUri } = useLocalSearchParams<{ screenshotUri?: string }>();
-  const decodedScreenshotUri = screenshotUri ? decodeURIComponent(screenshotUri) : null;
+  const { pendingScreenshotUri, setPendingScreenshotUri } = useBugReport();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -136,9 +136,9 @@ export default function BugReportScreen() {
 
       // If a screenshot was captured via bug mode, treat it as the attachment
       const screenshotAsset: DocumentPicker.DocumentPickerAsset | null =
-        decodedScreenshotUri
+        pendingScreenshotUri
           ? {
-              uri: decodedScreenshotUri,
+              uri: pendingScreenshotUri,
               name: `screenshot-${Date.now()}.jpg`,
               mimeType: "image/jpeg",
               lastModified: Date.now(),
@@ -173,6 +173,9 @@ export default function BugReportScreen() {
         const fileBytes = await fileResponse.arrayBuffer();
         if (fileBytes.byteLength === 0) {
           throw new Error("El archivo adjunto está vacío.");
+        }
+        if (fileBytes.byteLength > MAX_ATTACHMENT_SIZE_BYTES) {
+          throw new Error("La captura supera el límite de 10MB.");
         }
 
         const { error: uploadError } = await supabase.storage
@@ -219,6 +222,7 @@ export default function BugReportScreen() {
         "Reporte enviado",
         `Ticket ${data?.id ?? "creado"}. Ya puedes trabajarlo desde tu workspace.`
       );
+      setPendingScreenshotUri(null);
       router.back();
     } catch (err) {
       console.error("Bug report submit error:", err);
@@ -306,10 +310,10 @@ export default function BugReportScreen() {
             className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
           />
 
-          {decodedScreenshotUri ? (
+          {pendingScreenshotUri ? (
             <View className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
               <Image
-                source={{ uri: decodedScreenshotUri }}
+                source={{ uri: pendingScreenshotUri }}
                 style={{ width: "100%", aspectRatio: 9 / 16 }}
                 resizeMode="cover"
               />
@@ -336,7 +340,7 @@ export default function BugReportScreen() {
             </Pressable>
           )}
 
-          {!decodedScreenshotUri && attachment && (
+          {!pendingScreenshotUri && attachment && (
             <View className="mt-2 rounded-lg bg-sky-50 border border-sky-200 px-3 py-2">
               <Text className="text-sky-700 font-inter text-xs" numberOfLines={2}>
                 Archivo: {attachment.name}

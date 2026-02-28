@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:52:30.645464+00:00`
+- Generated (UTC): `2026-02-28T04:55:32.052990+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration`
 
 ## Stack Snapshot
@@ -130,7 +130,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `supabase/functions/notify-bug-report/index.ts`
+- `mobile/app/_layout.tsx`
+- `mobile/app/bug-report.tsx`
+- `mobile/components/BugFAB.tsx`
+- `mobile/lib/bugReportMode.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
