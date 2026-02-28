@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:20:23.878440+00:00`
+- Generated (UTC): `2026-02-28T04:23:28.593427+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -132,9 +132,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `.github/workflows/mobile-ios.yml`
-- `mobile/eas.json`
-- `mobile/package.json`
+- `mobile/app/(tabs)/import.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  TextInput,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useState, useCallback } from "react";
@@ -183,6 +184,7 @@ export default function ImportScreen() {
   const { session } = useAuth();
   const [step, setStep] = useState<Step>("pick");
   const [document, setDocument] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [password, setPassword] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedStatement | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -217,6 +219,7 @@ export default function ImportScreen() {
 
       if (!result.canceled && result.assets.length > 0) {
         setDocument(result.assets[0]);
+        setPassword("");
       }
     } catch (error) {
       console.error("Error picking document:", error);
@@ -233,6 +236,9 @@ export default function ImportScreen() {
         name: document.name || "statement.pdf",
         type: "application/pdf",
       } as any);
+      if (password.trim()) {
+        formData.append("password", password.trim());
+      }
 
       const {
         data: { session: currentSession },
@@ -246,7 +252,16 @@ export default function ImportScreen() {
       });
 
       if (!response.ok) {
-        throw new Error(`Parse failed: ${response.status}`);
+        const payload = await response
+          .json()
+          .catch(() => ({ error: `Parse failed: ${response.status}` }));
+        const errorMessage =
+          typeof payload?.error === "string"
+            ? payload.error
+            : typeof payload?.detail === "string"
+              ? payload.detail
+              : `Parse failed: ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -338,7 +353,7 @@ export default function ImportScreen() {
     } finally {
       setParsing(false);
     }
-  }, [document, session]);
+  }, [document, password, session]);
 
   const toggleSelect = useCallback((index: number) => {
     setSelected((prev) => {
@@ -555,6 +570,7 @@ export default function ImportScreen() {
   const resetFlow = useCallback(() => {
     setStep("pick");
     setDocument(null);
+    setPassword("");
     setParsedData(null);
     setSelected(new Set());
     setSelectedAccount(null);
@@ -590,20 +606,40 @@ export default function ImportScreen() {
         </Pressable>
 
         {document && (
-          <View className="bg-white rounded-lg p-4 mt-4 flex-row items-center">
-            <FileText size={20} color="#047857" />
-            <View className="ml-3 flex-1">
-              <Text
-                className="text-gray-900 font-inter-medium text-sm"
-                numberOfLines={1}
-              >
-                {document.name}
-              </Text>
-              {document.size && (
-                <Text className="text-gray-400 font-inter text-xs mt-0.5">
-                  {(document.size / 1024).toFixed(1)} KB
+          <View className="bg-white rounded-lg p-4 mt-4">
+            <View className="flex-row items-center">
+              <FileText size={20} color="#047857" />
+              <View className="ml-3 flex-1">
+                <Text
+                  className="text-gray-900 font-inter-medium text-sm"
+                  numberOfLines={1}
+                >
+                  {document.name}
                 </Text>
-              )}
+                {document.size && (
+                  <Text className="text-gray-400 font-inter text-xs mt-0.5">
+                    {(document.size / 1024).toFixed(1)} KB
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View className="mt-4">
+              <Text className="text-gray-700 font-inter-medium text-sm mb-1.5">
+                Contraseña del PDF
+              </Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Si el extracto está cifrado, ingrésala aquí"
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+              />
+              <Text className="text-gray-400 font-inter text-xs mt-2">
+                Déjalo vacío si el PDF no tiene contraseña.
+              </Text>
             </View>
           </View>
         )}
