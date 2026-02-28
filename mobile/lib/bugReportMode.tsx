@@ -40,7 +40,9 @@ export function BugReportProvider({ children }: { children: ReactNode }) {
 export function BugReportViewShot({ children }: { children: ReactNode }) {
   return (
     <ViewShot
-      ref={(ref) => { viewShotRef.current = ref; }}
+      ref={(ref: ViewShot | null) => {
+        viewShotRef.current = ref;
+      }}
       options={{ format: "jpg", quality: 0.85 }}
       style={{ flex: 1 }}
     >

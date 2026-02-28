@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T04:56:16.851613+00:00",
+  "generated_at_utc": "2026-02-28T05:00:57.452027+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration",
   "technologies": [
     "Next.js",
@@ -9,10 +9,10 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 351,
+    "text_files_scanned": 352,
     "languages": {
       "TypeScript/React": 154,
-      "TypeScript": 92,
+      "TypeScript": 93,
       "SQL": 25,
       "Markdown": 24,
       "Python": 20,
@@ -26,7 +26,7 @@
   },
   "top_level_directories": {
     "webapp": 175,
-    "mobile": 74,
+    "mobile": 75,
     "supabase": 27,
     "services": 21,
     "packages": 17,
@@ -254,8 +254,10 @@
     }
   ],
   "recent_changes": [
-    "webapp/src/components/categorize/category-picker-dialog.tsx",
-    "webapp/src/components/dashboard/purchase-decision-card.tsx",
-    "webapp/src/components/ui/dialog.tsx"
+    "docs/agent/PROJECT_CONTEXT.md",
+    "docs/agent/project_context.json",
+    "mobile/lib/bugReportMode.tsx",
+    "mobile/react-native-view-shot.d.ts",
+    "webapp/src/types/database.ts"
   ]
 }

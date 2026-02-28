@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:56:16.851613+00:00`
+- Generated (UTC): `2026-02-28T05:00:57.452027+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration`
 
 ## Stack Snapshot
@@ -13,9 +13,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 351
+- Text files scanned: 352
 - TypeScript/React: 154
-- TypeScript: 92
+- TypeScript: 93
 - SQL: 25
 - Markdown: 24
 - Python: 20
@@ -28,7 +28,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 
 ## Top-level Areas
 - webapp: 175 files
-- mobile: 74 files
+- mobile: 75 files
 - supabase: 27 files
 - services: 21 files
 - packages: 17 files
@@ -130,9 +130,11 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `webapp/src/components/categorize/category-picker-dialog.tsx`
-- `webapp/src/components/dashboard/purchase-decision-card.tsx`
-- `webapp/src/components/ui/dialog.tsx`
+- `docs/agent/PROJECT_CONTEXT.md`
+- `docs/agent/project_context.json`
+- `mobile/lib/bugReportMode.tsx`
+- `mobile/react-native-view-shot.d.ts`
+- `webapp/src/types/database.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
