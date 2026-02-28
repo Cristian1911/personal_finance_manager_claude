@@ -1,5 +1,20 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getUserSafely } from "@/lib/supabase/auth";
+
+function clearAuthCookies(request: NextRequest, response: NextResponse) {
+  const authCookieNames = request.cookies
+    .getAll()
+    .map((cookie) => cookie.name)
+    .filter((name) => name.startsWith("sb-") && name.includes("-auth-token"));
+
+  for (const name of authCookieNames) {
+    response.cookies.set(name, "", {
+      path: "/",
+      maxAge: 0,
+    });
+  }
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -25,9 +40,10 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUserSafely(supabase);
+  if (!user) {
+    clearAuthCookies(request, supabaseResponse);
+  }
 
   // Protected routes: redirect to login if not authenticated
   const protectedPaths = [

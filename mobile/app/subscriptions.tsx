@@ -2,19 +2,17 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft, Repeat, Trash2 } from "lucide-react-native";
+import { Repeat, Trash2 } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode, type Database } from "@venti5/shared";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
+import { KeyboardScreen } from "../components/common/KeyboardScreen";
 
 const SUBSCRIPTIONS_CATEGORY_ID = "a0000001-0001-4000-8000-000000000009";
 const SUGGESTED_NAMES = [
@@ -322,32 +320,47 @@ export default function SubscriptionsScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-gray-100"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View className="flex-row items-center justify-between px-4 pt-4 pb-2 bg-white border-b border-gray-100">
-        <Pressable
-          onPress={() => router.back()}
-          className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
-        >
-          <ArrowLeft size={18} color="#6B7280" />
-        </Pressable>
-        <Text className="text-gray-900 font-inter-bold text-base">Suscripciones</Text>
-        <View className="w-8" />
-      </View>
+    <KeyboardScreen
+      title="Suscripciones"
+      onBack={() => router.back()}
+      footer={
+        <View className="flex-row gap-2">
+          <Pressable
+            onPress={handleSave}
+            disabled={saving || loading}
+            className={`flex-1 rounded-xl py-3 items-center ${
+              saving || loading
+                ? "bg-primary-light"
+                : "bg-primary active:bg-primary-dark"
+            }`}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text className="text-white font-inter-bold text-sm">
+                {editingId ? "Guardar cambios" : "Agregar suscripción"}
+              </Text>
+            )}
+          </Pressable>
 
+          {editingId ? (
+            <Pressable
+              onPress={resetForm}
+              disabled={saving || loading}
+              className="rounded-xl border border-gray-300 px-4 py-3 items-center justify-center"
+            >
+              <Text className="text-gray-700 font-inter-medium text-sm">Cancelar</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      }
+    >
       {loading ? (
-        <View className="flex-1 items-center justify-center">
+        <View className="flex-1 items-center justify-center py-16">
           <ActivityIndicator size="large" color="#047857" />
         </View>
       ) : (
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-        >
+        <>
           <View className="rounded-xl border border-gray-200 bg-white p-4">
             <Text className="text-gray-900 font-inter-semibold text-base">
               {editingId ? "Editar suscripción" : "Nueva suscripción"}
@@ -466,33 +479,6 @@ export default function SubscriptionsScreen() {
               className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
             />
 
-            <View className="mt-4 flex-row gap-2">
-              <Pressable
-                onPress={handleSave}
-                disabled={saving}
-                className={`flex-1 rounded-xl py-3 items-center ${
-                  saving ? "bg-primary-light" : "bg-primary active:bg-primary-dark"
-                }`}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text className="text-white font-inter-bold text-sm">
-                    {editingId ? "Guardar cambios" : "Agregar suscripción"}
-                  </Text>
-                )}
-              </Pressable>
-
-              {editingId && (
-                <Pressable
-                  onPress={resetForm}
-                  disabled={saving}
-                  className="rounded-xl border border-gray-300 px-4 py-3 items-center justify-center"
-                >
-                  <Text className="text-gray-700 font-inter-medium text-sm">Cancelar</Text>
-                </Pressable>
-              )}
-            </View>
           </View>
 
           <View className="pt-5 pb-2">
@@ -602,9 +588,8 @@ export default function SubscriptionsScreen() {
               })}
             </View>
           )}
-        </ScrollView>
+        </>
       )}
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   );
 }
-

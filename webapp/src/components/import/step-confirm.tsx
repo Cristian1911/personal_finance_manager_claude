@@ -1,38 +1,40 @@
 "use client";
 
-import { useState, useActionState, useMemo, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { autoCategorize } from "@venti5/shared";
+import { previewImportReconciliation } from "@/actions/import-transactions";
 import { Button } from "@/components/ui/button";
 import { ParsedTransactionTable } from "./parsed-transaction-table";
-import { importTransactions } from "@/actions/import-transactions";
 import { formatCurrency } from "@/lib/utils/currency";
-import { autoCategorize } from "@venti5/shared";
 import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
-import type { ActionResult } from "@/types/actions";
 import type {
   ParseResponse,
+  ReconciliationPreviewResult,
   StatementAccountMapping,
-  ImportResult,
-  TransactionToImport,
   StatementMetaForImport,
+  TransactionToImport,
 } from "@/types/import";
 
 export function StepConfirm({
   parseResult,
   mappings,
   categories,
-  onComplete,
+  onContinue,
   onBack,
 }: {
   parseResult: ParseResponse;
   mappings: StatementAccountMapping[];
   categories: CategoryWithChildren[];
-  onComplete: (result: ImportResult) => void;
+  onContinue: (payload: {
+    transactions: TransactionToImport[];
+    statementMeta: StatementMetaForImport[];
+    reconciliationPreview: ReconciliationPreviewResult;
+  }) => void;
   onBack: () => void;
 }) {
-  // Track selected transactions per statement: Map<statementIndex, Set<txIndex>>
   const [selections, setSelections] = useState<Map<number, Set<number>>>(() => {
     const initial = new Map<number, Set<number>>();
     parseResult.statements.forEach((stmt, idx) => {
@@ -40,45 +42,29 @@ export function StepConfirm({
     });
     return initial;
   });
-
-  // Auto-categorize on mount: Map<"stmtIdx-txIdx", categoryId>
-  const [categoryOverrides, setCategoryOverrides] = useState<
-    Map<string, string | null>
-  >(() => {
+  const [categoryOverrides, setCategoryOverrides] = useState<Map<string, string | null>>(() => {
     const map = new Map<string, string | null>();
     parseResult.statements.forEach((stmt, stmtIdx) => {
       stmt.transactions.forEach((tx, txIdx) => {
         const result = autoCategorize(tx.description);
-        if (result) {
-          map.set(`${stmtIdx}-${txIdx}`, result.category_id);
-        }
+        if (result) map.set(`${stmtIdx}-${txIdx}`, result.category_id);
       });
     });
     return map;
   });
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
-  // Count how many were auto-categorized
-  const autoCategorizedCount = useMemo(
-    () => categoryOverrides.size,
-    [categoryOverrides]
-  );
+  const autoCategorizedCount = useMemo(() => categoryOverrides.size, [categoryOverrides]);
 
   function getCategoryForTx(stmtIdx: number, txIdx: number): string | null {
     return categoryOverrides.get(`${stmtIdx}-${txIdx}`) ?? null;
   }
 
-  function setCategoryForTx(
-    stmtIdx: number,
-    txIdx: number,
-    categoryId: string | null
-  ) {
+  function setCategoryForTx(stmtIdx: number, txIdx: number, categoryId: string | null) {
     setCategoryOverrides((prev) => {
       const next = new Map(prev);
-      if (categoryId) {
-        next.set(`${stmtIdx}-${txIdx}`, categoryId);
-      } else {
-        next.delete(`${stmtIdx}-${txIdx}`);
-      }
+      if (categoryId) next.set(`${stmtIdx}-${txIdx}`, categoryId);
+      else next.delete(`${stmtIdx}-${txIdx}`);
       return next;
     });
   }
@@ -87,11 +73,8 @@ export function StepConfirm({
     setSelections((prev) => {
       const next = new Map(prev);
       const set = new Set(next.get(stmtIdx) ?? []);
-      if (set.has(txIdx)) {
-        set.delete(txIdx);
-      } else {
-        set.add(txIdx);
-      }
+      if (set.has(txIdx)) set.delete(txIdx);
+      else set.add(txIdx);
       next.set(stmtIdx, set);
       return next;
     });
@@ -102,11 +85,8 @@ export function StepConfirm({
       const next = new Map(prev);
       const current = next.get(stmtIdx) ?? new Set();
       const total = parseResult.statements[stmtIdx].transactions.length;
-      if (current.size === total) {
-        next.set(stmtIdx, new Set());
-      } else {
-        next.set(stmtIdx, new Set(Array.from({ length: total }, (_, i) => i)));
-      }
+      if (current.size === total) next.set(stmtIdx, new Set());
+      else next.set(stmtIdx, new Set(Array.from({ length: total }, (_, i) => i)));
       return next;
     });
   }
@@ -125,9 +105,7 @@ export function StepConfirm({
     return { count, byCurrency };
   }
 
-  const totals = buildTotals();
-
-  async function buildPayload(): Promise<TransactionToImport[]> {
+  async function buildTransactions(): Promise<TransactionToImport[]> {
     const txs: TransactionToImport[] = [];
     for (const [stmtIdx, stmt] of parseResult.statements.entries()) {
       const mapping = mappings.find((m) => m.statementIndex === stmtIdx);
@@ -149,6 +127,7 @@ export function StepConfirm({
         }
 
         txs.push({
+          import_key: `${stmtIdx}:${txIdx}`,
           account_id: mapping.accountId,
           amount: tx.amount,
           currency_code: stmt.currency,
@@ -171,20 +150,6 @@ export function StepConfirm({
     return txs;
   }
 
-  // Pre-compute serialized payload whenever selections or categories change
-  const [serializedPayload, setSerializedPayload] = useState("");
-  useEffect(() => {
-    buildPayload().then((txs) => {
-      setSerializedPayload(
-        JSON.stringify({
-          transactions: txs,
-          statementMeta: buildStatementMeta(),
-        })
-      );
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selections, categoryOverrides, mappings]);
-
   function buildStatementMeta(): StatementMetaForImport[] {
     return parseResult.statements
       .map((stmt, stmtIdx) => {
@@ -202,35 +167,55 @@ export function StepConfirm({
           transactionCount: stmt.transactions.length,
         };
       })
-      .filter((m): m is StatementMetaForImport => m !== null);
+      .filter((value): value is StatementMetaForImport => value !== null);
   }
 
-  const [state, formAction, pending] = useActionState<
-    ActionResult<ImportResult>,
-    FormData
-  >(
-    async (prevState, formData) => {
-      const result = await importTransactions(prevState, formData);
-      if (result.success) {
-        onComplete(result.data);
-      }
-      return result;
-    },
-    { success: false, error: "" }
-  );
+  async function handleContinue() {
+    setLoadingPreview(true);
+    try {
+      const transactions = await buildTransactions();
+      const preview = await previewImportReconciliation(
+        transactions.map((item) => {
+          const [statementIndex, transactionIndex] = (item.import_key ?? "0:0")
+            .split(":")
+            .map(Number);
+          return {
+            statementIndex,
+            transactionIndex,
+            importedTransaction: item,
+          };
+        })
+      );
+      await trackClientEvent({
+        event_name: "reconciliation_started",
+        flow: "import",
+        step: "reconciliation_preview",
+        entry_point: "cta",
+        success: true,
+        metadata: {
+          matches_auto: preview.autoMerge.length,
+          matches_review: preview.review.length,
+          matches_rejected: 0,
+        },
+      });
+      onContinue({
+        transactions,
+        statementMeta: buildStatementMeta(),
+        reconciliationPreview: preview,
+      });
+    } finally {
+      setLoadingPreview(false);
+    }
+  }
+
+  const totals = buildTotals();
 
   return (
     <div className="space-y-6">
-      {!state.success && state.error && (
-        <div className="bg-destructive/10 text-destructive text-sm rounded-md p-3">
-          {state.error}
-        </div>
-      )}
-
       {autoCategorizedCount > 0 && (
-        <div className="bg-blue-500/10 text-blue-700 text-sm rounded-md p-3">
+        <div className="rounded-md bg-blue-500/10 p-3 text-sm text-blue-700">
           Se categorizaron automáticamente {autoCategorizedCount} transacciones.
-          Puedes cambiar la categoría en la columna &quot;Categoría&quot;.
+          Puedes cambiarlas antes de reconciliar e importar.
         </div>
       )}
 
@@ -243,7 +228,7 @@ export function StepConfirm({
             <h3 className="text-sm font-medium">
               {stmt.bank} — {stmt.currency}
               {mapping && stmt.transactions.length > 0 && (
-                <span className="text-muted-foreground font-normal ml-2">
+                <span className="ml-2 font-normal text-muted-foreground">
                   ({sel.size} de {stmt.transactions.length} seleccionadas)
                 </span>
               )}
@@ -258,75 +243,47 @@ export function StepConfirm({
                 categories={categories}
                 categoryMap={categoryOverrides}
                 stmtIdx={stmtIdx}
-                onCategoryChange={(txIdx, catId) =>
-                  setCategoryForTx(stmtIdx, txIdx, catId)
-                }
+                onCategoryChange={(txIdx, catId) => setCategoryForTx(stmtIdx, txIdx, catId)}
               />
             ) : (
               <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
-                Este extracto no contiene transacciones. Se importarán solo los metadatos de la cuenta (saldo, tasa de interés, etc.)
+                Este extracto no contiene transacciones. Se importarán solo metadatos de la cuenta.
               </div>
             )}
           </div>
         );
       })}
 
-      {/* Summary bar */}
       <div className="flex items-center justify-between rounded-md border bg-muted/50 p-3 text-sm">
         <span>
           <strong>{totals.count}</strong> transacciones seleccionadas
         </span>
         <div className="flex gap-3">
           {Object.entries(totals.byCurrency).map(([cur, amount]) => (
-            <span key={cur} className="font-medium">
+            <span key={cur} className="text-muted-foreground">
               {formatCurrency(amount, cur as CurrencyCode)}
             </span>
           ))}
         </div>
       </div>
 
-      <form
-        action={formAction}
-        onSubmit={() => {
-          void trackClientEvent({
-            event_name: "import_confirm_submitted",
-            flow: "import",
-            step: "confirm",
-            entry_point: "cta",
-            success: true,
-            metadata: {
-              selected_transactions: totals.count,
-              statement_meta_count: buildStatementMeta().length,
-            },
-          });
-        }}
-      >
-        <input
-          type="hidden"
-          name="payload"
-          value={serializedPayload}
-        />
-        <div className="flex items-center gap-3">
-          <Button variant="outline" type="button" onClick={onBack}>
-            Volver
-          </Button>
-          <Button
-            type="submit"
-            disabled={pending || (totals.count === 0 && buildStatementMeta().length === 0)}
-          >
-            {pending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Importando...
-              </>
-            ) : totals.count > 0 ? (
-              `Importar ${totals.count} transacciones`
-            ) : (
-              "Importar metadatos"
-            )}
-          </Button>
-        </div>
-      </form>
+      <div className="flex items-center gap-3">
+        <Button type="button" variant="outline" onClick={onBack}>
+          Volver
+        </Button>
+        <Button type="button" onClick={handleContinue} disabled={loadingPreview}>
+          {loadingPreview ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Analizando duplicados...
+            </>
+          ) : totals.count > 0 ? (
+            "Continuar a reconciliación"
+          ) : (
+            "Importar solo metadatos"
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

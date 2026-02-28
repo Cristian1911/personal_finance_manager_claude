@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getUserSafely } from "@/lib/supabase/auth";
 import { extractPattern } from "@venti5/shared";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithRelations } from "@/types/domain";
 import type { UserRule } from "@venti5/shared";
@@ -14,18 +16,18 @@ export async function getUncategorizedTransactions(): Promise<
   TransactionWithRelations[]
 > {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUserSafely(supabase);
   if (!user) return [];
 
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)")
-    .is("category_id", null)
-    .eq("is_excluded", false)
-    .order("transaction_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  const { data, error } = await executeVisibleTransactionQuery(() =>
+    supabase
+      .from("transactions")
+      .select("*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)")
+      .is("category_id", null)
+      .eq("is_excluded", false)
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false })
+  );
 
   if (error) {
     console.error("Error fetching uncategorized transactions:", error);
@@ -40,19 +42,21 @@ export async function getUncategorizedTransactions(): Promise<
  */
 export async function getUncategorizedCount(): Promise<number> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUserSafely(supabase);
   if (!user) return 0;
 
-  const { count, error } = await supabase
-    .from("transactions")
-    .select("id", { count: "exact", head: true })
-    .is("category_id", null)
-    .eq("is_excluded", false);
+  const { count, error } = await executeVisibleTransactionQuery(() =>
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .is("category_id", null)
+      .eq("is_excluded", false)
+  );
 
   if (error) {
-    console.error("Error counting uncategorized:", error);
+    if (error.message) {
+      console.warn("Error counting uncategorized:", error.message);
+    }
     return 0;
   }
 

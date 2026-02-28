@@ -17,6 +17,7 @@ export type ConnectionStatus = Enums<"connection_status">;
 export type CategorizationSource = Enums<"categorization_source">;
 export type TransactionStatus = Enums<"transaction_status">;
 export type DataProvider = Enums<"data_provider">;
+export type TransactionCaptureMethod = Enums<"transaction_capture_method">;
 export type RecurrenceFrequency = Enums<"recurrence_frequency">;
 
 // Category with children for tree views

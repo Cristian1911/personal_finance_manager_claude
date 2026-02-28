@@ -710,6 +710,8 @@ export type Database = {
           account_id: string
           amount: number
           amount_in_base_currency: number | null
+          capture_input_text: string | null
+          capture_method: Database["public"]["Enums"]["transaction_capture_method"]
           categorization_confidence: number | null
           categorization_source: Database["public"]["Enums"]["categorization_source"]
           category_id: string | null
@@ -731,6 +733,8 @@ export type Database = {
           merchant_name: string | null
           notes: string | null
           posting_date: string | null
+          reconciled_into_transaction_id: string | null
+          reconciliation_score: number | null
           provider: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id: string | null
           raw_description: string | null
@@ -746,6 +750,8 @@ export type Database = {
           account_id: string
           amount: number
           amount_in_base_currency?: number | null
+          capture_input_text?: string | null
+          capture_method?: Database["public"]["Enums"]["transaction_capture_method"]
           categorization_confidence?: number | null
           categorization_source?: Database["public"]["Enums"]["categorization_source"]
           category_id?: string | null
@@ -767,6 +773,8 @@ export type Database = {
           merchant_name?: string | null
           notes?: string | null
           posting_date?: string | null
+          reconciled_into_transaction_id?: string | null
+          reconciliation_score?: number | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id?: string | null
           raw_description?: string | null
@@ -782,6 +790,8 @@ export type Database = {
           account_id?: string
           amount?: number
           amount_in_base_currency?: number | null
+          capture_input_text?: string | null
+          capture_method?: Database["public"]["Enums"]["transaction_capture_method"]
           categorization_confidence?: number | null
           categorization_source?: Database["public"]["Enums"]["categorization_source"]
           category_id?: string | null
@@ -803,6 +813,8 @@ export type Database = {
           merchant_name?: string | null
           notes?: string | null
           posting_date?: string | null
+          reconciled_into_transaction_id?: string | null
+          reconciliation_score?: number | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id?: string | null
           raw_description?: string | null
@@ -884,6 +896,12 @@ export type Database = {
         | "PLAID"
         | "CSV_IMPORT"
         | "OCR"
+      transaction_capture_method:
+        | "MANUAL_FORM"
+        | "TEXT_QUICK_CAPTURE"
+        | "PDF_IMPORT"
+        | "OCR_BATCH"
+        | "OCR_SINGLE"
       recurrence_frequency:
         | "WEEKLY"
         | "BIWEEKLY"

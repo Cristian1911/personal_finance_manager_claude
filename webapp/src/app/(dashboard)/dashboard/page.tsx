@@ -35,12 +35,14 @@ import {
   getNetWorthHistory,
 } from "@/actions/charts";
 import { getBudgetSummary } from "@/actions/budgets";
+import { getCategories } from "@/actions/categories";
 import { CategorySpendingChart } from "@/components/charts/category-spending-chart";
 import { MonthlyCashflowChart } from "@/components/charts/monthly-cashflow-chart";
 import { DailySpendingChart } from "@/components/charts/daily-spending-chart";
 import { EnhancedCashflowChart } from "@/components/charts/enhanced-cashflow-chart";
 import { NetWorthHistoryChart } from "@/components/charts/net-worth-history-chart";
 import { InteractiveMetricCard } from "@/components/dashboard/interactive-metric-card";
+import { PurchaseDecisionCard } from "@/components/dashboard/purchase-decision-card";
 import { MonthSelector } from "@/components/month-selector";
 import { UpcomingRecurringCard } from "@/components/recurring/upcoming-recurring-card";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
@@ -48,6 +50,19 @@ import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-card";
 import { computeDebtBalance } from "@venti5/shared";
 import { trackProductEvent } from "@/actions/product-events";
+import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
+import { getUserSafely } from "@/lib/supabase/auth";
+
+type DashboardTransactionRow = {
+  id: string;
+  amount: number;
+  direction: "INFLOW" | "OUTFLOW";
+  account_id: string;
+  merchant_name?: string | null;
+  clean_description?: string | null;
+  transaction_date?: string;
+  currency_code?: string;
+};
 
 export default async function DashboardPage({
   searchParams,
@@ -60,9 +75,7 @@ export default async function DashboardPage({
   const monthLabel = formatMonthLabel(target);
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUserSafely(supabase);
 
   if (!user) return null;
 
@@ -74,27 +87,37 @@ export default async function DashboardPage({
     .order("display_order");
 
   // Fetch recent transactions (exclude excluded ones)
-  const { data: recentTransactions } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("is_excluded", false)
-    .order("transaction_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const { data: recentTransactions } = await executeVisibleTransactionQuery(() =>
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("is_excluded", false)
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(5)
+  );
 
-  const { count: uncategorizedCount } = await supabase
-    .from("transactions")
-    .select("id", { count: "exact", head: true })
-    .is("category_id", null)
-    .eq("is_excluded", false);
+  const { count: uncategorizedCount, error: uncategorizedError } =
+    await executeVisibleTransactionQuery(() =>
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .is("category_id", null)
+      .eq("is_excluded", false)
+  );
+  if (uncategorizedError?.message) {
+    console.warn("Dashboard uncategorized count unavailable:", uncategorizedError.message);
+  }
 
   // Fetch selected month's transactions for summary (exclude excluded ones)
-  const { data: monthTransactions } = await supabase
-    .from("transactions")
-    .select("amount, direction, account_id")
-    .eq("is_excluded", false)
-    .gte("transaction_date", monthStartStr(target))
-    .lte("transaction_date", monthEndStr(target));
+  const { data: monthTransactions } = await executeVisibleTransactionQuery(() =>
+    supabase
+      .from("transactions")
+      .select("amount, direction, account_id")
+      .eq("is_excluded", false)
+      .gte("transaction_date", monthStartStr(target))
+      .lte("transaction_date", monthEndStr(target))
+  );
 
   // Fetch previous month param for trend calculation
   const prevMonthParam = formatMonthParam(subMonths(target, 1));
@@ -110,6 +133,7 @@ export default async function DashboardPage({
     upcomingPayments,
     netWorthData,
     budgetData,
+    outflowCategories,
   ] = await Promise.all([
     getCategorySpending(month),
     getMonthlyCashflow(month),
@@ -120,11 +144,13 @@ export default async function DashboardPage({
     getUpcomingPayments(),
     getNetWorthHistory(month),
     getBudgetSummary(month),
+    getCategories("OUTFLOW"),
   ]);
 
   const allAccounts = accounts ?? [];
-  const monthTx = monthTransactions ?? [];
-  const starterMode = allAccounts.length > 0 && (recentTransactions?.length ?? 0) === 0;
+  const monthTx = (monthTransactions ?? []) as DashboardTransactionRow[];
+  const recentTx = (recentTransactions ?? []) as DashboardTransactionRow[];
+  const starterMode = allAccounts.length > 0 && recentTx.length === 0;
 
   // Calculate metrics
   const assetAccounts = allAccounts.filter(
@@ -213,7 +239,7 @@ export default async function DashboardPage({
     },
   });
 
-  if (!starterMode && (recentTransactions?.length ?? 0) > 0) {
+  if (!starterMode && recentTx.length > 0) {
     await trackProductEvent({
       event_name: "first_financial_insight_rendered",
       flow: "dashboard",
@@ -221,7 +247,7 @@ export default async function DashboardPage({
       entry_point: "direct",
       success: true,
       metadata: {
-        recent_transactions_count: recentTransactions?.length ?? 0,
+        recent_transactions_count: recentTx.length,
         accounts_count: allAccounts.length,
       },
     });
@@ -444,6 +470,12 @@ export default async function DashboardPage({
         </Card>
       </div>
 
+      <PurchaseDecisionCard
+        accounts={allAccounts}
+        categories={outflowCategories.success ? outflowCategories.data ?? [] : []}
+        defaultMonth={month ?? formatMonthParam(target)}
+      />
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Plan de acción</CardTitle>
@@ -620,7 +652,7 @@ export default async function DashboardPage({
               </p>
             ) : (
               <div className="space-y-3">
-                {recentTransactions.map((tx) => (
+                {recentTx.map((tx) => (
                   <Link
                     key={tx.id}
                     href={`/transactions/${tx.id}`}
@@ -639,7 +671,7 @@ export default async function DashboardPage({
                             "Sin descripción"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(tx.transaction_date)}
+                          {tx.transaction_date ? formatDate(tx.transaction_date) : "Sin fecha"}
                         </p>
                       </div>
                     </div>
@@ -647,7 +679,7 @@ export default async function DashboardPage({
                       className={`text-sm font-medium ${tx.direction === "INFLOW" ? "text-green-600" : ""}`}
                     >
                       {tx.direction === "INFLOW" ? "+" : "-"}
-                      {formatCurrency(tx.amount, tx.currency_code)}
+                      {formatCurrency(tx.amount, tx.currency_code as Parameters<typeof formatCurrency>[1])}
                     </span>
                   </Link>
                 ))}

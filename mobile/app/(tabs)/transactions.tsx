@@ -6,6 +6,7 @@ import { formatDate } from "@venti5/shared";
 import { SearchBar } from "../../components/transactions/SearchBar";
 import { TransactionRow } from "../../components/transactions/TransactionRow";
 import { MonthSelector } from "../../components/common/MonthSelector";
+import { FloatingCaptureButton } from "../../components/common/FloatingCaptureButton";
 
 type TransactionItem = {
   id: string;
@@ -174,6 +175,7 @@ export default function TransactionsScreen() {
           stickySectionHeadersEnabled={false}
         />
       )}
+      <FloatingCaptureButton />
     </View>
   );
 }

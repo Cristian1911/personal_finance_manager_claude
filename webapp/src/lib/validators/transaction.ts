@@ -19,10 +19,19 @@ export const transactionSchema = z.object({
     uuidStr().optional().nullable()
   ),
   notes: z.string().optional(),
+  capture_input_text: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
+
+export const quickCapturePreviewSchema = transactionSchema.extend({
+  raw_description: z.string().min(1, "La captura original es requerida"),
+  merchant_name: z.string().min(1, "La descripción es requerida"),
+  capture_input_text: z.string().min(1, "La frase original es requerida"),
+});
+
+export type QuickCapturePreviewFormData = z.infer<typeof quickCapturePreviewSchema>;
 
 export const transactionFiltersSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
