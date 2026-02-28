@@ -10,4 +10,5 @@ export * from "./utils/recurrence";
 export * from "./utils/reconciliation";
 export * from "./utils/debt";
 export * from "./utils/debt-simulator";
+export * from "./utils/purchase-decision";
 export * from "./utils/snapshot-diff";

@@ -35,12 +35,14 @@ import {
   getNetWorthHistory,
 } from "@/actions/charts";
 import { getBudgetSummary } from "@/actions/budgets";
+import { getCategories } from "@/actions/categories";
 import { CategorySpendingChart } from "@/components/charts/category-spending-chart";
 import { MonthlyCashflowChart } from "@/components/charts/monthly-cashflow-chart";
 import { DailySpendingChart } from "@/components/charts/daily-spending-chart";
 import { EnhancedCashflowChart } from "@/components/charts/enhanced-cashflow-chart";
 import { NetWorthHistoryChart } from "@/components/charts/net-worth-history-chart";
 import { InteractiveMetricCard } from "@/components/dashboard/interactive-metric-card";
+import { PurchaseDecisionCard } from "@/components/dashboard/purchase-decision-card";
 import { MonthSelector } from "@/components/month-selector";
 import { UpcomingRecurringCard } from "@/components/recurring/upcoming-recurring-card";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
@@ -131,6 +133,7 @@ export default async function DashboardPage({
     upcomingPayments,
     netWorthData,
     budgetData,
+    outflowCategories,
   ] = await Promise.all([
     getCategorySpending(month),
     getMonthlyCashflow(month),
@@ -141,6 +144,7 @@ export default async function DashboardPage({
     getUpcomingPayments(),
     getNetWorthHistory(month),
     getBudgetSummary(month),
+    getCategories("OUTFLOW"),
   ]);
 
   const allAccounts = accounts ?? [];
@@ -465,6 +469,12 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       </div>
+
+      <PurchaseDecisionCard
+        accounts={allAccounts}
+        categories={outflowCategories.success ? outflowCategories.data ?? [] : []}
+        defaultMonth={month ?? formatMonthParam(target)}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

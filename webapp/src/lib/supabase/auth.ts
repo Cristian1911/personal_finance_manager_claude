@@ -21,7 +21,14 @@ export function isIgnorableAuthError(
 ): error is { code?: string; message?: string; status?: number } {
   if (!error || typeof error !== "object") return false;
   const candidate = error as { code?: string; message?: string; status?: number };
-  return !!candidate.code && IGNORABLE_AUTH_ERROR_CODES.has(candidate.code);
+  const message = candidate.message?.toLowerCase() ?? "";
+  return (
+    (!!candidate.code && IGNORABLE_AUTH_ERROR_CODES.has(candidate.code)) ||
+    message.includes("auth session missing") ||
+    message.includes("refresh token not found") ||
+    message.includes("invalid refresh token") ||
+    message.includes("session not found")
+  );
 }
 
 export async function getUserSafely(

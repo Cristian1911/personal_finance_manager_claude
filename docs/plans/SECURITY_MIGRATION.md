@@ -142,47 +142,47 @@ as long as it stays internal-only and the `PARSER_API_KEY` secret is set.
 ### P0.5 — Rotate ANON_KEY and migrate to Supabase publishable key
 **Manual action first — do before any code changes.**
 
+> ✅ `.gitignore` already covers `.env*` and `*/.env*` as of recent changes — skip that step.
+
+**Step 1 — Supabase dashboard**
 1. Check if the key was ever committed to git:
    ```bash
-   git -C /path/to/repo log --all -S "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" --oneline
+   git log --all -S "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" --oneline
    ```
+2. Rotate legacy anon key: Dashboard → Settings → API → Rotate anon key.
+3. Generate new keys: Dashboard → API Keys → New publishable key + New secret key.
 
-2. Rotate in Supabase Dashboard → Project Settings → API Keys → Rotate anon key.
+**Step 2 — GitHub Secrets** (Settings → Secrets → Actions):
+- Add `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (new publishable key value)
+- Add `SUPABASE_SECRET_KEY` (new secret key value)
+- Keep `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` alive until deploy verified, then delete
 
-3. Generate new keys: Dashboard → API Keys → Create publishable key + Create secret key.
-
-4. Update GitHub Secrets (Settings → Secrets → Actions):
-   - Add `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (new)
-   - Add `SUPABASE_SECRET_KEY` (new)
-   - Keep old ones until migration is verified, then delete
-
-5. Add `mobile/.env` to `.gitignore`:
-   ```
-   # mobile/.gitignore
-   .env
-   .env.local
-   ```
-
-**Files to update after key rotation:**
+**Step 3 — Code changes** (all files, updated to reflect recent additions):
 
 | File | Change |
 |------|--------|
-| `webapp/src/lib/supabase/client.ts` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
-| `webapp/src/lib/supabase/server.ts` | same |
-| `webapp/src/lib/supabase/middleware.ts` | same |
-| `mobile/lib/supabase.ts:69` | same |
-| `mobile/.env` | update value, do not commit |
+| `webapp/src/lib/supabase/client.ts:7` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
+| `webapp/src/lib/supabase/server.ts:10` | same |
+| `webapp/src/lib/supabase/middleware.ts:24` | same |
+| `webapp/src/lib/supabase/admin.ts:6` | `SUPABASE_SERVICE_ROLE_KEY ?? SUPABASE_SERVICE_ROLE` → `SUPABASE_SECRET_KEY` (drop the dual fallback) |
+| `mobile/lib/supabase.ts:71` | `EXPO_PUBLIC_SUPABASE_ANON_KEY` → `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
+| `mobile/.env` | update key value locally — do not commit |
 | `services/pdf_parser/storage.py:15` | `SUPABASE_SERVICE_ROLE_KEY` → `SUPABASE_SECRET_KEY` |
-| `docker-compose.yml` | add `PDF_PARSER_API_KEY`, fix env var names |
-| `docker-compose.prod.yml` | same |
-| `.github/workflows/deploy.yml` | add `PDF_PARSER_API_KEY` to secrets and env-vars block |
+| `docker-compose.yml:7,15` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
+| `docker-compose.prod.yml:15` | same |
+| `.github/workflows/deploy.yml:115,116,185,186` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
+| `.github/workflows/deploy.yml:189` | `SUPABASE_SERVICE_ROLE_KEY` → `SUPABASE_SECRET_KEY` |
+| `.github/workflows/pr-build-images.yml:76,77` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
+| `.github/workflows/mobile-apk.yml:112–116,133,134` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; `EXPO_PUBLIC_SUPABASE_ANON_KEY` → `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
 
-**Note:** Verify `@supabase/supabase-js` version supports new key format before switching:
+**Step 4 — Verify SDK before merging:**
 ```bash
 grep '"@supabase/supabase-js"' webapp/package.json mobile/package.json
 ```
-New publishable keys require SDK >= 2.x with gateway-verified key support.
-The new keys do not use `Authorization: Bearer` — the SDK handles this transparently.
+New publishable keys require SDK >= 2.x. The SDK handles the key format difference
+transparently — no `Authorization: Bearer` changes needed in app code.
+
+**Step 5 — After successful deploy:** delete `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` from GitHub Secrets.
 
 ---
 
