@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T04:44:44.222869+00:00",
+  "generated_at_utc": "2026-02-28T04:46:27.730041+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration",
   "technologies": [
     "Next.js",
@@ -254,8 +254,6 @@
     }
   ],
   "recent_changes": [
-    "mobile/app/capture.tsx",
-    "mobile/components/common/KeyboardScreen.tsx",
-    "supabase/migrations/20260227000001_add_updated_at_to_statement_snapshots.sql"
+    "mobile/components/common/KeyboardScreen.tsx"
   ]
 }

@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T04:44:44.222869+00:00`
+- Generated (UTC): `2026-02-28T04:46:27.730041+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager/.worktrees/main-integration`
 
 ## Stack Snapshot
@@ -130,9 +130,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/app/capture.tsx`
 - `mobile/components/common/KeyboardScreen.tsx`
-- `supabase/migrations/20260227000001_add_updated_at_to_statement_snapshots.sql`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
