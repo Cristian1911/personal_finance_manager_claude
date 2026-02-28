@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-02-28T03:00:03.381520+00:00`
+- Generated (UTC): `2026-02-28T04:20:23.878440+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,14 +13,14 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 821
+- Text files scanned: 822
 - TypeScript/React: 303
 - TypeScript: 182
 - JSON: 155
 - Markdown: 49
 - SQL: 46
 - Python: 40
-- YAML: 16
+- YAML: 17
 - Shell: 12
 - JavaScript: 10
 - CSS: 4
@@ -36,7 +36,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - docs: 13 files
 - (root): 11 files
 - .claude: 9 files
-- .github: 3 files
+- .github: 4 files
 - infra: 2 files
 
 ## Key Commands
@@ -59,6 +59,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `web`: `expo start --web`
 - `build:apk:local`: `eas build --platform android --profile preview-local`
 - `build:apk:device`: `eas build --platform android --profile preview-device`
+- `build:ios:simulator:local`: `eas build --platform ios --profile preview-ios-simulator-local`
+- `build:ios:simulator:device`: `eas build --platform ios --profile preview-ios-simulator-device`
+- `build:ios:device`: `eas build --platform ios --profile preview-ios-device`
+- `build:ios:production`: `eas build --platform ios --profile production-ios`
 
 ## Patterns Detected
 - `supabase-integration` (15 files): Supabase clients/services in app code
@@ -128,11 +132,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `mobile/app/(tabs)/budgets.tsx`
-- `mobile/app/capture.tsx`
-- `mobile/app/subscriptions.tsx`
-- `mobile/app/transaction/[id].tsx`
-- `mobile/lib/amount.ts`
+- `.github/workflows/mobile-ios.yml`
+- `mobile/eas.json`
+- `mobile/package.json`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

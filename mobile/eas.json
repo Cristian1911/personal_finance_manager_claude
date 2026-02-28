@@ -29,8 +29,38 @@
         "EXPO_PUBLIC_API_URL": "https://pfm.sanson1911.cloud"
       }
     },
+    "preview-ios-simulator-local": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://127.0.0.1:3000"
+      }
+    },
+    "preview-ios-simulator-device": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pfm.sanson1911.cloud"
+      }
+    },
+    "preview-ios-device": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pfm.sanson1911.cloud"
+      }
+    },
     "production": {
       "autoIncrement": true
+    },
+    "production-ios": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pfm.sanson1911.cloud"
+      }
     }
   }
 }
