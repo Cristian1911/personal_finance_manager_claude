@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T03:41:36.380608+00:00",
+  "generated_at_utc": "2026-02-28T03:42:42.973952+00:00",
   "project_root": "/Users/cristian/Documents/developing/venti5-apk-startup-diagnosis",
   "technologies": [
     "Next.js",
@@ -252,7 +252,6 @@
     "mobile/app/_layout.tsx",
     "mobile/app/bug-report.tsx",
     "mobile/components/BugFAB.tsx",
-    "mobile/lib/bugReportMode.tsx",
-    "supabase/functions/notify-bug-report/index.ts"
+    "mobile/lib/bugReportMode.tsx"
   ]
 }

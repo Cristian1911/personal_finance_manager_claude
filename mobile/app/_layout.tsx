@@ -23,7 +23,7 @@ import "react-native-reanimated";
 import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
-import { BugReportProvider } from "../lib/bugReportMode";
+import { BugReportProvider, BugReportViewShot } from "../lib/bugReportMode";
 import { BugFAB } from "../components/BugFAB";
 
 export {
@@ -171,38 +171,40 @@ function RootLayoutNav() {
   return (
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="transaction/[id]"
-            options={buildSheetOptions([0.72, 1.0])}
-          />
-          <Stack.Screen
-            name="account/[id]"
-            options={buildSheetOptions([0.72, 1.0])}
-          />
-          <Stack.Screen
-            name="account/create"
-            options={buildSheetOptions([0.72, 1.0])}
-          />
-          <Stack.Screen
-            name="account/edit/[id]"
-            options={{
-              presentation: "card",
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="bug-report"
-            options={buildSheetOptions([0.6, 0.95])}
-          />
-          <Stack.Screen
-            name="subscriptions"
-            options={buildSheetOptions([0.65, 1.0])}
-          />
-        </Stack>
+        <BugReportViewShot>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="transaction/[id]"
+              options={buildSheetOptions([0.72, 1.0])}
+            />
+            <Stack.Screen
+              name="account/[id]"
+              options={buildSheetOptions([0.72, 1.0])}
+            />
+            <Stack.Screen
+              name="account/create"
+              options={buildSheetOptions([0.72, 1.0])}
+            />
+            <Stack.Screen
+              name="account/edit/[id]"
+              options={{
+                presentation: "card",
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="bug-report"
+              options={buildSheetOptions([0.6, 0.95])}
+            />
+            <Stack.Screen
+              name="subscriptions"
+              options={buildSheetOptions([0.65, 1.0])}
+            />
+          </Stack>
+        </BugReportViewShot>
         <BugFAB />
         {isLoading && (
           <View style={styles.loadingOverlay}>
