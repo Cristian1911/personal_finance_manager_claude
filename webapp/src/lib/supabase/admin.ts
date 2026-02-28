@@ -2,8 +2,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
 export function createAdminClient() {
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE;
+  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY;
 
   if (!serviceRoleKey) {
     return null;

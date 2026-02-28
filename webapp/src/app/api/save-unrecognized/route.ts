@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
   try {
     const response = await fetch(`${PARSER_URL}/save-unrecognized`, {
       method: "POST",
+      headers: { "X-Parser-Key": process.env.PDF_PARSER_API_KEY ?? "" },
       body: proxyForm,
     });
 

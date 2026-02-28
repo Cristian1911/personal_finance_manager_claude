@@ -1,11 +1,13 @@
+import os
+import stat
 import tempfile
 import logging
-import os
 import shutil
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, Form, HTTPException, Security, UploadFile
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
 from models import ParsedStatement
@@ -29,6 +31,21 @@ app = FastAPI(
     description="Bank statement PDF parser for Personal Finance Manager",
     version="0.1.0",
 )
+
+# ── API key auth ─────────────────────────────────────────────────────────────
+_PARSER_API_KEY = os.getenv("PARSER_API_KEY")
+_api_key_header = APIKeyHeader(name="X-Parser-Key", auto_error=False)
+
+MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB
+
+
+async def _verify_key(key: str | None = Security(_api_key_header)) -> None:
+    """Reject requests that don't carry the correct shared secret."""
+    if not _PARSER_API_KEY:
+        # Key not configured — fail closed so a misconfigured deploy is obvious.
+        raise HTTPException(status_code=503, detail="Parser API key not configured")
+    if key != _PARSER_API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 class ParseResponse(BaseModel):
@@ -63,6 +80,8 @@ def startup_diagnostics() -> None:
         opendataloaders_path or "NOT_FOUND",
         is_opendataloader_fallback_enabled(),
     )
+    if not _PARSER_API_KEY:
+        logger.warning("PARSER_API_KEY is not set — all requests will be rejected with 503")
 
 
 @app.get("/health")
@@ -70,16 +89,24 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/parse", response_model=ParseResponse)
+@app.post("/parse", response_model=ParseResponse, dependencies=[Depends(_verify_key)])
 async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="El archivo debe ser un PDF")
 
-    # Save to temp file for pdfplumber
+    content = await file.read()
+
+    if len(content) > MAX_PDF_BYTES:
+        raise HTTPException(status_code=413, detail="El archivo excede el tamaño máximo de 50MB")
+
+    if not content.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="El archivo no es un PDF válido")
+
+    # Save to temp file for pdfplumber — restrict permissions immediately
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-        content = await file.read()
         tmp.write(content)
         tmp_path = tmp.name
+    os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)
 
     logger.info(
         "Parsing request received: filename=%s size_bytes=%s password_provided=%s temp_file=%s",
@@ -131,23 +158,34 @@ async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
             },
         )
     finally:
-        Path(tmp_path).unlink(missing_ok=True)
+        try:
+            os.remove(tmp_path)
+        except OSError as exc:
+            logger.warning("Failed to delete temp file %s: %s", tmp_path, exc)
 
 
-@app.post("/save-unrecognized")
+@app.post("/save-unrecognized", dependencies=[Depends(_verify_key)])
 async def save_for_support(file: UploadFile):
     """Save an unsupported PDF (user-confirmed) to help build a new parser."""
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="El archivo debe ser un PDF")
 
     content = await file.read()
+
+    if len(content) > MAX_PDF_BYTES:
+        raise HTTPException(status_code=413, detail="El archivo excede el tamaño máximo de 50MB")
+
+    if not content.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="El archivo no es un PDF válido")
+
     location = save_unrecognized(content, file.filename)
     logger.info("Unrecognized PDF saved: filename=%s path=%s", file.filename, location)
     return {"saved": True}
 
 
 def run():
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    is_dev = os.getenv("APP_ENV", "production") != "production"
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=is_dev)
 
 
 if __name__ == "__main__":
