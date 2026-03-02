@@ -87,17 +87,31 @@ async function pullTable(
 
   // Upsert each row into SQLite (skip only invalid rows, don't fail whole sync)
   let upserted = 0;
+  let failed = 0;
+  let firstError: unknown = null;
   for (const row of data) {
     try {
       await upsertRow(db, table, row);
       upserted++;
     } catch (error) {
+      failed++;
+      if (!firstError) {
+        firstError = error;
+      }
       console.warn(
         `Skipping invalid ${table} row during pull:`,
         (row as { id?: string }).id ?? "<no-id>",
         error
       );
     }
+  }
+
+  if (failed > 0) {
+    const reason =
+      firstError instanceof Error ? firstError.message : String(firstError);
+    throw new Error(
+      `Pull ${table} incomplete: ${failed} row(s) failed to apply. Last sync cursor was not advanced. First error: ${reason}`
+    );
   }
 
   // Update sync metadata

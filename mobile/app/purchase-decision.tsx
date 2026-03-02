@@ -88,8 +88,6 @@ export default function PurchaseDecisionScreen() {
     });
   }, []);
 
-  const month = new Date().toISOString().slice(0, 7);
-
   const handleAnalyze = useCallback(async () => {
     setError(null);
     const numAmount = Number(amount);
@@ -104,6 +102,7 @@ export default function PurchaseDecisionScreen() {
 
     setLoading(true);
     try {
+      const month = new Date().toISOString().slice(0, 7);
       const res = await analyzeLocally({
         amount: numAmount,
         accountId: selectedAccountId,
@@ -121,7 +120,7 @@ export default function PurchaseDecisionScreen() {
     } finally {
       setLoading(false);
     }
-  }, [amount, selectedAccountId, urgency, fundingType, installments, month]);
+  }, [amount, selectedAccountId, urgency, fundingType, installments]);
 
   const meta = result ? verdictMeta[result.verdict] : null;
 

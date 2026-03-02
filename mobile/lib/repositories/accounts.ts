@@ -15,6 +15,7 @@ export type AccountRow = {
   is_active: number;
   icon: string | null;
   color: string | null;
+  monthly_payment: number | null;
   payment_day: number | null;
   cutoff_day: number | null;
   created_at: string;
@@ -30,6 +31,7 @@ export type CreateAccountParams = {
   current_balance?: number;
   credit_limit?: number | null;
   interest_rate?: number | null;
+  monthly_payment?: number | null;
   payment_day?: number | null;
   cutoff_day?: number | null;
   color?: string | null;
@@ -67,8 +69,8 @@ export async function createAccount(
     `INSERT INTO accounts
       (id, user_id, name, account_type, institution_name, currency_code,
        current_balance, credit_limit, interest_rate, is_active, icon, color,
-       payment_day, cutoff_day, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+       monthly_payment, payment_day, cutoff_day, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       params.user_id,
@@ -81,6 +83,7 @@ export async function createAccount(
       params.interest_rate ?? null,
       params.icon ?? null,
       params.color ?? null,
+      params.monthly_payment ?? null,
       params.payment_day ?? null,
       params.cutoff_day ?? null,
       now,
@@ -102,6 +105,7 @@ export async function createAccount(
     is_active: true,
     icon: params.icon ?? null,
     color: params.color ?? null,
+    monthly_payment: params.monthly_payment ?? null,
     payment_day: params.payment_day ?? null,
     cutoff_day: params.cutoff_day ?? null,
     created_at: now,
@@ -127,7 +131,7 @@ export async function updateAccount(
   await db.runAsync(
     `UPDATE accounts
      SET name = ?, institution_name = ?, currency_code = ?, current_balance = ?,
-         credit_limit = ?, interest_rate = ?, icon = ?, color = ?,
+         credit_limit = ?, interest_rate = ?, icon = ?, color = ?, monthly_payment = ?,
          payment_day = ?, cutoff_day = ?, updated_at = ?
      WHERE id = ?`,
     [
@@ -139,6 +143,7 @@ export async function updateAccount(
       params.interest_rate ?? null,
       params.icon ?? null,
       params.color ?? null,
+      params.monthly_payment ?? null,
       params.payment_day ?? null,
       params.cutoff_day ?? null,
       now,
@@ -166,6 +171,7 @@ export async function updateAccount(
       interest_rate: params.interest_rate ?? null,
       icon: params.icon ?? null,
       color: params.color ?? null,
+      monthly_payment: params.monthly_payment ?? null,
       payment_day: params.payment_day ?? null,
       cutoff_day: params.cutoff_day ?? null,
       updated_at: now,
@@ -185,6 +191,7 @@ export async function updateAccount(
       interest_rate: params.interest_rate ?? null,
       icon: params.icon ?? null,
       color: params.color ?? null,
+      monthly_payment: params.monthly_payment ?? null,
       payment_day: params.payment_day ?? null,
       cutoff_day: params.cutoff_day ?? null,
       updated_at: now,

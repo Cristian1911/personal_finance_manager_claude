@@ -65,8 +65,8 @@ export default function LoginScreen() {
           ]
         );
       }
-    } catch {
-      // Non-critical — skip silently
+    } catch (err) {
+      console.error("Failed to check for biometrics prompt:", err);
     }
   }
 

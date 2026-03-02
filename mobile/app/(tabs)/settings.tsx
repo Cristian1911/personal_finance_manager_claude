@@ -148,6 +148,37 @@ export default function SettingsScreen() {
     }
   }, [sync]);
 
+  const handleFullResync = useCallback(() => {
+    Alert.alert(
+      "Resincronizar desde cero",
+      "Se borraran los datos locales y se volveran a descargar desde la nube. No afecta tus datos remotos.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Resincronizar",
+          style: "destructive",
+          onPress: async () => {
+            setSyncing(true);
+            try {
+              clear();
+              await clearDatabase();
+              await sync();
+              Alert.alert("Listo", "Datos locales reconstruidos.");
+            } catch (error) {
+              console.error("Full resync error:", error);
+              Alert.alert(
+                "No se pudo completar",
+                "La resincronizacion falló. Puedes intentarlo de nuevo."
+              );
+            } finally {
+              setSyncing(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [clear, sync]);
+
   const handleSignOut = useCallback(() => {
     Alert.alert("Cerrar sesion", "Se eliminaran los datos locales.", [
       { text: "Cancelar", style: "cancel" },
@@ -263,6 +294,21 @@ export default function SettingsScreen() {
             Limpiar cola de sincronizacion
           </Text>
         </Pressable>
+        {!demoMode && (
+          <>
+            <View className="h-px bg-gray-100 ml-12" />
+            <Pressable
+              className="flex-row items-center px-4 py-3.5 bg-white active:bg-gray-50"
+              onPress={handleFullResync}
+              disabled={syncing}
+            >
+              <RefreshCw size={18} color="#EF4444" />
+              <Text className="ml-3 text-red-500 font-inter-medium text-sm">
+                Resincronizar desde cero
+              </Text>
+            </Pressable>
+          </>
+        )}
       </View>
 
       {/* Accounts section */}
