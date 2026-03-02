@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getRequestUser } from "@/app/api/_shared/auth";
 
 const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
+const PARSER_API_KEY = process.env.PDF_PARSER_API_KEY ?? process.env.PARSER_API_KEY ?? "";
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!(await getRequestUser(request))) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
@@ -26,10 +22,17 @@ export async function POST(request: NextRequest) {
   const proxyForm = new FormData();
   proxyForm.append("file", file);
 
+  if (!PARSER_API_KEY) {
+    return NextResponse.json(
+      { error: "No se pudo conectar con el servicio de procesamiento de PDFs." },
+      { status: 503 }
+    );
+  }
+
   try {
     const response = await fetch(`${PARSER_URL}/save-unrecognized`, {
       method: "POST",
-      headers: { "X-Parser-Key": process.env.PDF_PARSER_API_KEY ?? "" },
+      headers: { "X-Parser-Key": PARSER_API_KEY },
       body: proxyForm,
     });
 

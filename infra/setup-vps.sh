@@ -107,10 +107,11 @@ echo "==> Creating .env file (fill in your Supabase keys)..."
 cat > "$APP_DIR/.env" << 'ENVEOF'
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://tgkhaxipfgskxydotdtu.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=REPLACE_ME
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=REPLACE_ME
 
 # App
 NEXT_PUBLIC_APP_URL=https://REPLACE_WITH_DOMAIN
+PDF_PARSER_API_KEY=REPLACE_WITH_LONG_RANDOM_SECRET
 
 # Docker
 GITHUB_REPO=Cristian1911/personal_finance_manager_claude
@@ -124,7 +125,7 @@ echo "  VPS setup complete!"
 echo "============================================"
 echo ""
 echo "Next steps:"
-echo "  1. Edit $APP_DIR/.env and set your Supabase anon key"
+echo "  1. Edit $APP_DIR/.env and set your Supabase publishable key and parser API key"
 echo "  2. Copy docker-compose.yml to $APP_DIR/"
 echo "  3. Set up GitHub Secrets (see VPS-SETUP.md)"
 echo "  4. Push to main — GitHub Actions will deploy automatically"

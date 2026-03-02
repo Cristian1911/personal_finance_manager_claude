@@ -1,28 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getRequestUser } from "@/app/api/_shared/auth";
 
 const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
+const PARSER_API_KEY = process.env.PDF_PARSER_API_KEY ?? process.env.PARSER_API_KEY ?? "";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export async function POST(request: NextRequest) {
-  // Support Bearer token auth (mobile) and cookie auth (web)
-  const authHeader = request.headers.get("authorization");
-  let user;
-
-  if (authHeader?.startsWith("Bearer ")) {
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.getUser(authHeader.slice(7));
-    if (error || !data.user) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-    }
-    user = data.user;
-  } else {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-    }
-    user = data.user;
+  if (!(await getRequestUser(request))) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
   const formData = await request.formData();
@@ -50,10 +35,20 @@ export async function POST(request: NextRequest) {
     proxyForm.append("password", password);
   }
 
+  if (!PARSER_API_KEY) {
+    return NextResponse.json(
+      {
+        error:
+          "El servicio de procesamiento de PDFs no está disponible. Intenta más tarde.",
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const response = await fetch(`${PARSER_URL}/parse`, {
       method: "POST",
-      headers: { "X-Parser-Key": process.env.PDF_PARSER_API_KEY ?? "" },
+      headers: { "X-Parser-Key": PARSER_API_KEY },
       body: proxyForm,
     });
 

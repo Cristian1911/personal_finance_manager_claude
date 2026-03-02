@@ -26,6 +26,45 @@ logging.basicConfig(
 )
 logger = logging.getLogger("pdf_parser")
 
+
+def _load_local_env_files() -> None:
+    """Load local .env files for standalone runs without overriding real env vars."""
+    parser_dir = Path(__file__).resolve().parent
+    repo_root = parser_dir.parent.parent
+    candidates = [
+        parser_dir / ".env",
+        parser_dir / ".env.local",
+        repo_root / ".env",
+        repo_root / ".env.local",
+    ]
+
+    for env_path in candidates:
+        if not env_path.exists():
+            continue
+
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+
+            if line.startswith("export "):
+                line = line[len("export ") :].strip()
+
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+
+            if not key or key in os.environ:
+                continue
+
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+                value = value[1:-1]
+
+            os.environ[key] = value
+
+
+_load_local_env_files()
+
 app = FastAPI(
     title="PFM PDF Parser",
     description="Bank statement PDF parser for Personal Finance Manager",
@@ -86,6 +125,8 @@ def startup_diagnostics() -> None:
 
 @app.get("/health")
 def health():
+    if not _PARSER_API_KEY:
+        raise HTTPException(status_code=503, detail="Parser API key not configured")
     return {"status": "ok"}
 
 

@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-28T05:17:58.436669+00:00",
+  "generated_at_utc": "2026-03-02T13:31:06.333790+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,15 +9,15 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 1174,
+    "text_files_scanned": 1195,
     "languages": {
-      "TypeScript/React": 457,
-      "TypeScript": 275,
-      "JSON": 170,
-      "Markdown": 73,
-      "SQL": 71,
+      "TypeScript/React": 462,
+      "TypeScript": 282,
+      "JSON": 171,
+      "Markdown": 76,
+      "SQL": 75,
       "Python": 60,
-      "YAML": 26,
+      "YAML": 27,
       "Shell": 15,
       "JavaScript": 15,
       "CSS": 6,
@@ -25,18 +25,17 @@
     }
   },
   "top_level_directories": {
-    ".worktrees": 695,
-    "mobile": 202,
-    "webapp": 176,
-    "supabase": 23,
+    ".claude": 364,
+    ".worktrees": 352,
+    "mobile": 206,
+    "webapp": 177,
+    "supabase": 27,
     "services": 22,
     "packages": 17,
     "docs": 13,
     "(root)": 11,
-    ".claude": 9,
-    "docs": 8,
-    "infra": 2,
-    ".github": 2
+    ".github": 4,
+    "infra": 2
   },
   "commands": {
     "root_scripts": {
@@ -58,6 +57,7 @@
       "android": "expo run:android",
       "ios": "expo run:ios",
       "web": "expo start --web",
+      "build:aab:local": "cd android && ./gradlew bundleRelease",
       "build:apk:local": "eas build --platform android --profile preview-local",
       "build:apk:device": "eas build --platform android --profile preview-device",
       "build:aab:production": "eas build --platform android --profile production-android",
@@ -76,9 +76,8 @@
         "webapp/middleware.ts",
         "webapp/src/app/page.tsx",
         "webapp/src/app/auth/callback/route.ts",
-        "webapp/src/app/api/save-unrecognized/route.ts",
         "webapp/src/app/api/bug-reports/route.ts",
-        "webapp/src/app/api/parse-statement/route.ts",
+        "webapp/src/app/api/_shared/auth.ts",
         "webapp/src/app/(dashboard)/layout.tsx",
         "webapp/src/app/(dashboard)/settings/page.tsx",
         "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
@@ -87,7 +86,8 @@
         "webapp/src/actions/recurring-templates.ts",
         "webapp/src/actions/debt.ts",
         "webapp/src/actions/categorize.ts",
-        "webapp/src/actions/product-events.ts"
+        "webapp/src/actions/product-events.ts",
+        "webapp/src/actions/budgets.ts"
       ]
     },
     {
@@ -100,6 +100,7 @@
         "webapp/src/app/auth/callback/route.ts",
         "webapp/src/app/api/save-unrecognized/route.ts",
         "webapp/src/app/api/bug-reports/route.ts",
+        "webapp/src/app/api/_shared/auth.ts",
         "webapp/src/app/api/parse-statement/route.ts",
         "webapp/src/app/(auth)/layout.tsx",
         "webapp/src/app/(auth)/signup/page.tsx",
@@ -108,8 +109,7 @@
         "webapp/src/app/(auth)/login/page.tsx",
         "webapp/src/app/(dashboard)/layout.tsx",
         "webapp/src/app/(dashboard)/settings/page.tsx",
-        "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
-        "webapp/src/app/(dashboard)/deudas/page.tsx"
+        "webapp/src/app/(dashboard)/settings/analytics/page.tsx"
       ]
     },
     {
@@ -135,6 +135,50 @@
       ]
     },
     {
+      "name": "zod-validators",
+      "description": "Validation layer using Zod",
+      "matched_files": 15,
+      "examples": [
+        "webapp/src/actions/recurring-templates.ts",
+        "webapp/src/actions/profile.ts",
+        "webapp/src/actions/purchase-decision.ts",
+        "webapp/src/lib/validators/account.ts",
+        "webapp/src/lib/validators/category.ts",
+        "webapp/src/lib/validators/transaction.ts",
+        "webapp/src/lib/validators/budget.ts",
+        "webapp/src/lib/validators/recurring-template.ts",
+        "webapp/src/lib/validators/import.ts",
+        "webapp/src/lib/validators/auth.ts",
+        ".claude/worktrees/mobile-bugfixes/webapp/src/actions/recurring-templates.ts",
+        ".claude/worktrees/mobile-bugfixes/webapp/src/actions/profile.ts",
+        ".claude/worktrees/mobile-bugfixes/webapp/src/actions/purchase-decision.ts",
+        ".claude/worktrees/mobile-bugfixes/webapp/src/lib/validators/account.ts",
+        ".claude/worktrees/mobile-bugfixes/webapp/src/lib/validators/category.ts"
+      ]
+    },
+    {
+      "name": "fastapi-service",
+      "description": "FastAPI service modules",
+      "matched_files": 15,
+      "examples": [
+        ".claude/worktrees/mobile-bugfixes/services/pdf_parser/main.py",
+        ".worktrees/main-integration/services/pdf_parser/main.py",
+        "services/pdf_parser/test_parser.py",
+        "services/pdf_parser/models.py",
+        "services/pdf_parser/storage.py",
+        "services/pdf_parser/main.py",
+        "services/pdf_parser/parsers/davivienda_loan.py",
+        "services/pdf_parser/parsers/lulo_loan.py",
+        "services/pdf_parser/parsers/bogota_loan.py",
+        "services/pdf_parser/parsers/bancolombia_loan.py",
+        "services/pdf_parser/parsers/falabella_credit_card.py",
+        "services/pdf_parser/parsers/opendataloader_fallback.py",
+        "services/pdf_parser/parsers/popular_credit_card.py",
+        "services/pdf_parser/parsers/__init__.py",
+        "services/pdf_parser/parsers/bancolombia_savings.py"
+      ]
+    },
+    {
       "name": "expo-router",
       "description": "Expo Router file-based routes",
       "matched_files": 15,
@@ -157,32 +201,14 @@
       ]
     },
     {
-      "name": "fastapi-service",
-      "description": "FastAPI service modules",
-      "matched_files": 15,
-      "examples": [
-        ".worktrees/security/services/pdf_parser/main.py",
-        ".worktrees/main-integration/services/pdf_parser/main.py",
-        "services/pdf_parser/test_parser.py",
-        "services/pdf_parser/models.py",
-        "services/pdf_parser/storage.py",
-        "services/pdf_parser/main.py",
-        "services/pdf_parser/parsers/davivienda_loan.py",
-        "services/pdf_parser/parsers/lulo_loan.py",
-        "services/pdf_parser/parsers/bogota_loan.py",
-        "services/pdf_parser/parsers/bancolombia_loan.py",
-        "services/pdf_parser/parsers/falabella_credit_card.py",
-        "services/pdf_parser/parsers/opendataloader_fallback.py",
-        "services/pdf_parser/parsers/popular_credit_card.py",
-        "services/pdf_parser/parsers/__init__.py",
-        "services/pdf_parser/parsers/bancolombia_savings.py"
-      ]
-    },
-    {
       "name": "repository-pattern",
       "description": "Repository pattern in mobile/lib/repositories",
       "matched_files": 12,
       "examples": [
+        ".claude/worktrees/mobile-bugfixes/mobile/lib/repositories/budgets.ts",
+        ".claude/worktrees/mobile-bugfixes/mobile/lib/repositories/categories.ts",
+        ".claude/worktrees/mobile-bugfixes/mobile/lib/repositories/transactions.ts",
+        ".claude/worktrees/mobile-bugfixes/mobile/lib/repositories/accounts.ts",
         "mobile/lib/repositories/budgets.ts",
         "mobile/lib/repositories/categories.ts",
         "mobile/lib/repositories/transactions.ts",
@@ -199,6 +225,40 @@
     }
   ],
   "entrypoints": [
+    ".claude/worktrees/mobile-bugfixes/mobile/app/(auth)/_layout.tsx",
+    ".claude/worktrees/mobile-bugfixes/mobile/app/(tabs)/_layout.tsx",
+    ".claude/worktrees/mobile-bugfixes/mobile/app/_layout.tsx",
+    ".claude/worktrees/mobile-bugfixes/packages/shared/src/types/domain.ts",
+    ".claude/worktrees/mobile-bugfixes/services/pdf_parser/main.py",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/forgot-password/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/layout.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/login/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/reset-password/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/signup/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/accounts/[id]/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/accounts/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/categories/manage/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/categories/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/categorizar/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/dashboard/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/deudas/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/deudas/simulador/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/import/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/layout.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/recurrentes/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/settings/analytics/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/settings/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/transactions/[id]/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/transactions/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/api/bug-reports/route.ts",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/api/parse-statement/route.ts",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/api/save-unrecognized/route.ts",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/auth/callback/route.ts",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/layout.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/onboarding/layout.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/onboarding/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/app/page.tsx",
+    ".claude/worktrees/mobile-bugfixes/webapp/src/types/domain.ts",
     ".worktrees/main-integration/mobile/app/(auth)/_layout.tsx",
     ".worktrees/main-integration/mobile/app/(tabs)/_layout.tsx",
     ".worktrees/main-integration/mobile/app/_layout.tsx",
@@ -311,7 +371,17 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 469
+      "count": 471
+    },
+    {
+      "from": ".claude",
+      "to": ".claude",
+      "count": 470
+    },
+    {
+      "from": ".worktrees",
+      "to": ".worktrees",
+      "count": 470
     },
     {
       "from": "mobile",
@@ -320,10 +390,22 @@
     }
   ],
   "recent_changes": [
+    ".github/workflows/deploy.yml",
+    ".github/workflows/mobile-ios.yml",
+    ".gitignore",
+    "docker-compose.prod.yml",
+    "docker-compose.yml",
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "mobile/eas.json",
+    "infra/setup-vps.sh",
+    "mobile/app.json",
     "mobile/package.json",
-    ".pnpm-store/"
+    "webapp/Dockerfile",
+    "webapp/src/app/api/parse-statement/route.ts",
+    "webapp/src/app/api/save-unrecognized/route.ts",
+    ".claude/worktrees/",
+    ".pnpm-store/",
+    "mobile/ANDROID_RELEASE.md",
+    "webapp/src/app/api/_shared/"
   ]
 }
