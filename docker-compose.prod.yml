@@ -15,6 +15,7 @@ services:
       - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
       - PDF_PARSER_URL=http://pdf-parser:8000
+      - PDF_PARSER_API_KEY=${PDF_PARSER_API_KEY}
     depends_on:
       pdf-parser:
         condition: service_healthy
@@ -25,6 +26,7 @@ services:
     restart: unless-stopped
     environment:
       - LOG_LEVEL=${PDF_PARSER_LOG_LEVEL:-INFO}
+      - PARSER_API_KEY=${PDF_PARSER_API_KEY}
     expose:
       - "8000"
     healthcheck:
