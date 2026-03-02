@@ -8,6 +8,9 @@
 
 **Tech Stack:** Expo ~54, React Native 0.81.5, expo-router ~6, react-native-view-shot, react-native-safe-area-context, react-native-reanimated ~4, Supabase Edge Functions (Deno), GitHub REST API
 
+**Variables Used In Commands:**
+- `SUPABASE_PROJECT_REF=<your_supabase_project_ref>`
+
 ---
 
 ## Task 1: Install react-native-view-shot
@@ -66,7 +69,7 @@ Expected: migration applied without errors.
 **Step 3: Regenerate types**
 
 ```bash
-cd webapp && npx supabase gen types --lang=typescript --project-id tgkhaxipfgskxydotdtu > src/types/database.ts
+cd webapp && npx supabase gen types --lang=typescript --project-id "$SUPABASE_PROJECT_REF" > src/types/database.ts
 ```
 
 Expected: `database.ts` updated with `github_issue_url: string | null` on `bug_reports` row type.
@@ -648,7 +651,7 @@ Deno.serve(async (req) => {
 **Step 2: Deploy the Edge Function**
 
 ```bash
-npx supabase functions deploy notify-bug-report --project-ref tgkhaxipfgskxydotdtu
+npx supabase functions deploy notify-bug-report --project-ref "$SUPABASE_PROJECT_REF"
 ```
 
 Expected: "Function notify-bug-report deployed successfully."
@@ -656,7 +659,7 @@ Expected: "Function notify-bug-report deployed successfully."
 **Step 3: Set the required secrets**
 
 ```bash
-npx supabase secrets set GITHUB_TOKEN=<your_github_pat> GITHUB_REPO=<owner/repo> --project-ref tgkhaxipfgskxydotdtu
+npx supabase secrets set GITHUB_TOKEN=<your_github_pat> GITHUB_REPO=<owner/repo> --project-ref "$SUPABASE_PROJECT_REF"
 ```
 
 > The `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by Supabase at runtime.
@@ -674,7 +677,7 @@ git commit -m "feat: add notify-bug-report Edge Function for GitHub issue creati
 
 This step is done in the Supabase dashboard (no CLI support for webhooks yet).
 
-1. Go to [Supabase Dashboard](https://supabase.com/dashboard/project/tgkhaxipfgskxydotdtu) → Database → Webhooks.
+1. Go to `https://supabase.com/dashboard/project/$SUPABASE_PROJECT_REF` → Database → Webhooks.
 2. Click "Create a new hook".
 3. Settings:
    - **Name:** `notify-bug-report`
