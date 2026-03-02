@@ -70,6 +70,8 @@ export function ScreenshotAnnotator({ screenshotUri, onAnnotated }: Props) {
     onAnnotated(uri);
   }, [onAnnotated]);
 
+  const hasStrokes = strokes.length > 0;
+
   return (
     <View style={styles.container}>
       <ViewShot ref={viewShotRef} style={styles.canvas}>
@@ -115,15 +117,15 @@ export function ScreenshotAnnotator({ screenshotUri, onAnnotated }: Props) {
 
       <View style={styles.toolbar}>
         <Pressable
-          style={[styles.toolButton, !strokes.length && styles.toolButtonDisabled]}
+          style={[styles.toolButton, !hasStrokes && styles.toolButtonDisabled]}
           onPress={handleUndo}
-          disabled={!strokes.length}
+          disabled={!hasStrokes}
         >
-          <Undo2 size={16} color={strokes.length ? "#374151" : "#D1D5DB"} />
+          <Undo2 size={16} color={hasStrokes ? "#374151" : "#D1D5DB"} />
           <Text
             style={[
               styles.toolLabel,
-              !strokes.length && styles.toolLabelDisabled,
+              !hasStrokes && styles.toolLabelDisabled,
             ]}
           >
             Deshacer
@@ -131,15 +133,15 @@ export function ScreenshotAnnotator({ screenshotUri, onAnnotated }: Props) {
         </Pressable>
 
         <Pressable
-          style={[styles.toolButton, !strokes.length && styles.toolButtonDisabled]}
+          style={[styles.toolButton, !hasStrokes && styles.toolButtonDisabled]}
           onPress={handleClear}
-          disabled={!strokes.length}
+          disabled={!hasStrokes}
         >
-          <Trash2 size={16} color={strokes.length ? "#374151" : "#D1D5DB"} />
+          <Trash2 size={16} color={hasStrokes ? "#374151" : "#D1D5DB"} />
           <Text
             style={[
               styles.toolLabel,
-              !strokes.length && styles.toolLabelDisabled,
+              !hasStrokes && styles.toolLabelDisabled,
             ]}
           >
             Limpiar
