@@ -12,6 +12,7 @@ services/pdf_parser/unrecognized/
 # env files (can opt-in for committing if needed)
 .env*
 */.env*
+mobile/android/keystore.properties
 
 # Python
 __pycache__/

@@ -21,6 +21,7 @@ export const DB_MIGRATIONS: DbMigration[] = [
         is_active INTEGER NOT NULL DEFAULT 1,
         icon TEXT,
         color TEXT,
+        monthly_payment REAL,
         payment_day INTEGER,
         cutoff_day INTEGER,
         created_at TEXT NOT NULL,
@@ -124,6 +125,12 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE transactions ADD COLUMN reconciliation_score REAL`,
       `CREATE INDEX IF NOT EXISTS idx_transactions_reconciled_visible ON transactions(reconciled_into_transaction_id, transaction_date)`,
       `CREATE INDEX IF NOT EXISTS idx_transactions_capture_method ON transactions(capture_method, transaction_date)`,
+    ],
+  },
+  {
+    version: 3,
+    statements: [
+      `ALTER TABLE accounts ADD COLUMN monthly_payment REAL`,
     ],
   },
 ];

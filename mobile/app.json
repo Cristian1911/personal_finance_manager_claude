@@ -15,7 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.venti5.app"
+      "bundleIdentifier": "com.venti5.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Venti5 usa Face ID para desbloquear la app de forma rápida y segura."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +37,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permitir a Venti5 usar Face ID para un acceso rápido y seguro."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

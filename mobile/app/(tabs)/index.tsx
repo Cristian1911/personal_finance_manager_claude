@@ -1,11 +1,12 @@
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { formatCurrency, type Account, type Category, type CurrencyCode, type Transaction } from "@venti5/shared";
+import { formatCurrency, type Category, type CurrencyCode, type Transaction } from "@venti5/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { useAppStore } from "../../lib/store";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { getTransactions } from "../../lib/repositories/transactions";
+import { toDomainAccount } from "../../lib/domain/account";
 import {
   getAllCategories,
   type CategoryRow,
@@ -18,6 +19,7 @@ import {
 } from "../../components/dashboard/CategoryBreakdown";
 import { MonthSelector } from "../../components/common/MonthSelector";
 import { FloatingCaptureButton } from "../../components/common/FloatingCaptureButton";
+import { PurchaseDecisionCard } from "../../components/dashboard/PurchaseDecisionCard";
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -62,27 +64,6 @@ export default function DashboardScreen() {
     category_name_es: string | null;
     category_color: string | null;
   };
-
-  const toDomainAccount = (row: AccountRow): Account => ({
-    ...row,
-    account_type: row.account_type as Account["account_type"],
-    currency_code: row.currency_code as Account["currency_code"],
-    is_active: row.is_active === 1,
-    connection_status: "DISCONNECTED",
-    provider: "MANUAL",
-    currency_balances: null,
-    display_order: 0,
-    expected_return_rate: null,
-    initial_investment: null,
-    last_synced_at: null,
-    loan_amount: null,
-    loan_end_date: null,
-    loan_start_date: null,
-    mask: null,
-    maturity_date: null,
-    monthly_payment: null,
-    provider_account_id: null,
-  });
 
   const toDomainTransaction = (row: TransactionListRow): Transaction => ({
     ...row,
@@ -302,6 +283,8 @@ export default function DashboardScreen() {
             Mantén el mes vivo registrando movimientos antes del extracto.
           </Text>
         </View>
+
+        <PurchaseDecisionCard />
 
         <View className="mx-4 mt-4 rounded-lg bg-white p-4 shadow-sm">
           <Text className="text-sm font-inter-semibold text-gray-900">

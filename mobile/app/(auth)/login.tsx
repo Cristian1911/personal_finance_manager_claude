@@ -1,19 +1,25 @@
 import { useState } from "react";
 import {
+  Alert,
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { seedDemoData } from "../../lib/demo-data";
 import { enableDemoMode } from "../../lib/demo-mode";
 import { useAuth } from "../../lib/auth";
+import {
+  isBiometricsAvailable,
+  isBiometricsEnabled,
+  enableBiometrics,
+  hasBeenPromptedForBiometrics,
+  markBiometricsPrompted,
+} from "../../lib/biometrics";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -28,16 +34,40 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
 
-    if (error) {
-      setError(error.message);
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
     }
 
     setLoading(false);
+
+    // Offer biometric setup on first successful login
+    try {
+      const [available, alreadyEnabled, alreadyPrompted] = await Promise.all([
+        isBiometricsAvailable(),
+        isBiometricsEnabled(),
+        hasBeenPromptedForBiometrics(),
+      ]);
+      if (available && !alreadyEnabled && !alreadyPrompted) {
+        await markBiometricsPrompted();
+        Alert.alert(
+          "Desbloqueo biometrico",
+          "¿Deseas usar huella o Face ID para acceder mas rapido?",
+          [
+            { text: "No, gracias", style: "cancel" },
+            { text: "Activar", onPress: () => enableBiometrics() },
+          ]
+        );
+      }
+    } catch (err) {
+      console.error("Failed to check for biometrics prompt:", err);
+    }
   }
 
   async function handleTryDemo() {
@@ -57,21 +87,16 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-gray-100"
+    <KeyboardAwareScrollView
+      style={{ flex: 1, backgroundColor: "#F3F4F6" }}
+      contentContainerStyle={{
+        flexGrow: 1,
+        justifyContent: "center",
+        paddingHorizontal: 32,
+        paddingVertical: 24,
+      }}
+      bottomOffset={20}
     >
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: "center",
-          paddingHorizontal: 32,
-          paddingVertical: 24,
-        }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-      >
         <Text className="text-base font-inter-bold text-center text-emerald-600 mb-3">
           Venti5
         </Text>
@@ -169,7 +194,6 @@ export default function LoginScreen() {
             <Text className="text-emerald-600 font-medium">Regístrate</Text>
           </Text>
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }

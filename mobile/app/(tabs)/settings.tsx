@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, Pressable, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, Alert, Switch } from "react-native";
 import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   User,
   Mail,
@@ -13,7 +13,17 @@ import {
   Bug,
   Repeat,
   ChevronRight,
+  Fingerprint,
+  ShieldCheck,
 } from "lucide-react-native";
+import {
+  isBiometricsAvailable,
+  isBiometricsEnabled,
+  enableBiometrics,
+  disableBiometrics,
+  isBackgroundReauthEnabled,
+  setBackgroundReauth,
+} from "../../lib/biometrics";
 import { formatRelativeDate } from "@venti5/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { useAppStore } from "../../lib/store";
@@ -70,6 +80,41 @@ export default function SettingsScreen() {
   const { status, lastSynced, sync } = useSync();
   const { profile, clear } = useAppStore();
   const [syncing, setSyncing] = useState(false);
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [biometricsOn, setBiometricsOn] = useState(false);
+  const [bgReauthOn, setBgReauthOn] = useState(false);
+
+  useEffect(() => {
+    async function loadBiometricState() {
+      const available = await isBiometricsAvailable();
+      setBiometricsAvailable(available);
+      if (available) {
+        const [enabled, reauth] = await Promise.all([
+          isBiometricsEnabled(),
+          isBackgroundReauthEnabled(),
+        ]);
+        setBiometricsOn(enabled);
+        setBgReauthOn(reauth);
+      }
+    }
+    loadBiometricState();
+  }, []);
+
+  const handleToggleBiometrics = useCallback(async (value: boolean) => {
+    setBiometricsOn(value);
+    if (value) {
+      await enableBiometrics();
+    } else {
+      await disableBiometrics();
+      setBgReauthOn(false);
+      await setBackgroundReauth(false);
+    }
+  }, []);
+
+  const handleToggleBgReauth = useCallback(async (value: boolean) => {
+    setBgReauthOn(value);
+    await setBackgroundReauth(value);
+  }, []);
 
   const handleClearSyncQueue = useCallback(() => {
     Alert.alert(
@@ -102,6 +147,37 @@ export default function SettingsScreen() {
       setSyncing(false);
     }
   }, [sync]);
+
+  const handleFullResync = useCallback(() => {
+    Alert.alert(
+      "Resincronizar desde cero",
+      "Se borraran los datos locales y se volveran a descargar desde la nube. No afecta tus datos remotos.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Resincronizar",
+          style: "destructive",
+          onPress: async () => {
+            setSyncing(true);
+            try {
+              clear();
+              await clearDatabase();
+              await sync();
+              Alert.alert("Listo", "Datos locales reconstruidos.");
+            } catch (error) {
+              console.error("Full resync error:", error);
+              Alert.alert(
+                "No se pudo completar",
+                "La resincronizacion falló. Puedes intentarlo de nuevo."
+              );
+            } finally {
+              setSyncing(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [clear, sync]);
 
   const handleSignOut = useCallback(() => {
     Alert.alert("Cerrar sesion", "Se eliminaran los datos locales.", [
@@ -218,6 +294,21 @@ export default function SettingsScreen() {
             Limpiar cola de sincronizacion
           </Text>
         </Pressable>
+        {!demoMode && (
+          <>
+            <View className="h-px bg-gray-100 ml-12" />
+            <Pressable
+              className="flex-row items-center px-4 py-3.5 bg-white active:bg-gray-50"
+              onPress={handleFullResync}
+              disabled={syncing}
+            >
+              <RefreshCw size={18} color="#EF4444" />
+              <Text className="ml-3 text-red-500 font-inter-medium text-sm">
+                Resincronizar desde cero
+              </Text>
+            </Pressable>
+          </>
+        )}
       </View>
 
       {/* Accounts section */}
@@ -249,6 +340,50 @@ export default function SettingsScreen() {
           <ChevronRight size={16} color="#9CA3AF" />
         </Pressable>
       </View>
+
+      {/* Security section */}
+      {biometricsAvailable && (
+        <>
+          <SectionHeader title="Seguridad" />
+          <View className="bg-white">
+            <View className="flex-row items-center px-4 py-3.5 bg-white">
+              <View className="mr-3">
+                <Fingerprint size={18} color="#6B7280" />
+              </View>
+              <Text className="flex-1 font-inter-medium text-sm text-gray-900">
+                Desbloqueo biometrico
+              </Text>
+              <Switch
+                value={biometricsOn}
+                onValueChange={handleToggleBiometrics}
+                trackColor={{ false: "#E5E7EB", true: "#10B981" }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor="#E5E7EB"
+              />
+            </View>
+            {biometricsOn && (
+              <>
+                <View className="h-px bg-gray-100 ml-12" />
+                <View className="flex-row items-center px-4 py-3.5 bg-white">
+                  <View className="mr-3">
+                    <ShieldCheck size={18} color="#6B7280" />
+                  </View>
+                  <Text className="flex-1 font-inter-medium text-sm text-gray-900">
+                    Bloquear al salir de la app
+                  </Text>
+                  <Switch
+                    value={bgReauthOn}
+                    onValueChange={handleToggleBgReauth}
+                    trackColor={{ false: "#E5E7EB", true: "#10B981" }}
+                    thumbColor="#FFFFFF"
+                    ios_backgroundColor="#E5E7EB"
+                  />
+                </View>
+              </>
+            )}
+          </View>
+        </>
+      )}
 
       {/* Session section */}
       <SectionHeader title="Sesion" />

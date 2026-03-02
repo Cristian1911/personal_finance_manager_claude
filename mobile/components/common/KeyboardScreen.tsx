@@ -1,18 +1,10 @@
 import type { ReactNode } from "react";
+import { Pressable, Text, View } from "react-native";
+import { ArrowLeft } from "lucide-react-native";
 import {
   KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
-import { ArrowLeft } from "lucide-react-native";
-
-// iOS formSheet raises itself above the keyboard natively — KeyboardAvoidingView
-// is not only unnecessary there but causes an RNScreens layout warning.
-// On Android the sheet behaves like a regular overlay, so we keep it.
-const Wrapper = Platform.OS === "android" ? KeyboardAvoidingView : View;
+  KeyboardAwareScrollView,
+} from "react-native-keyboard-controller";
 
 export function KeyboardScreen({
   title,
@@ -26,10 +18,7 @@ export function KeyboardScreen({
   footer?: ReactNode;
 }) {
   return (
-    <Wrapper
-      className="flex-1 bg-gray-100"
-      behavior="height"
-    >
+    <KeyboardAvoidingView className="flex-1 bg-gray-100" behavior="padding">
       <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-4 pb-2 pt-4">
         <Pressable
           onPress={onBack}
@@ -41,18 +30,17 @@ export function KeyboardScreen({
         <View className="w-8" />
       </View>
 
-      <ScrollView
-        className="flex-1"
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        bottomOffset={20}
       >
         {children}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {footer ? (
         <View className="border-t border-gray-200 bg-white p-4">{footer}</View>
       ) : null}
-    </Wrapper>
+    </KeyboardAvoidingView>
   );
 }
