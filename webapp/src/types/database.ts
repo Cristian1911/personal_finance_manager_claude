@@ -871,12 +871,6 @@ export type Database = {
         | "MONTHLY"
         | "QUARTERLY"
         | "ANNUAL"
-      transaction_capture_method:
-        | "MANUAL_FORM"
-        | "TEXT_QUICK_CAPTURE"
-        | "PDF_IMPORT"
-        | "OCR_BATCH"
-        | "OCR_SINGLE"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
     }
