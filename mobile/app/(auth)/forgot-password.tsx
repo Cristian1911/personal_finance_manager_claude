@@ -5,10 +5,8 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 
@@ -43,21 +41,16 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-gray-100"
+    <KeyboardAwareScrollView
+      style={{ flex: 1, backgroundColor: "#F3F4F6" }}
+      contentContainerStyle={{
+        flexGrow: 1,
+        justifyContent: "center",
+        paddingHorizontal: 32,
+        paddingVertical: 24,
+      }}
+      bottomOffset={20}
     >
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: "center",
-          paddingHorizontal: 32,
-          paddingVertical: 24,
-        }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-      >
         <Text className="text-3xl font-bold text-center text-gray-900 mb-2">
           Recuperar contraseña
         </Text>
@@ -127,7 +120,6 @@ export default function ForgotPasswordScreen() {
             Volver al inicio de sesión
           </Text>
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }

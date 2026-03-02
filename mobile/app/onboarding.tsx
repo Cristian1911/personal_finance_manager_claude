@@ -1,15 +1,13 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   Switch,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
@@ -113,15 +111,11 @@ export default function MobileOnboardingScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-gray-100"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <KeyboardAwareScrollView
+      style={{ flex: 1, backgroundColor: "#F3F4F6" }}
+      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+      bottomOffset={20}
     >
-      <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-      >
         <View className="mb-6 rounded-3xl bg-primary p-5">
           <Text className="text-2xl font-inter-bold text-white">Venti5</Text>
           <Text className="mt-1 text-sm font-inter text-emerald-50">
@@ -246,7 +240,6 @@ export default function MobileOnboardingScreen() {
             <Text className="text-white font-inter-bold text-base">Entrar a Venti5</Text>
           )}
         </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }

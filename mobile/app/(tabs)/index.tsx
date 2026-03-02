@@ -18,6 +18,7 @@ import {
 } from "../../components/dashboard/CategoryBreakdown";
 import { MonthSelector } from "../../components/common/MonthSelector";
 import { FloatingCaptureButton } from "../../components/common/FloatingCaptureButton";
+import { PurchaseDecisionCard } from "../../components/dashboard/PurchaseDecisionCard";
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -302,6 +303,8 @@ export default function DashboardScreen() {
             Mantén el mes vivo registrando movimientos antes del extracto.
           </Text>
         </View>
+
+        <PurchaseDecisionCard />
 
         <View className="mx-4 mt-4 rounded-lg bg-white p-4 shadow-sm">
           <Text className="text-sm font-inter-semibold text-gray-900">

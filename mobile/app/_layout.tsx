@@ -15,16 +15,22 @@ import {
 } from "@expo-google-fonts/inter";
 import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, AppState, Platform, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/components/useColorScheme";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import { BugReportProvider, BugReportViewShot } from "../lib/bugReportMode";
 import { BugFAB } from "../components/BugFAB";
+import {
+  isBiometricsEnabled,
+  isBackgroundReauthEnabled,
+} from "../lib/biometrics";
+import { BiometricLockScreen } from "../components/common/BiometricLockScreen";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -65,7 +71,9 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <BugReportProvider>
-        <RootLayoutNav />
+        <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
+          <RootLayoutNav />
+        </KeyboardProvider>
       </BugReportProvider>
     </AuthProvider>
   );
@@ -96,6 +104,8 @@ function RootLayoutNav() {
   const rootNavigationState = useRootNavigationState();
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+  const [biometricLocked, setBiometricLocked] = useState(false);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     let mounted = true;
@@ -166,6 +176,41 @@ function RootLayoutNav() {
     }
   }, [session, demoMode, loading, checkingOnboarding, needsOnboarding, segments, router, rootNavigationState?.key]);
 
+  // Check biometrics on app launch (when session resolves)
+  useEffect(() => {
+    if (loading || !session || demoMode) return;
+    isBiometricsEnabled().then((enabled) => {
+      if (enabled) setBiometricLocked(true);
+    });
+  }, [loading, session, demoMode]);
+
+  // Re-lock on background resume if configured
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextState === "active" &&
+        session &&
+        !demoMode
+      ) {
+        isBackgroundReauthEnabled().then((enabled) => {
+          if (enabled) setBiometricLocked(true);
+        });
+      }
+      appState.current = nextState;
+    });
+    return () => subscription.remove();
+  }, [session, demoMode]);
+
+  const handleBiometricUnlock = useCallback(() => {
+    setBiometricLocked(false);
+  }, []);
+
+  const handleBiometricFallback = useCallback(async () => {
+    setBiometricLocked(false);
+    await supabase.auth.signOut();
+  }, []);
+
   const isLoading = loading || checkingOnboarding;
 
   return (
@@ -207,9 +252,19 @@ function RootLayoutNav() {
               name="capture"
               options={buildSheetOptions([0.72, 1.0])}
             />
+            <Stack.Screen
+              name="purchase-decision"
+              options={buildSheetOptions([0.85, 1.0])}
+            />
           </Stack>
         </BugReportViewShot>
         <BugFAB />
+        {biometricLocked && !isLoading && (
+          <BiometricLockScreen
+            onUnlock={handleBiometricUnlock}
+            onFallback={handleBiometricFallback}
+          />
+        )}
         {isLoading && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#047857" />
