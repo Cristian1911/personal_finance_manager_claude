@@ -694,8 +694,6 @@ export type Database = {
           provider: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id: string | null
           raw_description: string | null
-          reconciled_into_transaction_id: string | null
-          reconciliation_score: number | null
           recurrence_group_id: string | null
           secondary_category_id: string | null
           status: Database["public"]["Enums"]["transaction_status"]
@@ -736,8 +734,6 @@ export type Database = {
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id?: string | null
           raw_description?: string | null
-          reconciled_into_transaction_id?: string | null
-          reconciliation_score?: number | null
           recurrence_group_id?: string | null
           secondary_category_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
@@ -778,8 +774,6 @@ export type Database = {
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id?: string | null
           raw_description?: string | null
-          reconciled_into_transaction_id?: string | null
-          reconciliation_score?: number | null
           recurrence_group_id?: string | null
           secondary_category_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
