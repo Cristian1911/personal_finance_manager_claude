@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +17,7 @@ import { ArrowLeft, Paperclip, Send } from "lucide-react-native";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useBugReport } from "../lib/bugReportMode";
+import { ScreenshotAnnotator } from "../components/ScreenshotAnnotator";
 
 const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
@@ -68,6 +68,7 @@ export default function BugReportScreen() {
   const [areaHint, setAreaHint] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [annotatedUri, setAnnotatedUri] = useState<string | null>(null);
   const [attachment, setAttachment] =
     useState<DocumentPicker.DocumentPickerAsset | null>(null);
 
@@ -136,10 +137,12 @@ export default function BugReportScreen() {
       let attachmentPath: string | null = null;
 
       // If a screenshot was captured via bug mode, treat it as the attachment
+      // Prefer annotated version (with user drawings) over raw screenshot
+      const effectiveScreenshotUri = annotatedUri ?? pendingScreenshotUri;
       const screenshotAsset: DocumentPicker.DocumentPickerAsset | null =
-        pendingScreenshotUri
+        effectiveScreenshotUri
           ? {
-              uri: pendingScreenshotUri,
+              uri: effectiveScreenshotUri,
               name: `screenshot-${Date.now()}.jpg`,
               mimeType: "image/jpeg",
               lastModified: Date.now(),
@@ -311,16 +314,10 @@ export default function BugReportScreen() {
           />
 
           {pendingScreenshotUri ? (
-            <View className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
-              <Image
-                source={{ uri: pendingScreenshotUri }}
-                style={{ width: "100%", aspectRatio: 9 / 16 }}
-                resizeMode="cover"
-              />
-              <Text className="text-center text-xs text-gray-500 font-inter py-2">
-                Captura adjunta automáticamente
-              </Text>
-            </View>
+            <ScreenshotAnnotator
+              screenshotUri={pendingScreenshotUri}
+              onAnnotated={setAnnotatedUri}
+            />
           ) : (
             <Pressable
               className="mt-4 rounded-xl border border-gray-300 bg-white px-3 py-3 flex-row items-center justify-center active:bg-gray-50"
