@@ -91,6 +91,62 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `mobile/app/subscriptions.tsx`
   - e.g. `mobile/app/+not-found.tsx`
   - e.g. `mobile/app/onboarding.tsx`
+- `fastapi-service` (15 files): FastAPI service modules
+  - e.g. `services/pdf_parser/test_parser.py`
+  - e.g. `services/pdf_parser/models.py`
+  - e.g. `services/pdf_parser/storage.py`
+- `zod-validators` (11 files): Validation layer using Zod
+  - e.g. `webapp/src/actions/recurring-templates.ts`
+  - e.g. `webapp/src/actions/profile.ts`
+  - e.g. `webapp/src/actions/purchase-decision.ts`
+- `expo-router` (15 files): Expo Router file-based routes
+  - e.g. `mobile/app/subscriptions.tsx`
+  - e.g. `mobile/app/+not-found.tsx`
+  - e.g. `mobile/app/onboarding.tsx`
+- `fastapi-service` (15 files): FastAPI service modules
+  - e.g. `.worktrees/security/services/pdf_parser/main.py`
+  - e.g. `.worktrees/main-integration/services/pdf_parser/main.py`
+  - e.g. `services/pdf_parser/test_parser.py`
+- `repository-pattern` (12 files): Repository pattern in mobile/lib/repositories
+  - e.g. `mobile/lib/repositories/budgets.ts`
+  - e.g. `mobile/lib/repositories/categories.ts`
+  - e.g. `mobile/lib/repositories/transactions.ts`
+
+## Entrypoints
+- `.worktrees/main-integration/mobile/app/(auth)/_layout.tsx`
+- `.worktrees/main-integration/mobile/app/(tabs)/_layout.tsx`
+- `.worktrees/main-integration/mobile/app/_layout.tsx`
+- `.worktrees/main-integration/packages/shared/src/types/domain.ts`
+- `.worktrees/main-integration/services/pdf_parser/main.py`
+- `.worktrees/main-integration/webapp/src/app/(auth)/forgot-password/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(auth)/layout.tsx`
+- `.worktrees/main-integration/webapp/src/app/(auth)/login/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(auth)/reset-password/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(auth)/signup/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/accounts/[id]/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/accounts/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/categories/manage/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/categories/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/categorizar/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/dashboard/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/deudas/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/deudas/simulador/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/import/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/layout.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/recurrentes/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/settings/analytics/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/settings/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/(dashboard)/transactions/page.tsx`
+- `.worktrees/main-integration/webapp/src/app/api/bug-reports/route.ts`
+- `.worktrees/main-integration/webapp/src/app/api/parse-statement/route.ts`
+- `.worktrees/main-integration/webapp/src/app/api/save-unrecognized/route.ts`
+- `.worktrees/main-integration/webapp/src/app/auth/callback/route.ts`
+- `.worktrees/main-integration/webapp/src/app/layout.tsx`
+
+## Dependency Signals (Folder-level)
+- `.worktrees` -> `.worktrees` (919)
+- `webapp` -> `webapp` (469)
 - `repository-pattern` (12 files): Repository pattern in mobile/lib/repositories
   - e.g. `.claude/worktrees/mobile-bugfixes/mobile/lib/repositories/budgets.ts`
   - e.g. `.claude/worktrees/mobile-bugfixes/mobile/lib/repositories/categories.ts`

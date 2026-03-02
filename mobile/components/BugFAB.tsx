@@ -30,7 +30,7 @@ export function BugFAB() {
     <View
       style={[
         styles.container,
-        { bottom: insets.bottom + 80, right: insets.right + 16 },
+        { bottom: insets.bottom + 80, left: insets.left + 16 },
       ]}
       pointerEvents="box-none"
     >
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   container: {
     position: "absolute",
     zIndex: 9999,
-    alignItems: "flex-end",
+    alignItems: "flex-start",
   },
   idleButton: {
     width: 44,
