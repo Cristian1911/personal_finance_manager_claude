@@ -17,6 +17,22 @@ cd mobile
 eas build --platform android --profile production-android
 ```
 
+## Option 1b: GitHub Actions Play Store bundle
+
+There is also a dedicated manual workflow for producing the Play Console artifact:
+
+- Workflow: `Build Mobile Play Store AAB`
+- Output: downloadable `.aab` artifact attached to the workflow run
+
+This workflow uses the same `production-android` EAS profile and keeps versioning in EAS remote state:
+
+- `expo.version` comes from `mobile/app.json`
+- Android `versionCode` is auto-incremented by EAS because `mobile/eas.json` is configured with:
+  - `"appVersionSource": "remote"`
+  - `"autoIncrement": true` on production builds
+
+This is preferable to maintaining a GitHub Actions variable with the previous version, because the source of truth stays aligned with the actual native build service.
+
 ## Option 2: Local signed AAB build
 
 1. Put your upload keystore somewhere local, for example:

@@ -21,7 +21,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/components/useColorScheme";
-import { KeyboardProvider } from "react-native-keyboard-controller";
+import { AppKeyboardProvider } from "../components/common/AppKeyboardAwareScrollView";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import { BugReportProvider, BugReportViewShot } from "../lib/bugReportMode";
@@ -71,9 +71,9 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <BugReportProvider>
-        <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
+        <AppKeyboardProvider>
           <RootLayoutNav />
-        </KeyboardProvider>
+        </AppKeyboardProvider>
       </BugReportProvider>
     </AuthProvider>
   );
@@ -88,11 +88,11 @@ function buildSheetOptions(detents: [number, number]) {
   }
 
   return {
-    presentation: "formSheet" as const,
+    // iOS formSheet warns for several flows in this app because their root
+    // layout contains more than the ScrollView/header pair that RNScreens
+    // expects. Using a standard modal keeps the UX stable without warnings.
+    presentation: "modal" as const,
     headerShown: false,
-    sheetAllowedDetents: detents,
-    sheetInitialDetentIndex: 0,
-    sheetGrabberVisible: true,
   };
 }
 
@@ -243,6 +243,14 @@ function RootLayoutNav() {
             <Stack.Screen
               name="bug-report"
               options={buildSheetOptions([0.6, 0.95])}
+            />
+            <Stack.Screen
+              name="annotate-screenshot"
+              options={{
+                presentation: "fullScreenModal",
+                headerShown: false,
+                animation: "slide_from_bottom",
+              }}
             />
             <Stack.Screen
               name="subscriptions"

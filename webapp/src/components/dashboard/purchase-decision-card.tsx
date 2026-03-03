@@ -161,7 +161,7 @@ export function PurchaseDecisionCard({
               <Scale className="h-4 w-4" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="h-[min(94vh,64rem)] w-[min(98vw,88rem)] max-w-[min(98vw,88rem)] overflow-hidden p-0 sm:p-0">
+          <DialogContent className="flex h-[min(94vh,64rem)] w-[min(98vw,88rem)] max-w-[min(98vw,88rem)] sm:max-w-[min(98vw,88rem)] flex-col gap-0 overflow-hidden p-0 sm:p-0">
             <DialogHeader>
               <div className="border-b px-4 py-4 sm:px-6">
                 <DialogTitle>Analizador de decisiones financieras</DialogTitle>
@@ -172,7 +172,7 @@ export function PurchaseDecisionCard({
               </div>
             </DialogHeader>
 
-            <div className="grid h-full gap-0 2xl:grid-cols-[380px_minmax(0,1fr)]">
+            <div className="grid min-h-0 flex-1 gap-0 2xl:grid-cols-[380px_minmax(0,1fr)]">
               <div className="space-y-4 overflow-y-auto border-b bg-muted/30 p-4 sm:p-6 2xl:border-r 2xl:border-b-0">
                 <div className="space-y-2">
                   <Label htmlFor="purchase-amount">Monto</Label>

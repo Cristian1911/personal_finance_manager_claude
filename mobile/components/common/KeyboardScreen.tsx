@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, Text, View } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
-import {
-  KeyboardAvoidingView,
-  KeyboardAwareScrollView,
-} from "react-native-keyboard-controller";
+import { AppKeyboardAwareScrollView } from "./AppKeyboardAwareScrollView";
 
 export function KeyboardScreen({
   title,
@@ -18,7 +15,10 @@ export function KeyboardScreen({
   footer?: ReactNode;
 }) {
   return (
-    <KeyboardAvoidingView className="flex-1 bg-gray-100" behavior="padding">
+    <KeyboardAvoidingView
+      className="flex-1 bg-gray-100"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-4 pb-2 pt-4">
         <Pressable
           onPress={onBack}
@@ -30,13 +30,14 @@ export function KeyboardScreen({
         <View className="w-8" />
       </View>
 
-      <KeyboardAwareScrollView
+      <AppKeyboardAwareScrollView
+        avoidKeyboard={false}
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
         bottomOffset={20}
       >
         {children}
-      </KeyboardAwareScrollView>
+      </AppKeyboardAwareScrollView>
 
       {footer ? (
         <View className="border-t border-gray-200 bg-white p-4">{footer}</View>
