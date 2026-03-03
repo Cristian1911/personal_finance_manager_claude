@@ -80,7 +80,10 @@ export async function authenticateWithBiometrics(): Promise<boolean> {
 }
 
 export async function authenticateForLogin(): Promise<boolean> {
-  const result = await LocalAuthentication.authenticateAsync({
+  const localAuthentication = getLocalAuthenticationModule();
+  if (!localAuthentication) return false;
+
+  const result = await localAuthentication.authenticateAsync({
     promptMessage: "Ingresar a Venti5",
     cancelLabel: "Cancelar",
     disableDeviceFallback: false,
