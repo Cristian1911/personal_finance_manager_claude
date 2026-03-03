@@ -8,6 +8,8 @@ type BugReportContextValue = {
   captureScreen: () => Promise<string>;
   pendingScreenshotUri: string | null;
   setPendingScreenshotUri: (uri: string | null) => void;
+  annotatedScreenshotUri: string | null;
+  setAnnotatedScreenshotUri: (uri: string | null) => void;
 };
 
 const BugReportContext = createContext<BugReportContextValue | null>(null);
@@ -37,6 +39,7 @@ const viewShotRef = { current: null as ViewShotHandle | null };
 export function BugReportProvider({ children }: { children: ReactNode }) {
   const [isBugMode, setIsBugMode] = useState(false);
   const [pendingScreenshotUri, setPendingScreenshotUri] = useState<string | null>(null);
+  const [annotatedScreenshotUri, setAnnotatedScreenshotUri] = useState<string | null>(null);
 
   function toggleBugMode() {
     setIsBugMode((prev) => !prev);
@@ -52,7 +55,7 @@ export function BugReportProvider({ children }: { children: ReactNode }) {
 
   return (
     <BugReportContext.Provider
-      value={{ isBugMode, toggleBugMode, captureScreen, pendingScreenshotUri, setPendingScreenshotUri }}
+      value={{ isBugMode, toggleBugMode, captureScreen, pendingScreenshotUri, setPendingScreenshotUri, annotatedScreenshotUri, setAnnotatedScreenshotUri }}
     >
       {children}
     </BugReportContext.Provider>

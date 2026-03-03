@@ -21,6 +21,7 @@
     "@expo/vector-icons": "^15.0.3",
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-navigation/native": "^7.1.8",
+    "@shopify/react-native-skia": "^2.5.0",
     "@supabase/supabase-js": "^2.97.0",
     "@venti5/shared": "workspace:*",
     "expo": "~54.0.33",

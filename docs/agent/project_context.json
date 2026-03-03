@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-03T15:29:32.697164+00:00",
+  "generated_at_utc": "2026-03-03T17:38:48.292794+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,7 +9,7 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 1321,
+    "text_files_scanned": 1322,
     "languages": {
       "TypeScript/React": 468,
       "TypeScript": 286,
@@ -17,7 +17,7 @@
       "Markdown": 78,
       "SQL": 75,
       "Python": 60,
-      "YAML": 27,
+      "YAML": 28,
       "Shell": 15,
       "JavaScript": 15,
       "CSS": 6,
@@ -34,7 +34,7 @@
     "packages": 17,
     "docs": 15,
     "(root)": 11,
-    ".github": 4,
+    ".github": 5,
     "infra": 2
   },
   "commands": {
@@ -349,18 +349,8 @@
   "recent_changes": [
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "mobile/app/(auth)/forgot-password.tsx",
-    "mobile/app/(auth)/login.tsx",
-    "mobile/app/(auth)/reset-password.tsx",
-    "mobile/app/(auth)/signup.tsx",
-    "mobile/app/_layout.tsx",
-    "mobile/app/bug-report.tsx",
-    "mobile/app/onboarding.tsx",
-    "mobile/components/ScreenshotAnnotator.tsx",
-    "mobile/components/common/KeyboardScreen.tsx",
-    "mobile/lib/biometrics.ts",
-    "mobile/lib/bugReportMode.tsx",
+    "mobile/ANDROID_RELEASE.md",
     ".claude/worktrees/",
-    "mobile/components/common/AppKeyboardAwareScrollView.tsx"
+    ".github/workflows/mobile-playstore.yml"
   ]
 }

@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-03-03T15:29:32.697164+00:00`
+- Generated (UTC): `2026-03-03T17:38:48.292794+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,14 +13,14 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 1321
+- Text files scanned: 1322
 - TypeScript/React: 468
 - TypeScript: 286
 - JSON: 285
 - Markdown: 78
 - SQL: 75
 - Python: 60
-- YAML: 27
+- YAML: 28
 - Shell: 15
 - JavaScript: 15
 - CSS: 6
@@ -36,7 +36,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - packages: 17 files
 - docs: 15 files
 - (root): 11 files
-- .github: 4 files
+- .github: 5 files
 - infra: 2 files
 
 ## Key Commands
@@ -137,19 +137,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 ## Recent Changes (git status)
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `mobile/app/(auth)/forgot-password.tsx`
-- `mobile/app/(auth)/login.tsx`
-- `mobile/app/(auth)/reset-password.tsx`
-- `mobile/app/(auth)/signup.tsx`
-- `mobile/app/_layout.tsx`
-- `mobile/app/bug-report.tsx`
-- `mobile/app/onboarding.tsx`
-- `mobile/components/ScreenshotAnnotator.tsx`
-- `mobile/components/common/KeyboardScreen.tsx`
-- `mobile/lib/biometrics.ts`
-- `mobile/lib/bugReportMode.tsx`
+- `mobile/ANDROID_RELEASE.md`
 - `.claude/worktrees/`
-- `mobile/components/common/AppKeyboardAwareScrollView.tsx`
+- `.github/workflows/mobile-playstore.yml`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

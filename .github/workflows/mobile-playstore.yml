@@ -1,0 +1,159 @@
+name: Build Mobile Play Store AAB
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS Android profile to build for Play Store
+        type: choice
+        required: true
+        default: production-android
+        options:
+          - production-android
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  build-android-playstore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Missing required secret EXPO_TOKEN." >&2
+            exit 1
+          fi
+          if [ -z "$EXPO_PUBLIC_SUPABASE_URL" ] || [ -z "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "Missing required secrets: NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install EAS CLI
+        run: npm install --global eas-cli
+
+      - name: Resolve build profile
+        run: |
+          PROFILE="${{ github.event.inputs.profile }}"
+
+          if [ -z "$PROFILE" ]; then
+            PROFILE="production-android"
+          fi
+
+          echo "EAS_PROFILE=$PROFILE" >> "$GITHUB_ENV"
+
+      - name: Trigger and wait for EAS Android build
+        working-directory: mobile
+        run: |
+          eas build \
+            --platform android \
+            --profile "$EAS_PROFILE" \
+            --non-interactive \
+            --wait \
+            --json > "$RUNNER_TEMP/eas-android-playstore-build.json"
+
+      - name: Extract build metadata
+        run: |
+          node <<'EOF'
+          const fs = require("fs");
+
+          const path = process.env.RUNNER_TEMP + "/eas-android-playstore-build.json";
+          const raw = fs.readFileSync(path, "utf8");
+          const parsed = JSON.parse(raw);
+          const build = Array.isArray(parsed) ? parsed[0] : parsed;
+
+          if (!build || !build.id) {
+            console.error("Could not extract EAS Android build metadata.");
+            process.exit(1);
+          }
+
+          const firstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== "");
+          const appVersion = firstDefined(build.appVersion, build.applicationVersion, build.version, "unknown");
+          const androidVersionCode = firstDefined(
+            build.appBuildVersion,
+            build.androidVersionCode,
+            build.versionCode,
+            build.buildVersion,
+            "unknown"
+          );
+
+          const envPath = process.env.GITHUB_ENV;
+          fs.appendFileSync(envPath, `EAS_BUILD_ID=${build.id}\n`);
+          fs.appendFileSync(envPath, `EAS_BUILD_STATUS=${build.status ?? "unknown"}\n`);
+          fs.appendFileSync(envPath, `APP_VERSION=${String(appVersion)}\n`);
+          fs.appendFileSync(envPath, `ANDROID_VERSION_CODE=${String(androidVersionCode)}\n`);
+
+          if (build.artifacts?.buildUrl) {
+            fs.appendFileSync(envPath, `EAS_ARTIFACT_URL=${build.artifacts.buildUrl}\n`);
+          }
+          if (build.logs?.buildLogsUrl) {
+            fs.appendFileSync(envPath, `EAS_LOGS_URL=${build.logs.buildLogsUrl}\n`);
+          }
+          EOF
+
+      - name: Download AAB artifact
+        working-directory: mobile
+        run: |
+          mkdir -p ../dist
+          ARTIFACT_NAME="venti5-playstore-${APP_VERSION}-${ANDROID_VERSION_CODE}-${GITHUB_RUN_NUMBER}.aab"
+          eas build:download \
+            --platform android \
+            --id "$EAS_BUILD_ID" \
+            --path "../dist/$ARTIFACT_NAME" \
+            --non-interactive
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-playstore-aab-${{ github.run_number }}
+          path: dist/${{ env.ARTIFACT_NAME }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Mobile Play Store bundle"
+            echo ""
+            printf -- "- EAS profile: \`%s\`\n" "${EAS_PROFILE:-n/a}"
+            printf -- "- Build ID: \`%s\`\n" "${EAS_BUILD_ID:-n/a}"
+            printf -- "- App version: \`%s\`\n" "${APP_VERSION:-n/a}"
+            printf -- "- Android versionCode: \`%s\`\n" "${ANDROID_VERSION_CODE:-n/a}"
+            printf -- "- Artifact: \`%s\`\n" "${ARTIFACT_NAME:-n/a}"
+            echo ""
+            echo "Versioning source:"
+            echo "- Expo app version comes from \`mobile/app.json\`."
+            echo "- Android \`versionCode\` is auto-incremented remotely by EAS because \`mobile/eas.json\` uses \`appVersionSource: remote\` and \`autoIncrement: true\` for production builds."
+            if [ -n "${EAS_ARTIFACT_URL:-}" ]; then
+              printf -- "- Artifact URL: %s\n" "${EAS_ARTIFACT_URL}"
+            fi
+            if [ -n "${EAS_LOGS_URL:-}" ]; then
+              printf -- "- Logs: %s\n" "${EAS_LOGS_URL}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
