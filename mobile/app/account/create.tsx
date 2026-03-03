@@ -17,6 +17,7 @@ import { ColorPicker } from "../../components/accounts/ColorPicker";
 import { CurrencyPicker } from "../../components/accounts/CurrencyPicker";
 import { createAccount } from "../../lib/repositories/accounts";
 import { useAuth } from "../../lib/auth";
+import { setPdfPasswordForAccount } from "../../lib/pdf-passwords";
 
 function FormField({
   label,
@@ -142,7 +143,7 @@ export default function CreateAccountScreen() {
 
     setSaving(true);
     try {
-      await createAccount({
+      const accountId = await createAccount({
         user_id: session.user.id,
         name: name.trim(),
         account_type: accountType,
@@ -162,8 +163,12 @@ export default function CreateAccountScreen() {
           (isCreditCard || isLoan) && paymentDay
             ? parseInt(paymentDay, 10)
             : null,
-        pdf_password: pdfPassword.trim() || null,
       });
+      await setPdfPasswordForAccount(
+        session.user.id,
+        accountId,
+        pdfPassword.trim() || null
+      );
       router.back();
     } catch (error) {
       console.error("Create account error:", error);

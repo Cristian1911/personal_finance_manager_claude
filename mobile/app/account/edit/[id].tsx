@@ -19,6 +19,11 @@ import {
   getAccountById,
   updateAccount,
 } from "../../../lib/repositories/accounts";
+import { useAuth } from "../../../lib/auth";
+import {
+  getPdfPasswordForAccount,
+  setPdfPasswordForAccount,
+} from "../../../lib/pdf-passwords";
 
 function FormField({
   label,
@@ -105,6 +110,7 @@ function DayPicker({
 export default function EditAccountScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -137,7 +143,13 @@ export default function EditAccountScreen() {
           setInterestRate(account.interest_rate != null ? String(account.interest_rate) : "");
           setCutoffDay(account.cutoff_day != null ? String(account.cutoff_day) : "");
           setPaymentDay(account.payment_day != null ? String(account.payment_day) : "");
-          setPdfPassword(account.pdf_password ?? "");
+          if (session?.user?.id) {
+            const storedPassword = await getPdfPasswordForAccount(
+              session.user.id,
+              account.id
+            );
+            setPdfPassword(storedPassword ?? "");
+          }
         }
       } catch (error) {
         console.error("Failed to load account:", error);
@@ -145,13 +157,13 @@ export default function EditAccountScreen() {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, session?.user?.id]);
 
   const isCreditCard = accountType === "CREDIT_CARD";
   const isLoan = accountType === "LOAN";
 
   const handleSave = async () => {
-    if (!id) return;
+    if (!id || !session?.user?.id) return;
 
     if (!name.trim()) {
       Alert.alert("Error", "El nombre es requerido.");
@@ -184,8 +196,12 @@ export default function EditAccountScreen() {
           (isCreditCard || isLoan) && paymentDay
             ? parseInt(paymentDay, 10)
             : null,
-        pdf_password: pdfPassword.trim() || null,
       });
+      await setPdfPasswordForAccount(
+        session.user.id,
+        id,
+        pdfPassword.trim() || null
+      );
       router.back();
     } catch (error) {
       console.error("Update account error:", error);

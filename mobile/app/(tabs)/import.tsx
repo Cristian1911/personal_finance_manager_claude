@@ -26,9 +26,13 @@ import {
   getAllAccounts,
   getAccountById,
   createAccount,
-  updateAccount,
   type AccountRow,
 } from "../../lib/repositories/accounts";
+import {
+  getPdfPasswordForAccount,
+  getSavedPdfPasswordsForAccounts,
+  setPdfPasswordForAccount,
+} from "../../lib/pdf-passwords";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import {
   applyReconciliationMerge,
@@ -235,6 +239,9 @@ export default function ImportScreen() {
   const [importing, setImporting] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [savedPdfPasswords, setSavedPdfPasswords] = useState<
+    Array<{ accountId: string; accountName: string; password: string }>
+  >([]);
   const [selectedAccount, setSelectedAccount] = useState<AccountRow | null>(null);
   const [reconciliationPreview, setReconciliationPreview] =
     useState<ReconciliationPreview | null>(null);
@@ -250,8 +257,17 @@ export default function ImportScreen() {
       (async () => {
         const result = await getAllAccounts();
         setAccounts(result);
+        if (session?.user?.id) {
+          const saved = await getSavedPdfPasswordsForAccounts(
+            session.user.id,
+            result
+          );
+          setSavedPdfPasswords(saved);
+        } else {
+          setSavedPdfPasswords([]);
+        }
       })();
-    }, [])
+    }, [session?.user?.id])
   );
 
   const handlePickDocument = useCallback(async () => {
@@ -341,6 +357,7 @@ export default function ImportScreen() {
         credit_card: "CREDIT_CARD",
         loan: "LOAN",
       };
+      let targetAccountForPassword: AccountRow | null = null;
       if (session?.user?.id) {
         const typeMap = stmtTypeMap;
         const accountType = typeMap[stmt.statement_type] ?? "CHECKING";
@@ -351,9 +368,16 @@ export default function ImportScreen() {
 
         if (match) {
           setSelectedAccount(match);
+          targetAccountForPassword = match;
           // Pre-fill PDF password if stored for this account
-          if (match.pdf_password && !password.trim()) {
-            setPassword(match.pdf_password);
+          if (!password.trim()) {
+            const storedPassword = await getPdfPasswordForAccount(
+              session.user.id,
+              match.id
+            );
+            if (storedPassword) {
+              setPassword(storedPassword);
+            }
           }
         } else {
           // Build a name from statement data
@@ -383,6 +407,7 @@ export default function ImportScreen() {
           if (newAccount) {
             setAccounts((prev) => [...prev, newAccount]);
             setSelectedAccount(newAccount);
+            targetAccountForPassword = newAccount;
           }
         }
       }
@@ -390,40 +415,34 @@ export default function ImportScreen() {
       setStep("review");
 
       // Offer to save the PDF password for the matched/created account
-      if (password.trim() && session?.user?.id) {
-        // Re-read selectedAccount state after async updates via local ref
-        const latestAccounts = await getAllAccounts();
-        const matched = findMatchingAccount(
-          latestAccounts,
-          stmt,
-          stmtTypeMap[stmt.statement_type] ?? "CHECKING"
+      if (
+        password.trim() &&
+        session?.user?.id &&
+        targetAccountForPassword
+      ) {
+        const storedPassword = await getPdfPasswordForAccount(
+          session.user.id,
+          targetAccountForPassword.id
         );
-        const targetAccount = matched ?? latestAccounts[latestAccounts.length - 1];
-        if (targetAccount && targetAccount.pdf_password !== password.trim()) {
+        if (storedPassword !== password.trim()) {
           Alert.alert(
             "Guardar contraseña del PDF",
-            `¿Guardar esta contraseña para "${targetAccount.name}"? La próxima vez se completará automáticamente.`,
+            `¿Guardar esta contraseña para "${targetAccountForPassword.name}"? La próxima vez se completará automáticamente.`,
             [
               { text: "No", style: "cancel" },
               {
                 text: "Guardar",
                 onPress: async () => {
-                  await updateAccount(targetAccount.id, {
-                    name: targetAccount.name,
-                    account_type: targetAccount.account_type,
-                    institution_name: targetAccount.institution_name,
-                    currency_code: targetAccount.currency_code,
-                    current_balance: targetAccount.current_balance,
-                    credit_limit: targetAccount.credit_limit,
-                    interest_rate: targetAccount.interest_rate,
-                    monthly_payment: targetAccount.monthly_payment,
-                    payment_day: targetAccount.payment_day,
-                    cutoff_day: targetAccount.cutoff_day,
-                    color: targetAccount.color,
-                    icon: targetAccount.icon,
-                    pdf_password: password.trim(),
-                  });
-                  setAccounts(await getAllAccounts());
+                  await setPdfPasswordForAccount(
+                    session.user.id,
+                    targetAccountForPassword.id,
+                    password.trim()
+                  );
+                  const refreshed = await getSavedPdfPasswordsForAccounts(
+                    session.user.id,
+                    await getAllAccounts()
+                  );
+                  setSavedPdfPasswords(refreshed);
                 },
               },
             ]
@@ -730,7 +749,7 @@ export default function ImportScreen() {
               <Text className="text-gray-400 font-inter text-xs mt-2">
                 Déjalo vacío si el PDF no tiene contraseña.
               </Text>
-              {accounts.some((a) => a.pdf_password) && (
+              {savedPdfPasswords.length > 0 && (
                 <View className="mt-3">
                   <Text className="text-gray-500 font-inter text-xs mb-1.5">
                     Contraseñas guardadas:
@@ -740,16 +759,14 @@ export default function ImportScreen() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ gap: 8 }}
                   >
-                    {accounts
-                      .filter((a) => a.pdf_password)
-                      .map((a) => (
+                    {savedPdfPasswords.map((entry) => (
                         <Pressable
-                          key={a.id}
-                          onPress={() => setPassword(a.pdf_password!)}
+                          key={entry.accountId}
+                          onPress={() => setPassword(entry.password)}
                           className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 active:bg-emerald-100"
                         >
                           <Text className="text-emerald-700 font-inter-medium text-xs">
-                            {a.name}
+                            {entry.accountName}
                           </Text>
                         </Pressable>
                       ))}
