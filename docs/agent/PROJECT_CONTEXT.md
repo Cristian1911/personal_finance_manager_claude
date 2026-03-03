@@ -2,8 +2,8 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-03-02T13:31:06.333790+00:00`
-- Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
+- Generated (UTC): `2026-03-03T18:01:22.689014+00:00`
+- Project root: `/private/tmp/pfm-pr30`
 
 ## Stack Snapshot
 - Next.js
@@ -13,29 +13,28 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 1195
-- TypeScript/React: 462
-- TypeScript: 282
-- JSON: 171
-- Markdown: 76
-- SQL: 75
-- Python: 60
-- YAML: 27
-- Shell: 15
-- JavaScript: 15
-- CSS: 6
-- TOML: 6
+- Text files scanned: 364
+- TypeScript/React: 158
+- TypeScript: 98
+- Markdown: 27
+- SQL: 25
+- Python: 20
+- JSON: 15
+- YAML: 9
+- JavaScript: 5
+- Shell: 3
+- CSS: 2
+- TOML: 2
 
 ## Top-level Areas
-- .claude: 364 files
-- .worktrees: 352 files
-- mobile: 206 files
-- webapp: 177 files
+- webapp: 176 files
+- mobile: 84 files
 - supabase: 27 files
-- services: 22 files
+- services: 21 files
 - packages: 17 files
-- docs: 13 files
+- docs: 15 files
 - (root): 11 files
+- .claude: 7 files
 - .github: 4 files
 - infra: 2 files
 
@@ -79,18 +78,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `webapp/src/actions/statement-snapshots.ts`
   - e.g. `webapp/src/actions/recurring-templates.ts`
   - e.g. `webapp/src/actions/debt.ts`
-- `zod-validators` (15 files): Validation layer using Zod
-  - e.g. `webapp/src/actions/recurring-templates.ts`
-  - e.g. `webapp/src/actions/profile.ts`
-  - e.g. `webapp/src/actions/purchase-decision.ts`
-- `fastapi-service` (15 files): FastAPI service modules
-  - e.g. `.claude/worktrees/mobile-bugfixes/services/pdf_parser/main.py`
-  - e.g. `.worktrees/main-integration/services/pdf_parser/main.py`
-  - e.g. `services/pdf_parser/test_parser.py`
 - `expo-router` (15 files): Expo Router file-based routes
   - e.g. `mobile/app/subscriptions.tsx`
+  - e.g. `mobile/app/purchase-decision.tsx`
   - e.g. `mobile/app/+not-found.tsx`
-  - e.g. `mobile/app/onboarding.tsx`
 - `fastapi-service` (15 files): FastAPI service modules
   - e.g. `services/pdf_parser/test_parser.py`
   - e.g. `services/pdf_parser/models.py`
@@ -99,115 +90,54 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `webapp/src/actions/recurring-templates.ts`
   - e.g. `webapp/src/actions/profile.ts`
   - e.g. `webapp/src/actions/purchase-decision.ts`
-- `expo-router` (15 files): Expo Router file-based routes
-  - e.g. `mobile/app/subscriptions.tsx`
-  - e.g. `mobile/app/+not-found.tsx`
-  - e.g. `mobile/app/onboarding.tsx`
-- `fastapi-service` (15 files): FastAPI service modules
-  - e.g. `.worktrees/security/services/pdf_parser/main.py`
-  - e.g. `.worktrees/main-integration/services/pdf_parser/main.py`
-  - e.g. `services/pdf_parser/test_parser.py`
-- `repository-pattern` (12 files): Repository pattern in mobile/lib/repositories
+- `repository-pattern` (4 files): Repository pattern in mobile/lib/repositories
   - e.g. `mobile/lib/repositories/budgets.ts`
   - e.g. `mobile/lib/repositories/categories.ts`
   - e.g. `mobile/lib/repositories/transactions.ts`
 
 ## Entrypoints
-- `.worktrees/main-integration/mobile/app/(auth)/_layout.tsx`
-- `.worktrees/main-integration/mobile/app/(tabs)/_layout.tsx`
-- `.worktrees/main-integration/mobile/app/_layout.tsx`
-- `.worktrees/main-integration/packages/shared/src/types/domain.ts`
-- `.worktrees/main-integration/services/pdf_parser/main.py`
-- `.worktrees/main-integration/webapp/src/app/(auth)/forgot-password/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(auth)/layout.tsx`
-- `.worktrees/main-integration/webapp/src/app/(auth)/login/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(auth)/reset-password/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(auth)/signup/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/accounts/[id]/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/accounts/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/categories/manage/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/categories/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/categorizar/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/dashboard/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/deudas/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/deudas/simulador/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/import/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/layout.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/recurrentes/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/settings/analytics/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/settings/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/(dashboard)/transactions/page.tsx`
-- `.worktrees/main-integration/webapp/src/app/api/bug-reports/route.ts`
-- `.worktrees/main-integration/webapp/src/app/api/parse-statement/route.ts`
-- `.worktrees/main-integration/webapp/src/app/api/save-unrecognized/route.ts`
-- `.worktrees/main-integration/webapp/src/app/auth/callback/route.ts`
-- `.worktrees/main-integration/webapp/src/app/layout.tsx`
-
-## Dependency Signals (Folder-level)
-- `.worktrees` -> `.worktrees` (919)
-- `webapp` -> `webapp` (469)
-- `repository-pattern` (12 files): Repository pattern in mobile/lib/repositories
-  - e.g. `.claude/worktrees/mobile-bugfixes/mobile/lib/repositories/budgets.ts`
-  - e.g. `.claude/worktrees/mobile-bugfixes/mobile/lib/repositories/categories.ts`
-  - e.g. `.claude/worktrees/mobile-bugfixes/mobile/lib/repositories/transactions.ts`
-
-## Entrypoints
-- `.claude/worktrees/mobile-bugfixes/mobile/app/(auth)/_layout.tsx`
-- `.claude/worktrees/mobile-bugfixes/mobile/app/(tabs)/_layout.tsx`
-- `.claude/worktrees/mobile-bugfixes/mobile/app/_layout.tsx`
-- `.claude/worktrees/mobile-bugfixes/packages/shared/src/types/domain.ts`
-- `.claude/worktrees/mobile-bugfixes/services/pdf_parser/main.py`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/forgot-password/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/layout.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/login/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/reset-password/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(auth)/signup/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/accounts/[id]/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/accounts/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/categories/manage/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/categories/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/categorizar/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/dashboard/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/deudas/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/deudas/simulador/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/import/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/layout.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/recurrentes/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/settings/analytics/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/settings/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/(dashboard)/transactions/page.tsx`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/api/bug-reports/route.ts`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/api/parse-statement/route.ts`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/api/save-unrecognized/route.ts`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/auth/callback/route.ts`
-- `.claude/worktrees/mobile-bugfixes/webapp/src/app/layout.tsx`
+- `mobile/app/(auth)/_layout.tsx`
+- `mobile/app/(tabs)/_layout.tsx`
+- `mobile/app/_layout.tsx`
+- `packages/shared/src/types/domain.ts`
+- `services/pdf_parser/main.py`
+- `webapp/src/app/(auth)/forgot-password/page.tsx`
+- `webapp/src/app/(auth)/layout.tsx`
+- `webapp/src/app/(auth)/login/page.tsx`
+- `webapp/src/app/(auth)/reset-password/page.tsx`
+- `webapp/src/app/(auth)/signup/page.tsx`
+- `webapp/src/app/(dashboard)/accounts/[id]/page.tsx`
+- `webapp/src/app/(dashboard)/accounts/page.tsx`
+- `webapp/src/app/(dashboard)/categories/manage/page.tsx`
+- `webapp/src/app/(dashboard)/categories/page.tsx`
+- `webapp/src/app/(dashboard)/categorizar/page.tsx`
+- `webapp/src/app/(dashboard)/dashboard/page.tsx`
+- `webapp/src/app/(dashboard)/deudas/page.tsx`
+- `webapp/src/app/(dashboard)/deudas/simulador/page.tsx`
+- `webapp/src/app/(dashboard)/import/page.tsx`
+- `webapp/src/app/(dashboard)/layout.tsx`
+- `webapp/src/app/(dashboard)/recurrentes/page.tsx`
+- `webapp/src/app/(dashboard)/settings/analytics/page.tsx`
+- `webapp/src/app/(dashboard)/settings/page.tsx`
+- `webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
+- `webapp/src/app/(dashboard)/transactions/page.tsx`
+- `webapp/src/app/api/bug-reports/route.ts`
+- `webapp/src/app/api/parse-statement/route.ts`
+- `webapp/src/app/api/save-unrecognized/route.ts`
+- `webapp/src/app/auth/callback/route.ts`
+- `webapp/src/app/layout.tsx`
 
 ## Dependency Signals (Folder-level)
 - `webapp` -> `webapp` (471)
-- `.claude` -> `.claude` (470)
-- `.worktrees` -> `.worktrees` (470)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `.github/workflows/deploy.yml`
-- `.github/workflows/mobile-ios.yml`
-- `.gitignore`
-- `docker-compose.prod.yml`
-- `docker-compose.yml`
-- `docs/agent/PROJECT_CONTEXT.md`
-- `docs/agent/project_context.json`
-- `infra/setup-vps.sh`
-- `mobile/app.json`
-- `mobile/package.json`
-- `webapp/Dockerfile`
-- `webapp/src/app/api/parse-statement/route.ts`
-- `webapp/src/app/api/save-unrecognized/route.ts`
-- `.claude/worktrees/`
-- `.pnpm-store/`
-- `mobile/ANDROID_RELEASE.md`
-- `webapp/src/app/api/_shared/`
+- `mobile/app/(tabs)/import.tsx`
+- `mobile/app/account/create.tsx`
+- `mobile/app/account/edit/[id].tsx`
+- `mobile/lib/db/schema.ts`
+- `mobile/lib/repositories/accounts.ts`
+- `mobile/lib/pdf-passwords.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

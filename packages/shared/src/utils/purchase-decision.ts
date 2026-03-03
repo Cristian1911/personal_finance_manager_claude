@@ -64,11 +64,14 @@ export type PurchaseDecisionResult = {
   alternatives: PurchaseDecisionAlternative[];
   metrics: {
     effectiveImmediateImpact: number;
+    currentLiquidBuffer: number;
     projectedLiquidBuffer: number;
     recommendedBuffer: number;
     monthlyFreeCashflow: number;
     estimatedMonthlyInstallment: number;
+    currentBudgetRemaining: number | null;
     budgetRemainingAfterPurchase: number | null;
+    selectedAccountUtilizationBefore: number | null;
     selectedAccountUtilizationAfter: number | null;
   };
 };
@@ -120,13 +123,26 @@ export function analyzePurchaseDecision(
   const estimatedMonthlyInstallment = round2(getEstimatedMonthlyInstallment(input));
   const effectiveImmediateImpact = round2(getEffectiveImmediateImpact(input));
   const monthlyFreeCashflow = round2(input.monthlyIncome - input.monthlyExpenses);
+  const currentLiquidBuffer = round2(
+    input.liquidCashAvailable - input.upcomingCommittedPayments
+  );
   const projectedLiquidBuffer = round2(
     input.liquidCashAvailable - effectiveImmediateImpact - input.upcomingCommittedPayments
   );
   const recommendedBuffer = round2(getRecommendedBuffer(input));
+  const currentBudgetRemaining = input.budgetRemaining ?? null;
   const budgetRemainingAfterPurchase =
     input.budgetRemaining == null ? null : round2(input.budgetRemaining - input.amount);
 
+  const selectedAccountUtilizationBefore =
+    input.selectedAccountType === "CREDIT_CARD" && input.selectedAccountCreditLimit
+      ? round2(
+          calcUtilization(
+            input.selectedAccountCurrentDebt ?? 0,
+            input.selectedAccountCreditLimit
+          )
+        )
+      : null;
   const selectedAccountUtilizationAfter =
     input.selectedAccountType === "CREDIT_CARD" && input.selectedAccountCreditLimit
       ? round2(
@@ -169,7 +185,7 @@ export function analyzePurchaseDecision(
       severity: "positive",
       code: "HEALTHY_BUFFER",
       title: "Tu liquidez aguanta la compra",
-      detail: `Incluso después de compromisos próximos mantendrías un buffer estimado de ${formatCopLike(projectedLiquidBuffer)}.`,
+      detail: `Incluso después de compromisos próximos mantendrías un colchón de liquidez estimado de ${formatCopLike(projectedLiquidBuffer)}.`,
     });
   }
 
@@ -338,11 +354,14 @@ export function analyzePurchaseDecision(
     alternatives,
     metrics: {
       effectiveImmediateImpact,
+      currentLiquidBuffer,
       projectedLiquidBuffer,
       recommendedBuffer,
       monthlyFreeCashflow,
       estimatedMonthlyInstallment,
+      currentBudgetRemaining,
       budgetRemainingAfterPurchase,
+      selectedAccountUtilizationBefore,
       selectedAccountUtilizationAfter,
     },
   };

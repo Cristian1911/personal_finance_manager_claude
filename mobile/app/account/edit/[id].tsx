@@ -19,6 +19,11 @@ import {
   getAccountById,
   updateAccount,
 } from "../../../lib/repositories/accounts";
+import { useAuth } from "../../../lib/auth";
+import {
+  getPdfPasswordForAccount,
+  setPdfPasswordForAccount,
+} from "../../../lib/pdf-passwords";
 
 function FormField({
   label,
@@ -105,6 +110,7 @@ function DayPicker({
 export default function EditAccountScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -119,6 +125,7 @@ export default function EditAccountScreen() {
   const [interestRate, setInterestRate] = useState("");
   const [cutoffDay, setCutoffDay] = useState("");
   const [paymentDay, setPaymentDay] = useState("");
+  const [pdfPassword, setPdfPassword] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -136,6 +143,13 @@ export default function EditAccountScreen() {
           setInterestRate(account.interest_rate != null ? String(account.interest_rate) : "");
           setCutoffDay(account.cutoff_day != null ? String(account.cutoff_day) : "");
           setPaymentDay(account.payment_day != null ? String(account.payment_day) : "");
+          if (session?.user?.id) {
+            const storedPassword = await getPdfPasswordForAccount(
+              session.user.id,
+              account.id
+            );
+            setPdfPassword(storedPassword ?? "");
+          }
         }
       } catch (error) {
         console.error("Failed to load account:", error);
@@ -143,13 +157,13 @@ export default function EditAccountScreen() {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, session?.user?.id]);
 
   const isCreditCard = accountType === "CREDIT_CARD";
   const isLoan = accountType === "LOAN";
 
   const handleSave = async () => {
-    if (!id) return;
+    if (!id || !session?.user?.id) return;
 
     if (!name.trim()) {
       Alert.alert("Error", "El nombre es requerido.");
@@ -183,6 +197,11 @@ export default function EditAccountScreen() {
             ? parseInt(paymentDay, 10)
             : null,
       });
+      await setPdfPasswordForAccount(
+        session.user.id,
+        id,
+        pdfPassword.trim() || null
+      );
       router.back();
     } catch (error) {
       console.error("Update account error:", error);
@@ -309,6 +328,26 @@ export default function EditAccountScreen() {
             </FormField>
           </>
         )}
+
+        {/* PDF password */}
+        <FormField label="Contraseña del extracto PDF">
+          <TextInput
+            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+            value={pdfPassword}
+            onChangeText={setPdfPassword}
+            placeholder="Si los PDFs de esta cuenta tienen clave"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            importantForAutofill="no"
+            textContentType="none"
+          />
+          <Text className="text-gray-400 font-inter text-xs mt-1.5">
+            Se sugiere automáticamente al importar extractos de esta cuenta.
+          </Text>
+        </FormField>
 
         {/* Color */}
         <FormField label="Color">

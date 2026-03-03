@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Alert,
   View,
@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
+import { Fingerprint } from "lucide-react-native";
 import { supabase } from "../../lib/supabase";
 import { seedDemoData } from "../../lib/demo-data";
 import { enableDemoMode } from "../../lib/demo-mode";
@@ -19,6 +20,11 @@ import {
   enableBiometrics,
   hasBeenPromptedForBiometrics,
   markBiometricsPrompted,
+  storeBiometricCredentials,
+  getBiometricCredentials,
+  hasBiometricCredentials,
+  clearBiometricCredentials,
+  authenticateForLogin,
 } from "../../lib/biometrics";
 
 export default function LoginScreen() {
@@ -27,8 +33,49 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canLoginWithBiometrics, setCanLoginWithBiometrics] = useState(false);
   const router = useRouter();
   const { setDemoMode } = useAuth();
+
+  useEffect(() => {
+    (async () => {
+      const [available, enabled, hasCredentials] = await Promise.all([
+        isBiometricsAvailable(),
+        isBiometricsEnabled(),
+        hasBiometricCredentials(),
+      ]);
+      const ready = available && enabled && hasCredentials;
+      setCanLoginWithBiometrics(ready);
+      if (ready) {
+        handleBiometricLogin();
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleBiometricLogin() {
+    const success = await authenticateForLogin();
+    if (!success) return;
+
+    const credentials = await getBiometricCredentials();
+    if (!credentials) return;
+
+    setLoading(true);
+    setError(null);
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
+    setLoading(false);
+
+    if (signInError) {
+      await clearBiometricCredentials();
+      setCanLoginWithBiometrics(false);
+      setError(
+        "Las credenciales guardadas ya no son válidas. Ingresa con tu contraseña."
+      );
+    }
+  }
 
   async function handleLogin() {
     setLoading(true);
@@ -47,21 +94,31 @@ export default function LoginScreen() {
 
     setLoading(false);
 
-    // Offer biometric setup on first successful login
+    // Offer biometric setup or refresh stored credentials
     try {
       const [available, alreadyEnabled, alreadyPrompted] = await Promise.all([
         isBiometricsAvailable(),
         isBiometricsEnabled(),
         hasBeenPromptedForBiometrics(),
       ]);
-      if (available && !alreadyEnabled && !alreadyPrompted) {
+
+      if (alreadyEnabled) {
+        // Refresh stored credentials silently on each password login
+        await storeBiometricCredentials(email.trim(), password);
+      } else if (available && !alreadyPrompted) {
         await markBiometricsPrompted();
         Alert.alert(
           "Desbloqueo biometrico",
-          "¿Deseas usar huella o Face ID para acceder mas rapido?",
+          "¿Deseas usar huella o Face ID para ingresar más rápido sin escribir tu contraseña?",
           [
             { text: "No, gracias", style: "cancel" },
-            { text: "Activar", onPress: () => enableBiometrics() },
+            {
+              text: "Activar",
+              onPress: async () => {
+                await enableBiometrics();
+                await storeBiometricCredentials(email.trim(), password);
+              },
+            },
           ]
         );
       }
@@ -106,6 +163,25 @@ export default function LoginScreen() {
         <Text className="text-base text-center text-gray-500 mb-10">
           Tu dinero, con identidad y foco
         </Text>
+
+        {canLoginWithBiometrics && (
+          <TouchableOpacity
+            className="items-center mb-8 gap-2"
+            onPress={handleBiometricLogin}
+            disabled={loading}
+            activeOpacity={0.7}
+          >
+            <View className="bg-emerald-50 border border-emerald-200 rounded-full p-4">
+              <Fingerprint size={36} color="#059669" />
+            </View>
+            <Text className="text-emerald-700 font-inter-medium text-sm">
+              Ingresar con biometría
+            </Text>
+            <Text className="text-gray-400 font-inter text-xs">
+              o usa tu correo y contraseña
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {error && (
           <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
