@@ -17,6 +17,7 @@ import { ColorPicker } from "../../components/accounts/ColorPicker";
 import { CurrencyPicker } from "../../components/accounts/CurrencyPicker";
 import { createAccount } from "../../lib/repositories/accounts";
 import { useAuth } from "../../lib/auth";
+import { setPdfPasswordForAccount } from "../../lib/pdf-passwords";
 
 function FormField({
   label,
@@ -119,6 +120,9 @@ export default function CreateAccountScreen() {
   const [cutoffDay, setCutoffDay] = useState("");
   const [paymentDay, setPaymentDay] = useState("");
 
+  // PDF import
+  const [pdfPassword, setPdfPassword] = useState("");
+
   const isCreditCard = accountType === "CREDIT_CARD";
   const isLoan = accountType === "LOAN";
 
@@ -139,7 +143,7 @@ export default function CreateAccountScreen() {
 
     setSaving(true);
     try {
-      await createAccount({
+      const accountId = await createAccount({
         user_id: session.user.id,
         name: name.trim(),
         account_type: accountType,
@@ -160,6 +164,11 @@ export default function CreateAccountScreen() {
             ? parseInt(paymentDay, 10)
             : null,
       });
+      await setPdfPasswordForAccount(
+        session.user.id,
+        accountId,
+        pdfPassword.trim() || null
+      );
       router.back();
     } catch (error) {
       console.error("Create account error:", error);
@@ -286,6 +295,26 @@ export default function CreateAccountScreen() {
             </FormField>
           </>
         )}
+
+        {/* PDF password */}
+        <FormField label="Contraseña del extracto PDF">
+          <TextInput
+            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+            value={pdfPassword}
+            onChangeText={setPdfPassword}
+            placeholder="Si los PDFs de esta cuenta tienen clave"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            importantForAutofill="no"
+            textContentType="none"
+          />
+          <Text className="text-gray-400 font-inter text-xs mt-1.5">
+            Se sugiere automáticamente al importar extractos de esta cuenta.
+          </Text>
+        </FormField>
 
         {/* Color */}
         <FormField label="Color">

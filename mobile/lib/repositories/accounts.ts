@@ -1,5 +1,6 @@
 import { getDatabase } from "../db/database";
 import * as Crypto from "expo-crypto";
+import { setPdfPasswordForAccount } from "../pdf-passwords";
 
 export type AccountRow = {
   id: string;
@@ -206,6 +207,10 @@ export async function updateAccount(
 
 export async function deleteAccount(id: string): Promise<void> {
   const db = await getDatabase();
+  const account = await db.getFirstAsync<{ user_id: string }>(
+    "SELECT user_id FROM accounts WHERE id = ?",
+    [id]
+  );
 
   // Check if there's a pending INSERT that hasn't synced yet
   const pendingInsert = await db.getFirstAsync<{ id: number }>(
@@ -226,6 +231,9 @@ export async function deleteAccount(id: string): Promise<void> {
   }
 
   await db.runAsync("DELETE FROM accounts WHERE id = ?", [id]);
+  if (account?.user_id) {
+    await setPdfPasswordForAccount(account.user_id, id, null);
+  }
 
   if (pendingInsert) {
     // Never synced — remove the pending INSERT

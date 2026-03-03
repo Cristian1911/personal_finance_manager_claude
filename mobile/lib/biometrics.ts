@@ -3,6 +3,7 @@ import * as SecureStore from "expo-secure-store";
 const BIOMETRICS_ENABLED_KEY = "venti5_biometrics_enabled";
 const BIOMETRICS_REAUTH_KEY = "venti5_biometrics_reauth_background";
 const BIOMETRICS_PROMPTED_KEY = "venti5_biometrics_prompted";
+const BIOMETRICS_CREDENTIALS_KEY = "venti5_biometrics_credentials";
 
 let localAuthenticationModule: typeof import("expo-local-authentication") | null | undefined;
 
@@ -76,4 +77,46 @@ export async function authenticateWithBiometrics(): Promise<boolean> {
     fallbackLabel: "Usar contraseña del dispositivo",
   });
   return result.success;
+}
+
+export async function authenticateForLogin(): Promise<boolean> {
+  const result = await LocalAuthentication.authenticateAsync({
+    promptMessage: "Ingresar a Venti5",
+    cancelLabel: "Cancelar",
+    disableDeviceFallback: false,
+    fallbackLabel: "Usar contraseña del dispositivo",
+  });
+  return result.success;
+}
+
+export async function storeBiometricCredentials(
+  email: string,
+  password: string
+): Promise<void> {
+  await SecureStore.setItemAsync(
+    BIOMETRICS_CREDENTIALS_KEY,
+    JSON.stringify({ email, password })
+  );
+}
+
+export async function getBiometricCredentials(): Promise<{
+  email: string;
+  password: string;
+} | null> {
+  try {
+    const data = await SecureStore.getItemAsync(BIOMETRICS_CREDENTIALS_KEY);
+    if (!data) return null;
+    return JSON.parse(data) as { email: string; password: string };
+  } catch {
+    return null;
+  }
+}
+
+export async function hasBiometricCredentials(): Promise<boolean> {
+  const data = await SecureStore.getItemAsync(BIOMETRICS_CREDENTIALS_KEY);
+  return data !== null;
+}
+
+export async function clearBiometricCredentials(): Promise<void> {
+  await SecureStore.deleteItemAsync(BIOMETRICS_CREDENTIALS_KEY);
 }

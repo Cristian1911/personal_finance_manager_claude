@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-03T17:38:48.292794+00:00",
+  "generated_at_utc": "2026-03-03T18:13:44.555544+00:00",
   "project_root": "/Users/cristian/Documents/developing/personal_finance_manager",
   "technologies": [
     "Next.js",
@@ -9,10 +9,10 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 1322,
+    "text_files_scanned": 1324,
     "languages": {
-      "TypeScript/React": 468,
-      "TypeScript": 286,
+      "TypeScript/React": 469,
+      "TypeScript": 287,
       "JSON": 285,
       "Markdown": 78,
       "SQL": 75,
@@ -27,7 +27,7 @@
   "top_level_directories": {
     ".claude": 365,
     ".worktrees": 352,
-    "mobile": 329,
+    "mobile": 331,
     "webapp": 177,
     "supabase": 27,
     "services": 22,
@@ -184,6 +184,7 @@
       "matched_files": 15,
       "examples": [
         "mobile/app/subscriptions.tsx",
+        "mobile/app/annotate-screenshot.tsx",
         "mobile/app/purchase-decision.tsx",
         "mobile/app/+not-found.tsx",
         "mobile/app/onboarding.tsx",
@@ -196,8 +197,7 @@
         "mobile/app/(tabs)/settings.tsx",
         "mobile/app/(tabs)/index.tsx",
         "mobile/app/(tabs)/import.tsx",
-        "mobile/app/(tabs)/transactions.tsx",
-        "mobile/app/(tabs)/budgets.tsx"
+        "mobile/app/(tabs)/transactions.tsx"
       ]
     },
     {
@@ -349,8 +349,15 @@
   "recent_changes": [
     "docs/agent/PROJECT_CONTEXT.md",
     "docs/agent/project_context.json",
-    "mobile/ANDROID_RELEASE.md",
-    ".claude/worktrees/",
-    ".github/workflows/mobile-playstore.yml"
+    "mobile/app/(auth)/login.tsx",
+    "mobile/app/(tabs)/import.tsx",
+    "mobile/app/account/create.tsx",
+    "mobile/app/account/edit/[id].tsx",
+    "mobile/app/purchase-decision.tsx",
+    "mobile/lib/biometrics.ts",
+    "mobile/lib/pdf-passwords.ts",
+    "mobile/lib/repositories/accounts.ts",
+    "packages/shared/src/utils/purchase-decision.ts",
+    "webapp/src/components/dashboard/purchase-decision-card.tsx"
   ]
 }

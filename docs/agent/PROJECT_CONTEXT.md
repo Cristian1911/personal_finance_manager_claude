@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-03-03T17:38:48.292794+00:00`
+- Generated (UTC): `2026-03-03T18:13:44.555544+00:00`
 - Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
 
 ## Stack Snapshot
@@ -13,9 +13,9 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 1322
-- TypeScript/React: 468
-- TypeScript: 286
+- Text files scanned: 1324
+- TypeScript/React: 469
+- TypeScript: 287
 - JSON: 285
 - Markdown: 78
 - SQL: 75
@@ -29,7 +29,7 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 ## Top-level Areas
 - .claude: 365 files
 - .worktrees: 352 files
-- mobile: 329 files
+- mobile: 331 files
 - webapp: 177 files
 - supabase: 27 files
 - services: 22 files
@@ -89,8 +89,8 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `services/pdf_parser/test_parser.py`
 - `expo-router` (15 files): Expo Router file-based routes
   - e.g. `mobile/app/subscriptions.tsx`
+  - e.g. `mobile/app/annotate-screenshot.tsx`
   - e.g. `mobile/app/purchase-decision.tsx`
-  - e.g. `mobile/app/+not-found.tsx`
 - `repository-pattern` (12 files): Repository pattern in mobile/lib/repositories
   - e.g. `.claude/worktrees/rescue-forgotten-branches/mobile/lib/repositories/budgets.ts`
   - e.g. `.claude/worktrees/rescue-forgotten-branches/mobile/lib/repositories/categories.ts`
@@ -137,9 +137,16 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 ## Recent Changes (git status)
 - `docs/agent/PROJECT_CONTEXT.md`
 - `docs/agent/project_context.json`
-- `mobile/ANDROID_RELEASE.md`
-- `.claude/worktrees/`
-- `.github/workflows/mobile-playstore.yml`
+- `mobile/app/(auth)/login.tsx`
+- `mobile/app/(tabs)/import.tsx`
+- `mobile/app/account/create.tsx`
+- `mobile/app/account/edit/[id].tsx`
+- `mobile/app/purchase-decision.tsx`
+- `mobile/lib/biometrics.ts`
+- `mobile/lib/pdf-passwords.ts`
+- `mobile/lib/repositories/accounts.ts`
+- `packages/shared/src/utils/purchase-decision.ts`
+- `webapp/src/components/dashboard/purchase-decision-card.tsx`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
