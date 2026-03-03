@@ -133,6 +133,12 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE accounts ADD COLUMN monthly_payment REAL`,
     ],
   },
+  {
+    version: 4,
+    statements: [
+      `ALTER TABLE accounts ADD COLUMN pdf_password TEXT`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

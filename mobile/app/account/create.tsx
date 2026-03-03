@@ -119,6 +119,9 @@ export default function CreateAccountScreen() {
   const [cutoffDay, setCutoffDay] = useState("");
   const [paymentDay, setPaymentDay] = useState("");
 
+  // PDF import
+  const [pdfPassword, setPdfPassword] = useState("");
+
   const isCreditCard = accountType === "CREDIT_CARD";
   const isLoan = accountType === "LOAN";
 
@@ -159,6 +162,7 @@ export default function CreateAccountScreen() {
           (isCreditCard || isLoan) && paymentDay
             ? parseInt(paymentDay, 10)
             : null,
+        pdf_password: pdfPassword.trim() || null,
       });
       router.back();
     } catch (error) {
@@ -286,6 +290,26 @@ export default function CreateAccountScreen() {
             </FormField>
           </>
         )}
+
+        {/* PDF password */}
+        <FormField label="Contraseña del extracto PDF">
+          <TextInput
+            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+            value={pdfPassword}
+            onChangeText={setPdfPassword}
+            placeholder="Si los PDFs de esta cuenta tienen clave"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            importantForAutofill="no"
+            textContentType="none"
+          />
+          <Text className="text-gray-400 font-inter text-xs mt-1.5">
+            Se sugiere automáticamente al importar extractos de esta cuenta.
+          </Text>
+        </FormField>
 
         {/* Color */}
         <FormField label="Color">

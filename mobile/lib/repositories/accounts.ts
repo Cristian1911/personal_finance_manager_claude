@@ -18,6 +18,7 @@ export type AccountRow = {
   monthly_payment: number | null;
   payment_day: number | null;
   cutoff_day: number | null;
+  pdf_password: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -36,6 +37,7 @@ export type CreateAccountParams = {
   cutoff_day?: number | null;
   color?: string | null;
   icon?: string | null;
+  pdf_password?: string | null;
 };
 
 export type UpdateAccountParams = Omit<CreateAccountParams, "user_id">;
@@ -69,8 +71,8 @@ export async function createAccount(
     `INSERT INTO accounts
       (id, user_id, name, account_type, institution_name, currency_code,
        current_balance, credit_limit, interest_rate, is_active, icon, color,
-       monthly_payment, payment_day, cutoff_day, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+       monthly_payment, payment_day, cutoff_day, pdf_password, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       params.user_id,
@@ -86,6 +88,7 @@ export async function createAccount(
       params.monthly_payment ?? null,
       params.payment_day ?? null,
       params.cutoff_day ?? null,
+      params.pdf_password ?? null,
       now,
       now,
     ]
@@ -132,7 +135,7 @@ export async function updateAccount(
     `UPDATE accounts
      SET name = ?, institution_name = ?, currency_code = ?, current_balance = ?,
          credit_limit = ?, interest_rate = ?, icon = ?, color = ?, monthly_payment = ?,
-         payment_day = ?, cutoff_day = ?, updated_at = ?
+         payment_day = ?, cutoff_day = ?, pdf_password = ?, updated_at = ?
      WHERE id = ?`,
     [
       params.name,
@@ -146,6 +149,7 @@ export async function updateAccount(
       params.monthly_payment ?? null,
       params.payment_day ?? null,
       params.cutoff_day ?? null,
+      params.pdf_password ?? null,
       now,
       id,
     ]
@@ -160,6 +164,7 @@ export async function updateAccount(
 
   if (pendingInsert) {
     // Update the INSERT payload instead of queuing a separate UPDATE
+    // pdf_password is local-only and intentionally excluded from Supabase sync
     const existing = JSON.parse(pendingInsert.payload);
     const updated = {
       ...existing,
@@ -181,7 +186,7 @@ export async function updateAccount(
       [JSON.stringify(updated), pendingInsert.id]
     );
   } else {
-    // Already synced — queue an UPDATE
+    // Already synced — queue an UPDATE (pdf_password excluded from Supabase schema)
     const syncPayload = {
       name: params.name,
       institution_name: params.institution_name ?? null,

@@ -26,6 +26,7 @@ import {
   getAllAccounts,
   getAccountById,
   createAccount,
+  updateAccount,
   type AccountRow,
 } from "../../lib/repositories/accounts";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
@@ -41,6 +42,49 @@ import {
 } from "../../lib/transaction-semantics";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
+/** Normalize a bank/institution name for comparison: lowercase, no accents, no punctuation. */
+function normalizeInstitution(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function findMatchingAccount(
+  accounts: AccountRow[],
+  stmt: ParsedStatement,
+  accountType: string
+): AccountRow | undefined {
+  const typed = accounts.filter((a) => a.account_type === accountType);
+  if (!typed.length) return undefined;
+
+  // 1. Best match: card last four found in account name (e.g. "****1234")
+  if (stmt.card_last_four) {
+    const m = typed.find((a) => a.name.includes(stmt.card_last_four!));
+    if (m) return m;
+  }
+
+  // 2. Account number found in account name
+  if (stmt.account_number) {
+    const m = typed.find((a) => a.name.includes(stmt.account_number!));
+    if (m) return m;
+  }
+
+  // 3. Normalized institution name — exact or bidirectional substring
+  if (stmt.bank) {
+    const bankNorm = normalizeInstitution(stmt.bank);
+    const m = typed.find((a) => {
+      if (!a.institution_name) return false;
+      const instNorm = normalizeInstitution(a.institution_name);
+      return instNorm === bankNorm || instNorm.includes(bankNorm) || bankNorm.includes(instNorm);
+    });
+    if (m) return m;
+  }
+
+  return undefined;
+}
 
 type ParsedTransaction = {
   date: string;
@@ -292,24 +336,25 @@ export default function ImportScreen() {
       setSelected(allIndices);
 
       // Auto-match or auto-create an account from statement metadata
+      const stmtTypeMap: Record<string, string> = {
+        savings: "CHECKING",
+        credit_card: "CREDIT_CARD",
+        loan: "LOAN",
+      };
       if (session?.user?.id) {
-        const typeMap: Record<string, string> = {
-          savings: "CHECKING",
-          credit_card: "CREDIT_CARD",
-          loan: "LOAN",
-        };
+        const typeMap = stmtTypeMap;
         const accountType = typeMap[stmt.statement_type] ?? "CHECKING";
         const currentAccounts = await getAllAccounts();
         setAccounts(currentAccounts);
 
-        const match = currentAccounts.find(
-          (a) =>
-            a.institution_name?.toLowerCase() === stmt.bank?.toLowerCase() &&
-            a.account_type === accountType
-        );
+        const match = findMatchingAccount(currentAccounts, stmt, accountType);
 
         if (match) {
           setSelectedAccount(match);
+          // Pre-fill PDF password if stored for this account
+          if (match.pdf_password && !password.trim()) {
+            setPassword(match.pdf_password);
+          }
         } else {
           // Build a name from statement data
           let name: string;
@@ -343,6 +388,48 @@ export default function ImportScreen() {
       }
 
       setStep("review");
+
+      // Offer to save the PDF password for the matched/created account
+      if (password.trim() && session?.user?.id) {
+        // Re-read selectedAccount state after async updates via local ref
+        const latestAccounts = await getAllAccounts();
+        const matched = findMatchingAccount(
+          latestAccounts,
+          stmt,
+          stmtTypeMap[stmt.statement_type] ?? "CHECKING"
+        );
+        const targetAccount = matched ?? latestAccounts[latestAccounts.length - 1];
+        if (targetAccount && targetAccount.pdf_password !== password.trim()) {
+          Alert.alert(
+            "Guardar contraseña del PDF",
+            `¿Guardar esta contraseña para "${targetAccount.name}"? La próxima vez se completará automáticamente.`,
+            [
+              { text: "No", style: "cancel" },
+              {
+                text: "Guardar",
+                onPress: async () => {
+                  await updateAccount(targetAccount.id, {
+                    name: targetAccount.name,
+                    account_type: targetAccount.account_type,
+                    institution_name: targetAccount.institution_name,
+                    currency_code: targetAccount.currency_code,
+                    current_balance: targetAccount.current_balance,
+                    credit_limit: targetAccount.credit_limit,
+                    interest_rate: targetAccount.interest_rate,
+                    monthly_payment: targetAccount.monthly_payment,
+                    payment_day: targetAccount.payment_day,
+                    cutoff_day: targetAccount.cutoff_day,
+                    color: targetAccount.color,
+                    icon: targetAccount.icon,
+                    pdf_password: password.trim(),
+                  });
+                  setAccounts(await getAllAccounts());
+                },
+              },
+            ]
+          );
+        }
+      }
     } catch (error) {
       console.error("Parse error:", error);
       const message =
@@ -635,11 +722,40 @@ export default function ImportScreen() {
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="off"
+                importantForAutofill="no"
+                textContentType="none"
                 className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
               />
               <Text className="text-gray-400 font-inter text-xs mt-2">
                 Déjalo vacío si el PDF no tiene contraseña.
               </Text>
+              {accounts.some((a) => a.pdf_password) && (
+                <View className="mt-3">
+                  <Text className="text-gray-500 font-inter text-xs mb-1.5">
+                    Contraseñas guardadas:
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8 }}
+                  >
+                    {accounts
+                      .filter((a) => a.pdf_password)
+                      .map((a) => (
+                        <Pressable
+                          key={a.id}
+                          onPress={() => setPassword(a.pdf_password!)}
+                          className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 active:bg-emerald-100"
+                        >
+                          <Text className="text-emerald-700 font-inter-medium text-xs">
+                            {a.name}
+                          </Text>
+                        </Pressable>
+                      ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
           </View>
         )}
