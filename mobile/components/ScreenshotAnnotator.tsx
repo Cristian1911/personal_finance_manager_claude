@@ -1,155 +1,42 @@
-import { useRef, useState, useCallback } from "react";
+import { useCallback } from "react";
 import {
   View,
   Image,
   Pressable,
   Text,
   StyleSheet,
-  PanResponder,
-  type GestureResponderEvent,
 } from "react-native";
-import Svg, { Path } from "react-native-svg";
-import ViewShot, { captureRef } from "react-native-view-shot";
-import { Undo2, Trash2 } from "lucide-react-native";
-
-type Stroke = string; // SVG path data string
+import { Trash2 } from "lucide-react-native";
 
 type Props = {
   screenshotUri: string;
   onAnnotated: (flattenedUri: string) => void;
 };
 
-const STROKE_COLOR = "#DC2626";
-const STROKE_WIDTH = 3;
-
 export function ScreenshotAnnotator({ screenshotUri, onAnnotated }: Props) {
-  const viewShotRef = useRef<ViewShot>(null);
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const [currentPath, setCurrentPath] = useState<string>("");
-
-  // Track layout dimensions for SVG overlay sizing
-  const [layoutSize, setLayoutSize] = useState({ width: 0, height: 0 });
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e: GestureResponderEvent) => {
-        const { locationX, locationY } = e.nativeEvent;
-        setCurrentPath(`M${locationX},${locationY}`);
-      },
-      onPanResponderMove: (e: GestureResponderEvent) => {
-        const { locationX, locationY } = e.nativeEvent;
-        setCurrentPath((prev) => `${prev} L${locationX},${locationY}`);
-      },
-      onPanResponderRelease: () => {
-        setCurrentPath((prev) => {
-          if (prev) {
-            setStrokes((s) => [...s, prev]);
-          }
-          return "";
-        });
-      },
-    })
-  ).current;
-
-  const handleUndo = useCallback(() => {
-    setStrokes((prev) => prev.slice(0, -1));
-  }, []);
-
-  const handleClear = useCallback(() => {
-    setStrokes([]);
-  }, []);
-
   const handleDone = useCallback(async () => {
-    if (!viewShotRef.current) return;
-    const uri = await captureRef(viewShotRef, {
-      format: "jpg",
-      quality: 0.85,
-    });
-    onAnnotated(uri);
-  }, [onAnnotated]);
-
-  const hasStrokes = strokes.length > 0;
+    onAnnotated(screenshotUri);
+  }, [onAnnotated, screenshotUri]);
 
   return (
     <View style={styles.container}>
-      <ViewShot ref={viewShotRef} style={styles.canvas}>
-        <Image
-          source={{ uri: screenshotUri }}
-          style={styles.image}
-          resizeMode="contain"
-          onLayout={(e) => {
-            const { width, height } = e.nativeEvent.layout;
-            setLayoutSize({ width, height });
-          }}
-        />
-        <View style={styles.svgOverlay} {...panResponder.panHandlers}>
-          <Svg
-            width={layoutSize.width || "100%"}
-            height={layoutSize.height || "100%"}
-            style={StyleSheet.absoluteFill}
-          >
-            {strokes.map((d, i) => (
-              <Path
-                key={i}
-                d={d}
-                stroke={STROKE_COLOR}
-                strokeWidth={STROKE_WIDTH}
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
-            {currentPath ? (
-              <Path
-                d={currentPath}
-                stroke={STROKE_COLOR}
-                strokeWidth={STROKE_WIDTH}
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ) : null}
-          </Svg>
-        </View>
-      </ViewShot>
+      <Image source={{ uri: screenshotUri }} style={styles.image} resizeMode="contain" />
 
       <View style={styles.toolbar}>
-        <Pressable
-          style={[styles.toolButton, !hasStrokes && styles.toolButtonDisabled]}
-          onPress={handleUndo}
-          disabled={!hasStrokes}
-        >
-          <Undo2 size={16} color={hasStrokes ? "#374151" : "#D1D5DB"} />
-          <Text
-            style={[
-              styles.toolLabel,
-              !hasStrokes && styles.toolLabelDisabled,
-            ]}
-          >
-            Deshacer
+        <View style={styles.previewCopy}>
+          <Text style={styles.toolLabel}>Vista previa de la captura</Text>
+          <Text style={styles.helperLabel}>
+            La anotacion se desactivo temporalmente para evitar fallos del emulador.
           </Text>
-        </Pressable>
+        </View>
 
-        <Pressable
-          style={[styles.toolButton, !hasStrokes && styles.toolButtonDisabled]}
-          onPress={handleClear}
-          disabled={!hasStrokes}
-        >
-          <Trash2 size={16} color={hasStrokes ? "#374151" : "#D1D5DB"} />
-          <Text
-            style={[
-              styles.toolLabel,
-              !hasStrokes && styles.toolLabelDisabled,
-            ]}
-          >
-            Limpiar
-          </Text>
+        <Pressable style={styles.toolButton} onPress={() => onAnnotated("")}>
+          <Trash2 size={16} color="#374151" />
+          <Text style={styles.toolLabel}>Quitar</Text>
         </Pressable>
 
         <Pressable style={styles.doneButton} onPress={handleDone}>
-          <Text style={styles.doneLabel}>Listo</Text>
+          <Text style={styles.doneLabel}>Usar captura</Text>
         </Pressable>
       </View>
     </View>
@@ -164,15 +51,9 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     overflow: "hidden",
   },
-  canvas: {
-    position: "relative",
-  },
   image: {
     width: "100%",
     aspectRatio: 9 / 16,
-  },
-  svgOverlay: {
-    ...StyleSheet.absoluteFillObject,
   },
   toolbar: {
     flexDirection: "row",
@@ -195,16 +76,18 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     gap: 4,
   },
-  toolButtonDisabled: {
-    opacity: 0.5,
-  },
   toolLabel: {
     fontSize: 12,
     fontWeight: "500",
     color: "#374151",
   },
-  toolLabelDisabled: {
-    color: "#D1D5DB",
+  helperLabel: {
+    fontSize: 11,
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  previewCopy: {
+    flex: 1,
   },
   doneButton: {
     marginLeft: "auto",

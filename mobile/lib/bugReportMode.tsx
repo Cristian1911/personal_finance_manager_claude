@@ -1,6 +1,6 @@
 // mobile/lib/bugReportMode.tsx
-import { createContext, useContext, useRef, useState, ReactNode } from "react";
-import ViewShot from "react-native-view-shot";
+import { createContext, useContext, useState, ReactNode } from "react";
+import { View } from "react-native";
 
 type BugReportContextValue = {
   isBugMode: boolean;
@@ -12,7 +12,27 @@ type BugReportContextValue = {
 
 const BugReportContext = createContext<BugReportContextValue | null>(null);
 
-const viewShotRef = { current: null as ViewShot | null };
+type ViewShotHandle = {
+  capture?: () => Promise<string>;
+};
+
+let viewShotModule: typeof import("react-native-view-shot") | null | undefined;
+
+function getViewShotModule() {
+  if (viewShotModule !== undefined) {
+    return viewShotModule;
+  }
+
+  try {
+    viewShotModule = require("react-native-view-shot");
+  } catch {
+    viewShotModule = null;
+  }
+
+  return viewShotModule;
+}
+
+const viewShotRef = { current: null as ViewShotHandle | null };
 
 export function BugReportProvider({ children }: { children: ReactNode }) {
   const [isBugMode, setIsBugMode] = useState(false);
@@ -23,8 +43,10 @@ export function BugReportProvider({ children }: { children: ReactNode }) {
   }
 
   async function captureScreen(): Promise<string> {
-    if (!viewShotRef.current) throw new Error("ViewShot ref not ready");
-    const uri = await (viewShotRef.current as any).capture();
+    if (!viewShotRef.current?.capture) {
+      throw new Error("Screen capture is not available in this build");
+    }
+    const uri = await viewShotRef.current.capture();
     return uri as string;
   }
 
@@ -38,9 +60,16 @@ export function BugReportProvider({ children }: { children: ReactNode }) {
 }
 
 export function BugReportViewShot({ children }: { children: ReactNode }) {
+  const module = getViewShotModule();
+  const ViewShot = module?.default;
+
+  if (!ViewShot) {
+    return <View style={{ flex: 1 }}>{children}</View>;
+  }
+
   return (
     <ViewShot
-      ref={(ref: ViewShot | null) => {
+      ref={(ref: ViewShotHandle | null) => {
         viewShotRef.current = ref;
       }}
       options={{ format: "jpg", quality: 0.85 }}

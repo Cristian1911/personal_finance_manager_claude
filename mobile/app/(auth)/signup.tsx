@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
+import { AppKeyboardAwareScrollView } from "../../components/common/AppKeyboardAwareScrollView";
 import { supabase } from "../../lib/supabase";
 
 export default function SignupScreen() {
@@ -52,7 +52,7 @@ export default function SignupScreen() {
   }
 
   return (
-    <KeyboardAwareScrollView
+    <AppKeyboardAwareScrollView
       style={{ flex: 1, backgroundColor: "#F3F4F6" }}
       contentContainerStyle={{
         flexGrow: 1,
@@ -147,6 +147,6 @@ export default function SignupScreen() {
             <Text className="text-emerald-600 font-medium">Inicia sesión</Text>
           </Text>
         </TouchableOpacity>
-    </KeyboardAwareScrollView>
+    </AppKeyboardAwareScrollView>
   );
 }

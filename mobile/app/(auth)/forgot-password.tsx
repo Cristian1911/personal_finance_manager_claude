@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
+import { AppKeyboardAwareScrollView } from "../../components/common/AppKeyboardAwareScrollView";
 import { supabase } from "../../lib/supabase";
 
 export default function ForgotPasswordScreen() {
@@ -41,7 +41,7 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <KeyboardAwareScrollView
+    <AppKeyboardAwareScrollView
       style={{ flex: 1, backgroundColor: "#F3F4F6" }}
       contentContainerStyle={{
         flexGrow: 1,
@@ -120,6 +120,6 @@ export default function ForgotPasswordScreen() {
             Volver al inicio de sesión
           </Text>
         </TouchableOpacity>
-    </KeyboardAwareScrollView>
+    </AppKeyboardAwareScrollView>
   );
 }

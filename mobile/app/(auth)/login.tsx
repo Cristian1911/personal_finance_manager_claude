@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
+import { AppKeyboardAwareScrollView } from "../../components/common/AppKeyboardAwareScrollView";
 import { supabase } from "../../lib/supabase";
 import { seedDemoData } from "../../lib/demo-data";
 import { enableDemoMode } from "../../lib/demo-mode";
@@ -87,7 +87,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAwareScrollView
+    <AppKeyboardAwareScrollView
       style={{ flex: 1, backgroundColor: "#F3F4F6" }}
       contentContainerStyle={{
         flexGrow: 1,
@@ -194,6 +194,6 @@ export default function LoginScreen() {
             <Text className="text-emerald-600 font-medium">Regístrate</Text>
           </Text>
         </TouchableOpacity>
-    </KeyboardAwareScrollView>
+    </AppKeyboardAwareScrollView>
   );
 }

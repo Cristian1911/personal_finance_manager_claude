@@ -77,6 +77,16 @@ export default function BugReportScreen() {
     [title, description]
   );
 
+  function handleAnnotated(uri: string) {
+    if (!uri) {
+      setAnnotatedUri(null);
+      setPendingScreenshotUri(null);
+      return;
+    }
+
+    setAnnotatedUri(uri);
+  }
+
   function validateAttachment(
     candidate: DocumentPicker.DocumentPickerAsset
   ): string | null {
@@ -316,7 +326,7 @@ export default function BugReportScreen() {
           {pendingScreenshotUri ? (
             <ScreenshotAnnotator
               screenshotUri={pendingScreenshotUri}
-              onAnnotated={setAnnotatedUri}
+              onAnnotated={handleAnnotated}
             />
           ) : (
             <Pressable

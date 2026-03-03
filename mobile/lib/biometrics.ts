@@ -1,14 +1,32 @@
-import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 
 const BIOMETRICS_ENABLED_KEY = "venti5_biometrics_enabled";
 const BIOMETRICS_REAUTH_KEY = "venti5_biometrics_reauth_background";
 const BIOMETRICS_PROMPTED_KEY = "venti5_biometrics_prompted";
 
+let localAuthenticationModule: typeof import("expo-local-authentication") | null | undefined;
+
+function getLocalAuthenticationModule() {
+  if (localAuthenticationModule !== undefined) {
+    return localAuthenticationModule;
+  }
+
+  try {
+    localAuthenticationModule = require("expo-local-authentication");
+  } catch {
+    localAuthenticationModule = null;
+  }
+
+  return localAuthenticationModule;
+}
+
 export async function isBiometricsAvailable(): Promise<boolean> {
-  const hasHardware = await LocalAuthentication.hasHardwareAsync();
+  const localAuthentication = getLocalAuthenticationModule();
+  if (!localAuthentication) return false;
+
+  const hasHardware = await localAuthentication.hasHardwareAsync();
   if (!hasHardware) return false;
-  const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+  const isEnrolled = await localAuthentication.isEnrolledAsync();
   return isEnrolled;
 }
 
@@ -48,7 +66,10 @@ export async function markBiometricsPrompted(): Promise<void> {
 }
 
 export async function authenticateWithBiometrics(): Promise<boolean> {
-  const result = await LocalAuthentication.authenticateAsync({
+  const localAuthentication = getLocalAuthenticationModule();
+  if (!localAuthentication) return false;
+
+  const result = await localAuthentication.authenticateAsync({
     promptMessage: "Desbloquear Venti5",
     cancelLabel: "Cancelar",
     disableDeviceFallback: false,

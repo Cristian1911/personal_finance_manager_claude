@@ -7,8 +7,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
+import { AppKeyboardAwareScrollView } from "../components/common/AppKeyboardAwareScrollView";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 
@@ -111,7 +111,7 @@ export default function MobileOnboardingScreen() {
   }
 
   return (
-    <KeyboardAwareScrollView
+    <AppKeyboardAwareScrollView
       style={{ flex: 1, backgroundColor: "#F3F4F6" }}
       contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
       bottomOffset={20}
@@ -240,6 +240,6 @@ export default function MobileOnboardingScreen() {
             <Text className="text-white font-inter-bold text-base">Entrar a Venti5</Text>
           )}
         </Pressable>
-    </KeyboardAwareScrollView>
+    </AppKeyboardAwareScrollView>
   );
 }
