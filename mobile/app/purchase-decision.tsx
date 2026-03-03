@@ -301,15 +301,15 @@ export default function PurchaseDecisionScreen() {
             </Text>
             <View className="flex-row flex-wrap gap-3">
               <MetricTile
-                label="Impacto inmediato"
+                label="Desembolso inicial"
                 value={formatCurrency(result.metrics.effectiveImmediateImpact)}
               />
               <MetricTile
-                label="Buffer proyectado"
+                label="Colchón de liquidez"
                 value={formatCurrency(result.metrics.projectedLiquidBuffer)}
               />
               <MetricTile
-                label="Buffer recomendado"
+                label="Colchón recomendado"
                 value={formatCurrency(result.metrics.recommendedBuffer)}
               />
               <MetricTile
@@ -326,7 +326,7 @@ export default function PurchaseDecisionScreen() {
               )}
               {result.metrics.selectedAccountUtilizationAfter != null && (
                 <MetricTile
-                  label="Utilizacion despues"
+                  label="Uso del cupo después"
                   value={`${result.metrics.selectedAccountUtilizationAfter.toFixed(0)}%`}
                 />
               )}

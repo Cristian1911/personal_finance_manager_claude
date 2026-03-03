@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Brain, CircleAlert, Loader2, PiggyBank, Scale, ShieldAlert } from "lucide-react";
+import { ArrowRight, Brain, CircleAlert, Loader2, PiggyBank, Scale, ShieldAlert } from "lucide-react";
 import type { PurchaseDecisionResult, PurchaseFundingType, PurchaseUrgency } from "@venti5/shared";
 import { analyzePurchaseDecisionAction } from "@/actions/purchase-decision";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
@@ -63,6 +63,19 @@ const verdictMeta: Record<
   },
 };
 
+function getImpactMeta(
+  fundingType: PurchaseFundingType,
+  accountType: AccountOption["account_type"] | undefined
+): { label: string; showAmount: boolean } {
+  if (accountType === "CREDIT_CARD" && fundingType === "ONE_TIME") {
+    return { label: "Sin salida de efectivo hoy — va al cupo", showAmount: false };
+  }
+  if (fundingType === "INSTALLMENTS") {
+    return { label: "Primera cuota estimada", showAmount: true };
+  }
+  return { label: "Sale de tu cuenta hoy", showAmount: true };
+}
+
 export function PurchaseDecisionCard({
   accounts,
   categories,
@@ -86,6 +99,11 @@ export function PurchaseDecisionCard({
   const [installments, setInstallments] = useState("3");
   const [result, setResult] = useState<PurchaseDecisionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedAccount = useMemo(
+    () => activeAccounts.find((account) => account.id === accountId),
+    [activeAccounts, accountId]
+  );
 
   function handleAnalyze() {
     const numericAmount = Number(amount);
@@ -121,6 +139,8 @@ export function PurchaseDecisionCard({
       setResult(response.data);
     });
   }
+
+  const impactMeta = getImpactMeta(fundingType, selectedAccount?.account_type);
 
   return (
     <Card className="border-primary/20">
@@ -275,6 +295,7 @@ export function PurchaseDecisionCard({
               <div className="min-w-0 space-y-4 overflow-y-auto p-4 sm:p-6">
                 {result ? (
                   <>
+                    {/* Verdict panel */}
                     <div
                       className={cn(
                         "rounded-xl border p-4",
@@ -297,48 +318,85 @@ export function PurchaseDecisionCard({
                           </div>
                         </div>
                         <div className="rounded-lg bg-background/80 px-3 py-2 text-right">
-                          <p className="text-xs text-muted-foreground">Impacto inmediato</p>
-                          <p className="text-lg font-semibold">
-                            {formatCurrency(result.metrics.effectiveImmediateImpact)}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{impactMeta.label}</p>
+                          {impactMeta.showAmount ? (
+                            <p className="text-lg font-semibold">
+                              {formatCurrency(result.metrics.effectiveImmediateImpact)}
+                            </p>
+                          ) : (
+                            <p className="text-sm font-semibold">
+                              +{formatCurrency(Number(amount))} al cupo
+                            </p>
+                          )}
                         </div>
                       </div>
                       <p className="text-sm leading-6">{result.summary}</p>
                     </div>
 
+                    {/* Before/After comparison */}
+                    <section className="rounded-xl border p-4">
+                      <div className="mb-3">
+                        <h3 className="text-sm font-semibold">Antes y después de la compra</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Así cambian tus indicadores clave si haces la compra
+                        </p>
+                      </div>
+                      <div className="divide-y">
+                        <BeforeAfterRow
+                          label="Colchón de liquidez"
+                          description="Efectivo libre que te quedaría después de cubrir tus compromisos del mes"
+                          before={formatCurrency(result.metrics.currentLiquidBuffer)}
+                          after={formatCurrency(result.metrics.projectedLiquidBuffer)}
+                          beforeValue={result.metrics.currentLiquidBuffer}
+                          afterValue={result.metrics.projectedLiquidBuffer}
+                          higherIsBetter={true}
+                        />
+                        {result.metrics.selectedAccountUtilizationBefore !== null &&
+                          result.metrics.selectedAccountUtilizationAfter !== null && (
+                            <BeforeAfterRow
+                              label="Uso del cupo de crédito"
+                              description="Qué porcentaje del límite de tu tarjeta estarías usando"
+                              before={`${Math.round(result.metrics.selectedAccountUtilizationBefore)}%`}
+                              after={`${Math.round(result.metrics.selectedAccountUtilizationAfter)}%`}
+                              beforeValue={result.metrics.selectedAccountUtilizationBefore}
+                              afterValue={result.metrics.selectedAccountUtilizationAfter}
+                              higherIsBetter={false}
+                            />
+                          )}
+                        {result.metrics.currentBudgetRemaining !== null &&
+                          result.metrics.budgetRemainingAfterPurchase !== null && (
+                            <BeforeAfterRow
+                              label="Presupuesto de la categoría"
+                              description="Lo que te quedaría del presupuesto de esa categoría este mes"
+                              before={formatCurrency(result.metrics.currentBudgetRemaining)}
+                              after={formatCurrency(result.metrics.budgetRemainingAfterPurchase)}
+                              beforeValue={result.metrics.currentBudgetRemaining}
+                              afterValue={result.metrics.budgetRemainingAfterPurchase}
+                              higherIsBetter={true}
+                            />
+                          )}
+                      </div>
+                    </section>
+
+                    {/* Supporting metrics */}
                     <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                       <MetricTile
-                        label="Buffer proyectado"
-                        value={formatCurrency(result.metrics.projectedLiquidBuffer)}
-                      />
-                      <MetricTile
-                        label="Colchón recomendado"
-                        value={formatCurrency(result.metrics.recommendedBuffer)}
-                      />
-                      <MetricTile
                         label="Flujo libre mensual"
+                        description="Ingresos menos gastos del mes actual"
                         value={formatCurrency(result.metrics.monthlyFreeCashflow)}
                       />
                       <MetricTile
-                        label="Cuota estimada"
-                        value={formatCurrency(result.metrics.estimatedMonthlyInstallment)}
+                        label="Colchón mínimo recomendado"
+                        description="Reserva de efectivo que deberías mantener siempre disponible"
+                        value={formatCurrency(result.metrics.recommendedBuffer)}
                       />
-                      <MetricTile
-                        label="Presupuesto restante"
-                        value={
-                          result.metrics.budgetRemainingAfterPurchase == null
-                            ? "Sin presupuesto"
-                            : formatCurrency(result.metrics.budgetRemainingAfterPurchase)
-                        }
-                      />
-                      <MetricTile
-                        label="Uso de deuda proyectado"
-                        value={
-                          result.metrics.selectedAccountUtilizationAfter == null
-                            ? "No aplica"
-                            : `${Math.round(result.metrics.selectedAccountUtilizationAfter)}%`
-                        }
-                      />
+                      {result.metrics.estimatedMonthlyInstallment > 0 && (
+                        <MetricTile
+                          label="Cuota mensual estimada"
+                          description="Lo que pagarías cada mes si divides la compra en cuotas"
+                          value={formatCurrency(result.metrics.estimatedMonthlyInstallment)}
+                        />
+                      )}
                     </div>
 
                     <div className="grid gap-4 xl:grid-cols-2">
@@ -421,11 +479,70 @@ export function PurchaseDecisionCard({
   );
 }
 
-function MetricTile({ label, value }: { label: string; value: string }) {
+function MetricTile({
+  label,
+  description,
+  value,
+}: {
+  label: string;
+  description?: string;
+  value: string;
+}) {
   return (
     <div className="rounded-xl border bg-muted/30 p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-semibold">{value}</p>
+      <p className="text-xs font-medium">{label}</p>
+      {description && (
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      )}
+      <p className="mt-2 text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function BeforeAfterRow({
+  label,
+  description,
+  before,
+  after,
+  beforeValue,
+  afterValue,
+  higherIsBetter,
+}: {
+  label: string;
+  description: string;
+  before: string;
+  after: string;
+  beforeValue: number;
+  afterValue: number;
+  higherIsBetter: boolean;
+}) {
+  const changed = afterValue !== beforeValue;
+  const improved = higherIsBetter ? afterValue >= beforeValue : afterValue <= beforeValue;
+
+  return (
+    <div className="py-3 first:pt-0 last:pb-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{label}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+          <span className="text-sm text-muted-foreground">{before}</span>
+          <ArrowRight className="h-3 w-3 text-muted-foreground" />
+          <span
+            className={cn(
+              "text-sm font-semibold",
+              !changed
+                ? "text-foreground"
+                : improved
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400"
+            )}
+          >
+            {after}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
