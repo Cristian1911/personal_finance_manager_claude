@@ -100,10 +100,12 @@ export default function AnnotateScreenshotScreen() {
 
     const base64 = snapshot.encodeToBase64(ImageFormat.JPEG, 85);
     const fileName = `annotated-${Date.now()}.jpg`;
-    const file = new ExpoFile(Paths.cache, fileName);
-    file.write(base64, { encoding: "base64" });
+    const fileUri = FileSystem.cacheDirectory + fileName;
+    await FileSystem.writeAsStringAsync(fileUri, base64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
 
-    setAnnotatedScreenshotUri(file.uri);
+    setAnnotatedScreenshotUri(fileUri);
     router.back();
   }, [canvasRef, setAnnotatedScreenshotUri, router]);
 
