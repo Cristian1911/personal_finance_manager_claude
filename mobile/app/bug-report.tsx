@@ -60,7 +60,7 @@ function resolveAttachmentMimeType(
 export default function BugReportScreen() {
   const router = useRouter();
   const { session } = useAuth();
-  const { pendingScreenshotUri, setPendingScreenshotUri } = useBugReport();
+  const { pendingScreenshotUri, setPendingScreenshotUri, annotatedScreenshotUri, setAnnotatedScreenshotUri } = useBugReport();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -68,7 +68,6 @@ export default function BugReportScreen() {
   const [areaHint, setAreaHint] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [annotatedUri, setAnnotatedUri] = useState<string | null>(null);
   const [attachment, setAttachment] =
     useState<DocumentPicker.DocumentPickerAsset | null>(null);
 
@@ -79,12 +78,12 @@ export default function BugReportScreen() {
 
   function handleAnnotated(uri: string) {
     if (!uri) {
-      setAnnotatedUri(null);
+      setAnnotatedScreenshotUri(null);
       setPendingScreenshotUri(null);
       return;
     }
 
-    setAnnotatedUri(uri);
+    setAnnotatedScreenshotUri(uri);
   }
 
   function validateAttachment(
@@ -148,7 +147,7 @@ export default function BugReportScreen() {
 
       // If a screenshot was captured via bug mode, treat it as the attachment
       // Prefer annotated version (with user drawings) over raw screenshot
-      const effectiveScreenshotUri = annotatedUri ?? pendingScreenshotUri;
+      const effectiveScreenshotUri = annotatedScreenshotUri ?? pendingScreenshotUri;
       const screenshotAsset: DocumentPicker.DocumentPickerAsset | null =
         effectiveScreenshotUri
           ? {
@@ -237,6 +236,7 @@ export default function BugReportScreen() {
         `Ticket ${data?.id ?? "creado"}. Ya puedes trabajarlo desde tu workspace.`
       );
       setPendingScreenshotUri(null);
+      setAnnotatedScreenshotUri(null);
       router.back();
     } catch (err) {
       console.error("Bug report submit error:", err);

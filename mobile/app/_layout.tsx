@@ -245,6 +245,14 @@ function RootLayoutNav() {
               options={buildSheetOptions([0.6, 0.95])}
             />
             <Stack.Screen
+              name="annotate-screenshot"
+              options={{
+                presentation: "fullScreenModal",
+                headerShown: false,
+                animation: "slide_from_bottom",
+              }}
+            />
+            <Stack.Screen
               name="subscriptions"
               options={buildSheetOptions([0.65, 1.0])}
             />

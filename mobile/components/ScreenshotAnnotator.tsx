@@ -6,7 +6,9 @@ import {
   Text,
   StyleSheet,
 } from "react-native";
-import { Trash2 } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { Pencil, Trash2 } from "lucide-react-native";
+import { useBugReport } from "../lib/bugReportMode";
 
 type Props = {
   screenshotUri: string;
@@ -14,24 +16,30 @@ type Props = {
 };
 
 export function ScreenshotAnnotator({ screenshotUri, onAnnotated }: Props) {
-  const handleDone = useCallback(async () => {
-    onAnnotated(screenshotUri);
-  }, [onAnnotated, screenshotUri]);
+  const router = useRouter();
+  const { annotatedScreenshotUri } = useBugReport();
+
+  const displayUri = annotatedScreenshotUri || screenshotUri;
+
+  const handleDone = useCallback(() => {
+    onAnnotated(displayUri);
+  }, [onAnnotated, displayUri]);
 
   return (
     <View style={styles.container}>
-      <Image source={{ uri: screenshotUri }} style={styles.image} resizeMode="contain" />
+      <Image source={{ uri: displayUri }} style={styles.image} resizeMode="contain" />
 
       <View style={styles.toolbar}>
-        <View style={styles.previewCopy}>
-          <Text style={styles.toolLabel}>Vista previa de la captura</Text>
-          <Text style={styles.helperLabel}>
-            La anotacion se desactivo temporalmente para evitar fallos del emulador.
-          </Text>
-        </View>
+        <Pressable
+          style={styles.annotateButton}
+          onPress={() => router.push("/annotate-screenshot" as never)}
+        >
+          <Pencil size={14} color="#FFFFFF" />
+          <Text style={styles.annotateLabel}>Anotar</Text>
+        </Pressable>
 
         <Pressable style={styles.toolButton} onPress={() => onAnnotated("")}>
-          <Trash2 size={16} color="#374151" />
+          <Trash2 size={14} color="#374151" />
           <Text style={styles.toolLabel}>Quitar</Text>
         </Pressable>
 
@@ -65,6 +73,20 @@ const styles = StyleSheet.create({
     borderTopColor: "#E5E7EB",
     gap: 8,
   },
+  annotateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#047857",
+    gap: 4,
+  },
+  annotateLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
   toolButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -81,24 +103,18 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#374151",
   },
-  helperLabel: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginTop: 2,
-  },
-  previewCopy: {
-    flex: 1,
-  },
   doneButton: {
     marginLeft: "auto",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: "#047857",
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   doneLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "#374151",
   },
 });
