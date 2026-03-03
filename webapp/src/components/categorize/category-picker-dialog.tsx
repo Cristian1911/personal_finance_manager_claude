@@ -149,7 +149,7 @@ export function CategoryPickerDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpen}>
-        <DialogContent className="h-[min(94vh,60rem)] w-[min(98vw,84rem)] max-w-[min(98vw,84rem)] overflow-hidden p-0 sm:p-0">
+        <DialogContent className="flex h-[min(94vh,60rem)] w-[min(98vw,84rem)] max-w-[min(98vw,84rem)] sm:max-w-[min(98vw,84rem)] flex-col gap-0 overflow-hidden p-0 sm:p-0">
           <DialogHeader className="border-b px-6 py-4">
             <DialogTitle>Selecciona una categoría</DialogTitle>
             <DialogDescription>
@@ -157,7 +157,7 @@ export function CategoryPickerDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid h-full min-h-[420px] grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)]">
             <div className="overflow-y-auto border-b bg-muted/20 p-4 xl:border-r xl:border-b-0">
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                 {sections.map((section) => {
