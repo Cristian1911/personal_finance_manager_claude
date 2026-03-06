@@ -3,7 +3,8 @@ import * as SecureStore from "expo-secure-store";
 const PDF_PASSWORD_KEY_PREFIX = "venti5_pdf_password";
 
 function getPdfPasswordKey(userId: string, accountId: string) {
-  return `${PDF_PASSWORD_KEY_PREFIX}:${userId}:${accountId}`;
+  const sanitized = `${userId}_${accountId}`.replace(/[^a-zA-Z0-9.,_]/g, "_");
+  return `${PDF_PASSWORD_KEY_PREFIX}_${sanitized}`;
 }
 
 export async function getPdfPasswordForAccount(

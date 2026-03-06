@@ -1,5 +1,9 @@
 import type { ComponentProps, ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
+import {
+  KeyboardAwareScrollView,
+  KeyboardProvider,
+} from "react-native-keyboard-controller";
 
 type ScrollProps = ComponentProps<typeof ScrollView> & {
   avoidKeyboard?: boolean;
@@ -7,7 +11,7 @@ type ScrollProps = ComponentProps<typeof ScrollView> & {
 };
 
 export function AppKeyboardProvider({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return <KeyboardProvider>{children}</KeyboardProvider>;
 }
 
 export function AppKeyboardAwareScrollView({
@@ -15,33 +19,33 @@ export function AppKeyboardAwareScrollView({
   bottomOffset = 20,
   children,
   keyboardShouldPersistTaps = "handled",
-  keyboardDismissMode = Platform.OS === "ios" ? "interactive" : "on-drag",
+  keyboardDismissMode = "interactive",
   style,
   ...props
 }: ScrollProps) {
-  const scrollView = (
-    <ScrollView
-      {...props}
-      style={avoidKeyboard ? styles.scroll : style}
-      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
-      keyboardDismissMode={keyboardDismissMode}
-    >
-      {children}
-    </ScrollView>
-  );
-
   if (!avoidKeyboard) {
-    return scrollView;
+    return (
+      <ScrollView
+        {...props}
+        style={style}
+        keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+        keyboardDismissMode={keyboardDismissMode}
+      >
+        {children}
+      </ScrollView>
+    );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={style}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={bottomOffset}
+    <KeyboardAwareScrollView
+      {...props}
+      style={style ?? styles.scroll}
+      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+      keyboardDismissMode={keyboardDismissMode}
+      bottomOffset={bottomOffset}
     >
-      {scrollView}
-    </KeyboardAvoidingView>
+      {children}
+    </KeyboardAwareScrollView>
   );
 }
 

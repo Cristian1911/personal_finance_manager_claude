@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zeta — Developer Handoff</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --surface2: #181818;
+    --border: #2a2a2a;
+    --text: #ccc;
+    --text-muted: #666;
+    --white: #eee;
+    --sage: #C5BFAE;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; line-height: 1.7; }
+
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 40px; }
+
+  header { padding: 60px 0 40px; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 36px; font-weight: 900; color: var(--white); letter-spacing: -0.04em; }
+  header h1 span { color: var(--sage); }
+  .header-meta { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+  .header-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--sage); border: 1px solid #333; border-radius: 16px; padding: 3px 12px; margin-bottom: 16px; }
+
+  .section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+  .section:last-child { border-bottom: none; }
+  .section-num { font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #444; margin-bottom: 8px; }
+  .section h2 { font-size: 22px; font-weight: 800; color: var(--white); letter-spacing: -0.02em; margin-bottom: 6px; }
+  .section-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; max-width: 640px; }
+
+  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.8; color: #b0b0b0; margin-bottom: 20px; }
+  code { font-family: 'JetBrains Mono', monospace; }
+  .inline-code { background: var(--surface2); padding: 2px 8px; border-radius: 6px; font-size: 12px; color: var(--sage); border: 1px solid var(--border); }
+
+  .token-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
+  .token-table th { text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #555; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .token-table td { padding: 10px 12px; border-bottom: 1px solid #1a1a1a; vertical-align: middle; }
+  .token-table tr:last-child td { border-bottom: none; }
+  .token-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--sage); }
+  .token-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #888; }
+  .swatch { width: 24px; height: 24px; border-radius: 6px; display: inline-block; vertical-align: middle; margin-right: 8px; border: 1px solid #333; }
+
+  .comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .comp-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+  .comp-name { font-size: 14px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+  .comp-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+  .comp-prop { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #1a1a1a; font-size: 12px; }
+  .comp-prop:last-child { border-bottom: none; }
+  .prop-key { color: #888; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .prop-val { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  .note { background: #0d1108; border: 1px solid #1e2a16; border-radius: 10px; padding: 14px 18px; font-size: 12px; color: #999; margin-bottom: 16px; }
+  .note strong { color: var(--sage); }
+  .warn { background: #1a1008; border-color: #3a2a10; }
+  .warn strong { color: #F4A261; }
+
+  .motif-demo { display: flex; gap: 24px; align-items: center; margin-bottom: 24px; }
+  .motif-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<header>
+  <div class="header-tag">Developer Handoff</div>
+  <h1>Z<span>eta</span></h1>
+  <div class="header-meta">Personal Finance App · Design Tokens · Component Specs · SVG Assets · March 2026</div>
+</header>
+
+<!-- ──────────────────────────────── -->
+<!-- 1. DESIGN TOKENS: COLORS -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">01 — Design Tokens</div>
+  <h2>Color System</h2>
+  <p class="section-desc">Zeta uses a <strong style="color:#ccc;">60-30-10 rule</strong>: Ink Black (60%) for backgrounds, Sage Beige (30%) for text and surfaces, functional accents (10%) for financial data. Colors are semantically tied to financial meaning.</p>
+
+  <h3 style="font-size:13px;font-weight:700;color:#888;margin-bottom:12px;letter-spacing:0.06em;text-transform:uppercase;">Core Palette</h3>
+  <table class="token-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Role</th><th>Usage %</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="token-name">--z-ink</td>
+        <td class="token-value"><span class="swatch" style="background:#1C1C1C;"></span>#1C1C1C</td>
+        <td>Base background</td>
+        <td style="color:#888;">60%</td>
+      </tr>
+      <tr>
+        <td class="token-name">--z-sage</td>
+        <td class="token-value"><span class="swatch" style="background:#C5BFAE;"></span>#C5BFAE</td>
+        <td>Primary text, surfaces</td>
+        <td style="color:#888;">30%</td>
+      </tr>
+      <tr>
+        <td class="token-name">--z-sage-light</td>
+        <td class="token-value"><span class="swatch" style="background:#D8D2C4;"></span>#D8D2C4</td>
+        <td>Light variant for emphasis</td>
+        <td style="color:#888;">—</td>
+      </tr>
+      <tr>
+        <td class="token-name">--z-sage-dark</td>
+        <td class="token-value"><span class="swatch" style="background:#9E9888;"></span>#9E9888</td>
+        <td>Muted text, captions</td>
+        <td style="color:#888;">—</td>
+      </tr>
+      <tr>
+        <td class="token-name">--z-white</td>
+        <td class="token-value"><span class="swatch" style="background:#F5F3EF;"></span>#F5F3EF</td>
+        <td>Primary text on dark backgrounds</td>
+        <td style="color:#888;">—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 style="font-size:13px;font-weight:700;color:#888;margin:24px 0 12px;letter-spacing:0.06em;text-transform:uppercase;">Functional Accents (Financial Semantics)</h3>
+  <div class="note"><strong>Critical rule:</strong> These colors carry <em>meaning</em>. Green = money coming in. Amber = money going out. Red = obligation/debt. Gold = attention needed. Never use them decoratively.</div>
+
+  <table class="token-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Meaning</th><th>Used For</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="token-name">--z-income</td>
+        <td class="token-value"><span class="swatch" style="background:#52B788;"></span>#52B788</td>
+        <td style="color:#52B788;font-weight:600;">Ingresos</td>
+        <td>Salary, deposits, positive amounts, success states</td>
+      </tr>
+      <tr>
+        <td class="token-name">--z-expense</td>
+        <td class="token-value"><span class="swatch" style="background:#F4A261;"></span>#F4A261</td>
+        <td style="color:#F4A261;font-weight:600;">Gastos</td>
+        <td>Purchases, outflows, "in progress" states</td>
+      </tr>
+      <tr>
+        <td class="token-name">--z-debt</td>
+        <td class="token-value"><span class="swatch" style="background:#C44536;"></span>#C44536</td>
+        <td style="color:#C44536;font-weight:600;">Deudas</td>
+        <td>Credit cards, loans, failed states, overdue</td>
+      </tr>
+      <tr>
+        <td class="token-name">--z-alert</td>
+        <td class="token-value"><span class="swatch" style="background:#E9C46A;"></span>#E9C46A</td>
+        <td style="color:#E9C46A;font-weight:600;">Alertas</td>
+        <td>Pending items, upcoming due dates, warnings</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 style="font-size:13px;font-weight:700;color:#888;margin:24px 0 12px;letter-spacing:0.06em;text-transform:uppercase;">Surface Tokens</h3>
+  <table class="token-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td class="token-name">--z-surface</td><td class="token-value"><span class="swatch" style="background:#242424;"></span>#242424</td><td>Card backgrounds, panels</td></tr>
+      <tr><td class="token-name">--z-surface-2</td><td class="token-value"><span class="swatch" style="background:#2E2E2E;"></span>#2E2E2E</td><td>Elevated surfaces, widget interiors</td></tr>
+      <tr><td class="token-name">--z-border</td><td class="token-value">#333333</td><td>All borders — 1px solid</td></tr>
+    </tbody>
+  </table>
+
+  <pre><span style="color:#555;">/* Full CSS custom properties block — copy into global styles */</span>
+:root {
+  <span style="color:#555;">/* Core 60-30-10 */</span>
+  --z-ink:        #1C1C1C;
+  --z-sage:       #C5BFAE;
+  --z-sage-light: #D8D2C4;
+  --z-sage-dark:  #9E9888;
+  --z-white:      #F5F3EF;
+
+  <span style="color:#555;">/* Financial semantics */</span>
+  --z-income:  #52B788;    <span style="color:#555;">/* Green  — money in      */</span>
+  --z-expense: #F4A261;    <span style="color:#555;">/* Amber  — money out     */</span>
+  --z-debt:    #C44536;    <span style="color:#555;">/* Red    — obligations   */</span>
+  --z-alert:   #E9C46A;    <span style="color:#555;">/* Gold   — attention     */</span>
+
+  <span style="color:#555;">/* Surfaces */</span>
+  --z-surface:   #242424;
+  --z-surface-2: #2E2E2E;
+  --z-border:    #333333;
+}</pre>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 2. Z MOTIF & LOGO -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">02 — Visual Identity</div>
+  <h2>Z Motif</h2>
+  <p class="section-desc">The letter Z is the central visual element. It appears as: the app icon, a background watermark, and the diagonal divider between Sage and Ink surfaces. The diagonal stroke represents forward movement.</p>
+
+  <div class="motif-demo">
+    <div class="motif-item">
+      <svg width="80" height="80" viewBox="0 0 120 120" fill="none">
+        <rect width="120" height="120" rx="28" fill="#242424"/>
+        <path d="M24 28 L96 28 L24 92 L96 92" stroke="#C5BFAE" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div style="font-size:10px;color:#666;margin-top:8px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">App Icon</div>
+    </div>
+    <div class="motif-item">
+      <svg width="80" height="80" viewBox="0 0 400 400" fill="none">
+        <rect width="400" height="400" fill="#1C1C1C"/>
+        <path d="M40 60 L360 60 L40 340 L360 340" stroke="#C5BFAE" stroke-width="80" stroke-linecap="round" stroke-linejoin="round" opacity="0.08"/>
+      </svg>
+      <div style="font-size:10px;color:#666;margin-top:8px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">Watermark (8% opacity)</div>
+    </div>
+  </div>
+
+  <pre><span style="color:#555;">/* App Icon SVG — 120×120 with 28px corner radius */</span>
+&lt;svg viewBox="0 0 120 120" fill="none"&gt;
+  &lt;rect width="120" height="120" rx="28" fill="#242424"/&gt;
+  &lt;path d="M24 28 L96 28 L24 92 L96 92"
+        stroke="#C5BFAE" stroke-width="11"
+        stroke-linecap="round" stroke-linejoin="round"/&gt;
+&lt;/svg&gt;
+
+<span style="color:#555;">/* Background watermark — position: absolute, right: -40px, top: -20px */</span>
+<span style="color:#555;">/* Size: 520×520px, opacity: 0.08 */</span>
+<span style="color:#555;">/* Use the same Z path at larger scale */</span>
+
+<span style="color:#555;">/* Z-shaped gradient divider */</span>
+.z-divider {
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--z-sage) 0%, transparent 100%);
+}</pre>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 3. TYPOGRAPHY -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">03 — Typography</div>
+  <h2>Type Scale</h2>
+  <p class="section-desc">Single family: <code class="inline-code">Inter</code>. Same family as sister brand Venti5. Financial amounts use Display weight (800) with tight tracking for maximum clarity at large sizes.</p>
+
+  <table class="token-table">
+    <thead><tr><th>Token</th><th>Size</th><th>Weight</th><th>Tracking</th><th>Line Height</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td class="token-name">--z-type-display</td><td class="token-value">52px</td><td class="token-value">800</td><td class="token-value">-0.04em</td><td class="token-value">1.0</td><td>Large financial amounts ($4,280.00)</td></tr>
+      <tr><td class="token-name">--z-type-hero</td><td class="token-value">clamp(56px, 8vw, 96px)</td><td class="token-value">900</td><td class="token-value">-0.04em</td><td class="token-value">0.95</td><td>Brand hero text only</td></tr>
+      <tr><td class="token-name">--z-type-h1</td><td class="token-value">28px</td><td class="token-value">700</td><td class="token-value">-0.02em</td><td class="token-value">1.2</td><td>Section titles ("Resumen del mes")</td></tr>
+      <tr><td class="token-name">--z-type-body</td><td class="token-value">15px</td><td class="token-value">400</td><td class="token-value">0</td><td class="token-value">1.7</td><td>Body text, descriptions</td></tr>
+      <tr><td class="token-name">--z-type-widget-lg</td><td class="token-value">22px</td><td class="token-value">800</td><td class="token-value">0</td><td class="token-value">1.2</td><td>KPI values in widgets</td></tr>
+      <tr><td class="token-name">--z-type-widget-sm</td><td class="token-value">18px</td><td class="token-value">800</td><td class="token-value">0</td><td class="token-value">1.2</td><td>Secondary KPI values</td></tr>
+      <tr><td class="token-name">--z-type-label</td><td class="token-value">11px</td><td class="token-value">400</td><td class="token-value">0</td><td class="token-value">1.4</td><td>Widget labels ("Saldo disponible")</td></tr>
+      <tr><td class="token-name">--z-type-caption</td><td class="token-value">10px</td><td class="token-value">500</td><td class="token-value">0.08em</td><td class="token-value">1.4</td><td>Uppercase labels, timestamps</td></tr>
+      <tr><td class="token-name">--z-type-trend</td><td class="token-value">11px</td><td class="token-value">400</td><td class="token-value">0</td><td class="token-value">1.0</td><td>Trend arrows (↑ 12.4%)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 4. SPACING -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">04 — Spacing & Layout</div>
+  <h2>Spacing Scale</h2>
+
+  <table class="token-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td class="token-name">--z-space-xs</td><td class="token-value">6px</td><td>Trend indicators, micro gaps</td></tr>
+      <tr><td class="token-name">--z-space-sm</td><td class="token-value">8px</td><td>Badge gaps, timeline padding</td></tr>
+      <tr><td class="token-name">--z-space-md</td><td class="token-value">16px</td><td>Widget inner padding, card margin</td></tr>
+      <tr><td class="token-name">--z-space-lg</td><td class="token-value">20px</td><td>Grid gaps, pattern card gap</td></tr>
+      <tr><td class="token-name">--z-space-xl</td><td class="token-value">28px</td><td>Card padding</td></tr>
+      <tr><td class="token-name">--z-space-2xl</td><td class="token-value">40px</td><td>Type demo padding, motif visual padding</td></tr>
+      <tr><td class="token-name">--z-space-3xl</td><td class="token-value">60px–64px</td><td>Section padding, hero padding</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="font-size:13px;font-weight:700;color:#888;margin:24px 0 12px;letter-spacing:0.06em;text-transform:uppercase;">Border Radius</h3>
+  <table class="token-table">
+    <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td class="token-name">--z-radius-sm</td><td class="token-value">12px</td><td>Pattern icons</td></tr>
+      <tr><td class="token-name">--z-radius-md</td><td class="token-value">14px</td><td>Widget demos</td></tr>
+      <tr><td class="token-name">--z-radius-lg</td><td class="token-value">16px</td><td>Color cards, pillar cards</td></tr>
+      <tr><td class="token-name">--z-radius-xl</td><td class="token-value">20px</td><td>Pattern cards, type demos, badges</td></tr>
+      <tr><td class="token-name">--z-radius-icon</td><td class="token-value">28px</td><td>App icon corner radius</td></tr>
+      <tr><td class="token-name">--z-radius-full</td><td class="token-value">9999px</td><td>Badges, pills, dots</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 5. COMPONENTS -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">05 — Component Specs</div>
+  <h2>UI Components</h2>
+  <p class="section-desc">Widget-first design. All components are dark mode and finance-aware.</p>
+
+  <div class="comp-grid">
+
+    <!-- KPI Widget -->
+    <div class="comp-card">
+      <div class="comp-name">KPIWidget</div>
+      <div class="comp-meta">Primary dashboard component · shows value + trend</div>
+      <div class="comp-prop"><span class="prop-key">container-bg</span><span class="prop-val">var(--z-surface-2)</span></div>
+      <div class="comp-prop"><span class="prop-key">container-radius</span><span class="prop-val">14px</span></div>
+      <div class="comp-prop"><span class="prop-key">container-padding</span><span class="prop-val">16px</span></div>
+      <div class="comp-prop"><span class="prop-key">label</span><span class="prop-val">11px / #666 / weight 400</span></div>
+      <div class="comp-prop"><span class="prop-key">value-primary</span><span class="prop-val">22px / weight 800 / --z-white</span></div>
+      <div class="comp-prop"><span class="prop-key">value-secondary</span><span class="prop-val">18px / weight 800 / #aaa</span></div>
+      <div class="comp-prop"><span class="prop-key">trend-up</span><span class="prop-val">11px / var(--z-income) / "↑"</span></div>
+      <div class="comp-prop"><span class="prop-key">trend-down</span><span class="prop-val">11px / var(--z-debt) / "↓"</span></div>
+      <div class="comp-prop"><span class="prop-key">layout</span><span class="prop-val">flex, space-between</span></div>
+    </div>
+
+    <!-- Bubble Comparison -->
+    <div class="comp-card">
+      <div class="comp-name">BubbleComparison</div>
+      <div class="comp-meta">Proportional size visualization for income vs expenses vs debts</div>
+      <div class="comp-prop"><span class="prop-key">layout</span><span class="prop-val">flex, align-end, center</span></div>
+      <div class="comp-prop"><span class="prop-key">bubble-shape</span><span class="prop-val">border-radius: 50%</span></div>
+      <div class="comp-prop"><span class="prop-key">bubble-gap</span><span class="prop-val">8px</span></div>
+      <div class="comp-prop"><span class="prop-key">income-color</span><span class="prop-val">var(--z-income) / text: --z-ink</span></div>
+      <div class="comp-prop"><span class="prop-key">expense-color</span><span class="prop-val">var(--z-expense) / text: --z-ink</span></div>
+      <div class="comp-prop"><span class="prop-key">debt-color</span><span class="prop-val">var(--z-debt) / text: #fff</span></div>
+      <div class="comp-prop"><span class="prop-key">label-size</span><span class="prop-val">9px / weight 700</span></div>
+      <div class="comp-prop"><span class="prop-key">sizing</span><span class="prop-val">proportional to amount</span></div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="comp-card">
+      <div class="comp-name">PaymentTimeline</div>
+      <div class="comp-meta">Chronological list of upcoming financial events</div>
+      <div class="comp-prop"><span class="prop-key">item-layout</span><span class="prop-val">flex, align-center</span></div>
+      <div class="comp-prop"><span class="prop-key">item-gap</span><span class="prop-val">12px</span></div>
+      <div class="comp-prop"><span class="prop-key">item-padding</span><span class="prop-val">8px 0</span></div>
+      <div class="comp-prop"><span class="prop-key">item-border</span><span class="prop-val">1px solid #333</span></div>
+      <div class="comp-prop"><span class="prop-key">dot-size</span><span class="prop-val">8×8px, radius 50%</span></div>
+      <div class="comp-prop"><span class="prop-key">dot-colors</span><span class="prop-val">semantic (income/expense/debt)</span></div>
+      <div class="comp-prop"><span class="prop-key">date-width</span><span class="prop-val">60px fixed</span></div>
+      <div class="comp-prop"><span class="prop-key">amount-weight</span><span class="prop-val">600</span></div>
+    </div>
+
+    <!-- Status Badge -->
+    <div class="comp-card">
+      <div class="comp-name">StatusBadge</div>
+      <div class="comp-meta">Transaction/payment status indicators</div>
+      <div class="comp-prop"><span class="prop-key">padding</span><span class="prop-val">5px 12px</span></div>
+      <div class="comp-prop"><span class="prop-key">border-radius</span><span class="prop-val">20px (pill)</span></div>
+      <div class="comp-prop"><span class="prop-key">font-size</span><span class="prop-val">11px / weight 600</span></div>
+      <div class="comp-prop"><span class="prop-key">border</span><span class="prop-val">1px solid</span></div>
+      <div class="comp-prop"><span class="prop-key">icon-gap</span><span class="prop-val">6px</span></div>
+    </div>
+
+    <!-- Pattern Card -->
+    <div class="comp-card">
+      <div class="comp-name">PatternCard</div>
+      <div class="comp-meta">Feature showcase container with icon + demo</div>
+      <div class="comp-prop"><span class="prop-key">bg</span><span class="prop-val">var(--z-surface)</span></div>
+      <div class="comp-prop"><span class="prop-key">padding</span><span class="prop-val">28px</span></div>
+      <div class="comp-prop"><span class="prop-key">border-radius</span><span class="prop-val">20px</span></div>
+      <div class="comp-prop"><span class="prop-key">icon-size</span><span class="prop-val">40×40px, radius 12px</span></div>
+      <div class="comp-prop"><span class="prop-key">icon-bg</span><span class="prop-val">#333</span></div>
+      <div class="comp-prop"><span class="prop-key">title</span><span class="prop-val">15px / weight 700</span></div>
+      <div class="comp-prop"><span class="prop-key">desc</span><span class="prop-val">13px / #777</span></div>
+    </div>
+
+    <!-- Pillar Card -->
+    <div class="comp-card">
+      <div class="comp-name">PillarCard</div>
+      <div class="comp-meta">Brand pillar display · 3 variants</div>
+      <div class="comp-prop"><span class="prop-key">bg</span><span class="prop-val">var(--z-surface)</span></div>
+      <div class="comp-prop"><span class="prop-key">padding</span><span class="prop-val">28px</span></div>
+      <div class="comp-prop"><span class="prop-key">border-radius</span><span class="prop-val">16px</span></div>
+      <div class="comp-prop"><span class="prop-key">border-top</span><span class="prop-val">3px solid var(--z-sage)</span></div>
+      <div class="comp-prop"><span class="prop-key">number</span><span class="prop-val">11px / weight 700 / --z-sage-dark</span></div>
+      <div class="comp-prop"><span class="prop-key">title</span><span class="prop-val">18px / weight 800</span></div>
+      <div class="comp-prop"><span class="prop-key">body</span><span class="prop-val">13px / #666</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 6. BADGE COLOR MATRIX -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">06 — Badge Color Matrix</div>
+  <h2>Status Badge Styles</h2>
+  <p class="section-desc">Each badge state maps to a financial meaning. Pattern: text = semantic color, border = ~20% tint, bg = ~8% tint.</p>
+
+  <pre><span style="color:#555;">/* Financial status badges */</span>
+.badge-pending  { color: #E9C46A; border-color: #4a3e18; background: #231e0c; } <span style="color:#555;">/* ⏳ Pending    — alert gold   */</span>
+.badge-progress { color: #F4A261; border-color: #6b3e15; background: #2d1f0e; } <span style="color:#555;">/* ◌ In progress — expense amber */</span>
+.badge-success  { color: #52B788; border-color: #1a4a30; background: #0e2419; } <span style="color:#555;">/* ✓ Completed  — income green  */</span>
+.badge-failed   { color: #C44536; border-color: #5c1a14; background: #2e0d0a; } <span style="color:#555;">/* ✗ Failed     — debt red      */</span>
+.badge-expired  { color: #888888; border-color: #444444; background: #222222; } <span style="color:#555;">/* ○ Expired    — neutral gray  */</span></pre>
+
+  <div class="note warn"><strong>Semantic mapping:</strong> badge-success = income green (money received). badge-failed = debt red (obligation missed). badge-progress = expense amber (processing outflow). badge-pending = alert gold (needs attention).</div>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 7. STATES & INTERACTIONS -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">07 — States & Interactions</div>
+  <h2>Component States</h2>
+  <p class="section-desc">Interaction patterns for common states across Zeta's UI.</p>
+
+  <div class="comp-grid">
+    <div class="comp-card">
+      <div class="comp-name">Loading States</div>
+      <div class="comp-meta">While fetching financial data</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;">
+        KPI values: skeleton pulse animation on value area (surface-2 shimmer).<br>
+        Timeline: placeholder rows with 3 skeleton items.<br>
+        Bubbles: collapsed to uniform small circles, gray.<br>
+        Duration: skeleton shimmer — 1.5s ease-in-out infinite.
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-name">Empty States</div>
+      <div class="comp-meta">No data available</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;">
+        Show the Z motif at 0.05 opacity centered, with a single line of sage-colored text below.<br>
+        Copy examples: "Aún no hay transacciones este mes", "Agrega tu primera cuenta para empezar."<br>
+        Never show raw "No data" — always guide next action.
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-name">Error States</div>
+      <div class="comp-meta">Failed to load or sync</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;">
+        Use --z-debt red for error indicator dot (8px).<br>
+        Message in sage-dark: "No pudimos sincronizar. Intenta de nuevo."<br>
+        Retry button: ghost style, sage border, 20px radius pill.
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-name">Hover / Tap</div>
+      <div class="comp-meta">Interactive feedback</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;">
+        Cards: subtle brightness increase — filter: brightness(1.05), 150ms ease.<br>
+        Badges: no hover state (informational only).<br>
+        Timeline items: background-color transitions to surface-2, 150ms ease.<br>
+        Bubbles: scale(1.08) with 200ms ease on hover/tap.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 8. ACCESSIBILITY -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">08 — Accessibility</div>
+  <h2>A11y Notes</h2>
+
+  <div class="comp-grid">
+    <div class="comp-card">
+      <div class="comp-name">Color Contrast</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;margin-top:8px;">
+        --z-sage (#C5BFAE) on --z-ink (#1C1C1C): contrast ratio ~9.2:1 (AAA).<br>
+        --z-income (#52B788) on --z-ink: ~7.8:1 (AAA).<br>
+        --z-expense (#F4A261) on --z-ink: ~8.4:1 (AAA).<br>
+        --z-debt (#C44536) on --z-ink: ~4.5:1 (AA).<br>
+        --z-alert (#E9C46A) on --z-ink: ~9.1:1 (AAA).<br>
+        All pass AA minimum. Debt red is the tightest — don't reduce its size below 14px.
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-name">Screen Reader & ARIA</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;margin-top:8px;">
+        KPI widgets: <code class="inline-code">role="status"</code> + <code class="inline-code">aria-label</code> with full sentence ("Saldo disponible: $4,280, subió 12.4%").<br>
+        Trend arrows (↑↓): use <code class="inline-code">aria-hidden="true"</code>, meaning conveyed by aria-label on parent.<br>
+        Badges: <code class="inline-code">role="status"</code>.<br>
+        Bubbles: <code class="inline-code">role="img"</code> + <code class="inline-code">aria-label</code> describing proportions.<br>
+        Timeline: <code class="inline-code">&lt;ol role="list"&gt;</code> with <code class="inline-code">&lt;li&gt;</code> for each item.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 9. ECOSYSTEM -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">09 — Ecosystem</div>
+  <h2>Sister Brand: Venti5 Labs</h2>
+  <p class="section-desc">Shared: <code class="inline-code">Inter</code> font, dark-mode-first, surface/border system. Zeta uses financial-semantic colors; Venti5 uses per-service palettes. When co-existing, each brand keeps its own accent colors within its own UI zone.</p>
+  <div class="note"><strong>Cross-brand rule:</strong> If Zeta and Venti5 content appear together (e.g. a dashboard linking to both), use neutral darks and let each brand's accent colors speak for their own elements only. Never mix Zeta's income green with Venti5's service green — they serve different semantic purposes.</div>
+</div>
+
+</div>
+</body>
+</html>
