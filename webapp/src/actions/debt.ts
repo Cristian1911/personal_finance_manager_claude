@@ -7,7 +7,7 @@ import {
   estimateMonthlyInterest,
   generateInsights,
   type DebtOverview,
-} from "@venti5/shared";
+} from "@zeta/shared";
 
 export async function getDebtOverview(): Promise<DebtOverview> {
   const supabase = await createClient();

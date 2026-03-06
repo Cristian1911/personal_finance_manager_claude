@@ -143,7 +143,7 @@ export default function OnboardingPage() {
             {step <= totalSteps && (
                 <div className="mb-4 rounded-xl border bg-card/80 p-4">
                     <div className="mb-2 flex items-center justify-between text-sm">
-                        <span className="font-medium text-muted-foreground">Onboarding Venti5</span>
+                        <span className="font-medium text-muted-foreground">Onboarding Zeta</span>
                         <span className="font-semibold">Paso {progressStep} de {totalSteps}</span>
                     </div>
                     <div className="h-2 rounded-full bg-muted">
@@ -164,7 +164,7 @@ export default function OnboardingPage() {
                     >
                         <Card className="border-border">
                             <CardHeader>
-                                <CardTitle className="text-2xl">Bienvenido a Venti5</CardTitle>
+                                <CardTitle className="text-2xl">Bienvenido a Zeta</CardTitle>
                                 <CardDescription>Antes de arrancar, cuentanos que quieres lograr.</CardDescription>
                             </CardHeader>
                             <CardContent className="grid gap-4">
@@ -378,7 +378,7 @@ export default function OnboardingPage() {
                                 </div>
                                 <CardTitle className="text-3xl">Listo, {fullName.split(" ")[0] || "vamos"}.</CardTitle>
                                 <CardDescription className="text-lg mt-2">
-                                    Preparando tu dashboard de Venti5...
+                                    Preparando tu dashboard de Zeta...
                                 </CardDescription>
                             </CardHeader>
                         </Card>

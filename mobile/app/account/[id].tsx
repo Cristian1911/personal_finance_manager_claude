@@ -16,7 +16,7 @@ import {
 } from "../../lib/repositories/accounts";
 import { getTransactions } from "../../lib/repositories/transactions";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
-import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { isDebtInflow } from "../../lib/transaction-semantics";
 
 type TransactionRow = {

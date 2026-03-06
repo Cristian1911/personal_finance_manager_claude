@@ -6,7 +6,7 @@ import {
   findReconciliationCandidates,
   mergeTransactionMetadata,
   type ReconciliationCandidate,
-} from "@venti5/shared";
+} from "@zeta/shared";
 import { createClient } from "@/lib/supabase/server";
 import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryPickerDialog } from "@/components/categorize/category-picker-dialog";
 import { formatCurrency } from "@/lib/utils/currency";
-import { getCategoryName } from "@venti5/shared";
+import { getCategoryName } from "@zeta/shared";
 import type { TransactionWithRelations, CategoryWithChildren, CurrencyCode } from "@/types/domain";
-import type { CategorizationResult } from "@venti5/shared";
+import type { CategorizationResult } from "@zeta/shared";
 
 interface InboxTransactionRowProps {
   transaction: TransactionWithRelations;

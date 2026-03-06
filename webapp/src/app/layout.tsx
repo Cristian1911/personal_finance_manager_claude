@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Venti5",
+  title: "Zeta",
   description: "Controla tu dinero con claridad diaria",
 };
 

@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 
-const DEMO_MODE_KEY = "venti5_demo_mode_enabled";
+const DEMO_MODE_KEY = "zeta_demo_mode_enabled";
 
 export async function isDemoModeEnabled(): Promise<boolean> {
   const value = await SecureStore.getItemAsync(DEMO_MODE_KEY);

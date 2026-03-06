@@ -1,6 +1,6 @@
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { isDebtInflow } from "../../lib/transaction-semantics";
 
 type TransactionRowProps = {

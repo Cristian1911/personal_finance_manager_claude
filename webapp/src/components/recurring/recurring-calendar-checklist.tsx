@@ -11,7 +11,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { getOccurrencesBetween } from "@venti5/shared";
+import { getOccurrencesBetween } from "@zeta/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +54,7 @@ export function RecurringCalendarChecklist({
   const monthEnd = endOfMonth(monthCursor);
   const monthKey = format(monthCursor, "yyyy-MM");
   const todayDate = format(new Date(), "yyyy-MM-dd");
-  const storageKey = `venti5:recurring-checklist:${monthKey}`;
+  const storageKey = `zeta:recurring-checklist:${monthKey}`;
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [amountOverrides, setAmountOverrides] = useState<Record<string, string>>({});
   const [paidDateOverrides, setPaidDateOverrides] = useState<Record<string, string>>({});

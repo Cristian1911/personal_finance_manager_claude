@@ -8,7 +8,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
   if (!dbInitPromise) {
     dbInitPromise = (async () => {
-      const database = await SQLite.openDatabaseAsync("venti5.db");
+      const database = await SQLite.openDatabaseAsync("zeta.db");
       await runMigrations(database);
       db = database;
       return database;

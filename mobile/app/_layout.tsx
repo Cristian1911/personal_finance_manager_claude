@@ -275,7 +275,7 @@ function RootLayoutNav() {
         )}
         {isLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#047857" />
+            <ActivityIndicator size="large" color="#C5BFAE" />
           </View>
         )}
       </ThemeProvider>

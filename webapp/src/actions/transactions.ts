@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { autoCategorize, computeIdempotencyKey } from "@venti5/shared";
+import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
 import { createClient } from "@/lib/supabase/server";
 import {
   quickCapturePreviewSchema,

@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
-import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import {
   deleteBudget,
@@ -124,7 +124,7 @@ export default function BudgetsScreen() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-gray-100">
-        <ActivityIndicator size="large" color="#047857" />
+        <ActivityIndicator size="large" color="#C5BFAE" />
       </View>
     );
   }
@@ -137,7 +137,7 @@ export default function BudgetsScreen() {
       <ScrollView
         className="flex-1 bg-gray-100"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#047857" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#C5BFAE" />
         }
         contentContainerStyle={{ paddingBottom: 120 }}
         keyboardShouldPersistTaps="handled"
@@ -193,7 +193,7 @@ export default function BudgetsScreen() {
                     <View className="flex-row items-center gap-2">
                       <View
                         className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: item.category_color ?? "#047857" }}
+                        style={{ backgroundColor: item.category_color ?? "#C5BFAE" }}
                       />
                       <Text className="text-gray-900 font-inter-semibold">{item.category_name}</Text>
                     </View>

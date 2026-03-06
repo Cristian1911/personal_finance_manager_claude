@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Venti5",
-    "slug": "venti5",
+    "name": "Zeta",
+    "slug": "zeta",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "venti5",
+    "scheme": "zeta",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.venti5.app",
+      "bundleIdentifier": "com.zetafinance.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSFaceIDUsageDescription": "Venti5 usa Face ID para desbloquear la app de forma rápida y segura."
+        "NSFaceIDUsageDescription": "Zeta usa Face ID para desbloquear la app de forma rapida y segura."
       }
     },
     "android": {
@@ -28,7 +28,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.venti5.app"
+      "package": "com.zetafinance.app"
     },
     "web": {
       "bundler": "metro",
@@ -41,7 +41,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Permitir a Venti5 usar Face ID para un acceso rápido y seguro."
+          "faceIDPermission": "Permitir a Zeta usar Face ID para un acceso rapido y seguro."
         }
       ]
     ],
@@ -54,6 +54,6 @@
         "projectId": "302625b0-80c8-4a61-bc51-fa28ff033e1e"
       }
     },
-    "owner": "venti5"
+    "owner": "zetafinance"
   }
 }

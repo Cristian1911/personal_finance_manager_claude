@@ -63,7 +63,7 @@ export default function SignupScreen() {
       bottomOffset={20}
     >
         <Text className="text-base font-inter-bold text-center text-emerald-600 mb-3">
-          Venti5
+          Zeta
         </Text>
         <Text className="text-3xl font-bold text-center text-gray-900 mb-2">
           Crear cuenta

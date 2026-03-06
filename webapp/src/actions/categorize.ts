@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getUserSafely } from "@/lib/supabase/auth";
-import { extractPattern } from "@venti5/shared";
+import { extractPattern } from "@zeta/shared";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithRelations } from "@/types/domain";
-import type { UserRule } from "@venti5/shared";
+import type { UserRule } from "@zeta/shared";
 
 /**
  * Fetch all uncategorized, non-excluded transactions with account + category joins.

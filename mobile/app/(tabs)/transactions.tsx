@@ -2,7 +2,7 @@ import { View, Text, SectionList, ActivityIndicator } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { getTransactions } from "../../lib/repositories/transactions";
-import { formatDate } from "@venti5/shared";
+import { formatDate } from "@zeta/shared";
 import { SearchBar } from "../../components/transactions/SearchBar";
 import { TransactionRow } from "../../components/transactions/TransactionRow";
 import { MonthSelector } from "../../components/common/MonthSelector";
@@ -125,7 +125,7 @@ export default function TransactionsScreen() {
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#047857" />
+          <ActivityIndicator size="large" color="#C5BFAE" />
         </View>
       ) : sections.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
@@ -165,7 +165,7 @@ export default function TransactionsScreen() {
           ListFooterComponent={
             loadingMore ? (
               <View className="py-4">
-                <ActivityIndicator size="small" color="#047857" />
+                <ActivityIndicator size="small" color="#C5BFAE" />
               </View>
             ) : null
           }

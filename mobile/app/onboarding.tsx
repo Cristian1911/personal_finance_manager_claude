@@ -117,7 +117,7 @@ export default function MobileOnboardingScreen() {
       bottomOffset={20}
     >
         <View className="mb-6 rounded-3xl bg-primary p-5">
-          <Text className="text-2xl font-inter-bold text-white">Venti5</Text>
+          <Text className="text-2xl font-inter-bold text-white">Zeta</Text>
           <Text className="mt-1 text-sm font-inter text-emerald-50">
             Configura tu punto de partida en menos de 2 minutos.
           </Text>
@@ -237,7 +237,7 @@ export default function MobileOnboardingScreen() {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-white font-inter-bold text-base">Entrar a Venti5</Text>
+            <Text className="text-white font-inter-bold text-base">Entrar a Zeta</Text>
           )}
         </Pressable>
     </AppKeyboardAwareScrollView>

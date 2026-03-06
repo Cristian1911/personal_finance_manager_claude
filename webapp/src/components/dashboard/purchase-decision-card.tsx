@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ArrowRight, Brain, CircleAlert, Loader2, PiggyBank, Scale, ShieldAlert } from "lucide-react";
-import type { PurchaseDecisionResult, PurchaseFundingType, PurchaseUrgency } from "@venti5/shared";
+import type { PurchaseDecisionResult, PurchaseFundingType, PurchaseUrgency } from "@zeta/shared";
 import { analyzePurchaseDecisionAction } from "@/actions/purchase-decision";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
 import { Badge } from "@/components/ui/badge";

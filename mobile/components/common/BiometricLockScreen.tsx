@@ -25,10 +25,10 @@ export function BiometricLockScreen({
     <View style={styles.container}>
       <View className="items-center">
         <View className="h-20 w-20 rounded-full bg-emerald-100 items-center justify-center mb-6">
-          <Fingerprint size={40} color="#047857" />
+          <Fingerprint size={40} color="#C5BFAE" />
         </View>
         <Text className="text-2xl font-inter-bold text-gray-900 mb-2">
-          Venti5
+          Zeta
         </Text>
         <Text className="text-base font-inter text-gray-500 mb-10 text-center px-8">
           Usa tu huella o Face ID para desbloquear

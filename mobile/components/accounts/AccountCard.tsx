@@ -1,6 +1,6 @@
 import { View, Text, Pressable } from "react-native";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
-import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import type { AccountRow } from "../../lib/repositories/accounts";
 
 type Props = {
