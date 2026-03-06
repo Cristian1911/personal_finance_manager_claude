@@ -62,6 +62,20 @@
 - Shell `compdef` warning leaks into stdout redirects — always strip first line if piping to file
 - When piping `supabase gen types` to file, verify `export type Json =` header is intact
 
+## Codebase Search (jcodemunch)
+- The codebase is pre-indexed by jcodemunch — prefer these tools over Grep/Glob for discovery:
+  - `mcp__jcodemunch__search_symbols` — find functions, classes, types by name
+  - `mcp__jcodemunch__search_text` — full-text search across the codebase
+  - `mcp__jcodemunch__get_file_outline` — list all symbols in a specific file
+  - `mcp__jcodemunch__get_symbol` — get details on a specific symbol
+- Fall back to Grep only for regex patterns not supported by jcodemunch
+- Re-index when: new files added, functions/classes renamed or deleted, large refactors
+- No need to re-index for: logic edits inside existing functions, style/config changes
+- Prefer incremental re-index (faster): `mcp__jcodemunch__index_folder` with `incremental: true`
+- Good habit: re-index at the start of a new session after a productive coding session
+
 ## Agent Context Workflow
-- Use `.claude/skills/codebase-context/SKILL.md` when starting work or after code edits.
-- Keep `docs/agent/PROJECT_CONTEXT.md` and `docs/agent/project_context.json` updated.
+- **Code discovery**: use jcodemunch (see above) — do NOT read `PROJECT_CONTEXT.md` upfront every session
+- **Read `docs/agent/PROJECT_CONTEXT.md` only when** you need architectural overview, conventions, or gotchas not covered by CLAUDE.md
+- **Update `PROJECT_CONTEXT.md`** only after significant architectural changes (not routine edits); run `python3 .claude/skills/codebase-context/scripts/build_context.py` to regenerate
+- `PROJECT_CONTEXT.md` should stay lean — remove file/symbol inventories that jcodemunch already covers
