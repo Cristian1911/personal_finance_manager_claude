@@ -28,7 +28,7 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.97.0
         version: 2.97.0
-      '@venti5/shared':
+      '@zeta/shared':
         specifier: workspace:*
         version: link:../packages/shared
       expo:
@@ -180,7 +180,7 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.95.3
         version: 2.97.0
-      '@venti5/shared':
+      '@zeta/shared':
         specifier: workspace:*
         version: link:../packages/shared
       class-variance-authority:

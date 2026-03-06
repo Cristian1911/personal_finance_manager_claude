@@ -119,7 +119,7 @@ jobs:
         working-directory: mobile
         run: |
           mkdir -p ../dist
-          ARTIFACT_NAME="venti5-playstore-${APP_VERSION}-${ANDROID_VERSION_CODE}-${GITHUB_RUN_NUMBER}.aab"
+          ARTIFACT_NAME="zeta-playstore-${APP_VERSION}-${ANDROID_VERSION_CODE}-${GITHUB_RUN_NUMBER}.aab"
           eas build:download \
             --platform android \
             --id "$EAS_BUILD_ID" \

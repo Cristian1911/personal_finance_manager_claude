@@ -1,7 +1,7 @@
 import "react-native-url-polyfill/auto";
 import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
-import type { Database } from "@venti5/shared";
+import type { Database } from "@zeta/shared";
 
 // Supabase sessions can exceed SecureStore's 2048-byte limit.
 // This adapter chunks large values across multiple keys.

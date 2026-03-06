@@ -1,7 +1,7 @@
 [project]
 name = "pfm-pdf-parser"
 version = "0.1.0"
-description = "Bank PDF statement parser for Personal Finance Manager"
+description = "Bank PDF statement parser for Zeta"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",

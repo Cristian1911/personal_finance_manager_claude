@@ -7,7 +7,7 @@ import {
   type PurchaseDecisionResult,
   type PurchaseFundingType,
   type PurchaseUrgency,
-} from "@venti5/shared";
+} from "@zeta/shared";
 import { getAllAccounts } from "../repositories/accounts";
 import { getTransactions } from "../repositories/transactions";
 import { toDomainAccount } from "../domain/account";

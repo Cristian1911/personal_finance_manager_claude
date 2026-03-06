@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
 import { Landmark } from "lucide-react";
 import type { CurrencyCode } from "@/types/domain";
-import type { DebtByCurrency } from "@venti5/shared";
+import type { DebtByCurrency } from "@zeta/shared";
 
 interface DebtHeroCardProps {
   totalDebt: number;

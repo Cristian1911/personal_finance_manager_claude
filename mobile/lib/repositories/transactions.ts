@@ -8,7 +8,7 @@ import {
   type RankedReconciliationResult,
   type TransactionCaptureMethod,
   type TransactionDirection,
-} from "@venti5/shared";
+} from "@zeta/shared";
 import { getDatabase } from "../db/database";
 
 const expoHashFn = (payload: string) =>

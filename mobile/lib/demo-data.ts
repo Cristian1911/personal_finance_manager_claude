@@ -60,8 +60,8 @@ export async function seedDemoData(): Promise<void> {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'free', ?, ?)`,
     [
       DEMO_USER_ID,
-      "demo@venti5.local",
-      "Demo Venti5",
+      "demo@zeta.local",
+      "Demo Zeta",
       "manage_debt",
       6500000,
       4100000,

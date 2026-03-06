@@ -1,5 +1,5 @@
 import { View, Text } from "react-native";
-import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 
 export type CategorySpend = {
   category_id: string | null;

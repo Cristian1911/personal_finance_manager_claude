@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Info, CheckCircle2, Lightbulb } from "lucide-react";
-import type { DebtInsight } from "@venti5/shared";
+import type { DebtInsight } from "@zeta/shared";
 
 const iconMap = {
   warning: AlertTriangle,

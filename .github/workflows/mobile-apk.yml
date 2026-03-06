@@ -139,7 +139,7 @@ jobs:
       - name: Prepare artifact
         run: |
           mkdir -p dist
-          APK_NAME="venti5-${APK_VARIANT}-${API_TARGET}-${GITHUB_RUN_NUMBER}.apk"
+          APK_NAME="zeta-${APK_VARIANT}-${API_TARGET}-${GITHUB_RUN_NUMBER}.apk"
           cp "$APK_PATH" "dist/$APK_NAME"
           echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
 

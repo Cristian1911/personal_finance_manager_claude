@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 const RECOVERY_THROTTLE_MS = 10_000;
-const LAST_RECOVERY_TS_KEY = "venti5:last-server-action-recovery-ts";
+const LAST_RECOVERY_TS_KEY = "zeta:last-server-action-recovery-ts";
 
 function extractMessage(reason: unknown): string {
   if (typeof reason === "string") return reason;

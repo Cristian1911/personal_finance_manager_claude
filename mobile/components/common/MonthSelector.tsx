@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
-import { formatMonthLabel } from "@venti5/shared";
+import { formatMonthLabel } from "@zeta/shared";
 
 function parseMonth(month: string): Date {
   const [year, monthIndex] = month.split("-").map(Number);

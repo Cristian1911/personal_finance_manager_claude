@@ -1,9 +1,9 @@
 import * as SecureStore from "expo-secure-store";
 
-const BIOMETRICS_ENABLED_KEY = "venti5_biometrics_enabled";
-const BIOMETRICS_REAUTH_KEY = "venti5_biometrics_reauth_background";
-const BIOMETRICS_PROMPTED_KEY = "venti5_biometrics_prompted";
-const BIOMETRICS_CREDENTIALS_KEY = "venti5_biometrics_credentials";
+const BIOMETRICS_ENABLED_KEY = "zeta_biometrics_enabled";
+const BIOMETRICS_REAUTH_KEY = "zeta_biometrics_reauth_background";
+const BIOMETRICS_PROMPTED_KEY = "zeta_biometrics_prompted";
+const BIOMETRICS_CREDENTIALS_KEY = "zeta_biometrics_credentials";
 
 let localAuthenticationModule: typeof import("expo-local-authentication") | null | undefined;
 
@@ -71,7 +71,7 @@ export async function authenticateWithBiometrics(): Promise<boolean> {
   if (!localAuthentication) return false;
 
   const result = await localAuthentication.authenticateAsync({
-    promptMessage: "Desbloquear Venti5",
+    promptMessage: "Desbloquear Zeta",
     cancelLabel: "Cancelar",
     disableDeviceFallback: false,
     fallbackLabel: "Usar contraseña del dispositivo",
@@ -84,7 +84,7 @@ export async function authenticateForLogin(): Promise<boolean> {
   if (!localAuthentication) return false;
 
   const result = await localAuthentication.authenticateAsync({
-    promptMessage: "Ingresar a Venti5",
+    promptMessage: "Ingresar a Zeta",
     cancelLabel: "Cancelar",
     disableDeviceFallback: false,
     fallbackLabel: "Usar contraseña del dispositivo",

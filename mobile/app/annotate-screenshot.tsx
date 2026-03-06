@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: "#047857",
+    backgroundColor: "#C5BFAE",
   },
   doneLabel: {
     fontSize: 14,

@@ -24,7 +24,7 @@ import {
   isBackgroundReauthEnabled,
   setBackgroundReauth,
 } from "../../lib/biometrics";
-import { formatRelativeDate } from "@venti5/shared";
+import { formatRelativeDate } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { useAppStore } from "../../lib/store";
 import { useAuth } from "../../lib/auth";
@@ -279,7 +279,7 @@ export default function SettingsScreen() {
           onPress={handleSyncNow}
           disabled={syncing}
         >
-          <RefreshCw size={18} color="#047857" />
+          <RefreshCw size={18} color="#C5BFAE" />
           <Text className="ml-3 text-primary font-inter-bold text-sm">
             {syncing ? "Sincronizando..." : "Sincronizar ahora"}
           </Text>

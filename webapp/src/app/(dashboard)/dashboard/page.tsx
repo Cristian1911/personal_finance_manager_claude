@@ -48,7 +48,7 @@ import { UpcomingRecurringCard } from "@/components/recurring/upcoming-recurring
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { PaymentRemindersCard } from "@/components/dashboard/payment-reminders-card";
-import { computeDebtBalance } from "@venti5/shared";
+import { computeDebtBalance } from "@zeta/shared";
 import { trackProductEvent } from "@/actions/product-events";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { getUserSafely } from "@/lib/supabase/auth";

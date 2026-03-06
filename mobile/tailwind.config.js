@@ -5,15 +5,31 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          DEFAULT: "#047857",
-          dark: "#065F46",
-          light: "#A7F3D0",
+        "z-ink": "#1C1C1C",
+        "z-sage": {
+          DEFAULT: "#C5BFAE",
+          light: "#D8D2C4",
+          dark: "#9E9888",
         },
-        success: "#22C55E",
-        warning: "#F59E0B",
-        error: "#EF4444",
-        info: "#3B82F6",
+        "z-white": "#F5F3EF",
+        "z-surface": {
+          DEFAULT: "#242424",
+          2: "#2E2E2E",
+        },
+        "z-border": "#333333",
+        "z-income": "#52B788",
+        "z-expense": "#F4A261",
+        "z-debt": "#C44536",
+        "z-alert": "#E9C46A",
+        primary: {
+          DEFAULT: "#C5BFAE",
+          dark: "#9E9888",
+          light: "#D8D2C4",
+        },
+        success: "#52B788",
+        warning: "#E9C46A",
+        error: "#C44536",
+        info: "#F4A261",
       },
       fontFamily: {
         inter: ["Inter_400Regular"],

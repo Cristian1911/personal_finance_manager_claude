@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Account, Transaction, Category, Profile } from "@venti5/shared";
+import type { Account, Transaction, Category, Profile } from "@zeta/shared";
 
 type AppState = {
   profile: Profile | null;

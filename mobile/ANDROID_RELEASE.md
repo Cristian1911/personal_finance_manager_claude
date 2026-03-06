@@ -37,12 +37,12 @@ This is preferable to maintaining a GitHub Actions variable with the previous ve
 
 1. Put your upload keystore somewhere local, for example:
 
-`mobile/android/app/venti5-upload.jks`
+`mobile/android/app/zeta-upload.jks`
 
 2. Create `mobile/android/keystore.properties` with either an absolute path or a path relative to `mobile/android`:
 
 ```properties
-storeFile=app/venti5-upload.jks
+storeFile=app/zeta-upload.jks
 storePassword=replace-me
 keyAlias=upload
 keyPassword=replace-me

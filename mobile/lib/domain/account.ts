@@ -1,4 +1,4 @@
-import type { Account } from "@venti5/shared";
+import type { Account } from "@zeta/shared";
 import type { AccountRow } from "../repositories/accounts";
 
 export function toDomainAccount(row: AccountRow): Account {

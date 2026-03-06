@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: "#047857",
+    backgroundColor: "#C5BFAE",
     gap: 4,
   },
   annotateLabel: {
