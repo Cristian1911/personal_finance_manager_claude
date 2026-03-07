@@ -28,6 +28,7 @@ export const accountSchema = z.object({
   color: z.string().optional(),
   icon: z.string().optional(),
   mask: z.string().max(4).optional(),
+  show_in_dashboard: z.boolean().optional(),
 });
 
 export type AccountFormData = z.infer<typeof accountSchema>;

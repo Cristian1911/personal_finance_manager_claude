@@ -71,6 +71,7 @@ function buildAccountInsertData(formData: FormData) {
     color: formData.get("color") || undefined,
     icon: formData.get("icon") || undefined,
     mask: formData.get("mask") || undefined,
+    show_in_dashboard: formData.has("show_in_dashboard") ? formData.get("show_in_dashboard") === "on" : undefined,
   };
 
   // Filter out undefined/null values for cleaner insert
@@ -171,5 +172,28 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
   revalidatePath("/accounts");
   revalidatePath("/dashboard");
   revalidatePath("/transactions");
+  return { success: true, data: undefined };
+}
+
+export async function toggleDashboardVisibility(
+  accountId: string,
+  show: boolean
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("accounts")
+    .update({ show_in_dashboard: show })
+    .eq("user_id", user.id)
+    .eq("id", accountId);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/dashboard");
   return { success: true, data: undefined };
 }

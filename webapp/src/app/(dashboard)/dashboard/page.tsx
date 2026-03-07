@@ -27,9 +27,11 @@ import {
   getCategorySpending,
   getMonthlyCashflow,
 } from "@/actions/charts";
+import { getAccounts } from "@/actions/accounts";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
 import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { AccountsOverview } from "@/components/dashboard/accounts-overview";
+import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
 import { BudgetPaceChart } from "@/components/charts/budget-pace-chart";
 import { IncomeVsExpensesChart } from "@/components/charts/income-vs-expenses-chart";
 import { CategorySpendingChart } from "@/components/charts/category-spending-chart";
@@ -179,14 +181,17 @@ export default async function DashboardPage({
   }
 
   // Fetch all dashboard data in parallel
-  const [heroData, accountsData, budgetPaceData, cashflowData, categoryData] =
+  const [heroData, accountsData, budgetPaceData, cashflowData, categoryData, allAccountsResult] =
     await Promise.all([
       getDashboardHeroData(month),
       getAccountsWithSparklineData(),
       getDailyBudgetPace(month),
       getMonthlyCashflow(month),
       getCategorySpending(month),
+      getAccounts(),
     ]);
+
+  const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
 
   return (
     <div className="space-y-6">
@@ -210,7 +215,18 @@ export default async function DashboardPage({
           obligations={heroData.pendingObligations}
           totalPending={heroData.totalPending}
         />
-        <AccountsOverview data={accountsData} />
+        <AccountsOverview
+          data={accountsData}
+          picker={
+            <DashboardAccountPicker
+              accounts={allAccounts.map((a) => ({
+                id: a.id,
+                name: a.name,
+                show_in_dashboard: a.show_in_dashboard,
+              }))}
+            />
+          }
+        />
       </div>
 
       {/* 3. Analysis */}

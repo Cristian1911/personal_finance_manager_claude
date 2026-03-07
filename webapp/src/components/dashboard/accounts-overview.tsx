@@ -16,6 +16,7 @@ import type { CurrencyCode } from "@/types/domain";
 
 interface AccountsOverviewProps {
   data: GroupedAccounts;
+  picker?: React.ReactNode;
 }
 
 function AccountRow({ account }: { account: AccountWithSparkline }) {
@@ -87,7 +88,7 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
 
 const MAX_PREVIEW = 4;
 
-export function AccountsOverview({ data }: AccountsOverviewProps) {
+export function AccountsOverview({ data, picker }: AccountsOverviewProps) {
   const hasDeposits = data.deposits.length > 0;
   const hasDebt = data.debt.length > 0;
 
@@ -104,9 +105,12 @@ export function AccountsOverview({ data }: AccountsOverviewProps) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <CardTitle className="text-base">Mis cuentas</CardTitle>
-        <Link href="/accounts" className="text-xs text-primary hover:underline">
-          Ver todas
-        </Link>
+        <div className="flex items-center gap-2">
+          {picker}
+          <Link href="/accounts" className="text-xs text-primary hover:underline">
+            Ver todas
+          </Link>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {previewDeposits.length > 0 && (

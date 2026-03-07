@@ -550,11 +550,12 @@ export async function getAccountsWithSparklineData(): Promise<GroupedAccounts> {
   const user = await getUserSafely(supabase);
   if (!user) return { deposits: [], debt: [] };
 
-  // 1. Fetch all active accounts
+  // 1. Fetch active accounts marked for dashboard
   const { data: accounts } = await supabase
     .from("accounts")
     .select("*")
     .eq("is_active", true)
+    .eq("show_in_dashboard", true)
     .order("display_order");
 
   if (!accounts || accounts.length === 0) return { deposits: [], debt: [] };
