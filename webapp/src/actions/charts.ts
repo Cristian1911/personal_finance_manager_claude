@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getUserSafely } from "@/lib/supabase/auth";
 import {
   formatDate,
   parseMonth,
@@ -410,4 +411,105 @@ export async function getNetWorthHistory(month?: string): Promise<NetWorthHistor
 
   // Ensure result is chronologically sorted (oldest first)
   return result.reverse();
+}
+
+// --- Dashboard Hero ---
+
+export interface PendingObligation {
+  id: string;
+  name: string;
+  amount: number;
+  currency_code: string;
+  due_date: string;
+  source: "recurring" | "statement";
+}
+
+export interface DashboardHeroData {
+  totalLiquid: number;
+  pendingObligations: PendingObligation[];
+  totalPending: number;
+  availableToSpend: number;
+  freshness: "fresh" | "stale" | "outdated";
+  oldestUpdate: string | null;
+  currency: string;
+}
+
+export async function getDashboardHeroData(
+  month?: string
+): Promise<DashboardHeroData> {
+  const supabase = await createClient();
+  const user = await getUserSafely(supabase);
+  if (!user) {
+    return {
+      totalLiquid: 0,
+      pendingObligations: [],
+      totalPending: 0,
+      availableToSpend: 0,
+      freshness: "outdated",
+      oldestUpdate: null,
+      currency: "COP",
+    };
+  }
+
+  // 1. Get liquid accounts (not credit card, not loan)
+  const { data: liquidAccounts } = await supabase
+    .from("accounts")
+    .select("id, name, current_balance, currency_code, updated_at")
+    .eq("is_active", true)
+    .not("account_type", "in", '("CREDIT_CARD","LOAN")');
+
+  const accounts = liquidAccounts ?? [];
+  const totalLiquid = accounts.reduce((sum, a) => sum + a.current_balance, 0);
+
+  // 2. Compute freshness from oldest updated_at among liquid accounts
+  const { getFreshnessLevel } = await import("@/lib/utils/dashboard");
+  const timestamps = accounts.map((a) => a.updated_at).filter(Boolean);
+  const oldestUpdate = timestamps.length > 0
+    ? timestamps.sort()[0]
+    : null;
+  const freshness = getFreshnessLevel(oldestUpdate);
+
+  // 3. Get pending obligations from upcoming recurring (OUTFLOW only)
+  const { getUpcomingRecurrences } = await import("@/actions/recurring-templates");
+  const upcomingRecurrences = await getUpcomingRecurrences(30);
+  const recurringObligations: PendingObligation[] = upcomingRecurrences
+    .filter((r) => r.template.direction === "OUTFLOW")
+    .map((r) => ({
+      id: r.template.id,
+      name: r.template.merchant_name ?? "Recurrente",
+      amount: r.template.amount,
+      currency_code: r.template.currency_code ?? "COP",
+      due_date: r.next_date,
+      source: "recurring" as const,
+    }));
+
+  // 4. Get pending obligations from statement payment due dates
+  const { getUpcomingPayments } = await import("@/actions/payment-reminders");
+  const statementPayments = await getUpcomingPayments();
+  const statementObligations: PendingObligation[] = statementPayments.map((p) => ({
+    id: p.id,
+    name: p.account_name,
+    amount: p.total_payment_due,
+    currency_code: p.currency_code,
+    due_date: p.payment_due_date,
+    source: "statement" as const,
+  }));
+
+  // 5. Merge and sort by due date
+  const allObligations = [...recurringObligations, ...statementObligations]
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+
+  const totalPending = allObligations.reduce((sum, o) => sum + o.amount, 0);
+  const availableToSpend = totalLiquid - totalPending;
+  const currency = accounts[0]?.currency_code ?? "COP";
+
+  return {
+    totalLiquid,
+    pendingObligations: allObligations,
+    totalPending,
+    availableToSpend,
+    freshness,
+    oldestUpdate,
+    currency,
+  };
 }
