@@ -72,7 +72,7 @@ function buildAccountInsertData(formData: FormData) {
     color: formData.get("color") || undefined,
     icon: formData.get("icon") || undefined,
     mask: formData.get("mask") || undefined,
-    show_in_dashboard: formData.has("show_in_dashboard") ? formData.get("show_in_dashboard") === "on" : undefined,
+    show_in_dashboard: formData.has("show_in_dashboard") ? formData.get("show_in_dashboard") === "on" : false,
   };
 
   // Filter out undefined/null values for cleaner insert

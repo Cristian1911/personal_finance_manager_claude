@@ -12,7 +12,7 @@ export function getFreshnessLevel(updatedAt: string | null): FreshnessLevel {
   const diffMs = now.getTime() - updated.getTime();
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffDays <= 1) return "fresh";
+  if (diffDays < 1) return "fresh";
   if (diffDays <= 3) return "stale";
   return "outdated";
 }
@@ -60,6 +60,6 @@ export const semanticColorMap: Record<SemanticColor, { text: string; bg: string;
  */
 export const freshnessMap: Record<FreshnessLevel, { dot: string; label: string }> = {
   fresh: { dot: "bg-emerald-500", label: "Actualizado hoy" },
-  stale: { dot: "bg-amber-500", label: "Actualizado hace unos dias" },
+  stale: { dot: "bg-amber-500", label: "Actualizado hace unos días" },
   outdated: { dot: "bg-red-500", label: "Desactualizado" },
 };

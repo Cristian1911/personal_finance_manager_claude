@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.zetafinance.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSFaceIDUsageDescription": "Zeta usa Face ID para desbloquear la app de forma rapida y segura."
+        "NSFaceIDUsageDescription": "Zeta usa Face ID para desbloquear la app de forma rápida y segura."
       }
     },
     "android": {
@@ -41,7 +41,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Permitir a Zeta usar Face ID para un acceso rapido y seguro."
+          "faceIDPermission": "Permitir a Zeta usar Face ID para un acceso rápido y seguro."
         }
       ]
     ],

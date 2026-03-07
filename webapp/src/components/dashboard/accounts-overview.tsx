@@ -128,7 +128,7 @@ export function AccountsOverview({ data, picker }: AccountsOverviewProps) {
       <CardContent className="space-y-4">
         {previewDeposits.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Cuentas de deposito</p>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Cuentas de depósito</p>
             <div className="divide-y">
               {previewDeposits.map((a) => (
                 <AccountRow key={a.id} account={a} />
@@ -148,7 +148,7 @@ export function AccountsOverview({ data, picker }: AccountsOverviewProps) {
         )}
         {totalAccounts > showing && (
           <Link href="/accounts" className="block text-center text-xs text-muted-foreground hover:text-primary">
-            +{totalAccounts - showing} cuentas mas
+            +{totalAccounts - showing} cuentas más
           </Link>
         )}
       </CardContent>

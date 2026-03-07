@@ -106,7 +106,7 @@ export default async function DashboardPage({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Tu base ya esta lista. Falta activar tu flujo.</p>
+            <p className="text-muted-foreground">Tu base ya está lista. Falta activar tu flujo.</p>
           </div>
         </div>
 
@@ -127,7 +127,7 @@ export default async function DashboardPage({
                 Importar extracto PDF
               </div>
               <p className="text-sm text-muted-foreground">
-                Carga tus movimientos reales para activar metricas, categorias y alertas.
+                Carga tus movimientos reales para activar métricas, categorías y alertas.
               </p>
             </Link>
             <Link
@@ -139,7 +139,7 @@ export default async function DashboardPage({
                 Registrar primer movimiento
               </div>
               <p className="text-sm text-muted-foreground">
-                Si aun no tienes PDF, crea movimientos manuales para empezar.
+                Si aún no tienes PDF, crea movimientos manuales para empezar.
               </p>
             </Link>
             <Link
@@ -148,10 +148,10 @@ export default async function DashboardPage({
             >
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
                 <Tags className="h-4 w-4 text-primary" />
-                Definir categorias base
+                Definir categorías base
               </div>
               <p className="text-sm text-muted-foreground">
-                Etiqueta tus primeras compras para entrenar sugerencias automaticas.
+                Etiqueta tus primeras compras para entrenar sugerencias automáticas.
               </p>
             </Link>
             <Link
@@ -163,7 +163,7 @@ export default async function DashboardPage({
                 Crear presupuesto mensual
               </div>
               <p className="text-sm text-muted-foreground">
-                Establece limites desde el inicio para detectar desvios temprano.
+                Establece límites desde el inicio para detectar desvíos temprano.
               </p>
             </Link>
           </CardContent>
@@ -231,7 +231,7 @@ export default async function DashboardPage({
 
       {/* 3. Analysis */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Analisis</h2>
+        <h2 className="text-lg font-semibold mb-4">Análisis</h2>
         <div className="grid gap-6 lg:grid-cols-2">
           <BudgetPaceChart
             data={budgetPaceData.data}
@@ -247,7 +247,7 @@ export default async function DashboardPage({
       {/* 4. Recent Transactions */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Ultimas transacciones</CardTitle>
+          <CardTitle className="text-lg">Últimas transacciones</CardTitle>
           <Link
             href="/transactions"
             className="text-sm text-primary hover:underline"
@@ -258,7 +258,7 @@ export default async function DashboardPage({
         <CardContent>
           {recentTx.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No hay transacciones aun.{" "}
+              No hay transacciones aún.{" "}
               <Link
                 href="/transactions"
                 className="text-primary hover:underline"
@@ -284,7 +284,7 @@ export default async function DashboardPage({
                       <p className="text-sm font-medium">
                         {tx.merchant_name ||
                           tx.clean_description ||
-                          "Sin descripcion"}
+                          "Sin descripción"}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {tx.transaction_date ? formatDate(tx.transaction_date) : "Sin fecha"}

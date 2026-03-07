@@ -11,6 +11,11 @@ describe("getFreshnessLevel", () => {
     expect(getFreshnessLevel(today)).toBe("fresh");
   });
 
+  it("returns 'stale' for yesterday (1 day ago)", () => {
+    const yesterday = new Date(Date.now() - 1 * 86400000).toISOString();
+    expect(getFreshnessLevel(yesterday)).toBe("stale");
+  });
+
   it("returns 'stale' for 2-3 days ago", () => {
     const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
     expect(getFreshnessLevel(twoDaysAgo)).toBe("stale");

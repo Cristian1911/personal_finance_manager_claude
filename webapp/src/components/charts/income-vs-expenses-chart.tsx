@@ -35,7 +35,7 @@ export function IncomeVsExpensesChart({ data, monthLabel }: IncomeVsExpensesChar
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Ingresos vs Gastos</CardTitle>
-        <p className="text-xs text-muted-foreground">Ultimos 6 meses</p>
+        <p className="text-xs text-muted-foreground">Últimos 6 meses</p>
       </CardHeader>
       <CardContent>
         <div className="h-[200px]">
