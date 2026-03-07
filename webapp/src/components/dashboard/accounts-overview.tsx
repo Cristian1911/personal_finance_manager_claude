@@ -8,7 +8,9 @@ import {
   semanticColorMap,
   freshnessMap,
 } from "@/lib/utils/dashboard";
+import { RefreshCw } from "lucide-react";
 import { Sparkline } from "@/components/charts/sparkline";
+import { ReconcileBalanceDialog } from "@/components/accounts/reconcile-balance-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import type { AccountWithSparkline, GroupedAccounts } from "@/actions/charts";
@@ -36,11 +38,11 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
   const fc = freshnessMap[freshness];
 
   return (
-    <Link
-      href={`/accounts/${account.id}`}
-      className="flex items-center justify-between py-2 px-2 -mx-2 rounded-md hover:bg-accent/50 transition-colors"
-    >
-      <div className="flex items-center gap-3 min-w-0">
+    <div className="flex items-center justify-between py-2 px-2 -mx-2 rounded-md group">
+      <Link
+        href={`/accounts/${account.id}`}
+        className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity"
+      >
         <div className={`h-2 w-2 rounded-full shrink-0 ${fc.dot}`} />
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">{account.name}</p>
@@ -63,9 +65,9 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
             </p>
           )}
         </div>
-      </div>
+      </Link>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <Sparkline data={sparklineData} color={sparklineColor} />
         <div className="text-right">
           <p className="text-sm font-medium">
@@ -81,8 +83,19 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
             </p>
           )}
         </div>
+        <ReconcileBalanceDialog
+          accountId={account.id}
+          accountName={account.name}
+          currentBalance={account.current_balance}
+          currencyCode={account.currency_code}
+          trigger={
+            <button className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-accent transition-all">
+              <RefreshCw className="h-3 w-3 text-muted-foreground" />
+            </button>
+          }
+        />
       </div>
-    </Link>
+    </div>
   );
 }
 
