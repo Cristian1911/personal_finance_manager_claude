@@ -513,3 +513,126 @@ export async function getDashboardHeroData(
     currency,
   };
 }
+
+// --- Accounts with Sparklines ---
+
+export interface SparklinePoint {
+  date: string;
+  balance: number;
+}
+
+export interface AccountWithSparkline {
+  id: string;
+  name: string;
+  account_type: string;
+  current_balance: number;
+  credit_limit: number | null;
+  currency_code: string;
+  updated_at: string;
+  color: string | null;
+  interest_rate: number | null;
+  monthly_payment: number | null;
+  loan_amount: number | null;
+  // Computed fields
+  sparkline: SparklinePoint[];
+  changePercent: number;
+  utilization: number | null; // credit cards only
+  installmentProgress: string | null; // loans only (e.g., "18/48")
+}
+
+export interface GroupedAccounts {
+  deposits: AccountWithSparkline[];
+  debt: AccountWithSparkline[];
+}
+
+export async function getAccountsWithSparklineData(): Promise<GroupedAccounts> {
+  const supabase = await createClient();
+  const user = await getUserSafely(supabase);
+  if (!user) return { deposits: [], debt: [] };
+
+  // 1. Fetch all active accounts
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("is_active", true)
+    .order("display_order");
+
+  if (!accounts || accounts.length === 0) return { deposits: [], debt: [] };
+
+  // 2. Fetch all statement snapshots for sparkline data
+  const accountIds = accounts.map((a) => a.id);
+  const { data: snapshots } = await supabase
+    .from("statement_snapshots")
+    .select("account_id, period_to, final_balance, created_at, remaining_balance")
+    .in("account_id", accountIds)
+    .order("period_to", { ascending: true });
+
+  // 3. Group snapshots by account
+  const snapshotsByAccount = new Map<string, SparklinePoint[]>();
+  for (const snap of snapshots ?? []) {
+    const key = snap.account_id;
+    if (!snapshotsByAccount.has(key)) snapshotsByAccount.set(key, []);
+    const balance = snap.final_balance ?? snap.remaining_balance ?? 0;
+    snapshotsByAccount.get(key)!.push({
+      date: snap.period_to ?? snap.created_at,
+      balance,
+    });
+  }
+
+  // 4. Build AccountWithSparkline for each account
+  const isDebtType = (type: string) => type === "CREDIT_CARD" || type === "LOAN";
+
+  const result: GroupedAccounts = { deposits: [], debt: [] };
+
+  for (const account of accounts) {
+    const points = snapshotsByAccount.get(account.id) ?? [];
+
+    // Add current balance as last point
+    points.push({ date: new Date().toISOString().slice(0, 10), balance: account.current_balance });
+
+    // Compute change percent (current vs previous point)
+    const prevBalance = points.length >= 2 ? points[points.length - 2].balance : account.current_balance;
+    const changePercent = prevBalance !== 0
+      ? ((account.current_balance - prevBalance) / Math.abs(prevBalance)) * 100
+      : 0;
+
+    // Credit utilization
+    const utilization = account.account_type === "CREDIT_CARD" && account.credit_limit
+      ? (Math.abs(account.current_balance) / account.credit_limit) * 100
+      : null;
+
+    // Installment progress for loans
+    let installmentProgress: string | null = null;
+    if (account.account_type === "LOAN" && account.loan_amount && account.monthly_payment) {
+      const totalInstallments = Math.ceil(account.loan_amount / account.monthly_payment);
+      const paidInstallments = points.length > 1 ? points.length - 1 : 0;
+      installmentProgress = `${paidInstallments}/${totalInstallments}`;
+    }
+
+    const item: AccountWithSparkline = {
+      id: account.id,
+      name: account.name,
+      account_type: account.account_type,
+      current_balance: account.current_balance,
+      credit_limit: account.credit_limit,
+      currency_code: account.currency_code,
+      updated_at: account.updated_at,
+      color: account.color,
+      interest_rate: account.interest_rate,
+      monthly_payment: account.monthly_payment,
+      loan_amount: account.loan_amount,
+      sparkline: points,
+      changePercent,
+      utilization,
+      installmentProgress,
+    };
+
+    if (isDebtType(account.account_type)) {
+      result.debt.push(item);
+    } else {
+      result.deposits.push(item);
+    }
+  }
+
+  return result;
+}
