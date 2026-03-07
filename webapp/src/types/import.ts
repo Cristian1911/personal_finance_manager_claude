@@ -96,6 +96,7 @@ export type ImportResult = {
   autoMerged: number;
   manualMerged: number;
   leftAsSeparate: number;
+  adjustmentsExcluded?: number;
   accountUpdates?: AccountUpdateResult[];
 };
 
