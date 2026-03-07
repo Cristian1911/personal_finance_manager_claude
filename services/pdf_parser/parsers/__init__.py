@@ -18,6 +18,8 @@ from parsers.popular_credit_card import parse_popular_credit_card
 from parsers.davivienda_loan import parse_davivienda_loan
 from parsers.falabella_credit_card import parse_falabella_credit_card
 from parsers.confiar_credit_card import parse_confiar_credit_card
+from parsers.davivienda_savings import parse_davivienda_savings
+from parsers.nequi_savings import parse_nequi_savings
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +161,28 @@ DETECTORS: list[dict] = [
         ],
         "parse": lambda path, pw: parse_confiar_credit_card(path, password=pw),
     },
+    # -- Davivienda Savings --
+    {
+        "name": "davivienda_savings",
+        "signals": [
+            (3, lambda t: "DAVIVIENDA" in t),
+            (5, lambda t: "CUENTA DE AHORROS" in t),
+            (5, lambda t: bool(re.search(r"INFORME\s*DEL\s*MES\s*:", t))),
+            (4, lambda t: "EXTRACTO" in t and "CUENTA" in t and "AHORRO" in t),
+        ],
+        "parse": lambda path, pw: [parse_davivienda_savings(path, password=pw)],
+    },
+    # -- Nequi Savings --
+    {
+        "name": "nequi_savings",
+        "signals": [
+            (5, lambda t: "NEQUI" in t),
+            (5, lambda t: bool(re.search(r"CUENTA\s+DE\s+AHORRO", t))),
+            (5, lambda t: bool(re.search(r"PER[ÍI]ODO\s+DE:", t))),
+            (4, lambda t: "TOTAL ABONOS" in t and "TOTAL CARGOS" in t),
+        ],
+        "parse": lambda path, pw: [parse_nequi_savings(path, password=pw)],
+    },
 ]
 
 MIN_CONFIDENCE = 6
@@ -229,7 +253,8 @@ def detect_and_parse(pdf_path: str, password: str | None = None) -> list[ParsedS
 
     SUPPORTED = (
         "Bancolombia (ahorros, crédito, préstamo), NU Colombia, Lulo Bank, "
-        "Banco de Bogotá, Banco Popular, Davivienda, Falabella, Cooperativa Confiar."
+        "Banco de Bogotá, Banco Popular, Davivienda (ahorros, préstamo), "
+        "Falabella, Cooperativa Confiar, Nequi."
     )
 
     if not scored:
