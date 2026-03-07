@@ -61,17 +61,19 @@ export function BudgetPaceChart({ data, totalBudget, totalSpent, monthLabel }: B
 
   const progress = Math.round((totalSpent / totalBudget) * 100);
   const todayIndex = data.findIndex((d) => d.isToday);
-  const todayPoint = todayIndex >= 0 ? data[todayIndex] : null;
-  const overBudgetPace = todayPoint
-    ? todayPoint.actualCumulative > todayPoint.idealCumulative
+  const isPastMonth = todayIndex === -1;
+  // For past months, the last data point is the "end"; for current month, it's today
+  const cutoffIndex = isPastMonth ? data.length - 1 : todayIndex;
+  const referencePoint = data[cutoffIndex] ?? null;
+  const overBudgetPace = referencePoint
+    ? referencePoint.actualCumulative > referencePoint.idealCumulative
     : false;
 
-  // Merge for single chart
+  // Merge for single chart — show all actual data for past months
   const chartData = data.map((d, i) => ({
     label: d.label,
     ideal: d.idealCumulative,
-    actual: i <= todayIndex ? d.actualCumulative : undefined,
-    isToday: d.isToday,
+    actual: i <= cutoffIndex ? d.actualCumulative : undefined,
   }));
 
   return (
@@ -112,11 +114,11 @@ export function BudgetPaceChart({ data, totalBudget, totalSpent, monthLabel }: B
                 isAnimationActive={false}
                 connectNulls={false}
               />
-              {/* Today marker */}
-              {todayPoint && todayIndex >= 0 && (
+              {/* Reference marker (today for current month, last day for past) */}
+              {referencePoint && (
                 <ReferenceDot
-                  x={chartData[todayIndex]?.label}
-                  y={todayPoint.actualCumulative}
+                  x={chartData[cutoffIndex]?.label}
+                  y={referencePoint.actualCumulative}
                   r={4}
                   fill={overBudgetPace ? "#ef4444" : "#10b981"}
                   stroke="white"
@@ -128,10 +130,10 @@ export function BudgetPaceChart({ data, totalBudget, totalSpent, monthLabel }: B
         </div>
 
         {/* Inline badge */}
-        {todayPoint && (
+        {referencePoint && (
           <div className="mt-2 flex items-center justify-between text-xs">
             <span className="text-muted-foreground">
-              Hoy: {formatCurrency(todayPoint.actualCumulative)}
+              {isPastMonth ? "Final" : "Hoy"}: {formatCurrency(referencePoint.actualCumulative)}
             </span>
             <span className={overBudgetPace ? "text-red-600" : "text-emerald-600"}>
               {formatCurrency(totalSpent)} de {formatCurrency(totalBudget)} — {progress}%

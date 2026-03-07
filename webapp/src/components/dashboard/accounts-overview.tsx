@@ -85,11 +85,20 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
   );
 }
 
+const MAX_PREVIEW = 4;
+
 export function AccountsOverview({ data }: AccountsOverviewProps) {
   const hasDeposits = data.deposits.length > 0;
   const hasDebt = data.debt.length > 0;
 
   if (!hasDeposits && !hasDebt) return null;
+
+  // Show at most MAX_PREVIEW accounts total, prioritizing deposits
+  const previewDeposits = data.deposits.slice(0, MAX_PREVIEW);
+  const remainingSlots = MAX_PREVIEW - previewDeposits.length;
+  const previewDebt = data.debt.slice(0, Math.max(remainingSlots, 2));
+  const totalAccounts = data.deposits.length + data.debt.length;
+  const showing = previewDeposits.length + previewDebt.length;
 
   return (
     <Card>
@@ -100,25 +109,30 @@ export function AccountsOverview({ data }: AccountsOverviewProps) {
         </Link>
       </CardHeader>
       <CardContent className="space-y-4">
-        {hasDeposits && (
+        {previewDeposits.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Cuentas de deposito</p>
             <div className="divide-y">
-              {data.deposits.map((a) => (
+              {previewDeposits.map((a) => (
                 <AccountRow key={a.id} account={a} />
               ))}
             </div>
           </div>
         )}
-        {hasDebt && (
+        {previewDebt.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Deuda</p>
             <div className="divide-y">
-              {data.debt.map((a) => (
+              {previewDebt.map((a) => (
                 <AccountRow key={a.id} account={a} />
               ))}
             </div>
           </div>
+        )}
+        {totalAccounts > showing && (
+          <Link href="/accounts" className="block text-center text-xs text-muted-foreground hover:text-primary">
+            +{totalAccounts - showing} cuentas mas
+          </Link>
         )}
       </CardContent>
     </Card>

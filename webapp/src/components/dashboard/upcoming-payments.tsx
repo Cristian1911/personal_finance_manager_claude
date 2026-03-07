@@ -62,6 +62,22 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
   }
 
   const groups = groupByTime(obligations);
+  const MAX_PREVIEW = 5;
+
+  // Flatten and limit to MAX_PREVIEW items, preserving group priority
+  let remaining = MAX_PREVIEW;
+  const previewGroups: Record<TimeGroup, PendingObligation[]> = {
+    today: [],
+    this_week: [],
+    this_month: [],
+  };
+  for (const group of ["today", "this_week", "this_month"] as TimeGroup[]) {
+    const take = groups[group].slice(0, remaining);
+    previewGroups[group] = take;
+    remaining -= take.length;
+    if (remaining <= 0) break;
+  }
+  const totalShowing = previewGroups.today.length + previewGroups.this_week.length + previewGroups.this_month.length;
 
   return (
     <Card>
@@ -76,7 +92,7 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
       </CardHeader>
       <CardContent className="space-y-4">
         {(["today", "this_week", "this_month"] as TimeGroup[]).map((group) => {
-          const items = groups[group];
+          const items = previewGroups[group];
           if (items.length === 0) return null;
           return (
             <div key={group}>
@@ -113,6 +129,11 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
             {formatCurrency(totalPending)}
           </span>
         </div>
+        {obligations.length > totalShowing && (
+          <Link href="/recurrentes" className="block text-center text-xs text-muted-foreground hover:text-primary">
+            +{obligations.length - totalShowing} pagos mas
+          </Link>
+        )}
       </CardContent>
     </Card>
   );
