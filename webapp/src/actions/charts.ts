@@ -636,3 +636,42 @@ export async function getAccountsWithSparklineData(): Promise<GroupedAccounts> {
 
   return result;
 }
+
+// --- Daily Budget Pace ---
+
+export interface DailyBudgetPace {
+  date: string;
+  label: string;
+  actualCumulative: number;
+  idealCumulative: number;
+  isToday: boolean;
+}
+
+export async function getDailyBudgetPace(
+  month?: string
+): Promise<{ data: DailyBudgetPace[]; totalBudget: number; totalSpent: number }> {
+  const target = parseMonth(month);
+  const dailyData = await getDailySpending(month);
+  const { getBudgetSummary } = await import("@/actions/budgets");
+  const budgetSummary = await getBudgetSummary(month);
+
+  const totalBudget = budgetSummary.totalTarget;
+  const daysInMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  const dailyIdeal = totalBudget / daysInMonth;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let cumulativeActual = 0;
+
+  const data: DailyBudgetPace[] = dailyData.map((d, i) => {
+    cumulativeActual += d.amount;
+    return {
+      date: d.date,
+      label: d.label,
+      actualCumulative: cumulativeActual,
+      idealCumulative: dailyIdeal * (i + 1),
+      isToday: d.date === todayStr,
+    };
+  });
+
+  return { data, totalBudget, totalSpent: cumulativeActual };
+}
