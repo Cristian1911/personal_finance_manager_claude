@@ -155,7 +155,7 @@ export default function LoginScreen() {
       bottomOffset={20}
     >
         <Text className="text-base font-inter-bold text-center text-emerald-600 mb-3">
-          Venti5
+          Zeta
         </Text>
         <Text className="text-3xl font-bold text-center text-gray-900 mb-2">
           Bienvenido
@@ -172,7 +172,7 @@ export default function LoginScreen() {
             activeOpacity={0.7}
           >
             <View className="bg-emerald-50 border border-emerald-200 rounded-full p-4">
-              <Fingerprint size={36} color="#059669" />
+              <Fingerprint size={36} color="#C5BFAE" />
             </View>
             <Text className="text-emerald-700 font-inter-medium text-sm">
               Ingresar con biometría

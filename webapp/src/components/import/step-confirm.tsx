@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { autoCategorize } from "@venti5/shared";
+import { autoCategorize } from "@zeta/shared";
 import { previewImportReconciliation } from "@/actions/import-transactions";
 import { Button } from "@/components/ui/button";
 import { ParsedTransactionTable } from "./parsed-transaction-table";

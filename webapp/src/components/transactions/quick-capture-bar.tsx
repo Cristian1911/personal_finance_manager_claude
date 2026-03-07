@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
-import { autoCategorize, parseQuickCaptureText } from "@venti5/shared";
+import { autoCategorize, parseQuickCaptureText } from "@zeta/shared";
 import { Sparkles, Wand2 } from "lucide-react";
 import { createQuickCaptureTransaction } from "@/actions/transactions";
 import { trackClientEvent } from "@/lib/utils/analytics";
@@ -25,7 +25,7 @@ import { CategoryCombobox } from "@/components/ui/category-combobox";
 import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, Transaction, TransactionDirection } from "@/types/domain";
 
-const STORAGE_KEY = "venti5:quick-capture-default-account";
+const STORAGE_KEY = "zeta:quick-capture-default-account";
 
 type PreviewState = {
   amount: string;

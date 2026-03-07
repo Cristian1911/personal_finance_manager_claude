@@ -28,7 +28,7 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: "venti5://reset-password",
+      redirectTo: "zeta://reset-password",
     });
 
     if (error) {

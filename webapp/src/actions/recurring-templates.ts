@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
-import { getNextOccurrence, getOccurrencesBetween } from "@venti5/shared";
+import { getNextOccurrence, getOccurrencesBetween } from "@zeta/shared";
 import { addDays } from "date-fns";
 import { z } from "zod";
 import type { ActionResult } from "@/types/actions";

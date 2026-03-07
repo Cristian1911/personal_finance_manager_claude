@@ -1,7 +1,7 @@
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { formatCurrency, type Category, type CurrencyCode, type Transaction } from "@venti5/shared";
+import { formatCurrency, type Category, type CurrencyCode, type Transaction } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { useAppStore } from "../../lib/store";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
@@ -247,7 +247,7 @@ export default function DashboardScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#047857"
+            tintColor="#C5BFAE"
           />
         }
       >

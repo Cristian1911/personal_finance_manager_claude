@@ -8,6 +8,8 @@ import { TransactionFormDialog } from "@/components/transactions/transaction-for
 import { QuickCaptureBar } from "@/components/transactions/quick-capture-bar";
 import { Pagination } from "@/components/transactions/pagination";
 import { MonthSelector } from "@/components/month-selector";
+import { PurchaseDecisionCard } from "@/components/dashboard/purchase-decision-card";
+import { parseMonth, formatMonthParam } from "@/lib/utils/date";
 
 export default async function TransactionsPage({
   searchParams,
@@ -16,15 +18,20 @@ export default async function TransactionsPage({
 }) {
   const params = await searchParams;
 
-  const [transactionsResult, accountsResult, categoriesResult] =
+  const [transactionsResult, accountsResult, categoriesResult, outflowCategoriesResult] =
     await Promise.all([
       getTransactions(params),
       getAccounts(),
       getCategories(),
+      getCategories("OUTFLOW"),
     ]);
 
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
+  const outflowCategories = outflowCategoriesResult.success ? outflowCategoriesResult.data ?? [] : [];
+  const month = params.month;
+  const target = parseMonth(month);
+  const defaultMonth = month ?? formatMonthParam(target);
 
   return (
     <div className="space-y-6">
@@ -48,6 +55,12 @@ export default async function TransactionsPage({
       </Suspense>
 
       <QuickCaptureBar accounts={accounts} categories={categories} />
+
+      <PurchaseDecisionCard
+        accounts={accounts}
+        categories={outflowCategories}
+        defaultMonth={defaultMonth}
+      />
 
       <TransactionTable transactions={transactionsResult.data} />
 

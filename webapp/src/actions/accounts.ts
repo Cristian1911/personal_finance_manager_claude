@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { accountSchema } from "@/lib/validators/account";
+import { computeIdempotencyKey } from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Account } from "@/types/domain";
 
@@ -71,6 +72,7 @@ function buildAccountInsertData(formData: FormData) {
     color: formData.get("color") || undefined,
     icon: formData.get("icon") || undefined,
     mask: formData.get("mask") || undefined,
+    show_in_dashboard: formData.has("show_in_dashboard") ? formData.get("show_in_dashboard") === "on" : undefined,
   };
 
   // Filter out undefined/null values for cleaner insert
@@ -172,4 +174,101 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
   revalidatePath("/dashboard");
   revalidatePath("/transactions");
   return { success: true, data: undefined };
+}
+
+export async function toggleDashboardVisibility(
+  accountId: string,
+  show: boolean
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("accounts")
+    .update({ show_in_dashboard: show })
+    .eq("user_id", user.id)
+    .eq("id", accountId);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/dashboard");
+  return { success: true, data: undefined };
+}
+
+export async function reconcileBalance(
+  accountId: string,
+  newBalance: number,
+  notes?: string
+): Promise<ActionResult<{ delta: number }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Fetch account and validate ownership
+  const { data: account, error: fetchError } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("id", accountId)
+    .single();
+
+  if (fetchError || !account) {
+    return { success: false, error: fetchError?.message ?? "Cuenta no encontrada" };
+  }
+
+  const delta = newBalance - (account.current_balance ?? 0);
+  const now = new Date().toISOString();
+
+  // If there's a difference, create an adjustment transaction
+  if (delta !== 0) {
+    const rawDescription = `Ajuste manual de saldo (${now})`;
+
+    const idempotencyKey = await computeIdempotencyKey({
+      provider: "MANUAL",
+      transactionDate: now.slice(0, 10),
+      amount: Math.abs(delta),
+      rawDescription,
+    });
+
+    const { error: txError } = await supabase.from("transactions").insert({
+      user_id: user.id,
+      account_id: accountId,
+      amount: Math.abs(delta),
+      currency_code: account.currency_code,
+      direction: delta > 0 ? "INFLOW" : "OUTFLOW",
+      transaction_date: now.slice(0, 10),
+      raw_description: rawDescription,
+      clean_description: "Ajuste manual de saldo",
+      merchant_name: null,
+      category_id: null,
+      notes: notes || null,
+      idempotency_key: idempotencyKey,
+      provider: "MANUAL",
+      capture_method: "MANUAL_FORM",
+      categorization_source: "SYSTEM_DEFAULT",
+      is_excluded: false,
+    });
+
+    if (txError) return { success: false, error: txError.message };
+  }
+
+  // Always update the account balance and updated_at (even if delta === 0)
+  const { error: updateError } = await supabase
+    .from("accounts")
+    .update({ current_balance: newBalance, updated_at: now })
+    .eq("user_id", user.id)
+    .eq("id", accountId);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  revalidatePath("/accounts");
+  revalidatePath("/dashboard");
+  return { success: true, data: { delta } };
 }

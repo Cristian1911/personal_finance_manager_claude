@@ -29,7 +29,7 @@ import {
   type LumpSumResult,
   type SingleAccountResult,
   type PayoffStrategy,
-} from "@venti5/shared";
+} from "@zeta/shared";
 import {
   TrendingDown,
   Snowflake,

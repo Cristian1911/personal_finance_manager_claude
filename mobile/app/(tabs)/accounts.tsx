@@ -9,7 +9,7 @@ import {
 import { useRouter, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Plus } from "lucide-react-native";
-import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { AccountCard } from "../../components/accounts/AccountCard";
 import { useSync } from "../../lib/sync/hooks";
@@ -64,7 +64,7 @@ export default function AccountsScreen() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-gray-100">
-        <ActivityIndicator size="large" color="#047857" />
+        <ActivityIndicator size="large" color="#C5BFAE" />
       </View>
     );
   }
@@ -79,7 +79,7 @@ export default function AccountsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#047857"
+            tintColor="#C5BFAE"
           />
         }
         ListHeaderComponent={

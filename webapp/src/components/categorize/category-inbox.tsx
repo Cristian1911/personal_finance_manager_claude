@@ -5,12 +5,12 @@ import { Inbox, Sparkles, CheckCheck, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InboxTransactionRow } from "./inbox-transaction-row";
 import { BulkActionBar } from "./bulk-action-bar";
-import { autoCategorize, extractPattern } from "@venti5/shared";
+import { autoCategorize, extractPattern } from "@zeta/shared";
 import { categorizeTransaction, bulkCategorize } from "@/actions/categorize";
 import { formatDate } from "@/lib/utils/date";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import type { TransactionWithRelations, CategoryWithChildren } from "@/types/domain";
-import type { UserRule, CategorizationResult } from "@venti5/shared";
+import type { UserRule, CategorizationResult } from "@zeta/shared";
 
 interface CategoryInboxProps {
   initialTransactions: TransactionWithRelations[];

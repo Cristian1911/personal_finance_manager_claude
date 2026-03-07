@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   setDemoMode: () => {},
 });
 
-const LAST_AUTH_USER_KEY = "venti5_last_auth_user_id";
+const LAST_AUTH_USER_KEY = "zeta_last_auth_user_id";
 
 export function useAuth() {
   return useContext(AuthContext);

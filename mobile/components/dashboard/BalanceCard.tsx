@@ -1,6 +1,6 @@
 import { View, Text } from "react-native";
 import { Wallet } from "lucide-react-native";
-import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 
 type BalanceCardProps = {
   totalBalance: number;

@@ -25,7 +25,7 @@ export default function ResetPasswordScreen() {
     if (!url) return;
 
     // Supabase appends tokens in the URL fragment:
-    // venti5://reset-password#access_token=xxx&refresh_token=yyy&type=recovery
+    // zeta://reset-password#access_token=xxx&refresh_token=yyy&type=recovery
     const hashIndex = url.indexOf("#");
     if (hashIndex === -1) return;
 

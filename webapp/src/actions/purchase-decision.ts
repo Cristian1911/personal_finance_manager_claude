@@ -9,7 +9,7 @@ import {
   type PurchaseDecisionResult,
   type PurchaseFundingType,
   type PurchaseUrgency,
-} from "@venti5/shared";
+} from "@zeta/shared";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getUserSafely } from "@/lib/supabase/auth";

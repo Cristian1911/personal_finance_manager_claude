@@ -448,6 +448,19 @@ export function SpecializedAccountForm({ account, defaultValues, onSuccess }: Pr
             </span>
           </div>
         </div>
+
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="show_in_dashboard"
+            name="show_in_dashboard"
+            defaultChecked={account?.show_in_dashboard ?? true}
+            className="h-4 w-4 rounded border-border"
+          />
+          <Label htmlFor="show_in_dashboard" className="text-sm font-normal cursor-pointer">
+            Mostrar en dashboard
+          </Label>
+        </div>
       </div>
 
       <Button type="submit" className="w-full" disabled={pending}>

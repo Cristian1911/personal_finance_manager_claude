@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Repeat, Trash2 } from "lucide-react-native";
-import { formatCurrency, type CurrencyCode, type Database } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode, type Database } from "@zeta/shared";
 import { supabase } from "../lib/supabase";
 import { parseLocalizedAmount } from "../lib/amount";
 import { useAuth } from "../lib/auth";
@@ -357,7 +357,7 @@ export default function SubscriptionsScreen() {
     >
       {loading ? (
         <View className="flex-1 items-center justify-center py-16">
-          <ActivityIndicator size="large" color="#047857" />
+          <ActivityIndicator size="large" color="#C5BFAE" />
         </View>
       ) : (
         <>

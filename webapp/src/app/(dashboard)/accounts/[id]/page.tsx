@@ -3,6 +3,7 @@ import { getAccount } from "@/actions/accounts";
 import { getStatementSnapshots } from "@/actions/statement-snapshots";
 import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
 import { DeleteAccountButton } from "@/components/accounts/delete-account-button";
+import { ReconcileBalanceDialog } from "@/components/accounts/reconcile-balance-dialog";
 import { StatementHistoryTimeline } from "@/components/accounts/statement-history-timeline";
 import { formatCurrency } from "@/lib/utils/currency";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,12 @@ export default async function AccountDetailPage({
             <p className="text-muted-foreground">{account.institution_name}</p>
           )}
         </div>
+        <ReconcileBalanceDialog
+          accountId={account.id}
+          accountName={account.name}
+          currentBalance={account.current_balance}
+          currencyCode={account.currency_code}
+        />
         <AccountFormDialog account={account} />
         <DeleteAccountButton accountId={account.id} />
       </div>

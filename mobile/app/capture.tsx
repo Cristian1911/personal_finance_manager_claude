@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { autoCategorize, parseQuickCaptureText, type TransactionDirection } from "@venti5/shared";
+import { autoCategorize, parseQuickCaptureText, type TransactionDirection } from "@zeta/shared";
 import { KeyboardScreen } from "../components/common/KeyboardScreen";
 import { CategoryPicker, type CategoryRow as PickerCategoryRow } from "../components/transactions/CategoryPicker";
 import { parseLocalizedAmount } from "../lib/amount";
@@ -21,7 +21,7 @@ import {
   createTransaction,
 } from "../lib/repositories/transactions";
 
-const DEFAULT_ACCOUNT_KEY = "venti5.last_capture_account_id";
+const DEFAULT_ACCOUNT_KEY = "zeta.last_capture_account_id";
 
 type Mode = "quick" | "manual";
 
@@ -166,7 +166,7 @@ export default function CaptureScreen() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-gray-100">
-        <ActivityIndicator size="large" color="#047857" />
+        <ActivityIndicator size="large" color="#C5BFAE" />
       </View>
     );
   }

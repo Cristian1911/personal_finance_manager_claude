@@ -12,7 +12,7 @@ import {
   type PurchaseDecisionResult,
   type PurchaseFundingType,
   type PurchaseUrgency,
-} from "@venti5/shared";
+} from "@zeta/shared";
 import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import { analyzeLocally } from "../lib/services/purchase-decision";
 import { KeyboardScreen } from "../components/common/KeyboardScreen";

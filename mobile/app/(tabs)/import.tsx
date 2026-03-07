@@ -19,7 +19,7 @@ import {
   CheckSquare,
   ChevronDown,
 } from "lucide-react-native";
-import { formatCurrency, type ReconciliationCandidate } from "@venti5/shared";
+import { formatCurrency, type ReconciliationCandidate } from "@zeta/shared";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import {
@@ -216,7 +216,7 @@ function AccountSelector({
                   {account.name}
                 </Text>
                 {selected?.id === account.id && (
-                  <CheckSquare size={16} color="#047857" />
+                  <CheckSquare size={16} color="#C5BFAE" />
                 )}
               </Pressable>
             );
@@ -714,7 +714,7 @@ export default function ImportScreen() {
         {document && (
           <View className="bg-white rounded-lg p-4 mt-4">
             <View className="flex-row items-center">
-              <FileText size={20} color="#047857" />
+              <FileText size={20} color="#C5BFAE" />
               <View className="ml-3 flex-1">
                 <Text
                   className="text-gray-900 font-inter-medium text-sm"
@@ -844,7 +844,7 @@ export default function ImportScreen() {
                 className="flex-row items-center px-4 py-3 bg-white active:bg-gray-100"
                 onPress={() => toggleSelect(index)}
               >
-                <Icon size={20} color={isSelected ? "#047857" : "#D1D5DB"} />
+                <Icon size={20} color={isSelected ? "#C5BFAE" : "#D1D5DB"} />
                 <View className="flex-1 mx-3">
                   <Text
                     className="text-gray-900 font-inter-medium text-sm"
@@ -1087,7 +1087,7 @@ export default function ImportScreen() {
   // ===== STEP 3: Result =====
   return (
     <View className="flex-1 bg-gray-100 items-center justify-center px-8">
-      <CheckCircle size={64} color="#047857" />
+      <CheckCircle size={64} color="#C5BFAE" />
       <Text className="text-gray-900 font-inter-bold text-xl mt-6">
         Importacion exitosa
       </Text>

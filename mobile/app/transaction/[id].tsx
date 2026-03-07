@@ -25,7 +25,7 @@ import {
   CategoryPicker,
   type CategoryRow,
 } from "../../components/transactions/CategoryPicker";
-import { formatCurrency, type CurrencyCode } from "@venti5/shared";
+import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import {
   DEBT_PAYMENT_CATEGORY_ID,
   getTransactionTypeLabel,

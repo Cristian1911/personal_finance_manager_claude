@@ -12,7 +12,7 @@ export function PurchaseDecisionCard() {
     >
       <View className="flex-row items-center gap-3">
         <View className="h-10 w-10 rounded-full bg-emerald-50 items-center justify-center">
-          <Brain size={20} color="#047857" />
+          <Brain size={20} color="#C5BFAE" />
         </View>
         <View className="flex-1">
           <Text className="text-sm font-inter-semibold text-gray-900">

@@ -6,7 +6,7 @@ import {
   findReconciliationCandidates,
   mergeTransactionMetadata,
   type ReconciliationCandidate,
-} from "@venti5/shared";
+} from "@zeta/shared";
 import { createClient } from "@/lib/supabase/server";
 import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
@@ -569,6 +569,47 @@ export async function importTransactions(
     else manualMerged++;
   }
 
+  // Auto-exclude manual balance adjustments covered by this import
+  let adjustmentsExcluded = 0;
+  const accountDateRanges = new Map<string, { min: string; max: string }>();
+
+  for (const tx of transactions) {
+    const existing = accountDateRanges.get(tx.account_id);
+    if (!existing) {
+      accountDateRanges.set(tx.account_id, { min: tx.transaction_date, max: tx.transaction_date });
+    } else {
+      if (tx.transaction_date < existing.min) existing.min = tx.transaction_date;
+      if (tx.transaction_date > existing.max) existing.max = tx.transaction_date;
+    }
+  }
+
+  for (const [accountId, range] of accountDateRanges) {
+    const { data: adjustments } = await supabase
+      .from("transactions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("account_id", accountId)
+      .eq("is_excluded", false)
+      .like("raw_description", "Ajuste manual de saldo%")
+      .gte("transaction_date", range.min)
+      .lte("transaction_date", range.max);
+
+    if (adjustments && adjustments.length > 0) {
+      const ids = adjustments.map((a) => a.id);
+      await supabase
+        .from("transactions")
+        .update({ is_excluded: true })
+        .eq("user_id", user.id)
+        .in("id", ids);
+
+      adjustmentsExcluded += ids.length;
+    }
+  }
+
+  if (adjustmentsExcluded > 0) {
+    details.push(`${adjustmentsExcluded} ajuste(s) manual(es) reemplazado(s) por transacciones del extracto`);
+  }
+
   const accountUpdates = await processStatementMeta({
     userId: user.id,
     imported,
@@ -649,6 +690,7 @@ export async function importTransactions(
       autoMerged,
       manualMerged,
       leftAsSeparate,
+      adjustmentsExcluded,
       accountUpdates,
     },
   };
