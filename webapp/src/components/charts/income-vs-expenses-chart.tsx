@@ -29,6 +29,7 @@ export function IncomeVsExpensesChart({ data, monthLabel }: IncomeVsExpensesChar
     ? ((previous.income - previous.expenses) / previous.income) * 100
     : 0;
   const savingsTrend = savingsRate - prevSavingsRate;
+  const hasNoIncome = data.every((d) => d.income === 0);
 
   return (
     <Card>
@@ -100,15 +101,22 @@ export function IncomeVsExpensesChart({ data, monthLabel }: IncomeVsExpensesChar
                 Gastos: {formatCurrency(current.expenses)}
               </span>
             </div>
-            <span className={savingsRate >= 0 ? "text-emerald-600" : "text-red-600"}>
-              Ahorro: {savingsRate.toFixed(0)}%
-              {savingsTrend !== 0 && (
-                <span className="ml-1">
-                  {savingsTrend > 0 ? "↑" : "↓"}
-                </span>
-              )}
-            </span>
+            {current.income > 0 && (
+              <span className={savingsRate >= 0 ? "text-emerald-600" : "text-red-600"}>
+                Ahorro: {savingsRate.toFixed(0)}%
+                {savingsTrend !== 0 && (
+                  <span className="ml-1">
+                    {savingsTrend > 0 ? "↑" : "↓"}
+                  </span>
+                )}
+              </span>
+            )}
           </div>
+          {hasNoIncome && (
+            <p className="text-xs text-muted-foreground">
+              No se detectaron ingresos. Importa un extracto de cuenta de ahorros para ver tu flujo completo.
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

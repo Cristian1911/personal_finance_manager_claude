@@ -204,16 +204,16 @@ export default async function DashboardPage({
       {/* 1. Hero — "Tu dinero ahora" */}
       <DashboardHero data={heroData} />
 
-      {/* 2. Upcoming Payments */}
-      <UpcomingPayments
-        obligations={heroData.pendingObligations}
-        totalPending={heroData.totalPending}
-      />
+      {/* 2. Payments + Accounts side by side */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <UpcomingPayments
+          obligations={heroData.pendingObligations}
+          totalPending={heroData.totalPending}
+        />
+        <AccountsOverview data={accountsData} />
+      </div>
 
-      {/* 3. Accounts with Sparklines */}
-      <AccountsOverview data={accountsData} />
-
-      {/* 4. Analysis */}
+      {/* 3. Analysis */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Analisis</h2>
         <div className="grid gap-6 lg:grid-cols-2">
@@ -228,7 +228,7 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* 5. Recent Transactions */}
+      {/* 4. Recent Transactions */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Ultimas transacciones</CardTitle>

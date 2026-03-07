@@ -20,7 +20,44 @@ interface BudgetPaceChartProps {
 }
 
 export function BudgetPaceChart({ data, totalBudget, totalSpent, monthLabel }: BudgetPaceChartProps) {
-  if (data.length === 0 || totalBudget === 0) return null;
+  if (totalBudget === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Gasto diario vs presupuesto</CardTitle>
+          <p className="text-xs text-muted-foreground">{monthLabel}</p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <p className="text-sm text-muted-foreground mb-2">
+              No tienes presupuesto configurado
+            </p>
+            <a href="/categories" className="text-xs text-primary hover:underline">
+              Configurar presupuesto mensual
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Gasto diario vs presupuesto</CardTitle>
+          <p className="text-xs text-muted-foreground">{monthLabel}</p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Sin gastos registrados este mes
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const progress = Math.round((totalSpent / totalBudget) * 100);
   const todayIndex = data.findIndex((d) => d.isToday);
