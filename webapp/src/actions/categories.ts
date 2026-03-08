@@ -301,6 +301,80 @@ export async function reassignAndDeleteCategory(
   return { success: true, data: undefined };
 }
 
+export async function toggleCategoryActive(
+  id: string,
+  isActive: boolean
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("categories")
+    .update({ is_active: isActive })
+    .eq("id", id)
+    .or(`user_id.eq.${user.id},user_id.is.null`);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/categories");
+  revalidatePath("/dashboard");
+  return { success: true, data: undefined };
+}
+
+export async function getAllCategoriesForManagement(): Promise<
+  ActionResult<CategoryBudgetData[]>
+> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Fetch ALL parent categories (including inactive) for management
+  const { data: parents, error } = await supabase
+    .from("categories")
+    .select("*")
+    .or(`user_id.eq.${user.id},user_id.is.null`)
+    .is("parent_id", null)
+    .order("direction", { ascending: true })
+    .order("display_order", { ascending: true });
+
+  if (error) return { success: false, error: error.message };
+
+  // Fetch all children (including inactive parents' children)
+  const { data: allChildren } = await supabase
+    .from("categories")
+    .select("*")
+    .or(`user_id.eq.${user.id},user_id.is.null`)
+    .not("parent_id", "is", null)
+    .order("display_order", { ascending: true });
+
+  const childrenByParent = new Map<string, CategoryWithChildren[]>();
+  for (const child of allChildren ?? []) {
+    if (child.parent_id) {
+      const arr = childrenByParent.get(child.parent_id) ?? [];
+      arr.push({ ...child, children: [] });
+      childrenByParent.set(child.parent_id, arr);
+    }
+  }
+
+  const result: CategoryBudgetData[] = (parents ?? []).map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    name_es: cat.name_es,
+    slug: cat.slug,
+    icon: cat.icon,
+    color: cat.color,
+    is_essential: cat.is_essential ?? false,
+    is_active: cat.is_active ?? true,
+    direction: cat.direction as TransactionDirection,
+    budget: null,
+    spent: 0,
+    percentUsed: 0,
+    average3m: 0,
+    children: childrenByParent.get(cat.id) ?? [],
+  }));
+
+  return { success: true, data: result };
+}
+
 export async function getCategoriesWithBudgetData(
   month?: string
 ): Promise<ActionResult<CategoryBudgetData[]>> {
@@ -406,6 +480,7 @@ export async function getCategoriesWithBudgetData(
       icon: cat.icon,
       color: cat.color,
       is_essential: cat.is_essential ?? false,
+      is_active: cat.is_active ?? true,
       direction: cat.direction as TransactionDirection,
       budget,
       spent,

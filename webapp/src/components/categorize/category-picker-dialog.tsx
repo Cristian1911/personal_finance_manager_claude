@@ -51,7 +51,20 @@ export function CategoryPickerDialog({
     [categories, direction]
   );
 
+  // Check if we should use flat mode (no parent-child hierarchy)
+  // Flat mode when most categories are standalone (no children)
+  const hasHierarchy = useMemo(
+    () => filtered.some((c) => c.children.length > 0),
+    [filtered]
+  );
+
   const sections = useMemo<Section[]>(() => {
+    if (!hasHierarchy) {
+      // Flat mode: all categories are directly selectable, no grouping
+      return [];
+    }
+
+    // Hierarchical mode: group by parent
     const grouped = filtered
       .filter((c) => c.children.length > 0)
       .map((group) => ({
@@ -71,15 +84,18 @@ export function CategoryPickerDialog({
       });
     }
     return grouped;
-  }, [filtered]);
+  }, [filtered, hasHierarchy]);
 
   const selected = useMemo(() => {
+    if (!hasHierarchy) {
+      return filtered.find((c) => c.id === value) ?? null;
+    }
     for (const section of sections) {
       const found = section.categories.find((c) => c.id === value);
       if (found) return found;
     }
     return null;
-  }, [sections, value]);
+  }, [filtered, hasHierarchy, sections, value]);
 
   const selectedSectionId = useMemo(() => {
     if (!value) return sections[0]?.id ?? "";
@@ -149,55 +165,118 @@ export function CategoryPickerDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpen}>
-        <DialogContent className="flex h-[min(94vh,60rem)] w-[min(98vw,84rem)] max-w-[min(98vw,84rem)] sm:max-w-[min(98vw,84rem)] flex-col gap-0 overflow-hidden p-0 sm:p-0">
+        <DialogContent
+          className={cn(
+            "flex flex-col gap-0 overflow-hidden p-0 sm:p-0",
+            hasHierarchy
+              ? "h-[min(94vh,60rem)] w-[min(98vw,84rem)] max-w-[min(98vw,84rem)] sm:max-w-[min(98vw,84rem)]"
+              : "w-[min(98vw,36rem)] max-w-[min(98vw,36rem)] sm:max-w-[min(98vw,36rem)]"
+          )}
+        >
           <DialogHeader className="border-b px-6 py-4">
             <DialogTitle>Selecciona una categoría</DialogTitle>
             <DialogDescription>
-              Elige primero una sección grande y luego la categoría específica.
+              {hasHierarchy
+                ? "Elige primero una sección grande y luego la categoría específica."
+                : "Elige la categoría que mejor describe este gasto."}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)]">
-            <div className="overflow-y-auto border-b bg-muted/20 p-4 xl:border-r xl:border-b-0">
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                {sections.map((section) => {
-                  const isActive = section.id === activeSection?.id;
-                  return (
-                    <button
-                      key={section.id}
-                      className={cn(
-                        "w-full rounded-lg border px-3 py-3 text-left transition-colors",
-                        isActive
-                          ? "border-primary bg-primary/10"
-                          : "bg-background hover:bg-accent/50"
-                      )}
-                      onClick={() => setActiveSectionId(section.id)}
-                    >
-                      <div className="flex items-center gap-2">
-                        {section.color ? (
-                          <span
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: section.color }}
-                          />
-                        ) : (
-                          <Layers2 className="h-3.5 w-3.5 text-muted-foreground" />
+          {hasHierarchy ? (
+            /* Hierarchical: two-panel layout */
+            <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)]">
+              <div className="overflow-y-auto border-b bg-muted/20 p-4 xl:border-r xl:border-b-0">
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                  {sections.map((section) => {
+                    const isActive = section.id === activeSection?.id;
+                    return (
+                      <button
+                        key={section.id}
+                        className={cn(
+                          "w-full rounded-lg border px-3 py-3 text-left transition-colors",
+                          isActive
+                            ? "border-primary bg-primary/10"
+                            : "bg-background hover:bg-accent/50"
                         )}
-                        <span className="text-sm font-medium">{section.label}</span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {section.categories.length} categorías
-                      </p>
-                    </button>
-                  );
-                })}
+                        onClick={() => setActiveSectionId(section.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {section.color ? (
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: section.color }}
+                            />
+                          ) : (
+                            <Layers2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
+                          <span className="text-sm font-medium">{section.label}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {section.categories.length} categorías
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="min-w-0 overflow-y-auto p-4 sm:p-5">
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-sm font-semibold">
+                    {activeSection?.label ?? "Categorías"}
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => selectCategory(null)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Sin categoría
+                  </Button>
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {activeSection?.categories.map((category) => {
+                    const isSelected = value === category.id;
+                    return (
+                      <button
+                        key={category.id}
+                        onClick={() => selectCategory(category.id)}
+                        className={cn(
+                          "flex w-full items-start gap-3 rounded-lg border bg-background px-3 py-3 text-left transition-colors hover:bg-accent/50",
+                          isSelected && "border-primary bg-primary/10"
+                        )}
+                      >
+                        <span
+                          className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: category.color }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start gap-2">
+                            <span className="text-sm font-medium leading-5 text-foreground">
+                              {category.name_es ?? category.name}
+                            </span>
+                            {isSelected && (
+                              <Check className="ml-auto mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            )}
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {activeSection?.label === "Otros"
+                              ? "Categoría individual"
+                              : `Subcategoría de ${activeSection?.label}`}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-
-            <div className="min-w-0 overflow-y-auto p-4 sm:p-5">
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="text-sm font-semibold">
-                  {activeSection?.label ?? "Categorías"}
-                </h3>
+          ) : (
+            /* Flat mode: simple grid of categories */
+            <div className="overflow-y-auto p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-end">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -209,43 +288,34 @@ export function CategoryPickerDialog({
                 </Button>
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-2">
-                {activeSection?.categories.map((category) => {
+              <div className="grid gap-3 sm:grid-cols-2">
+                {filtered.map((category) => {
                   const isSelected = value === category.id;
                   return (
                     <button
                       key={category.id}
                       onClick={() => selectCategory(category.id)}
                       className={cn(
-                        "flex w-full items-start gap-3 rounded-lg border bg-background px-3 py-3 text-left transition-colors hover:bg-accent/50",
+                        "flex w-full items-center gap-3 rounded-lg border bg-background px-4 py-3 text-left transition-colors hover:bg-accent/50",
                         isSelected && "border-primary bg-primary/10"
                       )}
                     >
                       <span
-                        className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                        className="h-3 w-3 shrink-0 rounded-full"
                         style={{ backgroundColor: category.color }}
                       />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start gap-2">
-                          <span className="text-sm font-medium leading-5 text-foreground">
-                            {category.name_es ?? category.name}
-                          </span>
-                          {isSelected && (
-                            <Check className="ml-auto mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                          )}
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {activeSection?.label === "Otros"
-                            ? "Categoría individual"
-                            : `Subcategoría de ${activeSection?.label}`}
-                        </p>
-                      </div>
+                      <span className="text-sm font-medium flex-1">
+                        {category.name_es ?? category.name}
+                      </span>
+                      {isSelected && (
+                        <Check className="h-4 w-4 shrink-0 text-primary" />
+                      )}
                     </button>
                   );
                 })}
               </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </>

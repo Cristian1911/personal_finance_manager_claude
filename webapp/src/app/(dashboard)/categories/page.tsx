@@ -1,4 +1,7 @@
-import { getCategoriesWithBudgetData } from "@/actions/categories";
+import {
+  getCategoriesWithBudgetData,
+  getAllCategoriesForManagement,
+} from "@/actions/categories";
 import { BudgetSummaryBar } from "@/components/budget/budget-summary-bar";
 import { BudgetCategoryGrid } from "@/components/budget/budget-category-grid";
 import { TrendComparison } from "@/components/budget/trend-comparison";
@@ -15,9 +18,13 @@ export default async function CategoriesPage({
   const { month } = await searchParams;
   const selectedMonth = parseMonth(month);
 
-  const result = await getCategoriesWithBudgetData(month);
+  const [result, manageResult] = await Promise.all([
+    getCategoriesWithBudgetData(month),
+    getAllCategoriesForManagement(),
+  ]);
   const categories = result.success ? result.data : [];
   const outflowCategories = categories.filter((c) => c.direction === "OUTFLOW");
+  const allCategories = manageResult.success ? manageResult.data : [];
 
   const daysRemaining = getDaysRemainingInMonth(selectedMonth);
   const monthLabel = formatMonthLabel(selectedMonth);
@@ -54,7 +61,7 @@ export default async function CategoriesPage({
         </TabsContent>
 
         <TabsContent value="gestionar" className="mt-4">
-          <CategoryManageList categories={categories} />
+          <CategoryManageList categories={allCategories} />
         </TabsContent>
       </Tabs>
     </div>
