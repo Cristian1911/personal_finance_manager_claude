@@ -1,7 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { getUserSafely } from "@/lib/supabase/auth";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import {
   formatDate,
   parseMonth,
@@ -45,10 +44,7 @@ export interface DailySpending {
  * Returns top categories sorted by total amount descending.
  */
 export async function getCategorySpending(month?: string): Promise<CategorySpending[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
 
@@ -124,10 +120,7 @@ export async function getCategorySpending(month?: string): Promise<CategorySpend
  * Monthly income vs expenses for the 6 months ending at the given month.
  */
 export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflow[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
 
@@ -180,10 +173,7 @@ export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflo
  * Daily spending (OUTFLOW) for the given month (defaults to current).
  */
 export async function getDailySpending(month?: string): Promise<DailySpending[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
 
@@ -226,10 +216,7 @@ export interface MonthMetrics {
  * Used for computing trend percentages vs previous period.
  */
 export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { income: 0, expenses: 0 };
 
@@ -269,10 +256,7 @@ export interface DailyCashflow {
  * Returns data for each day with both income and expenses.
  */
 export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
 
@@ -339,10 +323,7 @@ export interface NetWorthHistory {
  * Calculates current net worth, then steps backward using historical net cashflow.
  */
 export async function getNetWorthHistory(month?: string): Promise<NetWorthHistory[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
 
@@ -434,8 +415,7 @@ export interface DashboardHeroData {
 export async function getDashboardHeroData(
   month?: string
 ): Promise<DashboardHeroData> {
-  const supabase = await createClient();
-  const user = await getUserSafely(supabase);
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) {
     return {
       totalLiquid: 0,
@@ -544,8 +524,7 @@ export interface GroupedAccounts {
 }
 
 export async function getAccountsWithSparklineData(): Promise<GroupedAccounts> {
-  const supabase = await createClient();
-  const user = await getUserSafely(supabase);
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { deposits: [], debt: [] };
 
   // 1. Fetch active accounts marked for dashboard

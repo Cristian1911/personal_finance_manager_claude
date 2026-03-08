@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
 import {
@@ -37,7 +37,6 @@ import { IncomeVsExpensesChart } from "@/components/charts/income-vs-expenses-ch
 import { CategorySpendingChart } from "@/components/charts/category-spending-chart";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
-import { getUserSafely } from "@/lib/supabase/auth";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 
 type DashboardTransactionRow = {
@@ -61,8 +60,7 @@ export default async function DashboardPage({
   const target = parseMonth(month);
   const monthLabel = formatMonthLabel(target);
 
-  const supabase = await createClient();
-  const user = await getUserSafely(supabase);
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return null;
 

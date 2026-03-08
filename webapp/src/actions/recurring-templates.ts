@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { getNextOccurrence, getOccurrencesBetween } from "@zeta/shared";
@@ -58,10 +59,7 @@ function applyBalanceDelta(params: {
 export async function getRecurringTemplates(): Promise<
   ActionResult<RecurringTemplateWithRelations[]>
 > {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -79,10 +77,7 @@ export async function getRecurringTemplates(): Promise<
 export async function getRecurringTemplate(
   id: string
 ): Promise<ActionResult<RecurringTemplateWithRelations>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -101,10 +96,7 @@ export async function createRecurringTemplate(
   _prevState: ActionResult<RecurringTemplate>,
   formData: FormData
 ): Promise<ActionResult<RecurringTemplate>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -174,10 +166,7 @@ export async function updateRecurringTemplate(
   _prevState: ActionResult<RecurringTemplate>,
   formData: FormData
 ): Promise<ActionResult<RecurringTemplate>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -244,10 +233,7 @@ export async function updateRecurringTemplate(
 export async function deleteRecurringTemplate(
   id: string
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -268,10 +254,7 @@ export async function toggleRecurringTemplate(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -296,7 +279,7 @@ const recurringOccurrencePaymentSchema = z.object({
   sourceAccountId: z.string().uuid().nullable().optional(),
 });
 
-type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
+type ServerSupabase = SupabaseClient<Database>;
 type RecurringOccurrencePaymentInput = z.infer<typeof recurringOccurrencePaymentSchema>;
 type RecurringPaymentTemplate = {
   id: string;
@@ -635,10 +618,7 @@ export async function recordRecurringOccurrencePayment(input: {
   actualAmount: number;
   sourceAccountId?: string | null;
 }): Promise<ActionResult<{ created: number; alreadyRecorded: number }>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -751,10 +731,7 @@ export async function recordRecurringOccurrencePayment(input: {
 export async function getUpcomingRecurrences(
   days: number = 30
 ): Promise<UpcomingRecurrence[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
 
@@ -799,10 +776,7 @@ export async function getRecurringSummary(): Promise<{
   totalMonthlyIncome: number;
   activeCount: number;
 }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user)
     return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0 };

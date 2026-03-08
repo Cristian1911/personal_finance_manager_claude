@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
-import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import {
   quickCapturePreviewSchema,
   transactionFiltersSchema,
@@ -29,9 +31,9 @@ type PersistTransactionParams = {
 };
 
 async function persistTransaction(
+  supabase: SupabaseClient<Database>,
   params: PersistTransactionParams
 ): Promise<ActionResult<Transaction>> {
-  const supabase = await createClient();
   const idempotencyKey = await computeIdempotencyKey({
     provider: "MANUAL",
     transactionDate: params.transaction_date,
@@ -78,10 +80,7 @@ async function persistTransaction(
 export async function getTransactions(
   filters: Record<string, string | undefined>
 ): Promise<PaginatedResult<Transaction>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { data: [], count: 0, page: 1, pageSize: 20, totalPages: 0 };
 
@@ -138,10 +137,7 @@ export async function getTransactions(
 }
 
 export async function getTransaction(id: string): Promise<ActionResult<Transaction>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -157,10 +153,7 @@ export async function createTransaction(
   _prevState: ActionResult<Transaction>,
   formData: FormData
 ): Promise<ActionResult<Transaction>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -181,7 +174,7 @@ export async function createTransaction(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  return persistTransaction({
+  return persistTransaction(supabase, {
     userId: user.id,
     ...parsed.data,
     merchant_name: parsed.data.merchant_name || parsed.data.raw_description || null,
@@ -193,10 +186,7 @@ export async function createQuickCaptureTransaction(
   _prevState: ActionResult<Transaction>,
   formData: FormData
 ): Promise<ActionResult<Transaction>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -220,7 +210,7 @@ export async function createQuickCaptureTransaction(
   const suggestion =
     parsed.data.category_id ?? autoCategorize(parsed.data.merchant_name)?.category_id ?? null;
 
-  return persistTransaction({
+  return persistTransaction(supabase, {
     userId: user.id,
     ...parsed.data,
     category_id: suggestion,
@@ -233,11 +223,7 @@ export async function updateTransaction(
   _prevState: ActionResult<Transaction>,
   formData: FormData
 ): Promise<ActionResult<Transaction>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   const parsed = transactionSchema.safeParse({
@@ -286,10 +272,7 @@ export async function updateTransaction(
 }
 
 export async function deleteTransaction(id: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -307,10 +290,7 @@ export async function toggleExcludeTransaction(
   id: string,
   excluded: boolean
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -331,10 +311,7 @@ export async function bulkExcludeTransactions(
   ids: string[],
   excluded: boolean
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 

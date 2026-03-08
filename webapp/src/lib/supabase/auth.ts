@@ -1,4 +1,7 @@
-import type { User } from "@supabase/supabase-js";
+import { cache } from "react";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
+import { createClient } from "./server";
 
 const IGNORABLE_AUTH_ERROR_CODES = new Set([
   "refresh_token_not_found",
@@ -50,3 +53,17 @@ export async function getUserSafely(
     throw error;
   }
 }
+
+/**
+ * Request-scoped cached auth. React `cache()` deduplicates within a single
+ * server render, so the dashboard (which fires 8+ parallel data fetches)
+ * only hits Supabase Auth once per page load instead of once per function.
+ */
+export const getAuthenticatedClient = cache(async (): Promise<{
+  supabase: SupabaseClient<Database>;
+  user: User | null;
+}> => {
+  const supabase = await createClient();
+  const user = await getUserSafely(supabase);
+  return { supabase, user };
+});

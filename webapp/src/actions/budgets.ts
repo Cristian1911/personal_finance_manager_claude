@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { budgetSchema } from "@/lib/validators/budget";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
@@ -12,10 +12,7 @@ type BudgetSummaryTransactionRow = {
 };
 
 export async function getBudgets(): Promise<ActionResult<Budget[]>> {
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { supabase, user } = await getAuthenticatedClient();
 
     if (!user) return { success: false, error: "No autenticado" };
 
@@ -33,10 +30,7 @@ export async function upsertBudget(
     _prevState: ActionResult<Budget>,
     formData: FormData
 ): Promise<ActionResult<Budget>> {
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { supabase, user } = await getAuthenticatedClient();
 
     if (!user) return { success: false, error: "No autenticado" };
 
@@ -71,10 +65,7 @@ export async function upsertBudget(
 }
 
 export async function deleteBudget(id: string): Promise<ActionResult> {
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { supabase, user } = await getAuthenticatedClient();
 
     if (!user) return { success: false, error: "No autenticado" };
 
@@ -94,10 +85,7 @@ export interface BudgetSummary {
 }
 
 export async function getBudgetSummary(month?: string): Promise<BudgetSummary> {
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const { supabase, user } = await getAuthenticatedClient();
 
     if (!user) return { totalTarget: 0, totalSpent: 0, progress: 0 };
 

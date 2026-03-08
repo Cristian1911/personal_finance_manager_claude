@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import {
   extractDebtAccounts,
   calcUtilization,
@@ -10,10 +10,7 @@ import {
 } from "@zeta/shared";
 
 export async function getDebtOverview(): Promise<DebtOverview> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   const emptyResult: DebtOverview = {
     totalDebt: 0,

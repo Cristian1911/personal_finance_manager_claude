@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 
 export interface UpcomingPayment {
     id: string; // snapshot id
@@ -11,8 +11,7 @@ export interface UpcomingPayment {
 }
 
 export async function getUpcomingPayments(): Promise<UpcomingPayment[]> {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { supabase, user } = await getAuthenticatedClient();
 
     if (!user) return [];
 

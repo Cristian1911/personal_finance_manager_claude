@@ -7,7 +7,9 @@ import {
   mergeTransactionMetadata,
   type ReconciliationCandidate,
 } from "@zeta/shared";
-import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import {
@@ -107,9 +109,9 @@ function buildDecisionKey(statementIndex: number, transactionIndex: number): str
 }
 
 async function fetchReconciliationCandidates(
+  supabase: SupabaseClient<Database>,
   transactions: TransactionToImport[]
 ): Promise<Map<string, ReconciliationCandidate[]>> {
-  const supabase = await createClient();
   const accountIds = [...new Set(transactions.map((tx) => tx.account_id))];
   if (accountIds.length === 0) return new Map();
 
@@ -152,7 +154,9 @@ export async function previewImportReconciliation(
     importedTransaction: TransactionToImport;
   }>
 ): Promise<ReconciliationPreviewResult> {
+  const { supabase } = await getAuthenticatedClient();
   const groupedCandidates = await fetchReconciliationCandidates(
+    supabase,
     items.map((item) => item.importedTransaction)
   );
   const autoMerge: ReconciliationPreviewItem[] = [];
@@ -216,14 +220,14 @@ export async function previewImportReconciliation(
 }
 
 async function processStatementMeta(params: {
+  supabase: SupabaseClient<Database>;
   userId: string;
   imported: number;
   skipped: number;
   statementMeta?: StatementMetaForImport[];
   details: string[];
 }): Promise<AccountUpdateResult[]> {
-  const supabase = await createClient();
-  const { userId, imported, skipped, statementMeta, details } = params;
+  const { supabase, userId, imported, skipped, statementMeta, details } = params;
   const accountUpdates: AccountUpdateResult[] = [];
 
   if (!statementMeta || statementMeta.length === 0) return accountUpdates;
@@ -428,10 +432,7 @@ export async function importTransactions(
   _prevState: ActionResult<ImportResult>,
   formData: FormData
 ): Promise<ActionResult<ImportResult>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -612,6 +613,7 @@ export async function importTransactions(
   }
 
   const accountUpdates = await processStatementMeta({
+    supabase,
     userId: user.id,
     imported,
     skipped,
