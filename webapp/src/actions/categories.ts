@@ -304,10 +304,7 @@ export async function reassignAndDeleteCategory(
 export async function getCategoriesWithBudgetData(
   month?: string
 ): Promise<ActionResult<CategoryBudgetData[]>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   const target = parseMonth(month);

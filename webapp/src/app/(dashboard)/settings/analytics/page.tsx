@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,11 +42,7 @@ type CategorizationFunnelRow = {
 };
 
 export default async function AnalyticsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) redirect("/login");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- analytics schema exists in DB but not in generated types
