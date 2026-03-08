@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -123,8 +124,7 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Input
-          type="number"
+        <CurrencyInput
           placeholder="Monto mín"
           defaultValue={searchParams.get("amountMin") ?? ""}
           onChange={(e) => {
@@ -135,10 +135,8 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
             return () => clearTimeout(timeout);
           }}
           className="w-[130px]"
-          min={0}
         />
-        <Input
-          type="number"
+        <CurrencyInput
           placeholder="Monto máx"
           defaultValue={searchParams.get("amountMax") ?? ""}
           onChange={(e) => {
@@ -149,7 +147,6 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
             return () => clearTimeout(timeout);
           }}
           className="w-[130px]"
-          min={0}
         />
 
         <div className="flex items-center gap-2 ml-auto">

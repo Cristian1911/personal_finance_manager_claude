@@ -6,6 +6,7 @@ import { Sparkles, Wand2 } from "lucide-react";
 import { createQuickCaptureTransaction } from "@/actions/transactions";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { Button } from "@/components/ui/button";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -221,12 +222,9 @@ export function QuickCaptureBar({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="amount">Monto</Label>
-                  <Input
+                  <CurrencyInput
                     id="amount"
                     name="amount"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
                     value={preview.amount}
                     onChange={(event) =>
                       setPreview((prev) => (prev ? { ...prev, amount: event.target.value } : prev))

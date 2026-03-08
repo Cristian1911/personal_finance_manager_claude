@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Popover,
   PopoverContent,
@@ -86,12 +86,10 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
               <p className="text-sm font-medium">
                 Presupuesto mensual
               </p>
-              <Input
-                type="number"
-                placeholder="Ej: 500000"
+              <CurrencyInput
+                placeholder="Ej: 500.000"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                min={0}
               />
               {saveError && (
                 <p className="text-xs text-destructive">{saveError}</p>

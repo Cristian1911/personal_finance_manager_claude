@@ -15,6 +15,7 @@ import { getOccurrencesBetween } from "@zeta/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils/currency";
 import { recordRecurringOccurrencePayment } from "@/actions/recurring-templates";
@@ -369,10 +370,7 @@ export function RecurringCalendarChecklist({
                               <label className="mb-1 block text-xs text-muted-foreground">
                                 Monto real pagado
                               </label>
-                              <Input
-                                type="number"
-                                min="0.01"
-                                step="0.01"
+                              <CurrencyInput
                                 value={amountOverrides[item.key] ?? String(item.plannedAmount)}
                                 onChange={(e) =>
                                   setAmountOverrides((prev) => ({

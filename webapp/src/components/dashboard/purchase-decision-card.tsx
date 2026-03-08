@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -176,14 +177,11 @@ export function PurchaseDecisionCard({
               <div className="space-y-4 overflow-y-auto border-b bg-muted/30 p-4 sm:p-6 2xl:border-r 2xl:border-b-0">
                 <div className="space-y-2">
                   <Label htmlFor="purchase-amount">Monto</Label>
-                  <Input
+                  <CurrencyInput
                     id="purchase-amount"
-                    type="number"
-                    min="1"
-                    step="0.01"
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}
-                    placeholder="250000"
+                    placeholder="250.000"
                   />
                 </div>
 

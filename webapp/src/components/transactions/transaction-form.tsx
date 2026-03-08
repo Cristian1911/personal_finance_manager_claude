@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { createTransaction, updateTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -80,14 +81,11 @@ export function TransactionForm({
 
         <div className="space-y-2">
           <Label htmlFor="amount">Monto</Label>
-          <Input
+          <CurrencyInput
             id="amount"
             name="amount"
-            type="number"
-            step="0.01"
-            min="0.01"
             defaultValue={transaction?.amount}
-            placeholder="0.00"
+            placeholder="0"
             required
           />
         </div>
