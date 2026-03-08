@@ -77,7 +77,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
             </div>
             <Button
               variant="ghost"
-              size="xs"
+              size="sm"
               onClick={() => {
                 setAddingToParent(
                   addingToParent === cat.id ? null : cat.id
@@ -87,7 +87,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
               disabled={isPending}
             >
               <Plus className="size-3.5" />
-              <span className="hidden sm:inline">Subcategoria</span>
+              <span className="hidden sm:inline">Subcategoría</span>
             </Button>
           </div>
 
@@ -102,7 +102,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                   <span>{child.name_es ?? child.name}</span>
                   <Button
                     variant="ghost"
-                    size="icon-xs"
+                    size="icon"
                     className="text-muted-foreground hover:text-destructive"
                     onClick={() => handleDeleteSubcategory(child.id)}
                     disabled={isPending}
@@ -123,7 +123,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
               )}
             >
               <Input
-                placeholder="Nombre de subcategoria"
+                placeholder="Nombre de subcategoría"
                 value={newSubName}
                 onChange={(e) => setNewSubName(e.target.value)}
                 className="h-8 text-sm"

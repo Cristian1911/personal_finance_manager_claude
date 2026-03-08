@@ -17,7 +17,7 @@ export function TrendComparison({ categories }: TrendComparisonProps) {
   if (withSpending.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
-        No hay datos de gasto aun para comparar tendencias.
+        No hay datos de gasto aún para comparar tendencias.
       </p>
     );
   }

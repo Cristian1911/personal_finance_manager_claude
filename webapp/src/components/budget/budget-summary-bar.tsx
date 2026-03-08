@@ -50,7 +50,7 @@ export function BudgetSummaryBar({
             {Math.round(overallPercent)}%
           </p>
           <p className="text-sm text-muted-foreground">
-            {daysRemaining} {daysRemaining === 1 ? "dia" : "dias"} restantes
+            {daysRemaining} {daysRemaining === 1 ? "día" : "días"} restantes
           </p>
         </div>
       </div>
