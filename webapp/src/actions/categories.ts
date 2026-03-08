@@ -367,6 +367,7 @@ export async function getAllCategoriesForManagement(): Promise<
     direction: cat.direction as TransactionDirection,
     budget: null,
     spent: 0,
+    committedRecurring: 0,
     percentUsed: 0,
     average3m: 0,
     children: childrenByParent.get(cat.id) ?? [],
@@ -383,7 +384,7 @@ export async function getCategoriesWithBudgetData(
 
   const target = parseMonth(month);
 
-  const [catRes, budgetRes, spentRes, avgRes] = await Promise.all([
+  const [catRes, budgetRes, spentRes, avgRes, recurringRes] = await Promise.all([
     // 1. Parent categories only
     supabase
       .from("categories")
@@ -421,6 +422,14 @@ export async function getCategoriesWithBudgetData(
         .gte("transaction_date", monthsBeforeStart(target, 3))
         .lt("transaction_date", monthStartStr(target))
     ),
+
+    // 5. Active recurring templates (monthly committed amounts per category)
+    supabase
+      .from("recurring_transaction_templates")
+      .select("category_id, amount")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .eq("direction", "OUTFLOW"),
   ]);
 
   if (catRes.error) return { success: false, error: catRes.error.message };
@@ -444,6 +453,14 @@ export async function getCategoriesWithBudgetData(
   for (const tx of avgRes.data ?? []) {
     if (tx.category_id) {
       avgTotalMap.set(tx.category_id, (avgTotalMap.get(tx.category_id) ?? 0) + tx.amount);
+    }
+  }
+
+  // Build recurring committed map (sum of active recurring templates per category)
+  const recurringMap = new Map<string, number>();
+  for (const tmpl of recurringRes.data ?? []) {
+    if (tmpl.category_id) {
+      recurringMap.set(tmpl.category_id, (recurringMap.get(tmpl.category_id) ?? 0) + tmpl.amount);
     }
   }
 
@@ -471,6 +488,7 @@ export async function getCategoriesWithBudgetData(
     const budget = budgetMap.get(cat.id) ?? null;
     const spent = spentMap.get(cat.id) ?? 0;
     const avg3mTotal = avgTotalMap.get(cat.id) ?? 0;
+    const committedRecurring = recurringMap.get(cat.id) ?? 0;
 
     return {
       id: cat.id,
@@ -484,6 +502,7 @@ export async function getCategoriesWithBudgetData(
       direction: cat.direction as TransactionDirection,
       budget,
       spent,
+      committedRecurring,
       percentUsed: budget && budget > 0 ? (spent / budget) * 100 : 0,
       average3m: avg3mTotal / 3,
       children: childrenByParent.get(cat.id) ?? [],

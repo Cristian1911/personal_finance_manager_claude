@@ -16,6 +16,7 @@ import {
   Tag,
   ChevronDown,
   ChevronRight,
+  Repeat,
 } from "lucide-react";
 import type { CategoryBudgetData } from "@/types/domain";
 
@@ -42,12 +43,23 @@ export function BudgetCategoryCard({
 }: BudgetCategoryCardProps) {
   const [expanded, setExpanded] = useState(false);
   const hasBudget = category.budget !== null && category.budget > 0;
+  const hasRecurring = category.committedRecurring > 0;
   const IconComp = ICON_MAP[category.icon] ?? Tag;
 
+  const recurringPercent =
+    hasBudget && category.budget! > 0
+      ? (category.committedRecurring / category.budget!) * 100
+      : 0;
+  const spentPercent = category.percentUsed;
+  // Flexible = budget minus recurring committed
+  const flexible =
+    hasBudget ? Math.max(0, category.budget! - category.committedRecurring) : 0;
+
+  const totalPercent = spentPercent;
   const barColor =
-    category.percentUsed >= 100
+    totalPercent >= 100
       ? "bg-red-500"
-      : category.percentUsed >= 80
+      : totalPercent >= 80
         ? "bg-amber-500"
         : undefined;
 
@@ -89,12 +101,25 @@ export function BudgetCategoryCard({
       <CardContent className="pt-0">
         {hasBudget ? (
           <div className="space-y-1.5">
-            {/* Progress bar */}
-            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+            {/* Progress bar with recurring + spent segments */}
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex">
+              {/* Recurring committed segment (striped pattern) */}
+              {hasRecurring && (
+                <div
+                  className="h-full opacity-40"
+                  style={{
+                    width: `${Math.min(recurringPercent, 100)}%`,
+                    backgroundColor: category.color,
+                    backgroundImage:
+                      "repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(255,255,255,0.3) 2px, rgba(255,255,255,0.3) 4px)",
+                  }}
+                />
+              )}
+              {/* Actual spent segment */}
               <div
-                className={cn("h-full rounded-full transition-all", barColor)}
+                className={cn("h-full transition-all", barColor)}
                 style={{
-                  width: `${Math.min(category.percentUsed, 100)}%`,
+                  width: `${Math.min(spentPercent, Math.max(0, 100 - recurringPercent))}%`,
                   ...(barColor
                     ? {}
                     : { backgroundColor: category.color }),
@@ -105,6 +130,16 @@ export function BudgetCategoryCard({
               {formatCurrency(category.spent)} / {formatCurrency(category.budget!)} &mdash;{" "}
               {Math.round(category.percentUsed)}%
             </p>
+            {/* Recurring breakdown */}
+            {hasRecurring && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Repeat className="size-3" />
+                <span>
+                  {formatCurrency(category.committedRecurring)} fijos &middot;{" "}
+                  {formatCurrency(flexible)} flexible
+                </span>
+              </div>
+            )}
           </div>
         ) : (
           <button
