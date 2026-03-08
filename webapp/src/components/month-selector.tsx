@@ -54,7 +54,7 @@ export function MonthSelector() {
         variant={isCurrent ? "secondary" : "outline"}
         size="sm"
         onClick={() => navigateToMonth(new Date())}
-        className="min-w-[160px] capitalize"
+        className="min-w-[120px] sm:min-w-[160px] capitalize"
       >
         {formatMonthLabel(currentMonth)}
       </Button>
