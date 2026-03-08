@@ -12,68 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  analytics: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      activation_d7: {
-        Row: {
-          activated_d7: number | null
-          activation_d7_pct: number | null
-          cohort_day: string | null
-          signups: number | null
-        }
-        Relationships: []
-      }
-      categorization_funnel_daily: {
-        Row: {
-          bulk_categorized: number | null
-          categorized: number | null
-          day: string | null
-          picker_opened: number | null
-          seen: number | null
-          seen_to_categorized_pct: number | null
-          selected: number | null
-          users_with_activity: number | null
-        }
-        Relationships: []
-      }
-      import_funnel_daily: {
-        Row: {
-          completed: number | null
-          confirm_submitted: number | null
-          day: string | null
-          file_selected: number | null
-          open_to_complete_pct: number | null
-          opened: number | null
-          parse_requested: number | null
-          parse_succeeded: number | null
-          sessions: number | null
-        }
-        Relationships: []
-      }
-      product_event_daily_counts: {
-        Row: {
-          day: string | null
-          event_count: number | null
-          event_name: string | null
-          flow: string | null
-          user_count: number | null
-        }
-        Relationships: []
-      }
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       accounts: {
@@ -1066,9 +1004,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  analytics: {
-    Enums: {},
-  },
   public: {
     Enums: {
       account_type: [
