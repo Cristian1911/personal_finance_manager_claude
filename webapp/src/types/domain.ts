@@ -37,6 +37,7 @@ export type CategoryBudgetData = {
   icon: string;
   color: string;
   is_essential: boolean;
+  is_active: boolean;
   direction: TransactionDirection;
   budget: number | null;
   spent: number;

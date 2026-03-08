@@ -6,8 +6,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { createCategory, deleteCategory } from "@/actions/categories";
-import { Trash2, Plus } from "lucide-react";
+import {
+  createCategory,
+  deleteCategory,
+  toggleCategoryActive,
+} from "@/actions/categories";
+import { Trash2, Plus, Eye, EyeOff } from "lucide-react";
 import type { CategoryBudgetData } from "@/types/domain";
 
 interface CategoryManageListProps {
@@ -32,7 +36,10 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
       const formData = new FormData();
       formData.append("name", newSubName.trim());
       formData.append("name_es", newSubName.trim());
-      formData.append("slug", newSubName.trim().toLowerCase().replace(/\s+/g, "-"));
+      formData.append(
+        "slug",
+        newSubName.trim().toLowerCase().replace(/\s+/g, "-")
+      );
       formData.append("icon", parent?.icon ?? "tag");
       formData.append("color", parent?.color ?? "#6b7280");
       formData.append("parent_id", parentId);
@@ -40,7 +47,10 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
         formData.append("direction", parent.direction);
       }
 
-      const result = await createCategory({ success: false, error: "" }, formData);
+      const result = await createCategory(
+        { success: false, error: "" },
+        formData
+      );
       if (result.success) {
         setAddingToParent(null);
         setNewSubName("");
@@ -64,10 +74,27 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
     }
   }
 
+  async function handleToggleActive(id: string, currentlyActive: boolean) {
+    setIsSaving(true);
+    try {
+      const result = await toggleCategoryActive(id, !currentlyActive);
+      if (result.success) {
+        startTransition(() => {
+          router.refresh();
+        });
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {categories.map((cat) => (
-        <div key={cat.id} className="rounded-lg border">
+        <div
+          key={cat.id}
+          className={cn("rounded-lg border", !cat.is_active && "opacity-50")}
+        >
           {/* Parent header */}
           <div className="flex items-center justify-between p-3">
             <div className="flex items-center gap-2">
@@ -83,22 +110,51 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                   Esencial
                 </Badge>
               )}
+              {!cat.is_active && (
+                <Badge variant="outline" className="text-[10px]">
+                  Oculta
+                </Badge>
+              )}
+              <Badge
+                variant="outline"
+                className="text-[10px] text-muted-foreground"
+              >
+                {cat.direction === "OUTFLOW" ? "Gasto" : "Ingreso"}
+              </Badge>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setAddingToParent(
-                  addingToParent === cat.id ? null : cat.id
-                );
-                setNewSubName("");
-                setError(null);
-              }}
-              disabled={isPending || isSaving}
-            >
-              <Plus className="size-3.5" />
-              <span className="hidden sm:inline">Subcategoría</span>
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleToggleActive(cat.id, cat.is_active)}
+                disabled={isPending || isSaving}
+                title={cat.is_active ? "Ocultar categoría" : "Mostrar categoría"}
+              >
+                {cat.is_active ? (
+                  <EyeOff className="size-3.5" />
+                ) : (
+                  <Eye className="size-3.5" />
+                )}
+              </Button>
+              {cat.is_active && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setAddingToParent(
+                      addingToParent === cat.id ? null : cat.id
+                    );
+                    setNewSubName("");
+                    setError(null);
+                  }}
+                  disabled={isPending || isSaving}
+                >
+                  <Plus className="size-3.5" />
+                  <span className="hidden sm:inline">Subcategoría</span>
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Subcategories list */}
@@ -113,7 +169,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-muted-foreground hover:text-destructive"
+                    className="text-muted-foreground hover:text-destructive h-7 w-7"
                     onClick={() => handleDeleteSubcategory(child.id)}
                     disabled={isPending || isSaving}
                   >
@@ -126,11 +182,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
 
           {/* Add subcategory inline form */}
           {addingToParent === cat.id && (
-            <div
-              className={cn(
-                "flex flex-col gap-2 p-3 border-t"
-              )}
-            >
+            <div className="flex flex-col gap-2 p-3 border-t">
               <div className="flex items-center gap-2">
                 <Input
                   placeholder="Nombre de subcategoría"
@@ -152,9 +204,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                   {isSaving ? "..." : "Agregar"}
                 </Button>
               </div>
-              {error && (
-                <p className="text-xs text-destructive">{error}</p>
-              )}
+              {error && <p className="text-xs text-destructive">{error}</p>}
             </div>
           )}
         </div>
