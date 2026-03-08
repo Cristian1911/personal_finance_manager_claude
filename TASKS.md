@@ -1,30 +1,28 @@
 # Zeta — Current Tasks
 
-## Completed (this session)
+## Completed
 
-- [x] **Dashboard redesign** — PR #32 merged (Financial Command Center layout)
-- [x] **Balance reconciliation** — PR #32 merged (ReconcileBalanceDialog + server action)
-- [x] **Code review fixes** — PR #33 merged (budget pace, net worth calc, freshness, accents)
-- [x] **Security audit** — PR #34 open (18 missing user_id filters fixed across 10 action files)
-- [x] **E2E test PDF parsers** — Davivienda savings + Nequi savings parsers verified working
-- [x] **Verify StatementSnapshot type** — Confirmed `remaining_balance` + `installments_in_default` present
-- [x] **Git cleanup** — Merged PR #33, deleted stale branches (9 remote, 7 local)
+- [x] **Dashboard redesign** — PR #32 merged
+- [x] **Code review fixes** — PR #33 merged
+- [x] **Security audit** — PR #34 merged (user_id filters across 10 action files)
+- [x] **Auth dedup** — PR #35 merged (getAuthenticatedClient + React cache)
+- [x] **Category budgets** — PR #36 merged (8 ADHD-friendly categories, budget dashboard, summary bar, trends)
+- [x] **Build fix** — Stale createClient calls from PR #35/#36 merge conflict
 
 ## In Progress
 
-- [ ] **Merge security PR #34** — Awaiting CI + merge
+- [ ] **Category management polish** — `feat/category-budgets` branch: toggle active, flat picker, cleanup (ready for PR)
 
 ## High Priority
 
-- [ ] **Category budgets** — `budgets` table exists. Need UI for setting monthly limits per category + wire BudgetPaceChart to real data
 - [ ] **Onboarding wizard** — New users see empty dashboard. Need "Create account → Import first statement" flow with checklist
 - [ ] **Transaction search** — Full-text search by description/merchant, arbitrary date range, amount filters
-- [ ] **Proactive notifications system** — Rule-based alerts: spending spikes, payment due dates, savings rate drops. Needs `notifications` table + Supabase Edge Function cron
+- [ ] **Proactive notifications system** — Rule-based alerts: spending spikes, payment due dates, savings rate drops
 
 ## Medium Priority
 
 - [ ] **Weekly email digest** — Opt-in summary of weekly spending, top categories, anomalies
-- [ ] **Burn Rate + Runway metrics** — Core PFM metrics. 3-month moving average, liquid assets / burn rate
+- [ ] **Burn Rate + Runway metrics** — 3-month moving average, liquid assets / burn rate
 - [ ] **FinHealth Score** — Composite 0-100 score (Spend 30%, Save 30%, Borrow 20%, Plan 20%)
 - [ ] **Subscription detection** — Algorithm to detect recurring transactions (same description, amount, periodicity)
 - [ ] **Mobile app redesign** — Approved design doc at `docs/plans/2026-03-07-mobile-redesign-design.md`
