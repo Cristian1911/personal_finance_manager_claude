@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { categorySchema } from "@/lib/validators/category";
 import type { ActionResult } from "@/types/actions";
-import type { Category, CategoryWithChildren, CategoryWithBudget, TransactionDirection } from "@/types/domain";
+import { parseMonth, monthStartStr, monthEndStr, monthsBeforeStart } from "@/lib/utils/date";
+import type { Category, CategoryWithChildren, CategoryWithBudget, CategoryBudgetData, TransactionDirection } from "@/types/domain";
 
 export async function getCategories(
   direction?: TransactionDirection
@@ -321,4 +322,124 @@ export async function reassignAndDeleteCategory(
   revalidatePath("/categories");
   revalidatePath("/categories/manage");
   return { success: true, data: undefined };
+}
+
+export async function getCategoriesWithBudgetData(
+  month?: string
+): Promise<ActionResult<CategoryBudgetData[]>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const target = parseMonth(month);
+
+  const [catRes, budgetRes, spentRes, avgRes] = await Promise.all([
+    // 1. Parent categories only
+    supabase
+      .from("categories")
+      .select("*")
+      .or(`user_id.eq.${user.id},user_id.is.null`)
+      .eq("is_active", true)
+      .is("parent_id", null)
+      .order("display_order", { ascending: true }),
+
+    // 2. Budgets
+    supabase
+      .from("budgets")
+      .select("category_id, amount")
+      .eq("user_id", user.id)
+      .eq("period", "monthly"),
+
+    // 3. This month's spending
+    executeVisibleTransactionQuery(() =>
+      supabase
+        .from("transactions")
+        .select("amount, category_id")
+        .eq("direction", "OUTFLOW")
+        .eq("is_excluded", false)
+        .gte("transaction_date", monthStartStr(target))
+        .lte("transaction_date", monthEndStr(target))
+    ),
+
+    // 4. Last 3 months spending for averages
+    executeVisibleTransactionQuery(() =>
+      supabase
+        .from("transactions")
+        .select("amount, category_id, transaction_date")
+        .eq("direction", "OUTFLOW")
+        .eq("is_excluded", false)
+        .gte("transaction_date", monthsBeforeStart(target, 2))
+        .lt("transaction_date", monthStartStr(target))
+    ),
+  ]);
+
+  if (catRes.error) return { success: false, error: catRes.error.message };
+
+  // Build budget map
+  const budgetMap = new Map<string, number>();
+  for (const b of budgetRes.data ?? []) {
+    budgetMap.set(b.category_id, Number(b.amount));
+  }
+
+  // Build spent map (this month)
+  const spentMap = new Map<string, number>();
+  for (const tx of spentRes.data ?? []) {
+    if (tx.category_id) {
+      spentMap.set(tx.category_id, (spentMap.get(tx.category_id) ?? 0) + tx.amount);
+    }
+  }
+
+  // Build 3-month total map (divide by 3 for average)
+  const avgTotalMap = new Map<string, number>();
+  for (const tx of avgRes.data ?? []) {
+    if (tx.category_id) {
+      avgTotalMap.set(tx.category_id, (avgTotalMap.get(tx.category_id) ?? 0) + tx.amount);
+    }
+  }
+
+  // Fetch children for each parent
+  const { data: allChildren } = await supabase
+    .from("categories")
+    .select("*")
+    .or(`user_id.eq.${user.id},user_id.is.null`)
+    .eq("is_active", true)
+    .not("parent_id", "is", null)
+    .order("display_order", { ascending: true });
+
+  const childrenByParent = new Map<string, CategoryWithChildren[]>();
+  for (const child of allChildren ?? []) {
+    if (child.parent_id) {
+      const arr = childrenByParent.get(child.parent_id) ?? [];
+      arr.push({ ...child, children: [] });
+      childrenByParent.set(child.parent_id, arr);
+    }
+  }
+
+  const categories = catRes.data ?? [];
+
+  const result: CategoryBudgetData[] = categories.map((cat) => {
+    const budget = budgetMap.get(cat.id) ?? null;
+    const spent = spentMap.get(cat.id) ?? 0;
+    const avg3mTotal = avgTotalMap.get(cat.id) ?? 0;
+
+    return {
+      id: cat.id,
+      name: cat.name,
+      name_es: cat.name_es,
+      slug: cat.slug,
+      icon: cat.icon,
+      color: cat.color,
+      is_essential: cat.is_essential ?? false,
+      direction: cat.direction as TransactionDirection,
+      budget,
+      spent,
+      percentUsed: budget && budget > 0 ? (spent / budget) * 100 : 0,
+      average3m: avg3mTotal / 3,
+      children: childrenByParent.get(cat.id) ?? [],
+    };
+  });
+
+  return { success: true, data: result };
 }
