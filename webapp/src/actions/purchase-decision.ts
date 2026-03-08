@@ -100,6 +100,7 @@ export async function analyzePurchaseDecisionAction(
     supabase
       .from("accounts")
       .select("*")
+      .eq("user_id", user.id)
       .eq("is_active", true)
       .order("display_order"),
     executeVisibleTransactionQuery(() =>

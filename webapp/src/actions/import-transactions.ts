@@ -232,6 +232,7 @@ async function processStatementMeta(params: {
   const { data: accountRows } = await supabase
     .from("accounts")
     .select("id, name, currency_code, currency_balances, account_type")
+    .eq("user_id", userId)
     .in("id", uniqueAccountIds);
   const accountMap = new Map((accountRows ?? []).map((a) => [a.id, a]));
 
@@ -409,7 +410,7 @@ async function processStatementMeta(params: {
 
     accountUpdate.currency_balances = balances;
 
-    await supabase.from("accounts").update(accountUpdate).eq("id", meta.accountId);
+    await supabase.from("accounts").update(accountUpdate).eq("user_id", userId).eq("id", meta.accountId);
 
     const diffs = computeSnapshotDiffs(prevSnapshot, snapshotRow);
     accountUpdates.push({

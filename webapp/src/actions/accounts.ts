@@ -18,6 +18,7 @@ export async function getAccounts(): Promise<ActionResult<Account[]>> {
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
+    .eq("user_id", user.id)
     .eq("is_active", true)
     .order("display_order", { ascending: true });
 

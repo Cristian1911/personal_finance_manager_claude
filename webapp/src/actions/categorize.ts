@@ -76,6 +76,7 @@ export async function getUserCategoryRules(): Promise<UserRule[]> {
   const { data, error } = await supabase
     .from("category_rules")
     .select("pattern, category_id")
+    .eq("user_id", user.id)
     .order("match_count", { ascending: false });
 
   if (error) {
@@ -170,6 +171,7 @@ export async function bulkCategorize(
   const { data: txs } = await supabase
     .from("transactions")
     .select("id, merchant_name, clean_description, raw_description")
+    .eq("user_id", user.id)
     .in("id", txIds);
 
   const txMap = new Map(txs?.map((t) => [t.id, t]) ?? []);
