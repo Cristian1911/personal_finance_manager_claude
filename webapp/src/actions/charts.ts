@@ -347,7 +347,7 @@ export async function getNetWorthHistory(month?: string): Promise<NetWorthHistor
   // 1. Get current active accounts balances to compute current net worth
   const { data: accounts } = await supabase
     .from("accounts")
-    .select("current_balance, account_type, credit_limit")
+    .select("current_balance, available_balance, account_type, credit_limit")
     .eq("is_active", true);
 
   // If no accounts, return early
@@ -360,9 +360,9 @@ export async function getNetWorthHistory(month?: string): Promise<NetWorthHistor
   const totalLiabilities = accounts
     .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
     .reduce((sum, a) => {
-      // Logic from `computeDebtBalance` proxy
-      if (a.account_type === "CREDIT_CARD" && a.credit_limit) {
-        return sum + Math.max(0, a.credit_limit - a.current_balance);
+      // Matches computeDebtBalance from lib/utils/debt.ts
+      if (a.account_type === "CREDIT_CARD" && a.credit_limit != null && a.credit_limit > 0 && a.available_balance != null) {
+        return sum + Math.max(0, a.credit_limit - a.available_balance);
       }
       return sum + Math.abs(a.current_balance);
     }, 0);
@@ -663,13 +663,14 @@ export async function getDailyBudgetPace(
   const todayStr = new Date().toISOString().slice(0, 10);
   let cumulativeActual = 0;
 
-  const data: DailyBudgetPace[] = dailyData.map((d, i) => {
+  const data: DailyBudgetPace[] = dailyData.map((d) => {
     cumulativeActual += d.amount;
+    const dayOfMonth = new Date(d.date + "T12:00:00").getDate();
     return {
       date: d.date,
       label: d.label,
       actualCumulative: cumulativeActual,
-      idealCumulative: dailyIdeal * (i + 1),
+      idealCumulative: dailyIdeal * dayOfMonth,
       isToday: d.date === todayStr,
     };
   });

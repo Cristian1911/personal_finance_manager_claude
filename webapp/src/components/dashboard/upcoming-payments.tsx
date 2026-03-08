@@ -54,7 +54,7 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
         <CardContent className="py-4">
           <div className="flex items-center gap-2 text-emerald-600">
             <Check className="h-4 w-4" />
-            <span className="text-sm">Todos los pagos del mes estan al dia</span>
+            <span className="text-sm">Todos los pagos del mes están al día</span>
           </div>
         </CardContent>
       </Card>
@@ -84,7 +84,7 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <CalendarClock className="h-4 w-4" />
-          Proximos pagos
+          Próximos pagos
         </CardTitle>
         <Link href="/recurrentes" className="text-xs text-primary hover:underline">
           Ver todos
@@ -131,7 +131,7 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
         </div>
         {obligations.length > totalShowing && (
           <Link href="/recurrentes" className="block text-center text-xs text-muted-foreground hover:text-primary">
-            +{obligations.length - totalShowing} pagos mas
+            +{obligations.length - totalShowing} pagos más
           </Link>
         )}
       </CardContent>
