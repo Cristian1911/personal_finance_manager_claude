@@ -71,7 +71,7 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
           defaultValue={searchParams.get("accountId") ?? "all"}
           onValueChange={(v) => updateFilter("accountId", v)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Todas las cuentas" />
           </SelectTrigger>
           <SelectContent>
@@ -88,7 +88,7 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
           defaultValue={searchParams.get("direction") ?? "all"}
           onValueChange={(v) => updateFilter("direction", v)}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -104,13 +104,13 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
               type="date"
               defaultValue={searchParams.get("dateFrom") ?? ""}
               onChange={(e) => updateFilter("dateFrom", e.target.value)}
-              className="w-[160px]"
+              className="w-full sm:w-[160px]"
             />
             <Input
               type="date"
               defaultValue={searchParams.get("dateTo") ?? ""}
               onChange={(e) => updateFilter("dateTo", e.target.value)}
-              className="w-[160px]"
+              className="w-full sm:w-[160px]"
             />
           </>
         )}
@@ -134,7 +134,7 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
             );
             return () => clearTimeout(timeout);
           }}
-          className="w-[130px]"
+          className="w-full sm:w-[130px]"
         />
         <CurrencyInput
           placeholder="Monto máx"
@@ -146,7 +146,7 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
             );
             return () => clearTimeout(timeout);
           }}
-          className="w-[130px]"
+          className="w-full sm:w-[130px]"
         />
 
         <div className="flex items-center gap-2 ml-auto">

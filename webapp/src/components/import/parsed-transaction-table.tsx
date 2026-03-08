@@ -92,7 +92,7 @@ export function ParsedTransactionTable({
                       value={catId}
                       onValueChange={(v) => onCategoryChange(i, v)}
                       direction={tx.direction}
-                      triggerClassName="w-[180px] h-8 text-xs"
+                      triggerClassName="w-full sm:w-[180px] h-8 text-xs"
                     />
                   </TableCell>
                 )}

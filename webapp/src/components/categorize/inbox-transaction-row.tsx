@@ -124,7 +124,7 @@ export function InboxTransactionRow({
                 }}
                 direction={tx.direction}
                 placeholder="Elegir categoría"
-                triggerClassName="h-8 text-xs px-2.5 w-[240px]"
+                triggerClassName="h-8 text-xs px-2.5 w-full sm:w-[240px]"
               />
             </div>
           )}
