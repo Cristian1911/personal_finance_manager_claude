@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { revalidatePath } from "next/cache";
 import { Database } from "@/types/database";
 
@@ -24,8 +24,7 @@ export async function finishOnboarding(
     profileData: OnboardingProfileData,
     accountData: InitialAccountData
 ) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { supabase, user } = await getAuthenticatedClient();
 
     if (!user) {
         throw new Error("Unauthorized");

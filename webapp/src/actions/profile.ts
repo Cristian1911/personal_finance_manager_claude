@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import type { ActionResult } from "@/types/actions";
 import type { Profile } from "@/types/domain";
 import { z } from "zod";
@@ -14,10 +14,7 @@ const profileSchema = z.object({
 });
 
 export async function getProfile(): Promise<ActionResult<Profile>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -35,10 +32,7 @@ export async function updateProfile(
   _prevState: ActionResult<Profile>,
   formData: FormData
 ): Promise<ActionResult<Profile>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 

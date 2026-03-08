@@ -1,8 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getUserSafely, isIgnorableAuthError } from "@/lib/supabase/auth";
+import { getAuthenticatedClient, isIgnorableAuthError } from "@/lib/supabase/auth";
 import type { Json } from "@/types/database";
 
 export type ProductEventInput = {
@@ -19,8 +18,7 @@ export type ProductEventInput = {
 };
 
 export async function trackProductEvent(input: ProductEventInput): Promise<void> {
-  const supabase = await createClient();
-  const user = await getUserSafely(supabase);
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user || !input.event_name) return;
 

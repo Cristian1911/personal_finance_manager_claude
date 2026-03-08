@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { getUserSafely } from "@/lib/supabase/auth";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { extractPattern } from "@zeta/shared";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
@@ -15,8 +14,7 @@ import type { UserRule } from "@zeta/shared";
 export async function getUncategorizedTransactions(): Promise<
   TransactionWithRelations[]
 > {
-  const supabase = await createClient();
-  const user = await getUserSafely(supabase);
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return [];
 
   const { data, error } = await executeVisibleTransactionQuery(() =>
@@ -41,8 +39,7 @@ export async function getUncategorizedTransactions(): Promise<
  * Count uncategorized, non-excluded transactions (for sidebar badge).
  */
 export async function getUncategorizedCount(): Promise<number> {
-  const supabase = await createClient();
-  const user = await getUserSafely(supabase);
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return 0;
 
   const { count, error } = await executeVisibleTransactionQuery(() =>
@@ -67,10 +64,7 @@ export async function getUncategorizedCount(): Promise<number> {
  * Fetch user's category rules for auto-categorization.
  */
 export async function getUserCategoryRules(): Promise<UserRule[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return [];
 
   const { data, error } = await supabase
@@ -94,10 +88,7 @@ export async function categorizeTransaction(
   txId: string,
   categoryId: string
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   // 1. Fetch the transaction to extract a pattern
@@ -158,10 +149,7 @@ export async function categorizeTransaction(
 export async function bulkCategorize(
   items: { txId: string; categoryId: string }[]
 ): Promise<ActionResult<{ categorized: number }>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   let categorized = 0;

@@ -11,8 +11,7 @@ import {
   type PurchaseUrgency,
 } from "@zeta/shared";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { getUserSafely } from "@/lib/supabase/auth";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { monthEndStr, monthStartStr, parseMonth } from "@/lib/utils/date";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
@@ -81,8 +80,7 @@ export async function analyzePurchaseDecisionAction(
 
   const input = parsed.data;
   const categoryId = input.categoryId ?? null;
-  const supabase = await createClient();
-  const user = await getUserSafely(supabase);
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) {
     return { success: false, error: "No autenticado" };
   }

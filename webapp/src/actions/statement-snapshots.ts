@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import type { ActionResult } from "@/types/actions";
 import type { Tables } from "@/types/database";
 
@@ -9,10 +9,7 @@ export type StatementSnapshot = Tables<"statement_snapshots">;
 export async function getStatementSnapshots(
   accountId: string
 ): Promise<ActionResult<StatementSnapshot[]>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 

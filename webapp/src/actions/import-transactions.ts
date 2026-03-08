@@ -8,6 +8,7 @@ import {
   type ReconciliationCandidate,
 } from "@zeta/shared";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import {
@@ -428,10 +429,7 @@ export async function importTransactions(
   _prevState: ActionResult<ImportResult>,
   formData: FormData
 ): Promise<ActionResult<ImportResult>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { categorySchema } from "@/lib/validators/category";
@@ -64,8 +65,7 @@ function buildCategoryTree(categories: Category[]): CategoryWithChildren[] {
 export async function getCategoriesWithBudgets(
   direction?: TransactionDirection
 ): Promise<ActionResult<CategoryWithBudget[]>> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   let query = supabase
@@ -133,11 +133,7 @@ export async function createCategory(
   _prevState: ActionResult<Category>,
   formData: FormData
 ): Promise<ActionResult<Category>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   const parsed = categorySchema.safeParse({
@@ -176,11 +172,7 @@ export async function updateCategory(
   _prevState: ActionResult<Category>,
   formData: FormData
 ): Promise<ActionResult<Category>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   const parsed = categorySchema.safeParse({
@@ -213,11 +205,7 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   const { error } = await supabase
@@ -236,11 +224,7 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
 export async function updateCategoryOrder(
   items: { id: string; display_order: number; parent_id: string | null }[]
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   // Supabase doesn't have an easy bulk update via RPC without custom functions
@@ -273,8 +257,7 @@ export async function updateCategoryOrder(
 export async function getCategoryTransactionCount(
   categoryId: string
 ): Promise<ActionResult<number>> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   const { count, error } = await executeVisibleTransactionQuery(() =>
@@ -293,8 +276,7 @@ export async function reassignAndDeleteCategory(
   id: string,
   reassignToCategoryId?: string
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   // Reassign transactions if target provided

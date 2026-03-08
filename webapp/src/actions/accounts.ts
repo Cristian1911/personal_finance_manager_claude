@@ -1,17 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { accountSchema } from "@/lib/validators/account";
 import { computeIdempotencyKey } from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Account } from "@/types/domain";
 
 export async function getAccounts(): Promise<ActionResult<Account[]>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -27,10 +24,7 @@ export async function getAccounts(): Promise<ActionResult<Account[]>> {
 }
 
 export async function getAccount(id: string): Promise<ActionResult<Account>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -86,10 +80,7 @@ export async function createAccount(
   _prevState: ActionResult<Account>,
   formData: FormData
 ): Promise<ActionResult<Account>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -129,10 +120,7 @@ export async function updateAccount(
   _prevState: ActionResult<Account>,
   formData: FormData
 ): Promise<ActionResult<Account>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -160,10 +148,7 @@ export async function updateAccount(
 }
 
 export async function deleteAccount(id: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -181,10 +166,7 @@ export async function toggleDashboardVisibility(
   accountId: string,
   show: boolean
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -205,10 +187,7 @@ export async function reconcileBalance(
   newBalance: number,
   notes?: string
 ): Promise<ActionResult<{ delta: number }>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 
