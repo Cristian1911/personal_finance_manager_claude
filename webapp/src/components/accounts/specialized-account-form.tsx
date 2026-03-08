@@ -53,7 +53,7 @@ function generateYears(start: number, count: number) {
 function CreditCardFields({ account, defaults }: { account?: Account; defaults: AccountFormDefaults }) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="credit_limit">Límite de crédito *</Label>
           <CurrencyInput
@@ -79,7 +79,7 @@ function CreditCardFields({ account, defaults }: { account?: Account; defaults: 
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="cutoff_day">Día de corte</Label>
           <Input
@@ -124,7 +124,7 @@ function LoanFields({ account, defaults }: { account?: Account; defaults: Accoun
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="loan_amount">Monto original del préstamo *</Label>
           <CurrencyInput
@@ -160,7 +160,7 @@ function LoanFields({ account, defaults }: { account?: Account; defaults: Accoun
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Inicio del préstamo</Label>
           <div className="flex gap-2">
@@ -224,7 +224,7 @@ function InvestmentFields({ account, defaults }: { account?: Account; defaults: 
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="initial_investment">Inversión inicial</Label>
           <CurrencyInput
@@ -370,7 +370,7 @@ export function SpecializedAccountForm({ account, defaultValues, onSuccess }: Pr
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="institution_name">Institución financiera</Label>
             <Input

@@ -31,7 +31,7 @@ export default async function TransactionDetailPage({
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Link
           href="/transactions"
           className="text-muted-foreground hover:text-foreground"
@@ -73,7 +73,7 @@ export default async function TransactionDetailPage({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
             <div>
               <p className="text-sm text-muted-foreground">Estado</p>
               <Badge variant="secondary" className="mt-1">
