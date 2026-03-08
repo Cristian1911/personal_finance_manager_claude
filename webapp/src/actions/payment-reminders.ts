@@ -39,6 +39,7 @@ export async function getUpcomingPayments(): Promise<UpcomingPayment[]> {
         is_active
       )
     `)
+        .eq("user_id", user.id)
         .eq("accounts.is_active", true)
         .not("payment_due_date", "is", null)
         .gte("payment_due_date", today)

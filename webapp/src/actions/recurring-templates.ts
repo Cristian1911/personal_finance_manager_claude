@@ -68,6 +68,7 @@ export async function getRecurringTemplates(): Promise<
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
+    .eq("user_id", user.id)
     .order("is_active", { ascending: false })
     .order("merchant_name");
 
@@ -760,6 +761,7 @@ export async function getUpcomingRecurrences(
   const { data: templates } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
+    .eq("user_id", user.id)
     .eq("is_active", true);
 
   if (!templates || templates.length === 0) return [];

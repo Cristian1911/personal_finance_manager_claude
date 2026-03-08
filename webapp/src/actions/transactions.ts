@@ -234,6 +234,11 @@ export async function updateTransaction(
   formData: FormData
 ): Promise<ActionResult<Transaction>> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
 
   const parsed = transactionSchema.safeParse({
     account_id: formData.get("account_id"),
@@ -255,6 +260,7 @@ export async function updateTransaction(
   const { data: existing } = await supabase
     .from("transactions")
     .select("category_id")
+    .eq("user_id", user.id)
     .eq("id", id)
     .single();
 
@@ -267,6 +273,7 @@ export async function updateTransaction(
       clean_description: parsed.data.merchant_name || parsed.data.raw_description || null,
       ...(categoryChanged ? { categorization_source: "USER_OVERRIDE" as const } : {}),
     })
+    .eq("user_id", user.id)
     .eq("id", id)
     .select()
     .single();

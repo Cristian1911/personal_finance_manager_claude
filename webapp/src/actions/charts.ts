@@ -10,6 +10,7 @@ import {
   monthsBeforeStart,
 } from "@/lib/utils/date";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
+import { computeDebtBalance } from "@zeta/shared";
 
 // --- Types ---
 
@@ -68,6 +69,7 @@ export async function getCategorySpending(month?: string): Promise<CategorySpend
     supabase
       .from("budgets")
       .select("category_id, amount")
+      .eq("user_id", user.id)
   ]);
 
   const transactions = txRes.data;
@@ -348,6 +350,7 @@ export async function getNetWorthHistory(month?: string): Promise<NetWorthHistor
   const { data: accounts } = await supabase
     .from("accounts")
     .select("current_balance, available_balance, account_type, credit_limit")
+    .eq("user_id", user.id)
     .eq("is_active", true);
 
   // If no accounts, return early
@@ -359,13 +362,7 @@ export async function getNetWorthHistory(month?: string): Promise<NetWorthHistor
 
   const totalLiabilities = accounts
     .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
-    .reduce((sum, a) => {
-      // Matches computeDebtBalance from lib/utils/debt.ts
-      if (a.account_type === "CREDIT_CARD" && a.credit_limit != null && a.credit_limit > 0 && a.available_balance != null) {
-        return sum + Math.max(0, a.credit_limit - a.available_balance);
-      }
-      return sum + Math.abs(a.current_balance);
-    }, 0);
+    .reduce((sum, a) => sum + computeDebtBalance(a as Parameters<typeof computeDebtBalance>[0]), 0);
 
   const currentNetWorth = totalAssets - totalLiabilities;
 
@@ -455,6 +452,7 @@ export async function getDashboardHeroData(
   const { data: liquidAccounts } = await supabase
     .from("accounts")
     .select("id, name, current_balance, currency_code, updated_at")
+    .eq("user_id", user.id)
     .eq("is_active", true)
     .not("account_type", "in", '("CREDIT_CARD","LOAN")');
 
@@ -554,6 +552,7 @@ export async function getAccountsWithSparklineData(): Promise<GroupedAccounts> {
   const { data: accounts } = await supabase
     .from("accounts")
     .select("*")
+    .eq("user_id", user.id)
     .eq("is_active", true)
     .eq("show_in_dashboard", true)
     .order("display_order");

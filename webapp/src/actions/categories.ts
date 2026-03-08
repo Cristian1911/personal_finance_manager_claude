@@ -11,10 +11,16 @@ export async function getCategories(
   direction?: TransactionDirection
 ): Promise<ActionResult<CategoryWithChildren[]>> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
 
   let query = supabase
     .from("categories")
     .select("*")
+    .or(`user_id.eq.${user.id},user_id.is.null`)
     .eq("is_active", true)
     .order("display_order", { ascending: true });
 
@@ -65,6 +71,7 @@ export async function getCategoriesWithBudgets(
   let query = supabase
     .from("categories")
     .select("*")
+    .or(`user_id.eq.${user.id},user_id.is.null`)
     .eq("is_active", true)
     .order("display_order", { ascending: true });
 
