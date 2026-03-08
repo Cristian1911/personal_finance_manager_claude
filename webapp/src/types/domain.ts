@@ -41,6 +41,7 @@ export type CategoryBudgetData = {
   direction: TransactionDirection;
   budget: number | null;
   spent: number;
+  committedRecurring: number;
   percentUsed: number;
   average3m: number;
   children: CategoryWithChildren[];

@@ -16,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -73,11 +73,8 @@ function LumpSumTab({ accounts }: Props) {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
               $
             </span>
-            <Input
-              type="number"
-              min={0}
-              step={100000}
-              placeholder="1,000,000"
+            <CurrencyInput
+              placeholder="1.000.000"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               className="pl-7"
@@ -216,11 +213,8 @@ function SingleAccountTab({ accounts }: Props) {
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
-              <Input
-                type="number"
-                min={0}
-                step={50000}
-                placeholder="200,000"
+              <CurrencyInput
+                placeholder="200.000"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 className="pl-7"
@@ -478,11 +472,8 @@ function StrategiesTab({ accounts }: Props) {
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
-              <Input
+              <CurrencyInput
                 id="extra-payment-strat"
-                type="number"
-                min={0}
-                step={10000}
                 placeholder="0"
                 value={extraPaymentInput}
                 onChange={(e) => setExtraPaymentInput(e.target.value)}

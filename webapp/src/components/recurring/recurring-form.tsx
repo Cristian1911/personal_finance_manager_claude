@@ -8,6 +8,7 @@ import {
 } from "@/actions/recurring-templates";
 import { Button } from "@/components/ui/button";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -119,7 +120,7 @@ export function RecurringForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="direction">Tipo</Label>
           <Select
@@ -148,14 +149,11 @@ export function RecurringForm({
 
         <div className="space-y-2">
           <Label htmlFor="amount">Monto</Label>
-          <Input
+          <CurrencyInput
             id="amount"
             name="amount"
-            type="number"
-            step="0.01"
-            min="0.01"
             defaultValue={template?.amount}
-            placeholder="0.00"
+            placeholder="0"
             required
           />
           <p className="text-xs text-muted-foreground">
@@ -164,7 +162,7 @@ export function RecurringForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="account_id">Cuenta</Label>
           <Select
@@ -276,7 +274,7 @@ export function RecurringForm({
         value={selectedAccount?.currency_code ?? template?.currency_code ?? "COP"}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="start_date">Fecha de inicio</Label>
           <Input

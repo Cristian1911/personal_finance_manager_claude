@@ -20,6 +20,7 @@ export function BudgetSummaryBar({
     0
   );
   const totalSpent = categories.reduce((sum, c) => sum + c.spent, 0);
+  const totalRecurring = categories.reduce((sum, c) => sum + c.committedRecurring, 0);
   const overallPercent = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
   const budgetedCategories = categories.filter(
@@ -52,6 +53,11 @@ export function BudgetSummaryBar({
           <p className="text-sm text-muted-foreground">
             {daysRemaining} {daysRemaining === 1 ? "día" : "días"} restantes
           </p>
+          {totalRecurring > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(totalRecurring)} en fijos
+            </p>
+          )}
         </div>
       </div>
 

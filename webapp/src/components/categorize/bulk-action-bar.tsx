@@ -46,7 +46,7 @@ export function BulkActionBar({
           }
         }}
         placeholder="Asignar categoría"
-        triggerClassName="h-8 text-sm w-[240px]"
+        triggerClassName="h-8 text-sm w-full sm:w-[240px]"
       />
 
       <Button

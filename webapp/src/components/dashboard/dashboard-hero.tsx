@@ -29,7 +29,7 @@ export function DashboardHero({ data }: DashboardHeroProps) {
       </div>
 
       {/* 3 sub-cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card>
           <CardContent className="pt-4 pb-3 px-4">
             <div className="flex items-center gap-2 mb-1">

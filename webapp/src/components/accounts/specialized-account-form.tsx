@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useActionState } from "react";
 import { createAccount, updateAccount } from "@/actions/accounts";
 import { Button } from "@/components/ui/button";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -52,16 +53,14 @@ function generateYears(start: number, count: number) {
 function CreditCardFields({ account, defaults }: { account?: Account; defaults: AccountFormDefaults }) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="credit_limit">Límite de crédito *</Label>
-          <Input
+          <CurrencyInput
             id="credit_limit"
             name="credit_limit"
-            type="number"
-            step="0.01"
             defaultValue={account?.credit_limit ?? defaults.credit_limit ?? ""}
-            placeholder="Ej: 5000000"
+            placeholder="Ej: 5.000.000"
             required
           />
         </div>
@@ -80,7 +79,7 @@ function CreditCardFields({ account, defaults }: { account?: Account; defaults: 
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="cutoff_day">Día de corte</Label>
           <Input
@@ -125,28 +124,24 @@ function LoanFields({ account, defaults }: { account?: Account; defaults: Accoun
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="loan_amount">Monto original del préstamo *</Label>
-          <Input
+          <CurrencyInput
             id="loan_amount"
             name="loan_amount"
-            type="number"
-            step="0.01"
             defaultValue={account?.loan_amount ?? defaults.loan_amount ?? ""}
-            placeholder="Ej: 10000000"
+            placeholder="Ej: 10.000.000"
             required
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="monthly_payment">Cuota mensual</Label>
-          <Input
+          <CurrencyInput
             id="monthly_payment"
             name="monthly_payment"
-            type="number"
-            step="0.01"
             defaultValue={account?.monthly_payment ?? defaults.monthly_payment ?? ""}
-            placeholder="Ej: 350000"
+            placeholder="Ej: 350.000"
           />
         </div>
       </div>
@@ -165,7 +160,7 @@ function LoanFields({ account, defaults }: { account?: Account; defaults: Accoun
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Inicio del préstamo</Label>
           <div className="flex gap-2">
@@ -229,16 +224,14 @@ function InvestmentFields({ account, defaults }: { account?: Account; defaults: 
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="initial_investment">Inversión inicial</Label>
-          <Input
+          <CurrencyInput
             id="initial_investment"
             name="initial_investment"
-            type="number"
-            step="0.01"
             defaultValue={account?.initial_investment ?? defaults.initial_investment ?? ""}
-            placeholder="Ej: 5000000"
+            placeholder="Ej: 5.000.000"
           />
         </div>
         <div className="space-y-2">
@@ -377,7 +370,7 @@ export function SpecializedAccountForm({ account, defaultValues, onSuccess }: Pr
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="institution_name">Institución financiera</Label>
             <Input
@@ -406,11 +399,9 @@ export function SpecializedAccountForm({ account, defaultValues, onSuccess }: Pr
 
         <div className="space-y-2">
           <Label htmlFor="current_balance">Saldo actual *</Label>
-          <Input
+          <CurrencyInput
             id="current_balance"
             name="current_balance"
-            type="number"
-            step="0.01"
             defaultValue={account?.current_balance ?? dv.current_balance ?? 0}
             placeholder="0"
             required

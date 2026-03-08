@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { finishOnboarding } from "@/actions/onboarding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -214,20 +215,18 @@ export default function OnboardingPage() {
                             <CardContent className="grid gap-6">
                                 <div className="grid gap-2">
                                     <Label htmlFor="income">Ingreso mensual estimado</Label>
-                                    <Input
+                                    <CurrencyInput
                                         id="income"
-                                        type="number"
-                                        placeholder="Ej: 5000"
+                                        placeholder="Ej: 5.000"
                                         value={income}
                                         onChange={(e) => setIncome(e.target.value)}
                                     />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="expenses">Gasto mensual estimado</Label>
-                                    <Input
+                                    <CurrencyInput
                                         id="expenses"
-                                        type="number"
-                                        placeholder="Ej: 4000"
+                                        placeholder="Ej: 4.000"
                                         value={expenses}
                                         onChange={(e) => setExpenses(e.target.value)}
                                     />
@@ -343,10 +342,9 @@ export default function OnboardingPage() {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="balance">Saldo actual</Label>
-                                    <Input
+                                    <CurrencyInput
                                         id="balance"
-                                        type="number"
-                                        placeholder="0.00"
+                                        placeholder="0"
                                         value={balance}
                                         onChange={(e) => setBalance(e.target.value)}
                                     />

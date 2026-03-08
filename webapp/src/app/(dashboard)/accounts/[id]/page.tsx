@@ -45,7 +45,7 @@ export default async function AccountDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Link
           href="/accounts"
           className="text-muted-foreground hover:text-foreground"

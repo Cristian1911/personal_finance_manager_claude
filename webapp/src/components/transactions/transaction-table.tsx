@@ -17,6 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { toggleExcludeTransaction } from "@/actions/transactions";
@@ -38,25 +39,78 @@ export function TransactionTable({
   }
 
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10"></TableHead>
-            <TableHead>Descripción</TableHead>
-            <TableHead>Fecha</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="text-right">Monto</TableHead>
-            <TableHead className="w-10"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {transactions.map((tx) => (
-            <TransactionRow key={tx.id} tx={tx} />
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <>
+      {/* Mobile: card layout */}
+      <div className="sm:hidden space-y-2">
+        {transactions.map((tx) => (
+          <MobileTransactionCard key={tx.id} tx={tx} />
+        ))}
+      </div>
+
+      {/* Desktop: table layout */}
+      <div className="hidden sm:block rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10"></TableHead>
+              <TableHead>Descripción</TableHead>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Monto</TableHead>
+              <TableHead className="w-10"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {transactions.map((tx) => (
+              <TransactionRow key={tx.id} tx={tx} />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
+  );
+}
+
+function MobileTransactionCard({ tx }: { tx: Transaction }) {
+  const description =
+    tx.merchant_name ||
+    tx.clean_description ||
+    tx.raw_description ||
+    "Sin descripción";
+
+  return (
+    <Link href={`/transactions/${tx.id}`}>
+      <div
+        className={cn("flex items-center gap-3 rounded-lg border p-3", tx.is_excluded && "opacity-40")}
+      >
+        <div className="shrink-0">
+          {tx.direction === "INFLOW" ? (
+            <ArrowDownLeft className="h-4 w-4 text-green-500" />
+          ) : (
+            <ArrowUpRight className="h-4 w-4 text-orange-500" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{description}</p>
+          <p className="text-xs text-muted-foreground">
+            {formatDate(tx.transaction_date)}
+            {tx.status !== "POSTED" && (
+              <span>
+                {" · "}
+                {tx.status === "PENDING" ? "Pendiente" : "Cancelada"}
+              </span>
+            )}
+            {tx.is_excluded && <span> · Excluida</span>}
+          </p>
+        </div>
+        <span
+          className={cn("text-sm font-semibold shrink-0", tx.direction === "INFLOW" && "text-green-600", tx.is_excluded && "line-through")}
+        >
+          {tx.direction === "INFLOW" ? "+" : "-"}
+          {formatCurrency(tx.amount, tx.currency_code)}
+        </span>
+      </div>
+    </Link>
   );
 }
 

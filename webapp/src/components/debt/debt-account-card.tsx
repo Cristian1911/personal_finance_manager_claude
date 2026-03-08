@@ -124,7 +124,7 @@ export function DebtAccountCard({ account }: { account: DebtAccount }) {
         ) : null}
 
         {/* Details grid */}
-        <div className="grid grid-cols-2 gap-3 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           {account.interestRate !== null && (
             <div>
               <p className="text-xs text-muted-foreground">Tasa</p>
