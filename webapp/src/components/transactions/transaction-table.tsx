@@ -17,6 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { toggleExcludeTransaction } from "@/actions/transactions";
@@ -80,7 +81,7 @@ function MobileTransactionCard({ tx }: { tx: Transaction }) {
   return (
     <Link href={`/transactions/${tx.id}`}>
       <div
-        className={`flex items-center gap-3 rounded-lg border p-3 ${tx.is_excluded ? "opacity-40" : ""}`}
+        className={cn("flex items-center gap-3 rounded-lg border p-3", tx.is_excluded && "opacity-40")}
       >
         <div className="shrink-0">
           {tx.direction === "INFLOW" ? (
@@ -103,7 +104,7 @@ function MobileTransactionCard({ tx }: { tx: Transaction }) {
           </p>
         </div>
         <span
-          className={`text-sm font-semibold shrink-0 ${tx.direction === "INFLOW" ? "text-green-600" : ""} ${tx.is_excluded ? "line-through" : ""}`}
+          className={cn("text-sm font-semibold shrink-0", tx.direction === "INFLOW" && "text-green-600", tx.is_excluded && "line-through")}
         >
           {tx.direction === "INFLOW" ? "+" : "-"}
           {formatCurrency(tx.amount, tx.currency_code)}

@@ -8,9 +8,9 @@ import {
 } from "@/components/ui/collapsible";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { cn } from "@/lib/utils";
 import type { OccurrenceItem } from "./use-recurring-month";
 import type { CurrencyCode } from "@/types/domain";
+import { ChevronDown } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -38,6 +38,7 @@ export function RecurringCompletedSection({
           {completed.length === 1 ? "pago completado" : "pagos completados"}{" "}
           este mes
         </span>
+        <ChevronDown className="size-4 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
       </CollapsibleTrigger>
 
       <CollapsibleContent>

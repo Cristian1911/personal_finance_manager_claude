@@ -14,7 +14,6 @@ import { recordRecurringOccurrencePayment } from "@/actions/recurring-templates"
 import { toast } from "sonner";
 import type {
   Account,
-  CurrencyCode,
   RecurringTemplateWithRelations,
 } from "@/types/domain";
 
