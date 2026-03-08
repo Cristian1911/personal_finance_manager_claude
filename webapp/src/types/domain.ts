@@ -29,6 +29,22 @@ export type CategoryWithBudget = CategoryWithChildren & {
   childBudgetTotal: number; // Sum of children's monthly budgets (0 if none)
 };
 
+export type CategoryBudgetData = {
+  id: string;
+  name: string;
+  name_es: string | null;
+  slug: string;
+  icon: string;
+  color: string;
+  is_essential: boolean;
+  direction: TransactionDirection;
+  budget: number | null;
+  spent: number;
+  percentUsed: number;
+  average3m: number;
+  children: CategoryWithChildren[];
+};
+
 // Transaction with joined relations
 export type TransactionWithRelations = Transaction & {
   account: Pick<Account, "id" | "name" | "icon" | "color">;

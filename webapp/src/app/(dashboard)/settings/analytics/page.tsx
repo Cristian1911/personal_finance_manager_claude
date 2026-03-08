@@ -49,29 +49,28 @@ export default async function AnalyticsPage() {
 
   if (!user) redirect("/login");
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- analytics schema exists in DB but not in generated types
+  const analyticsClient = (supabase as any).schema("analytics");
+
   const [dailyCountsRes, activationRes, importRes, categorizeRes] = await Promise.all([
-    supabase
-      .schema("analytics")
+    analyticsClient
       .from("product_event_daily_counts")
       .select("day,event_name,flow,event_count,user_count")
       .order("day", { ascending: false })
       .limit(50),
-    supabase
-      .schema("analytics")
+    analyticsClient
       .from("activation_d7")
       .select("cohort_day,signups,activated_d7,activation_d7_pct")
       .order("cohort_day", { ascending: false })
       .limit(30),
-    supabase
-      .schema("analytics")
+    analyticsClient
       .from("import_funnel_daily")
       .select(
         "day,sessions,opened,file_selected,parse_requested,parse_succeeded,confirm_submitted,completed,open_to_complete_pct"
       )
       .order("day", { ascending: false })
       .limit(30),
-    supabase
-      .schema("analytics")
+    analyticsClient
       .from("categorization_funnel_daily")
       .select(
         "day,users_with_activity,seen,picker_opened,selected,categorized,bulk_categorized,seen_to_categorized_pct"
@@ -80,22 +79,22 @@ export default async function AnalyticsPage() {
       .limit(30),
   ]);
 
-  const dailyCounts = (dailyCountsRes.data ?? []).map((r) => ({
+  const dailyCounts = ((dailyCountsRes.data ?? []) as DailyEventCountRow[]).map((r) => ({
     day: r.day ?? "",
     event_name: r.event_name ?? "",
     flow: r.flow ?? "unknown",
     event_count: r.event_count ?? 0,
     user_count: r.user_count ?? 0,
-  })) as DailyEventCountRow[];
+  }));
 
-  const activation = (activationRes.data ?? []).map((r) => ({
+  const activation = ((activationRes.data ?? []) as ActivationRow[]).map((r) => ({
     cohort_day: r.cohort_day ?? "",
     signups: r.signups ?? 0,
     activated_d7: r.activated_d7 ?? 0,
     activation_d7_pct: r.activation_d7_pct ?? 0,
-  })) as ActivationRow[];
+  }));
 
-  const importFunnel = (importRes.data ?? []).map((r) => ({
+  const importFunnel = ((importRes.data ?? []) as ImportFunnelRow[]).map((r) => ({
     day: r.day ?? "",
     sessions: r.sessions ?? 0,
     opened: r.opened ?? 0,
@@ -105,9 +104,9 @@ export default async function AnalyticsPage() {
     confirm_submitted: r.confirm_submitted ?? 0,
     completed: r.completed ?? 0,
     open_to_complete_pct: r.open_to_complete_pct ?? 0,
-  })) as ImportFunnelRow[];
+  }));
 
-  const categorizeFunnel = (categorizeRes.data ?? []).map((r) => ({
+  const categorizeFunnel = ((categorizeRes.data ?? []) as CategorizationFunnelRow[]).map((r) => ({
     day: r.day ?? "",
     users_with_activity: r.users_with_activity ?? 0,
     seen: r.seen ?? 0,
@@ -116,7 +115,7 @@ export default async function AnalyticsPage() {
     categorized: r.categorized ?? 0,
     bulk_categorized: r.bulk_categorized ?? 0,
     seen_to_categorized_pct: r.seen_to_categorized_pct ?? 0,
-  })) as CategorizationFunnelRow[];
+  }));
 
   const latestImport = importFunnel[0];
   const latestCategorize = categorizeFunnel[0];

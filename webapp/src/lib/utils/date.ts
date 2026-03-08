@@ -62,4 +62,14 @@ export function isCurrentMonth(date: Date): boolean {
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 }
 
+/** Number of days remaining in the given month. Returns full month length for past/future months. */
+export function getDaysRemainingInMonth(date: Date): number {
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const today = new Date();
+  if (date.getMonth() !== today.getMonth() || date.getFullYear() !== today.getFullYear()) {
+    return lastDay;
+  }
+  return Math.max(0, lastDay - today.getDate());
+}
+
 export { addMonths, subMonths };
