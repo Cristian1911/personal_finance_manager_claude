@@ -312,7 +312,7 @@ export async function toggleCategoryActive(
     .from("categories")
     .update({ is_active: isActive })
     .eq("id", id)
-    .or(`user_id.eq.${user.id},user_id.is.null`);
+    .eq("user_id", user.id);
 
   if (error) return { success: false, error: error.message };
 

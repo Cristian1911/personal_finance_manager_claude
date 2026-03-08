@@ -128,7 +128,7 @@ export function useRecurringMonth(
             template.category?.name_es ??
             template.category?.name ??
             "Sin categoría",
-          categoryIcon: template.category?.icon ?? "📦",
+          categoryIcon: template.category?.icon ?? "tag",
           categoryColor: template.category?.color ?? "#6b7280",
           currencyCode: (template.currency_code ?? template.account.currency_code) as string,
           isDebtPayment,
@@ -259,7 +259,7 @@ export function useRecurringMonth(
         toast.success(msg, {
           duration: 5000,
           action: {
-            label: "Deshacer",
+            label: "Marcar pendiente",
             onClick: () => {
               setCheckedItems((prev) => {
                 const next = { ...prev };

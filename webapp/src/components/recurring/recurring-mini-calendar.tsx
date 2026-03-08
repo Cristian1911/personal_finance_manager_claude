@@ -31,7 +31,7 @@ interface RecurringMiniCalendarProps {
 /*  Day header labels (Mon-Sun, Spanish abbreviations)                 */
 /* ------------------------------------------------------------------ */
 
-const DAY_HEADERS = ["L", "M", "M", "J", "V", "S", "D"] as const;
+const DAY_HEADERS = ["L", "M", "X", "J", "V", "S", "D"] as const;
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
