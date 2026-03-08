@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import {
   quickCapturePreviewSchema,
@@ -29,9 +31,9 @@ type PersistTransactionParams = {
 };
 
 async function persistTransaction(
+  supabase: SupabaseClient<Database>,
   params: PersistTransactionParams
 ): Promise<ActionResult<Transaction>> {
-  const { supabase } = await getAuthenticatedClient();
   const idempotencyKey = await computeIdempotencyKey({
     provider: "MANUAL",
     transactionDate: params.transaction_date,
@@ -172,7 +174,7 @@ export async function createTransaction(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  return persistTransaction({
+  return persistTransaction(supabase, {
     userId: user.id,
     ...parsed.data,
     merchant_name: parsed.data.merchant_name || parsed.data.raw_description || null,
@@ -208,7 +210,7 @@ export async function createQuickCaptureTransaction(
   const suggestion =
     parsed.data.category_id ?? autoCategorize(parsed.data.merchant_name)?.category_id ?? null;
 
-  return persistTransaction({
+  return persistTransaction(supabase, {
     userId: user.id,
     ...parsed.data,
     category_id: suggestion,

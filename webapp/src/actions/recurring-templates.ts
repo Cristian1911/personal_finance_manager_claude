@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
@@ -279,7 +279,7 @@ const recurringOccurrencePaymentSchema = z.object({
   sourceAccountId: z.string().uuid().nullable().optional(),
 });
 
-type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
+type ServerSupabase = SupabaseClient<Database>;
 type RecurringOccurrencePaymentInput = z.infer<typeof recurringOccurrencePaymentSchema>;
 type RecurringPaymentTemplate = {
   id: string;

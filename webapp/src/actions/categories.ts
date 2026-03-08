@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createClient } from "@/lib/supabase/server";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { categorySchema } from "@/lib/validators/category";
 import type { ActionResult } from "@/types/actions";
@@ -11,10 +10,7 @@ import type { Category, CategoryWithChildren, CategoryWithBudget, TransactionDir
 export async function getCategories(
   direction?: TransactionDirection
 ): Promise<ActionResult<CategoryWithChildren[]>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
 

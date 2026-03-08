@@ -7,6 +7,10 @@
 - Package manager: **pnpm** (not npm), **uv** for Python
 - Living context docs: `python3 .claude/skills/codebase-context/scripts/build_context.py`
 - Install auto-refresh hook: `bash .claude/skills/codebase-context/scripts/install_git_hook.sh`
+- **Verification gates** (run before claiming work is done):
+  1. `pnpm install` — if any dependency was added/changed, ensure lockfile is updated
+  2. `pnpm build` — must pass clean (catches type errors, missing imports)
+  3. If Turbopack panics during dev: kill the server, `rm -rf .next`, restart `pnpm dev`
 
 ## Project Structure
 - `webapp/` — Next.js 15 (App Router) + TypeScript + Tailwind v4 + shadcn/ui
@@ -41,7 +45,7 @@
 - RLS pattern: `(select auth.uid()) = user_id`
 - Duplicate insert error code: `23505`
 - **Auth in server actions**: Always use `getAuthenticatedClient()` from `@/lib/supabase/auth` — it uses React `cache()` to deduplicate `getUser()` within a single request. Never call `createClient()` + `getUser()` separately in server actions.
-- **Defense-in-depth**: Always add `.eq("user_id", user.id)` even with RLS enabled. For tables with system rows (e.g., categories): `.or("user_id.eq.${user.id},user_id.is.null")`
+- **Defense-in-depth**: Always add `.eq("user_id", user.id)` even with RLS enabled. For tables with system rows (e.g., categories): `` .or(`user_id.eq.${user.id},user_id.is.null`) ``
 
 ### Database Schema
 - 5 tables: `profiles`, `accounts`, `categories`, `transactions`, `statement_snapshots`
