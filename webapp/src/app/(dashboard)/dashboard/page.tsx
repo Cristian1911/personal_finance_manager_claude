@@ -34,7 +34,7 @@ import { AccountsOverview } from "@/components/dashboard/accounts-overview";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
 import { BudgetPaceChart } from "@/components/charts/budget-pace-chart";
 import { IncomeVsExpensesChart } from "@/components/charts/income-vs-expenses-chart";
-import { CategorySpendingChart } from "@/components/charts/category-spending-chart";
+import { DashboardBudgetBar } from "@/components/budget/dashboard-budget-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
 import { getUserSafely } from "@/lib/supabase/auth";
@@ -240,7 +240,7 @@ export default async function DashboardPage({
             monthLabel={monthLabel}
           />
           <IncomeVsExpensesChart data={cashflowData} monthLabel={monthLabel} />
-          <CategorySpendingChart data={categoryData} monthLabel={monthLabel} />
+          <DashboardBudgetBar data={categoryData} monthLabel={monthLabel} />
         </div>
       </div>
 

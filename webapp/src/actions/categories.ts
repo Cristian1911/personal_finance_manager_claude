@@ -320,7 +320,6 @@ export async function reassignAndDeleteCategory(
   if (deleteError) return { success: false, error: deleteError.message };
 
   revalidatePath("/categories");
-  revalidatePath("/categories/manage");
   return { success: true, data: undefined };
 }
 
