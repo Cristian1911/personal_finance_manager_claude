@@ -28,11 +28,13 @@ interface PaymentTimelineProps {
   getDateStatus: (date: string) => DateStatus;
   onConfirm: (
     item: OccurrenceItem,
-    amount: number,
-    date: string,
-    sourceId?: string
+    overrides?: {
+      actualAmount?: number;
+      paymentDate?: string;
+      sourceAccountId?: string | null;
+    }
   ) => void;
-  isPending: boolean;
+  busyItems: Record<string, boolean>;
   selectedDate: string | null;
 }
 
@@ -96,7 +98,7 @@ export function PaymentTimeline({
   pendingByDate,
   getDateStatus,
   onConfirm,
-  isPending,
+  busyItems,
   selectedDate,
 }: PaymentTimelineProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -211,11 +213,15 @@ export function PaymentTimeline({
                       <RecurringConfirmInline
                         item={item}
                         onConfirm={(amount, paymentDate, sourceId) => {
-                          onConfirm(item, amount, paymentDate, sourceId);
+                          onConfirm(item, {
+                            actualAmount: amount,
+                            paymentDate,
+                            sourceAccountId: sourceId ?? null,
+                          });
                           setExpandedKey(null);
                         }}
                         onCancel={() => setExpandedKey(null)}
-                        isPending={isPending}
+                        isPending={!!busyItems[item.key]}
                       />
                     )}
                   </div>

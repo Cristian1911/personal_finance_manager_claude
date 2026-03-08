@@ -8,6 +8,7 @@ import {
   startOfMonth,
   subMonths,
 } from "date-fns";
+import { es } from "date-fns/locale";
 import { getOccurrencesBetween } from "@zeta/shared";
 import { recordRecurringOccurrencePayment } from "@/actions/recurring-templates";
 import { toast } from "sonner";
@@ -62,6 +63,8 @@ export function useRecurringMonth(
   const monthKey = format(monthCursor, "yyyy-MM");
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const storageKey = `zeta:recurring-checklist:${monthKey}`;
+
+  const monthLabel = format(monthCursor, "MMMM yyyy", { locale: es });
 
   const goNextMonth = useCallback(
     () => setMonthCursor((prev) => addMonths(prev, 1)),
@@ -168,13 +171,16 @@ export function useRecurringMonth(
   }, [pending]);
 
   /* ---- occurrence counts per date (for calendar dots) ---- */
-  const occurrenceCountByDate = useMemo(() => {
-    const map = new Map<string, number>();
+  const dateOccurrenceCounts = useMemo(() => {
+    const map = new Map<string, { total: number; completed: number }>();
     for (const item of occurrences) {
-      map.set(item.date, (map.get(item.date) ?? 0) + 1);
+      const entry = map.get(item.date) ?? { total: 0, completed: 0 };
+      entry.total += 1;
+      if (checkedItems[item.key]) entry.completed += 1;
+      map.set(item.date, entry);
     }
     return map;
-  }, [occurrences]);
+  }, [occurrences, checkedItems]);
 
   /* ---- date status helper ---- */
   const getDateStatus = useCallback(
@@ -284,6 +290,7 @@ export function useRecurringMonth(
     // Month navigation
     monthCursor,
     monthKey,
+    monthLabel,
     monthStart,
     monthEnd,
     goNextMonth,
@@ -294,7 +301,7 @@ export function useRecurringMonth(
     pending,
     completed,
     pendingByDate,
-    occurrenceCountByDate,
+    dateOccurrenceCounts,
 
     // Checked state
     checkedItems,
