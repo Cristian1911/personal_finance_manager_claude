@@ -3,7 +3,7 @@ import {
   ArrowLeftRight,
   FileUp,
   Wallet,
-  Tag,
+  PiggyBank,
   Landmark,
   Repeat2,
   Inbox,
@@ -28,7 +28,7 @@ export const MAIN_NAV: NavItem[] = [
   { title: "Cuentas", href: "/accounts", icon: Wallet },
   { title: "Deudas", href: "/deudas", icon: Landmark },
   { title: "Recurrentes", href: "/recurrentes", icon: Repeat2 },
-  { title: "Categorías", href: "/categories", icon: Tag },
+  { title: "Presupuesto", href: "/categories", icon: PiggyBank },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [
