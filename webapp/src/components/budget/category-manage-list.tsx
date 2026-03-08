@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { createCategory } from "@/actions/categories";
-import { deleteCategory } from "@/actions/categories";
+import { createCategory, deleteCategory } from "@/actions/categories";
 import { Trash2, Plus } from "lucide-react";
 import type { CategoryBudgetData } from "@/types/domain";
 
@@ -20,29 +19,39 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
   const [isPending, startTransition] = useTransition();
   const [addingToParent, setAddingToParent] = useState<string | null>(null);
   const [newSubName, setNewSubName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleAddSubcategory(parentId: string) {
     if (!newSubName.trim()) return;
+    setIsSaving(true);
+    setError(null);
 
-    const parent = categories.find((c) => c.id === parentId);
-    const formData = new FormData();
-    formData.append("name", newSubName.trim());
-    formData.append("name_es", newSubName.trim());
-    formData.append("slug", newSubName.trim().toLowerCase().replace(/\s+/g, "-"));
-    formData.append("icon", parent?.icon ?? "tag");
-    formData.append("color", parent?.color ?? "#6b7280");
-    formData.append("parent_id", parentId);
-    if (parent?.direction) {
-      formData.append("direction", parent.direction);
-    }
+    try {
+      const parent = categories.find((c) => c.id === parentId);
+      const formData = new FormData();
+      formData.append("name", newSubName.trim());
+      formData.append("name_es", newSubName.trim());
+      formData.append("slug", newSubName.trim().toLowerCase().replace(/\s+/g, "-"));
+      formData.append("icon", parent?.icon ?? "tag");
+      formData.append("color", parent?.color ?? "#6b7280");
+      formData.append("parent_id", parentId);
+      if (parent?.direction) {
+        formData.append("direction", parent.direction);
+      }
 
-    const result = await createCategory({ success: false, error: "" }, formData);
-    if (result.success) {
-      setAddingToParent(null);
-      setNewSubName("");
-      startTransition(() => {
-        router.refresh();
-      });
+      const result = await createCategory({ success: false, error: "" }, formData);
+      if (result.success) {
+        setAddingToParent(null);
+        setNewSubName("");
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setError(result.error ?? "Error al crear subcategoría");
+      }
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -83,8 +92,9 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                   addingToParent === cat.id ? null : cat.id
                 );
                 setNewSubName("");
+                setError(null);
               }}
-              disabled={isPending}
+              disabled={isPending || isSaving}
             >
               <Plus className="size-3.5" />
               <span className="hidden sm:inline">Subcategoría</span>
@@ -105,7 +115,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                     size="icon"
                     className="text-muted-foreground hover:text-destructive"
                     onClick={() => handleDeleteSubcategory(child.id)}
-                    disabled={isPending}
+                    disabled={isPending || isSaving}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
@@ -118,29 +128,33 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
           {addingToParent === cat.id && (
             <div
               className={cn(
-                "flex items-center gap-2 p-3 border-t",
-                cat.children.length === 0 && "border-t"
+                "flex flex-col gap-2 p-3 border-t"
               )}
             >
-              <Input
-                placeholder="Nombre de subcategoría"
-                value={newSubName}
-                onChange={(e) => setNewSubName(e.target.value)}
-                className="h-8 text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddSubcategory(cat.id);
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                onClick={() => handleAddSubcategory(cat.id)}
-                disabled={isPending || !newSubName.trim()}
-              >
-                Agregar
-              </Button>
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Nombre de subcategoría"
+                  value={newSubName}
+                  onChange={(e) => setNewSubName(e.target.value)}
+                  className="h-8 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddSubcategory(cat.id);
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => handleAddSubcategory(cat.id)}
+                  disabled={isPending || isSaving || !newSubName.trim()}
+                >
+                  {isSaving ? "..." : "Agregar"}
+                </Button>
+              </div>
+              {error && (
+                <p className="text-xs text-destructive">{error}</p>
+              )}
             </div>
           )}
         </div>

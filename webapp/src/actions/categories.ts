@@ -369,7 +369,7 @@ export async function getCategoriesWithBudgetData(
         .select("amount, category_id, transaction_date")
         .eq("direction", "OUTFLOW")
         .eq("is_excluded", false)
-        .gte("transaction_date", monthsBeforeStart(target, 2))
+        .gte("transaction_date", monthsBeforeStart(target, 3))
         .lt("transaction_date", monthStartStr(target))
     ),
   ]);

@@ -22,33 +22,45 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   function handleSetBudget(categoryId: string) {
     const cat = categories.find((c) => c.id === categoryId);
     setAmount(cat?.budget ? cat.budget.toString() : "");
+    setSaveError(null);
     setEditingId(categoryId);
   }
 
   async function handleSave() {
     if (!editingId || !amount) return;
-    const formData = new FormData();
-    formData.append("category_id", editingId);
-    formData.append("amount", amount);
-    formData.append("period", "monthly");
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const formData = new FormData();
+      formData.append("category_id", editingId);
+      formData.append("amount", amount);
+      formData.append("period", "monthly");
 
-    const result = await upsertBudget({ success: false, error: "" }, formData);
-    if (result.success) {
-      setEditingId(null);
-      setAmount("");
-      startTransition(() => {
-        router.refresh();
-      });
+      const result = await upsertBudget({ success: false, error: "" }, formData);
+      if (result.success) {
+        setEditingId(null);
+        setAmount("");
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setSaveError(result.error ?? "Error al guardar");
+      }
+    } finally {
+      setIsSaving(false);
     }
   }
 
   function handleCancel() {
     setEditingId(null);
     setAmount("");
+    setSaveError(null);
   }
 
   return (
@@ -81,21 +93,24 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
                 onChange={(e) => setAmount(e.target.value)}
                 min={0}
               />
+              {saveError && (
+                <p className="text-xs text-destructive">{saveError}</p>
+              )}
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleCancel}
-                  disabled={isPending}
+                  disabled={isSaving || isPending}
                 >
                   Cancelar
                 </Button>
                 <Button
                   size="sm"
                   onClick={handleSave}
-                  disabled={isPending || !amount}
+                  disabled={isSaving || isPending || !amount}
                 >
-                  Guardar
+                  {isSaving ? "Guardando..." : "Guardar"}
                 </Button>
               </div>
             </div>
