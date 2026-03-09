@@ -9,6 +9,7 @@ import {
   Inbox,
   Settings,
   BarChart3,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,6 +30,7 @@ export const MAIN_NAV: NavItem[] = [
   { title: "Deudas", href: "/deudas", icon: Landmark },
   { title: "Recurrentes", href: "/recurrentes", icon: Repeat2 },
   { title: "Presupuesto", href: "/categories", icon: PiggyBank },
+  { title: "Gestionar", href: "/gestionar", icon: Wrench },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [

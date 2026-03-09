@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { BugReportForm } from "@/components/settings/bug-report-form";
 
@@ -22,7 +23,8 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div>
+      <MobilePageHeader title="Ajustes" backHref="/gestionar" />
+      <div className="hidden lg:block">
         <h1 className="text-2xl font-bold">Configuración</h1>
         <p className="text-muted-foreground">
           Gestiona tu perfil y preferencias

@@ -4,6 +4,7 @@ import { UtilizationGauge } from "@/components/debt/utilization-gauge";
 import { InterestCostCard } from "@/components/debt/interest-cost-card";
 import { DebtAccountCard } from "@/components/debt/debt-account-card";
 import { DebtInsights } from "@/components/debt/debt-insights";
+import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { Button } from "@/components/ui/button";
 import { Calculator } from "lucide-react";
 import Link from "next/link";
@@ -15,7 +16,8 @@ export default async function DeudasPage() {
   if (overview.accounts.length === 0) {
     return (
       <div className="space-y-6">
-        <div>
+        <MobilePageHeader title="Deudas" backHref="/gestionar" />
+        <div className="hidden lg:block">
           <h1 className="text-2xl font-bold">Deudas</h1>
           <p className="text-muted-foreground">
             Visualiza y gestiona tus deudas
@@ -41,7 +43,8 @@ export default async function DeudasPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <MobilePageHeader title="Deudas" backHref="/gestionar" />
+      <div className="hidden lg:flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">Deudas</h1>
           <p className="text-muted-foreground">

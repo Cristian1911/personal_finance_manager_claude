@@ -1,6 +1,7 @@
 import { getAccounts } from "@/actions/accounts";
 import { AccountCard } from "@/components/accounts/account-card";
 import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
+import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { formatCurrency } from "@/lib/utils/currency";
 
 export default async function AccountsPage() {
@@ -16,7 +17,8 @@ export default async function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <MobilePageHeader title="Cuentas" backHref="/gestionar" />
+      <div className="hidden lg:flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">Cuentas</h1>
           <p className="text-muted-foreground">
