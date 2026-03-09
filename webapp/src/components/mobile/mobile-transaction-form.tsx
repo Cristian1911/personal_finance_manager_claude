@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useActionState } from "react";
+import { useState, useMemo, useActionState } from "react";
 import { Loader2 } from "lucide-react";
 import { createTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
@@ -67,7 +66,7 @@ export function MobileTransactionForm({
   return (
     <form action={formAction} className="space-y-4">
       {!state.success && state.error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
+        <div role="alert" className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
           {state.error}
         </div>
       )}

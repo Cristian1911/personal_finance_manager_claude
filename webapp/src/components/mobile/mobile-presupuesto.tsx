@@ -145,7 +145,7 @@ function InboxRow({
           {transaction.merchant_name ?? transaction.clean_description ?? transaction.raw_description}
         </p>
         <p className="text-[11px] text-muted-foreground">
-          {formatCurrency(transaction.amount)}
+          {formatCurrency(transaction.amount, transaction.currency_code)}
         </p>
       </div>
       <CategoryCombobox

@@ -37,13 +37,14 @@ export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
   const rightTabs = TABS.filter((t) => t.position === "right");
 
   function renderTab(tab: Tab) {
-    const isActive = pathname.startsWith(tab.href);
+    const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
     const showBadge = tab.badge === "uncategorized" && uncategorizedCount > 0;
 
     return (
       <Link
         key={tab.href}
         href={tab.href}
+        aria-current={isActive ? "page" : undefined}
         className={cn(
           "flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors",
           isActive

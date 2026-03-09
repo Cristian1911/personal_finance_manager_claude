@@ -157,7 +157,7 @@ export function MobileMovimientos({
                   className="h-2 w-2 rounded-full shrink-0"
                   style={{ backgroundColor: chip.color }}
                 />
-                {formatCurrency(chip.total, currency)}
+                {chip.name} {formatCurrency(chip.total, currency)}
               </span>
             ))}
           </div>
