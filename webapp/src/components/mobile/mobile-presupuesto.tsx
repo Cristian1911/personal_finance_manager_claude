@@ -5,8 +5,11 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { categorizeTransaction } from "@/actions/categorize";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { formatDate } from "@/lib/utils/date";
 import {
   AlertTriangle,
+  ArrowDownLeft,
+  ArrowUpRight,
   ChevronDown,
   ChevronRight,
   Home,
@@ -45,6 +48,7 @@ export function MobilePresupuesto({
   categoryTree,
 }: MobilePresupuestoProps) {
   const [inboxExpanded, setInboxExpanded] = useState(true);
+  const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
@@ -79,6 +83,32 @@ export function MobilePresupuesto({
 
   return (
     <div className="space-y-5">
+      {/* Budget Progress */}
+      {activeBudgets.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Con presupuesto
+          </h3>
+          {activeBudgets.map((cat) => (
+            <BudgetRow key={cat.id} category={cat} />
+          ))}
+        </div>
+      )}
+
+      {/* Unbudgeted categories with spending */}
+      {unbudgeted.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Sin presupuesto
+          </h3>
+          <div className="space-y-3">
+            {unbudgeted.map((cat) => (
+              <UnbudgetedRow key={cat.id} category={cat} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Categorization Inbox */}
       {visibleInbox.length > 0 && (
         <div>
@@ -106,36 +136,14 @@ export function MobilePresupuesto({
                   categoryTree={categoryTree}
                   onCategorize={handleCategorize}
                   disabled={isPending}
+                  isExpanded={expandedTxId === tx.id}
+                  onToggleExpand={() =>
+                    setExpandedTxId(expandedTxId === tx.id ? null : tx.id)
+                  }
                 />
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Budget Progress */}
-      {activeBudgets.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Con presupuesto
-          </h3>
-          {activeBudgets.map((cat) => (
-            <BudgetRow key={cat.id} category={cat} />
-          ))}
-        </div>
-      )}
-
-      {/* Unbudgeted categories with spending */}
-      {unbudgeted.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Sin presupuesto
-          </h3>
-          <div className="space-y-3">
-            {unbudgeted.map((cat) => (
-              <UnbudgetedRow key={cat.id} category={cat} />
-            ))}
-          </div>
         </div>
       )}
 
@@ -153,30 +161,110 @@ function InboxRow({
   categoryTree,
   onCategorize,
   disabled,
+  isExpanded,
+  onToggleExpand,
 }: {
   transaction: TransactionWithRelations;
   categoryTree: CategoryWithChildren[];
   onCategorize: (txId: string, categoryId: string | null) => void;
   disabled: boolean;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }) {
+  const tx = transaction;
+  const description =
+    tx.merchant_name ?? tx.clean_description ?? tx.raw_description ?? "Sin descripción";
+  const isOutflow = tx.direction === "OUTFLOW";
+
   return (
-    <div className="flex items-center gap-2">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm truncate">
-          {transaction.merchant_name ?? transaction.clean_description ?? transaction.raw_description}
-        </p>
-        <p className="text-[11px] text-muted-foreground">
-          {formatCurrency(transaction.amount, transaction.currency_code)}
-        </p>
+    <div>
+      {/* Compact row — tappable */}
+      <div
+        className="flex items-center gap-2 cursor-pointer rounded-md -mx-1 px-1 py-0.5 hover:bg-muted/50 transition-colors"
+        onClick={onToggleExpand}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleExpand();
+          }
+        }}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-sm truncate">{description}</p>
+        </div>
+        <span
+          className={cn(
+            "shrink-0 text-sm font-medium tabular-nums",
+            isOutflow ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+          )}
+        >
+          {isOutflow ? "-" : "+"}
+          {formatCurrency(tx.amount, tx.currency_code)}
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            !isExpanded && "-rotate-90"
+          )}
+        />
       </div>
-      <CategoryCombobox
-        categories={categoryTree}
-        value={null}
-        onValueChange={(id) => onCategorize(transaction.id, id)}
-        direction={transaction.direction}
-        placeholder="Categoría"
-        triggerClassName="w-36 h-8 text-xs"
-      />
+
+      {/* Expanded detail */}
+      {isExpanded && (
+        <div className="mt-2 space-y-3 rounded-lg bg-muted/30 p-3">
+          {/* Direction + description + amount */}
+          <div className="flex items-start gap-2">
+            <div
+              className={cn(
+                "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full",
+                isOutflow
+                  ? "bg-red-500/10 text-red-500"
+                  : "bg-emerald-500/10 text-emerald-500"
+              )}
+            >
+              {isOutflow ? (
+                <ArrowUpRight className="size-3.5" />
+              ) : (
+                <ArrowDownLeft className="size-3.5" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">{description}</p>
+              {tx.raw_description && tx.raw_description !== description && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {tx.raw_description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Account + date */}
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {tx.account && (
+              <span className="inline-flex items-center gap-1">
+                <span
+                  className="inline-block size-2 rounded-full"
+                  style={{ backgroundColor: tx.account.color ?? undefined }}
+                />
+                {tx.account.name}
+              </span>
+            )}
+            <span>{formatDate(tx.transaction_date, "dd MMM yyyy")}</span>
+          </div>
+
+          {/* Category picker — full width */}
+          <CategoryCombobox
+            categories={categoryTree}
+            value={null}
+            onValueChange={(id) => onCategorize(tx.id, id)}
+            direction={tx.direction}
+            placeholder="Elegir categoría"
+            triggerClassName="w-full h-9 text-sm"
+          />
+        </div>
+      )}
     </div>
   );
 }
