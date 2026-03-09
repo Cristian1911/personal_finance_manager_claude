@@ -1,6 +1,7 @@
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { ImportWizard } from "@/components/import/import-wizard";
+import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 
 export default async function ImportPage() {
   const [accountResult, categoryResult] = await Promise.all([
@@ -12,7 +13,8 @@ export default async function ImportPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <MobilePageHeader title="Importar Extracto" backHref="/gestionar" />
+      <div className="hidden lg:block">
         <h1 className="text-2xl font-bold">Importar Extracto</h1>
         <p className="text-muted-foreground">
           Sube un extracto bancario en PDF para importar tus transacciones

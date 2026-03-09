@@ -1,11 +1,14 @@
 import {
   getCategoriesWithBudgetData,
   getAllCategoriesForManagement,
+  getCategories,
 } from "@/actions/categories";
+import { getUncategorizedTransactions } from "@/actions/categorize";
 import { BudgetSummaryBar } from "@/components/budget/budget-summary-bar";
 import { BudgetCategoryGrid } from "@/components/budget/budget-category-grid";
 import { TrendComparison } from "@/components/budget/trend-comparison";
 import { CategoryManageList } from "@/components/budget/category-manage-list";
+import { MobilePresupuesto } from "@/components/mobile/mobile-presupuesto";
 import { MonthSelector } from "@/components/month-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
@@ -18,13 +21,16 @@ export default async function CategoriesPage({
   const { month } = await searchParams;
   const selectedMonth = parseMonth(month);
 
-  const [result, manageResult] = await Promise.all([
+  const [result, manageResult, uncategorized, categoryTreeResult] = await Promise.all([
     getCategoriesWithBudgetData(month),
     getAllCategoriesForManagement(),
+    getUncategorizedTransactions(),
+    getCategories(),
   ]);
   const categories = result.success ? result.data : [];
   const outflowCategories = categories.filter((c) => c.direction === "OUTFLOW");
   const allCategories = manageResult.success ? manageResult.data : [];
+  const categoryTree = categoryTreeResult.success ? categoryTreeResult.data : [];
 
   const daysRemaining = getDaysRemainingInMonth(selectedMonth);
   const monthLabel = formatMonthLabel(selectedMonth);
@@ -39,31 +45,43 @@ export default async function CategoriesPage({
         <MonthSelector />
       </div>
 
-      <BudgetSummaryBar
-        categories={outflowCategories}
-        daysRemaining={daysRemaining}
-        monthLabel={monthLabel}
-      />
+      {/* Mobile view */}
+      <div className="lg:hidden">
+        <MobilePresupuesto
+          uncategorizedTransactions={uncategorized}
+          budgetCategories={outflowCategories}
+          categoryTree={categoryTree}
+        />
+      </div>
 
-      <Tabs defaultValue="presupuesto">
-        <TabsList>
-          <TabsTrigger value="presupuesto">Presupuesto</TabsTrigger>
-          <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
-          <TabsTrigger value="gestionar">Gestionar</TabsTrigger>
-        </TabsList>
+      {/* Desktop view */}
+      <div className="hidden lg:block space-y-6">
+        <BudgetSummaryBar
+          categories={outflowCategories}
+          daysRemaining={daysRemaining}
+          monthLabel={monthLabel}
+        />
 
-        <TabsContent value="presupuesto" className="mt-4">
-          <BudgetCategoryGrid categories={outflowCategories} />
-        </TabsContent>
+        <Tabs defaultValue="presupuesto">
+          <TabsList>
+            <TabsTrigger value="presupuesto">Presupuesto</TabsTrigger>
+            <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
+            <TabsTrigger value="gestionar">Gestionar</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="tendencias" className="mt-4">
-          <TrendComparison categories={outflowCategories} />
-        </TabsContent>
+          <TabsContent value="presupuesto" className="mt-4">
+            <BudgetCategoryGrid categories={outflowCategories} />
+          </TabsContent>
 
-        <TabsContent value="gestionar" className="mt-4">
-          <CategoryManageList categories={allCategories} />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="tendencias" className="mt-4">
+            <TrendComparison categories={outflowCategories} />
+          </TabsContent>
+
+          <TabsContent value="gestionar" className="mt-4">
+            <CategoryManageList categories={allCategories} />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

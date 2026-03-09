@@ -5,6 +5,7 @@ import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
 import { DeleteAccountButton } from "@/components/accounts/delete-account-button";
 import { ReconcileBalanceDialog } from "@/components/accounts/reconcile-balance-dialog";
 import { StatementHistoryTimeline } from "@/components/accounts/statement-history-timeline";
+import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { formatCurrency } from "@/lib/utils/currency";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +46,8 @@ export default async function AccountDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4">
+      <MobilePageHeader title={account.name} backHref="/accounts" />
+      <div className="hidden lg:flex flex-wrap items-center gap-4">
         <Link
           href="/accounts"
           className="text-muted-foreground hover:text-foreground"

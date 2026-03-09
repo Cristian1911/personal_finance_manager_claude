@@ -9,3 +9,5 @@
 - [ ] **[low]** BC loan parser uses US number format while Lulo uses Colombian format — inconsistency risk for future loan parsers
 - [ ] **[low]** Zod 4 `.uuid()` enforces RFC 9562 — seed category UUIDs (a0000001-...) fail validation. Using permissive regex workaround
 - [ ] **[low]** PDF `1152469757.pdf` (Nequi) is password-protected — password is the filename. Parser needs password param from user or auto-detection
+- [ ] **[medium]** `use-recurring-month.ts` localStorage race condition — second `useEffect` writes empty `{}` to storage before first effect hydrates from storage, potentially clearing persisted checklist. Add `hasHydrated` ref guard.
+- [ ] **[medium]** Transaction filter debounce doesn't work — `onChange` handler returns cleanup function but React event handlers ignore it. Timeouts are never cleared, causing multiple rapid router pushes on fast typing.

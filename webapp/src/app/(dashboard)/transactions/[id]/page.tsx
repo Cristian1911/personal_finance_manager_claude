@@ -4,6 +4,7 @@ import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
 import { DeleteTransactionButton } from "@/components/transactions/delete-transaction-button";
+import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,8 @@ export default async function TransactionDetailPage({
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="flex flex-wrap items-center gap-4">
+      <MobilePageHeader title="Detalle" backHref="/transactions" />
+      <div className="hidden lg:flex flex-wrap items-center gap-4">
         <Link
           href="/transactions"
           className="text-muted-foreground hover:text-foreground"
