@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +25,16 @@ export function FabMenu({ onAction }: FabMenuProps) {
   const [open, setOpen] = useState(false);
 
   const toggle = useCallback(() => setOpen((prev) => !prev), []);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
 
   const handleAction = useCallback(
     (action: FabAction) => {
@@ -54,6 +64,7 @@ export function FabMenu({ onAction }: FabMenuProps) {
             <button
               key={action.id}
               type="button"
+              aria-label={action.label}
               onClick={() => handleAction(action.id)}
               className={cn(
                 "flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in fill-mode-both",
