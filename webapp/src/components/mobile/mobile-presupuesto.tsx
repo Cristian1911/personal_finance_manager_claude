@@ -116,6 +116,9 @@ export function MobilePresupuesto({
       {/* Budget Progress */}
       {activeBudgets.length > 0 && (
         <div className="space-y-3">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Con presupuesto
+          </h3>
           {activeBudgets.map((cat) => (
             <BudgetRow key={cat.id} category={cat} />
           ))}
