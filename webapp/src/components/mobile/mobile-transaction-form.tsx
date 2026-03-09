@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useActionState } from "react";
+import { useState, useMemo, useEffect, useActionState } from "react";
 import { Loader2 } from "lucide-react";
 import { createTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
@@ -50,10 +50,20 @@ export function MobileTransactionForm({
     { success: false, error: "" },
   );
 
-  const defaultAccount = accounts[0];
-  const [selectedAccountId, setSelectedAccountId] = useState<string>(
-    defaultAccount?.id ?? "",
-  );
+  const STORAGE_KEY = "zeta:quick-capture-account";
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(() => {
+    if (typeof window === "undefined") return accounts[0]?.id ?? "";
+    const saved = localStorage.getItem(STORAGE_KEY);
+    // Only use saved value if it matches a current account
+    if (saved && accounts.some((a) => a.id === saved)) return saved;
+    return accounts[0]?.id ?? "";
+  });
+
+  useEffect(() => {
+    if (selectedAccountId) {
+      localStorage.setItem(STORAGE_KEY, selectedAccountId);
+    }
+  }, [selectedAccountId]);
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
   const currencyCode = useMemo(() => {

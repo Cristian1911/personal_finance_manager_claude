@@ -145,8 +145,7 @@ export function MobileMovimientos({
         {/* Category chips — horizontally scrollable */}
         {categoryChips.length > 0 && (
           <div
-            className="mt-3 -mx-4 px-4 flex gap-2 overflow-x-auto pb-1"
-            style={{ scrollbarWidth: "none" }}
+            className="mt-3 -mx-4 px-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"
           >
             {categoryChips.map((chip) => (
               <span
