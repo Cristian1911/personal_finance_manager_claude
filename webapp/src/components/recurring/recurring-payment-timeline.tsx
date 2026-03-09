@@ -14,7 +14,6 @@ import {
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { RecurringConfirmInline } from "./recurring-confirm-inline";
 import type { OccurrenceItem, DateStatus } from "./use-recurring-month";
 import type { CurrencyCode } from "@/types/domain";
@@ -163,7 +162,20 @@ export function PaymentTimeline({
                 return (
                   <div key={item.key}>
                     {/* Payment row */}
-                    <div className="flex items-center gap-2 px-3 py-2">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="flex cursor-pointer items-center gap-2 px-3 py-2 transition-colors hover:bg-muted/50"
+                      onClick={() =>
+                        setExpandedKey(isExpanded ? null : item.key)
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setExpandedKey(isExpanded ? null : item.key);
+                        }
+                      }}
+                    >
                       {/* Category icon */}
                       <span
                         className="flex size-7 shrink-0 items-center justify-center rounded-md"
@@ -195,17 +207,10 @@ export function PaymentTimeline({
                         )}
                       </span>
 
-                      {/* Confirm button */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0 text-xs"
-                        onClick={() =>
-                          setExpandedKey(isExpanded ? null : item.key)
-                        }
-                      >
+                      {/* Confirm indicator */}
+                      <span className="shrink-0 text-xs text-muted-foreground">
                         {isExpanded ? "Cerrar" : "Confirmar ▸"}
-                      </Button>
+                      </span>
                     </div>
 
                     {/* Inline confirm panel */}
