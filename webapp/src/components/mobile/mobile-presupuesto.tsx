@@ -56,6 +56,10 @@ export function MobilePresupuesto({
     (c) => c.budget !== null && c.budget > 0
   );
 
+  const unbudgeted = budgetCategories.filter(
+    (c) => (c.budget === null || c.budget === 0) && c.spent > 0
+  );
+
   function handleCategorize(txId: string, categoryId: string | null) {
     if (!categoryId) return;
     // Optimistically remove from list
@@ -118,7 +122,21 @@ export function MobilePresupuesto({
         </div>
       )}
 
-      {activeBudgets.length === 0 && visibleInbox.length === 0 && (
+      {/* Unbudgeted categories with spending */}
+      {unbudgeted.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Sin presupuesto
+          </h3>
+          <div className="space-y-3">
+            {unbudgeted.map((cat) => (
+              <UnbudgetedRow key={cat.id} category={cat} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeBudgets.length === 0 && unbudgeted.length === 0 && visibleInbox.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">
           No hay presupuestos configurados.
         </p>
@@ -156,6 +174,29 @@ function InboxRow({
         placeholder="Categoría"
         triggerClassName="w-36 h-8 text-xs"
       />
+    </div>
+  );
+}
+
+function UnbudgetedRow({ category }: { category: CategoryBudgetData }) {
+  const IconComp = ICON_MAP[category.icon] ?? Tag;
+
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2 min-w-0">
+        <span
+          className="flex size-6 shrink-0 items-center justify-center rounded-md"
+          style={{ backgroundColor: `${category.color}20`, color: category.color }}
+        >
+          <IconComp className="size-3.5" />
+        </span>
+        <span className="text-sm font-medium truncate">
+          {category.name_es ?? category.name}
+        </span>
+      </div>
+      <span className="text-sm tabular-nums text-muted-foreground whitespace-nowrap ml-2">
+        {formatCurrency(category.spent)}
+      </span>
     </div>
   );
 }
