@@ -4,25 +4,29 @@ import { useState, useCallback, useEffect } from "react";
 import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type FabAction = "expense" | "income" | "transfer";
+export type FabAction = "expense" | "income" | "transfer" | "new-recurring" | "new-account";
 
-interface FabMenuProps {
-  onAction: (action: FabAction) => void;
-}
-
-const SUB_ACTIONS: {
+export interface ContextAction {
   id: FabAction;
   label: string;
   icon: typeof ArrowUpRight;
   bg: string;
-}[] = [
+}
+
+interface FabMenuProps {
+  onAction: (action: FabAction) => void;
+  contextActions?: ContextAction[];
+}
+
+const SUB_ACTIONS: ContextAction[] = [
   { id: "expense", label: "Gasto rápido", icon: ArrowUpRight, bg: "bg-orange-500" },
   { id: "income", label: "Ingreso", icon: ArrowDownLeft, bg: "bg-green-500" },
   { id: "transfer", label: "Transferencia", icon: ArrowLeftRight, bg: "bg-blue-500" },
 ];
 
-export function FabMenu({ onAction }: FabMenuProps) {
+export function FabMenu({ onAction, contextActions }: FabMenuProps) {
   const [open, setOpen] = useState(false);
+  const allActions = [...(contextActions ?? []), ...SUB_ACTIONS];
 
   const toggle = useCallback(() => setOpen((prev) => !prev), []);
 
@@ -60,7 +64,7 @@ export function FabMenu({ onAction }: FabMenuProps) {
         <div
           className="fixed bottom-20 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-3 pb-[env(safe-area-inset-bottom)]"
         >
-          {SUB_ACTIONS.map((action, index) => (
+          {allActions.map((action, index) => (
             <button
               key={action.id}
               type="button"
