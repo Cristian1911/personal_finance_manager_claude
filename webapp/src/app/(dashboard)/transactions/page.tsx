@@ -9,6 +9,7 @@ import { QuickCaptureBar } from "@/components/transactions/quick-capture-bar";
 import { Pagination } from "@/components/transactions/pagination";
 import { MonthSelector } from "@/components/month-selector";
 import { PurchaseDecisionCard } from "@/components/dashboard/purchase-decision-card";
+import { MobileMovimientos } from "@/components/mobile/mobile-movimientos";
 import { parseMonth, formatMonthParam } from "@/lib/utils/date";
 
 export default async function TransactionsPage({
@@ -35,42 +36,53 @@ export default async function TransactionsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Transacciones</h1>
-          <p className="text-muted-foreground">
-            {transactionsResult.count} transacciones en total
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Suspense>
-            <MonthSelector />
-          </Suspense>
-          <TransactionFormDialog accounts={accounts} categories={categories} />
-        </div>
+      {/* Mobile: summary + date-grouped feed */}
+      <div className="lg:hidden">
+        <MobileMovimientos
+          transactions={transactionsResult.data}
+          categories={categories}
+        />
       </div>
 
-      <Suspense>
-        <TransactionFilters accounts={accounts} />
-      </Suspense>
+      {/* Desktop: full table with filters, quick capture, etc. */}
+      <div className="hidden lg:block space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-bold">Transacciones</h1>
+            <p className="text-muted-foreground">
+              {transactionsResult.count} transacciones en total
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Suspense>
+              <MonthSelector />
+            </Suspense>
+            <TransactionFormDialog accounts={accounts} categories={categories} />
+          </div>
+        </div>
 
-      <QuickCaptureBar accounts={accounts} categories={categories} />
+        <Suspense>
+          <TransactionFilters accounts={accounts} />
+        </Suspense>
 
-      <PurchaseDecisionCard
-        accounts={accounts}
-        categories={outflowCategories}
-        defaultMonth={defaultMonth}
-      />
+        <QuickCaptureBar accounts={accounts} categories={categories} />
 
-      <TransactionTable transactions={transactionsResult.data} />
-
-      <Suspense>
-        <Pagination
-          page={transactionsResult.page}
-          totalPages={transactionsResult.totalPages}
-          count={transactionsResult.count}
+        <PurchaseDecisionCard
+          accounts={accounts}
+          categories={outflowCategories}
+          defaultMonth={defaultMonth}
         />
-      </Suspense>
+
+        <TransactionTable transactions={transactionsResult.data} />
+
+        <Suspense>
+          <Pagination
+            page={transactionsResult.page}
+            totalPages={transactionsResult.totalPages}
+            count={transactionsResult.count}
+          />
+        </Suspense>
+      </div>
     </div>
   );
 }
