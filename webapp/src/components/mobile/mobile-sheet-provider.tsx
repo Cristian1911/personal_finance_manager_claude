@@ -35,6 +35,8 @@ const TRANSACTION_ACTIONS: Record<
 };
 
 function getContextActions(pathname: string): ContextAction[] {
+  // startsWith: no sub-routes for recurrentes
+  // exact match: avoid showing on /accounts/[id] detail pages
   if (pathname.startsWith("/recurrentes")) {
     return [{ id: "new-recurring", label: "Nuevo recurrente", icon: CalendarPlus, bg: "bg-purple-500" }];
   }
