@@ -38,6 +38,7 @@ import { DashboardBudgetBar } from "@/components/budget/dashboard-budget-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
+import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
 
 type DashboardTransactionRow = {
   id: string;
@@ -48,6 +49,7 @@ type DashboardTransactionRow = {
   clean_description?: string | null;
   transaction_date?: string;
   currency_code?: string;
+  categories?: { name_es: string | null; name: string } | null;
 };
 
 export default async function DashboardPage({
@@ -64,11 +66,11 @@ export default async function DashboardPage({
 
   if (!user) return null;
 
-  // Fetch recent transactions
+  // Fetch recent transactions (with category name for mobile view)
   const { data: recentTransactions } = await executeVisibleTransactionQuery(() =>
     supabase
       .from("transactions")
-      .select("*")
+      .select("*, categories!category_id(name_es, name)")
       .eq("is_excluded", false)
       .order("transaction_date", { ascending: false })
       .order("created_at", { ascending: false })
@@ -191,116 +193,156 @@ export default async function DashboardPage({
 
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
 
+  // Map data for mobile dashboard
+  const mobileHeroData = {
+    availableToSpend: heroData.availableToSpend,
+    totalBalance: heroData.totalLiquid,
+    pendingFixed: heroData.totalPending,
+    currency: heroData.currency,
+  };
+
+  const mobileUpcomingPayments = heroData.pendingObligations.slice(0, 5).map((o) => ({
+    id: o.id,
+    name: o.name,
+    dueDate: o.due_date,
+    amount: o.amount,
+    currencyCode: o.currency_code,
+  }));
+
+  const mobileRecentTx = recentTx.map((tx) => ({
+    id: tx.id,
+    description: tx.merchant_name || tx.clean_description || "Sin descripción",
+    amount: tx.amount,
+    currency_code: tx.currency_code ?? "COP",
+    direction: tx.direction,
+    date: tx.transaction_date ?? "",
+    category_name: tx.categories?.name_es ?? tx.categories?.name ?? undefined,
+  }));
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Tu centro de comando financiero</p>
-        </div>
-        <Suspense>
-          <MonthSelector />
-        </Suspense>
+    <>
+      {/* Mobile dashboard */}
+      <div className="lg:hidden">
+        <MobileDashboard
+          heroData={mobileHeroData}
+          upcomingPayments={mobileUpcomingPayments}
+          recentTransactions={mobileRecentTx}
+        />
       </div>
 
-      {/* 1. Hero — "Tu dinero ahora" */}
-      <DashboardHero data={heroData} />
+      {/* Desktop dashboard */}
+      <div className="hidden lg:block">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h1 className="text-2xl font-bold">Dashboard</h1>
+              <p className="text-muted-foreground">Tu centro de comando financiero</p>
+            </div>
+            <Suspense>
+              <MonthSelector />
+            </Suspense>
+          </div>
 
-      {/* 2. Payments + Accounts side by side */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <UpcomingPayments
-          obligations={heroData.pendingObligations}
-          totalPending={heroData.totalPending}
-        />
-        <AccountsOverview
-          data={accountsData}
-          picker={
-            <DashboardAccountPicker
-              accounts={allAccounts.map((a) => ({
-                id: a.id,
-                name: a.name,
-                show_in_dashboard: a.show_in_dashboard,
-              }))}
+          {/* 1. Hero — "Tu dinero ahora" */}
+          <DashboardHero data={heroData} />
+
+          {/* 2. Payments + Accounts side by side */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <UpcomingPayments
+              obligations={heroData.pendingObligations}
+              totalPending={heroData.totalPending}
             />
-          }
-        />
-      </div>
+            <AccountsOverview
+              data={accountsData}
+              picker={
+                <DashboardAccountPicker
+                  accounts={allAccounts.map((a) => ({
+                    id: a.id,
+                    name: a.name,
+                    show_in_dashboard: a.show_in_dashboard,
+                  }))}
+                />
+              }
+            />
+          </div>
 
-      {/* 3. Analysis */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Análisis</h2>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <BudgetPaceChart
-            data={budgetPaceData.data}
-            totalBudget={budgetPaceData.totalBudget}
-            totalSpent={budgetPaceData.totalSpent}
-            monthLabel={monthLabel}
-          />
-          <IncomeVsExpensesChart data={cashflowData} monthLabel={monthLabel} />
-          <DashboardBudgetBar data={categoryData} monthLabel={monthLabel} />
-        </div>
-      </div>
+          {/* 3. Analysis */}
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Análisis</h2>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <BudgetPaceChart
+                data={budgetPaceData.data}
+                totalBudget={budgetPaceData.totalBudget}
+                totalSpent={budgetPaceData.totalSpent}
+                monthLabel={monthLabel}
+              />
+              <IncomeVsExpensesChart data={cashflowData} monthLabel={monthLabel} />
+              <DashboardBudgetBar data={categoryData} monthLabel={monthLabel} />
+            </div>
+          </div>
 
-      {/* 4. Recent Transactions */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Últimas transacciones</CardTitle>
-          <Link
-            href="/transactions"
-            className="text-sm text-primary hover:underline"
-          >
-            Ver todas
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {recentTx.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No hay transacciones aún.{" "}
+          {/* 4. Recent Transactions */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Últimas transacciones</CardTitle>
               <Link
                 href="/transactions"
-                className="text-primary hover:underline"
+                className="text-sm text-primary hover:underline"
               >
-                Registrar una
+                Ver todas
               </Link>
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {recentTx.map((tx) => (
-                <Link
-                  key={tx.id}
-                  href={`/transactions/${tx.id}`}
-                  className="flex items-center justify-between hover:bg-muted rounded-md px-2 py-1 -mx-2 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    {tx.direction === "INFLOW" ? (
-                      <ArrowDownLeft className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <ArrowUpRight className="h-4 w-4 text-orange-500" />
-                    )}
-                    <div>
-                      <p className="text-sm font-medium">
-                        {tx.merchant_name ||
-                          tx.clean_description ||
-                          "Sin descripción"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {tx.transaction_date ? formatDate(tx.transaction_date) : "Sin fecha"}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className={`text-sm font-medium ${tx.direction === "INFLOW" ? "text-green-600" : ""}`}
+            </CardHeader>
+            <CardContent>
+              {recentTx.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No hay transacciones aún.{" "}
+                  <Link
+                    href="/transactions"
+                    className="text-primary hover:underline"
                   >
-                    {tx.direction === "INFLOW" ? "+" : "-"}
-                    {formatCurrency(tx.amount, tx.currency_code as Parameters<typeof formatCurrency>[1])}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                    Registrar una
+                  </Link>
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {recentTx.map((tx) => (
+                    <Link
+                      key={tx.id}
+                      href={`/transactions/${tx.id}`}
+                      className="flex items-center justify-between hover:bg-muted rounded-md px-2 py-1 -mx-2 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {tx.direction === "INFLOW" ? (
+                          <ArrowDownLeft className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <ArrowUpRight className="h-4 w-4 text-orange-500" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium">
+                            {tx.merchant_name ||
+                              tx.clean_description ||
+                              "Sin descripción"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {tx.transaction_date ? formatDate(tx.transaction_date) : "Sin fecha"}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`text-sm font-medium ${tx.direction === "INFLOW" ? "text-green-600" : ""}`}
+                      >
+                        {tx.direction === "INFLOW" ? "+" : "-"}
+                        {formatCurrency(tx.amount, tx.currency_code as Parameters<typeof formatCurrency>[1])}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
   );
 }
