@@ -94,7 +94,8 @@ export async function categorizeTransaction(
   // 1. Fetch the transaction to extract a pattern
   const { data: tx, error: fetchError } = await supabase
     .from("transactions")
-    .select("merchant_name, clean_description, raw_description")
+    .select("merchant_name, clean_description, raw_description, destinatario_id")
+    .eq("user_id", user.id)
     .eq("id", txId)
     .single();
 
@@ -136,6 +137,24 @@ export async function categorizeTransaction(
     );
     // If the rule already existed, increment match_count
     // The upsert with onConflict will replace — we use an RPC or just accept the reset for now
+  }
+
+  // 4. Learn destinatario default category
+  if (tx.destinatario_id) {
+    const { data: dest } = await supabase
+      .from("destinatarios")
+      .select("default_category_id")
+      .eq("user_id", user.id)
+      .eq("id", tx.destinatario_id)
+      .single();
+
+    if (dest && dest.default_category_id === null) {
+      await supabase
+        .from("destinatarios")
+        .update({ default_category_id: categoryId })
+        .eq("user_id", user.id)
+        .eq("id", tx.destinatario_id);
+    }
   }
 
   revalidatePath("/categorizar");
@@ -205,4 +224,108 @@ export async function bulkCategorize(
   revalidatePath("/categorizar");
   revalidatePath("/transactions");
   return { success: true, data: { categorized } };
+}
+
+/**
+ * Assign a destinatario to a transaction and learn a matching rule.
+ */
+export async function assignDestinatario(
+  transactionId: string,
+  destinatarioId: string
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // 1. Fetch the transaction
+  const { data: tx, error: txError } = await supabase
+    .from("transactions")
+    .select("raw_description, category_id")
+    .eq("user_id", user.id)
+    .eq("id", transactionId)
+    .single();
+
+  if (txError || !tx) {
+    return { success: false, error: "Transacción no encontrada" };
+  }
+
+  // 2. Fetch the destinatario
+  const { data: dest, error: destError } = await supabase
+    .from("destinatarios")
+    .select("name, default_category_id")
+    .eq("user_id", user.id)
+    .eq("id", destinatarioId)
+    .single();
+
+  if (destError || !dest) {
+    return { success: false, error: "Destinatario no encontrado" };
+  }
+
+  // 3. Build update payload
+  const updatePayload: {
+    destinatario_id: string;
+    merchant_name: string;
+    category_id?: string;
+    categorization_source?: "USER_LEARNED";
+  } = {
+    destinatario_id: destinatarioId,
+    merchant_name: dest.name,
+  };
+
+  // If the destinatario has a default category and the transaction has none, apply it
+  if (dest.default_category_id && !tx.category_id) {
+    updatePayload.category_id = dest.default_category_id;
+    updatePayload.categorization_source = "USER_LEARNED";
+  }
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update(updatePayload)
+    .eq("user_id", user.id)
+    .eq("id", transactionId);
+
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
+
+  // 4. Extract pattern and create a destinatario_rule
+  const pattern = extractPattern(null, null, tx.raw_description);
+
+  if (pattern) {
+    await supabase.from("destinatario_rules").upsert(
+      {
+        user_id: user.id,
+        destinatario_id: destinatarioId,
+        pattern,
+        match_type: "contains" as const,
+      },
+      { onConflict: "user_id,pattern", ignoreDuplicates: true }
+    );
+  }
+
+  revalidatePath("/transactions");
+  revalidatePath("/destinatarios");
+  return { success: true, data: undefined };
+}
+
+/**
+ * Remove the destinatario assignment from a transaction.
+ */
+export async function removeDestinatarioFromTransaction(
+  transactionId: string
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({ destinatario_id: null, merchant_name: null })
+    .eq("user_id", user.id)
+    .eq("id", transactionId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/transactions");
+  return { success: true, data: undefined };
 }
