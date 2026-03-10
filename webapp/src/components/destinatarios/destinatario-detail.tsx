@@ -44,34 +44,19 @@ import {
   addDestinatarioRule,
   removeDestinatarioRule,
 } from "@/actions/destinatarios";
+import type {
+  DestinatarioWithRules,
+  TransactionPreview,
+} from "@/actions/destinatarios";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
 type Destinatario = Database["public"]["Tables"]["destinatarios"]["Row"];
 type DestinatarioRuleRow =
   Database["public"]["Tables"]["destinatario_rules"]["Row"];
-
-type DestinatarioWithRules = Destinatario & {
-  rules: DestinatarioRuleRow[];
-};
-
-type TransactionPreview = {
-  id: string;
-  transaction_date: string;
-  clean_description: string | null;
-  raw_description: string | null;
-  amount: number;
-  direction: Database["public"]["Enums"]["transaction_direction"];
-  currency_code: Database["public"]["Enums"]["currency_code"];
-  category_name: string | null;
-  category_icon: string | null;
-  account_name: string;
-};
 
 interface DestinatarioDetailProps {
   destinatario: DestinatarioWithRules;

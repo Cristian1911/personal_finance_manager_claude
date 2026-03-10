@@ -28,24 +28,20 @@ export interface DestinatarioSuggestion {
   sample_descriptions: string[];
 }
 
-// ─── matchDestinatario ───────────────────────────────────────────────────────
+// ─── Prepared rules (pre-sorted + pre-lowercased) ────────────────────────────
+
+export type PreparedDestinatarioRule = DestinatarioRule & {
+  _lowerPattern: string;
+};
 
 /**
- * Match a raw transaction description against a set of destinatario rules.
- * Returns the first matching destinatario or null if none match.
- *
- * Sorting: exact matches first, then contains, then by priority ascending.
+ * Pre-sort and pre-lowercase rules for repeated matching.
+ * Call once, then pass the result to `matchDestinatario` for each transaction.
  */
-export function matchDestinatario(
-  rawDescription: string,
+export function prepareDestinatarioRules(
   rules: DestinatarioRule[]
-): DestinatarioMatch | null {
-  const cleaned = rawDescription.toLowerCase().trim();
-  if (cleaned.length === 0) return null;
-
-  // Sort: exact first, then contains; within same type, lower priority wins.
-  // Pre-lowercase patterns to avoid repeated toLowerCase in the loop.
-  const sorted = [...rules]
+): PreparedDestinatarioRule[] {
+  return [...rules]
     .map((r) => ({ ...r, _lowerPattern: r.pattern.toLowerCase() }))
     .sort((a, b) => {
       if (a.match_type !== b.match_type) {
@@ -53,8 +49,32 @@ export function matchDestinatario(
       }
       return a.priority - b.priority;
     });
+}
 
-  for (const rule of sorted) {
+// ─── matchDestinatario ───────────────────────────────────────────────────────
+
+/**
+ * Match a raw transaction description against a set of destinatario rules.
+ * Returns the first matching destinatario or null if none match.
+ *
+ * Accepts either raw `DestinatarioRule[]` or pre-prepared rules from
+ * `prepareDestinatarioRules()`. When matching many transactions, use
+ * `prepareDestinatarioRules()` once to avoid repeated sort+lowercase.
+ */
+export function matchDestinatario(
+  rawDescription: string,
+  rules: DestinatarioRule[] | PreparedDestinatarioRule[]
+): DestinatarioMatch | null {
+  const cleaned = rawDescription.toLowerCase().trim();
+  if (cleaned.length === 0) return null;
+
+  // If rules aren't pre-prepared, prepare them on the fly
+  const prepared: PreparedDestinatarioRule[] =
+    rules.length > 0 && "_lowerPattern" in rules[0]
+      ? (rules as PreparedDestinatarioRule[])
+      : prepareDestinatarioRules(rules as DestinatarioRule[]);
+
+  for (const rule of prepared) {
     const isMatch =
       rule.match_type === "exact"
         ? cleaned === rule._lowerPattern

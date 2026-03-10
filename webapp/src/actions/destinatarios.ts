@@ -21,8 +21,21 @@ type DestinatarioWithCounts = Destinatario & {
   transaction_count: number;
 };
 
-type DestinatarioWithRules = Destinatario & {
+export type DestinatarioWithRules = Destinatario & {
   rules: DestinatarioRuleRow[];
+};
+
+export type TransactionPreview = {
+  id: string;
+  transaction_date: string;
+  clean_description: string | null;
+  raw_description: string | null;
+  amount: number;
+  direction: Database["public"]["Enums"]["transaction_direction"];
+  currency_code: Database["public"]["Enums"]["currency_code"];
+  category_name: string | null;
+  category_icon: string | null;
+  account_name: string;
 };
 
 // ─── getDestinatarios ─────────────────────────────────────────────────────────
@@ -33,46 +46,22 @@ export async function getDestinatarios(): Promise<
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Fetch destinatarios and transaction counts in parallel
-  const [destResult, txResult] = await Promise.all([
-    supabase
-      .from("destinatarios")
-      .select("*, destinatario_rules(id)")
-      .eq("user_id", user.id)
-      .order("name", { ascending: true }),
-    supabase
-      .from("transactions")
-      .select("destinatario_id")
-      .eq("user_id", user.id)
-      .not("destinatario_id", "is", null),
-  ]);
+  const { data: destinatarios, error } = await supabase
+    .from("destinatarios")
+    .select("*, destinatario_rules(count), transactions(count)")
+    .eq("user_id", user.id)
+    .order("name", { ascending: true });
 
-  const { data: destinatarios, error } = destResult;
   if (error) return { success: false, error: error.message };
 
-  const { data: txCounts, error: txError } = txResult;
-  if (txError) return { success: false, error: txError.message };
-
-  // Build a count map for transactions
-  const txCountMap = new Map<string, number>();
-  for (const tx of txCounts ?? []) {
-    if (tx.destinatario_id) {
-      txCountMap.set(
-        tx.destinatario_id,
-        (txCountMap.get(tx.destinatario_id) ?? 0) + 1
-      );
-    }
-  }
-
   const result: DestinatarioWithCounts[] = (destinatarios ?? []).map((d) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { destinatario_rules, ...rest } = d;
+    const { destinatario_rules, transactions, ...rest } = d;
     return {
       ...rest,
-      rule_count: Array.isArray(destinatario_rules)
-        ? destinatario_rules.length
-        : 0,
-      transaction_count: txCountMap.get(d.id) ?? 0,
+      rule_count: (destinatario_rules as unknown as { count: number }[])?.[0]
+        ?.count ?? 0,
+      transaction_count: (transactions as unknown as { count: number }[])?.[0]
+        ?.count ?? 0,
     };
   });
 
@@ -407,19 +396,6 @@ export async function getUnmatchedDescriptions(): Promise<
 }
 
 // ─── getDestinatarioTransactions ──────────────────────────────────────────────
-
-type TransactionPreview = {
-  id: string;
-  transaction_date: string;
-  clean_description: string | null;
-  raw_description: string | null;
-  amount: number;
-  direction: Database["public"]["Enums"]["transaction_direction"];
-  currency_code: Database["public"]["Enums"]["currency_code"];
-  category_name: string | null;
-  category_icon: string | null;
-  account_name: string;
-};
 
 export async function getDestinatarioTransactions(
   destinatarioId: string,

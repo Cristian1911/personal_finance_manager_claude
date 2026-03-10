@@ -34,14 +34,12 @@ type DestinatarioOption = {
 interface DestinatarioPickerProps {
   transactionId: string;
   currentDestinatarioId: string | null;
-  currentMerchantName: string | null;
   destinatarios: DestinatarioOption[];
 }
 
 export function DestinatarioPicker({
   transactionId,
   currentDestinatarioId,
-  currentMerchantName,
   destinatarios,
 }: DestinatarioPickerProps) {
   const [open, setOpen] = React.useState(false);
@@ -110,10 +108,8 @@ export function DestinatarioPicker({
     );
   }
 
-  // Show merchant_name hint if present but no destinatario
   return (
-    <div className="flex items-center gap-2">
-      <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -151,7 +147,6 @@ export function DestinatarioPicker({
             </CommandList>
           </Command>
         </PopoverContent>
-      </Popover>
-    </div>
+    </Popover>
   );
 }

@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { matchDestinatario } from "@zeta/shared";
+import { matchDestinatario, prepareDestinatarioRules } from "@zeta/shared";
 import type { DestinatarioRule } from "@zeta/shared";
 import { previewImportReconciliation } from "@/actions/import-transactions";
 import { Button } from "@/components/ui/button";
@@ -52,11 +52,12 @@ export function StepConfirm({
   });
   // Single pass: match all transactions against destinatario rules
   const { initialDestMap, initialCatMap } = useMemo(() => {
+    const prepared = prepareDestinatarioRules(destinatarioRules);
     const destMap = new Map<string, { id: string; name: string }>();
     const catMap = new Map<string, string | null>();
     parseResult.statements.forEach((stmt, stmtIdx) => {
       stmt.transactions.forEach((tx, txIdx) => {
-        const match = matchDestinatario(tx.description, destinatarioRules);
+        const match = matchDestinatario(tx.description, prepared);
         if (match) {
           const key = `${stmtIdx}-${txIdx}`;
           destMap.set(key, { id: match.destinatario_id, name: match.destinatario_name });
@@ -85,7 +86,6 @@ export function StepConfirm({
     router.refresh();
   }, [router]);
 
-  const destinatarioOverrides = initialDestMap;
   const [categoryOverrides, setCategoryOverrides] = useState<Map<string, string | null>>(() => initialCatMap);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
@@ -149,7 +149,7 @@ export function StepConfirm({
       for (const txIdx of sel) {
         const tx = stmt.transactions[txIdx];
         const categoryId = getCategoryForTx(stmtIdx, txIdx);
-        const destMatch = destinatarioOverrides.get(`${stmtIdx}-${txIdx}`);
+        const destMatch = initialDestMap.get(`${stmtIdx}-${txIdx}`);
         const destinatarioId = destMatch?.id ?? null;
         const merchantName = destMatch?.name ?? null;
 
@@ -173,7 +173,7 @@ export function StepConfirm({
           category_id: categoryId,
           categorization_source: categoryId
             ? destinatarioId
-              ? "SYSTEM_DEFAULT"
+              ? "USER_LEARNED"
               : "USER_OVERRIDE"
             : undefined,
           categorization_confidence: categoryId && destinatarioId ? 0.8 : null,

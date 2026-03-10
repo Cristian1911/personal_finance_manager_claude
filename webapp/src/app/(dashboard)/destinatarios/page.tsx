@@ -2,6 +2,7 @@ import { getDestinatarios } from "@/actions/destinatarios";
 import { getCategories } from "@/actions/categories";
 import { DestinatarioList } from "@/components/destinatarios/destinatario-list";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { buildCategoryMap } from "@/lib/utils/categories";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,14 +16,7 @@ export default async function DestinatariosPage() {
   const destinatarios = destResult.success ? destResult.data : [];
   const categories = catResult.success ? catResult.data : [];
 
-  // Build a flat category map: id -> display name (name_es preferred)
-  const categoryMap: Record<string, string> = {};
-  for (const cat of categories) {
-    categoryMap[cat.id] = cat.name_es ?? cat.name;
-    for (const child of cat.children) {
-      categoryMap[child.id] = child.name_es ?? child.name;
-    }
-  }
+  const categoryMap = buildCategoryMap(categories);
 
   return (
     <div className="space-y-6">

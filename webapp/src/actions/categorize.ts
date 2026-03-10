@@ -139,22 +139,14 @@ export async function categorizeTransaction(
     // The upsert with onConflict will replace — we use an RPC or just accept the reset for now
   }
 
-  // 4. Learn destinatario default category
+  // 4. Learn destinatario default category (conditional update — no-ops if already set)
   if (tx.destinatario_id) {
-    const { data: dest } = await supabase
+    await supabase
       .from("destinatarios")
-      .select("default_category_id")
+      .update({ default_category_id: categoryId })
       .eq("user_id", user.id)
       .eq("id", tx.destinatario_id)
-      .single();
-
-    if (dest && dest.default_category_id === null) {
-      await supabase
-        .from("destinatarios")
-        .update({ default_category_id: categoryId })
-        .eq("user_id", user.id)
-        .eq("id", tx.destinatario_id);
-    }
+      .is("default_category_id", null);
   }
 
   revalidatePath("/categorizar");

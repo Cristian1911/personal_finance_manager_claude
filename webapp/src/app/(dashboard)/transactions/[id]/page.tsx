@@ -120,7 +120,6 @@ export default async function TransactionDetailPage({
             <DestinatarioPicker
               transactionId={tx.id}
               currentDestinatarioId={tx.destinatario_id}
-              currentMerchantName={tx.merchant_name}
               destinatarios={destinatarios}
             />
           </div>
