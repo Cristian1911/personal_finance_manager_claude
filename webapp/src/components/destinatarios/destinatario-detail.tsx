@@ -138,6 +138,10 @@ function EditForm({
     FormData
   >(
     async (prevState, formData) => {
+      // Radix Select sends "none" — normalize to empty so server treats as null
+      if (formData.get("default_category_id") === "none") {
+        formData.set("default_category_id", "");
+      }
       const result = await boundUpdate(prevState, formData);
       if (result.success) toast.success("Destinatario actualizado");
       else toast.error(result.error);
