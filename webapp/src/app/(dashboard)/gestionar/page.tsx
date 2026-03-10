@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileUp, Repeat2, Wallet, Settings, type LucideIcon } from "lucide-react";
+import { FileUp, Repeat2, Wallet, Contact, Settings, type LucideIcon } from "lucide-react";
 
 const actions: {
   href: string;
@@ -24,6 +24,12 @@ const actions: {
     icon: Wallet,
     label: "Cuentas",
     description: "Administrar cuentas",
+  },
+  {
+    href: "/destinatarios",
+    icon: Contact,
+    label: "Destinatarios",
+    description: "Comercios y personas",
   },
   {
     href: "/settings",
