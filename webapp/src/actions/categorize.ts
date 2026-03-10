@@ -236,26 +236,28 @@ export async function assignDestinatario(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // 1. Fetch the transaction
-  const { data: tx, error: txError } = await supabase
-    .from("transactions")
-    .select("raw_description, category_id")
-    .eq("user_id", user.id)
-    .eq("id", transactionId)
-    .single();
+  // 1. Fetch transaction and destinatario in parallel
+  const [txResult, destResult] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("raw_description, category_id")
+      .eq("user_id", user.id)
+      .eq("id", transactionId)
+      .single(),
+    supabase
+      .from("destinatarios")
+      .select("name, default_category_id")
+      .eq("user_id", user.id)
+      .eq("id", destinatarioId)
+      .single(),
+  ]);
 
+  const { data: tx, error: txError } = txResult;
   if (txError || !tx) {
     return { success: false, error: "Transacción no encontrada" };
   }
 
-  // 2. Fetch the destinatario
-  const { data: dest, error: destError } = await supabase
-    .from("destinatarios")
-    .select("name, default_category_id")
-    .eq("user_id", user.id)
-    .eq("id", destinatarioId)
-    .single();
-
+  const { data: dest, error: destError } = destResult;
   if (destError || !dest) {
     return { success: false, error: "Destinatario no encontrado" };
   }

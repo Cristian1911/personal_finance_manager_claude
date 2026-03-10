@@ -33,22 +33,24 @@ export async function getDestinatarios(): Promise<
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Fetch all destinatarios with rule counts via left join
-  const { data: destinatarios, error } = await supabase
-    .from("destinatarios")
-    .select("*, destinatario_rules(id)")
-    .eq("user_id", user.id)
-    .order("name", { ascending: true });
+  // Fetch destinatarios and transaction counts in parallel
+  const [destResult, txResult] = await Promise.all([
+    supabase
+      .from("destinatarios")
+      .select("*, destinatario_rules(id)")
+      .eq("user_id", user.id)
+      .order("name", { ascending: true }),
+    supabase
+      .from("transactions")
+      .select("destinatario_id")
+      .eq("user_id", user.id)
+      .not("destinatario_id", "is", null),
+  ]);
 
+  const { data: destinatarios, error } = destResult;
   if (error) return { success: false, error: error.message };
 
-  // Fetch transaction counts per destinatario
-  const { data: txCounts, error: txError } = await supabase
-    .from("transactions")
-    .select("destinatario_id")
-    .eq("user_id", user.id)
-    .not("destinatario_id", "is", null);
-
+  const { data: txCounts, error: txError } = txResult;
   if (txError) return { success: false, error: txError.message };
 
   // Build a count map for transactions
@@ -196,7 +198,14 @@ export async function createDestinatario(
         priority: (i + 1) * 100,
       }));
 
-      await supabase.from("destinatario_rules").insert(rules);
+      const { error: rulesError } = await supabase
+        .from("destinatario_rules")
+        .insert(rules);
+      if (rulesError) {
+        // Destinatario was created but rules failed — return partial success with warning
+        revalidatePath("/destinatarios");
+        return { success: true, data };
+      }
     }
   }
 

@@ -45,31 +45,25 @@ export function StepConfirm({
     });
     return initial;
   });
-  const [destinatarioOverrides] = useState<Map<string, { id: string; name: string }>>(() => {
-    const map = new Map<string, { id: string; name: string }>();
+  // Single pass: match all transactions against destinatario rules
+  const { initialDestMap, initialCatMap } = useMemo(() => {
+    const destMap = new Map<string, { id: string; name: string }>();
+    const catMap = new Map<string, string | null>();
     parseResult.statements.forEach((stmt, stmtIdx) => {
       stmt.transactions.forEach((tx, txIdx) => {
         const match = matchDestinatario(tx.description, destinatarioRules);
         if (match) {
-          map.set(`${stmtIdx}-${txIdx}`, {
-            id: match.destinatario_id,
-            name: match.destinatario_name,
-          });
+          const key = `${stmtIdx}-${txIdx}`;
+          destMap.set(key, { id: match.destinatario_id, name: match.destinatario_name });
+          if (match.category_id) catMap.set(key, match.category_id);
         }
       });
     });
-    return map;
-  });
-  const [categoryOverrides, setCategoryOverrides] = useState<Map<string, string | null>>(() => {
-    const map = new Map<string, string | null>();
-    parseResult.statements.forEach((stmt, stmtIdx) => {
-      stmt.transactions.forEach((tx, txIdx) => {
-        const match = matchDestinatario(tx.description, destinatarioRules);
-        if (match?.category_id) map.set(`${stmtIdx}-${txIdx}`, match.category_id);
-      });
-    });
-    return map;
-  });
+    return { initialDestMap: destMap, initialCatMap: catMap };
+  }, [parseResult, destinatarioRules]);
+
+  const destinatarioOverrides = initialDestMap;
+  const [categoryOverrides, setCategoryOverrides] = useState<Map<string, string | null>>(() => initialCatMap);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   const autoCategorizedCount = useMemo(() => categoryOverrides.size, [categoryOverrides]);
@@ -229,7 +223,7 @@ export function StepConfirm({
     }
   }
 
-  const totals = buildTotals();
+  const totals = useMemo(() => buildTotals(), [selections, parseResult]);
 
   return (
     <div className="space-y-6">

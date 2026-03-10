@@ -43,36 +43,30 @@ export function matchDestinatario(
   const cleaned = rawDescription.toLowerCase().trim();
   if (cleaned.length === 0) return null;
 
-  // Sort: exact first, then contains; within same type, lower priority wins
-  const sorted = [...rules].sort((a, b) => {
-    if (a.match_type !== b.match_type) {
-      return a.match_type === "exact" ? -1 : 1;
-    }
-    return a.priority - b.priority;
-  });
+  // Sort: exact first, then contains; within same type, lower priority wins.
+  // Pre-lowercase patterns to avoid repeated toLowerCase in the loop.
+  const sorted = [...rules]
+    .map((r) => ({ ...r, _lowerPattern: r.pattern.toLowerCase() }))
+    .sort((a, b) => {
+      if (a.match_type !== b.match_type) {
+        return a.match_type === "exact" ? -1 : 1;
+      }
+      return a.priority - b.priority;
+    });
 
   for (const rule of sorted) {
-    const pattern = rule.pattern.toLowerCase();
+    const isMatch =
+      rule.match_type === "exact"
+        ? cleaned === rule._lowerPattern
+        : cleaned.includes(rule._lowerPattern);
 
-    if (rule.match_type === "exact") {
-      if (cleaned === pattern) {
-        return {
-          destinatario_id: rule.destinatario_id,
-          destinatario_name: rule.destinatario_name,
-          category_id: rule.default_category_id,
-          matched_rule_pattern: rule.pattern,
-        };
-      }
-    } else {
-      // contains
-      if (cleaned.includes(pattern)) {
-        return {
-          destinatario_id: rule.destinatario_id,
-          destinatario_name: rule.destinatario_name,
-          category_id: rule.default_category_id,
-          matched_rule_pattern: rule.pattern,
-        };
-      }
+    if (isMatch) {
+      return {
+        destinatario_id: rule.destinatario_id,
+        destinatario_name: rule.destinatario_name,
+        category_id: rule.default_category_id,
+        matched_rule_pattern: rule.pattern,
+      };
     }
   }
 
