@@ -405,3 +405,58 @@ export async function getUnmatchedDescriptions(): Promise<
 
   return { success: true, data: descriptions };
 }
+
+// ─── getDestinatarioTransactions ──────────────────────────────────────────────
+
+type TransactionPreview = {
+  id: string;
+  transaction_date: string;
+  clean_description: string | null;
+  raw_description: string | null;
+  amount: number;
+  direction: Database["public"]["Enums"]["transaction_direction"];
+  currency_code: Database["public"]["Enums"]["currency_code"];
+  category_name: string | null;
+  category_icon: string | null;
+  account_name: string;
+};
+
+export async function getDestinatarioTransactions(
+  destinatarioId: string,
+  limit = 10
+): Promise<ActionResult<TransactionPreview[]>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "id, transaction_date, clean_description, raw_description, amount, direction, currency_code, categories!transactions_category_id_fkey(name_es, name, icon), accounts!inner(name)"
+    )
+    .eq("user_id", user.id)
+    .eq("destinatario_id", destinatarioId)
+    .order("transaction_date", { ascending: false })
+    .limit(limit);
+
+  if (error) return { success: false, error: error.message };
+
+  const result: TransactionPreview[] = (data ?? []).map((tx) => ({
+    id: tx.id,
+    transaction_date: tx.transaction_date,
+    clean_description: tx.clean_description,
+    raw_description: tx.raw_description,
+    amount: tx.amount,
+    direction: tx.direction,
+    currency_code: tx.currency_code,
+    category_name: tx.categories
+      ? (tx.categories as { name_es: string | null; name: string }).name_es ??
+        (tx.categories as { name: string }).name
+      : null,
+    category_icon: tx.categories
+      ? (tx.categories as { icon: string }).icon
+      : null,
+    account_name: (tx.accounts as { name: string }).name,
+  }));
+
+  return { success: true, data: result };
+}

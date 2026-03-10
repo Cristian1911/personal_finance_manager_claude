@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { Search, ArrowUpDown, Plus, Contact } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MergeDialog } from "./merge-dialog";
 
 type DestinatarioItem = {
   id: string;
@@ -38,6 +40,7 @@ export function DestinatarioList({
 }: DestinatarioListProps) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("name");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     let items = destinatarios;
@@ -70,6 +73,27 @@ export function DestinatarioList({
 
     return items;
   }, [destinatarios, search, sort]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const selectedItems = useMemo(
+    () =>
+      destinatarios
+        .filter((d) => selectedIds.has(d.id))
+        .map((d) => ({ id: d.id, name: d.name })),
+    [destinatarios, selectedIds]
+  );
 
   // Empty state
   if (destinatarios.length === 0) {
@@ -106,6 +130,14 @@ export function DestinatarioList({
           />
         </div>
         <div className="flex items-center gap-2">
+          {selectedIds.size >= 2 && (
+            <MergeDialog selected={selectedItems} onMerged={clearSelection} />
+          )}
+          {selectedIds.size > 0 && (
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Deseleccionar ({selectedIds.size})
+            </Button>
+          )}
           <Select
             value={sort}
             onValueChange={(v) => setSort(v as SortOption)}
@@ -116,8 +148,8 @@ export function DestinatarioList({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="name">Nombre</SelectItem>
-              <SelectItem value="most_used">Más usado</SelectItem>
-              <SelectItem value="recent">Más reciente</SelectItem>
+              <SelectItem value="most_used">Mas usado</SelectItem>
+              <SelectItem value="recent">Mas reciente</SelectItem>
             </SelectContent>
           </Select>
           <Button asChild size="sm" className="hidden sm:inline-flex">
@@ -149,35 +181,44 @@ export function DestinatarioList({
       <div className="hidden sm:block">
         <div className="rounded-lg border divide-y">
           {filtered.map((d) => (
-            <Link
+            <div
               key={d.id}
-              href={`/destinatarios/${d.id}`}
-              className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/50 transition-colors"
+              className="flex items-center gap-2 px-4 py-3 hover:bg-muted/50 transition-colors"
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium truncate">{d.name}</span>
-                  {!d.is_active && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      Inactivo
-                    </Badge>
-                  )}
+              <Checkbox
+                checked={selectedIds.has(d.id)}
+                onCheckedChange={() => toggleSelect(d.id)}
+                className="shrink-0"
+              />
+              <Link
+                href={`/destinatarios/${d.id}`}
+                className="flex items-center justify-between gap-4 flex-1 min-w-0"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium truncate">{d.name}</span>
+                    {!d.is_active && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Inactivo
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {d.default_category_id && categoryMap[d.default_category_id]
+                      ? categoryMap[d.default_category_id]
+                      : "Sin categoría"}
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">
-                  {d.default_category_id && categoryMap[d.default_category_id]
-                    ? categoryMap[d.default_category_id]
-                    : "Sin categoría"}
-                </p>
-              </div>
-              <div className="flex items-center gap-4 shrink-0 text-sm text-muted-foreground">
-                <span>
-                  {d.rule_count} regla{d.rule_count !== 1 ? "s" : ""}
-                </span>
-                <span>
-                  {d.transaction_count} tx
-                </span>
-              </div>
-            </Link>
+                <div className="flex items-center gap-4 shrink-0 text-sm text-muted-foreground">
+                  <span>
+                    {d.rule_count} regla{d.rule_count !== 1 ? "s" : ""}
+                  </span>
+                  <span>
+                    {d.transaction_count} tx
+                  </span>
+                </div>
+              </Link>
+            </div>
           ))}
         </div>
       </div>
@@ -185,37 +226,44 @@ export function DestinatarioList({
       {/* Mobile cards */}
       <div className="sm:hidden space-y-2">
         {filtered.map((d) => (
-          <Link
-            key={d.id}
-            href={`/destinatarios/${d.id}`}
-            className="block rounded-lg border bg-card p-4 active:bg-muted/50"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium truncate">{d.name}</span>
-                  {!d.is_active && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      Inactivo
-                    </Badge>
-                  )}
+          <div key={d.id} className="relative">
+            <div className="absolute left-3 top-4 z-10">
+              <Checkbox
+                checked={selectedIds.has(d.id)}
+                onCheckedChange={() => toggleSelect(d.id)}
+              />
+            </div>
+            <Link
+              href={`/destinatarios/${d.id}`}
+              className="block rounded-lg border bg-card p-4 pl-10 active:bg-muted/50"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium truncate">{d.name}</span>
+                    {!d.is_active && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Inactivo
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {d.default_category_id && categoryMap[d.default_category_id]
+                      ? categoryMap[d.default_category_id]
+                      : "Sin categoría"}
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {d.default_category_id && categoryMap[d.default_category_id]
-                    ? categoryMap[d.default_category_id]
-                    : "Sin categoría"}
-                </p>
               </div>
-            </div>
-            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-              <span>
-                {d.rule_count} regla{d.rule_count !== 1 ? "s" : ""}
-              </span>
-              <span>
-                {d.transaction_count} transaccion{d.transaction_count !== 1 ? "es" : ""}
-              </span>
-            </div>
-          </Link>
+              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                <span>
+                  {d.rule_count} regla{d.rule_count !== 1 ? "s" : ""}
+                </span>
+                <span>
+                  {d.transaction_count} transaccion{d.transaction_count !== 1 ? "es" : ""}
+                </span>
+              </div>
+            </Link>
+          </div>
         ))}
       </div>
     </div>
