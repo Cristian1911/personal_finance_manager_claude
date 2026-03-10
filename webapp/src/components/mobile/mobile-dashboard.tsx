@@ -65,12 +65,12 @@ export function MobileDashboard({
         </div>
       </div>
 
-      {/* 2. Próximos pagos */}
+      {/* 2. Próximos pagos — prominent */}
       {upcomingPayments.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold flex items-center gap-1.5">
-              <CalendarClock className="h-4 w-4" />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <CalendarClock className="h-5 w-5" />
               Próximos pagos
             </h2>
             <Link
@@ -81,37 +81,43 @@ export function MobileDashboard({
               <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="rounded-lg border p-3 space-y-2">
+          <div className="rounded-xl border divide-y">
             {upcomingPayments.slice(0, 5).map((payment) => (
-              <div
+              <Link
                 key={payment.id}
-                className="flex items-center justify-between"
+                href="/recurrentes"
+                className="flex items-center justify-between px-4 py-3.5 active:bg-muted transition-colors"
               >
-                <span className="text-sm truncate max-w-[50%]">
-                  {payment.name}
-                </span>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-xs text-muted-foreground">
+                <div className="min-w-0 mr-3">
+                  <p className="text-sm font-medium truncate">
+                    {payment.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
                     {formatDate(payment.dueDate, "dd MMM")}
-                  </span>
-                  <span className="font-medium">
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-sm font-semibold">
                     {formatCurrency(
                       payment.amount,
                       payment.currencyCode as CurrencyCode
                     )}
                   </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* 3. Actividad reciente */}
+      {/* 3. Actividad reciente — compact */}
       {recentTransactions.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold">Actividad reciente</h2>
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Actividad reciente
+            </h2>
             <Link
               href="/transactions"
               className="text-xs text-primary hover:underline flex items-center gap-0.5"
@@ -120,38 +126,20 @@ export function MobileDashboard({
               <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-1">
-            {recentTransactions.slice(0, 5).map((tx) => (
+          <div className="space-y-0.5">
+            {recentTransactions.slice(0, 3).map((tx) => (
               <Link
                 key={tx.id}
                 href={`/transactions/${tx.id}`}
-                className="flex items-center justify-between rounded-lg px-2 py-2 -mx-2 hover:bg-muted transition-colors"
+                className="flex items-center justify-between rounded-md px-2 py-1.5 -mx-2 active:bg-muted transition-colors"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                      tx.direction === "INFLOW"
-                        ? "bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400"
-                        : "bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-400"
-                    )}
-                  >
-                    {tx.direction === "INFLOW" ? (
-                      <ArrowDownLeft className="h-4 w-4" />
-                    ) : (
-                      <ArrowUpRight className="h-4 w-4" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {tx.description}
-                    </p>
-                    {tx.category_name && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {tx.category_name}
-                      </p>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  {tx.direction === "INFLOW" ? (
+                    <ArrowDownLeft className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                  ) : (
+                    <ArrowUpRight className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                  )}
+                  <span className="text-sm truncate">{tx.description}</span>
                 </div>
                 <span
                   className={cn(

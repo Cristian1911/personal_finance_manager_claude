@@ -5,7 +5,6 @@ import { formatCurrency } from "@/lib/utils/currency";
 import {
   formatDate,
   parseMonth,
-  formatMonthParam,
   formatMonthLabel,
 } from "@/lib/utils/date";
 import {
