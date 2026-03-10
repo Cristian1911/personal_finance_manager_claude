@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { autoCategorize } from "@zeta/shared";
+import { useRouter } from "next/navigation";
+import { matchDestinatario, prepareDestinatarioRules } from "@zeta/shared";
+import type { DestinatarioRule } from "@zeta/shared";
 import { previewImportReconciliation } from "@/actions/import-transactions";
 import { Button } from "@/components/ui/button";
+import { DestinatarioSuggestions } from "./destinatario-suggestions";
 import { ParsedTransactionTable } from "./parsed-transaction-table";
 import { formatCurrency } from "@/lib/utils/currency";
 import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
@@ -22,12 +25,16 @@ export function StepConfirm({
   parseResult,
   mappings,
   categories,
+  destinatarioRules,
+  unmatchedDescriptions,
   onContinue,
   onBack,
 }: {
   parseResult: ParseResponse;
   mappings: StatementAccountMapping[];
   categories: CategoryWithChildren[];
+  destinatarioRules: DestinatarioRule[];
+  unmatchedDescriptions: string[];
   onContinue: (payload: {
     transactions: TransactionToImport[];
     statementMeta: StatementMetaForImport[];
@@ -35,6 +42,7 @@ export function StepConfirm({
   }) => void;
   onBack: () => void;
 }) {
+  const router = useRouter();
   const [selections, setSelections] = useState<Map<number, Set<number>>>(() => {
     const initial = new Map<number, Set<number>>();
     parseResult.statements.forEach((stmt, idx) => {
@@ -42,16 +50,43 @@ export function StepConfirm({
     });
     return initial;
   });
-  const [categoryOverrides, setCategoryOverrides] = useState<Map<string, string | null>>(() => {
-    const map = new Map<string, string | null>();
+  // Single pass: match all transactions against destinatario rules
+  const { initialDestMap, initialCatMap } = useMemo(() => {
+    const prepared = prepareDestinatarioRules(destinatarioRules);
+    const destMap = new Map<string, { id: string; name: string }>();
+    const catMap = new Map<string, string | null>();
     parseResult.statements.forEach((stmt, stmtIdx) => {
       stmt.transactions.forEach((tx, txIdx) => {
-        const result = autoCategorize(tx.description);
-        if (result) map.set(`${stmtIdx}-${txIdx}`, result.category_id);
+        const match = matchDestinatario(tx.description, prepared);
+        if (match) {
+          const key = `${stmtIdx}-${txIdx}`;
+          destMap.set(key, { id: match.destinatario_id, name: match.destinatario_name });
+          if (match.category_id) catMap.set(key, match.category_id);
+        }
       });
     });
-    return map;
-  });
+    return { initialDestMap: destMap, initialCatMap: catMap };
+  }, [parseResult, destinatarioRules]);
+
+  // Collect descriptions from current batch that didn't match any rule
+  const batchUnmatchedDescriptions = useMemo(() => {
+    const unmatched: string[] = [];
+    parseResult.statements.forEach((stmt, stmtIdx) => {
+      stmt.transactions.forEach((tx, txIdx) => {
+        const key = `${stmtIdx}-${txIdx}`;
+        if (!initialDestMap.has(key) && tx.description) {
+          unmatched.push(tx.description);
+        }
+      });
+    });
+    return unmatched;
+  }, [parseResult, initialDestMap]);
+
+  const handleDestinatarioCreated = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  const [categoryOverrides, setCategoryOverrides] = useState<Map<string, string | null>>(() => initialCatMap);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   const autoCategorizedCount = useMemo(() => categoryOverrides.size, [categoryOverrides]);
@@ -114,8 +149,9 @@ export function StepConfirm({
       for (const txIdx of sel) {
         const tx = stmt.transactions[txIdx];
         const categoryId = getCategoryForTx(stmtIdx, txIdx);
-        const autoResult = autoCategorize(tx.description);
-        const wasAutoAssigned = autoResult?.category_id === categoryId;
+        const destMatch = initialDestMap.get(`${stmtIdx}-${txIdx}`);
+        const destinatarioId = destMatch?.id ?? null;
+        const merchantName = destMatch?.name ?? null;
 
         let installmentGroupId: string | null = null;
         if (tx.installment_current != null && tx.installment_total != null) {
@@ -136,14 +172,16 @@ export function StepConfirm({
           raw_description: tx.description,
           category_id: categoryId,
           categorization_source: categoryId
-            ? wasAutoAssigned
-              ? "SYSTEM_DEFAULT"
+            ? destinatarioId
+              ? "USER_LEARNED"
               : "USER_OVERRIDE"
             : undefined,
-          categorization_confidence: categoryId && wasAutoAssigned ? 0.7 : null,
+          categorization_confidence: categoryId && destinatarioId ? 0.8 : null,
           installment_current: tx.installment_current,
           installment_total: tx.installment_total,
           installment_group_id: installmentGroupId,
+          destinatario_id: destinatarioId,
+          merchant_name: merchantName,
         });
       }
     }
@@ -208,16 +246,23 @@ export function StepConfirm({
     }
   }
 
-  const totals = buildTotals();
+  const totals = useMemo(() => buildTotals(), [selections, parseResult]);
 
   return (
     <div className="space-y-6">
       {autoCategorizedCount > 0 && (
         <div className="rounded-md bg-blue-500/10 p-3 text-sm text-blue-700">
-          Se categorizaron automáticamente {autoCategorizedCount} transacciones.
-          Puedes cambiarlas antes de reconciliar e importar.
+          Se asignaron automáticamente {autoCategorizedCount} transacciones a destinatarios.
+          Puedes cambiar las categorías antes de reconciliar e importar.
         </div>
       )}
+
+      <DestinatarioSuggestions
+        batchDescriptions={batchUnmatchedDescriptions}
+        historicalDescriptions={unmatchedDescriptions}
+        categories={categories}
+        onDestinatarioCreated={handleDestinatarioCreated}
+      />
 
       {parseResult.statements.map((stmt, stmtIdx) => {
         const mapping = mappings.find((m) => m.statementIndex === stmtIdx);

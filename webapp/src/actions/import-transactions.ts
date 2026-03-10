@@ -504,6 +504,8 @@ export async function importTransactions(
         installment_current: tx.installment_current ?? null,
         installment_total: tx.installment_total ?? null,
         installment_group_id: tx.installment_group_id ?? null,
+        destinatario_id: tx.destinatario_id ?? null,
+        merchant_name: tx.merchant_name ?? null,
       })
       .select("id, category_id, notes")
       .single();

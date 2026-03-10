@@ -354,6 +354,99 @@ export type Database = {
           },
         ]
       }
+      destinatario_rules: {
+        Row: {
+          created_at: string
+          destinatario_id: string
+          id: string
+          match_type: string
+          pattern: string
+          priority: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          destinatario_id: string
+          id?: string
+          match_type?: string
+          pattern: string
+          priority?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          destinatario_id?: string
+          id?: string
+          match_type?: string
+          pattern?: string
+          priority?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "destinatario_rules_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "destinatario_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      destinatarios: {
+        Row: {
+          created_at: string
+          default_category_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_category_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_category_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "destinatarios_default_category_id_fkey"
+            columns: ["default_category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "destinatarios_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_events: {
         Row: {
           created_at: string
@@ -680,6 +773,7 @@ export type Database = {
           clean_description: string | null
           created_at: string
           currency_code: Database["public"]["Enums"]["currency_code"]
+          destinatario_id: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           exchange_rate: number
           id: string
@@ -720,6 +814,7 @@ export type Database = {
           clean_description?: string | null
           created_at?: string
           currency_code: Database["public"]["Enums"]["currency_code"]
+          destinatario_id?: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           exchange_rate?: number
           id?: string
@@ -760,6 +855,7 @@ export type Database = {
           clean_description?: string | null
           created_at?: string
           currency_code?: Database["public"]["Enums"]["currency_code"]
+          destinatario_id?: string | null
           direction?: Database["public"]["Enums"]["transaction_direction"]
           exchange_rate?: number
           id?: string
@@ -801,6 +897,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios"
             referencedColumns: ["id"]
           },
           {

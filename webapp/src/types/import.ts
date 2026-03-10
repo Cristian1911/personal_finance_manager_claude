@@ -1,3 +1,5 @@
+import type { Database } from "./database";
+
 // Mirrors the Python ParseResponse from services/pdf_parser/models.py
 
 export type ParsedTransaction = {
@@ -80,12 +82,14 @@ export type TransactionToImport = {
   transaction_date: string;
   raw_description: string;
   category_id?: string | null;
-  categorization_source?: "SYSTEM_DEFAULT" | "USER_CREATED" | "USER_OVERRIDE";
+  categorization_source?: Database["public"]["Enums"]["categorization_source"];
   categorization_confidence?: number | null;
   installment_current?: number | null;
   installment_total?: number | null;
   installment_group_id?: string | null;
   notes?: string | null;
+  destinatario_id?: string | null;
+  merchant_name?: string | null;
 };
 
 export type ImportResult = {

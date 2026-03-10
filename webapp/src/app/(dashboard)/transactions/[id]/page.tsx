@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import { getTransaction, deleteTransaction } from "@/actions/transactions";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
+import { getDestinatarios } from "@/actions/destinatarios";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
 import { DeleteTransactionButton } from "@/components/transactions/delete-transaction-button";
+import { DestinatarioPicker } from "@/components/transactions/destinatario-picker";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -18,17 +20,22 @@ export default async function TransactionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [txResult, accountsResult, categoriesResult] = await Promise.all([
-    getTransaction(id),
-    getAccounts(),
-    getCategories(),
-  ]);
+  const [txResult, accountsResult, categoriesResult, destinatariosResult] =
+    await Promise.all([
+      getTransaction(id),
+      getAccounts(),
+      getCategories(),
+      getDestinatarios(),
+    ]);
 
   if (!txResult.success) notFound();
 
   const tx = txResult.data;
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
+  const destinatarios = destinatariosResult.success
+    ? destinatariosResult.data
+    : [];
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -107,6 +114,15 @@ export default async function TransactionDetailPage({
               <p className="text-sm mt-1">{tx.notes}</p>
             </div>
           )}
+
+          <div className="pt-4 border-t">
+            <p className="text-sm text-muted-foreground mb-2">Destinatario</p>
+            <DestinatarioPicker
+              transactionId={tx.id}
+              currentDestinatarioId={tx.destinatario_id}
+              destinatarios={destinatarios}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

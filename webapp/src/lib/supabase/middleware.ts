@@ -51,6 +51,7 @@ export async function updateSession(request: NextRequest) {
     "/transactions",
     "/accounts",
     "/categories",
+    "/destinatarios",
     "/settings",
   ];
   const isProtected = protectedPaths.some((path) =>
@@ -72,6 +73,15 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthRoute) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Prevent Safari from serving stale HTML after deploys (causes 502s)
+  const accept = request.headers.get("accept") ?? "";
+  if (accept.includes("text/html")) {
+    supabaseResponse.headers.set(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate"
+    );
   }
 
   return supabaseResponse;
