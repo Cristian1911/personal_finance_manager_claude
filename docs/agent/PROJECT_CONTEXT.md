@@ -2,8 +2,8 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-03-03T18:13:44.555544+00:00`
-- Project root: `/Users/cristian/Documents/developing/personal_finance_manager`
+- Generated (UTC): `2026-03-10T11:22:02.703575+00:00`
+- Project root: `/Users/cristian/Documents/developing/current-projects/zeta`
 
 ## Stack Snapshot
 - Next.js
@@ -13,31 +13,33 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 1324
-- TypeScript/React: 469
-- TypeScript: 287
-- JSON: 285
-- Markdown: 78
-- SQL: 75
-- Python: 60
-- YAML: 28
-- Shell: 15
-- JavaScript: 15
-- CSS: 6
-- TOML: 6
+- Text files scanned: 701
+- JSON: 279
+- TypeScript/React: 193
+- TypeScript: 105
+- Markdown: 43
+- SQL: 29
+- Python: 22
+- YAML: 10
+- Shell: 10
+- JavaScript: 5
+- CSS: 2
+- TOML: 2
+- HTML: 1
 
 ## Top-level Areas
-- .claude: 365 files
-- .worktrees: 352 files
-- mobile: 331 files
-- webapp: 177 files
-- supabase: 27 files
-- services: 22 files
-- packages: 17 files
-- docs: 15 files
-- (root): 11 files
+- mobile: 354 files
+- webapp: 215 files
+- supabase: 31 files
+- docs: 26 files
+- services: 24 files
+- packages: 18 files
+- (root): 15 files
+- .claude: 9 files
 - .github: 5 files
 - infra: 2 files
+- brand: 1 files
+- test-results: 1 files
 
 ## Key Commands
 ### root_scripts
@@ -79,74 +81,61 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `webapp/src/actions/statement-snapshots.ts`
   - e.g. `webapp/src/actions/recurring-templates.ts`
   - e.g. `webapp/src/actions/debt.ts`
-- `zod-validators` (15 files): Validation layer using Zod
-  - e.g. `webapp/src/actions/recurring-templates.ts`
-  - e.g. `webapp/src/actions/profile.ts`
-  - e.g. `webapp/src/actions/purchase-decision.ts`
-- `fastapi-service` (15 files): FastAPI service modules
-  - e.g. `.claude/worktrees/rescue-forgotten-branches/services/pdf_parser/main.py`
-  - e.g. `.worktrees/main-integration/services/pdf_parser/main.py`
-  - e.g. `services/pdf_parser/test_parser.py`
 - `expo-router` (15 files): Expo Router file-based routes
   - e.g. `mobile/app/subscriptions.tsx`
   - e.g. `mobile/app/annotate-screenshot.tsx`
   - e.g. `mobile/app/purchase-decision.tsx`
-- `repository-pattern` (12 files): Repository pattern in mobile/lib/repositories
-  - e.g. `.claude/worktrees/rescue-forgotten-branches/mobile/lib/repositories/budgets.ts`
-  - e.g. `.claude/worktrees/rescue-forgotten-branches/mobile/lib/repositories/categories.ts`
-  - e.g. `.claude/worktrees/rescue-forgotten-branches/mobile/lib/repositories/transactions.ts`
+- `fastapi-service` (15 files): FastAPI service modules
+  - e.g. `services/pdf_parser/test_parser.py`
+  - e.g. `services/pdf_parser/models.py`
+  - e.g. `services/pdf_parser/storage.py`
+- `zod-validators` (12 files): Validation layer using Zod
+  - e.g. `webapp/src/actions/recurring-templates.ts`
+  - e.g. `webapp/src/actions/profile.ts`
+  - e.g. `webapp/src/actions/purchase-decision.ts`
+- `repository-pattern` (4 files): Repository pattern in mobile/lib/repositories
+  - e.g. `mobile/lib/repositories/budgets.ts`
+  - e.g. `mobile/lib/repositories/categories.ts`
+  - e.g. `mobile/lib/repositories/transactions.ts`
 
 ## Entrypoints
-- `.claude/worktrees/rescue-forgotten-branches/mobile/app/(auth)/_layout.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/mobile/app/(tabs)/_layout.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/mobile/app/_layout.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/packages/shared/src/types/domain.ts`
-- `.claude/worktrees/rescue-forgotten-branches/services/pdf_parser/main.py`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(auth)/forgot-password/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(auth)/layout.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(auth)/login/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(auth)/reset-password/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(auth)/signup/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/accounts/[id]/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/accounts/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/categories/manage/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/categories/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/categorizar/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/dashboard/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/deudas/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/deudas/simulador/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/import/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/layout.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/recurrentes/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/settings/analytics/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/settings/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/(dashboard)/transactions/page.tsx`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/api/bug-reports/route.ts`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/api/parse-statement/route.ts`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/api/save-unrecognized/route.ts`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/auth/callback/route.ts`
-- `.claude/worktrees/rescue-forgotten-branches/webapp/src/app/layout.tsx`
+- `mobile/app/(auth)/_layout.tsx`
+- `mobile/app/(tabs)/_layout.tsx`
+- `mobile/app/_layout.tsx`
+- `packages/shared/src/types/domain.ts`
+- `services/pdf_parser/main.py`
+- `webapp/src/app/(auth)/forgot-password/page.tsx`
+- `webapp/src/app/(auth)/layout.tsx`
+- `webapp/src/app/(auth)/login/page.tsx`
+- `webapp/src/app/(auth)/reset-password/page.tsx`
+- `webapp/src/app/(auth)/signup/page.tsx`
+- `webapp/src/app/(dashboard)/accounts/[id]/page.tsx`
+- `webapp/src/app/(dashboard)/accounts/page.tsx`
+- `webapp/src/app/(dashboard)/categories/page.tsx`
+- `webapp/src/app/(dashboard)/categorizar/page.tsx`
+- `webapp/src/app/(dashboard)/dashboard/page.tsx`
+- `webapp/src/app/(dashboard)/destinatarios/[id]/page.tsx`
+- `webapp/src/app/(dashboard)/destinatarios/page.tsx`
+- `webapp/src/app/(dashboard)/deudas/page.tsx`
+- `webapp/src/app/(dashboard)/deudas/simulador/page.tsx`
+- `webapp/src/app/(dashboard)/gestionar/page.tsx`
+- `webapp/src/app/(dashboard)/import/page.tsx`
+- `webapp/src/app/(dashboard)/layout.tsx`
+- `webapp/src/app/(dashboard)/recurrentes/page.tsx`
+- `webapp/src/app/(dashboard)/settings/analytics/page.tsx`
+- `webapp/src/app/(dashboard)/settings/page.tsx`
+- `webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
+- `webapp/src/app/(dashboard)/transactions/page.tsx`
+- `webapp/src/app/api/bug-reports/route.ts`
+- `webapp/src/app/api/parse-statement/route.ts`
+- `webapp/src/app/api/save-unrecognized/route.ts`
 
 ## Dependency Signals (Folder-level)
-- `.claude` -> `.claude` (472)
-- `webapp` -> `webapp` (471)
-- `.worktrees` -> `.worktrees` (470)
+- `webapp` -> `webapp` (608)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `docs/agent/PROJECT_CONTEXT.md`
-- `docs/agent/project_context.json`
-- `mobile/app/(auth)/login.tsx`
-- `mobile/app/(tabs)/import.tsx`
-- `mobile/app/account/create.tsx`
-- `mobile/app/account/edit/[id].tsx`
-- `mobile/app/purchase-decision.tsx`
-- `mobile/lib/biometrics.ts`
-- `mobile/lib/pdf-passwords.ts`
-- `mobile/lib/repositories/accounts.ts`
-- `packages/shared/src/utils/purchase-decision.ts`
-- `webapp/src/components/dashboard/purchase-decision-card.tsx`
+- Working tree clean
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.
