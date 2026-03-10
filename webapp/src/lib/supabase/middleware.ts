@@ -75,5 +75,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  // Prevent Safari from serving stale HTML after deploys (causes 502s)
+  const accept = request.headers.get("accept") ?? "";
+  if (accept.includes("text/html")) {
+    supabaseResponse.headers.set(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate"
+    );
+  }
+
   return supabaseResponse;
 }
