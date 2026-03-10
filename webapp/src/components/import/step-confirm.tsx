@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { matchDestinatario } from "@zeta/shared";
 import type { DestinatarioRule } from "@zeta/shared";
 import { previewImportReconciliation } from "@/actions/import-transactions";
 import { Button } from "@/components/ui/button";
+import { DestinatarioSuggestions } from "./destinatario-suggestions";
 import { ParsedTransactionTable } from "./parsed-transaction-table";
 import { formatCurrency } from "@/lib/utils/currency";
 import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
@@ -24,6 +26,7 @@ export function StepConfirm({
   mappings,
   categories,
   destinatarioRules,
+  unmatchedDescriptions,
   onContinue,
   onBack,
 }: {
@@ -31,6 +34,7 @@ export function StepConfirm({
   mappings: StatementAccountMapping[];
   categories: CategoryWithChildren[];
   destinatarioRules: DestinatarioRule[];
+  unmatchedDescriptions: string[];
   onContinue: (payload: {
     transactions: TransactionToImport[];
     statementMeta: StatementMetaForImport[];
@@ -38,6 +42,7 @@ export function StepConfirm({
   }) => void;
   onBack: () => void;
 }) {
+  const router = useRouter();
   const [selections, setSelections] = useState<Map<number, Set<number>>>(() => {
     const initial = new Map<number, Set<number>>();
     parseResult.statements.forEach((stmt, idx) => {
@@ -61,6 +66,24 @@ export function StepConfirm({
     });
     return { initialDestMap: destMap, initialCatMap: catMap };
   }, [parseResult, destinatarioRules]);
+
+  // Collect descriptions from current batch that didn't match any rule
+  const batchUnmatchedDescriptions = useMemo(() => {
+    const unmatched: string[] = [];
+    parseResult.statements.forEach((stmt, stmtIdx) => {
+      stmt.transactions.forEach((tx, txIdx) => {
+        const key = `${stmtIdx}-${txIdx}`;
+        if (!initialDestMap.has(key) && tx.description) {
+          unmatched.push(tx.description);
+        }
+      });
+    });
+    return unmatched;
+  }, [parseResult, initialDestMap]);
+
+  const handleDestinatarioCreated = useCallback(() => {
+    router.refresh();
+  }, [router]);
 
   const destinatarioOverrides = initialDestMap;
   const [categoryOverrides, setCategoryOverrides] = useState<Map<string, string | null>>(() => initialCatMap);
@@ -233,6 +256,13 @@ export function StepConfirm({
           Puedes cambiar las categorías antes de reconciliar e importar.
         </div>
       )}
+
+      <DestinatarioSuggestions
+        batchDescriptions={batchUnmatchedDescriptions}
+        historicalDescriptions={unmatchedDescriptions}
+        categories={categories}
+        onDestinatarioCreated={handleDestinatarioCreated}
+      />
 
       {parseResult.statements.map((stmt, stmtIdx) => {
         const mapping = mappings.find((m) => m.statementIndex === stmtIdx);
