@@ -22,6 +22,11 @@ export const transactionToImportSchema = z.object({
   installment_total: z.number().int().positive().optional().nullable(),
   installment_group_id: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  destinatario_id: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    uuidStr().optional().nullable()
+  ),
+  merchant_name: z.string().optional().nullable(),
 });
 
 export const reconciliationDecisionSchema = z.object({

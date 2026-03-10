@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { autoCategorize } from "@zeta/shared";
+import { matchDestinatario } from "@zeta/shared";
+import type { DestinatarioRule } from "@zeta/shared";
 import { previewImportReconciliation } from "@/actions/import-transactions";
 import { Button } from "@/components/ui/button";
 import { ParsedTransactionTable } from "./parsed-transaction-table";
@@ -22,12 +23,14 @@ export function StepConfirm({
   parseResult,
   mappings,
   categories,
+  destinatarioRules,
   onContinue,
   onBack,
 }: {
   parseResult: ParseResponse;
   mappings: StatementAccountMapping[];
   categories: CategoryWithChildren[];
+  destinatarioRules: DestinatarioRule[];
   onContinue: (payload: {
     transactions: TransactionToImport[];
     statementMeta: StatementMetaForImport[];
@@ -42,12 +45,27 @@ export function StepConfirm({
     });
     return initial;
   });
+  const [destinatarioOverrides] = useState<Map<string, { id: string; name: string }>>(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    parseResult.statements.forEach((stmt, stmtIdx) => {
+      stmt.transactions.forEach((tx, txIdx) => {
+        const match = matchDestinatario(tx.description, destinatarioRules);
+        if (match) {
+          map.set(`${stmtIdx}-${txIdx}`, {
+            id: match.destinatario_id,
+            name: match.destinatario_name,
+          });
+        }
+      });
+    });
+    return map;
+  });
   const [categoryOverrides, setCategoryOverrides] = useState<Map<string, string | null>>(() => {
     const map = new Map<string, string | null>();
     parseResult.statements.forEach((stmt, stmtIdx) => {
       stmt.transactions.forEach((tx, txIdx) => {
-        const result = autoCategorize(tx.description);
-        if (result) map.set(`${stmtIdx}-${txIdx}`, result.category_id);
+        const match = matchDestinatario(tx.description, destinatarioRules);
+        if (match?.category_id) map.set(`${stmtIdx}-${txIdx}`, match.category_id);
       });
     });
     return map;
@@ -114,8 +132,9 @@ export function StepConfirm({
       for (const txIdx of sel) {
         const tx = stmt.transactions[txIdx];
         const categoryId = getCategoryForTx(stmtIdx, txIdx);
-        const autoResult = autoCategorize(tx.description);
-        const wasAutoAssigned = autoResult?.category_id === categoryId;
+        const destMatch = destinatarioOverrides.get(`${stmtIdx}-${txIdx}`);
+        const destinatarioId = destMatch?.id ?? null;
+        const merchantName = destMatch?.name ?? null;
 
         let installmentGroupId: string | null = null;
         if (tx.installment_current != null && tx.installment_total != null) {
@@ -136,14 +155,16 @@ export function StepConfirm({
           raw_description: tx.description,
           category_id: categoryId,
           categorization_source: categoryId
-            ? wasAutoAssigned
+            ? destinatarioId
               ? "SYSTEM_DEFAULT"
               : "USER_OVERRIDE"
             : undefined,
-          categorization_confidence: categoryId && wasAutoAssigned ? 0.7 : null,
+          categorization_confidence: categoryId && destinatarioId ? 0.8 : null,
           installment_current: tx.installment_current,
           installment_total: tx.installment_total,
           installment_group_id: installmentGroupId,
+          destinatario_id: destinatarioId,
+          merchant_name: merchantName,
         });
       }
     }
@@ -214,8 +235,8 @@ export function StepConfirm({
     <div className="space-y-6">
       {autoCategorizedCount > 0 && (
         <div className="rounded-md bg-blue-500/10 p-3 text-sm text-blue-700">
-          Se categorizaron automáticamente {autoCategorizedCount} transacciones.
-          Puedes cambiarlas antes de reconciliar e importar.
+          Se asignaron automáticamente {autoCategorizedCount} transacciones a destinatarios.
+          Puedes cambiar las categorías antes de reconciliar e importar.
         </div>
       )}
 

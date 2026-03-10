@@ -86,6 +86,8 @@ export type TransactionToImport = {
   installment_total?: number | null;
   installment_group_id?: string | null;
   notes?: string | null;
+  destinatario_id?: string | null;
+  merchant_name?: string | null;
 };
 
 export type ImportResult = {

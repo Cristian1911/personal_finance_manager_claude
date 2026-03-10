@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import type { Account, CategoryWithChildren } from "@/types/domain";
+import type { DestinatarioRule } from "@zeta/shared";
 import type {
   ParseResponse,
   ReconciliationPreviewResult,
@@ -31,9 +32,11 @@ const STEPS: { key: Step; label: string }[] = [
 export function ImportWizard({
   accounts,
   categories,
+  destinatarioRules,
 }: {
   accounts: Account[];
   categories: CategoryWithChildren[];
+  destinatarioRules: DestinatarioRule[];
 }) {
   const [step, setStep] = useState<Step>("upload");
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
@@ -210,6 +213,7 @@ export function ImportWizard({
           parseResult={parseResult}
           mappings={mappings}
           categories={categories}
+          destinatarioRules={destinatarioRules}
           onContinue={handlePrepared}
           onBack={() => setStep("review")}
         />
