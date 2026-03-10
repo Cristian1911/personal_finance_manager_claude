@@ -12,3 +12,4 @@ export * from "./utils/debt";
 export * from "./utils/debt-simulator";
 export * from "./utils/purchase-decision";
 export * from "./utils/snapshot-diff";
+export * from "./utils/destinatario-matcher";
