@@ -293,6 +293,7 @@ export async function reassignAndDeleteCategory(
   const { error: deleteError } = await supabase
     .from("categories")
     .delete()
+    .eq("user_id", user.id)
     .eq("id", id);
 
   if (deleteError) return { success: false, error: deleteError.message };

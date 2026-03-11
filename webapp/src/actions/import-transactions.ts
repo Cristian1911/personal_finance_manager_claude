@@ -559,6 +559,7 @@ export async function importTransactions(
         notes: merged.notes ?? null,
         capture_method: merged.capture_method,
       })
+      .eq("user_id", user.id)
       .eq("id", insertedTx.id);
 
     await supabase
@@ -567,6 +568,7 @@ export async function importTransactions(
         reconciled_into_transaction_id: insertedTx.id,
         reconciliation_score: decision.score,
       })
+      .eq("user_id", user.id)
       .eq("id", manualTx.id);
 
     if (decision.decision === "AUTO_MERGE") autoMerged++;

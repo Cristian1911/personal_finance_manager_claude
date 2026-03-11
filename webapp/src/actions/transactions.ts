@@ -113,8 +113,13 @@ export async function getTransactions(
     if (params.dateFrom) query = query.gte("transaction_date", params.dateFrom);
     if (params.dateTo) query = query.lte("transaction_date", params.dateTo);
     if (params.search) {
+      // Escape PostgREST filter special characters to prevent filter injection
+      const sanitized = params.search
+        .slice(0, 200)
+        .replace(/[\\%_]/g, (c) => `\\${c}`)
+        .replace(/[.,()]/g, "");
       query = query.or(
-        `merchant_name.ilike.%${params.search}%,raw_description.ilike.%${params.search}%,clean_description.ilike.%${params.search}%`
+        `merchant_name.ilike.%${sanitized}%,raw_description.ilike.%${sanitized}%,clean_description.ilike.%${sanitized}%`
       );
     }
     if (params.amountMin !== undefined) query = query.gte("amount", params.amountMin);
