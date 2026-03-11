@@ -46,12 +46,16 @@ export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
         href={tab.href}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors",
+          "relative flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors",
           isActive
             ? "text-primary"
             : "text-muted-foreground"
         )}
       >
+        {/* Active indicator bar */}
+        {isActive && (
+          <span className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary" />
+        )}
         <span className="relative">
           <tab.icon
             className={cn("size-5", isActive && "stroke-[2.5]")}
@@ -62,7 +66,7 @@ export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
             </span>
           )}
         </span>
-        <span className="text-[10px] font-medium">{tab.title}</span>
+        <span className={cn("text-[10px]", isActive ? "font-bold" : "font-medium")}>{tab.title}</span>
       </Link>
     );
   }

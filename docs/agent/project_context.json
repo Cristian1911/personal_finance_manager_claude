@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-10T11:22:02.703575+00:00",
+  "generated_at_utc": "2026-03-11T20:20:39.682488+00:00",
   "project_root": "/Users/cristian/Documents/developing/current-projects/zeta",
   "technologies": [
     "Next.js",
@@ -9,31 +9,31 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 701,
+    "text_files_scanned": 745,
     "languages": {
-      "JSON": 279,
+      "JSON": 282,
       "TypeScript/React": 193,
-      "TypeScript": 105,
-      "Markdown": 43,
+      "TypeScript": 108,
+      "Markdown": 67,
       "SQL": 29,
       "Python": 22,
       "YAML": 10,
       "Shell": 10,
-      "JavaScript": 5,
-      "CSS": 2,
-      "TOML": 2,
-      "HTML": 1
+      "JavaScript": 10,
+      "CSS": 7,
+      "HTML": 5,
+      "TOML": 2
     }
   },
   "top_level_directories": {
     "mobile": 354,
-    "webapp": 215,
+    "webapp": 258,
     "supabase": 31,
     "docs": 26,
     "services": 24,
     "packages": 18,
     "(root)": 15,
-    ".claude": 9,
+    ".claude": 10,
     ".github": 5,
     "infra": 2,
     "brand": 1,
@@ -90,6 +90,28 @@
         "webapp/src/actions/categorize.ts",
         "webapp/src/actions/product-events.ts",
         "webapp/src/actions/budgets.ts"
+      ]
+    },
+    {
+      "name": "zod-validators",
+      "description": "Validation layer using Zod",
+      "matched_files": 15,
+      "examples": [
+        "webapp/playwright-report/trace/uiMode.CQJ9SCIQ.js",
+        "webapp/playwright-report/trace/sw.bundle.js",
+        "webapp/playwright-report/trace/assets/defaultSettingsView-CJSZINFr.js",
+        "webapp/playwright-report/trace/assets/codeMirrorModule-a5XoALAZ.js",
+        "webapp/src/actions/recurring-templates.ts",
+        "webapp/src/actions/profile.ts",
+        "webapp/src/actions/purchase-decision.ts",
+        "webapp/src/lib/validators/account.ts",
+        "webapp/src/lib/validators/category.ts",
+        "webapp/src/lib/validators/destinatario.ts",
+        "webapp/src/lib/validators/transaction.ts",
+        "webapp/src/lib/validators/budget.ts",
+        "webapp/src/lib/validators/recurring-template.ts",
+        "webapp/src/lib/validators/import.ts",
+        "webapp/src/lib/validators/auth.ts"
       ]
     },
     {
@@ -181,25 +203,6 @@
       ]
     },
     {
-      "name": "zod-validators",
-      "description": "Validation layer using Zod",
-      "matched_files": 12,
-      "examples": [
-        "webapp/src/actions/recurring-templates.ts",
-        "webapp/src/actions/profile.ts",
-        "webapp/src/actions/purchase-decision.ts",
-        "webapp/src/lib/validators/account.ts",
-        "webapp/src/lib/validators/category.ts",
-        "webapp/src/lib/validators/destinatario.ts",
-        "webapp/src/lib/validators/transaction.ts",
-        "webapp/src/lib/validators/budget.ts",
-        "webapp/src/lib/validators/recurring-template.ts",
-        "webapp/src/lib/validators/import.ts",
-        "webapp/src/lib/validators/auth.ts",
-        ".claude/skills/codebase-context/scripts/build_context.py"
-      ]
-    },
-    {
       "name": "repository-pattern",
       "description": "Repository pattern in mobile/lib/repositories",
       "matched_files": 4,
@@ -261,5 +264,21 @@
       "count": 1
     }
   ],
-  "recent_changes": []
+  "recent_changes": [
+    ".gitignore",
+    "pnpm-lock.yaml",
+    "webapp/package.json",
+    "webapp/src/components/dashboard/accounts-overview.tsx",
+    "webapp/src/components/dashboard/dashboard-account-picker.tsx",
+    "webapp/src/components/dashboard/interactive-metric-card.tsx",
+    "webapp/src/components/import/parsed-transaction-table.tsx",
+    "webapp/src/components/mobile/bottom-tab-bar.tsx",
+    "webapp/src/components/mobile/fab-menu.tsx",
+    "webapp/src/components/mobile/mobile-presupuesto.tsx",
+    "webapp/src/components/settings/bug-report-form.tsx",
+    "webapp/src/components/ui/tabs.tsx",
+    ".claude/launch.json",
+    "webapp/e2e/",
+    "webapp/playwright.config.ts"
+  ]
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,9 +27,13 @@ const SUB_ACTIONS: ContextAction[] = [
 
 export function FabMenu({ onAction, contextActions }: FabMenuProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
   const allActions = [...(contextActions ?? []), ...SUB_ACTIONS];
 
   const toggle = useCallback(() => setOpen((prev) => !prev), []);
+
+  // Close on route change
+  useEffect(() => setOpen(false), [pathname]);
 
   // Close on Escape key
   useEffect(() => {
@@ -53,7 +58,7 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
       {/* Backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/40"
+          className="fixed inset-0 z-30 bg-black/40"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />

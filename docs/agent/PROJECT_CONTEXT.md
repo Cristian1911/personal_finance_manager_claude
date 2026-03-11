@@ -2,7 +2,7 @@
 
 Auto-generated project intelligence for fast onboarding and safe edits.
 
-- Generated (UTC): `2026-03-10T11:22:02.703575+00:00`
+- Generated (UTC): `2026-03-11T20:20:39.682488+00:00`
 - Project root: `/Users/cristian/Documents/developing/current-projects/zeta`
 
 ## Stack Snapshot
@@ -13,29 +13,29 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - pnpm workspace
 
 ## File/Lang Distribution
-- Text files scanned: 701
-- JSON: 279
+- Text files scanned: 745
+- JSON: 282
 - TypeScript/React: 193
-- TypeScript: 105
-- Markdown: 43
+- TypeScript: 108
+- Markdown: 67
 - SQL: 29
 - Python: 22
 - YAML: 10
 - Shell: 10
-- JavaScript: 5
-- CSS: 2
+- JavaScript: 10
+- CSS: 7
+- HTML: 5
 - TOML: 2
-- HTML: 1
 
 ## Top-level Areas
 - mobile: 354 files
-- webapp: 215 files
+- webapp: 258 files
 - supabase: 31 files
 - docs: 26 files
 - services: 24 files
 - packages: 18 files
 - (root): 15 files
-- .claude: 9 files
+- .claude: 10 files
 - .github: 5 files
 - infra: 2 files
 - brand: 1 files
@@ -73,6 +73,10 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `webapp/middleware.ts`
   - e.g. `webapp/src/app/page.tsx`
   - e.g. `webapp/src/app/auth/callback/route.ts`
+- `zod-validators` (15 files): Validation layer using Zod
+  - e.g. `webapp/playwright-report/trace/uiMode.CQJ9SCIQ.js`
+  - e.g. `webapp/playwright-report/trace/sw.bundle.js`
+  - e.g. `webapp/playwright-report/trace/assets/defaultSettingsView-CJSZINFr.js`
 - `next-app-router` (15 files): Next.js App Router pages/layouts
   - e.g. `webapp/src/app/layout.tsx`
   - e.g. `webapp/src/app/page.tsx`
@@ -89,10 +93,6 @@ Auto-generated project intelligence for fast onboarding and safe edits.
   - e.g. `services/pdf_parser/test_parser.py`
   - e.g. `services/pdf_parser/models.py`
   - e.g. `services/pdf_parser/storage.py`
-- `zod-validators` (12 files): Validation layer using Zod
-  - e.g. `webapp/src/actions/recurring-templates.ts`
-  - e.g. `webapp/src/actions/profile.ts`
-  - e.g. `webapp/src/actions/purchase-decision.ts`
 - `repository-pattern` (4 files): Repository pattern in mobile/lib/repositories
   - e.g. `mobile/lib/repositories/budgets.ts`
   - e.g. `mobile/lib/repositories/categories.ts`
@@ -135,7 +135,21 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- Working tree clean
+- `.gitignore`
+- `pnpm-lock.yaml`
+- `webapp/package.json`
+- `webapp/src/components/dashboard/accounts-overview.tsx`
+- `webapp/src/components/dashboard/dashboard-account-picker.tsx`
+- `webapp/src/components/dashboard/interactive-metric-card.tsx`
+- `webapp/src/components/import/parsed-transaction-table.tsx`
+- `webapp/src/components/mobile/bottom-tab-bar.tsx`
+- `webapp/src/components/mobile/fab-menu.tsx`
+- `webapp/src/components/mobile/mobile-presupuesto.tsx`
+- `webapp/src/components/settings/bug-report-form.tsx`
+- `webapp/src/components/ui/tabs.tsx`
+- `.claude/launch.json`
+- `webapp/e2e/`
+- `webapp/playwright.config.ts`
 
 ## Agent Playbook
 - Read this file first, then open only relevant folders/files.

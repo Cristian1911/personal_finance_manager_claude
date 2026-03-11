@@ -155,7 +155,7 @@ export function BugReportForm() {
           minLength={9}
           maxLength={4000}
           required
-          className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring min-h-28 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          className="border-input bg-background placeholder:text-muted-foreground min-h-28 w-full rounded-md border px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
         />
       </div>
 

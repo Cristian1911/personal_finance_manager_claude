@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "webapp",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "webapp", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "pdf-parser",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd services/pdf_parser && uv run python main.py"],
+      "port": 8000
+    }
+  ]
+}

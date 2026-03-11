@@ -113,6 +113,7 @@ export function MobilePresupuesto({
       {visibleInbox.length > 0 && (
         <div>
           <button
+            type="button"
             onClick={() => setInboxExpanded(!inboxExpanded)}
             className="flex w-full items-center gap-2 mb-2"
           >

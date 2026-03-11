@@ -109,11 +109,20 @@ export function InteractiveMetricCard({
   
   return (
     <>
-      <Card 
-        className={`relative overflow-hidden transition-all duration-300 cursor-pointer group ${config.borderColor} hover:shadow-lg`}
+      <Card
+        className={`relative overflow-hidden transition-all duration-300 cursor-pointer group ${config.borderColor} hover:shadow-lg focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => setIsDialogOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsDialogOpen(true);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label={`${config.title}: ${type === "savings-rate" ? `${data.value.toFixed(1)}%` : formatCurrency(Math.abs(data.value), data.currency)}. Clic para ver detalles`}
       >
         {/* Hover indicator line */}
         <div

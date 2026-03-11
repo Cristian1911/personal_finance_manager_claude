@@ -89,7 +89,7 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
           currentBalance={account.current_balance}
           currencyCode={account.currency_code}
           trigger={
-            <button className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-accent transition-all">
+            <button className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-accent transition-all" aria-label={`Actualizar saldo de ${account.name}`}>
               <RefreshCw className="h-3 w-3 text-muted-foreground" />
             </button>
           }

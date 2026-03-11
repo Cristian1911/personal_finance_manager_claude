@@ -25,6 +25,11 @@ supabase/.temp/
 # Git worktrees
 .worktrees/
 
+# Playwright
+webapp/playwright-report/
+webapp/test-results/
+webapp/e2e/.auth/
+
 # Claude Code local settings (not shared)
 .claude/settings.local.json
 .claude/last_session_summary.md
@@ -34,5 +39,4 @@ supabase/.temp/
 # .claude/agents/ — tracked
 # .claude/skills/ — tracked
 # .claude/todo.md — tracked
-node_modules
 mobile/.idea/

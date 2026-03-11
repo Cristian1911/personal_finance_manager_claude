@@ -82,7 +82,7 @@ export function ParsedTransactionTable({
                 <TableCell className="whitespace-nowrap text-sm">
                   {tx.date}
                 </TableCell>
-                <TableCell className="text-sm max-w-[300px] truncate">
+                <TableCell className="text-sm max-w-[200px] lg:max-w-[400px] truncate">
                   {tx.description}
                 </TableCell>
                 {showCategories && (
