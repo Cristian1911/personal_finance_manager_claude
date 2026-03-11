@@ -1,0 +1,17 @@
+# Maestro Configuration for Zeta Finance App
+# Docs: https://docs.maestro.dev
+
+appId: com.zetafinance.app
+
+# Tags allow filtering which tests to run
+# Usage: maestro test --include-tags=smoke .maestro/
+tags:
+  - smoke
+  - regression
+
+# Default execution order
+executionOrder:
+  continueOnFailure: false
+
+# Status bar configuration (hides dynamic content for screenshots)
+statusBar: dark

@@ -1,0 +1,34 @@
+# Test: Flujo de importación PDF (navegación del wizard)
+# Tags: import
+# Precondición: Usuario autenticado
+# Nota: Este test verifica la navegación del wizard, no la importación real
+
+appId: com.zetafinance.app
+tags:
+  - import
+env:
+  EMAIL: ${EMAIL}
+  PASSWORD: ${PASSWORD}
+---
+- launchApp:
+    clearState: true
+
+# Login
+- runFlow:
+    file: ../../helpers/login.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+# Navegar a importar
+- tapOn:
+    id: "tab-import"
+
+# Verificar pantalla de import
+- assertVisible:
+    id: "import-screen"
+    timeout: 5000
+
+# Verificar que el botón de subir PDF existe
+- assertVisible:
+    id: "import-upload-button"

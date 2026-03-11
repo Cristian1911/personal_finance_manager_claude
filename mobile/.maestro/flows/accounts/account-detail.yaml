@@ -1,0 +1,38 @@
+# Test: Ver detalle de una cuenta
+# Tags: accounts
+# Precondición: Usuario autenticado con al menos 1 cuenta
+
+appId: com.zetafinance.app
+tags:
+  - accounts
+env:
+  EMAIL: ${EMAIL}
+  PASSWORD: ${PASSWORD}
+---
+- launchApp:
+    clearState: true
+
+# Login
+- runFlow:
+    file: ../../helpers/login.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+# Navegar a cuentas
+- tapOn:
+    id: "tab-accounts"
+- assertVisible:
+    id: "accounts-screen"
+
+# Abrir primera cuenta
+- tapOn:
+    id: "account-card"
+    index: 0
+
+# Verificar detalle de cuenta
+- assertVisible:
+    id: "account-detail-screen"
+    timeout: 5000
+- assertVisible:
+    id: "account-balance"

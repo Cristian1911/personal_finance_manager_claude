@@ -1,0 +1,18 @@
+# Helper: Logout flow reutilizable
+# Uso: - runFlow: ../helpers/logout.yaml
+
+appId: com.zetafinance.app
+---
+- tapOn:
+    id: "tab-settings"
+- assertVisible:
+    id: "settings-screen"
+- scrollUntilVisible:
+    element:
+      id: "settings-logout-button"
+    direction: DOWN
+- tapOn:
+    id: "settings-logout-button"
+- assertVisible:
+    id: "login-screen"
+    timeout: 5000

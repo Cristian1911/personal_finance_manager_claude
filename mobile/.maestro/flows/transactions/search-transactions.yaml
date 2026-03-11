@@ -1,0 +1,36 @@
+# Test: Buscar transacciones
+# Tags: transactions
+# Precondición: Usuario autenticado con transacciones
+
+appId: com.zetafinance.app
+tags:
+  - transactions
+env:
+  EMAIL: ${EMAIL}
+  PASSWORD: ${PASSWORD}
+---
+- launchApp:
+    clearState: true
+
+# Login
+- runFlow:
+    file: ../../helpers/login.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+# Navegar a transacciones
+- tapOn:
+    id: "tab-transactions"
+- assertVisible:
+    id: "transactions-screen"
+
+# Buscar
+- tapOn:
+    id: "transactions-search-input"
+- inputText: "mercado"
+
+# Verificar que los resultados se filtran
+- assertVisible:
+    id: "transaction-list"
+    timeout: 5000
