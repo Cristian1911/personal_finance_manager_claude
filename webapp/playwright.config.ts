@@ -40,5 +40,13 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
+    // Security regression tests — no auth required
+    {
+      name: "security",
+      testMatch: /security\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+      },
+    },
   ],
 });

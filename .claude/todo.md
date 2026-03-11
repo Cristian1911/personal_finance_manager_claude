@@ -60,9 +60,9 @@
   - Added `.eq("user_id")` to category delete, import reconciliation updates
 - [x] [P2] Add security headers hardening in app/proxy
   - Added HSTS, CSP, Permissions-Policy; removed legacy X-XSS-Protection
-- [ ] [P2] Add automated security regression checks
-  - Add tests that verify unauthorized row mutations fail
-  - Add CI step for dependency vulnerability scanning when network is available
+- [x] [P2] Add automated security regression checks
+  - Playwright security spec: API auth enforcement, upload size limits, protected page redirects
+  - CI workflow: weekly + PR-triggered `pnpm audit` and `pip-audit`
 
 ### Bank Parser Implementation
 - Fill in parsing logic for NU, Lulo, Banco de Bogotá once sample PDFs are provided
