@@ -155,10 +155,11 @@ export function StepConfirm({
 
         let installmentGroupId: string | null = null;
         if (tx.installment_current != null && tx.installment_total != null) {
+          // Use original_amount (full purchase price) for grouping consistency
           installmentGroupId = await computeInstallmentGroupId({
             accountId: mapping.accountId,
             rawDescription: tx.description,
-            amount: tx.amount,
+            amount: tx.original_amount ?? tx.amount,
           });
         }
 
@@ -180,6 +181,7 @@ export function StepConfirm({
           installment_current: tx.installment_current,
           installment_total: tx.installment_total,
           installment_group_id: installmentGroupId,
+          original_amount: tx.original_amount,
           destinatario_id: destinatarioId,
           merchant_name: merchantName,
         });

@@ -172,22 +172,32 @@ def parse_popular_credit_card(
                         tx_date = _parse_date(date_str)
                         if not tx_date:
                             continue
-                            
-                        amount = _parse_us_number(amount_str)
-                        
+
+                        orig_amount = _parse_us_number(amount_str)
+                        # Group 5 = monthly payment (cuota)
+                        monthly_pay_str = m.group(5)
+                        monthly_pay = _parse_us_number(monthly_pay_str)
+
                         direction = TransactionDirection.OUTFLOW
                         # Logic: Negative amount is payment (INFLOW)
-                        if amount < 0:
+                        if orig_amount < 0:
                             direction = TransactionDirection.INFLOW
-                            amount = abs(amount)
+                            orig_amount = abs(orig_amount)
+                            monthly_pay = abs(monthly_pay)
                         elif "PAGO" in desc.upper():
                              direction = TransactionDirection.INFLOW
-                        
+
                         installment_current = None
                         installment_total = None
+                        original_amount = None
+                        amount = orig_amount
                         if term_total != "00":
                             installment_current = int(term_current)
                             installment_total = int(term_total)
+                            # Use monthly payment as amount, full price as original
+                            if monthly_pay > 0:
+                                amount = monthly_pay
+                                original_amount = orig_amount
 
                         transactions.append(
                             ParsedTransaction(
@@ -195,10 +205,11 @@ def parse_popular_credit_card(
                                 description=desc,
                                 amount=amount,
                                 direction=direction,
-                                balance=None, # Balance logic is tricky in this format
+                                balance=None,
                                 authorization_number=auth,
                                 installment_current=installment_current,
                                 installment_total=installment_total,
+                                original_amount=original_amount,
                                 currency="COP",
                             )
                         )

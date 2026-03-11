@@ -1,4 +1,19 @@
-"""Shared utilities for bank statement parsers."""
+"""Shared utilities for bank statement parsers.
+
+=== PARSER CONVENTIONS ===
+
+Installment transactions (cuotas):
+  - `amount` MUST be the monthly cuota (what the user actually pays this period)
+  - `original_amount` MUST be the full purchase price (reference only)
+  - If the PDF has separate columns for both values, extract them directly.
+  - If the PDF only shows the full purchase price (no cuota column), leave
+    `amount` as the full price and `original_amount` as None — do NOT calculate
+    cuota by dividing, because interest rates vary per transaction.
+  - Non-installment transactions: `original_amount` = None.
+
+This matters because `amount` feeds dashboards, budgets, and cash-flow charts.
+Storing the full purchase price as `amount` would overstate monthly spending.
+"""
 
 from __future__ import annotations
 

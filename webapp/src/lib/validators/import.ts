@@ -21,6 +21,7 @@ export const transactionToImportSchema = z.object({
   installment_current: z.number().int().positive().optional().nullable(),
   installment_total: z.number().int().positive().optional().nullable(),
   installment_group_id: z.string().optional().nullable(),
+  original_amount: z.number().positive().optional().nullable(),
   notes: z.string().optional().nullable(),
   destinatario_id: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),

@@ -238,20 +238,22 @@ def parse_bogota_credit_card(
                     if len(nums) < 6:
                         continue
                         
-                    # Map fields
+                    # Map fields: Term | OrigVal | Rate | MonthlyPay | RemTerm | Balance
                     term_str = nums[0]
-                    amount_str = nums[1]
+                    orig_val_str = nums[1]
                     rate_str = nums[2] if len(nums) > 2 else "0"
+                    monthly_pay_str = nums[3] if len(nums) > 3 else "0"
                     rem_str = nums[4] if len(nums) > 4 else "00"
                     balance_str = nums[5] if len(nums) > 5 else "0"
 
                     try:
                         d_parts = date_str.split("/")
                         tx_date = date(int(d_parts[2]), int(d_parts[1]), int(d_parts[0]))
-                        
-                        amount = _parse_us_number(amount_str)
+
+                        orig_val = _parse_us_number(orig_val_str)
+                        monthly_pay = _parse_us_number(monthly_pay_str)
                         balance = _parse_us_number(balance_str)
-                        
+
                         if rate_str not in ["0.000", "0", "0.00"]:
                             try:
                                 tx_rate = _parse_us_number(rate_str)
@@ -259,17 +261,23 @@ def parse_bogota_credit_card(
                                     metadata.interest_rate = tx_rate
                             except ValueError:
                                 pass
-                        
+
                         direction = TransactionDirection.OUTFLOW
                         upper_desc = desc.upper()
                         if upper_desc.startswith("PAGO") or upper_desc.startswith("ABONO"):
                             direction = TransactionDirection.INFLOW
-                        
+
                         installment_current = None
                         installment_total = None
+                        original_amount = None
+                        amount = orig_val
                         if term_str != "00" and rem_str != "00":
                             installment_current = int(rem_str)
                             installment_total = int(term_str)
+                            # Use monthly payment as amount, full price as original
+                            if monthly_pay > 0:
+                                amount = monthly_pay
+                                original_amount = orig_val
 
                         transactions.append(
                             ParsedTransaction(
@@ -281,6 +289,7 @@ def parse_bogota_credit_card(
                                 authorization_number=auth,
                                 installment_current=installment_current,
                                 installment_total=installment_total,
+                                original_amount=original_amount,
                                 currency="COP",
                             )
                         )

@@ -124,6 +124,11 @@ export function ParsedTransactionTable({
                     {tx.direction === "INFLOW" ? "+" : "-"}
                     {formatCurrency(tx.amount, currency as CurrencyCode)}
                   </span>
+                  {tx.original_amount != null && tx.original_amount !== tx.amount && (
+                    <p className="text-xs text-muted-foreground">
+                      Compra: {formatCurrency(tx.original_amount, currency as CurrencyCode)}
+                    </p>
+                  )}
                 </TableCell>
               </TableRow>
             );

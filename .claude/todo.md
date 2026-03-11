@@ -64,6 +64,13 @@
   - Playwright security spec: API auth enforcement, upload size limits, protected page redirects
   - CI workflow: weekly + PR-triggered `pnpm audit` and `pip-audit`
 
+### Credit Card Installment Fix (Completed)
+- [x] Bancolombia CC parser: amount = monthly cuota (Valor Cuota/Abono), original_amount = full purchase price (Valor movimiento)
+  - DB migration: `original_amount` column on `transactions` table
+  - Idempotency: uses `original_amount ?? amount` for hashing (backward compatible)
+  - Import UI: shows "Compra: $X" subtitle for installment transactions
+  - Note: previously imported installment transactions have the full price as `amount` — re-import to fix
+
 ### Bank Parser Implementation
 - Fill in parsing logic for NU, Lulo, Banco de Bogotá once sample PDFs are provided
 - Each parser needs: regex patterns, number format, date format, transaction extraction

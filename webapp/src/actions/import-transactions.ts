@@ -474,10 +474,13 @@ export async function importTransactions(
   const details: string[] = [];
 
   for (const [txIndex, tx] of transactions.entries()) {
+    // Use original_amount (full purchase price) for idempotency when available,
+    // so re-imports of the same statement produce the same key regardless of
+    // whether the parser previously used the full price or now uses the cuota.
     const idempotencyKey = await computeIdempotencyKey({
       provider: "OCR",
       transactionDate: tx.transaction_date,
-      amount: tx.amount,
+      amount: tx.original_amount ?? tx.amount,
       rawDescription: tx.raw_description,
       installmentCurrent: tx.installment_current,
     });
@@ -504,6 +507,7 @@ export async function importTransactions(
         installment_current: tx.installment_current ?? null,
         installment_total: tx.installment_total ?? null,
         installment_group_id: tx.installment_group_id ?? null,
+        original_amount: tx.original_amount ?? null,
         destinatario_id: tx.destinatario_id ?? null,
         merchant_name: tx.merchant_name ?? null,
       })

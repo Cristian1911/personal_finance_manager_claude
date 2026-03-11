@@ -5,13 +5,14 @@ import type { Database } from "./database";
 export type ParsedTransaction = {
   date: string; // "YYYY-MM-DD"
   description: string;
-  amount: number; // always positive
+  amount: number; // always positive — for installments this is the monthly cuota
   direction: "INFLOW" | "OUTFLOW";
   balance: number | null;
   currency: string;
   authorization_number: string | null;
   installment_current: number | null;
   installment_total: number | null;
+  original_amount: number | null; // full purchase price (for installment transactions)
 };
 
 export type StatementSummary = {
@@ -87,6 +88,7 @@ export type TransactionToImport = {
   installment_current?: number | null;
   installment_total?: number | null;
   installment_group_id?: string | null;
+  original_amount?: number | null;
   notes?: string | null;
   destinatario_id?: string | null;
   merchant_name?: string | null;

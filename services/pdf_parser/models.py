@@ -20,13 +20,14 @@ class TransactionDirection(str, Enum):
 class ParsedTransaction(BaseModel):
     date: date
     description: str
-    amount: float  # always positive
+    amount: float  # always positive — for installments this is the monthly cuota
     direction: TransactionDirection
     balance: float | None = None
     currency: str = "COP"
     authorization_number: str | None = None
     installment_current: int | None = None  # e.g. 3 (cuota 3 of 24)
     installment_total: int | None = None    # e.g. 24
+    original_amount: float | None = None  # full purchase price (for installment transactions)
 
 
 class StatementSummary(BaseModel):

@@ -161,8 +161,12 @@ def _parse_transaction_line(
 ) -> ParsedTransaction | None:
     """Parse a single transaction line from credit card detail text.
 
-    Lines look like:
+    Columns (for installment transactions):
+      Auth | Date | Description | $ValorMovimiento | N/T | $ValorCuota | %IntMensual | %IntAnual | $SaldoPendiente
+
+    Examples:
       T00265 29/09/2025 DLO*GOOGLE Archero $ 66.000,00 1/1 $ 66.000,00 0,0000 % 00,0000 % $ 0,00
+      512820 24/10/2025 AVANCE SUCURSAL VIRTUAL $ 4.390.000,00 3/24 $ 182.916,67 1,8312 % 24,3269 % $ 3.841.249,99
       30/09/2025 INTERESES CORRIENTES $ 31.761,22 $ 31.761,22 $ 0,00
     """
     date_match = TX_DATE_RE.search(line)
@@ -184,18 +188,18 @@ def _parse_transaction_line(
     if not description:
         return None
 
-    # First $ amount = valor movimiento (may have installments after it)
+    # First $ amount = valor movimiento (full purchase price)
     first_part = dollar_parts[1].strip()
     num_match = COLOMBIAN_NUM_START_RE.match(first_part)
     if not num_match:
         return None
 
     try:
-        amount = _parse_colombian_number(num_match.group(1))
+        valor_movimiento = _parse_colombian_number(num_match.group(1))
     except ValueError:
         return None
 
-    # Check for installments (e.g. "1/1", "1/24") after the amount
+    # Check for installments (e.g. "1/1", "1/24") after the first amount
     rest = first_part[num_match.end() :].strip()
     installment_current = None
     installment_total = None
@@ -203,6 +207,23 @@ def _parse_transaction_line(
     if inst_match:
         installment_current = int(inst_match.group(1))
         installment_total = int(inst_match.group(2))
+
+    # For installment transactions, second $ = valor cuota/abono (monthly payment)
+    # For non-installment, amount = valor movimiento
+    amount = valor_movimiento
+    original_amount = None
+
+    if installment_current is not None and len(dollar_parts) >= 3:
+        cuota_part = dollar_parts[2].strip()
+        cuota_match = COLOMBIAN_NUM_START_RE.match(cuota_part)
+        if cuota_match:
+            try:
+                cuota_amount = _parse_colombian_number(cuota_match.group(1))
+                # Use cuota as amount, full price as original_amount
+                amount = cuota_amount
+                original_amount = valor_movimiento
+            except ValueError:
+                pass
 
     # Last $ amount = saldo pendiente
     balance = None
@@ -233,6 +254,7 @@ def _parse_transaction_line(
         authorization_number=auth_num,
         installment_current=installment_current,
         installment_total=installment_total,
+        original_amount=abs(original_amount) if original_amount is not None else None,
     )
 
 

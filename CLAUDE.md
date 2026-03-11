@@ -61,6 +61,14 @@
 - Results show transaction counts + per-account diff (old → new for credit limit, balance, interest rate, etc.)
 - Account detail page shows statement history timeline for credit cards, loans, savings
 
+### Parser Rules (credit card installments)
+- `amount` = monthly cuota (what the user pays this period) — this feeds dashboards/budgets
+- `original_amount` = full purchase price (reference only, nullable)
+- Extract the cuota directly from the PDF column — never calculate it by dividing (interest rates vary per transaction)
+- If the PDF has no separate cuota column, leave `amount` as the full price and `original_amount` as None
+- Idempotency key uses `original_amount ?? amount` so re-imports with the fix don't create duplicates
+- See `services/pdf_parser/parsers/utils.py` docstring for full convention
+
 ## Gotchas
 - Zod 4 `.uuid()` enforces RFC 9562 — seed category UUIDs (a0000001-...) fail validation
 - shadcn/ui Checkbox: use `checked="indeterminate"`, not an `indeterminate` prop

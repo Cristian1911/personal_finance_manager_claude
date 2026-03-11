@@ -788,6 +788,7 @@ export type Database = {
           merchant_logo_url: string | null
           merchant_name: string | null
           notes: string | null
+          original_amount: number | null
           posting_date: string | null
           provider: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id: string | null
@@ -829,6 +830,7 @@ export type Database = {
           merchant_logo_url?: string | null
           merchant_name?: string | null
           notes?: string | null
+          original_amount?: number | null
           posting_date?: string | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id?: string | null
@@ -870,6 +872,7 @@ export type Database = {
           merchant_logo_url?: string | null
           merchant_name?: string | null
           notes?: string | null
+          original_amount?: number | null
           posting_date?: string | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_transaction_id?: string | null
