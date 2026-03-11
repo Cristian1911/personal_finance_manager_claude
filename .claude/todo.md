@@ -75,7 +75,7 @@
 - Major undertaking — affects auth, data layer, conflict resolution
 
 ### Future Ideas (Deferred)
-- Balance-over-time charts from statement snapshots
-- Payment reminders from payment_due_date
-- Import reminder (nudge after ~30 days since last import)
+- [x] Balance-over-time charts — time range selector (3M/6M/1A/Todo) on account detail page
+- [x] Payment reminders — existing UpcomingPayments on dashboard; push notifications deferred to mobile
+- [x] Import reminder — dashboard alerts system + per-account staleness indicator (30d+)
 - ML-based auto-categorization (Python service in `services/`)
