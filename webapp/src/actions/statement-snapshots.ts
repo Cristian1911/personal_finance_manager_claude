@@ -6,6 +6,34 @@ import type { Tables } from "@/types/database";
 
 export type StatementSnapshot = Tables<"statement_snapshots">;
 
+/**
+ * Get the most recent snapshot created_at per account.
+ * Used by the dashboard alerts to determine import staleness.
+ */
+export async function getLatestSnapshotDates(): Promise<
+  Record<string, string>
+> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return {};
+
+  const { data } = await supabase
+    .from("statement_snapshots")
+    .select("account_id, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (!data) return {};
+
+  // Keep only the most recent per account
+  const result: Record<string, string> = {};
+  for (const row of data) {
+    if (!result[row.account_id]) {
+      result[row.account_id] = row.created_at;
+    }
+  }
+  return result;
+}
+
 export async function getStatementSnapshots(
   accountId: string
 ): Promise<ActionResult<StatementSnapshot[]>> {

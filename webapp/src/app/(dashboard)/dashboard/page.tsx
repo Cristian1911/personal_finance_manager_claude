@@ -38,6 +38,8 @@ import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
+import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
+import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 
 type DashboardTransactionRow = {
   id: string;
@@ -180,7 +182,7 @@ export default async function DashboardPage({
   }
 
   // Fetch all dashboard data in parallel
-  const [heroData, accountsData, budgetPaceData, cashflowData, categoryData, allAccountsResult] =
+  const [heroData, accountsData, budgetPaceData, cashflowData, categoryData, allAccountsResult, latestSnapshotDates] =
     await Promise.all([
       getDashboardHeroData(month),
       getAccountsWithSparklineData(),
@@ -188,6 +190,7 @@ export default async function DashboardPage({
       getMonthlyCashflow(month),
       getCategorySpending(month),
       getAccounts(),
+      getLatestSnapshotDates(),
     ]);
 
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
@@ -265,6 +268,17 @@ export default async function DashboardPage({
               }
             />
           </div>
+
+          {/* 2.5 Alerts */}
+          <DashboardAlerts
+            accounts={allAccounts.map((a) => ({
+              id: a.id,
+              name: a.name,
+              account_type: a.account_type,
+              updated_at: a.updated_at,
+            }))}
+            latestSnapshotDates={latestSnapshotDates}
+          />
 
           {/* 3. Analysis */}
           <div>

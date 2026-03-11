@@ -64,6 +64,20 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
               Cuota {account.installmentProgress}
             </p>
           )}
+          {(() => {
+            const importableTypes = new Set(["CREDIT_CARD", "LOAN", "SAVINGS"]);
+            if (!importableTypes.has(account.account_type) || !account.updated_at) return null;
+            const daysAgo = Math.floor(
+              (Date.now() - new Date(account.updated_at).getTime()) / (24 * 60 * 60 * 1000)
+            );
+            if (daysAgo < 30) return null;
+            const color = daysAgo >= 60 ? "text-destructive" : "text-amber-500 dark:text-amber-400";
+            return (
+              <p className={`text-xs ${color}`}>
+                hace {daysAgo} días
+              </p>
+            );
+          })()}
         </div>
       </Link>
 
