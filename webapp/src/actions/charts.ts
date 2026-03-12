@@ -10,6 +10,7 @@ import {
 } from "@/lib/utils/date";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { computeDebtBalance } from "@zeta/shared";
+import type { CurrencyCode } from "@/types/domain";
 
 // --- Types ---
 
@@ -43,7 +44,7 @@ export interface DailySpending {
  * Expense breakdown by category for the given month (defaults to current).
  * Returns top categories sorted by total amount descending.
  */
-export async function getCategorySpending(month?: string): Promise<CategorySpending[]> {
+export async function getCategorySpending(month?: string, currency?: CurrencyCode): Promise<CategorySpending[]> {
   const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
@@ -58,6 +59,7 @@ export async function getCategorySpending(month?: string): Promise<CategorySpend
       .select("amount, category_id, categories!category_id(name_es, name, color)")
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
+      .eq("currency_code", currency ?? "COP")
       .gte("transaction_date", monthStartStr(target))
       .lte("transaction_date", monthEndStr(target))
     ),
@@ -119,7 +121,7 @@ export async function getCategorySpending(month?: string): Promise<CategorySpend
 /**
  * Monthly income vs expenses for the 6 months ending at the given month.
  */
-export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflow[]> {
+export async function getMonthlyCashflow(month?: string, currency?: CurrencyCode): Promise<MonthlyCashflow[]> {
   const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
@@ -130,6 +132,7 @@ export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflo
     .from("transactions")
     .select("transaction_date, amount, direction, accounts!account_id(account_type)")
     .eq("is_excluded", false)
+    .eq("currency_code", currency ?? "COP")
     .gte("transaction_date", monthsBeforeStart(target, 5))
     .lte("transaction_date", monthEndStr(target))
     .order("transaction_date")
@@ -172,7 +175,7 @@ export async function getMonthlyCashflow(month?: string): Promise<MonthlyCashflo
 /**
  * Daily spending (OUTFLOW) for the given month (defaults to current).
  */
-export async function getDailySpending(month?: string): Promise<DailySpending[]> {
+export async function getDailySpending(month?: string, currency?: CurrencyCode): Promise<DailySpending[]> {
   const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
@@ -184,6 +187,7 @@ export async function getDailySpending(month?: string): Promise<DailySpending[]>
     .select("transaction_date, amount")
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
+    .eq("currency_code", currency ?? "COP")
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target))
     .order("transaction_date")
@@ -322,33 +326,37 @@ export interface NetWorthHistory {
  * Historical net worth over the past 6 months ending at the given month.
  * Calculates current net worth, then steps backward using historical net cashflow.
  */
-export async function getNetWorthHistory(month?: string): Promise<NetWorthHistory[]> {
+export async function getNetWorthHistory(month?: string, currency?: CurrencyCode): Promise<NetWorthHistory[]> {
   const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return [];
 
+  const baseCurrency = currency ?? "COP";
+
   // 1. Get current active accounts balances to compute current net worth
   const { data: accounts } = await supabase
     .from("accounts")
-    .select("current_balance, available_balance, account_type, credit_limit")
+    .select("current_balance, available_balance, account_type, credit_limit, currency_code")
     .eq("user_id", user.id)
     .eq("is_active", true);
 
   // If no accounts, return early
   if (!accounts || accounts.length === 0) return [];
 
-  const totalAssets = accounts
+  const currencyAccounts = accounts.filter((a) => a.currency_code === baseCurrency);
+
+  const totalAssets = currencyAccounts
     .filter((a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN")
     .reduce((sum, a) => sum + a.current_balance, 0);
 
-  const totalLiabilities = accounts
+  const totalLiabilities = currencyAccounts
     .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
     .reduce((sum, a) => sum + computeDebtBalance(a as Parameters<typeof computeDebtBalance>[0]), 0);
 
   const currentNetWorth = totalAssets - totalLiabilities;
 
   // 2. Get monthly cashflow for the last 6 months
-  const cashflows = await getMonthlyCashflow(month);
+  const cashflows = await getMonthlyCashflow(month, currency);
 
   if (cashflows.length === 0) {
     // If no transaction history, just return current net worth for current month
@@ -410,10 +418,12 @@ export interface DashboardHeroData {
   freshness: "fresh" | "stale" | "outdated";
   oldestUpdate: string | null;
   currency: string;
+  hasOtherCurrencies: boolean;
 }
 
 export async function getDashboardHeroData(
-  month?: string
+  month?: string,
+  currency?: CurrencyCode
 ): Promise<DashboardHeroData> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) {
@@ -425,23 +435,35 @@ export async function getDashboardHeroData(
       freshness: "outdated",
       oldestUpdate: null,
       currency: "COP",
+      hasOtherCurrencies: false,
     };
   }
 
-  // 1. Get liquid accounts (not credit card, not loan)
-  const { data: liquidAccounts } = await supabase
-    .from("accounts")
-    .select("id, name, current_balance, currency_code, updated_at")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .not("account_type", "in", '("CREDIT_CARD","LOAN")');
+  const baseCurrency = currency ?? "COP";
+
+  // 1. Get liquid accounts (not credit card, not loan) + all active accounts for currency detection
+  const [{ data: liquidAccounts }, { data: allActiveAccounts }] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("id, name, current_balance, currency_code, updated_at")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .not("account_type", "in", '("CREDIT_CARD","LOAN")'),
+    supabase
+      .from("accounts")
+      .select("currency_code")
+      .eq("user_id", user.id)
+      .eq("is_active", true),
+  ]);
 
   const accounts = liquidAccounts ?? [];
-  const totalLiquid = accounts.reduce((sum, a) => sum + a.current_balance, 0);
+  const currencyAccounts = accounts.filter((a) => a.currency_code === baseCurrency);
+  const hasOtherCurrencies = (allActiveAccounts ?? []).some((a) => a.currency_code !== baseCurrency);
+  const totalLiquid = currencyAccounts.reduce((sum, a) => sum + a.current_balance, 0);
 
   // 2. Compute freshness from oldest updated_at among liquid accounts
   const { getFreshnessLevel } = await import("@/lib/utils/dashboard");
-  const timestamps = accounts.map((a) => a.updated_at).filter(Boolean);
+  const timestamps = currencyAccounts.map((a) => a.updated_at).filter(Boolean);
   const oldestUpdate = timestamps.length > 0
     ? timestamps.sort()[0]
     : null;
@@ -451,7 +473,7 @@ export async function getDashboardHeroData(
   const { getUpcomingRecurrences } = await import("@/actions/recurring-templates");
   const upcomingRecurrences = await getUpcomingRecurrences(30);
   const recurringObligations: PendingObligation[] = upcomingRecurrences
-    .filter((r) => r.template.direction === "OUTFLOW")
+    .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency)
     .map((r) => ({
       id: r.template.id,
       name: r.template.merchant_name ?? "Recurrente",
@@ -464,14 +486,16 @@ export async function getDashboardHeroData(
   // 4. Get pending obligations from statement payment due dates
   const { getUpcomingPayments } = await import("@/actions/payment-reminders");
   const statementPayments = await getUpcomingPayments();
-  const statementObligations: PendingObligation[] = statementPayments.map((p) => ({
-    id: p.id,
-    name: p.account_name,
-    amount: p.total_payment_due,
-    currency_code: p.currency_code,
-    due_date: p.payment_due_date,
-    source: "statement" as const,
-  }));
+  const statementObligations: PendingObligation[] = statementPayments
+    .filter((p) => p.currency_code === baseCurrency)
+    .map((p) => ({
+      id: p.id,
+      name: p.account_name,
+      amount: p.total_payment_due,
+      currency_code: p.currency_code,
+      due_date: p.payment_due_date,
+      source: "statement" as const,
+    }));
 
   // 5. Merge and sort by due date
   const allObligations = [...recurringObligations, ...statementObligations]
@@ -479,8 +503,6 @@ export async function getDashboardHeroData(
 
   const totalPending = allObligations.reduce((sum, o) => sum + o.amount, 0);
   const availableToSpend = totalLiquid - totalPending;
-  const currency = accounts[0]?.currency_code ?? "COP";
-
   return {
     totalLiquid,
     pendingObligations: allObligations,
@@ -488,7 +510,8 @@ export async function getDashboardHeroData(
     availableToSpend,
     freshness,
     oldestUpdate,
-    currency,
+    currency: baseCurrency,
+    hasOtherCurrencies,
   };
 }
 
@@ -627,10 +650,11 @@ export interface DailyBudgetPace {
 }
 
 export async function getDailyBudgetPace(
-  month?: string
+  month?: string,
+  currency?: CurrencyCode
 ): Promise<{ data: DailyBudgetPace[]; totalBudget: number; totalSpent: number }> {
   const target = parseMonth(month);
-  const dailyData = await getDailySpending(month);
+  const dailyData = await getDailySpending(month, currency);
   const { getBudgetSummary } = await import("@/actions/budgets");
   const budgetSummary = await getBudgetSummary(month);
 

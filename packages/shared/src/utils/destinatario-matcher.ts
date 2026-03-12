@@ -23,9 +23,10 @@ export interface DestinatarioMatch {
 }
 
 export interface DestinatarioSuggestion {
-  pattern: string;
+  cleanedPattern: string;
   count: number;
-  sample_descriptions: string[];
+  rawDescriptions: string[];
+  transactionPreviews: { date: string; rawDescription: string; amount: number }[];
 }
 
 // ─── Prepared rules (pre-sorted + pre-lowercased) ────────────────────────────
@@ -33,6 +34,31 @@ export interface DestinatarioSuggestion {
 export type PreparedDestinatarioRule = DestinatarioRule & {
   _lowerPattern: string;
 };
+
+// ─── Noise tokens ────────────────────────────────────────────────────────────
+
+const NOISE_TOKENS = new Set([
+  "SUC", "SUCURSAL", "OFC", "OFICINA", "PAG", "PAGO", "COMPRA",
+  "DISPONIBLE", "CR", "DB", "REVERSO", "DE",
+]);
+
+// ─── cleanDescription ────────────────────────────────────────────────────────
+
+/**
+ * Strip noise tokens (branch labels, payment prefixes, etc.) and pure-numeric
+ * tokens from a raw transaction description, returning an upper-cased,
+ * whitespace-normalised string suitable for grouping.
+ */
+export function cleanDescription(raw: string): string {
+  const upper = raw.toUpperCase().trim();
+  const tokens = upper.split(/\s+/);
+  const cleaned = tokens.filter((token) => {
+    if (NOISE_TOKENS.has(token)) return false;
+    if (/^\d+$/.test(token)) return false;
+    return true;
+  });
+  return cleaned.join(" ").trim();
+}
 
 /**
  * Pre-sort and pre-lowercase rules for repeated matching.
@@ -96,107 +122,55 @@ export function matchDestinatario(
 // ─── detectDestinatarioSuggestions ───────────────────────────────────────────
 
 /**
- * Tokenize a cleaned description into significant tokens.
- * Keeps tokens that are 3+ characters and not purely numeric.
- */
-function extractTokens(cleaned: string): string[] {
-  return cleaned
-    .split(/[\s\W_]+/)
-    .filter((t) => t.length >= 3 && !/^\d+$/.test(t));
-}
-
-/**
- * Generate candidate patterns from consecutive token sequences (1-3 tokens).
- */
-function generateCandidatePatterns(tokens: string[]): string[] {
-  const candidates: string[] = [];
-  for (let len = 1; len <= 3; len++) {
-    for (let i = 0; i <= tokens.length - len; i++) {
-      candidates.push(tokens.slice(i, i + len).join(" "));
-    }
-  }
-  return candidates;
-}
-
-/**
- * Analyze unmatched transaction descriptions to suggest new destinatario patterns.
- * Groups descriptions by recurring token patterns and returns suggestions
- * for patterns that appear in at least `minCount` unique descriptions.
+ * Analyze transaction descriptions to suggest new destinatario patterns.
+ * Groups descriptions by their cleaned form (noise tokens and pure-numeric
+ * tokens stripped) and returns suggestions for groups that appear at least
+ * `minCount` times across unique raw descriptions.
  */
 export function detectDestinatarioSuggestions(
-  unmatchedDescriptions: string[],
+  transactions: { description: string; date?: string; amount?: number }[],
   minCount: number = 2
 ): DestinatarioSuggestion[] {
-  // 1. Clean descriptions
-  const cleanedDescriptions = unmatchedDescriptions
-    .map((d) => d.toLowerCase().trim())
-    .filter((d) => d.length > 0);
+  const groups = new Map<
+    string,
+    { rawDescriptions: Set<string>; previews: { date: string; rawDescription: string; amount: number }[] }
+  >();
 
-  // 2. Build pattern -> unique descriptions map
-  const patternDescriptions = new Map<string, Set<string>>();
+  for (const tx of transactions) {
+    const cleaned = cleanDescription(tx.description);
+    if (cleaned.length === 0) continue;
 
-  for (const desc of cleanedDescriptions) {
-    const tokens = extractTokens(desc);
-    const candidates = generateCandidatePatterns(tokens);
-
-    for (const candidate of candidates) {
-      if (!patternDescriptions.has(candidate)) {
-        patternDescriptions.set(candidate, new Set());
-      }
-      patternDescriptions.get(candidate)!.add(desc);
+    if (!groups.has(cleaned)) {
+      groups.set(cleaned, { rawDescriptions: new Set(), previews: [] });
+    }
+    const group = groups.get(cleaned)!;
+    group.rawDescriptions.add(tx.description);
+    if (group.previews.length < 5) {
+      group.previews.push({
+        date: tx.date ?? "",
+        rawDescription: tx.description,
+        amount: tx.amount ?? 0,
+      });
     }
   }
 
-  // 3. Filter to patterns meeting minCount threshold
-  const qualifying: { pattern: string; descriptions: Set<string> }[] = [];
-
-  for (const [pattern, descs] of patternDescriptions) {
-    if (descs.size >= minCount) {
-      qualifying.push({ pattern, descriptions: descs });
-    }
-  }
-
-  // 4. Sort by unique description count desc, then pattern length desc
-  qualifying.sort((a, b) => {
-    const countDiff = b.descriptions.size - a.descriptions.size;
-    if (countDiff !== 0) return countDiff;
-    return b.pattern.length - a.pattern.length;
-  });
-
-  // 5. Deduplicate: skip patterns whose descriptions are mostly claimed
-  const claimedDescriptions = new Set<string>();
   const suggestions: DestinatarioSuggestion[] = [];
-
-  for (const { pattern, descriptions } of qualifying) {
-    // Count how many of this pattern's descriptions are NOT yet claimed
-    let unclaimed = 0;
-    for (const desc of descriptions) {
-      if (!claimedDescriptions.has(desc)) {
-        unclaimed++;
-      }
-    }
-
-    // Skip if most descriptions are already claimed by a better suggestion
-    if (unclaimed < minCount) continue;
-
-    // Claim these descriptions
-    for (const desc of descriptions) {
-      claimedDescriptions.add(desc);
-    }
-
-    // Collect up to 5 sample descriptions
-    const samples: string[] = [];
-    for (const desc of descriptions) {
-      if (samples.length >= 5) break;
-      samples.push(desc);
-    }
-
+  for (const [pattern, group] of groups) {
+    const totalCount = group.rawDescriptions.size;
+    if (totalCount < minCount) continue;
     suggestions.push({
-      pattern,
-      count: descriptions.size,
-      sample_descriptions: samples,
+      cleanedPattern: pattern,
+      count: totalCount,
+      rawDescriptions: Array.from(group.rawDescriptions),
+      transactionPreviews: group.previews,
     });
   }
+
+  suggestions.sort((a, b) => {
+    const countDiff = b.count - a.count;
+    if (countDiff !== 0) return countDiff;
+    return a.cleanedPattern.localeCompare(b.cleanedPattern);
+  });
 
   return suggestions;
 }

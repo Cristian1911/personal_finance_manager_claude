@@ -183,11 +183,12 @@ export interface LumpSumResult {
  */
 export function allocateLumpSum(
   accounts: DebtAccount[],
-  lumpSum: number
+  lumpSum: number,
+  currency?: string
 ): LumpSumResult {
   // Sort by interest rate descending (avalanche strategy)
   const sorted = [...accounts]
-    .filter((a) => a.balance > 0 && a.currency === "COP")
+    .filter((a) => a.balance > 0 && a.currency === (currency ?? "COP"))
     .sort((a, b) => (b.interestRate ?? 0) - (a.interestRate ?? 0));
 
   let remaining = lumpSum;

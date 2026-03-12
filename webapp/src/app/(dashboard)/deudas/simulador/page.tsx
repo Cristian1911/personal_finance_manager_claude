@@ -3,9 +3,12 @@ import { DebtSimulator } from "@/components/debt/debt-simulator";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getPreferredCurrency } from "@/actions/profile";
 
 export default async function SimuladorPage() {
-  const overview = await getDebtOverview();
+  const currency = await getPreferredCurrency();
+
+  const overview = await getDebtOverview(currency);
   const activeDebts = overview.accounts.filter((a) => a.balance > 0);
 
   if (activeDebts.length === 0) {
@@ -51,7 +54,7 @@ export default async function SimuladorPage() {
           </p>
         </div>
       </div>
-      <DebtSimulator accounts={activeDebts} />
+      <DebtSimulator accounts={activeDebts} currency={currency} />
     </div>
   );
 }

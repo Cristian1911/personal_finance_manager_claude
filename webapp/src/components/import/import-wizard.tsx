@@ -14,16 +14,18 @@ import type {
 } from "@/types/import";
 import { StepUpload } from "./step-upload";
 import { StepReview } from "./step-review";
+import { StepDestinatarios } from "./step-destinatarios";
 import { StepConfirm } from "./step-confirm";
 import { ReconciliationStep } from "./reconciliation-step";
 import { StepResults } from "./step-results";
 import { trackClientEvent } from "@/lib/utils/analytics";
 
-type Step = "upload" | "review" | "confirm" | "reconcile" | "results";
+type Step = "upload" | "review" | "destinatarios" | "confirm" | "reconcile" | "results";
 
 const STEPS: { key: Step; label: string }[] = [
   { key: "upload", label: "Subir PDF" },
   { key: "review", label: "Revisar" },
+  { key: "destinatarios", label: "Destinatarios" },
   { key: "confirm", label: "Confirmar" },
   { key: "reconcile", label: "Reconciliar" },
   { key: "results", label: "Resultados" },
@@ -33,12 +35,10 @@ export function ImportWizard({
   accounts,
   categories,
   destinatarioRules,
-  unmatchedDescriptions,
 }: {
   accounts: Account[];
   categories: CategoryWithChildren[];
   destinatarioRules: DestinatarioRule[];
-  unmatchedDescriptions: string[];
 }) {
   const [step, setStep] = useState<Step>("upload");
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
@@ -49,6 +49,7 @@ export function ImportWizard({
   const [preparedStatementMeta, setPreparedStatementMeta] = useState<StatementMetaForImport[]>([]);
   const [reconciliationPreview, setReconciliationPreview] =
     useState<ReconciliationPreviewResult | null>(null);
+  const [activeDestinatarioRules, setActiveDestinatarioRules] = useState<DestinatarioRule[]>(destinatarioRules);
 
   const currentIndex = STEPS.findIndex((s) => s.key === step);
 
@@ -130,6 +131,11 @@ export function ImportWizard({
         auto_matched_count: updatedMappings.filter((m) => m.autoMatched).length,
       },
     });
+    setStep("destinatarios");
+  }
+
+  function handleDestinatariosContinue(updatedRules: DestinatarioRule[]) {
+    setActiveDestinatarioRules(updatedRules);
     setStep("confirm");
   }
 
@@ -210,15 +216,24 @@ export function ImportWizard({
           onAccountCreated={handleAccountCreated}
         />
       )}
+      {step === "destinatarios" && parseResult && (
+        <StepDestinatarios
+          parseResult={parseResult}
+          mappings={mappings}
+          categories={categories}
+          destinatarioRules={activeDestinatarioRules}
+          onContinue={handleDestinatariosContinue}
+          onBack={() => setStep("review")}
+        />
+      )}
       {step === "confirm" && parseResult && (
         <StepConfirm
           parseResult={parseResult}
           mappings={mappings}
           categories={categories}
-          destinatarioRules={destinatarioRules}
-          unmatchedDescriptions={unmatchedDescriptions}
+          destinatarioRules={activeDestinatarioRules}
           onContinue={handlePrepared}
-          onBack={() => setStep("review")}
+          onBack={() => setStep("destinatarios")}
         />
       )}
       {step === "reconcile" && reconciliationPreview && (

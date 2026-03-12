@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { getPreferredCurrency } from "@/actions/profile";
+import type { CurrencyCode } from "@/types/domain";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
 import {
@@ -67,23 +69,46 @@ export default async function DashboardPage({
 
   if (!user) return null;
 
-  // Fetch recent transactions (with category name for mobile view)
-  const { data: recentTransactions } = await executeVisibleTransactionQuery(() =>
+  // Fetch preferred currency, recent transactions, and accounts in parallel
+  const [preferredCurrency, { data: recentTransactions }, { data: accounts }] = await Promise.all([
+    getPreferredCurrency(),
+    executeVisibleTransactionQuery(() =>
+      supabase
+        .from("transactions")
+        .select("*, categories!category_id(name_es, name)")
+        .eq("is_excluded", false)
+        .order("transaction_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(5)
+    ),
     supabase
-      .from("transactions")
-      .select("*, categories!category_id(name_es, name)")
-      .eq("is_excluded", false)
-      .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(5)
-  );
+      .from("accounts")
+      .select("id")
+      .eq("is_active", true)
+      .limit(1),
+  ]);
 
-  // Check if user has accounts (for starter mode)
-  const { data: accounts } = await supabase
+  // Fallback if no accounts exist in preferred currency
+  let currency = preferredCurrency;
+  const { data: currencyCheck } = await supabase
     .from("accounts")
     .select("id")
+    .eq("user_id", user.id)
     .eq("is_active", true)
+    .eq("currency_code", currency)
     .limit(1);
+
+  if (!currencyCheck?.length) {
+    const { data: fallback } = await supabase
+      .from("accounts")
+      .select("currency_code")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .order("created_at")
+      .limit(1)
+      .single();
+    if (fallback) currency = fallback.currency_code as CurrencyCode;
+  }
 
   const recentTx = (recentTransactions ?? []) as DashboardTransactionRow[];
   const hasAccounts = (accounts ?? []).length > 0;
@@ -184,11 +209,11 @@ export default async function DashboardPage({
   // Fetch all dashboard data in parallel
   const [heroData, accountsData, budgetPaceData, cashflowData, categoryData, allAccountsResult, latestSnapshotDates] =
     await Promise.all([
-      getDashboardHeroData(month),
+      getDashboardHeroData(month, currency),
       getAccountsWithSparklineData(),
-      getDailyBudgetPace(month),
-      getMonthlyCashflow(month),
-      getCategorySpending(month),
+      getDailyBudgetPace(month, currency),
+      getMonthlyCashflow(month, currency),
+      getCategorySpending(month, currency),
       getAccounts(),
       getLatestSnapshotDates(),
     ]);

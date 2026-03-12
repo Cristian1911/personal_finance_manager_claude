@@ -8,8 +8,10 @@ import {
   generateInsights,
   type DebtOverview,
 } from "@zeta/shared";
+import type { CurrencyCode } from "@/types/domain";
 
-export async function getDebtOverview(): Promise<DebtOverview> {
+export async function getDebtOverview(currency?: CurrencyCode): Promise<DebtOverview> {
+  const baseCurrency = currency ?? "COP";
   const { supabase, user } = await getAuthenticatedClient();
 
   const emptyResult: DebtOverview = {
@@ -58,8 +60,8 @@ export async function getDebtOverview(): Promise<DebtOverview> {
     totalCreditLimit: limit,
   }));
 
-  // Primary totals use COP if available, otherwise sum all
-  const copEntry = byCurrency.get("COP");
+  // Primary totals use baseCurrency if available, otherwise sum all
+  const copEntry = byCurrency.get(baseCurrency);
   const totalDebt = copEntry ? copEntry.debt : debtAccounts.reduce((sum, a) => sum + a.balance, 0);
   const totalCreditLimit = copEntry
     ? copEntry.limit
@@ -69,13 +71,13 @@ export async function getDebtOverview(): Promise<DebtOverview> {
 
   const overallUtilization = calcUtilization(
     debtAccounts
-      .filter((a) => a.type === "CREDIT_CARD" && a.currency === "COP")
+      .filter((a) => a.type === "CREDIT_CARD" && a.currency === baseCurrency)
       .reduce((sum, a) => sum + a.balance, 0),
     totalCreditLimit
   );
 
   const monthlyInterestEstimate = debtAccounts
-    .filter((a) => a.currency === "COP")
+    .filter((a) => a.currency === baseCurrency)
     .reduce(
       (sum, a) => sum + estimateMonthlyInterest(a.balance, a.interestRate),
       0
