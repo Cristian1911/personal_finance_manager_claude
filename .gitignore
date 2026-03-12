@@ -25,6 +25,9 @@ supabase/.temp/
 # Git worktrees
 .worktrees/
 
+# Superpowers brainstorm sessions
+.superpowers/
+
 # Playwright
 webapp/playwright-report/
 webapp/test-results/

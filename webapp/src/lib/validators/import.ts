@@ -16,7 +16,7 @@ export const transactionToImportSchema = z.object({
     (val) => (val === "" || val === null ? undefined : val),
     uuidStr().optional().nullable()
   ),
-  categorization_source: z.enum(["SYSTEM_DEFAULT", "USER_CREATED", "USER_OVERRIDE"]).optional(),
+  categorization_source: z.enum(["SYSTEM_DEFAULT", "USER_CREATED", "ML_MODEL", "USER_OVERRIDE", "USER_LEARNED"]).optional(),
   categorization_confidence: z.number().min(0).max(1).optional().nullable(),
   installment_current: z.number().int().positive().optional().nullable(),
   installment_total: z.number().int().positive().optional().nullable(),

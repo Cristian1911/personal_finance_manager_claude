@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
-import type { Account, CategoryWithChildren } from "@/types/domain";
+import type { Account, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 import type { DestinatarioRule } from "@zeta/shared";
 import type {
   ParseResponse,
@@ -246,7 +246,11 @@ export function ImportWizard({
         />
       )}
       {step === "results" && importResult && (
-        <StepResults result={importResult} onReset={handleReset} />
+        <StepResults
+          result={importResult}
+          currency={(parseResult?.statements[0]?.currency ?? "COP") as CurrencyCode}
+          onReset={handleReset}
+        />
       )}
     </div>
   );
