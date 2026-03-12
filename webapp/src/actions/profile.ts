@@ -1,10 +1,28 @@
 "use server";
 
+import { cache } from "react";
 import { revalidatePath } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import type { ActionResult } from "@/types/actions";
-import type { Profile } from "@/types/domain";
+import type { CurrencyCode, Profile } from "@/types/domain";
 import { z } from "zod";
+
+/**
+ * Get the user's effective preferred currency, with fallback.
+ * Cached per request via React cache() to avoid duplicate queries.
+ */
+export const getPreferredCurrency = cache(async (): Promise<CurrencyCode> => {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return "COP" as CurrencyCode;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("preferred_currency")
+    .eq("id", user.id)
+    .single();
+
+  return (profile?.preferred_currency ?? "COP") as CurrencyCode;
+});
 
 const profileSchema = z.object({
   full_name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),

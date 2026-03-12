@@ -8,8 +8,9 @@ import {
   generateInsights,
   type DebtOverview,
 } from "@zeta/shared";
+import type { CurrencyCode } from "@/types/domain";
 
-export async function getDebtOverview(currency?: string): Promise<DebtOverview> {
+export async function getDebtOverview(currency?: CurrencyCode): Promise<DebtOverview> {
   const baseCurrency = currency ?? "COP";
   const { supabase, user } = await getAuthenticatedClient();
 

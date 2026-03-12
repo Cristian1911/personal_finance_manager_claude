@@ -14,6 +14,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { formatCurrency } from "@/lib/utils/currency";
+import { capitalize } from "@/lib/utils/string";
 import { formatDate } from "@/lib/utils/date";
 import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
 
@@ -46,14 +47,6 @@ function addDismissed(pattern: string) {
   } catch {
     // ignore
   }
-}
-
-function capitalize(s: string): string {
-  return s
-    .toLowerCase()
-    .split(" ")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
 }
 
 export function DestinatarioSuggestionsTab({

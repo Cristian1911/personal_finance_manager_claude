@@ -503,8 +503,6 @@ export async function getDashboardHeroData(
 
   const totalPending = allObligations.reduce((sum, o) => sum + o.amount, 0);
   const availableToSpend = totalLiquid - totalPending;
-  const currency_out = baseCurrency;
-
   return {
     totalLiquid,
     pendingObligations: allObligations,
@@ -512,7 +510,7 @@ export async function getDashboardHeroData(
     availableToSpend,
     freshness,
     oldestUpdate,
-    currency: currency_out,
+    currency: baseCurrency,
     hasOtherCurrencies,
   };
 }

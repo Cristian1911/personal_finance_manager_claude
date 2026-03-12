@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { getPreferredCurrency } from "@/actions/profile";
 import type { CurrencyCode } from "@/types/domain";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -68,14 +69,27 @@ export default async function DashboardPage({
 
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("preferred_currency")
-    .eq("id", user.id)
-    .single();
+  // Fetch preferred currency, recent transactions, and accounts in parallel
+  const [preferredCurrency, { data: recentTransactions }, { data: accounts }] = await Promise.all([
+    getPreferredCurrency(),
+    executeVisibleTransactionQuery(() =>
+      supabase
+        .from("transactions")
+        .select("*, categories!category_id(name_es, name)")
+        .eq("is_excluded", false)
+        .order("transaction_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(5)
+    ),
+    supabase
+      .from("accounts")
+      .select("id")
+      .eq("is_active", true)
+      .limit(1),
+  ]);
 
-  let currency = (profile?.preferred_currency ?? "COP") as CurrencyCode;
-
+  // Fallback if no accounts exist in preferred currency
+  let currency = preferredCurrency;
   const { data: currencyCheck } = await supabase
     .from("accounts")
     .select("id")
@@ -95,24 +109,6 @@ export default async function DashboardPage({
       .single();
     if (fallback) currency = fallback.currency_code as CurrencyCode;
   }
-
-  // Fetch recent transactions (with category name for mobile view)
-  const { data: recentTransactions } = await executeVisibleTransactionQuery(() =>
-    supabase
-      .from("transactions")
-      .select("*, categories!category_id(name_es, name)")
-      .eq("is_excluded", false)
-      .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(5)
-  );
-
-  // Check if user has accounts (for starter mode)
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("is_active", true)
-    .limit(1);
 
   const recentTx = (recentTransactions ?? []) as DashboardTransactionRow[];
   const hasAccounts = (accounts ?? []).length > 0;

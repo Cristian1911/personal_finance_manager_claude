@@ -113,6 +113,23 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
   );
 }
 
+function GroupedAccountList({ accounts }: { accounts: AccountWithSparkline[] }) {
+  const grouped = Object.entries(Object.groupBy(accounts, (a) => a.currency_code));
+  const multiCurrency = grouped.length > 1;
+  return grouped.map(([curr, accts]) => (
+    <div key={curr}>
+      {multiCurrency && (
+        <p className="text-xs text-muted-foreground mt-2 mb-1">{curr}</p>
+      )}
+      <div className="divide-y">
+        {accts!.map((a) => (
+          <AccountRow key={a.id} account={a} />
+        ))}
+      </div>
+    </div>
+  ));
+}
+
 const MAX_PREVIEW = 4;
 
 export function AccountsOverview({ data, picker }: AccountsOverviewProps) {
@@ -143,47 +160,13 @@ export function AccountsOverview({ data, picker }: AccountsOverviewProps) {
         {previewDeposits.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Cuentas de depósito</p>
-            {(() => {
-              const grouped = Object.entries(
-                Object.groupBy(previewDeposits, (a) => a.currency_code)
-              );
-              const multiCurrency = grouped.length > 1;
-              return grouped.map(([curr, accts]) => (
-                <div key={curr}>
-                  {multiCurrency && (
-                    <p className="text-xs text-muted-foreground mt-2 mb-1">{curr}</p>
-                  )}
-                  <div className="divide-y">
-                    {accts!.map((a) => (
-                      <AccountRow key={a.id} account={a} />
-                    ))}
-                  </div>
-                </div>
-              ));
-            })()}
+            <GroupedAccountList accounts={previewDeposits} />
           </div>
         )}
         {previewDebt.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Deuda</p>
-            {(() => {
-              const grouped = Object.entries(
-                Object.groupBy(previewDebt, (a) => a.currency_code)
-              );
-              const multiCurrency = grouped.length > 1;
-              return grouped.map(([curr, accts]) => (
-                <div key={curr}>
-                  {multiCurrency && (
-                    <p className="text-xs text-muted-foreground mt-2 mb-1">{curr}</p>
-                  )}
-                  <div className="divide-y">
-                    {accts!.map((a) => (
-                      <AccountRow key={a.id} account={a} />
-                    ))}
-                  </div>
-                </div>
-              ));
-            })()}
+            <GroupedAccountList accounts={previewDebt} />
           </div>
         )}
         {totalAccounts > showing && (

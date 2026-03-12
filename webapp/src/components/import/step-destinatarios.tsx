@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { ChevronDown, ChevronRight, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -13,13 +13,13 @@ import { createDestinatario } from "@/actions/destinatarios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { formatCurrency } from "@/lib/utils/currency";
+import { capitalize } from "@/lib/utils/string";
 import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
 import type { ParseResponse, StatementAccountMapping } from "@/types/import";
 
@@ -44,14 +44,6 @@ interface SuggestionGroup {
   }[];
 }
 
-function capitalize(s: string): string {
-  return s
-    .toLowerCase()
-    .split(" ")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
 export function StepDestinatarios({
   parseResult,
   mappings,
@@ -70,7 +62,6 @@ export function StepDestinatarios({
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [txSelections, setTxSelections] = useState<Map<string, Set<string>>>(new Map());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [matchedOpen, setMatchedOpen] = useState(false);
 
@@ -141,26 +132,6 @@ export function StepDestinatarios({
   const visibleSuggestions = suggestions.filter(
     (s) => !createdPatterns.has(s.cleanedPattern) && !dismissedPatterns.has(s.cleanedPattern)
   );
-
-  const getSelections = useCallback(
-    (pattern: string, transactions: SuggestionGroup["transactions"]): Set<string> => {
-      if (txSelections.has(pattern)) return txSelections.get(pattern)!;
-      return new Set(transactions.map((tx) => `${tx.stmtIdx}-${tx.txIdx}`));
-    },
-    [txSelections]
-  );
-
-  function toggleTx(pattern: string, txKey: string, transactions: SuggestionGroup["transactions"]) {
-    setTxSelections((prev) => {
-      const next = new Map(prev);
-      const current = getSelections(pattern, transactions);
-      const updated = new Set(current);
-      if (updated.has(txKey)) updated.delete(txKey);
-      else updated.add(txKey);
-      next.set(pattern, updated);
-      return next;
-    });
-  }
 
   function handleStartEditing(suggestion: SuggestionGroup) {
     setEditingPattern(suggestion.cleanedPattern);
@@ -260,7 +231,6 @@ export function StepDestinatarios({
           {visibleSuggestions.map((suggestion) => {
             const isEditing = editingPattern === suggestion.cleanedPattern;
             const isExpanded = expanded.has(suggestion.cleanedPattern);
-            const selections = getSelections(suggestion.cleanedPattern, suggestion.transactions);
 
             return (
               <div key={suggestion.cleanedPattern} className="rounded-md border bg-background p-3">
@@ -317,27 +287,18 @@ export function StepDestinatarios({
 
                 {isExpanded && (
                   <div className="mt-2 space-y-1 border-t pt-2">
-                    {suggestion.transactions.map((tx) => {
-                      const txKey = `${tx.stmtIdx}-${tx.txIdx}`;
-                      return (
-                        <label
-                          key={txKey}
-                          className="flex items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-muted/50"
-                        >
-                          <Checkbox
-                            checked={selections.has(txKey)}
-                            onCheckedChange={() =>
-                              toggleTx(suggestion.cleanedPattern, txKey, suggestion.transactions)
-                            }
-                          />
-                          <span className="text-muted-foreground">{tx.date}</span>
-                          <span className="flex-1 truncate">{tx.rawDescription}</span>
-                          <span className="shrink-0">
-                            {formatCurrency(tx.amount, tx.currency as CurrencyCode)}
-                          </span>
-                        </label>
-                      );
-                    })}
+                    {suggestion.transactions.map((tx) => (
+                      <div
+                        key={`${tx.stmtIdx}-${tx.txIdx}`}
+                        className="flex items-center gap-2 rounded px-1 py-0.5 text-xs"
+                      >
+                        <span className="text-muted-foreground">{tx.date}</span>
+                        <span className="flex-1 truncate">{tx.rawDescription}</span>
+                        <span className="shrink-0">
+                          {formatCurrency(tx.amount, tx.currency as CurrencyCode)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
 

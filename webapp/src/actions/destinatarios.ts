@@ -8,7 +8,7 @@ import {
 } from "@/lib/validators/destinatario";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
-import type { DestinatarioRule } from "@zeta/shared";
+import { cleanDescription, type DestinatarioRule } from "@zeta/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -421,9 +421,6 @@ export async function getDestinatarioSuggestions(): Promise<
     .limit(1000);
 
   if (error) return { success: false, error: error.message };
-
-  // Import cleanDescription from shared package
-  const { cleanDescription } = await import("@zeta/shared");
 
   // Group by cleaned description
   const groups = new Map<

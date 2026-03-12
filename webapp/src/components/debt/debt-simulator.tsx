@@ -39,10 +39,11 @@ import {
   Wallet,
   CalendarClock,
 } from "lucide-react";
+import type { CurrencyCode } from "@/types/domain";
 
 interface Props {
   accounts: DebtAccount[];
-  currency?: string;
+  currency?: CurrencyCode;
 }
 
 // ─── Tab 1: Lump Sum ───
