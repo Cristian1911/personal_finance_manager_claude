@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import type { CurrencyCode } from "@/types/domain";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
 import {
@@ -66,6 +67,14 @@ export default async function DashboardPage({
   const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("preferred_currency")
+    .eq("id", user.id)
+    .single();
+
+  const currency = (profile?.preferred_currency ?? "COP") as CurrencyCode;
 
   // Fetch recent transactions (with category name for mobile view)
   const { data: recentTransactions } = await executeVisibleTransactionQuery(() =>
@@ -184,11 +193,11 @@ export default async function DashboardPage({
   // Fetch all dashboard data in parallel
   const [heroData, accountsData, budgetPaceData, cashflowData, categoryData, allAccountsResult, latestSnapshotDates] =
     await Promise.all([
-      getDashboardHeroData(month),
+      getDashboardHeroData(month, currency),
       getAccountsWithSparklineData(),
-      getDailyBudgetPace(month),
-      getMonthlyCashflow(month),
-      getCategorySpending(month),
+      getDailyBudgetPace(month, currency),
+      getMonthlyCashflow(month, currency),
+      getCategorySpending(month, currency),
       getAccounts(),
       getLatestSnapshotDates(),
     ]);

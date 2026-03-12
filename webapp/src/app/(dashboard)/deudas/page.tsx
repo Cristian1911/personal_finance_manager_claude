@@ -9,9 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Calculator } from "lucide-react";
 import Link from "next/link";
 import type { CurrencyCode } from "@/types/domain";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 
 export default async function DeudasPage() {
-  const overview = await getDebtOverview();
+  const { supabase, user } = await getAuthenticatedClient();
+
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("preferred_currency").eq("id", user.id).single()
+    : { data: null };
+
+  const currency = (profile?.preferred_currency ?? "COP") as CurrencyCode;
+
+  const overview = await getDebtOverview(currency);
 
   if (overview.accounts.length === 0) {
     return (
@@ -37,9 +46,9 @@ export default async function DeudasPage() {
 
   const creditCards = overview.accounts.filter((a) => a.type === "CREDIT_CARD");
   const loans = overview.accounts.filter((a) => a.type === "LOAN");
-  const copCreditCards = creditCards.filter((a) => a.currency === "COP");
-  const totalCreditUsed = copCreditCards.reduce((sum, a) => sum + a.balance, 0);
-  const secondaryCurrencies = overview.debtByCurrency.filter((d) => d.currency !== "COP" && d.totalDebt > 0);
+  const preferredCurrencyCreditCards = creditCards.filter((a) => a.currency === currency);
+  const totalCreditUsed = preferredCurrencyCreditCards.reduce((sum, a) => sum + a.balance, 0);
+  const secondaryCurrencies = overview.debtByCurrency.filter((d) => d.currency !== currency && d.totalDebt > 0);
 
   return (
     <div className="space-y-6">

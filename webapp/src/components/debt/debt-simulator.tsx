@@ -42,18 +42,19 @@ import {
 
 interface Props {
   accounts: DebtAccount[];
+  currency?: string;
 }
 
 // ─── Tab 1: Lump Sum ───
 
-function LumpSumTab({ accounts }: Props) {
+function LumpSumTab({ accounts, currency }: Props) {
   const [input, setInput] = useState("");
   const amount = Number(input) || 0;
 
   const result = useMemo<LumpSumResult | null>(() => {
     if (amount <= 0) return null;
-    return allocateLumpSum(accounts, amount);
-  }, [accounts, amount]);
+    return allocateLumpSum(accounts, amount, currency);
+  }, [accounts, amount, currency]);
 
   return (
     <div className="space-y-4">
@@ -753,7 +754,7 @@ function StrategyCard({
 
 // ─── Main Component ───
 
-export function DebtSimulator({ accounts }: Props) {
+export function DebtSimulator({ accounts, currency }: Props) {
   return (
     <Tabs defaultValue="lump-sum" className="space-y-4">
       <TabsList className="grid w-full grid-cols-3">
@@ -762,7 +763,7 @@ export function DebtSimulator({ accounts }: Props) {
         <TabsTrigger value="strategies">Estrategias</TabsTrigger>
       </TabsList>
       <TabsContent value="lump-sum">
-        <LumpSumTab accounts={accounts} />
+        <LumpSumTab accounts={accounts} currency={currency} />
       </TabsContent>
       <TabsContent value="single-account">
         <SingleAccountTab accounts={accounts} />

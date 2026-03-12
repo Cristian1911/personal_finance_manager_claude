@@ -3,9 +3,19 @@ import { DebtSimulator } from "@/components/debt/debt-simulator";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import type { CurrencyCode } from "@/types/domain";
 
 export default async function SimuladorPage() {
-  const overview = await getDebtOverview();
+  const { supabase, user } = await getAuthenticatedClient();
+
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("preferred_currency").eq("id", user.id).single()
+    : { data: null };
+
+  const currency = (profile?.preferred_currency ?? "COP") as CurrencyCode;
+
+  const overview = await getDebtOverview(currency);
   const activeDebts = overview.accounts.filter((a) => a.balance > 0);
 
   if (activeDebts.length === 0) {
@@ -51,7 +61,7 @@ export default async function SimuladorPage() {
           </p>
         </div>
       </div>
-      <DebtSimulator accounts={activeDebts} />
+      <DebtSimulator accounts={activeDebts} currency={currency} />
     </div>
   );
 }
