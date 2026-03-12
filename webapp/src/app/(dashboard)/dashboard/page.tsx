@@ -74,7 +74,27 @@ export default async function DashboardPage({
     .eq("id", user.id)
     .single();
 
-  const currency = (profile?.preferred_currency ?? "COP") as CurrencyCode;
+  let currency = (profile?.preferred_currency ?? "COP") as CurrencyCode;
+
+  const { data: currencyCheck } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .eq("currency_code", currency)
+    .limit(1);
+
+  if (!currencyCheck?.length) {
+    const { data: fallback } = await supabase
+      .from("accounts")
+      .select("currency_code")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .order("created_at")
+      .limit(1)
+      .single();
+    if (fallback) currency = fallback.currency_code as CurrencyCode;
+  }
 
   // Fetch recent transactions (with category name for mobile view)
   const { data: recentTransactions } = await executeVisibleTransactionQuery(() =>
