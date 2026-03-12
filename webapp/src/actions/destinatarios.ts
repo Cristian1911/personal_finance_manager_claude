@@ -395,6 +395,87 @@ export async function getUnmatchedDescriptions(): Promise<
   return { success: true, data: descriptions };
 }
 
+// ─── getDestinatarioSuggestions ──────────────────────────────────────────────
+
+export type DestinatarioSuggestionResult = {
+  cleanedPattern: string;
+  count: number;
+  dateRange: { from: string; to: string };
+  sampleTransactions: { date: string; rawDescription: string; amount: number }[];
+};
+
+export async function getDestinatarioSuggestions(): Promise<
+  ActionResult<DestinatarioSuggestionResult[]>
+> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Fetch unmatched transactions with raw descriptions
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("transaction_date, raw_description, amount")
+    .eq("user_id", user.id)
+    .is("destinatario_id", null)
+    .not("raw_description", "is", null)
+    .order("transaction_date", { ascending: false })
+    .limit(1000);
+
+  if (error) return { success: false, error: error.message };
+
+  // Import cleanDescription from shared package
+  const { cleanDescription } = await import("@zeta/shared");
+
+  // Group by cleaned description
+  const groups = new Map<
+    string,
+    {
+      count: number;
+      dates: string[];
+      samples: { date: string; rawDescription: string; amount: number }[];
+    }
+  >();
+
+  for (const row of data ?? []) {
+    if (!row.raw_description) continue;
+    const cleaned = cleanDescription(row.raw_description);
+    if (cleaned.length === 0) continue;
+
+    if (!groups.has(cleaned)) {
+      groups.set(cleaned, { count: 0, dates: [], samples: [] });
+    }
+    const group = groups.get(cleaned)!;
+    group.count++;
+    group.dates.push(row.transaction_date);
+    if (group.samples.length < 5) {
+      group.samples.push({
+        date: row.transaction_date,
+        rawDescription: row.raw_description,
+        amount: row.amount,
+      });
+    }
+  }
+
+  // Filter to groups with 3+ occurrences, sort by count desc, limit to 20
+  const suggestions: DestinatarioSuggestionResult[] = [];
+  for (const [pattern, group] of groups) {
+    if (group.count < 3) continue;
+    const sortedDates = group.dates.sort();
+    suggestions.push({
+      cleanedPattern: pattern,
+      count: group.count,
+      dateRange: {
+        from: sortedDates[0],
+        to: sortedDates[sortedDates.length - 1],
+      },
+      sampleTransactions: group.samples,
+    });
+  }
+
+  suggestions.sort((a, b) => b.count - a.count);
+
+  return { success: true, data: suggestions.slice(0, 20) };
+}
+
 // ─── getDestinatarioTransactions ──────────────────────────────────────────────
 
 export async function getDestinatarioTransactions(
