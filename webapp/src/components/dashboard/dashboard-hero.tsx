@@ -14,7 +14,7 @@ interface DashboardHeroProps {
 }
 
 export function DashboardHero({ data }: DashboardHeroProps) {
-  const { totalLiquid, totalPending, availableToSpend, freshness, pendingObligations, currency } = data;
+  const { totalLiquid, totalPending, availableToSpend, freshness, pendingObligations, currency, hasOtherCurrencies } = data;
   const f = freshnessMap[freshness];
   const code = currency as CurrencyCode;
 
@@ -22,10 +22,18 @@ export function DashboardHero({ data }: DashboardHeroProps) {
     <div className="space-y-3">
       {/* Main number */}
       <div>
-        <p className="text-sm text-muted-foreground">Disponible para gastar</p>
+        <p className="text-sm text-muted-foreground">
+          Disponible para gastar
+          <span className="text-sm font-normal text-muted-foreground ml-2">En {data.currency}</span>
+        </p>
         <p className={`text-4xl font-bold tracking-tight ${availableToSpend < 0 ? "text-red-600" : ""}`}>
           {formatCurrency(availableToSpend, code)}
         </p>
+        {hasOtherCurrencies && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Tienes cuentas en otras monedas no incluidas en estos totales.
+          </p>
+        )}
       </div>
 
       {/* 3 sub-cards */}

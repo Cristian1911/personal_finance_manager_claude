@@ -418,6 +418,7 @@ export interface DashboardHeroData {
   freshness: "fresh" | "stale" | "outdated";
   oldestUpdate: string | null;
   currency: string;
+  hasOtherCurrencies: boolean;
 }
 
 export async function getDashboardHeroData(
@@ -434,21 +435,30 @@ export async function getDashboardHeroData(
       freshness: "outdated",
       oldestUpdate: null,
       currency: "COP",
+      hasOtherCurrencies: false,
     };
   }
 
   const baseCurrency = currency ?? "COP";
 
-  // 1. Get liquid accounts (not credit card, not loan)
-  const { data: liquidAccounts } = await supabase
-    .from("accounts")
-    .select("id, name, current_balance, currency_code, updated_at")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .not("account_type", "in", '("CREDIT_CARD","LOAN")');
+  // 1. Get liquid accounts (not credit card, not loan) + all active accounts for currency detection
+  const [{ data: liquidAccounts }, { data: allActiveAccounts }] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("id, name, current_balance, currency_code, updated_at")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .not("account_type", "in", '("CREDIT_CARD","LOAN")'),
+    supabase
+      .from("accounts")
+      .select("currency_code")
+      .eq("user_id", user.id)
+      .eq("is_active", true),
+  ]);
 
   const accounts = liquidAccounts ?? [];
   const currencyAccounts = accounts.filter((a) => a.currency_code === baseCurrency);
+  const hasOtherCurrencies = (allActiveAccounts ?? []).some((a) => a.currency_code !== baseCurrency);
   const totalLiquid = currencyAccounts.reduce((sum, a) => sum + a.current_balance, 0);
 
   // 2. Compute freshness from oldest updated_at among liquid accounts
@@ -503,6 +513,7 @@ export async function getDashboardHeroData(
     freshness,
     oldestUpdate,
     currency: currency_out,
+    hasOtherCurrencies,
   };
 }
 
