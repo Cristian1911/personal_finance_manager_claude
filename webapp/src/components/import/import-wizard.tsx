@@ -35,12 +35,10 @@ export function ImportWizard({
   accounts,
   categories,
   destinatarioRules,
-  unmatchedDescriptions,
 }: {
   accounts: Account[];
   categories: CategoryWithChildren[];
   destinatarioRules: DestinatarioRule[];
-  unmatchedDescriptions: string[];
 }) {
   const [step, setStep] = useState<Step>("upload");
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
@@ -234,7 +232,6 @@ export function ImportWizard({
           mappings={mappings}
           categories={categories}
           destinatarioRules={activeDestinatarioRules}
-          unmatchedDescriptions={unmatchedDescriptions}
           onContinue={handlePrepared}
           onBack={() => setStep("destinatarios")}
         />
