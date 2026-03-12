@@ -53,30 +53,30 @@ export function DestinatarioSuggestions({
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Combine batch + historical, deduplicate
-  const allDescriptions = useMemo(() => {
+  // Combine batch + historical, deduplicate, wrap in transaction objects
+  const allTransactions = useMemo(() => {
     const seen = new Set<string>();
-    const result: string[] = [];
+    const result: { description: string }[] = [];
     for (const desc of [...batchDescriptions, ...historicalDescriptions]) {
       const key = desc.toLowerCase().trim();
       if (key && !seen.has(key)) {
         seen.add(key);
-        result.push(desc);
+        result.push({ description: desc });
       }
     }
     return result;
   }, [batchDescriptions, historicalDescriptions]);
 
   const suggestions = useMemo(
-    () => detectDestinatarioSuggestions(allDescriptions, 2),
-    [allDescriptions]
+    () => detectDestinatarioSuggestions(allTransactions, 2),
+    [allTransactions]
   );
 
   // Filter out dismissed and already-created suggestions
   const visibleSuggestions = useMemo(
     () =>
       suggestions.filter(
-        (s) => !dismissed.has(s.pattern) && !createdPatterns.has(s.pattern)
+        (s) => !dismissed.has(s.cleanedPattern) && !createdPatterns.has(s.cleanedPattern)
       ),
     [suggestions, dismissed, createdPatterns]
   );
@@ -91,8 +91,8 @@ export function DestinatarioSuggestions({
 
   const handleStartCreating = useCallback(
     (suggestion: DestinatarioSuggestion) => {
-      setCreating(suggestion.pattern);
-      setFormName(capitalize(suggestion.pattern));
+      setCreating(suggestion.cleanedPattern);
+      setFormName(capitalize(suggestion.cleanedPattern));
       setFormCategory(null);
       setFormError(null);
     },
@@ -182,7 +182,7 @@ export function DestinatarioSuggestions({
             <div className="space-y-2">
               {visibleSuggestions.map((suggestion) => (
                 <div
-                  key={suggestion.pattern}
+                  key={suggestion.cleanedPattern}
                   className="rounded-md border bg-background p-3"
                 >
                   {/* Summary row */}
@@ -191,18 +191,18 @@ export function DestinatarioSuggestions({
                       <span className="text-sm font-medium">
                         {suggestion.count} transacciones con &quot;
                         <span className="text-amber-700">
-                          {suggestion.pattern}
+                          {suggestion.cleanedPattern}
                         </span>
                         &quot;
                       </span>
-                      {suggestion.sample_descriptions.length > 0 && (
+                      {suggestion.rawDescriptions.length > 0 && (
                         <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          Ej: {suggestion.sample_descriptions[0]}
+                          Ej: {suggestion.rawDescriptions[0]}
                         </p>
                       )}
                     </div>
 
-                    {creating !== suggestion.pattern && (
+                    {creating !== suggestion.cleanedPattern && (
                       <div className="flex shrink-0 items-center gap-1">
                         <Button
                           type="button"
@@ -219,7 +219,7 @@ export function DestinatarioSuggestions({
                           size="sm"
                           variant="ghost"
                           className="h-7 text-xs text-muted-foreground"
-                          onClick={() => handleDismiss(suggestion.pattern)}
+                          onClick={() => handleDismiss(suggestion.cleanedPattern)}
                         >
                           <X className="h-3 w-3" />
                           <span className="sr-only">Ignorar</span>
@@ -229,18 +229,18 @@ export function DestinatarioSuggestions({
                   </div>
 
                   {/* Inline creation form */}
-                  {creating === suggestion.pattern && (
+                  {creating === suggestion.cleanedPattern && (
                     <div className="mt-3 space-y-2 border-t pt-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                         <div className="flex-1 space-y-1">
                           <label
-                            htmlFor={`dest-name-${suggestion.pattern}`}
+                            htmlFor={`dest-name-${suggestion.cleanedPattern}`}
                             className="text-xs font-medium text-muted-foreground"
                           >
                             Nombre
                           </label>
                           <Input
-                            id={`dest-name-${suggestion.pattern}`}
+                            id={`dest-name-${suggestion.cleanedPattern}`}
                             value={formName}
                             onChange={(e) => {
                               setFormName(e.target.value);
@@ -274,7 +274,7 @@ export function DestinatarioSuggestions({
                           size="sm"
                           className="h-7 gap-1 text-xs"
                           disabled={isPending}
-                          onClick={() => handleCreate(suggestion.pattern)}
+                          onClick={() => handleCreate(suggestion.cleanedPattern)}
                         >
                           {isPending ? (
                             <>
