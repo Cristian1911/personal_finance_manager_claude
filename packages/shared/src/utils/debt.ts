@@ -209,14 +209,24 @@ export function calcUtilization(balance: number, limit: number | null): number {
 }
 
 /**
- * Estimate monthly interest cost (simple: balance * rate / 12).
+ * Convert an annual effective rate (EA) to a monthly effective rate.
+ * Colombian banks quote rates as EA (Efectivo Anual).
+ * Formula: monthly = (1 + EA/100)^(1/12) - 1
+ */
+export function monthlyRateFromEA(eaPercent: number): number {
+  if (eaPercent <= 0) return 0;
+  return Math.pow(1 + eaPercent / 100, 1 / 12) - 1;
+}
+
+/**
+ * Estimate monthly interest cost using EA compound conversion.
  */
 export function estimateMonthlyInterest(
   balance: number,
   annualRate: number | null
 ): number {
   if (!annualRate || annualRate <= 0 || balance <= 0) return 0;
-  return (balance * (annualRate / 100)) / 12;
+  return balance * monthlyRateFromEA(annualRate);
 }
 
 /**
