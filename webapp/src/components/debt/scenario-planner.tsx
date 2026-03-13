@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducer, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   type DebtAccount,
@@ -16,6 +17,7 @@ import { CashStep } from "./planner/cash-step";
 import { AllocateStep } from "./planner/allocate-step";
 import { CompareStep } from "./planner/compare-step";
 import { DetailStep } from "./planner/detail-step";
+import { ScenarioManager } from "./planner/scenario-manager";
 
 export interface ScenarioState {
   name: string;
@@ -116,7 +118,8 @@ interface Props {
   savedScenarios: unknown[];
 }
 
-export function ScenarioPlanner({ accounts, currency }: Props) {
+export function ScenarioPlanner({ accounts, currency, savedScenarios }: Props) {
+  const router = useRouter();
   const [state, dispatch] = useReducer(plannerReducer, initialState);
 
   // Compute results for all scenarios
@@ -154,53 +157,65 @@ export function ScenarioPlanner({ accounts, currency }: Props) {
   }, [accounts]);
 
   return (
-    <Tabs defaultValue="cash" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="cash">Tu efectivo</TabsTrigger>
-        <TabsTrigger value="allocate">Asignar</TabsTrigger>
-        <TabsTrigger value="compare">Comparar</TabsTrigger>
-        <TabsTrigger value="detail">Detalle</TabsTrigger>
-      </TabsList>
+    <div className="space-y-4">
+      <Tabs defaultValue="cash" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="cash">Tu efectivo</TabsTrigger>
+          <TabsTrigger value="allocate">Asignar</TabsTrigger>
+          <TabsTrigger value="compare">Comparar</TabsTrigger>
+          <TabsTrigger value="detail">Detalle</TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="cash">
-        <CashStep
-          accounts={accounts}
-          cashEntries={state.cashEntries}
-          currency={currency}
-          dispatch={dispatch}
-        />
-      </TabsContent>
+        <TabsContent value="cash">
+          <CashStep
+            accounts={accounts}
+            cashEntries={state.cashEntries}
+            currency={currency}
+            dispatch={dispatch}
+          />
+        </TabsContent>
 
-      <TabsContent value="allocate">
-        <AllocateStep
-          accounts={accounts}
-          scenario={state.scenarios[state.activeScenarioIndex]}
-          scenarioIndex={state.activeScenarioIndex}
-          result={results[state.activeScenarioIndex]}
-          dispatch={dispatch}
-        />
-      </TabsContent>
+        <TabsContent value="allocate">
+          <AllocateStep
+            accounts={accounts}
+            scenario={state.scenarios[state.activeScenarioIndex]}
+            scenarioIndex={state.activeScenarioIndex}
+            result={results[state.activeScenarioIndex]}
+            dispatch={dispatch}
+          />
+        </TabsContent>
 
-      <TabsContent value="compare">
-        <CompareStep
-          accounts={accounts}
-          scenarios={state.scenarios}
-          results={results}
-          baseline={baseline}
-          currency={currency}
-          dispatch={dispatch}
-        />
-      </TabsContent>
+        <TabsContent value="compare">
+          <CompareStep
+            accounts={accounts}
+            scenarios={state.scenarios}
+            results={results}
+            baseline={baseline}
+            currency={currency}
+            dispatch={dispatch}
+          />
+        </TabsContent>
 
-      <TabsContent value="detail">
-        <DetailStep
-          accounts={accounts}
-          scenarios={state.scenarios}
-          results={results}
-          baseline={baseline}
-          currency={currency}
-        />
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="detail">
+          <DetailStep
+            accounts={accounts}
+            scenarios={state.scenarios}
+            results={results}
+            baseline={baseline}
+            currency={currency}
+          />
+        </TabsContent>
+      </Tabs>
+
+      <ScenarioManager
+        accounts={accounts}
+        state={state}
+        results={results}
+        savedScenarios={savedScenarios as any[]}
+        currency={currency}
+        dispatch={dispatch}
+        onScenariosChange={() => router.refresh()}
+      />
+    </div>
   );
 }
