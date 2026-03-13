@@ -14,3 +14,4 @@ export * from "./utils/purchase-decision";
 export * from "./utils/snapshot-diff";
 export * from "./utils/destinatario-matcher";
 export * from "./utils/scenario-types";
+export * from "./utils/scenario-engine";

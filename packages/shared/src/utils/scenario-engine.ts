@@ -85,3 +85,331 @@ export function getMinPayment(account: DebtAccount): number {
   const floor = MIN_PAYMENT_FLOORS[account.currency] ?? DEFAULT_FLOOR;
   return Math.max(account.balance * MIN_PAYMENT_RATE, floor);
 }
+
+const MAX_MONTHS = 360;
+
+/**
+ * Advance a "YYYY-MM" string by `offset` months.
+ */
+function advanceMonth(startMonth: string, offset: number): string {
+  const [y, m] = startMonth.split("-").map(Number);
+  const total = (y * 12 + (m - 1)) + offset;
+  const newYear = Math.floor(total / 12);
+  const newMonth = (total % 12) + 1;
+  return `${newYear}-${String(newMonth).padStart(2, "0")}`;
+}
+
+/**
+ * Get the priority account for extra/cascade payments based on strategy.
+ */
+function getScenarioPriority(
+  balances: Record<string, number>,
+  accounts: DebtAccount[],
+  strategy: ScenarioStrategy,
+  customPriority?: string[]
+): string | null {
+  const active = accounts.filter((a) => (balances[a.id] ?? 0) > 0.01);
+  if (active.length === 0) return null;
+
+  if (strategy === "custom" && customPriority) {
+    for (const id of customPriority) {
+      if ((balances[id] ?? 0) > 0.01) return id;
+    }
+    return null;
+  }
+
+  if (strategy === "snowball") {
+    active.sort((a, b) => (balances[a.id] ?? 0) - (balances[b.id] ?? 0));
+  } else {
+    // avalanche (default)
+    active.sort((a, b) => (b.interestRate ?? 0) - (a.interestRate ?? 0));
+  }
+  return active[0].id;
+}
+
+function formatAmount(amount: number, currency: string): string {
+  const symbol = currency === "USD" || currency === "EUR" ? currency + " " : "$";
+  return symbol + Math.round(amount).toLocaleString("es-CO");
+}
+
+/**
+ * Run a full scenario simulation with cash entries, manual overrides,
+ * and cascade control.
+ */
+export function runScenario(input: ScenarioInput): ScenarioResult {
+  const { accounts, cashEntries, strategy, allocations, startMonth } = input;
+
+  const currency = accounts[0]?.currency ?? "COP";
+
+  // Initialize balances
+  const balances: Record<string, number> = {};
+  for (const a of accounts) {
+    balances[a.id] = a.balance;
+  }
+
+  const timeline: ScenarioMonth[] = [];
+  const payoffOrder: ScenarioPayoffEntry[] = [];
+  let cumulativeInterest = 0;
+  let totalAmountPaid = 0;
+  const paidOffAccounts = new Set<string>();
+
+  // Group cash entries by month for O(1) lookup
+  const cashByMonth = new Map<string, CashEntry[]>();
+  for (const ce of cashEntries) {
+    const existing = cashByMonth.get(ce.month) ?? [];
+    existing.push(ce);
+    cashByMonth.set(ce.month, existing);
+  }
+
+  for (let monthIdx = 0; monthIdx < MAX_MONTHS; monthIdx++) {
+    const totalBefore = Object.values(balances).reduce((s, b) => s + Math.max(b, 0), 0);
+    if (totalBefore <= 0.01) break;
+
+    const calendarMonth = advanceMonth(startMonth, monthIdx);
+    const monthNum = monthIdx + 1;
+    const events: ScenarioEvent[] = [];
+    const accountDetails: ScenarioMonthAccount[] = [];
+
+    // Track per-account payments for this month
+    const monthPayments: Record<string, { minimum: number; extra: number; cascade: number }> = {};
+    for (const a of accounts) {
+      monthPayments[a.id] = { minimum: 0, extra: 0, cascade: 0 };
+    }
+
+    // Snapshot balances before
+    const balancesBefore: Record<string, number> = {};
+    const interestAccrued: Record<string, number> = {};
+    for (const a of accounts) {
+      balancesBefore[a.id] = balances[a.id];
+      interestAccrued[a.id] = 0;
+    }
+
+    // 1. Accrue interest
+    let monthInterest = 0;
+    for (const a of accounts) {
+      if (balances[a.id] <= 0.01) continue;
+      const rate = a.interestRate ?? 0;
+      const interest = balances[a.id] * monthlyRateFromEA(rate);
+      balances[a.id] += interest;
+      interestAccrued[a.id] = interest;
+      monthInterest += interest;
+    }
+    // Update balancesBefore to post-interest (for accurate tracking)
+    for (const a of accounts) {
+      balancesBefore[a.id] = balances[a.id];
+    }
+
+    // 2. Pay minimums — track freed minimums
+    let freedMinimums = 0;
+    const newlyPaidOff: string[] = [];
+
+    for (const a of accounts) {
+      if (paidOffAccounts.has(a.id) || balances[a.id] <= 0.01) {
+        if (paidOffAccounts.has(a.id)) {
+          freedMinimums += getMinPayment(a);
+        }
+        continue;
+      }
+
+      const minPay = Math.min(getMinPayment(a), balances[a.id]);
+      balances[a.id] -= minPay;
+      monthPayments[a.id].minimum = minPay;
+      totalAmountPaid += minPay;
+
+      if (balances[a.id] <= 0.01) {
+        balances[a.id] = 0;
+        paidOffAccounts.add(a.id);
+        newlyPaidOff.push(a.id);
+        payoffOrder.push({
+          accountId: a.id,
+          accountName: a.name,
+          month: monthNum,
+          calendarMonth,
+        });
+        events.push({
+          type: "account_paid_off",
+          description: `${a.name} liquidada`,
+          accountId: a.id,
+        });
+        freedMinimums += getMinPayment(a);
+      }
+    }
+
+    // 3. Apply cash entries for this month
+    const monthCash = cashByMonth.get(calendarMonth) ?? [];
+    let unallocatedCash = 0;
+
+    for (const ce of monthCash) {
+      events.push({
+        type: "cash_injection",
+        description: ce.label
+          ? `Inyección de ${formatAmount(ce.amount, currency)} (${ce.label})`
+          : `Inyección de ${formatAmount(ce.amount, currency)}`,
+        amount: ce.amount,
+      });
+
+      // Check manual overrides for this cash entry
+      const override = allocations.manualOverrides.find(
+        (o) => o.month === calendarMonth && o.cashEntryId === ce.id
+      );
+
+      if (override) {
+        const targetBal = balances[override.accountId] ?? 0;
+        if (targetBal > 0.01) {
+          const payment = Math.min(override.amount, targetBal);
+          balances[override.accountId] -= payment;
+          monthPayments[override.accountId].extra += payment;
+          totalAmountPaid += payment;
+          unallocatedCash += ce.amount - payment;
+
+          if (balances[override.accountId] <= 0.01) {
+            balances[override.accountId] = 0;
+            if (!paidOffAccounts.has(override.accountId)) {
+              paidOffAccounts.add(override.accountId);
+              newlyPaidOff.push(override.accountId);
+              const acct = accounts.find((a) => a.id === override.accountId)!;
+              payoffOrder.push({
+                accountId: override.accountId,
+                accountName: acct.name,
+                month: monthNum,
+                calendarMonth,
+              });
+              events.push({
+                type: "account_paid_off",
+                description: `${acct.name} liquidada`,
+                accountId: override.accountId,
+              });
+              freedMinimums += getMinPayment(acct);
+            }
+          }
+        } else {
+          unallocatedCash += ce.amount;
+        }
+      } else {
+        unallocatedCash += ce.amount;
+      }
+    }
+
+    // Distribute unallocated cash by strategy
+    let pool = unallocatedCash;
+    while (pool > 0.01) {
+      const priorityId = getScenarioPriority(balances, accounts, strategy, allocations.customPriority);
+      if (!priorityId) break;
+
+      const payment = Math.min(pool, balances[priorityId]);
+      balances[priorityId] -= payment;
+      pool -= payment;
+      monthPayments[priorityId].extra += payment;
+      totalAmountPaid += payment;
+
+      if (balances[priorityId] <= 0.01) {
+        balances[priorityId] = 0;
+        if (!paidOffAccounts.has(priorityId)) {
+          paidOffAccounts.add(priorityId);
+          newlyPaidOff.push(priorityId);
+          const acct = accounts.find((a) => a.id === priorityId)!;
+          payoffOrder.push({
+            accountId: priorityId,
+            accountName: acct.name,
+            month: monthNum,
+            calendarMonth,
+          });
+          events.push({
+            type: "account_paid_off",
+            description: `${acct.name} liquidada`,
+            accountId: priorityId,
+          });
+          freedMinimums += getMinPayment(acct);
+        }
+      }
+    }
+
+    // 4. Apply freed minimums (cascade)
+    let cascadePool = freedMinimums;
+    while (cascadePool > 0.01) {
+      // Check cascade redirects first
+      let targetId: string | null = null;
+      for (const redirect of allocations.cascadeRedirects) {
+        if (paidOffAccounts.has(redirect.fromAccountId) && (balances[redirect.toAccountId] ?? 0) > 0.01) {
+          targetId = redirect.toAccountId;
+          const fromAcct = accounts.find((a) => a.id === redirect.fromAccountId)!;
+          const toAcct = accounts.find((a) => a.id === redirect.toAccountId)!;
+          events.push({
+            type: "cascade_redirect",
+            description: `${formatAmount(Math.min(cascadePool, balances[targetId]), currency)} liberados de ${fromAcct.name} → redirigidos a ${toAcct.name}`,
+            fromAccountId: redirect.fromAccountId,
+            toAccountId: redirect.toAccountId,
+            freedAmount: Math.min(cascadePool, balances[targetId]),
+          });
+          break;
+        }
+      }
+
+      if (!targetId) {
+        targetId = getScenarioPriority(balances, accounts, strategy, allocations.customPriority);
+      }
+      if (!targetId) break;
+
+      const payment = Math.min(cascadePool, balances[targetId]);
+      balances[targetId] -= payment;
+      cascadePool -= payment;
+      monthPayments[targetId].cascade += payment;
+      totalAmountPaid += payment;
+
+      if (balances[targetId] <= 0.01) {
+        balances[targetId] = 0;
+        if (!paidOffAccounts.has(targetId)) {
+          paidOffAccounts.add(targetId);
+          const acct = accounts.find((a) => a.id === targetId)!;
+          payoffOrder.push({
+            accountId: targetId,
+            accountName: acct.name,
+            month: monthNum,
+            calendarMonth,
+          });
+          events.push({
+            type: "account_paid_off",
+            description: `${acct.name} liquidada`,
+            accountId: targetId,
+          });
+        }
+      }
+    }
+
+    // 5. Build month snapshot
+    cumulativeInterest += monthInterest;
+
+    for (const a of accounts) {
+      accountDetails.push({
+        accountId: a.id,
+        balanceBefore: balancesBefore[a.id],
+        interestAccrued: interestAccrued[a.id],
+        minimumPaymentApplied: monthPayments[a.id].minimum,
+        extraPaymentApplied: monthPayments[a.id].extra,
+        cascadePaymentApplied: monthPayments[a.id].cascade,
+        balanceAfter: Math.max(balances[a.id], 0),
+        paidOff: paidOffAccounts.has(a.id),
+      });
+    }
+
+    timeline.push({
+      month: monthNum,
+      calendarMonth,
+      totalBalance: Object.values(balances).reduce((s, b) => s + Math.max(b, 0), 0),
+      cumulativeInterest,
+      accounts: accountDetails,
+      events,
+    });
+
+    if (Object.values(balances).every((b) => b <= 0.01)) break;
+  }
+
+  return {
+    totalMonths: timeline.length,
+    totalInterestPaid: cumulativeInterest,
+    totalAmountPaid,
+    debtFreeDate: timeline.length > 0 ? timeline[timeline.length - 1].calendarMonth : startMonth,
+    payoffOrder,
+    timeline,
+  };
+}
