@@ -45,7 +45,7 @@ The planner is a 4-step wizard rendered as freely navigable tabs (not a locked l
   - `amount: number` — the extra cash available
   - `month: string` — target month in `YYYY-MM` format (e.g., "2026-04")
   - `label?: string` — optional human label ("Prima", "Freelance", "Bono")
-  - `currency: string` — defaults to user's preferred currency (uses `string` to match `DebtAccount.currency`)
+  - `currency: CurrencyCode` — defaults to user's preferred currency
   - `recurring?: { months: number }` — if set, repeats for N months starting from `month`
 - Quick-add shortcut: "X amount every month for N months" auto-generates entries
 
@@ -149,8 +149,7 @@ create table debt_scenarios (
   results jsonb,                      -- ScenarioResult (timeline, totals, payoff order)
 
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-
+  updated_at timestamptz not null default now()
 );
 
 -- Auto-update updated_at on row changes
@@ -185,7 +184,7 @@ interface CashEntry {
   amount: number;
   month: string;           // "YYYY-MM"
   label?: string;
-  currency: string;            // matches DebtAccount.currency (string, not CurrencyCode enum)
+  currency: CurrencyCode;
   recurring?: { months: number };
 }
 ```
@@ -401,7 +400,7 @@ export const cashEntrySchema = z.object({
   amount: z.number().positive(),
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
   label: z.string().optional(),
-  currency: z.string(),
+  currency: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
   recurring: z.object({ months: z.number().int().positive() }).optional(),
 });
 
@@ -425,8 +424,29 @@ export const saveScenarioSchema = z.object({
   cashEntries: z.array(cashEntrySchema).min(1),
   strategy: z.enum(["snowball", "avalanche", "custom"]),
   allocations: scenarioAllocationsSchema,
-  snapshotAccounts: z.array(z.any()),  // DebtAccount[] — validated structurally
-  results: z.any(),                     // ScenarioResult — pre-computed, stored as-is
+  snapshotAccounts: z.array(z.object({  // DebtAccount[] — shallow structural validation
+    id: z.string(),
+    name: z.string(),
+    type: z.enum(["CREDIT_CARD", "LOAN"]),
+    balance: z.number(),
+    currency: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
+    interestRate: z.number().nullable(),
+    monthlyPayment: z.number().nullable(),
+    creditLimit: z.number().nullable(),
+    paymentDay: z.number().nullable(),
+    cutoffDay: z.number().nullable(),
+    color: z.string().nullable(),
+    institutionName: z.string().nullable(),
+    currencyBreakdown: z.any().nullable(),
+  })).min(1),
+  results: z.object({                   // ScenarioResult — validate top-level shape
+    totalMonths: z.number(),
+    totalInterestPaid: z.number(),
+    totalAmountPaid: z.number(),
+    debtFreeDate: z.string(),
+    payoffOrder: z.array(z.any()),
+    timeline: z.array(z.any()),         // full timeline validation would be excessive
+  }),
 });
 ```
 
@@ -507,9 +527,11 @@ If the user has saved scenarios, the debt dashboard shows a small "Planes guarda
 
 Phase 1 is split into 3 PRs to keep reviews manageable:
 
-**PR 1: EA interest rate fix**
+**PR 1: EA interest rate fix + type tightening**
 - Add `monthlyRateFromEA()` to `@zeta/shared`
 - Update all existing functions: `runSimulation`, `simulateSingleAccount`, `allocateLumpSum`, `estimateMonthlyInterest`
+- Tighten `currency: string` → `CurrencyCode` in shared package types: `DebtAccount`, `CurrencyDebt`, `DebtByCurrency`, `LumpSumAllocation`
+- Remove downstream `as CurrencyCode` casts that become unnecessary
 - Delete dead-code local copies: `webapp/src/lib/utils/debt.ts`, `webapp/src/lib/utils/debt-simulator.ts`
 - Small, testable, standalone value
 
