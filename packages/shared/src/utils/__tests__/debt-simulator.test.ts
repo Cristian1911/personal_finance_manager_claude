@@ -6,26 +6,7 @@ import {
   compareStrategies,
 } from "../debt-simulator";
 import { monthlyRateFromEA } from "../debt";
-import type { DebtAccount } from "../debt";
-
-function makeAccount(overrides: Partial<DebtAccount> = {}): DebtAccount {
-  return {
-    id: "acc-1",
-    name: "Tarjeta Visa",
-    type: "CREDIT_CARD",
-    balance: 5_000_000,
-    creditLimit: 10_000_000,
-    interestRate: 28,
-    monthlyPayment: 250_000,
-    paymentDay: 15,
-    cutoffDay: 5,
-    currency: "COP",
-    color: null,
-    institutionName: "Bancolombia",
-    currencyBreakdown: null,
-    ...overrides,
-  };
-}
+import { makeAccount } from "./helpers";
 
 describe("runSimulation (EA interest)", () => {
   it("accrues interest using EA compound rate, not nominal/12", () => {

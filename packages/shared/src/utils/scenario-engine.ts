@@ -9,6 +9,7 @@
 
 import type { DebtAccount } from "./debt";
 import { monthlyRateFromEA } from "./debt";
+import type { CurrencyCode } from "../types/domain";
 import type {
   CashEntry,
   ScenarioInput,
@@ -87,6 +88,7 @@ export function getMinPayment(account: DebtAccount): number {
 }
 
 const MAX_MONTHS = 360;
+const BALANCE_EPSILON = 0.01;
 
 /**
  * Advance a "YYYY-MM" string by `offset` months.
@@ -108,12 +110,12 @@ function getScenarioPriority(
   strategy: ScenarioStrategy,
   customPriority?: string[]
 ): string | null {
-  const active = accounts.filter((a) => (balances[a.id] ?? 0) > 0.01);
+  const active = accounts.filter((a) => (balances[a.id] ?? 0) > BALANCE_EPSILON);
   if (active.length === 0) return null;
 
   if (strategy === "custom" && customPriority) {
     for (const id of customPriority) {
-      if ((balances[id] ?? 0) > 0.01) return id;
+      if ((balances[id] ?? 0) > BALANCE_EPSILON) return id;
     }
     return null;
   }
@@ -127,7 +129,7 @@ function getScenarioPriority(
   return active[0].id;
 }
 
-function formatAmount(amount: number, currency: string): string {
+function formatAmount(amount: number, currency: CurrencyCode): string {
   const symbol = currency === "USD" || currency === "EUR" ? currency + " " : "$";
   return symbol + Math.round(amount).toLocaleString("es-CO");
 }
@@ -202,7 +204,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
 
   for (let monthIdx = 0; monthIdx < MAX_MONTHS; monthIdx++) {
     const totalBefore = Object.values(balances).reduce((s, b) => s + Math.max(b, 0), 0);
-    if (totalBefore <= 0.01) break;
+    if (totalBefore <= BALANCE_EPSILON) break;
 
     const calendarMonth = advanceMonth(startMonth, monthIdx);
     const monthNum = monthIdx + 1;
@@ -226,7 +228,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
     // 1. Accrue interest
     let monthInterest = 0;
     for (const a of accounts) {
-      if (balances[a.id] <= 0.01) continue;
+      if (balances[a.id] <= BALANCE_EPSILON) continue;
       const rate = a.interestRate ?? 0;
       const interest = balances[a.id] * monthlyRateFromEA(rate);
       balances[a.id] += interest;
@@ -242,7 +244,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
     let freedMinimums = 0;
 
     for (const a of accounts) {
-      if (paidOffAccounts.has(a.id) || balances[a.id] <= 0.01) {
+      if (paidOffAccounts.has(a.id) || balances[a.id] <= BALANCE_EPSILON) {
         if (paidOffAccounts.has(a.id)) {
           freedMinimums += getMinPayment(a);
         }
@@ -254,7 +256,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
       monthPayments[a.id].minimum = minPay;
       totalAmountPaid += minPay;
 
-      if (balances[a.id] <= 0.01) {
+      if (balances[a.id] <= BALANCE_EPSILON) {
         freedMinimums += markPaidOff(a.id, monthNum, calendarMonth, events);
       }
     }
@@ -277,14 +279,14 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
 
       if (override) {
         const targetBal = balances[override.accountId] ?? 0;
-        if (targetBal > 0.01) {
+        if (targetBal > BALANCE_EPSILON) {
           const payment = Math.min(override.amount, targetBal);
           balances[override.accountId] -= payment;
           monthPayments[override.accountId].extra += payment;
           totalAmountPaid += payment;
           unallocatedCash += ce.amount - payment;
 
-          if (balances[override.accountId] <= 0.01) {
+          if (balances[override.accountId] <= BALANCE_EPSILON) {
             freedMinimums += markPaidOff(override.accountId, monthNum, calendarMonth, events);
           }
         } else {
@@ -297,7 +299,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
 
     // Distribute unallocated cash by strategy
     let pool = unallocatedCash;
-    while (pool > 0.01) {
+    while (pool > BALANCE_EPSILON) {
       const priorityId = getScenarioPriority(balances, accounts, strategy, allocations.customPriority);
       if (!priorityId) break;
 
@@ -307,19 +309,19 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
       monthPayments[priorityId].extra += payment;
       totalAmountPaid += payment;
 
-      if (balances[priorityId] <= 0.01) {
+      if (balances[priorityId] <= BALANCE_EPSILON) {
         freedMinimums += markPaidOff(priorityId, monthNum, calendarMonth, events);
       }
     }
 
     // 4. Apply freed minimums (cascade)
     let cascadePool = freedMinimums;
-    while (cascadePool > 0.01) {
+    while (cascadePool > BALANCE_EPSILON) {
       // Check cascade redirects first
       let targetId: string | null = null;
       for (const paidId of paidOffAccounts) {
         const redirect = cascadeByFrom.get(paidId);
-        if (redirect && (balances[redirect.toAccountId] ?? 0) > 0.01) {
+        if (redirect && (balances[redirect.toAccountId] ?? 0) > BALANCE_EPSILON) {
           targetId = redirect.toAccountId;
           const fromAcct = accountsById.get(paidId)!;
           const toAcct = accountsById.get(redirect.toAccountId)!;
@@ -345,7 +347,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
       monthPayments[targetId].cascade += payment;
       totalAmountPaid += payment;
 
-      if (balances[targetId] <= 0.01) {
+      if (balances[targetId] <= BALANCE_EPSILON) {
         markPaidOff(targetId, monthNum, calendarMonth, events);
       }
     }
@@ -375,7 +377,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
       events,
     });
 
-    if (Object.values(balances).every((b) => b <= 0.01)) break;
+    if (Object.values(balances).every((b) => b <= BALANCE_EPSILON)) break;
   }
 
   return {

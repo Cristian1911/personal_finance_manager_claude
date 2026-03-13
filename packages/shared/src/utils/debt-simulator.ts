@@ -7,6 +7,7 @@
 import { monthlyRateFromEA } from "./debt";
 import type { DebtAccount } from "./debt";
 import type { CurrencyCode } from "../types/domain";
+import { getMinPayment } from "./scenario-engine";
 
 export type PayoffStrategy = "snowball" | "avalanche";
 
@@ -44,15 +45,6 @@ export interface SimulationComparison {
 }
 
 const MAX_MONTHS = 360;
-const DEFAULT_MIN_PAYMENT_RATE = 0.05; // 5% is more realistic for Colombian banks
-const DEFAULT_MIN_PAYMENT_FLOOR = 50000; // $50,000 COP minimum
-
-function getMinimumPayment(account: DebtAccount): number {
-  if (account.monthlyPayment && account.monthlyPayment > 0) {
-    return account.monthlyPayment;
-  }
-  return Math.max(account.balance * DEFAULT_MIN_PAYMENT_RATE, DEFAULT_MIN_PAYMENT_FLOOR);
-}
 
 function getPriorityAccountId(
   balances: Record<string, number>,
@@ -103,10 +95,10 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     let freedMinimums = 0;
     for (const a of accounts) {
       if (balances[a.id] <= 0) {
-        freedMinimums += getMinimumPayment(a);
+        freedMinimums += getMinPayment(a);
         continue;
       }
-      const minPayment = Math.min(getMinimumPayment(a), balances[a.id]);
+      const minPayment = Math.min(getMinPayment(a), balances[a.id]);
       balances[a.id] -= minPayment;
       monthPrincipal += minPayment;
       totalAmountPaid += minPayment;
@@ -270,7 +262,7 @@ export function simulateSingleAccount(
   extraMonthly: number
 ): SingleAccountResult {
   const rate = account.interestRate ?? 0;
-  const minPayment = getMinimumPayment(account);
+  const minPayment = getMinPayment(account);
 
   function simulate(monthlyExtra: number) {
     let balance = account.balance;
