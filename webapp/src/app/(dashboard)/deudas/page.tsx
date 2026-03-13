@@ -55,9 +55,9 @@ export default async function DeudasPage() {
           </p>
         </div>
         <Button variant="outline" asChild>
-          <Link href="/deudas/simulador">
+          <Link href="/deudas/planificador">
             <Calculator className="h-4 w-4 mr-2" />
-            Simulador de pago
+            Planificador de pagos
           </Link>
         </Button>
       </div>
