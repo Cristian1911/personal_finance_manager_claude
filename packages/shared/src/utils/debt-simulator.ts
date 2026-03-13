@@ -6,6 +6,7 @@
 
 import { monthlyRateFromEA } from "./debt";
 import type { DebtAccount } from "./debt";
+import type { CurrencyCode } from "../types/domain";
 
 export type PayoffStrategy = "snowball" | "avalanche";
 
@@ -166,7 +167,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
 export interface LumpSumAllocation {
   accountId: string;
   accountName: string;
-  currency: string;
+  currency: CurrencyCode;
   currentBalance: number;
   interestRate: number;
   payment: number;
@@ -187,7 +188,7 @@ export interface LumpSumResult {
 export function allocateLumpSum(
   accounts: DebtAccount[],
   lumpSum: number,
-  currency?: string
+  currency?: CurrencyCode
 ): LumpSumResult {
   // Sort by interest rate descending (avalanche strategy)
   const sorted = [...accounts]

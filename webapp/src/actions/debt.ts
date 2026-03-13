@@ -8,7 +8,7 @@ import {
   generateInsights,
   type DebtOverview,
 } from "@zeta/shared";
-import type { CurrencyCode } from "@/types/domain";
+import type { CurrencyCode } from "@zeta/shared";
 
 export async function getDebtOverview(currency?: CurrencyCode): Promise<DebtOverview> {
   const baseCurrency = currency ?? "COP";
@@ -38,7 +38,7 @@ export async function getDebtOverview(currency?: CurrencyCode): Promise<DebtOver
   const debtAccounts = extractDebtAccounts(accounts);
 
   // Group debt totals by currency (using breakdowns when available)
-  const byCurrency = new Map<string, { debt: number; limit: number }>();
+  const byCurrency = new Map<CurrencyCode, { debt: number; limit: number }>();
   for (const a of debtAccounts) {
     if (a.currencyBreakdown) {
       for (const cb of a.currencyBreakdown) {
