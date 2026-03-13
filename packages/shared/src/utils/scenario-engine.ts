@@ -141,6 +141,19 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
 
   const currency = accounts[0]?.currency ?? "COP";
 
+  // Pre-index accounts by ID for O(1) lookups
+  const accountsById = new Map(accounts.map((a) => [a.id, a]));
+
+  // Pre-index manual overrides for O(1) lookup
+  const overridesByKey = new Map(
+    allocations.manualOverrides.map((o) => [`${o.month}:${o.cashEntryId}`, o])
+  );
+
+  // Pre-index cascade redirects by fromAccountId
+  const cascadeByFrom = new Map(
+    allocations.cascadeRedirects.map((r) => [r.fromAccountId, r])
+  );
+
   // Initialize balances
   const balances: Record<string, number> = {};
   for (const a of accounts) {
@@ -159,6 +172,32 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
     const existing = cashByMonth.get(ce.month) ?? [];
     existing.push(ce);
     cashByMonth.set(ce.month, existing);
+  }
+
+  // Helper: mark an account as paid off and record events.
+  // Returns the freed minimum payment amount.
+  function markPaidOff(
+    accountId: string,
+    monthNum: number,
+    calendarMonth: string,
+    events: ScenarioEvent[],
+  ): number {
+    if (paidOffAccounts.has(accountId)) return 0;
+    balances[accountId] = 0;
+    paidOffAccounts.add(accountId);
+    const acct = accountsById.get(accountId)!;
+    payoffOrder.push({
+      accountId,
+      accountName: acct.name,
+      month: monthNum,
+      calendarMonth,
+    });
+    events.push({
+      type: "account_paid_off",
+      description: `${acct.name} liquidada`,
+      accountId,
+    });
+    return getMinPayment(acct);
   }
 
   for (let monthIdx = 0; monthIdx < MAX_MONTHS; monthIdx++) {
@@ -201,7 +240,6 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
 
     // 2. Pay minimums — track freed minimums
     let freedMinimums = 0;
-    const newlyPaidOff: string[] = [];
 
     for (const a of accounts) {
       if (paidOffAccounts.has(a.id) || balances[a.id] <= 0.01) {
@@ -217,21 +255,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
       totalAmountPaid += minPay;
 
       if (balances[a.id] <= 0.01) {
-        balances[a.id] = 0;
-        paidOffAccounts.add(a.id);
-        newlyPaidOff.push(a.id);
-        payoffOrder.push({
-          accountId: a.id,
-          accountName: a.name,
-          month: monthNum,
-          calendarMonth,
-        });
-        events.push({
-          type: "account_paid_off",
-          description: `${a.name} liquidada`,
-          accountId: a.id,
-        });
-        freedMinimums += getMinPayment(a);
+        freedMinimums += markPaidOff(a.id, monthNum, calendarMonth, events);
       }
     }
 
@@ -249,9 +273,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
       });
 
       // Check manual overrides for this cash entry
-      const override = allocations.manualOverrides.find(
-        (o) => o.month === calendarMonth && o.cashEntryId === ce.id
-      );
+      const override = overridesByKey.get(`${calendarMonth}:${ce.id}`);
 
       if (override) {
         const targetBal = balances[override.accountId] ?? 0;
@@ -263,24 +285,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
           unallocatedCash += ce.amount - payment;
 
           if (balances[override.accountId] <= 0.01) {
-            balances[override.accountId] = 0;
-            if (!paidOffAccounts.has(override.accountId)) {
-              paidOffAccounts.add(override.accountId);
-              newlyPaidOff.push(override.accountId);
-              const acct = accounts.find((a) => a.id === override.accountId)!;
-              payoffOrder.push({
-                accountId: override.accountId,
-                accountName: acct.name,
-                month: monthNum,
-                calendarMonth,
-              });
-              events.push({
-                type: "account_paid_off",
-                description: `${acct.name} liquidada`,
-                accountId: override.accountId,
-              });
-              freedMinimums += getMinPayment(acct);
-            }
+            freedMinimums += markPaidOff(override.accountId, monthNum, calendarMonth, events);
           }
         } else {
           unallocatedCash += ce.amount;
@@ -303,24 +308,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
       totalAmountPaid += payment;
 
       if (balances[priorityId] <= 0.01) {
-        balances[priorityId] = 0;
-        if (!paidOffAccounts.has(priorityId)) {
-          paidOffAccounts.add(priorityId);
-          newlyPaidOff.push(priorityId);
-          const acct = accounts.find((a) => a.id === priorityId)!;
-          payoffOrder.push({
-            accountId: priorityId,
-            accountName: acct.name,
-            month: monthNum,
-            calendarMonth,
-          });
-          events.push({
-            type: "account_paid_off",
-            description: `${acct.name} liquidada`,
-            accountId: priorityId,
-          });
-          freedMinimums += getMinPayment(acct);
-        }
+        freedMinimums += markPaidOff(priorityId, monthNum, calendarMonth, events);
       }
     }
 
@@ -329,11 +317,12 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
     while (cascadePool > 0.01) {
       // Check cascade redirects first
       let targetId: string | null = null;
-      for (const redirect of allocations.cascadeRedirects) {
-        if (paidOffAccounts.has(redirect.fromAccountId) && (balances[redirect.toAccountId] ?? 0) > 0.01) {
+      for (const paidId of paidOffAccounts) {
+        const redirect = cascadeByFrom.get(paidId);
+        if (redirect && (balances[redirect.toAccountId] ?? 0) > 0.01) {
           targetId = redirect.toAccountId;
-          const fromAcct = accounts.find((a) => a.id === redirect.fromAccountId)!;
-          const toAcct = accounts.find((a) => a.id === redirect.toAccountId)!;
+          const fromAcct = accountsById.get(paidId)!;
+          const toAcct = accountsById.get(redirect.toAccountId)!;
           events.push({
             type: "cascade_redirect",
             description: `${formatAmount(Math.min(cascadePool, balances[targetId]), currency)} liberados de ${fromAcct.name} → redirigidos a ${toAcct.name}`,
@@ -357,22 +346,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
       totalAmountPaid += payment;
 
       if (balances[targetId] <= 0.01) {
-        balances[targetId] = 0;
-        if (!paidOffAccounts.has(targetId)) {
-          paidOffAccounts.add(targetId);
-          const acct = accounts.find((a) => a.id === targetId)!;
-          payoffOrder.push({
-            accountId: targetId,
-            accountName: acct.name,
-            month: monthNum,
-            calendarMonth,
-          });
-          events.push({
-            type: "account_paid_off",
-            description: `${acct.name} liquidada`,
-            accountId: targetId,
-          });
-        }
+        markPaidOff(targetId, monthNum, calendarMonth, events);
       }
     }
 
