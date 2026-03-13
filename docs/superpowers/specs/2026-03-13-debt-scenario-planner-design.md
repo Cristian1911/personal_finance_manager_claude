@@ -45,7 +45,7 @@ The planner is a 4-step wizard rendered as freely navigable tabs (not a locked l
   - `amount: number` — the extra cash available
   - `month: string` — target month in `YYYY-MM` format (e.g., "2026-04")
   - `label?: string` — optional human label ("Prima", "Freelance", "Bono")
-  - `currency: CurrencyCode` — defaults to user's preferred currency
+  - `currency: string` — defaults to user's preferred currency (uses `string` to match `DebtAccount.currency`)
   - `recurring?: { months: number }` — if set, repeats for N months starting from `month`
 - Quick-add shortcut: "X amount every month for N months" auto-generates entries
 
@@ -151,8 +151,20 @@ create table debt_scenarios (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
-  constraint debt_scenarios_user_id_fkey foreign key (user_id) references auth.users(id)
 );
+
+-- Auto-update updated_at on row changes
+create or replace function update_updated_at_column()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger set_debt_scenarios_updated_at
+  before update on debt_scenarios
+  for each row execute function update_updated_at_column();
 
 -- RLS
 alter table debt_scenarios enable row level security;
@@ -173,7 +185,7 @@ interface CashEntry {
   amount: number;
   month: string;           // "YYYY-MM"
   label?: string;
-  currency: CurrencyCode;
+  currency: string;            // matches DebtAccount.currency (string, not CurrencyCode enum)
   recurring?: { months: number };
 }
 ```
@@ -287,16 +299,24 @@ This fix applies to:
 ### New Function: `runScenario()`
 
 ```typescript
+export type ScenarioStrategy = "snowball" | "avalanche" | "custom";
+
 interface ScenarioInput {
   accounts: DebtAccount[];
-  cashEntries: CashEntry[];
-  strategy: PayoffStrategy | 'custom';
+  cashEntries: CashEntry[];          // recurring entries pre-expanded before passing in
+  strategy: ScenarioStrategy;
   allocations: ScenarioAllocations;
-  startMonth: string;         // "YYYY-MM" — typically current month
+  startMonth: string;                // "YYYY-MM" — typically current month
 }
 
 function runScenario(input: ScenarioInput): ScenarioResult
 ```
+
+**Note on `ScenarioStrategy` vs `PayoffStrategy`:** The existing `PayoffStrategy = "snowball" | "avalanche"` type is preserved for backward compatibility with `runSimulation()` and `compareStrategies()`. The new `ScenarioStrategy` extends it with `"custom"`. When strategy is `"custom"`, the engine uses `allocations.customPriority` to determine account ordering instead of balance/rate sorting.
+
+**Pre-expansion of recurring entries:** Before calling `runScenario()`, recurring `CashEntry` items are expanded into individual monthly entries. A helper `expandCashEntries(entries: CashEntry[]): CashEntry[]` handles this. The engine receives only flat, non-recurring entries.
+
+**Currency filtering:** `runScenario()` operates on a single currency at a time. The caller filters `accounts` and `cashEntries` to the same currency before passing them in. Multi-currency users run separate scenarios per currency.
 
 **Algorithm (per-month loop, max 360 months):**
 
@@ -307,15 +327,23 @@ function runScenario(input: ScenarioInput): ScenarioResult
    - Check `manualOverrides` first — if the user pinned a cash entry to a specific account, honor it
    - Remaining unallocated cash goes to the priority account per strategy
 5. **Apply freed minimums (cascade):**
+   - Freed minimums come from BOTH step 3 (minimum payment payoffs) AND step 4 (extra payment payoffs)
    - Check `cascadeRedirects` — if the user pinned where freed cash goes, honor it
    - Remaining freed cash goes to the priority account per strategy
 6. **Record events**: cash injections, payoffs, cascade redirects — with Spanish descriptions
 7. **Snapshot** the month's state into the timeline
 
+**Event description format (Spanish):**
+- Cash injection: `"Inyección de $2.000.000 (Prima)"`
+- Account paid off: `"Tarjeta Visa liquidada"`
+- Cascade redirect: `"$150.000 liberados de Tarjeta Visa → redirigidos a Préstamo ABC"`
+
 **Priority logic by strategy:**
 - `snowball`: lowest balance first
 - `avalanche`: highest rate first
 - `custom`: follows `allocations.customPriority` order
+
+**Minimum payment floor:** `getMinimumPayment()` uses a currency-aware floor: 50,000 COP / 25 USD. This only applies when the account has no `monthlyPayment` set.
 
 ### Preserved Functions
 
@@ -344,7 +372,63 @@ export async function deleteScenario(id: string): Promise<ActionResult<void>>
 // Soft or hard delete a scenario
 ```
 
+**Pattern note:** `saveScenario` uses direct typed arguments (not `FormData` / `useActionState`) because the inputs are structured JSON, not flat form fields. This follows the same pattern as `reconcileBalance` and `toggleDashboardVisibility`. Read operations (`getScenarios`, `getScenario`) are plain async functions.
+
 All actions use `getAuthenticatedClient()` and include `.eq("user_id", user.id)` for defense-in-depth.
+
+### `SaveScenarioInput` type
+
+```typescript
+interface SaveScenarioInput {
+  id?: string;                        // present for updates, absent for creates
+  name?: string;                      // null/absent = don't save (ephemeral)
+  cashEntries: CashEntry[];
+  strategy: ScenarioStrategy;
+  allocations: ScenarioAllocations;
+  snapshotAccounts: DebtAccount[];    // frozen account state at creation
+  results: ScenarioResult;           // pre-computed client-side, stored as cache
+}
+```
+
+### Validation (`webapp/src/lib/validators/scenario.ts`)
+
+```typescript
+// Zod schemas for server-side validation before DB insertion.
+// Uses permissive UUID regex (not z.string().uuid()) per project convention.
+
+export const cashEntrySchema = z.object({
+  id: z.string().regex(/^[0-9a-f]{8}-/i),
+  amount: z.number().positive(),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  label: z.string().optional(),
+  currency: z.string(),
+  recurring: z.object({ months: z.number().int().positive() }).optional(),
+});
+
+export const scenarioAllocationsSchema = z.object({
+  manualOverrides: z.array(z.object({
+    month: z.string(),
+    cashEntryId: z.string(),
+    accountId: z.string(),
+    amount: z.number().positive(),
+  })).default([]),
+  cascadeRedirects: z.array(z.object({
+    fromAccountId: z.string(),
+    toAccountId: z.string(),
+  })).default([]),
+  customPriority: z.array(z.string()).optional(),
+});
+
+export const saveScenarioSchema = z.object({
+  id: z.string().regex(/^[0-9a-f]{8}-/i).optional(),
+  name: z.string().min(1).max(100).optional(),
+  cashEntries: z.array(cashEntrySchema).min(1),
+  strategy: z.enum(["snowball", "avalanche", "custom"]),
+  allocations: scenarioAllocationsSchema,
+  snapshotAccounts: z.array(z.any()),  // DebtAccount[] — validated structurally
+  results: z.any(),                     // ScenarioResult — pre-computed, stored as-is
+});
+```
 
 ---
 
@@ -357,7 +441,7 @@ Replaces `/deudas/simulador`. The old route redirects to the new one.
 ### Component tree
 
 ```
-app/(dashboard)/deudas/planificador/page.tsx    -- RSC, fetches accounts + saved scenarios
+app/(dashboard)/deudas/planificador/page.tsx    -- RSC, calls getDebtOverview(currency) + getScenarios()
   components/debt/scenario-planner.tsx          -- Main client component, wizard state
     components/debt/planner/cash-step.tsx        -- Step 1: cash entry management
     components/debt/planner/allocate-step.tsx    -- Step 2: allocation + cascade control
@@ -379,8 +463,8 @@ interface PlannerState {
   scenarios: ScenarioState[];  // max 3
   activeScenarioIndex: number;
 
-  // Computed
-  results: Map<number, ScenarioResult>;  // index → computed result
+  // Computed (plain object, not Map — JSON-serializable)
+  results: Record<number, ScenarioResult>;  // index → computed result
 
   // Persistence
   savedScenarioId: string | null;  // if loaded from DB
@@ -389,18 +473,22 @@ interface PlannerState {
 
 interface ScenarioState {
   name: string;           // "Plan A", "Plan B", "Plan C"
-  strategy: PayoffStrategy | 'custom';
+  strategy: ScenarioStrategy;
   allocations: ScenarioAllocations;
 }
 ```
 
 Results are computed client-side via `useMemo` calling `runScenario()` — no server round-trip needed for simulation. Server actions are only used for save/load/delete.
 
+**Baseline scenario:** The "solo mínimo" baseline in Step 3 is computed on-the-fly by calling `runScenario()` with an empty `cashEntries` array and no overrides — not a separate code path.
+
 ### Dashboard Integration
 
 The `/deudas` page button changes from "Simulador de pago" to "Planificador de pagos" and points to `/deudas/planificador`.
 
 If the user has saved scenarios, the debt dashboard shows a small "Planes guardados" section with scenario names and a quick summary (strategy, months to debt-free, last updated). Clicking opens the scenario in the planner.
+
+**Staleness indicator:** When a saved scenario's `snapshot_accounts` differs significantly from live account balances (e.g., any balance changed by >10%), show a subtle warning badge: "Los saldos han cambiado desde que creaste este plan". The user can then recalculate with current balances or keep the original plan.
 
 ---
 
@@ -415,9 +503,36 @@ If the user has saved scenarios, the debt dashboard shows a small "Planes guarda
 
 ## Iteration Plan
 
-**Phase 1 (this implementation):** Desktop wizard with all 4 steps, EA fix, DB persistence, cascade control. The wizard button is hidden on mobile (matches current behavior).
+### Phase 1 — PR Strategy
 
-**Phase 2 (follow-up):** Mobile-responsive wizard — adapt each step's layout for small screens. The step-by-step nature of the wizard maps naturally to mobile navigation.
+Phase 1 is split into 3 PRs to keep reviews manageable:
+
+**PR 1: EA interest rate fix**
+- Add `monthlyRateFromEA()` to `@zeta/shared`
+- Update all existing functions: `runSimulation`, `simulateSingleAccount`, `allocateLumpSum`, `estimateMonthlyInterest`
+- Delete dead-code local copies: `webapp/src/lib/utils/debt.ts`, `webapp/src/lib/utils/debt-simulator.ts`
+- Small, testable, standalone value
+
+**PR 2: Scenario engine + types + validators**
+- New types: `ScenarioStrategy`, `CashEntry`, `ScenarioAllocations`, `ScenarioResult`, `ScenarioMonth`, `ScenarioEvent`
+- New functions: `runScenario()`, `expandCashEntries()`, currency-aware `getMinimumPayment()`
+- Zod schemas in `webapp/src/lib/validators/scenario.ts`
+- Pure logic in `@zeta/shared`, unit-testable with no UI
+
+**PR 3: DB migration + server actions + wizard UI + dashboard integration**
+- Supabase migration for `debt_scenarios` table
+- Server actions in `webapp/src/actions/scenarios.ts`
+- All wizard UI components
+- Route setup (`/deudas/planificador`), redirect from old `/deudas/simulador`
+- Dashboard "Planes guardados" section
+
+### Phase 2 (follow-up)
+
+Mobile-responsive wizard — adapt each step's layout for small screens. The step-by-step nature of the wizard maps naturally to mobile navigation.
+
+### Phase 3 (future)
+
+Plan vs Reality tracking — compare projected balances against actual imported statement data over time.
 
 ---
 
