@@ -4,6 +4,7 @@
  * Pure functions — no React or server dependencies.
  */
 
+import { monthlyRateFromEA } from "./debt";
 import type { DebtAccount } from "./debt";
 
 export type PayoffStrategy = "snowball" | "avalanche";
@@ -92,7 +93,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     for (const a of accounts) {
       if (balances[a.id] <= 0) continue;
       const rate = a.interestRate ?? 0;
-      const interest = (balances[a.id] * (rate / 100)) / 12;
+      const interest = balances[a.id] * monthlyRateFromEA(rate);
       balances[a.id] += interest;
       monthInterest += interest;
     }
@@ -200,7 +201,7 @@ export function allocateLumpSum(
 
   for (const a of sorted) {
     const rate = a.interestRate ?? 0;
-    const monthlyBefore = (a.balance * (rate / 100)) / 12;
+    const monthlyBefore = a.balance * monthlyRateFromEA(rate);
     totalBefore += monthlyBefore;
 
     if (remaining <= 0) {
@@ -221,7 +222,7 @@ export function allocateLumpSum(
     const payment = Math.min(remaining, a.balance);
     remaining -= payment;
     const newBalance = a.balance - payment;
-    const monthlyAfter = (newBalance * (rate / 100)) / 12;
+    const monthlyAfter = newBalance * monthlyRateFromEA(rate);
     totalAfter += monthlyAfter;
 
     allocations.push({
@@ -276,7 +277,7 @@ export function simulateSingleAccount(
     const balances: number[] = [];
 
     for (let m = 0; m < MAX_MONTHS && balance > 0.01; m++) {
-      const interest = (balance * (rate / 100)) / 12;
+      const interest = balance * monthlyRateFromEA(rate);
       balance += interest;
       totalInterest += interest;
 
