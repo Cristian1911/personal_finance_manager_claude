@@ -59,3 +59,29 @@ export function expandCashEntries(entries: CashEntry[]): CashEntry[] {
 
   return result;
 }
+
+const MIN_PAYMENT_RATE = 0.05;
+const MIN_PAYMENT_FLOORS: Record<string, number> = {
+  COP: 50_000,
+  USD: 25,
+  EUR: 25,
+  BRL: 100,
+  MXN: 500,
+  PEN: 50,
+  CLP: 15_000,
+  ARS: 5_000,
+};
+const DEFAULT_FLOOR = 50_000;
+
+/**
+ * Get the minimum monthly payment for an account.
+ * Uses the account's monthlyPayment if set, otherwise falls back to
+ * 5% of balance with a currency-aware floor.
+ */
+export function getMinPayment(account: DebtAccount): number {
+  if (account.monthlyPayment && account.monthlyPayment > 0) {
+    return account.monthlyPayment;
+  }
+  const floor = MIN_PAYMENT_FLOORS[account.currency] ?? DEFAULT_FLOOR;
+  return Math.max(account.balance * MIN_PAYMENT_RATE, floor);
+}

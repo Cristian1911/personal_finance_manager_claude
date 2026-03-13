@@ -1,6 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { expandCashEntries } from "../scenario-engine";
+import { expandCashEntries, getMinPayment } from "../scenario-engine";
 import type { CashEntry } from "../scenario-types";
+import type { DebtAccount } from "../debt";
+
+function makeAccount(overrides: Partial<DebtAccount> = {}): DebtAccount {
+  return {
+    id: "acc-1",
+    name: "Tarjeta Visa",
+    type: "CREDIT_CARD",
+    balance: 5_000_000,
+    creditLimit: 10_000_000,
+    interestRate: 28,
+    monthlyPayment: null,
+    paymentDay: 15,
+    cutoffDay: 5,
+    currency: "COP",
+    color: null,
+    institutionName: null,
+    currencyBreakdown: null,
+    ...overrides,
+  };
+}
 
 describe("expandCashEntries", () => {
   it("returns non-recurring entries unchanged", () => {
@@ -50,5 +70,32 @@ describe("expandCashEntries", () => {
     ];
     const result = expandCashEntries(entries);
     expect(result).toHaveLength(3);
+  });
+});
+
+describe("getMinPayment", () => {
+  it("uses monthlyPayment when set", () => {
+    const acc = makeAccount({ monthlyPayment: 300_000 });
+    expect(getMinPayment(acc)).toBe(300_000);
+  });
+
+  it("falls back to 5% of balance for COP", () => {
+    const acc = makeAccount({ balance: 2_000_000, monthlyPayment: null, currency: "COP" });
+    expect(getMinPayment(acc)).toBe(100_000);
+  });
+
+  it("uses COP floor of 50,000 when 5% is less", () => {
+    const acc = makeAccount({ balance: 500_000, monthlyPayment: null, currency: "COP" });
+    expect(getMinPayment(acc)).toBe(50_000);
+  });
+
+  it("uses USD floor of 25 when 5% is less", () => {
+    const acc = makeAccount({ balance: 200, monthlyPayment: null, currency: "USD" });
+    expect(getMinPayment(acc)).toBe(25);
+  });
+
+  it("uses 5% for USD when balance is high enough", () => {
+    const acc = makeAccount({ balance: 1_000, monthlyPayment: null, currency: "USD" });
+    expect(getMinPayment(acc)).toBe(50);
   });
 });
