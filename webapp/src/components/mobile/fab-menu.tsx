@@ -204,7 +204,7 @@ export function FabMenu({
           "fixed bottom-5 left-1/2 z-50 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform duration-200 mb-[env(safe-area-inset-bottom)]",
           open && "rotate-45",
         )}
-        aria-label={open ? "Cerrar menú" : "Abrir menu de acciones"}
+        aria-label={open ? "Cerrar menú" : "Abrir menú de acciones"}
       >
         <Plus className="size-7" strokeWidth={2.5} />
       </button>
