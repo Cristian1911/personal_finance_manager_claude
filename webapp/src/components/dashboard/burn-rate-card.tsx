@@ -31,9 +31,9 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
   const result = mode === "discretionary" ? data.discretionary : data.total;
 
   const trendLabel = {
-    accelerating: "Acelerando",
-    stable: "Estable",
-    decelerating: "Desacelerando",
+    accelerating: "↑ Acelerando",
+    stable: "→ Estable",
+    decelerating: "↓ Desacelerando",
   }[result.trend];
 
   const trendColor = {
@@ -65,10 +65,10 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
 
   const runwayText =
     isNegativeDisponible
-      ? "0 dias"
+      ? "0 días"
       : result.runwayDays >= 999
-        ? "sin limite"
-        : `${result.runwayDays} dias`;
+        ? "∞"
+        : `${result.runwayDays} días`;
 
   const runwayDateFormatted =
     result.runwayDays >= 999
