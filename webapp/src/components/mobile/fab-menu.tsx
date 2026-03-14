@@ -2,33 +2,62 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
+import {
+  Plus,
+  Receipt,
+  FileUp,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type FabAction = "expense" | "income" | "transfer" | "new-recurring" | "new-account";
+// --- New types ---
+
+export type PrimaryAction = "transaction" | "import-pdf";
 
 export interface ContextAction {
-  id: FabAction;
+  id: string;
+  icon: React.ReactNode;
   label: string;
-  icon: typeof ArrowUpRight;
-  bg: string;
+  description?: string;
 }
 
-interface FabMenuProps {
-  onAction: (action: FabAction) => void;
+export interface FabMenuProps {
+  onPrimaryAction: (action: PrimaryAction) => void;
   contextActions?: ContextAction[];
+  onContextAction?: (id: string) => void;
 }
 
-const SUB_ACTIONS: ContextAction[] = [
-  { id: "expense", label: "Gasto rápido", icon: ArrowUpRight, bg: "bg-orange-500" },
-  { id: "income", label: "Ingreso", icon: ArrowDownLeft, bg: "bg-green-500" },
-  { id: "transfer", label: "Transferencia", icon: ArrowLeftRight, bg: "bg-blue-500" },
+// --- Primary action definitions ---
+
+const PRIMARY_ACTIONS: {
+  id: PrimaryAction;
+  icon: typeof Receipt;
+  label: string;
+  description: string;
+  bg: string;
+}[] = [
+  {
+    id: "transaction",
+    icon: Receipt,
+    label: "Transacción",
+    description: "Gasto o ingreso",
+    bg: "bg-orange-500",
+  },
+  {
+    id: "import-pdf",
+    icon: FileUp,
+    label: "Importar PDF",
+    description: "Extracto bancario",
+    bg: "bg-blue-500",
+  },
 ];
 
-export function FabMenu({ onAction, contextActions }: FabMenuProps) {
+export function FabMenu({
+  onPrimaryAction,
+  contextActions,
+  onContextAction,
+}: FabMenuProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const allActions = [...(contextActions ?? []), ...SUB_ACTIONS];
 
   const toggle = useCallback(() => setOpen((prev) => !prev), []);
 
@@ -45,12 +74,20 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
-  const handleAction = useCallback(
-    (action: FabAction) => {
+  const handlePrimary = useCallback(
+    (action: PrimaryAction) => {
       setOpen(false);
-      onAction(action);
+      onPrimaryAction(action);
     },
-    [onAction],
+    [onPrimaryAction],
+  );
+
+  const handleContext = useCallback(
+    (id: string) => {
+      setOpen(false);
+      onContextAction?.(id);
+    },
+    [onContextAction],
   );
 
   return (
@@ -64,38 +101,98 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
         />
       )}
 
-      {/* Sub-actions */}
+      {/* Bottom Sheet */}
       {open && (
         <div
-          className="fixed bottom-20 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-3 pb-[env(safe-area-inset-bottom)]"
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-40 rounded-t-2xl bg-background shadow-2xl",
+            "animate-in slide-in-from-bottom duration-300",
+            "pb-[env(safe-area-inset-bottom)]",
+          )}
         >
-          {allActions.map((action, index) => (
-            <button
-              key={action.id}
-              type="button"
-              aria-label={action.label}
-              onClick={() => handleAction(action.id)}
-              className={cn(
-                "flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in fill-mode-both",
-              )}
-              style={{
-                animationDelay: `${index * 60}ms`,
-                animationDuration: "200ms",
-              }}
-            >
-              <span className="rounded-full bg-black/70 px-3 py-1.5 text-sm font-medium text-white">
-                {action.label}
-              </span>
-              <span
-                className={cn(
-                  "flex size-10 items-center justify-center rounded-full text-white shadow-lg",
-                  action.bg,
-                )}
-              >
-                <action.icon className="size-5" strokeWidth={2} />
-              </span>
-            </button>
-          ))}
+          {/* Drag handle */}
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+          </div>
+
+          <div className="px-4 pb-4">
+            {/* Section 1: Acciones rápidas */}
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Acciones rápidas
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {PRIMARY_ACTIONS.map((action, index) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={() => handlePrimary(action.id)}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4",
+                    "transition-colors active:bg-accent",
+                    "animate-in fade-in slide-in-from-bottom-2 fill-mode-both",
+                  )}
+                  style={{
+                    animationDelay: `${index * 40}ms`,
+                    animationDuration: "200ms",
+                  }}
+                >
+                  <span
+                    className={cn(
+                      "flex size-10 items-center justify-center rounded-full text-white",
+                      action.bg,
+                    )}
+                  >
+                    <action.icon className="size-5" strokeWidth={2} />
+                  </span>
+                  <span className="text-sm font-medium">{action.label}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {action.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Section 2: En esta página */}
+            {contextActions && contextActions.length > 0 && (
+              <>
+                <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  En esta página
+                </p>
+                <div className="space-y-1">
+                  {contextActions.map((action, index) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      onClick={() => handleContext(action.id)}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-lg px-3 py-3",
+                        "transition-colors active:bg-accent",
+                        "animate-in fade-in slide-in-from-bottom-1 fill-mode-both",
+                      )}
+                      style={{
+                        animationDelay: `${(PRIMARY_ACTIONS.length + index) * 40}ms`,
+                        animationDuration: "200ms",
+                      }}
+                    >
+                      <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                        {action.icon}
+                      </span>
+                      <div className="flex flex-col items-start">
+                        <span className="text-sm font-medium">
+                          {action.label}
+                        </span>
+                        {action.description && (
+                          <span className="text-xs text-muted-foreground">
+                            {action.description}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

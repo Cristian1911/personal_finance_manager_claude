@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useMemo, useEffect, useActionState } from "react";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2,
+  ArrowUpRight,
+  ArrowDownLeft,
+  ArrowLeftRight,
+} from "lucide-react";
 import { createTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
@@ -15,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/types/actions";
 import type {
   Account,
@@ -26,10 +32,26 @@ import type {
 interface MobileTransactionFormProps {
   accounts: Account[];
   categories: CategoryWithChildren[];
-  defaultDirection: TransactionDirection;
+  defaultDirection?: TransactionDirection;
   isTransfer?: boolean;
   onSuccess?: () => void;
 }
+
+type TransactionType = "expense" | "income" | "transfer";
+
+function directionFromType(type: TransactionType): TransactionDirection {
+  return type === "income" ? "INFLOW" : "OUTFLOW";
+}
+
+const TRANSACTION_TYPES: {
+  id: TransactionType;
+  label: string;
+  icon: typeof ArrowUpRight;
+}[] = [
+  { id: "expense", label: "Gasto", icon: ArrowUpRight },
+  { id: "income", label: "Ingreso", icon: ArrowDownLeft },
+  { id: "transfer", label: "Transferencia", icon: ArrowLeftRight },
+];
 
 export function MobileTransactionForm({
   accounts,
@@ -38,6 +60,21 @@ export function MobileTransactionForm({
   isTransfer,
   onSuccess,
 }: MobileTransactionFormProps) {
+  // Determine initial transaction type from props (backward compat)
+  const initialType: TransactionType = isTransfer
+    ? "transfer"
+    : defaultDirection === "INFLOW"
+      ? "income"
+      : "expense";
+
+  const [transactionType, setTransactionType] =
+    useState<TransactionType>(initialType);
+
+  // Whether to show the type selector (only when no preset direction)
+  const showTypeSelector = !defaultDirection;
+
+  const direction = defaultDirection ?? directionFromType(transactionType);
+
   const [state, formAction, pending] = useActionState<
     ActionResult<Transaction>,
     FormData
@@ -54,7 +91,6 @@ export function MobileTransactionForm({
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => {
     if (typeof window === "undefined") return accounts[0]?.id ?? "";
     const saved = localStorage.getItem(STORAGE_KEY);
-    // Only use saved value if it matches a current account
     if (saved && accounts.some((a) => a.id === saved)) return saved;
     return accounts[0]?.id ?? "";
   });
@@ -64,7 +100,13 @@ export function MobileTransactionForm({
       localStorage.setItem(STORAGE_KEY, selectedAccountId);
     }
   }, [selectedAccountId]);
+
   const [categoryId, setCategoryId] = useState<string | null>(null);
+
+  // Reset category when direction changes (categories are direction-filtered)
+  useEffect(() => {
+    setCategoryId(null);
+  }, [transactionType]);
 
   const currencyCode = useMemo(() => {
     const account = accounts.find((a) => a.id === selectedAccountId);
@@ -73,18 +115,50 @@ export function MobileTransactionForm({
 
   const today = new Date().toISOString().split("T")[0];
 
+  const submitLabel =
+    transactionType === "transfer"
+      ? "Registrar transferencia"
+      : transactionType === "income"
+        ? "Registrar ingreso"
+        : "Registrar gasto";
+
   return (
     <form action={formAction} className="space-y-4">
       {!state.success && state.error && (
-        <div role="alert" className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
+        <div
+          role="alert"
+          className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+        >
           {state.error}
         </div>
       )}
 
       {/* Hidden fields */}
-      <input type="hidden" name="direction" value={defaultDirection} />
+      <input type="hidden" name="direction" value={direction} />
       <input type="hidden" name="transaction_date" value={today} />
       <input type="hidden" name="currency_code" value={currencyCode} />
+
+      {/* Direction selector — only shown when no preset */}
+      {showTypeSelector && (
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {TRANSACTION_TYPES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTransactionType(t.id)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                transactionType === t.id
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <t.icon className="size-4" />
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Amount */}
       <div className="space-y-2">
@@ -94,7 +168,7 @@ export function MobileTransactionForm({
           name="amount"
           placeholder="0"
           required
-          autoFocus
+          autoFocus={!showTypeSelector}
           className="h-12 text-lg"
         />
       </div>
@@ -137,7 +211,7 @@ export function MobileTransactionForm({
           categories={categories}
           value={categoryId}
           onValueChange={setCategoryId}
-          direction={defaultDirection}
+          direction={direction}
           name="category_id"
         />
       </div>
@@ -149,12 +223,8 @@ export function MobileTransactionForm({
             <Loader2 className="mr-2 size-4 animate-spin" />
             Guardando...
           </>
-        ) : isTransfer ? (
-          "Registrar transferencia"
-        ) : defaultDirection === "OUTFLOW" ? (
-          "Registrar gasto"
         ) : (
-          "Registrar ingreso"
+          submitLabel
         )}
       </Button>
     </form>

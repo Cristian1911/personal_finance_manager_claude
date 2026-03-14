@@ -1,20 +1,26 @@
 import { getDebtOverview } from "@/actions/debt";
+import { getEstimatedIncome } from "@/actions/income";
 import { DebtHeroCard } from "@/components/debt/debt-hero-card";
 import { UtilizationGauge } from "@/components/debt/utilization-gauge";
 import { InterestCostCard } from "@/components/debt/interest-cost-card";
 import { DebtAccountCard } from "@/components/debt/debt-account-card";
 import { DebtInsights } from "@/components/debt/debt-insights";
+import { SalaryBar } from "@/components/debt/salary-bar";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { Button } from "@/components/ui/button";
 import { Calculator } from "lucide-react";
 import Link from "next/link";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
+import { getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
 
 export default async function DeudasPage() {
   const currency = await getPreferredCurrency();
 
-  const overview = await getDebtOverview(currency);
+  const [overview, incomeEstimate] = await Promise.all([
+    getDebtOverview(currency),
+    getEstimatedIncome(currency),
+  ]);
 
   if (overview.accounts.length === 0) {
     return (
@@ -43,6 +49,20 @@ export default async function DeudasPage() {
   const preferredCurrencyCreditCards = creditCards.filter((a) => a.currency === currency);
   const totalCreditUsed = preferredCurrencyCreditCards.reduce((sum, a) => sum + a.balance, 0);
   const secondaryCurrencies = overview.debtByCurrency.filter((d) => d.currency !== currency && d.totalDebt > 0);
+
+  // Salary breakdown — only if income is detected
+  const salaryBreakdown = incomeEstimate && incomeEstimate.monthlyAverage > 0
+    ? getCurrentSalaryBreakdown({
+        monthlyIncome: incomeEstimate.monthlyAverage,
+        debtPayments: overview.accounts
+          .filter((a) => a.balance > 0)
+          .map((a) => ({
+            accountId: a.id,
+            name: a.name,
+            amount: getMinPayment(a),
+          })),
+      })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -80,6 +100,11 @@ export default async function DeudasPage() {
 
       {/* Insights */}
       <DebtInsights insights={overview.insights} />
+
+      {/* Salary breakdown */}
+      {salaryBreakdown && incomeEstimate && (
+        <SalaryBar breakdown={salaryBreakdown} currency={currency} />
+      )}
 
       {/* Per-account cards */}
       {creditCards.length > 0 && (
