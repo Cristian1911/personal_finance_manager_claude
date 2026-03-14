@@ -127,12 +127,6 @@ export function getTimelineSalaryBreakdown(
 ): MonthlyBreakdown[] {
   if (income <= 0 || scenarioResult.timeline.length === 0) return [];
 
-  // Build payoff month lookup: accountId -> calendarMonth
-  const payoffMonthMap = new Map<string, string>();
-  for (const entry of scenarioResult.payoffOrder) {
-    payoffMonthMap.set(entry.accountId, entry.calendarMonth);
-  }
-
   return scenarioResult.timeline.map((month: ScenarioMonth) => {
     const segments: SalarySegment[] = [];
     let totalPayments = 0;

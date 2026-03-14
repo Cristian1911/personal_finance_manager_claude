@@ -49,6 +49,8 @@ export async function getEstimatedIncome(
     .select("id, clean_description, raw_description, amount, transaction_date, account_id")
     .eq("user_id", user.id)
     .eq("direction", "INFLOW")
+    .eq("is_excluded", false)
+    .neq("status", "CANCELLED")
     .eq("currency_code", baseCurrency)
     .in("account_id", liquidAccountIds)
     .order("transaction_date", { ascending: false });
