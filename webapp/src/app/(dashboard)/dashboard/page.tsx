@@ -42,6 +42,8 @@ import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
+import { getBurnRate } from "@/actions/burn-rate";
+import { BurnRateCard, BurnRateCardEmpty } from "@/components/dashboard/burn-rate-card";
 
 type DashboardTransactionRow = {
   id: string;
@@ -207,7 +209,7 @@ export default async function DashboardPage({
   }
 
   // Fetch all dashboard data in parallel
-  const [heroData, accountsData, budgetPaceData, cashflowData, categoryData, allAccountsResult, latestSnapshotDates] =
+  const [heroData, accountsData, budgetPaceData, cashflowData, categoryData, allAccountsResult, latestSnapshotDates, burnRateData] =
     await Promise.all([
       getDashboardHeroData(month, currency),
       getAccountsWithSparklineData(),
@@ -216,6 +218,7 @@ export default async function DashboardPage({
       getCategorySpending(month, currency),
       getAccounts(),
       getLatestSnapshotDates(),
+      getBurnRate(currency),
     ]);
 
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
@@ -254,6 +257,7 @@ export default async function DashboardPage({
           heroData={mobileHeroData}
           upcomingPayments={mobileUpcomingPayments}
           recentTransactions={mobileRecentTx}
+          burnRateData={burnRateData}
         />
       </div>
 
@@ -273,6 +277,13 @@ export default async function DashboardPage({
 
           {/* 1. Hero — "Tu dinero ahora" */}
           <DashboardHero data={heroData} />
+
+          {/* Burn Rate Card - below hero */}
+          {burnRateData ? (
+            <BurnRateCard data={burnRateData} />
+          ) : (
+            <BurnRateCardEmpty />
+          )}
 
           {/* 2. Payments + Accounts side by side */}
           <div className="grid gap-6 lg:grid-cols-2">
