@@ -1,0 +1,37 @@
+# Test: Login exitoso con credenciales válidas
+# Tags: smoke, auth
+# Precondición: Usuario registrado en el sistema
+
+appId: com.zetafinance.app
+tags:
+  - smoke
+  - auth
+---
+- launchApp:
+    clearState: true
+
+# Pantalla de login visible
+- assertVisible:
+    id: "login-screen"
+- assertVisible: "Iniciar sesión"
+
+# Ingresar credenciales
+- tapOn:
+    id: "login-email-input"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "login-password-input"
+- inputText: ${PASSWORD}
+
+# Enviar formulario
+- tapOn:
+    id: "login-submit-button"
+
+# Verificar navegación al dashboard
+- assertVisible:
+    id: "dashboard-screen"
+    timeout: 10000
+
+# Verificar elementos clave del dashboard
+- assertVisible:
+    id: "balance-card"

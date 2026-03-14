@@ -1,0 +1,34 @@
+# Test: Ver lista de cuentas
+# Tags: smoke, accounts
+# Precondición: Usuario autenticado con al menos 1 cuenta
+
+appId: com.zetafinance.app
+tags:
+  - smoke
+  - accounts
+env:
+  EMAIL: ${EMAIL}
+  PASSWORD: ${PASSWORD}
+---
+- launchApp:
+    clearState: true
+
+# Login
+- runFlow:
+    file: ../../helpers/login.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+# Navegar a cuentas
+- tapOn:
+    id: "tab-accounts"
+
+# Verificar pantalla de cuentas
+- assertVisible:
+    id: "accounts-screen"
+
+# Verificar que existe al menos una cuenta
+- assertVisible:
+    id: "account-card"
+    timeout: 5000

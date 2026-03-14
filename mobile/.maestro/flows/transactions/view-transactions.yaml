@@ -1,0 +1,34 @@
+# Test: Ver lista de transacciones
+# Tags: smoke, transactions
+# Precondición: Usuario autenticado
+
+appId: com.zetafinance.app
+tags:
+  - smoke
+  - transactions
+env:
+  EMAIL: ${EMAIL}
+  PASSWORD: ${PASSWORD}
+---
+- launchApp:
+    clearState: true
+
+# Login
+- runFlow:
+    file: ../../helpers/login.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+# Navegar a transacciones
+- tapOn:
+    id: "tab-transactions"
+
+# Verificar pantalla
+- assertVisible:
+    id: "transactions-screen"
+    timeout: 5000
+
+# Verificar que la lista carga
+- assertVisible:
+    id: "transaction-list"

@@ -1,0 +1,41 @@
+# Test: Flujo de registro de usuario
+# Tags: auth
+# Nota: Requiere email único por ejecución
+
+appId: com.zetafinance.app
+tags:
+  - auth
+---
+- launchApp:
+    clearState: true
+
+- assertVisible:
+    id: "login-screen"
+
+# Navegar a signup
+- tapOn:
+    id: "login-signup-link"
+
+# Pantalla de registro visible
+- assertVisible:
+    id: "signup-screen"
+
+# Llenar formulario
+- tapOn:
+    id: "signup-name-input"
+- inputText: "Test User"
+- tapOn:
+    id: "signup-email-input"
+- inputText: "test+${TIMESTAMP}@example.com"
+- tapOn:
+    id: "signup-password-input"
+- inputText: "TestPassword123!"
+
+# Enviar registro
+- tapOn:
+    id: "signup-submit-button"
+
+# Verificar feedback (puede ser confirmación de email o dashboard)
+- assertVisible:
+    id: "signup-success-message"
+    timeout: 10000

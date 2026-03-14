@@ -1,0 +1,16 @@
+# Helper: Login flow reutilizable
+# Uso: - runFlow: ../helpers/login.yaml
+
+appId: com.zetafinance.app
+---
+- tapOn:
+    id: "login-email-input"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "login-password-input"
+- inputText: ${PASSWORD}
+- tapOn:
+    id: "login-submit-button"
+- assertVisible:
+    id: "dashboard-screen"
+    timeout: 10000
