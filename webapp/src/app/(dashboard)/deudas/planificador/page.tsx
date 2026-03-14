@@ -1,4 +1,5 @@
 import { getDebtOverview } from "@/actions/debt";
+import { getEstimatedIncome } from "@/actions/income";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getScenarios } from "@/actions/scenarios";
 import { ScenarioPlanner } from "@/components/debt/scenario-planner";
@@ -11,6 +12,7 @@ export default async function PlanificadorPage() {
   const overview = await getDebtOverview(currency);
   const activeDebts = overview.accounts.filter((a) => a.balance > 0);
   const savedScenarios = await getScenarios();
+  const incomeEstimate = await getEstimatedIncome(currency);
 
   if (activeDebts.length === 0) {
     return (
@@ -59,6 +61,7 @@ export default async function PlanificadorPage() {
         accounts={activeDebts}
         currency={currency}
         savedScenarios={savedScenarios}
+        income={incomeEstimate?.monthlyAverage}
       />
     </div>
   );

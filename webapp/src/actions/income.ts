@@ -1,0 +1,86 @@
+"use server";
+
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import type { CurrencyCode } from "@zeta/shared";
+
+export interface IncomeEstimate {
+  monthlyAverage: number;
+  currency: CurrencyCode;
+  monthsOfData: number;
+  totalIncome: number;
+  recentTransactions: {
+    id: string;
+    description: string;
+    amount: number;
+    date: string;
+  }[];
+}
+
+/**
+ * Estimate monthly income from INFLOW transactions.
+ * Queries all income transactions in the user's preferred currency,
+ * groups by month, and returns the average.
+ *
+ * Excludes debt account inflows (credit card payments received, etc.)
+ * by filtering to only checking/savings accounts.
+ */
+export async function getEstimatedIncome(
+  currency?: CurrencyCode
+): Promise<IncomeEstimate | null> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return null;
+
+  const baseCurrency = currency ?? "COP";
+
+  // Get non-debt account IDs to filter transfers from credit cards
+  const { data: liquidAccounts } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .in("account_type", ["CHECKING", "SAVINGS"]);
+
+  const liquidAccountIds = liquidAccounts?.map((a) => a.id) ?? [];
+  if (liquidAccountIds.length === 0) return null;
+
+  // Fetch all INFLOW transactions in liquid accounts
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("id, clean_description, raw_description, amount, transaction_date, account_id")
+    .eq("user_id", user.id)
+    .eq("direction", "INFLOW")
+    .eq("is_excluded", false)
+    .neq("status", "CANCELLED")
+    .eq("currency_code", baseCurrency)
+    .in("account_id", liquidAccountIds)
+    .order("transaction_date", { ascending: false });
+
+  if (!transactions || transactions.length === 0) return null;
+
+  // Group by "YYYY-MM" and compute monthly totals
+  const monthlyTotals = new Map<string, number>();
+  for (const tx of transactions) {
+    const month = tx.transaction_date.slice(0, 7); // "YYYY-MM"
+    monthlyTotals.set(month, (monthlyTotals.get(month) ?? 0) + tx.amount);
+  }
+
+  const monthsOfData = monthlyTotals.size;
+  const totalIncome = [...monthlyTotals.values()].reduce((s, v) => s + v, 0);
+  const monthlyAverage = monthsOfData > 0 ? totalIncome / monthsOfData : 0;
+
+  // Return most recent income transactions for user context (up to 10)
+  const recentTransactions = transactions.slice(0, 10).map((tx) => ({
+    id: tx.id,
+    description: tx.clean_description ?? tx.raw_description ?? "Ingreso",
+    amount: tx.amount,
+    date: tx.transaction_date,
+  }));
+
+  return {
+    monthlyAverage,
+    currency: baseCurrency,
+    monthsOfData,
+    totalIncome,
+    recentTransactions,
+  };
+}
