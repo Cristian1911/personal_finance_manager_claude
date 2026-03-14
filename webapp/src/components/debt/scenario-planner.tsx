@@ -116,9 +116,10 @@ interface Props {
   accounts: DebtAccount[];
   currency?: CurrencyCode;
   savedScenarios: unknown[];
+  income?: number;
 }
 
-export function ScenarioPlanner({ accounts, currency, savedScenarios }: Props) {
+export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: Props) {
   const router = useRouter();
   const [state, dispatch] = useReducer(plannerReducer, initialState);
 
@@ -203,6 +204,7 @@ export function ScenarioPlanner({ accounts, currency, savedScenarios }: Props) {
             results={results}
             baseline={baseline}
             currency={currency}
+            income={income}
           />
         </TabsContent>
       </Tabs>

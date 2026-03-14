@@ -46,6 +46,7 @@ import {
   Zap,
   ArrowRight,
 } from "lucide-react";
+import { SalaryTimelineChart } from "@/components/debt/salary-timeline-chart";
 
 interface Props {
   accounts: DebtAccount[];
@@ -53,6 +54,7 @@ interface Props {
   results: Record<number, ScenarioResult>;
   baseline: ScenarioResult;
   currency?: CurrencyCode;
+  income?: number;  // monthly income for salary timeline
 }
 
 const PLAN_COLORS = [
@@ -150,6 +152,7 @@ export function DetailStep({
   results,
   baseline,
   currency,
+  income,
 }: Props) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -547,6 +550,16 @@ export function DetailStep({
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Salary timeline chart */}
+      {income && income > 0 && result && (
+        <SalaryTimelineChart
+          accounts={accounts}
+          income={income}
+          result={result}
+          currency={currency}
+        />
       )}
     </div>
   );
