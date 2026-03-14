@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CalendarPlus, Landmark } from "lucide-react";
 import {
   Sheet,
@@ -9,14 +9,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { FabMenu, type FabAction, type ContextAction } from "./fab-menu";
+import {
+  FabMenu,
+  type PrimaryAction,
+  type ContextAction,
+} from "./fab-menu";
 import { MobileTransactionForm } from "./mobile-transaction-form";
 import { RecurringForm } from "@/components/recurring/recurring-form";
 import { SpecializedAccountForm } from "@/components/accounts/specialized-account-form";
 import type {
   Account,
   CategoryWithChildren,
-  TransactionDirection,
 } from "@/types/domain";
 
 interface MobileSheetProviderProps {
@@ -25,31 +28,44 @@ interface MobileSheetProviderProps {
   children: React.ReactNode;
 }
 
-const TRANSACTION_ACTIONS: Record<
-  "expense" | "income" | "transfer",
-  { title: string; direction: TransactionDirection }
-> = {
-  expense: { title: "Gasto rápido", direction: "OUTFLOW" },
-  income: { title: "Ingreso", direction: "INFLOW" },
-  transfer: { title: "Transferencia", direction: "OUTFLOW" },
-};
+// Active sheet can be a primary action that opens a sheet, or a context action
+type ActiveSheet = "transaction" | "new-recurring" | "new-account" | null;
 
-function getContextActions(pathname: string): ContextAction[] {
-  // startsWith: no sub-routes for recurrentes
-  // exact match: avoid showing on /accounts/[id] detail pages
-  if (pathname.startsWith("/recurrentes")) {
-    return [{ id: "new-recurring", label: "Nuevo recurrente", icon: CalendarPlus, bg: "bg-purple-500" }];
+function getSheetTitle(sheet: ActiveSheet): string {
+  switch (sheet) {
+    case "transaction":
+      return "Nueva transacción";
+    case "new-recurring":
+      return "Nueva transacción recurrente";
+    case "new-account":
+      return "Nueva cuenta";
+    default:
+      return "";
   }
-  if (pathname === "/accounts") {
-    return [{ id: "new-account", label: "Nueva cuenta", icon: Landmark, bg: "bg-cyan-500" }];
-  }
-  return [];
 }
 
-function getSheetTitle(action: FabAction): string {
-  if (action === "new-recurring") return "Nueva transacción recurrente";
-  if (action === "new-account") return "Nueva cuenta";
-  return TRANSACTION_ACTIONS[action as keyof typeof TRANSACTION_ACTIONS]?.title ?? "";
+function getContextActions(pathname: string): ContextAction[] {
+  if (pathname.startsWith("/recurrentes")) {
+    return [
+      {
+        id: "new-recurring",
+        icon: <CalendarPlus className="size-4" />,
+        label: "Nuevo recurrente",
+        description: "Plantilla de gasto o ingreso fijo",
+      },
+    ];
+  }
+  if (pathname === "/accounts") {
+    return [
+      {
+        id: "new-account",
+        icon: <Landmark className="size-4" />,
+        label: "Nueva cuenta",
+        description: "Cuenta bancaria o tarjeta",
+      },
+    ];
+  }
+  return [];
 }
 
 export function MobileSheetProvider({
@@ -57,21 +73,41 @@ export function MobileSheetProvider({
   categories,
   children,
 }: MobileSheetProviderProps) {
-  const [activeAction, setActiveAction] = useState<FabAction | null>(null);
+  const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const pathname = usePathname();
+  const router = useRouter();
 
   const contextActions = getContextActions(pathname);
+
+  function handlePrimaryAction(action: PrimaryAction) {
+    if (action === "transaction") {
+      setActiveSheet("transaction");
+    } else if (action === "import-pdf") {
+      // Navigate to import page — no sheet needed
+      router.push("/import");
+    }
+  }
+
+  function handleContextAction(id: string) {
+    if (id === "new-recurring" || id === "new-account") {
+      setActiveSheet(id);
+    }
+  }
 
   return (
     <>
       {children}
 
-      <FabMenu onAction={setActiveAction} contextActions={contextActions} />
+      <FabMenu
+        onPrimaryAction={handlePrimaryAction}
+        contextActions={contextActions}
+        onContextAction={handleContextAction}
+      />
 
       <Sheet
-        open={activeAction !== null}
+        open={activeSheet !== null}
         onOpenChange={(open) => {
-          if (!open) setActiveAction(null);
+          if (!open) setActiveSheet(null);
         }}
       >
         <SheetContent
@@ -79,32 +115,32 @@ export function MobileSheetProvider({
           className="max-h-[85vh] overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>{activeAction ? getSheetTitle(activeAction) : ""}</SheetTitle>
+            <SheetTitle>
+              {activeSheet ? getSheetTitle(activeSheet) : ""}
+            </SheetTitle>
           </SheetHeader>
 
           <div className="px-4 pb-4">
-            {activeAction && activeAction in TRANSACTION_ACTIONS && (
+            {activeSheet === "transaction" && (
               <MobileTransactionForm
-                key={activeAction}
+                key="transaction"
                 accounts={accounts}
                 categories={categories}
-                defaultDirection={TRANSACTION_ACTIONS[activeAction as keyof typeof TRANSACTION_ACTIONS].direction}
-                isTransfer={activeAction === "transfer"}
-                onSuccess={() => setActiveAction(null)}
+                onSuccess={() => setActiveSheet(null)}
               />
             )}
 
-            {activeAction === "new-recurring" && (
+            {activeSheet === "new-recurring" && (
               <RecurringForm
                 accounts={accounts}
                 categories={categories}
-                onSuccess={() => setActiveAction(null)}
+                onSuccess={() => setActiveSheet(null)}
               />
             )}
 
-            {activeAction === "new-account" && (
+            {activeSheet === "new-account" && (
               <SpecializedAccountForm
-                onSuccess={() => setActiveAction(null)}
+                onSuccess={() => setActiveSheet(null)}
               />
             )}
           </div>
