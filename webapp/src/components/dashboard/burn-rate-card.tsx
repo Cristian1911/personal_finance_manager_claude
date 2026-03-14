@@ -58,7 +58,7 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
     })),
     ...projectedPoints.map((p, i) => ({
       date: p.date,
-      balance: i === 0 ? p.balance : (undefined as number | undefined),
+      balance: i === 0 ? p.balance : undefined,
       projected: p.balance,
     })),
   ];

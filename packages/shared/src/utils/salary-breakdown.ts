@@ -135,8 +135,7 @@ export function getTimelineSalaryBreakdown(
     for (const acctMonth of month.accounts) {
       const totalPayment =
         acctMonth.minimumPaymentApplied +
-        acctMonth.extraPaymentApplied +
-        (mode === "simple" ? acctMonth.cascadePaymentApplied : 0);
+        acctMonth.extraPaymentApplied;
 
       if (totalPayment > 0) {
         segments.push({
