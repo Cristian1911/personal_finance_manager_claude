@@ -39,6 +39,7 @@ export async function getBurnRate(
     .from("accounts")
     .select("id, current_balance, currency_code, account_type")
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .in("account_type", ["CHECKING", "SAVINGS"]);
 
   if (!accounts || accounts.length === 0) return null;
@@ -59,6 +60,7 @@ export async function getBurnRate(
     .select("id, amount, transaction_date, direction, is_recurring")
     .eq("user_id", user.id)
     .eq("direction", "OUTFLOW")
+    .eq("is_excluded", false)
     .eq("currency_code", baseCurrency)
     .order("transaction_date", { ascending: true });
 
