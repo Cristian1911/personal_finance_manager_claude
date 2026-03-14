@@ -9,10 +9,12 @@ import Link from "next/link";
 
 export default async function PlanificadorPage() {
   const currency = await getPreferredCurrency();
-  const overview = await getDebtOverview(currency);
+  const [overview, savedScenarios, incomeEstimate] = await Promise.all([
+    getDebtOverview(currency),
+    getScenarios(),
+    getEstimatedIncome(currency),
+  ]);
   const activeDebts = overview.accounts.filter((a) => a.balance > 0);
-  const savedScenarios = await getScenarios();
-  const incomeEstimate = await getEstimatedIncome(currency);
 
   if (activeDebts.length === 0) {
     return (

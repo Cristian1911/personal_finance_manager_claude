@@ -38,7 +38,7 @@ const DEBT_PALETTE = [
   "#0891b2", // cyan
 ] as const;
 
-const LIBRE_COLOR = "#22c55e"; // green — always used for "libre"
+export const LIBRE_COLOR = "#22c55e"; // green — always used for "libre"
 
 /**
  * Deterministic color assignment based on account ID.

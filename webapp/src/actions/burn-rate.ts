@@ -1,7 +1,9 @@
 "use server";
 
+import { subMonths } from "date-fns";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
+import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 
 export interface BurnRateDataPoint {
@@ -53,8 +55,8 @@ export async function getBurnRate(
     0
   );
 
-  // 2. Fetch outflow transactions over all available months
-  //    Use is_recurring flag to distinguish fixed vs discretionary
+  // 2. Fetch outflow transactions (last 3 months — enough for stable average + chart)
+  const threeMonthsAgo = toISODateString(subMonths(new Date(), 3));
   const { data: transactions } = await supabase
     .from("transactions")
     .select("id, amount, transaction_date, direction, is_recurring")
@@ -62,6 +64,7 @@ export async function getBurnRate(
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
     .eq("currency_code", baseCurrency)
+    .gte("transaction_date", threeMonthsAgo)
     .order("transaction_date", { ascending: true });
 
   if (!transactions || transactions.length === 0) return null;
@@ -81,12 +84,11 @@ export async function getBurnRate(
   const disponible = liquidBalance - totalPending;
 
   // 5. Split transactions into total vs discretionary using is_recurring flag
-  const allOutflows = transactions;
   const discretionaryOutflows = transactions.filter((t) => !t.is_recurring);
 
   // 6. Compute both modes
   const today = new Date();
-  const total = computeBurnRate(allOutflows, liquidBalance, today, "total");
+  const total = computeBurnRate(transactions, liquidBalance, today, "total");
   const discretionary = computeBurnRate(
     discretionaryOutflows,
     Math.max(disponible, 0),
@@ -107,13 +109,15 @@ function computeBurnRate(
     return {
       mode,
       dailyAverage: 0,
-      runwayDays: 999,  // Infinity is not valid JSON -- Next.js serializes it as null
+      runwayDays: 999,
       runwayDate: "",
       trend: "stable",
       dataPoints: [],
       monthsOfData: 0,
     };
   }
+
+  const todayStr = toISODateString(today);
 
   // Date range
   const firstDate = new Date(transactions[0].transaction_date);
@@ -122,27 +126,27 @@ function computeBurnRate(
     Math.ceil((today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24))
   );
 
-  // Group by day, sum spending per day (exclude zero-spend days)
+  // Group by day and accumulate total in one pass
   const dailySpending = new Map<string, number>();
+  let totalSpent = 0;
   for (const t of transactions) {
-    const key = t.transaction_date;
-    dailySpending.set(key, (dailySpending.get(key) ?? 0) + t.amount);
+    dailySpending.set(t.transaction_date, (dailySpending.get(t.transaction_date) ?? 0) + t.amount);
+    totalSpent += t.amount;
   }
 
   const spendingDays = dailySpending.size;
-  const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0);
   const dailyAverage = spendingDays > 0 ? totalSpent / spendingDays : 0;
 
   // Runway
   const runwayDays =
-    dailyAverage > 0 ? Math.round(balance / dailyAverage) : Infinity;
+    dailyAverage > 0 ? Math.round(balance / dailyAverage) : 999;
   const runwayDate = new Date(today);
-  runwayDate.setDate(runwayDate.getDate() + (isFinite(runwayDays) ? runwayDays : 365));
+  runwayDate.setDate(runwayDate.getDate() + (runwayDays < 999 ? runwayDays : 365));
 
   // Trend: last 14 days vs overall
   const twoWeeksAgo = new Date(today);
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-  const twoWeeksAgoStr = twoWeeksAgo.toISOString().slice(0, 10);
+  const twoWeeksAgoStr = toISODateString(twoWeeksAgo);
 
   let recentTotal = 0;
   let recentDays = 0;
@@ -166,14 +170,11 @@ function computeBurnRate(
 
   // Chart data points: reconstruct daily balance for current month
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const monthStartStr = monthStart.toISOString().slice(0, 10);
-  const todayStr = today.toISOString().slice(0, 10);
+  const monthStartStr = toISODateString(monthStart);
 
-  // Walk backwards from current balance
   const currentMonthTxns = transactions.filter(
     (t) => t.transaction_date >= monthStartStr && t.transaction_date <= todayStr
   );
-  // Sum spending after each day to reconstruct balances
   const dailySums = new Map<string, number>();
   for (const t of currentMonthTxns) {
     dailySums.set(
@@ -182,36 +183,33 @@ function computeBurnRate(
     );
   }
 
-  const dataPoints: BurnRateDataPoint[] = [];
-
-  // Build array of dates from month start to today
+  // Build date array from month start to today
   const dates: string[] = [];
   for (
     let d = new Date(monthStart);
     d <= today;
     d.setDate(d.getDate() + 1)
   ) {
-    dates.push(d.toISOString().slice(0, 10));
+    dates.push(toISODateString(d));
   }
 
-  // Reconstruct daily balances by walking backwards from today's known balance.
-  // For each earlier day, add back the spending that happened AFTER that day.
+  // Reconstruct daily balances by walking backwards from today's known balance
   let b = balance;
   const balances = new Map<string, number>();
   for (let i = dates.length - 1; i >= 0; i--) {
     balances.set(dates[i], b);
-    // Add back spending on this day (it reduced the balance from previous day)
     b += dailySums.get(dates[i]) ?? 0;
   }
 
-  for (const date of dates) {
-    dataPoints.push({ date, balance: balances.get(date) ?? balance });
-  }
+  const dataPoints: BurnRateDataPoint[] = dates.map((date) => ({
+    date,
+    balance: balances.get(date) ?? balance,
+  }));
 
   // Add projected point at zero
-  if (isFinite(runwayDays) && runwayDays > 0) {
+  if (runwayDays < 999 && runwayDays > 0) {
     dataPoints.push({
-      date: runwayDate.toISOString().slice(0, 10),
+      date: toISODateString(runwayDate),
       balance: 0,
     });
   }
@@ -219,8 +217,8 @@ function computeBurnRate(
   return {
     mode,
     dailyAverage,
-    runwayDays: isFinite(runwayDays) ? runwayDays : 999,
-    runwayDate: runwayDate.toISOString().slice(0, 10),
+    runwayDays,
+    runwayDate: toISODateString(runwayDate),
     trend,
     dataPoints,
     monthsOfData,

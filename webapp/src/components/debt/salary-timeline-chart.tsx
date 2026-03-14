@@ -28,6 +28,7 @@ import {
   type CurrencyCode,
   getTimelineSalaryBreakdown,
   getDebtColor,
+  LIBRE_COLOR,
 } from "@zeta/shared";
 
 const SPANISH_MONTHS = [
@@ -136,7 +137,7 @@ export function SalaryTimelineChart({
     }
     cfg.libre = {
       label: "Libre",
-      color: "#22c55e",
+      color: LIBRE_COLOR,
     };
     return cfg;
   }, [activeAccountIds, accountNames, mode]);
@@ -269,7 +270,7 @@ export function SalaryTimelineChart({
                 <Bar
                   dataKey="libre"
                   stackId="salary"
-                  fill="#22c55e"
+                  fill={LIBRE_COLOR}
                 />
               </BarChart>
             </ChartContainer>
@@ -292,7 +293,7 @@ export function SalaryTimelineChart({
           <div className="flex items-center gap-1.5 text-xs">
             <div
               className="h-2.5 w-2.5 rounded-full shrink-0"
-              style={{ backgroundColor: "#22c55e" }}
+              style={{ backgroundColor: LIBRE_COLOR }}
             />
             <span className="text-muted-foreground">Libre</span>
           </div>

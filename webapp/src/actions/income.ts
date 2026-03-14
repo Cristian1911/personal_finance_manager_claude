@@ -1,6 +1,8 @@
 "use server";
 
+import { subMonths } from "date-fns";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@zeta/shared";
 
 export interface IncomeEstimate {
@@ -43,7 +45,8 @@ export async function getEstimatedIncome(
   const liquidAccountIds = liquidAccounts?.map((a) => a.id) ?? [];
   if (liquidAccountIds.length === 0) return null;
 
-  // Fetch all INFLOW transactions in liquid accounts
+  // Fetch INFLOW transactions from last 12 months (enough for stable average)
+  const twelveMonthsAgo = toISODateString(subMonths(new Date(), 12));
   const { data: transactions } = await supabase
     .from("transactions")
     .select("id, clean_description, raw_description, amount, transaction_date, account_id")
@@ -53,6 +56,7 @@ export async function getEstimatedIncome(
     .neq("status", "CANCELLED")
     .eq("currency_code", baseCurrency)
     .in("account_id", liquidAccountIds)
+    .gte("transaction_date", twelveMonthsAgo)
     .order("transaction_date", { ascending: false });
 
   if (!transactions || transactions.length === 0) return null;

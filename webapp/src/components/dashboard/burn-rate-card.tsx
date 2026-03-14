@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate } from "@/lib/utils/date";
+import { formatDate, toISODateString } from "@/lib/utils/date";
 import {
   Area,
   AreaChart,
@@ -28,6 +29,7 @@ const chartConfig = {
 
 export function BurnRateCard({ data }: BurnRateCardProps) {
   const [mode, setMode] = useState<"discretionary" | "total">("discretionary");
+  const gradientId = useId();
   const result = mode === "discretionary" ? data.discretionary : data.total;
 
   const trendLabel = {
@@ -43,7 +45,7 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
   }[result.trend];
 
   // Split data points into actual (past) and projected (future)
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toISODateString(new Date());
   const actualPoints = result.dataPoints.filter((p) => p.date <= today);
   const projectedPoints = result.dataPoints.filter((p) => p.date >= today);
 
@@ -73,7 +75,7 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
   const runwayDateFormatted =
     result.runwayDays >= 999
       ? ""
-      : `llegas a $0 el ${formatDate(new Date(result.runwayDate))}`;
+      : `llegas a $0 el ${formatDate(result.runwayDate)}`;
 
   return (
     <Card>
@@ -86,21 +88,23 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
           <div className="flex rounded-md bg-muted p-0.5">
             <button
               onClick={() => setMode("discretionary")}
-              className={`px-3 py-1 text-xs rounded-sm transition-colors ${
+              className={cn(
+                "px-3 py-1 text-xs rounded-sm transition-colors",
                 mode === "discretionary"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+              )}
             >
               Disponible
             </button>
             <button
               onClick={() => setMode("total")}
-              className={`px-3 py-1 text-xs rounded-sm transition-colors ${
+              className={cn(
+                "px-3 py-1 text-xs rounded-sm transition-colors",
                 mode === "total"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+              )}
             >
               Total
             </button>
@@ -109,10 +113,10 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
 
         {/* Headline */}
         <div className="mb-1">
-          <span className={`text-3xl font-bold ${isNegativeDisponible ? "text-destructive" : ""}`}>
+          <span className={cn("text-3xl font-bold", isNegativeDisponible && "text-destructive")}>
             {runwayText}
           </span>
-          <span className={`text-sm ml-2 font-medium ${trendColor}`}>
+          <span className={cn("text-sm ml-2 font-medium", trendColor)}>
             {trendLabel}
           </span>
         </div>
@@ -140,7 +144,7 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
           <ChartContainer config={chartConfig} className="h-[120px] w-full">
             <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
               <defs>
-                <linearGradient id="burnGradient" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
                   <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
                 </linearGradient>
@@ -149,10 +153,7 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v) => {
-                  const d = new Date(v);
-                  return `${d.getDate()} ${d.toLocaleDateString("es", { month: "short" })}`;
-                }}
+                tickFormatter={(v) => formatDate(v, "d MMM")}
                 tick={{ fontSize: 10 }}
                 interval="preserveStartEnd"
               />
@@ -165,16 +166,14 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
               />
               <ChartTooltip content={<ChartTooltipContent />} />
               <ReferenceLine y={0} stroke="hsl(var(--destructive))" strokeOpacity={0.3} />
-              {/* Actual trajectory */}
               <Area
                 type="monotone"
                 dataKey="balance"
                 stroke="hsl(var(--chart-1))"
                 strokeWidth={2}
-                fill="url(#burnGradient)"
+                fill={`url(#${gradientId})`}
                 connectNulls={false}
               />
-              {/* Projected trajectory */}
               <Area
                 type="monotone"
                 dataKey="projected"

@@ -17,8 +17,10 @@ import { getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
 export default async function DeudasPage() {
   const currency = await getPreferredCurrency();
 
-  const overview = await getDebtOverview(currency);
-  const incomeEstimate = await getEstimatedIncome(currency);
+  const [overview, incomeEstimate] = await Promise.all([
+    getDebtOverview(currency),
+    getEstimatedIncome(currency),
+  ]);
 
   if (overview.accounts.length === 0) {
     return (
