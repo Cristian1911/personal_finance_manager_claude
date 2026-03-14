@@ -3,24 +3,15 @@
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { saveScenarioSchema, type SaveScenarioInput } from "@/lib/validators/scenario";
 import type { ActionResult } from "@/types/actions";
+import type { Database } from "@/types/database";
 
-interface DebtScenario {
-  id: string;
-  name: string | null;
-  cash_entries: unknown;
-  strategy: string;
-  allocations: unknown;
-  snapshot_accounts: unknown;
-  results: unknown;
-  created_at: string;
-  updated_at: string;
-}
+type DebtScenario = Database["public"]["Tables"]["debt_scenarios"]["Row"];
 
 export async function getScenarios(): Promise<DebtScenario[]> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return [];
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("debt_scenarios")
     .select("*")
     .eq("user_id", user.id)
@@ -39,7 +30,7 @@ export async function getScenario(id: string): Promise<DebtScenario | null> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return null;
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("debt_scenarios")
     .select("*")
     .eq("id", id)
@@ -74,7 +65,7 @@ export async function saveScenario(
 
   if (data.id) {
     // Update existing
-    const { data: updated, error } = await (supabase as any)
+    const { data: updated, error } = await supabase
       .from("debt_scenarios")
       .update(row)
       .eq("id", data.id)
@@ -88,7 +79,7 @@ export async function saveScenario(
     return { success: true, data: updated };
   } else {
     // Create new
-    const { data: created, error } = await (supabase as any)
+    const { data: created, error } = await supabase
       .from("debt_scenarios")
       .insert(row)
       .select()
@@ -105,7 +96,7 @@ export async function deleteScenario(id: string): Promise<ActionResult<void>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("debt_scenarios")
     .delete()
     .eq("id", id)
