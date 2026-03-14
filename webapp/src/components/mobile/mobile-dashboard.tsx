@@ -11,6 +11,8 @@ import {
   CalendarClock,
 } from "lucide-react";
 import type { CurrencyCode } from "@/types/domain";
+import type { BurnRateResponse } from "@/actions/burn-rate";
+import { BurnRateCard, BurnRateCardEmpty } from "@/components/dashboard/burn-rate-card";
 
 interface MobileDashboardProps {
   heroData: {
@@ -35,12 +37,14 @@ interface MobileDashboardProps {
     date: string;
     category_name?: string;
   }>;
+  burnRateData?: BurnRateResponse | null;
 }
 
 export function MobileDashboard({
   heroData,
   upcomingPayments,
   recentTransactions,
+  burnRateData,
 }: MobileDashboardProps) {
   const code = heroData.currency as CurrencyCode;
 
@@ -64,6 +68,13 @@ export function MobileDashboard({
           <span>Fijos: {formatCurrency(heroData.pendingFixed, code)}</span>
         </div>
       </div>
+
+      {/* 1.5. Burn Rate Card */}
+      {burnRateData ? (
+        <BurnRateCard data={burnRateData} />
+      ) : (
+        <BurnRateCardEmpty />
+      )}
 
       {/* 2. Próximos pagos — prominent */}
       {upcomingPayments.length > 0 && (
