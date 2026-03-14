@@ -3,7 +3,7 @@
  * Focuses on credit cards and loans.
  */
 
-import type { Account } from "../types/domain";
+import type { Account, CurrencyCode } from "../types/domain";
 import type { Json } from "../types/database";
 
 export interface CurrencyBalance {
@@ -16,7 +16,7 @@ export interface CurrencyBalance {
 }
 
 export interface CurrencyDebt {
-  currency: string;
+  currency: CurrencyCode;
   balance: number;
   creditLimit: number | null;
   interestRate: number | null;
@@ -33,14 +33,14 @@ export interface DebtAccount {
   monthlyPayment: number | null;
   paymentDay: number | null;
   cutoffDay: number | null;
-  currency: string;
+  currency: CurrencyCode;
   color: string | null;
   institutionName: string | null;
   currencyBreakdown: CurrencyDebt[] | null;
 }
 
 export interface DebtByCurrency {
-  currency: string;
+  currency: CurrencyCode;
   totalDebt: number;
   totalCreditLimit: number;
 }
@@ -146,7 +146,7 @@ export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
         const bal = computeDebtFromCurrencyBalance(cb);
         if (bal <= 0) continue;
         breakdown.push({
-          currency,
+          currency: currency as CurrencyCode,
           balance: bal,
           creditLimit: cb.credit_limit,
           interestRate: cb.interest_rate,
@@ -209,14 +209,24 @@ export function calcUtilization(balance: number, limit: number | null): number {
 }
 
 /**
- * Estimate monthly interest cost (simple: balance * rate / 12).
+ * Convert an annual effective rate (EA) to a monthly effective rate.
+ * Colombian banks quote rates as EA (Efectivo Anual).
+ * Formula: monthly = (1 + EA/100)^(1/12) - 1
+ */
+export function monthlyRateFromEA(eaPercent: number): number {
+  if (eaPercent <= 0) return 0;
+  return Math.pow(1 + eaPercent / 100, 1 / 12) - 1;
+}
+
+/**
+ * Estimate monthly interest cost using EA compound conversion.
  */
 export function estimateMonthlyInterest(
   balance: number,
   annualRate: number | null
 ): number {
   if (!annualRate || annualRate <= 0 || balance <= 0) return 0;
-  return (balance * (annualRate / 100)) / 12;
+  return balance * monthlyRateFromEA(annualRate);
 }
 
 /**

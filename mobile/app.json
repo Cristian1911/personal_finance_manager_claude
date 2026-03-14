@@ -43,7 +43,11 @@
         {
           "faceIDPermission": "Permitir a Zeta usar Face ID para un acceso rápido y seguro."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      "expo-sqlite",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

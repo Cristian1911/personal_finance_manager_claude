@@ -4,7 +4,10 @@
  * Pure functions — no React or server dependencies.
  */
 
+import { monthlyRateFromEA } from "./debt";
 import type { DebtAccount } from "./debt";
+import type { CurrencyCode } from "../types/domain";
+import { getMinPayment } from "./scenario-engine";
 
 export type PayoffStrategy = "snowball" | "avalanche";
 
@@ -42,15 +45,6 @@ export interface SimulationComparison {
 }
 
 const MAX_MONTHS = 360;
-const DEFAULT_MIN_PAYMENT_RATE = 0.05; // 5% is more realistic for Colombian banks
-const DEFAULT_MIN_PAYMENT_FLOOR = 50000; // $50,000 COP minimum
-
-function getMinimumPayment(account: DebtAccount): number {
-  if (account.monthlyPayment && account.monthlyPayment > 0) {
-    return account.monthlyPayment;
-  }
-  return Math.max(account.balance * DEFAULT_MIN_PAYMENT_RATE, DEFAULT_MIN_PAYMENT_FLOOR);
-}
 
 function getPriorityAccountId(
   balances: Record<string, number>,
@@ -92,7 +86,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     for (const a of accounts) {
       if (balances[a.id] <= 0) continue;
       const rate = a.interestRate ?? 0;
-      const interest = (balances[a.id] * (rate / 100)) / 12;
+      const interest = balances[a.id] * monthlyRateFromEA(rate);
       balances[a.id] += interest;
       monthInterest += interest;
     }
@@ -101,10 +95,10 @@ export function runSimulation(input: SimulationInput): SimulationResult {
     let freedMinimums = 0;
     for (const a of accounts) {
       if (balances[a.id] <= 0) {
-        freedMinimums += getMinimumPayment(a);
+        freedMinimums += getMinPayment(a);
         continue;
       }
-      const minPayment = Math.min(getMinimumPayment(a), balances[a.id]);
+      const minPayment = Math.min(getMinPayment(a), balances[a.id]);
       balances[a.id] -= minPayment;
       monthPrincipal += minPayment;
       totalAmountPaid += minPayment;
@@ -165,7 +159,7 @@ export function runSimulation(input: SimulationInput): SimulationResult {
 export interface LumpSumAllocation {
   accountId: string;
   accountName: string;
-  currency: string;
+  currency: CurrencyCode;
   currentBalance: number;
   interestRate: number;
   payment: number;
@@ -186,7 +180,7 @@ export interface LumpSumResult {
 export function allocateLumpSum(
   accounts: DebtAccount[],
   lumpSum: number,
-  currency?: string
+  currency?: CurrencyCode
 ): LumpSumResult {
   // Sort by interest rate descending (avalanche strategy)
   const sorted = [...accounts]
@@ -200,7 +194,7 @@ export function allocateLumpSum(
 
   for (const a of sorted) {
     const rate = a.interestRate ?? 0;
-    const monthlyBefore = (a.balance * (rate / 100)) / 12;
+    const monthlyBefore = a.balance * monthlyRateFromEA(rate);
     totalBefore += monthlyBefore;
 
     if (remaining <= 0) {
@@ -221,7 +215,7 @@ export function allocateLumpSum(
     const payment = Math.min(remaining, a.balance);
     remaining -= payment;
     const newBalance = a.balance - payment;
-    const monthlyAfter = (newBalance * (rate / 100)) / 12;
+    const monthlyAfter = newBalance * monthlyRateFromEA(rate);
     totalAfter += monthlyAfter;
 
     allocations.push({
@@ -268,7 +262,7 @@ export function simulateSingleAccount(
   extraMonthly: number
 ): SingleAccountResult {
   const rate = account.interestRate ?? 0;
-  const minPayment = getMinimumPayment(account);
+  const minPayment = getMinPayment(account);
 
   function simulate(monthlyExtra: number) {
     let balance = account.balance;
@@ -276,7 +270,7 @@ export function simulateSingleAccount(
     const balances: number[] = [];
 
     for (let m = 0; m < MAX_MONTHS && balance > 0.01; m++) {
-      const interest = (balance * (rate / 100)) / 12;
+      const interest = balance * monthlyRateFromEA(rate);
       balance += interest;
       totalInterest += interest;
 
