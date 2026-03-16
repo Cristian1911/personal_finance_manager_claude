@@ -21,24 +21,29 @@ interface Props {
   dispatch: React.Dispatch<PlannerAction>;
 }
 
-function getNextMonth(): string {
+function getNextMonthDate(): string {
   const now = new Date();
   const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const yyyy = next.getFullYear();
   const mm = String(next.getMonth() + 1).padStart(2, "0");
-  return `${yyyy}-${mm}`;
+  return `${yyyy}-${mm}-01`;
 }
 
-function formatMonth(month: string): string {
-  // month is "YYYY-MM", format as "Abr 2026" (Spanish)
-  const [year, mon] = month.split("-");
+function formatEntryDate(dateStr: string): string {
+  // dateStr can be "YYYY-MM-DD" or "YYYY-MM"
+  if (dateStr.length === 10) {
+    const [year, mon, day] = dateStr.split("-");
+    const date = new Date(Number(year), Number(mon) - 1, Number(day));
+    return date.toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" });
+  }
+  const [year, mon] = dateStr.split("-");
   const date = new Date(Number(year), Number(mon) - 1, 1);
   return date.toLocaleDateString("es-CO", { month: "short", year: "numeric" });
 }
 
 interface AddFormState {
   amount: string;
-  month: string;
+  date: string; // "YYYY-MM-DD" full date for planning context
   label: string;
   recurring: boolean;
   recurringMonths: string;
@@ -46,7 +51,7 @@ interface AddFormState {
 
 const defaultFormState = (): AddFormState => ({
   amount: "",
-  month: getNextMonth(),
+  date: getNextMonthDate(),
   label: "",
   recurring: false,
   recurringMonths: "3",
@@ -62,14 +67,21 @@ export function CashStep({ accounts, cashEntries, currency = "COP", dispatch }: 
   function handleAddEntry() {
     const amount = parseFloat(form.amount);
     if (!form.amount || isNaN(amount) || amount <= 0) return;
-    if (!form.month) return;
+    if (!form.date) return;
+
+    // Engine works at month granularity — extract YYYY-MM
+    const month = form.date.slice(0, 7);
+    // Include the full date in the label for user planning context
+    const dateContext = form.label.trim()
+      ? `${form.label.trim()} (${formatEntryDate(form.date)})`
+      : formatEntryDate(form.date);
 
     const entry: CashEntry = {
       id: crypto.randomUUID(),
       amount,
-      month: form.month,
+      month,
       currency,
-      ...(form.label.trim() ? { label: form.label.trim() } : {}),
+      label: dateContext,
       ...(form.recurring && parseInt(form.recurringMonths) > 1
         ? { recurring: { months: parseInt(form.recurringMonths) } }
         : {}),
@@ -143,14 +155,14 @@ export function CashStep({ accounts, cashEntries, currency = "COP", dispatch }: 
                 />
               </div>
 
-              {/* Month */}
+              {/* Date */}
               <div className="space-y-1.5">
-                <Label htmlFor="cash-month">Mes</Label>
+                <Label htmlFor="cash-date">Fecha de pago</Label>
                 <Input
-                  id="cash-month"
-                  type="month"
-                  value={form.month}
-                  onChange={(e) => setForm((f) => ({ ...f, month: e.target.value }))}
+                  id="cash-date"
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
                 />
               </div>
             </div>
@@ -227,7 +239,7 @@ export function CashStep({ accounts, cashEntries, currency = "COP", dispatch }: 
                         {formatCurrency(entry.amount, entry.currency)}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {formatMonth(entry.month)}
+                        {entry.label || formatEntryDate(entry.month)}
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
