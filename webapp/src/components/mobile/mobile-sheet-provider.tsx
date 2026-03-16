@@ -4,11 +4,11 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { CalendarPlus, Landmark } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { FabMenu, type FabAction, type ContextAction } from "./fab-menu";
 import { MobileTransactionForm } from "./mobile-transaction-form";
 import { RecurringForm } from "@/components/recurring/recurring-form";
@@ -29,7 +29,7 @@ const TRANSACTION_ACTIONS: Record<
   "expense" | "income" | "transfer",
   { title: string; direction: TransactionDirection }
 > = {
-  expense: { title: "Gasto rápido", direction: "OUTFLOW" },
+  expense: { title: "Gasto rapido", direction: "OUTFLOW" },
   income: { title: "Ingreso", direction: "INFLOW" },
   transfer: { title: "Transferencia", direction: "OUTFLOW" },
 };
@@ -47,7 +47,7 @@ function getContextActions(pathname: string): ContextAction[] {
 }
 
 function getSheetTitle(action: FabAction): string {
-  if (action === "new-recurring") return "Nueva transacción recurrente";
+  if (action === "new-recurring") return "Nueva transaccion recurrente";
   if (action === "new-account") return "Nueva cuenta";
   return TRANSACTION_ACTIONS[action as keyof typeof TRANSACTION_ACTIONS]?.title ?? "";
 }
@@ -68,21 +68,18 @@ export function MobileSheetProvider({
 
       <FabMenu onAction={setActiveAction} contextActions={contextActions} />
 
-      <Sheet
+      <Drawer
         open={activeAction !== null}
         onOpenChange={(open) => {
           if (!open) setActiveAction(null);
         }}
       >
-        <SheetContent
-          side="bottom"
-          className="max-h-[85vh] overflow-y-auto rounded-t-2xl"
-        >
-          <SheetHeader>
-            <SheetTitle>{activeAction ? getSheetTitle(activeAction) : ""}</SheetTitle>
-          </SheetHeader>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{activeAction ? getSheetTitle(activeAction) : ""}</DrawerTitle>
+          </DrawerHeader>
 
-          <div className="px-4 pb-4">
+          <div className="overflow-y-auto px-4 pb-4">
             {activeAction && activeAction in TRANSACTION_ACTIONS && (
               <MobileTransactionForm
                 key={activeAction}
@@ -108,8 +105,8 @@ export function MobileSheetProvider({
               />
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }
