@@ -401,6 +401,8 @@ export type Database = {
           created_at: string
           destinatario_id: string
           id: string
+          last_matched_at: string | null
+          match_count: number
           match_type: string
           pattern: string
           priority: number
@@ -410,6 +412,8 @@ export type Database = {
           created_at?: string
           destinatario_id: string
           id?: string
+          last_matched_at?: string | null
+          match_count?: number
           match_type?: string
           pattern: string
           priority?: number
@@ -419,6 +423,8 @@ export type Database = {
           created_at?: string
           destinatario_id?: string
           id?: string
+          last_matched_at?: string | null
+          match_count?: number
           match_type?: string
           pattern?: string
           priority?: number
