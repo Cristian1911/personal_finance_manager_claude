@@ -67,14 +67,24 @@ function CategoryIcon({
 /*  Date group styling                                                 */
 /* ------------------------------------------------------------------ */
 
-function dateGroupClasses(status: DateStatus) {
+function dateGroupStyle(status: DateStatus): React.CSSProperties {
   switch (status) {
     case "past":
-      return "border-z-debt/50 bg-z-debt/20 border-l-4 border-l-z-debt";
+      return {
+        borderColor: "color-mix(in srgb, var(--z-debt) 50%, transparent)",
+        borderLeftColor: "var(--z-debt)",
+        borderLeftWidth: 4,
+        backgroundColor: "color-mix(in srgb, var(--z-debt) 20%, transparent)",
+      };
     case "today":
-      return "border-z-income/50 bg-z-income/20 border-l-4 border-l-z-income";
+      return {
+        borderColor: "color-mix(in srgb, var(--z-income) 50%, transparent)",
+        borderLeftColor: "var(--z-income)",
+        borderLeftWidth: 4,
+        backgroundColor: "color-mix(in srgb, var(--z-income) 20%, transparent)",
+      };
     case "future":
-      return "border-border bg-background";
+      return {};
   }
 }
 
@@ -138,8 +148,9 @@ export function PaymentTimeline({
             key={date}
             className={cn(
               "overflow-hidden rounded-lg border",
-              dateGroupClasses(status)
+              status === "future" && "border-border bg-background"
             )}
+            style={dateGroupStyle(status)}
           >
             {/* Date header */}
             <div className="px-3 py-1.5">
