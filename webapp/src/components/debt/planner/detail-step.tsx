@@ -319,6 +319,90 @@ export function DetailStep({
         </Card>
       </div>
 
+      {/* Before vs After comparison */}
+      <Card className="border-z-income/20 bg-z-income/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Hoy vs Con tu plan</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            {/* "Hoy" column — baseline (minimum payments only) */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Sin plan (solo mínimos)
+              </p>
+              <div>
+                <p className="text-xs text-muted-foreground">Tiempo</p>
+                <p className="text-lg font-bold tabular-nums">
+                  {baseline.totalMonths} {baseline.totalMonths === 1 ? "mes" : "meses"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Intereses totales</p>
+                <p className="text-lg font-bold tabular-nums text-z-expense">
+                  {formatCurrency(baseline.totalInterestPaid, currency)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total a pagar</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {formatCurrency(baseline.totalAmountPaid, currency)}
+                </p>
+              </div>
+              {income && income > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Salario libre hoy</p>
+                  <p className="text-sm font-semibold tabular-nums">
+                    {Math.max(0, ((income - baseline.timeline[0]?.accounts.reduce((s, a) => s + a.minimumPaymentApplied, 0)) / income) * 100).toFixed(0)}%
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* "Con tu plan" column */}
+            <div className="space-y-3 border-l pl-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-z-income">
+                Con tu plan
+              </p>
+              <div>
+                <p className="text-xs text-muted-foreground">Tiempo</p>
+                <p className="text-lg font-bold tabular-nums text-z-income">
+                  {result.totalMonths} {result.totalMonths === 1 ? "mes" : "meses"}
+                </p>
+                {baseline.totalMonths - result.totalMonths > 0 && (
+                  <p className="text-xs text-z-income">
+                    {baseline.totalMonths - result.totalMonths} meses menos
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Intereses totales</p>
+                <p className="text-lg font-bold tabular-nums text-z-income">
+                  {formatCurrency(result.totalInterestPaid, currency)}
+                </p>
+                {interestSaved > 0 && (
+                  <p className="text-xs text-z-income">
+                    Ahorras {formatCurrency(interestSaved, currency)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total a pagar</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {formatCurrency(result.totalAmountPaid, currency)}
+                </p>
+              </div>
+              {income && income > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Salario libre al final</p>
+                  <p className="text-sm font-semibold tabular-nums text-z-income">100%</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Payoff order */}
       {result.payoffOrder.length > 0 && (
         <Card>
@@ -552,14 +636,31 @@ export function DetailStep({
         </Card>
       )}
 
-      {/* Salary timeline chart */}
+      {/* Salary timeline charts — baseline vs plan */}
       {income && income > 0 && result && (
-        <SalaryTimelineChart
-          accounts={accounts}
-          income={income}
-          result={result}
-          currency={currency}
-        />
+        <div className="space-y-4">
+          <SalaryTimelineChart
+            accounts={accounts}
+            income={income}
+            result={result}
+            currency={currency}
+          />
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">
+                Comparación: solo pagos mínimos (sin plan)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SalaryTimelineChart
+                accounts={accounts}
+                income={income}
+                result={baseline}
+                currency={currency}
+              />
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
