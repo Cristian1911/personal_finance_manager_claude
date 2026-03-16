@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { DebtHeroCard } from "@/components/debt/debt-hero-card";
@@ -6,6 +7,7 @@ import { InterestCostCard } from "@/components/debt/interest-cost-card";
 import { DebtAccountCard } from "@/components/debt/debt-account-card";
 import { DebtInsights } from "@/components/debt/debt-insights";
 import { SalaryBar } from "@/components/debt/salary-bar";
+import { MonthSelector } from "@/components/month-selector";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { Button } from "@/components/ui/button";
 import { Calculator } from "lucide-react";
@@ -13,19 +15,29 @@ import Link from "next/link";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
+import { formatMonthParam } from "@/lib/utils/date";
 
-export default async function DeudasPage() {
+export default async function DeudasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const { month } = await searchParams;
   const currency = await getPreferredCurrency();
 
   const [overview, incomeEstimate] = await Promise.all([
     getDebtOverview(currency),
-    getEstimatedIncome(currency),
+    getEstimatedIncome(currency, month),
   ]);
 
   if (overview.accounts.length === 0) {
     return (
       <div className="space-y-6">
-        <MobilePageHeader title="Deudas" backHref="/gestionar" />
+        <MobilePageHeader title="Deudas" backHref="/gestionar">
+          <Suspense>
+            <MonthSelector />
+          </Suspense>
+        </MobilePageHeader>
         <div className="hidden lg:block">
           <h1 className="text-2xl font-bold">Deudas</h1>
           <p className="text-muted-foreground">
@@ -66,13 +78,22 @@ export default async function DeudasPage() {
 
   return (
     <div className="space-y-6">
-      <MobilePageHeader title="Deudas" backHref="/gestionar" />
+      <MobilePageHeader title="Deudas" backHref="/gestionar">
+        <Suspense>
+          <MonthSelector />
+        </Suspense>
+      </MobilePageHeader>
       <div className="hidden lg:flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Deudas</h1>
-          <p className="text-muted-foreground">
-            Visualiza y gestiona tus deudas
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Deudas</h1>
+            <p className="text-muted-foreground">
+              Visualiza y gestiona tus deudas
+            </p>
+          </div>
+          <Suspense>
+            <MonthSelector />
+          </Suspense>
         </div>
         <Button variant="outline" asChild>
           <Link href="/deudas/planificador">

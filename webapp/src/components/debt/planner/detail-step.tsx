@@ -9,6 +9,7 @@ import type {
 } from "@zeta/shared";
 import type { CurrencyCode } from "@zeta/shared";
 import type { ScenarioState } from "../scenario-planner";
+import { PLAN_COLORS, formatDebtFreeDate } from "./utils";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   type ChartConfig,
@@ -57,12 +58,6 @@ interface Props {
   income?: number;
 }
 
-const PLAN_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-] as const;
-
 const SPANISH_MONTHS = [
   "Ene",
   "Feb",
@@ -84,12 +79,6 @@ function formatCalendarMonth(yyyyMm: string): string {
   return `${SPANISH_MONTHS[monthIdx] ?? month} ${year}`;
 }
 
-function formatDebtFreeDate(yyyyMm: string): string {
-  const [year, month] = yyyyMm.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("es-CO", { year: "numeric", month: "long" });
-}
-
 function abbreviateName(name: string, maxLen = 12): string {
   if (name.length <= maxLen) return name;
   return name.slice(0, maxLen - 1) + "…";
@@ -104,7 +93,7 @@ function EventBadges({ events }: { events: ScenarioEvent[] }) {
           return (
             <span
               key={i}
-              className="inline-flex items-center gap-1 text-[10px] text-green-700 bg-green-100 rounded px-1.5 py-0.5 font-medium"
+              className="inline-flex items-center gap-1 text-[10px] text-z-income bg-z-income/10 rounded px-1.5 py-0.5 font-medium"
             >
               <Zap className="h-2.5 w-2.5" />
               {ev.description}
@@ -126,7 +115,7 @@ function EventBadges({ events }: { events: ScenarioEvent[] }) {
           return (
             <span
               key={i}
-              className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-100 rounded px-1.5 py-0.5 font-medium"
+              className="inline-flex items-center gap-1 text-[10px] text-z-alert bg-z-alert/10 rounded px-1.5 py-0.5 font-medium"
             >
               <ArrowRight className="h-2.5 w-2.5" />
               {ev.description}
@@ -142,7 +131,7 @@ function EventBadges({ events }: { events: ScenarioEvent[] }) {
 function rowHighlightClass(events: ScenarioEvent[]): string {
   const types = events.map((e) => e.type);
   if (types.includes("account_paid_off")) return "bg-blue-50/60";
-  if (types.includes("cash_injection")) return "bg-green-50/60";
+  if (types.includes("cash_injection")) return "bg-z-income/5";
   return "";
 }
 
@@ -256,12 +245,12 @@ export function DetailStep({
         <Card>
           <CardContent className="pt-5 pb-4">
             <div className="flex items-start gap-2.5">
-              <DollarSign className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <DollarSign className="h-4 w-4 text-z-expense mt-0.5 shrink-0" />
               <div>
                 <p className="text-xs text-muted-foreground mb-0.5">
                   Total intereses
                 </p>
-                <p className="text-xl font-bold tabular-nums text-amber-600">
+                <p className="text-xl font-bold tabular-nums text-z-expense">
                   {formatCurrency(result.totalInterestPaid, currency)}
                 </p>
               </div>
@@ -273,28 +262,28 @@ export function DetailStep({
         <Card
           className={
             interestSaved > 0
-              ? "border-green-500/20 bg-green-50/30"
+              ? "border-z-income/20 bg-z-income/5"
               : undefined
           }
         >
           <CardContent className="pt-5 pb-4">
             <div className="flex items-start gap-2.5">
               <TrendingDown
-                className={`h-4 w-4 mt-0.5 shrink-0 ${interestSaved > 0 ? "text-green-600" : "text-muted-foreground"}`}
+                className={`h-4 w-4 mt-0.5 shrink-0 ${interestSaved > 0 ? "text-z-income" : "text-muted-foreground"}`}
               />
               <div>
                 <p className="text-xs text-muted-foreground mb-0.5">
                   Ahorro en intereses
                 </p>
                 <p
-                  className={`text-xl font-bold tabular-nums ${interestSaved > 0 ? "text-green-700" : "text-muted-foreground"}`}
+                  className={`text-xl font-bold tabular-nums ${interestSaved > 0 ? "text-z-income" : "text-muted-foreground"}`}
                 >
                   {interestSaved > 0
                     ? formatCurrency(interestSaved, currency)
                     : "—"}
                 </p>
                 {interestSaved > 0 && (
-                  <p className="text-xs text-green-600">vs. solo mínimos</p>
+                  <p className="text-xs text-z-income">vs. solo mínimos</p>
                 )}
               </div>
             </div>
@@ -318,6 +307,90 @@ export function DetailStep({
           </CardContent>
         </Card>
       </div>
+
+      {/* Before vs After comparison */}
+      <Card className="border-z-income/20 bg-z-income/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Hoy vs Con tu plan</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            {/* "Hoy" column — baseline (minimum payments only) */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Sin plan (solo mínimos)
+              </p>
+              <div>
+                <p className="text-xs text-muted-foreground">Tiempo</p>
+                <p className="text-lg font-bold tabular-nums">
+                  {baseline.totalMonths} {baseline.totalMonths === 1 ? "mes" : "meses"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Intereses totales</p>
+                <p className="text-lg font-bold tabular-nums text-z-expense">
+                  {formatCurrency(baseline.totalInterestPaid, currency)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total a pagar</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {formatCurrency(baseline.totalAmountPaid, currency)}
+                </p>
+              </div>
+              {income && income > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Salario libre hoy</p>
+                  <p className="text-sm font-semibold tabular-nums">
+                    {Math.max(0, ((income - baseline.timeline[0]?.accounts.reduce((s, a) => s + a.minimumPaymentApplied, 0)) / income) * 100).toFixed(0)}%
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* "Con tu plan" column */}
+            <div className="space-y-3 border-l pl-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-z-income">
+                Con tu plan
+              </p>
+              <div>
+                <p className="text-xs text-muted-foreground">Tiempo</p>
+                <p className="text-lg font-bold tabular-nums text-z-income">
+                  {result.totalMonths} {result.totalMonths === 1 ? "mes" : "meses"}
+                </p>
+                {baseline.totalMonths - result.totalMonths > 0 && (
+                  <p className="text-xs text-z-income">
+                    {baseline.totalMonths - result.totalMonths} meses menos
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Intereses totales</p>
+                <p className="text-lg font-bold tabular-nums text-z-income">
+                  {formatCurrency(result.totalInterestPaid, currency)}
+                </p>
+                {interestSaved > 0 && (
+                  <p className="text-xs text-z-income">
+                    Ahorras {formatCurrency(interestSaved, currency)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total a pagar</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {formatCurrency(result.totalAmountPaid, currency)}
+                </p>
+              </div>
+              {income && income > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Salario libre al final</p>
+                  <p className="text-sm font-semibold tabular-nums text-z-income">100%</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Payoff order */}
       {result.payoffOrder.length > 0 && (
@@ -405,7 +478,7 @@ export function DetailStep({
                             key={accountId}
                             className={`text-right py-1.5 align-top text-sm whitespace-nowrap ${
                               acctMonth?.paidOff
-                                ? "text-green-600 font-medium"
+                                ? "text-z-income font-medium"
                                 : "text-muted-foreground"
                             }`}
                           >
@@ -552,14 +625,31 @@ export function DetailStep({
         </Card>
       )}
 
-      {/* Salary timeline chart */}
+      {/* Salary timeline charts — baseline vs plan */}
       {income && income > 0 && result && (
-        <SalaryTimelineChart
-          accounts={accounts}
-          income={income}
-          result={result}
-          currency={currency}
-        />
+        <div className="space-y-4">
+          <SalaryTimelineChart
+            accounts={accounts}
+            income={income}
+            result={result}
+            currency={currency}
+          />
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">
+                Comparación: solo pagos mínimos (sin plan)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SalaryTimelineChart
+                accounts={accounts}
+                income={income}
+                result={baseline}
+                currency={currency}
+              />
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

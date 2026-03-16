@@ -49,9 +49,9 @@ export function getCreditUtilizationColor(utilization: number): SemanticColor {
  * Maps semantic color to Tailwind classes.
  */
 export const semanticColorMap: Record<SemanticColor, { text: string; bg: string; dot: string }> = {
-  positive: { text: "text-emerald-600", bg: "bg-emerald-500/10", dot: "bg-emerald-500" },
-  warning: { text: "text-amber-600", bg: "bg-amber-500/10", dot: "bg-amber-500" },
-  danger: { text: "text-red-600", bg: "bg-red-500/10", dot: "bg-red-500" },
+  positive: { text: "text-z-income", bg: "bg-z-income/10", dot: "bg-z-income" },
+  warning: { text: "text-z-expense", bg: "bg-z-expense/10", dot: "bg-z-expense" },
+  danger: { text: "text-z-debt", bg: "bg-z-debt/10", dot: "bg-z-debt" },
   neutral: { text: "text-muted-foreground", bg: "bg-muted", dot: "bg-muted-foreground" },
 };
 
@@ -59,7 +59,7 @@ export const semanticColorMap: Record<SemanticColor, { text: string; bg: string;
  * Maps freshness level to Tailwind classes and labels.
  */
 export const freshnessMap: Record<FreshnessLevel, { dot: string; label: string }> = {
-  fresh: { dot: "bg-emerald-500", label: "Actualizado hoy" },
-  stale: { dot: "bg-amber-500", label: "Actualizado hace unos días" },
-  outdated: { dot: "bg-red-500", label: "Desactualizado" },
+  fresh: { dot: "bg-z-income", label: "Actualizado hoy" },
+  stale: { dot: "bg-z-alert", label: "Actualizado hace unos días" },
+  outdated: { dot: "bg-z-debt", label: "Desactualizado" },
 };

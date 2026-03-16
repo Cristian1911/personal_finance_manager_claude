@@ -52,7 +52,7 @@ export function IncomeVsExpensesChart({ data, monthLabel }: IncomeVsExpensesChar
               <Line
                 type="monotone"
                 dataKey="income"
-                stroke="#10b981"
+                stroke="var(--z-income)"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
@@ -61,7 +61,7 @@ export function IncomeVsExpensesChart({ data, monthLabel }: IncomeVsExpensesChar
               <Line
                 type="monotone"
                 dataKey="expenses"
-                stroke="#f59e0b"
+                stroke="var(--z-expense)"
                 strokeWidth={2}
                 strokeDasharray="6 3"
                 dot={false}
@@ -72,7 +72,7 @@ export function IncomeVsExpensesChart({ data, monthLabel }: IncomeVsExpensesChar
                 x={current.label}
                 y={current.income}
                 r={4}
-                fill="#10b981"
+                fill="var(--z-income)"
                 stroke="white"
                 strokeWidth={2}
               />
@@ -80,7 +80,7 @@ export function IncomeVsExpensesChart({ data, monthLabel }: IncomeVsExpensesChar
                 x={current.label}
                 y={current.expenses}
                 r={4}
-                fill="#f59e0b"
+                fill="var(--z-expense)"
                 stroke="white"
                 strokeWidth={2}
               />
@@ -93,16 +93,16 @@ export function IncomeVsExpensesChart({ data, monthLabel }: IncomeVsExpensesChar
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="h-2 w-2 rounded-full bg-z-income" />
                 Ingresos: {formatCurrency(current.income)}
               </span>
               <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                <span className="h-2 w-2 rounded-full bg-z-expense" />
                 Gastos: {formatCurrency(current.expenses)}
               </span>
             </div>
             {current.income > 0 && (
-              <span className={savingsRate >= 0 ? "text-emerald-600" : "text-red-600"}>
+              <span className={savingsRate >= 0 ? "text-z-income" : "text-z-debt"}>
                 Ahorro: {savingsRate.toFixed(0)}%
                 {savingsTrend !== 0 && (
                   <span className="ml-1">

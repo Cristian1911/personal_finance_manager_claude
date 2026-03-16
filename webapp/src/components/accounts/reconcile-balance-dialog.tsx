@@ -115,12 +115,12 @@ export function ReconcileBalanceDialog({
 
           {/* Live delta preview */}
           {isValid && delta > 0 && (
-            <div className="rounded-md bg-emerald-500/10 border border-emerald-500/20 p-3 space-y-1">
-              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+            <div className="rounded-md bg-z-income/10 border border-z-income/20 p-3 space-y-1">
+              <p className="text-sm font-medium text-z-income">
                 Diferencia:{" "}
                 +{formatCurrency(delta, currencyCode as CurrencyCode)}
               </p>
-              <p className="text-xs text-emerald-600 dark:text-emerald-500">
+              <p className="text-xs text-z-income">
                 Se creará un ajuste de ingreso por esta diferencia
               </p>
             </div>

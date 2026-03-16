@@ -134,7 +134,7 @@ export function DebtAccountCard({ account }: { account: DebtAccount }) {
           {monthlyInterest > 0 && (
             <div>
               <p className="text-xs text-muted-foreground">Interés/mes</p>
-              <p className="text-sm font-medium text-amber-600">
+              <p className="text-sm font-medium text-z-expense">
                 {formatCurrency(monthlyInterest, account.currency as CurrencyCode)}
               </p>
             </div>
@@ -153,7 +153,7 @@ export function DebtAccountCard({ account }: { account: DebtAccount }) {
               <div>
                 <p className="text-xs text-muted-foreground">Próximo pago</p>
                 <p
-                  className={`text-sm font-medium ${daysUntil <= 3 ? "text-amber-600" : ""}`}
+                  className={`text-sm font-medium ${daysUntil <= 3 ? "text-z-expense" : ""}`}
                 >
                   {daysUntil === 0
                     ? "Hoy"

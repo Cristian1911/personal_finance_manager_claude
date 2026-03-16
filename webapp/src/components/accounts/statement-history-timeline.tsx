@@ -31,7 +31,7 @@ function MetricRow({
         {diff !== null && diff !== 0 && (
           <span
             className={`flex items-center gap-0.5 text-xs ${
-              diff > 0 ? "text-red-500" : "text-emerald-600"
+              diff > 0 ? "text-z-debt" : "text-z-income"
             }`}
           >
             {diff > 0 ? (
@@ -77,7 +77,7 @@ function CountRow({
       <span className="text-muted-foreground">{label}</span>
       <span
         className={`font-medium ${
-          warnIfPositive && value > 0 ? "text-red-500" : "text-emerald-600"
+          warnIfPositive && value > 0 ? "text-z-debt" : "text-z-income"
         }`}
       >
         {value}

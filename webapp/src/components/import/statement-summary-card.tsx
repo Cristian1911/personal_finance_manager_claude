@@ -69,13 +69,13 @@ export function StatementSummaryCard({
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Abonos</p>
-                <p className="font-medium text-emerald-600">
+                <p className="font-medium text-z-income">
                   {fmt(statement.summary.total_credits)}
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Cargos</p>
-                <p className="font-medium text-red-600">
+                <p className="font-medium text-z-debt">
                   {fmt(statement.summary.total_debits)}
                 </p>
               </div>
@@ -101,7 +101,7 @@ export function StatementSummaryCard({
             {statement.credit_card_metadata.available_credit != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Cupo disponible</p>
-                <p className="font-medium text-emerald-600">
+                <p className="font-medium text-z-income">
                   {fmt(statement.credit_card_metadata.available_credit)}
                 </p>
               </div>
@@ -117,7 +117,7 @@ export function StatementSummaryCard({
             {statement.credit_card_metadata.total_payment_due != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Total a pagar</p>
-                <p className="font-medium text-red-600">
+                <p className="font-medium text-z-debt">
                   {fmt(statement.credit_card_metadata.total_payment_due)}
                 </p>
               </div>
@@ -153,7 +153,7 @@ export function StatementSummaryCard({
             {statement.loan_metadata.remaining_balance != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Saldo capital</p>
-                <p className="font-medium text-red-600">
+                <p className="font-medium text-z-debt">
                   {fmt(statement.loan_metadata.remaining_balance)}
                 </p>
               </div>
@@ -169,7 +169,7 @@ export function StatementSummaryCard({
             {statement.loan_metadata.total_payment_due != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Cuota a pagar</p>
-                <p className="font-medium text-red-600">
+                <p className="font-medium text-z-debt">
                   {fmt(statement.loan_metadata.total_payment_due)}
                 </p>
               </div>
@@ -185,7 +185,7 @@ export function StatementSummaryCard({
             {statement.summary?.interest_charged != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Intereses cobrados</p>
-                <p className="font-medium text-red-600">
+                <p className="font-medium text-z-debt">
                   {fmt(statement.summary.interest_charged)}
                 </p>
               </div>
@@ -193,7 +193,7 @@ export function StatementSummaryCard({
             {statement.loan_metadata.installments_in_default != null && (
               <div>
                 <p className="text-muted-foreground text-xs">Cuotas en mora</p>
-                <p className={`font-medium ${statement.loan_metadata.installments_in_default > 0 ? "text-red-600" : "text-emerald-600"}`}>
+                <p className={`font-medium ${statement.loan_metadata.installments_in_default > 0 ? "text-z-debt" : "text-z-income"}`}>
                   {statement.loan_metadata.installments_in_default}
                 </p>
               </div>

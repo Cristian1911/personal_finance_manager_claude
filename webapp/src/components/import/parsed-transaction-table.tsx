@@ -125,8 +125,8 @@ function MobileList({
                     <span
                       className={`text-sm font-semibold whitespace-nowrap ${
                         tx.direction === "INFLOW"
-                          ? "text-emerald-600"
-                          : "text-red-600"
+                          ? "text-z-income"
+                          : "text-z-debt"
                       }`}
                     >
                       {tx.direction === "INFLOW" ? "+" : "-"}
@@ -281,8 +281,8 @@ function DesktopTable({
                   <span
                     className={
                       tx.direction === "INFLOW"
-                        ? "text-emerald-600"
-                        : "text-red-600"
+                        ? "text-z-income"
+                        : "text-z-debt"
                     }
                   >
                     {tx.direction === "INFLOW" ? "+" : "-"}

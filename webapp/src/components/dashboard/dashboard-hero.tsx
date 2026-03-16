@@ -2,7 +2,7 @@
 
 import { formatCurrency } from "@/lib/utils/currency";
 import { freshnessMap } from "@/lib/utils/dashboard";
-import { Card, CardContent } from "@/components/ui/card";
+import { KPIWidget } from "@/components/ui/kpi-widget";
 import { Button } from "@/components/ui/button";
 import { Wallet, Receipt, Banknote, RefreshCw } from "lucide-react";
 import Link from "next/link";
@@ -26,7 +26,7 @@ export function DashboardHero({ data }: DashboardHeroProps) {
           Disponible para gastar
           <span className="text-sm font-normal text-muted-foreground ml-2">En {data.currency}</span>
         </p>
-        <p className={`text-4xl font-bold tracking-tight ${availableToSpend < 0 ? "text-red-600" : ""}`}>
+        <p className={`text-4xl font-bold tracking-tight ${availableToSpend < 0 ? "text-z-debt" : ""}`}>
           {formatCurrency(availableToSpend, code)}
         </p>
         {hasOtherCurrencies && (
@@ -38,44 +38,25 @@ export function DashboardHero({ data }: DashboardHeroProps) {
 
       {/* 3 sub-cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Saldo total</span>
-            </div>
-            <p className="text-lg font-semibold">
-              {formatCurrency(totalLiquid, code)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Receipt className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Fijos pendientes</span>
-            </div>
-            <p className="text-lg font-semibold">
-              {formatCurrency(totalPending, code)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {pendingObligations.length} {pendingObligations.length === 1 ? "pago" : "pagos"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Banknote className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Libre</span>
-            </div>
-            <p className={`text-lg font-semibold ${availableToSpend < 0 ? "text-red-600" : "text-emerald-600"}`}>
-              {formatCurrency(availableToSpend, code)}
-            </p>
-          </CardContent>
-        </Card>
+        <KPIWidget
+          label="Saldo total"
+          value={formatCurrency(totalLiquid, code)}
+          icon={<Wallet className="size-4" />}
+          semanticColor="neutral"
+        />
+        <KPIWidget
+          label="Fijos pendientes"
+          value={formatCurrency(totalPending, code)}
+          trend={{ direction: "flat", text: `${pendingObligations.length} ${pendingObligations.length === 1 ? "pago" : "pagos"}` }}
+          icon={<Receipt className="size-4" />}
+          semanticColor="expense"
+        />
+        <KPIWidget
+          label="Libre"
+          value={formatCurrency(availableToSpend, code)}
+          icon={<Banknote className="size-4" />}
+          semanticColor={availableToSpend < 0 ? "debt" : "income"}
+        />
       </div>
 
       {/* Freshness indicator */}

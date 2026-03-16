@@ -10,7 +10,7 @@ import {
 import { createTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
-import { CurrencyInput } from "@/components/ui/currency-input";
+import { AmountInput } from "@/components/ui/amount-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -161,17 +161,10 @@ export function MobileTransactionForm({
       )}
 
       {/* Amount */}
-      <div className="space-y-2">
-        <Label htmlFor="mobile-amount">Monto</Label>
-        <CurrencyInput
-          id="mobile-amount"
-          name="amount"
-          placeholder="0"
-          required
-          autoFocus={!showTypeSelector}
-          className="h-12 text-lg"
-        />
-      </div>
+      <AmountInput
+        name="amount"
+        autoFocus={!showTypeSelector}
+      />
 
       {/* Description */}
       <div className="space-y-2">

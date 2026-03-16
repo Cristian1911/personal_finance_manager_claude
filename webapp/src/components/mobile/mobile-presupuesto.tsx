@@ -117,7 +117,7 @@ export function MobilePresupuesto({
             onClick={() => setInboxExpanded(!inboxExpanded)}
             className="flex w-full items-center gap-2 mb-2"
           >
-            <AlertTriangle className="size-4 text-amber-500" />
+            <AlertTriangle className="size-4 text-z-alert" />
             <span className="text-sm font-semibold">
               {visibleInbox.length} sin categoría
             </span>
@@ -198,7 +198,7 @@ function InboxRow({
         <span
           className={cn(
             "shrink-0 text-sm font-medium tabular-nums",
-            isOutflow ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+            isOutflow ? "text-z-debt" : "text-z-income"
           )}
         >
           {isOutflow ? "-" : "+"}
@@ -221,8 +221,8 @@ function InboxRow({
               className={cn(
                 "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full",
                 isOutflow
-                  ? "bg-red-500/10 text-red-500"
-                  : "bg-emerald-500/10 text-emerald-500"
+                  ? "bg-z-debt/10 text-z-debt"
+                  : "bg-z-income/10 text-z-income"
               )}
             >
               {isOutflow ? (
@@ -299,10 +299,10 @@ function BudgetRow({ category }: { category: CategoryBudgetData }) {
 
   const barColor =
     percent > 90
-      ? "bg-red-500"
+      ? "bg-z-debt"
       : percent >= 70
-        ? "bg-amber-500"
-        : "bg-green-500";
+        ? "bg-z-expense"
+        : "bg-z-income";
 
   return (
     <div className="space-y-1.5">

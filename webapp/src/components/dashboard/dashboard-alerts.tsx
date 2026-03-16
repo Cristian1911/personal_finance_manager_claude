@@ -145,9 +145,9 @@ export function DashboardAlerts({
       {visibleAlerts.map((alert) => (
         <div
           key={alert.key}
-          className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30"
+          className="flex items-start gap-3 rounded-lg border border-z-alert/20 bg-z-alert/5 p-3"
         >
-          <alert.icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <alert.icon className="mt-0.5 h-4 w-4 shrink-0 text-z-alert" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">{alert.title}</p>
             <p className="text-xs text-muted-foreground">
@@ -164,7 +164,7 @@ export function DashboardAlerts({
             )}
             <button
               onClick={() => handleDismiss(alert.key)}
-              className="p-1 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+              className="p-1 rounded-md hover:bg-z-alert/10 transition-colors"
               aria-label={`Ocultar alerta: ${alert.title}`}
             >
               <X className="h-3.5 w-3.5 text-muted-foreground" />

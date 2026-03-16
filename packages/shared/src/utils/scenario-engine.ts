@@ -121,10 +121,19 @@ function getScenarioPriority(
   }
 
   if (strategy === "snowball") {
-    active.sort((a, b) => (balances[a.id] ?? 0) - (balances[b.id] ?? 0));
+    // Lowest balance first; tiebreaker: highest interest rate
+    active.sort((a, b) => {
+      const balDiff = (balances[a.id] ?? 0) - (balances[b.id] ?? 0);
+      if (balDiff !== 0) return balDiff;
+      return (b.interestRate ?? 0) - (a.interestRate ?? 0);
+    });
   } else {
-    // avalanche (default)
-    active.sort((a, b) => (b.interestRate ?? 0) - (a.interestRate ?? 0));
+    // Avalanche: highest interest rate first; tiebreaker: lowest balance (quicker payoff)
+    active.sort((a, b) => {
+      const rateDiff = (b.interestRate ?? 0) - (a.interestRate ?? 0);
+      if (rateDiff !== 0) return rateDiff;
+      return (balances[a.id] ?? 0) - (balances[b.id] ?? 0);
+    });
   }
   return active[0].id;
 }

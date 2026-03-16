@@ -118,6 +118,44 @@ function computeDebtFromCurrencyBalance(cb: CurrencyBalance): number {
   return Math.abs(cb.current_balance ?? 0);
 }
 
+// Rates below these thresholds are almost certainly monthly (MV), not annual (EA).
+const MV_THRESHOLD = { CREDIT_CARD: 6, LOAN: 3 } as const;
+const MIN_EA_RATE = { CREDIT_CARD: 10, LOAN: 3 } as const;
+const MAX_EA_RATE = 150;
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/** Convert a monthly percentage rate (MV) to annual effective rate (EA). */
+export function mvToEaPercent(monthlyPercent: number): number {
+  return round2((((1 + monthlyPercent / 100) ** 12) - 1) * 100);
+}
+
+/**
+ * Sanitize an interest rate. If it looks like monthly (MV), convert to EA.
+ * Rejects rates outside plausible bounds (returns null).
+ * Used at both import time and read time.
+ */
+export function sanitizeInterestRate(
+  rate: number | null | undefined,
+  accountType: "CREDIT_CARD" | "LOAN"
+): number | null {
+  if (rate == null || !Number.isFinite(rate) || rate <= 0) return null;
+
+  let sanitized = rate;
+
+  if (sanitized < MV_THRESHOLD[accountType]) {
+    sanitized = mvToEaPercent(sanitized);
+  }
+
+  if (sanitized < MIN_EA_RATE[accountType] || sanitized > MAX_EA_RATE) {
+    return null;
+  }
+
+  return round2(sanitized);
+}
+
 /**
  * Extract debt-relevant accounts from a full account list.
  * Multi-currency accounts get a currencyBreakdown with per-currency details.
@@ -160,13 +198,14 @@ export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
         ? computeDebtFromCurrencyBalance(primaryCb)
         : computeDebtBalance(a);
 
+      const acctType = a.account_type as "CREDIT_CARD" | "LOAN";
       result.push({
         id: a.id,
         name: a.name,
-        type: a.account_type as "CREDIT_CARD" | "LOAN",
+        type: acctType,
         balance: primaryBalance,
         creditLimit: primaryCb?.credit_limit ?? a.credit_limit,
-        interestRate: primaryCb?.interest_rate ?? a.interest_rate,
+        interestRate: sanitizeInterestRate(primaryCb?.interest_rate ?? a.interest_rate, acctType),
         monthlyPayment: primaryCb?.minimum_payment ?? a.monthly_payment,
         paymentDay: a.payment_day,
         cutoffDay: a.cutoff_day,
@@ -177,13 +216,14 @@ export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
       });
     } else {
       // Single currency — use primary account fields (existing behavior)
+      const acctType = a.account_type as "CREDIT_CARD" | "LOAN";
       result.push({
         id: a.id,
         name: a.name,
-        type: a.account_type as "CREDIT_CARD" | "LOAN",
+        type: acctType,
         balance: computeDebtBalance(a),
         creditLimit: a.credit_limit,
-        interestRate: a.interest_rate,
+        interestRate: sanitizeInterestRate(a.interest_rate, acctType),
         monthlyPayment: a.monthly_payment,
         paymentDay: a.payment_day,
         cutoffDay: a.cutoff_day,

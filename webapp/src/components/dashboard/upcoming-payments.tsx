@@ -52,7 +52,7 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
     return (
       <Card>
         <CardContent className="py-4">
-          <div className="flex items-center gap-2 text-emerald-600">
+          <div className="flex items-center gap-2 text-z-income">
             <Check className="h-4 w-4" />
             <span className="text-sm">Todos los pagos del mes están al día</span>
           </div>
@@ -96,14 +96,14 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
           if (items.length === 0) return null;
           return (
             <div key={group}>
-              <p className={`text-xs font-medium mb-2 ${group === "today" ? "text-red-600" : "text-muted-foreground"}`}>
+              <p className={`text-xs font-medium mb-2 ${group === "today" ? "text-z-alert" : "text-muted-foreground"}`}>
                 {groupLabels[group]}
               </p>
               <div className="space-y-2">
                 {items.map((item) => (
                   <div key={item.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {group === "today" && <CircleAlert className="h-3.5 w-3.5 text-red-500" />}
+                      {group === "today" && <CircleAlert className="h-3.5 w-3.5 text-z-alert" />}
                       <span className="text-sm">{item.name}</span>
                     </div>
                     <div className="text-right">

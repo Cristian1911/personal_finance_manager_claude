@@ -47,9 +47,9 @@ function DiffRow({ diff, currency }: { diff: SnapshotDiff; currency: CurrencyCod
 
   const colorClass =
     diff.changeType === "decreased"
-      ? "text-emerald-600"
+      ? "text-z-income"
       : diff.changeType === "increased"
-        ? "text-red-600"
+        ? "text-z-debt"
         : "text-foreground";
 
   return (
@@ -88,7 +88,7 @@ export function StepResults({
   return (
     <div className="space-y-6">
       {allDuplicates && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 text-sm rounded-md p-3">
+        <div className="bg-z-alert/5 text-z-alert text-sm rounded-md p-3">
           Todas las transacciones ya existían en tu cuenta. Es posible que ya
           hayas importado este extracto.
         </div>
@@ -100,7 +100,7 @@ export function StepResults({
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg border p-3">
             <div className="flex items-center gap-2 mb-1">
-              <CheckCircle className="h-4 w-4 text-emerald-600" />
+              <CheckCircle className="h-4 w-4 text-z-income" />
               <span className="text-2xl font-bold">{result.imported}</span>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -109,7 +109,7 @@ export function StepResults({
           </div>
           <div className="rounded-lg border p-3">
             <div className="flex items-center gap-2 mb-1">
-              <MinusCircle className="h-4 w-4 text-amber-500" />
+              <MinusCircle className="h-4 w-4 text-z-alert" />
               <span className="text-2xl font-bold">{result.skipped}</span>
             </div>
             <p className="text-xs text-muted-foreground">

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { updateProfile } from "@/actions/profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -65,6 +66,19 @@ export function ProfileForm({ profile }: { profile: Profile }) {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="monthly_salary">Salario mensual estimado</Label>
+        <CurrencyInput
+          id="monthly_salary"
+          name="monthly_salary"
+          defaultValue={profile.monthly_salary ?? ""}
+          placeholder="Ej: 4.500.000"
+        />
+        <p className="text-xs text-muted-foreground">
+          Se usa para calcular la distribución de tu salario en deudas. Si no lo defines, se estimará desde tus transacciones.
+        </p>
       </div>
 
       <input type="hidden" name="locale" value={profile.locale} />

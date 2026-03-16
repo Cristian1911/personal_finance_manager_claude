@@ -30,13 +30,6 @@ import { trackProductEvent } from "@/actions/product-events";
 
 type DebtKind = "credit_card" | "loan";
 
-const MIN_EA_RATE: Record<DebtKind, number> = {
-  credit_card: 10,
-  loan: 3,
-};
-
-const MAX_EA_RATE = 150;
-
 const IMPORT_DETAIL_MESSAGES = {
   monthlyToAnnual: (
     accountId: string,
@@ -55,13 +48,7 @@ const IMPORT_DETAIL_MESSAGES = {
     `Cuenta ${accountId}: ${label} ${rate}% E.A. fuera de rango (${minRate}%-${maxRate}%). Se ignora.`,
 } as const;
 
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
-function mvToEaPercent(monthlyPercent: number): number {
-  return round2((((1 + monthlyPercent / 100) ** 12) - 1) * 100);
-}
+import { sanitizeInterestRate, mvToEaPercent } from "@zeta/shared";
 
 function sanitizeEaRate(
   rawRate: number | null | undefined,
@@ -70,29 +57,25 @@ function sanitizeEaRate(
   accountId: string,
   label: string
 ): number | null {
-  if (rawRate == null || !Number.isFinite(rawRate)) return null;
+  if (rawRate == null || !Number.isFinite(rawRate) || rawRate <= 0) return null;
 
-  let rate = rawRate;
-  if (rate >= 0.5 && rate <= 5) {
-    const converted = mvToEaPercent(rate);
-    details.push(IMPORT_DETAIL_MESSAGES.monthlyToAnnual(accountId, label, rate, converted));
-    rate = converted;
+  // Log conversion if rate looks monthly
+  const accountType = kind === "credit_card" ? "CREDIT_CARD" : "LOAN";
+  const mvThreshold = kind === "credit_card" ? 6 : 3;
+  if (rawRate < mvThreshold) {
+    const converted = mvToEaPercent(rawRate);
+    details.push(IMPORT_DETAIL_MESSAGES.monthlyToAnnual(accountId, label, rawRate, converted));
   }
 
-  if (rate < MIN_EA_RATE[kind] || rate > MAX_EA_RATE) {
+  // Delegate to shared sanitization (conversion + bounds check)
+  const result = sanitizeInterestRate(rawRate, accountType);
+  if (result === null && rawRate > 0) {
     details.push(
-      IMPORT_DETAIL_MESSAGES.rateOutOfRange(
-        accountId,
-        label,
-        rate,
-        MIN_EA_RATE[kind],
-        MAX_EA_RATE
-      )
+      IMPORT_DETAIL_MESSAGES.rateOutOfRange(accountId, label, rawRate, mvThreshold, 150)
     );
-    return null;
   }
 
-  return round2(rate);
+  return result;
 }
 
 function parsePayload(formData: FormData) {

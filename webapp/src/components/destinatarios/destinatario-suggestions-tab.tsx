@@ -210,7 +210,7 @@ export function DestinatarioSuggestionsTab({
                   </div>
                 </div>
 
-                {formError && <p className="text-xs text-red-600">{formError}</p>}
+                {formError && <p className="text-xs text-z-debt">{formError}</p>}
 
                 <div className="flex items-center gap-2">
                   <Button

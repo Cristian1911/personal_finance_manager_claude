@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { DebtAccount, ScenarioResult, ScenarioStrategy } from "@zeta/shared";
 import type { CurrencyCode } from "@zeta/shared";
 import type { PlannerAction, ScenarioState } from "../scenario-planner";
@@ -72,12 +72,7 @@ function StrategyCard({ selected, icon, title, description, onClick }: StrategyC
   );
 }
 
-function formatDebtFreeDate(dateStr: string): string {
-  // dateStr is "YYYY-MM"
-  const [year, mon] = dateStr.split("-");
-  const date = new Date(Number(year), Number(mon) - 1, 1);
-  return date.toLocaleDateString("es-CO", { month: "long", year: "numeric" });
-}
+import { formatDebtFreeDate } from "./utils";
 
 export function AllocateStep({
   accounts,
@@ -88,6 +83,18 @@ export function AllocateStep({
 }: Props) {
   // Derive currency from first account (all should match)
   const currency: CurrencyCode = accounts[0]?.currency ?? "COP";
+
+  // Precompute priority order for the preview (avoids re-sorting in JSX)
+  const sortedPreviewAccounts = useMemo(() => {
+    if (scenario.strategy === "custom") return [];
+    return [...accounts]
+      .filter((a) => a.balance > 0)
+      .sort((a, b) =>
+        scenario.strategy === "avalanche"
+          ? ((b.interestRate ?? 0) - (a.interestRate ?? 0)) || (a.balance - b.balance)
+          : (a.balance - b.balance) || ((b.interestRate ?? 0) - (a.interestRate ?? 0))
+      );
+  }, [accounts, scenario.strategy]);
 
   // Local custom priority state — initialized when user switches to "custom"
   const [customPriority, setCustomPriority] = useState<string[]>(
@@ -201,6 +208,30 @@ export function AllocateStep({
             description="Paga primero el saldo más bajo — victorias rápidas para motivación"
             onClick={() => handleStrategyChange("snowball")}
           />
+
+          {/* Show account priority based on selected strategy */}
+          {sortedPreviewAccounts.length > 0 && (
+            <div className="mt-3 rounded-md bg-z-surface-2 px-3 py-2.5">
+              <p className="text-xs font-medium text-muted-foreground mb-2">
+                Orden de ataque inicial ({scenario.strategy === "avalanche" ? "tasa más alta primero" : "saldo más bajo primero"}):
+              </p>
+              <div className="space-y-1">
+                {sortedPreviewAccounts.map((a, i) => (
+                  <div key={a.id} className="flex items-center gap-2 text-xs">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-muted text-[9px] font-bold text-muted-foreground shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="font-medium truncate">{a.name}</span>
+                    <span className="text-muted-foreground ml-auto shrink-0">
+                      {a.interestRate != null ? `${a.interestRate}% EA` : "sin tasa"}
+                      {" · "}
+                      {formatCurrency(a.balance, a.currency as CurrencyCode)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <StrategyCard
             value="custom"
             selected={scenario.strategy === "custom"}

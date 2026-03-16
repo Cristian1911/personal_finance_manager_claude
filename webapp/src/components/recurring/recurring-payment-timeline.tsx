@@ -67,27 +67,39 @@ function CategoryIcon({
 /*  Date group styling                                                 */
 /* ------------------------------------------------------------------ */
 
-function dateGroupClasses(status: DateStatus) {
+function dateGroupStyle(status: DateStatus): React.CSSProperties {
   switch (status) {
     case "past":
-      return "border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20";
+      return {
+        borderColor: "color-mix(in srgb, var(--z-debt) 50%, transparent)",
+        borderLeftColor: "var(--z-debt)",
+        borderLeftWidth: 4,
+        backgroundColor: "color-mix(in srgb, var(--z-debt) 20%, transparent)",
+      };
     case "today":
-      return "border-primary/30 bg-primary/5";
+      return {
+        borderColor: "color-mix(in srgb, var(--z-alert) 50%, transparent)",
+        borderLeftColor: "var(--z-alert)",
+        borderLeftWidth: 4,
+        backgroundColor: "color-mix(in srgb, var(--z-alert) 20%, transparent)",
+      };
     case "future":
-      return "border-border bg-muted/30";
+      return {};
   }
 }
 
 function dateLabelClasses(status: DateStatus) {
   switch (status) {
     case "past":
-      return "text-amber-700 dark:text-amber-400";
+      return "text-z-debt font-semibold";
     case "today":
-      return "text-primary font-semibold";
+      return "text-z-alert font-semibold";
     case "future":
       return "text-muted-foreground";
   }
 }
+
+const STATUS_ORDER: Record<DateStatus, number> = { past: 0, today: 1, future: 2 };
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -105,17 +117,9 @@ export function PaymentTimeline({
   // Sort dates: past first, then today, then future
   const sortedDates = Array.from(pendingByDate.keys())
     .filter((date) => (selectedDate ? date === selectedDate : true))
-    .sort((a, b) => {
-      const statusOrder: Record<DateStatus, number> = {
-        past: 0,
-        today: 1,
-        future: 2,
-      };
-      const statusA = statusOrder[getDateStatus(a)];
-      const statusB = statusOrder[getDateStatus(b)];
-      if (statusA !== statusB) return statusA - statusB;
-      return a.localeCompare(b);
-    });
+    .map((date) => ({ date, order: STATUS_ORDER[getDateStatus(date)] }))
+    .sort((a, b) => a.order - b.order || a.date.localeCompare(b.date))
+    .map(({ date }) => date);
 
   if (sortedDates.length === 0) {
     return (
@@ -138,8 +142,9 @@ export function PaymentTimeline({
             key={date}
             className={cn(
               "overflow-hidden rounded-lg border",
-              dateGroupClasses(status)
+              status === "future" && "border-border bg-background"
             )}
+            style={dateGroupStyle(status)}
           >
             {/* Date header */}
             <div className="px-3 py-1.5">

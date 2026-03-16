@@ -44,13 +44,13 @@ const verdictMeta: Record<
 > = {
   BUY: {
     label: "Sí",
-    badgeClassName: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
-    panelClassName: "border-emerald-500/20 bg-emerald-500/5",
+    badgeClassName: "border-z-income/30 bg-z-income/10 text-z-income",
+    panelClassName: "border-z-income/20 bg-z-income/5",
   },
   BUY_WITH_CAUTION: {
     label: "Sí, pero con cautela",
-    badgeClassName: "border-amber-500/30 bg-amber-500/10 text-amber-700",
-    panelClassName: "border-amber-500/20 bg-amber-500/5",
+    badgeClassName: "border-z-expense/30 bg-z-expense/10 text-z-expense",
+    panelClassName: "border-z-expense/20 bg-z-expense/5",
   },
   WAIT: {
     label: "Mejor espera",
@@ -411,10 +411,10 @@ export function PurchaseDecisionCard({
                                   className={cn(
                                     "inline-block h-2.5 w-2.5 rounded-full",
                                     reason.severity === "critical"
-                                      ? "bg-red-500"
+                                      ? "bg-z-debt"
                                       : reason.severity === "warning"
-                                        ? "bg-amber-500"
-                                        : "bg-emerald-500"
+                                        ? "bg-z-expense"
+                                        : "bg-z-income"
                                   )}
                                 />
                                 <p className="text-sm font-medium">{reason.title}</p>
@@ -533,8 +533,8 @@ function BeforeAfterRow({
               !changed
                 ? "text-foreground"
                 : improved
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-red-600 dark:text-red-400"
+                  ? "text-z-income"
+                  : "text-z-debt"
             )}
           >
             {after}

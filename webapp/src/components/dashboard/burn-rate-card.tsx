@@ -24,7 +24,7 @@ interface BurnRateCardProps {
 }
 
 const chartConfig = {
-  balance: { label: "Balance", color: "hsl(var(--chart-1))" },
+  balance: { label: "Balance", color: "var(--chart-1)" },
 };
 
 export function BurnRateCard({ data }: BurnRateCardProps) {
@@ -145,8 +145,8 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
             <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
-                  <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                  <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
+                  <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <XAxis
@@ -169,7 +169,7 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
               <Area
                 type="monotone"
                 dataKey="balance"
-                stroke="hsl(var(--chart-1))"
+                stroke="var(--chart-1)"
                 strokeWidth={2}
                 fill={`url(#${gradientId})`}
                 connectNulls={false}
@@ -177,7 +177,7 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
               <Area
                 type="monotone"
                 dataKey="projected"
-                stroke="hsl(var(--chart-1))"
+                stroke="var(--chart-1)"
                 strokeWidth={1.5}
                 strokeDasharray="4 3"
                 fill="none"

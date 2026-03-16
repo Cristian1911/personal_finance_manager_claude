@@ -26,11 +26,11 @@ interface Props {
 const chartConfig = {
   income: {
     label: "Ingresos",
-    color: "var(--chart-2)",
+    color: "var(--z-income)",
   },
   expenses: {
     label: "Gastos",
-    color: "var(--chart-1)",
+    color: "var(--z-expense)",
   },
 } satisfies ChartConfig;
 
@@ -86,18 +86,18 @@ export function MonthlyCashflowChart({ data, monthLabel }: Props) {
                     <p className="font-medium mb-1.5">{d.label}</p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--chart-2)" }} />
+                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--z-income)" }} />
                         <span className="text-muted-foreground">Ingresos:</span>
                         <span className="font-medium ml-auto">{formatCurrency(d.income)}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--chart-1)" }} />
+                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--z-expense)" }} />
                         <span className="text-muted-foreground">Gastos:</span>
                         <span className="font-medium ml-auto">{formatCurrency(d.expenses)}</span>
                       </div>
                       <div className="flex items-center gap-2 pt-1 border-t">
                         <span className="text-muted-foreground">Neto:</span>
-                        <span className={`font-medium ml-auto ${d.net >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        <span className={`font-medium ml-auto ${d.net >= 0 ? "text-z-income" : "text-z-debt"}`}>
                           {d.net >= 0 ? "+" : ""}{formatCurrency(d.net)}
                         </span>
                       </div>

@@ -112,7 +112,7 @@ function LumpSumTab({ accounts, currency }: Props) {
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-green-600">
+                        <p className="text-sm font-semibold text-z-income">
                           Abonar {formatCurrency(a.payment)}
                         </p>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground justify-end">
@@ -129,12 +129,12 @@ function LumpSumTab({ accounts, currency }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-green-500/20 bg-gradient-to-br from-green-500/5 to-emerald-500/5">
+          <Card className="border-z-income/20 bg-gradient-to-br from-z-income/5 to-z-income/5">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
-                <TrendingDown className="h-5 w-5 text-green-600 mt-0.5" />
+                <TrendingDown className="h-5 w-5 text-z-income mt-0.5" />
                 <div>
-                  <p className="font-medium text-green-700">
+                  <p className="font-medium text-z-income">
                     Ahorras{" "}
                     <strong>
                       {formatCurrency(result.totalMonthlyInterestSaved)}
@@ -238,7 +238,7 @@ function SingleAccountTab({ accounts }: Props) {
                   <span className="text-sm font-normal text-muted-foreground">meses</span>
                 </p>
                 {result.monthsSaved > 0 && (
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className="text-xs text-z-income mt-1">
                     {result.monthsSaved} meses menos
                   </p>
                 )}
@@ -247,7 +247,7 @@ function SingleAccountTab({ accounts }: Props) {
             <Card>
               <CardContent className="pt-6 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Intereses que pagarías</p>
-                <p className="text-2xl font-bold text-amber-600">
+                <p className="text-2xl font-bold text-z-expense">
                   {formatCurrency(result.interestWithExtra)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -255,10 +255,10 @@ function SingleAccountTab({ accounts }: Props) {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-green-500/20">
+            <Card className="border-z-income/20">
               <CardContent className="pt-6 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Te ahorras</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-z-income">
                   {formatCurrency(result.interestSaved)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">en intereses</p>
@@ -510,12 +510,12 @@ function StrategiesTab({ accounts }: Props) {
           </div>
 
           {comparison.interestSaved !== 0 && (
-            <Card className="border-green-500/20 bg-gradient-to-br from-green-500/5 to-emerald-500/5">
+            <Card className="border-z-income/20 bg-gradient-to-br from-z-income/5 to-z-income/5">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-3">
-                  <TrendingDown className="h-5 w-5 text-green-600 mt-0.5" />
+                  <TrendingDown className="h-5 w-5 text-z-income mt-0.5" />
                   <div>
-                    <p className="font-medium text-green-700">
+                    <p className="font-medium text-z-income">
                       Con{" "}
                       <strong>{STRATEGY_LABELS[comparison.bestStrategy]}</strong>{" "}
                       ahorras{" "}
@@ -660,7 +660,7 @@ function StrategiesTab({ accounts }: Props) {
                           <td className="text-center py-2.5">
                             {snowballMonth ? (
                               <span className="inline-flex items-center gap-1">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                <CheckCircle2 className="h-3.5 w-3.5 text-z-income" />
                                 Mes {snowballMonth}
                               </span>
                             ) : (
@@ -670,7 +670,7 @@ function StrategiesTab({ accounts }: Props) {
                           <td className="text-center py-2.5">
                             {avalancheMonth ? (
                               <span className="inline-flex items-center gap-1">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                <CheckCircle2 className="h-3.5 w-3.5 text-z-income" />
                                 Mes {avalancheMonth}
                               </span>
                             ) : (
@@ -711,7 +711,7 @@ function StrategyCard({
   return (
     <Card
       className={
-        isRecommended ? "border-green-500/30 ring-1 ring-green-500/20" : ""
+        isRecommended ? "border-z-income/30 ring-1 ring-z-income/20" : ""
       }
     >
       <CardHeader className="pb-3">
@@ -723,7 +723,7 @@ function StrategyCard({
           {isRecommended && (
             <Badge
               variant="secondary"
-              className="bg-green-500/10 text-green-700 border-green-500/20"
+              className="bg-z-income/10 text-z-income border-z-income/20"
             >
               Recomendado
             </Badge>
@@ -740,7 +740,7 @@ function StrategyCard({
         </div>
         <div className="flex justify-between">
           <span className="text-sm text-muted-foreground">Total intereses</span>
-          <span className="font-semibold text-amber-600">
+          <span className="font-semibold text-z-expense">
             {formatCurrency(totalInterest)}
           </span>
         </div>

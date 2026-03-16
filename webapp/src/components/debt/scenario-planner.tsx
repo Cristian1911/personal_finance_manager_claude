@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useMemo } from "react";
+import { useReducer, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -18,6 +18,34 @@ import { AllocateStep } from "./planner/allocate-step";
 import { CompareStep } from "./planner/compare-step";
 import { DetailStep } from "./planner/detail-step";
 import { ScenarioManager } from "./planner/scenario-manager";
+import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
+
+function StepNav({ onNext, nextLabel, showSkip, hint }: {
+  onNext: () => void;
+  nextLabel: string;
+  showSkip?: boolean;
+  hint?: string;
+}) {
+  return (
+    <div className="mt-4 flex flex-col gap-2">
+      {hint && (
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      )}
+      <div className="flex items-center gap-2">
+        <Button onClick={onNext} className="gap-1.5">
+          {nextLabel}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+        {showSkip && (
+          <Button variant="ghost" size="sm" onClick={onNext}>
+            Omitir por ahora
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export interface ScenarioState {
   name: string;
@@ -157,14 +185,26 @@ export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: 
     });
   }, [accounts]);
 
+  const [activeTab, setActiveTab] = useState("cash");
+  const STEPS = ["cash", "allocate", "compare", "detail"] as const;
+  const stepIndex = STEPS.indexOf(activeTab as typeof STEPS[number]);
+  const goNext = () => stepIndex < STEPS.length - 1 && setActiveTab(STEPS[stepIndex + 1]);
+
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="cash" className="space-y-4">
+      {/* Intro guidance */}
+      <div className="rounded-lg bg-z-surface-2 px-4 py-3">
+        <p className="text-sm text-muted-foreground">
+          Simula diferentes estrategias de pago para tus deudas. Define cuánto efectivo extra puedes aportar, elige una estrategia, y compara los resultados.
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="cash">Tu efectivo</TabsTrigger>
-          <TabsTrigger value="allocate">Asignar</TabsTrigger>
-          <TabsTrigger value="compare">Comparar</TabsTrigger>
-          <TabsTrigger value="detail">Detalle</TabsTrigger>
+          <TabsTrigger value="cash">1. Efectivo</TabsTrigger>
+          <TabsTrigger value="allocate">2. Estrategia</TabsTrigger>
+          <TabsTrigger value="compare">3. Comparar</TabsTrigger>
+          <TabsTrigger value="detail">4. Detalle</TabsTrigger>
         </TabsList>
 
         <TabsContent value="cash">
@@ -174,6 +214,7 @@ export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: 
             currency={currency}
             dispatch={dispatch}
           />
+          <StepNav onNext={goNext} nextLabel="Elegir estrategia" showSkip hint="Puedes simular sin efectivo extra — se usarán solo los pagos mínimos." />
         </TabsContent>
 
         <TabsContent value="allocate">
@@ -184,6 +225,7 @@ export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: 
             result={results[state.activeScenarioIndex]}
             dispatch={dispatch}
           />
+          <StepNav onNext={goNext} nextLabel="Comparar planes" />
         </TabsContent>
 
         <TabsContent value="compare">
@@ -195,6 +237,7 @@ export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: 
             currency={currency}
             dispatch={dispatch}
           />
+          <StepNav onNext={goNext} nextLabel="Ver detalle" />
         </TabsContent>
 
         <TabsContent value="detail">

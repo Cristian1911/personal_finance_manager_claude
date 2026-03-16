@@ -262,20 +262,20 @@ export function StepUpload({
       )}
 
       {unsupportedFile && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 space-y-3 dark:border-amber-900 dark:bg-amber-950/30">
+        <div className="rounded-md border border-z-alert/20 bg-z-alert/5 p-4 space-y-3">
           <div className="flex gap-3">
-            <HelpCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <HelpCircle className="h-5 w-5 text-z-alert shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              <p className="text-sm font-medium text-z-alert">
                 Formato no compatible
               </p>
-              <p className="text-sm text-amber-700 dark:text-amber-300">
+              <p className="text-sm text-z-alert">
                 Este PDF no pudo ser procesado. ¿Quieres enviarlo para que podamos añadir soporte para este banco o formato?
               </p>
             </div>
           </div>
           {savedForSupport ? (
-            <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+            <div className="flex items-center gap-2 text-sm text-z-income">
               <CheckCircle2 className="h-4 w-4" />
               ¡Gracias! Lo revisaremos para añadir soporte pronto.
             </div>
@@ -284,7 +284,7 @@ export function StepUpload({
               <Button
                 size="sm"
                 variant="outline"
-                className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900"
+                className="border-z-alert/30 hover:bg-z-alert/10"
                 onClick={handleSaveForSupport}
                 disabled={savingForSupport}
               >

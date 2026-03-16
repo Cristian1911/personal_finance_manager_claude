@@ -407,7 +407,7 @@ function RecentTransactions({
                 <span
                   className={`shrink-0 font-medium tabular-nums ${
                     tx.direction === "INFLOW"
-                      ? "text-emerald-600"
+                      ? "text-z-income"
                       : "text-foreground"
                   }`}
                 >
