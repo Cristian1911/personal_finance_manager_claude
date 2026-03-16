@@ -119,6 +119,30 @@ function computeDebtFromCurrencyBalance(cb: CurrencyBalance): number {
 }
 
 /**
+ * Sanitize an interest rate at read time.
+ * If a rate looks like a monthly rate (< 6% for credit cards, < 3% for loans),
+ * convert it to E.A. This protects against bad stored data from older imports.
+ */
+function sanitizeInterestRate(
+  rate: number | null,
+  accountType: "CREDIT_CARD" | "LOAN"
+): number | null {
+  if (rate == null || rate <= 0) return rate;
+
+  // Credit cards: anything under 6% EA is almost certainly a monthly rate
+  // (Colombian credit cards range ~20-35% EA; global minimum is ~10% EA)
+  // Loans: anything under 3% EA might be monthly
+  const threshold = accountType === "CREDIT_CARD" ? 6 : 3;
+
+  if (rate < threshold) {
+    // Convert monthly (MV) to annual (EA): ((1 + r/100)^12 - 1) * 100
+    return Math.round((((1 + rate / 100) ** 12) - 1) * 100 * 100) / 100;
+  }
+
+  return rate;
+}
+
+/**
  * Extract debt-relevant accounts from a full account list.
  * Multi-currency accounts get a currencyBreakdown with per-currency details.
  * The primary balance/creditLimit/interestRate come from the account's main currency.
@@ -160,13 +184,14 @@ export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
         ? computeDebtFromCurrencyBalance(primaryCb)
         : computeDebtBalance(a);
 
+      const acctType = a.account_type as "CREDIT_CARD" | "LOAN";
       result.push({
         id: a.id,
         name: a.name,
-        type: a.account_type as "CREDIT_CARD" | "LOAN",
+        type: acctType,
         balance: primaryBalance,
         creditLimit: primaryCb?.credit_limit ?? a.credit_limit,
-        interestRate: primaryCb?.interest_rate ?? a.interest_rate,
+        interestRate: sanitizeInterestRate(primaryCb?.interest_rate ?? a.interest_rate, acctType),
         monthlyPayment: primaryCb?.minimum_payment ?? a.monthly_payment,
         paymentDay: a.payment_day,
         cutoffDay: a.cutoff_day,
@@ -177,13 +202,14 @@ export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
       });
     } else {
       // Single currency — use primary account fields (existing behavior)
+      const acctType = a.account_type as "CREDIT_CARD" | "LOAN";
       result.push({
         id: a.id,
         name: a.name,
-        type: a.account_type as "CREDIT_CARD" | "LOAN",
+        type: acctType,
         balance: computeDebtBalance(a),
         creditLimit: a.credit_limit,
-        interestRate: a.interest_rate,
+        interestRate: sanitizeInterestRate(a.interest_rate, acctType),
         monthlyPayment: a.monthly_payment,
         paymentDay: a.payment_day,
         cutoffDay: a.cutoff_day,
