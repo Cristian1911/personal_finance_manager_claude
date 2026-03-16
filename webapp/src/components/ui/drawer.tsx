@@ -42,6 +42,8 @@ function DrawerContent({ className, children, ...props }: React.ComponentProps<t
         )}
         {...props}
       >
+        {/* Visually hidden title for screen reader accessibility */}
+        <DrawerPrimitive.Title className="sr-only">Menu</DrawerPrimitive.Title>
         <div className="mx-auto mt-3 mb-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
         {children}
       </DrawerPrimitive.Content>
