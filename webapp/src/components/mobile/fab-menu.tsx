@@ -101,18 +101,27 @@ export function FabMenu({
         />
       )}
 
-      {/* Bottom Sheet */}
+      {/* Bottom Sheet — sits above the tab bar (h-14 = 3.5rem) */}
       {open && (
         <div
           className={cn(
-            "fixed inset-x-0 bottom-0 z-40 rounded-t-2xl bg-background shadow-2xl",
+            "fixed inset-x-0 z-40 rounded-t-2xl bg-background shadow-2xl",
             "animate-in slide-in-from-bottom duration-300",
-            "pb-[env(safe-area-inset-bottom)]",
           )}
+          style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom))" }}
         >
-          {/* Drag handle */}
-          <div className="flex justify-center pt-3 pb-2">
+          {/* Drag handle + close button */}
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
+            <div className="w-10" />
             <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
+              aria-label="Cerrar menú"
+            >
+              <Plus className="size-4 rotate-45" strokeWidth={2.5} />
+            </button>
           </div>
 
           <div className="px-4 pb-4">
@@ -196,18 +205,18 @@ export function FabMenu({
         </div>
       )}
 
-      {/* Main FAB */}
-      <button
-        type="button"
-        onClick={toggle}
-        className={cn(
-          "fixed bottom-5 left-1/2 z-50 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform duration-200 mb-[env(safe-area-inset-bottom)]",
-          open && "rotate-45",
-        )}
-        aria-label={open ? "Cerrar menú" : "Abrir menú de acciones"}
-      >
-        <Plus className="size-7" strokeWidth={2.5} />
-      </button>
+      {/* Main FAB — hidden when sheet is open */}
+      {!open && (
+        <button
+          type="button"
+          onClick={toggle}
+          className="fixed left-1/2 z-50 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg mb-[env(safe-area-inset-bottom)]"
+          style={{ bottom: "4.5rem" }}
+          aria-label="Abrir menú de acciones"
+        >
+          <Plus className="size-7" strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 }
