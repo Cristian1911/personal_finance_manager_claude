@@ -70,9 +70,9 @@ function CategoryIcon({
 function dateGroupClasses(status: DateStatus) {
   switch (status) {
     case "past":
-      return "border-z-alert/40 bg-z-alert/15 border-l-[3px] border-l-z-alert";
+      return "border-z-debt/50 bg-z-debt/20 border-l-4 border-l-z-debt";
     case "today":
-      return "border-z-income/30 bg-z-income/10 border-l-[3px] border-l-z-income";
+      return "border-z-income/50 bg-z-income/20 border-l-4 border-l-z-income";
     case "future":
       return "border-border bg-background";
   }
@@ -81,7 +81,7 @@ function dateGroupClasses(status: DateStatus) {
 function dateLabelClasses(status: DateStatus) {
   switch (status) {
     case "past":
-      return "text-z-alert font-semibold";
+      return "text-z-debt font-semibold";
     case "today":
       return "text-z-income font-semibold";
     case "future":
