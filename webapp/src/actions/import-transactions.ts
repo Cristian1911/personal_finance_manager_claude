@@ -63,6 +63,14 @@ function mvToEaPercent(monthlyPercent: number): number {
   return round2((((1 + monthlyPercent / 100) ** 12) - 1) * 100);
 }
 
+// Rates below this threshold are almost certainly monthly (MV), not annual (EA).
+// Credit cards: no card charges < 6% EA (Colombian cards are 20-35% EA).
+// Loans: no formal loan charges < 3% EA.
+const MV_THRESHOLD: Record<DebtKind, number> = {
+  credit_card: 6,
+  loan: 3,
+};
+
 function sanitizeEaRate(
   rawRate: number | null | undefined,
   kind: DebtKind,
@@ -70,10 +78,12 @@ function sanitizeEaRate(
   accountId: string,
   label: string
 ): number | null {
-  if (rawRate == null || !Number.isFinite(rawRate)) return null;
+  if (rawRate == null || !Number.isFinite(rawRate) || rawRate <= 0) return null;
 
   let rate = rawRate;
-  if (rate >= 0.5 && rate <= 5) {
+
+  // Auto-convert if rate looks like a monthly rate (below the EA floor for this kind)
+  if (rate < MV_THRESHOLD[kind]) {
     const converted = mvToEaPercent(rate);
     details.push(IMPORT_DETAIL_MESSAGES.monthlyToAnnual(accountId, label, rate, converted));
     rate = converted;
