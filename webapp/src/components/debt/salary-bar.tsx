@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import type { CurrencyCode } from "@zeta/shared";
+import type { CurrencyCode } from "@/types/domain";
 import type { MonthlyBreakdown } from "@zeta/shared";
 
 interface Props {
