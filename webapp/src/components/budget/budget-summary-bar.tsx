@@ -50,9 +50,9 @@ export function BudgetSummaryBar({
             className={cn(
               "text-lg font-semibold",
               overallPercent > 100
-                ? "text-red-600"
+                ? "text-z-debt"
                 : overallPercent > 80
-                  ? "text-amber-600"
+                  ? "text-z-expense"
                   : "text-foreground"
             )}
           >
