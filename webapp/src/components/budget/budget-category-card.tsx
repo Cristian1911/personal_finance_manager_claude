@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Home,
   Utensils,
@@ -82,6 +83,11 @@ export function BudgetCategoryCard({
             <CardTitle className="text-sm">
               {category.name_es ?? category.name}
             </CardTitle>
+            {category.expense_type && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                {category.expense_type === "fixed" ? "Fijo" : "Variable"}
+              </Badge>
+            )}
           </div>
           {category.children.length > 0 && (
             <button
@@ -126,10 +132,20 @@ export function BudgetCategoryCard({
                 }}
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(category.spent)} / {formatCurrency(category.budget!)} &mdash;{" "}
-              {Math.round(category.percentUsed)}%
-            </p>
+            <div className="space-y-0.5">
+              <p className="text-xs font-medium">
+                Gastado: {formatCurrency(category.spent)}
+                <span className="text-muted-foreground font-normal">
+                  {" "}de {formatCurrency(category.budget!)}
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Disponible:{" "}
+                <span className={category.spent > category.budget! ? "text-z-debt" : "text-z-income"}>
+                  {formatCurrency(Math.max(0, category.budget! - category.spent))}
+                </span>
+              </p>
+            </div>
             {/* Recurring breakdown */}
             {hasRecurring && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
