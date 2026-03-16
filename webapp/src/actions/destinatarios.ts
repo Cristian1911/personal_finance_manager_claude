@@ -8,7 +8,7 @@ import {
 } from "@/lib/validators/destinatario";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
-import { cleanDescription, groupByCommonPrefix, type DestinatarioRule, type DestinatarioSuggestion } from "@zeta/shared";
+import { cleanDescription, type DestinatarioRule } from "@zeta/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,29 +52,33 @@ export async function testDestinatarioPattern(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const { data, error } = await supabase
+  // Use server-side filtering via ilike instead of fetching 1000 rows
+  let query = supabase
     .from("transactions")
     .select("id, raw_description, transaction_date, amount")
     .eq("user_id", user.id)
     .is("destinatario_id", null)
-    .not("raw_description", "is", null)
+    .not("raw_description", "is", null);
+
+  if (matchType === "exact") {
+    query = query.ilike("raw_description", pattern);
+  } else {
+    query = query.ilike("raw_description", `%${pattern}%`);
+  }
+
+  const { data, error, count } = await query
     .order("transaction_date", { ascending: false })
-    .limit(1000);
+    .limit(5);
 
   if (error) return { success: false, error: error.message };
 
-  const lowerPattern = pattern.toLowerCase();
-  const matches = (data ?? []).filter((tx) => {
-    if (!tx.raw_description) return false;
-    const desc = tx.raw_description.toLowerCase();
-    return matchType === "exact" ? desc === lowerPattern : desc.includes(lowerPattern);
-  });
+  const matches = data ?? [];
 
   return {
     success: true,
     data: {
       matchCount: matches.length,
-      samples: matches.slice(0, 5).map((tx) => ({
+      samples: matches.map((tx) => ({
         id: tx.id,
         rawDescription: tx.raw_description!,
         date: tx.transaction_date,
@@ -465,6 +469,44 @@ export type DestinatarioSuggestionResult = {
   sampleTransactions: { date: string; rawDescription: string; amount: number }[];
 };
 
+function groupSuggestionsByPrefix(
+  suggestions: DestinatarioSuggestionResult[]
+): DestinatarioSuggestionResult[] {
+  if (suggestions.length <= 1) return suggestions;
+  const sorted = [...suggestions].sort((a, b) =>
+    a.cleanedPattern.localeCompare(b.cleanedPattern)
+  );
+  const groups: DestinatarioSuggestionResult[] = [];
+  let current = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    const next = sorted[i];
+    const tokensA = current.cleanedPattern.split(/\s+/);
+    const tokensB = next.cleanedPattern.split(/\s+/);
+    const common: string[] = [];
+    for (let j = 0; j < Math.min(tokensA.length, tokensB.length); j++) {
+      if (tokensA[j] === tokensB[j]) common.push(tokensA[j]);
+      else break;
+    }
+    if (common.length >= 2) {
+      current = {
+        cleanedPattern: common.join(" "),
+        count: current.count + next.count,
+        dateRange: {
+          from: current.dateRange.from < next.dateRange.from ? current.dateRange.from : next.dateRange.from,
+          to: current.dateRange.to > next.dateRange.to ? current.dateRange.to : next.dateRange.to,
+        },
+        sampleTransactions: [...current.sampleTransactions, ...next.sampleTransactions].slice(0, 5),
+      };
+    } else {
+      groups.push(current);
+      current = next;
+    }
+  }
+  groups.push(current);
+  groups.sort((a, b) => b.count - a.count);
+  return groups;
+}
+
 export async function getDestinatarioSuggestions(): Promise<
   ActionResult<DestinatarioSuggestionResult[]>
 > {
@@ -532,21 +574,9 @@ export async function getDestinatarioSuggestions(): Promise<
   suggestions.sort((a, b) => b.count - a.count);
 
   // Group related patterns by common prefix (e.g., "NEQUI PAGO" variants)
-  const asShared: DestinatarioSuggestion[] = suggestions.map((s) => ({
-    cleanedPattern: s.cleanedPattern,
-    count: s.count,
-    rawDescriptions: s.sampleTransactions.map((t) => t.rawDescription),
-    transactionPreviews: s.sampleTransactions,
-  }));
-  const grouped = groupByCommonPrefix(asShared);
-  const groupedResults: DestinatarioSuggestionResult[] = grouped.map((g) => ({
-    cleanedPattern: g.cleanedPattern,
-    count: g.count,
-    dateRange: { from: "", to: "" },
-    sampleTransactions: g.transactionPreviews.slice(0, 5),
-  }));
+  const grouped = groupSuggestionsByPrefix(suggestions);
 
-  return { success: true, data: groupedResults.slice(0, 20) };
+  return { success: true, data: grouped.slice(0, 20) };
 }
 
 // ─── getDestinatarioTransactions ──────────────────────────────────────────────
