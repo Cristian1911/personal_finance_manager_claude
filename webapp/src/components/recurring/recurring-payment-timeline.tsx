@@ -78,10 +78,10 @@ function dateGroupStyle(status: DateStatus): React.CSSProperties {
       };
     case "today":
       return {
-        borderColor: "color-mix(in srgb, var(--z-income) 50%, transparent)",
-        borderLeftColor: "var(--z-income)",
+        borderColor: "color-mix(in srgb, var(--z-alert) 50%, transparent)",
+        borderLeftColor: "var(--z-alert)",
         borderLeftWidth: 4,
-        backgroundColor: "color-mix(in srgb, var(--z-income) 20%, transparent)",
+        backgroundColor: "color-mix(in srgb, var(--z-alert) 20%, transparent)",
       };
     case "future":
       return {};
@@ -93,7 +93,7 @@ function dateLabelClasses(status: DateStatus) {
     case "past":
       return "text-z-debt font-semibold";
     case "today":
-      return "text-z-income font-semibold";
+      return "text-z-alert font-semibold";
     case "future":
       return "text-muted-foreground";
   }

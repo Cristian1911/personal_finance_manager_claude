@@ -106,15 +106,15 @@ export function MobileDashboard({
                   href="/recurrentes"
                   className={cn(
                     "flex items-center justify-between px-4 py-3.5 active:bg-muted transition-colors",
-                    isOverdue && "bg-z-alert/[0.08] border-l-2 border-l-z-alert",
-                    isToday && "bg-z-debt/[0.08] border-l-2 border-l-z-debt",
+                    isOverdue && "bg-z-debt/[0.08] border-l-2 border-l-z-debt",
+                    isToday && "bg-z-alert/[0.08] border-l-2 border-l-z-alert",
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0 mr-3">
                     {(isOverdue || isToday) && (
                       <CircleAlert className={cn(
                         "h-4 w-4 shrink-0",
-                        isOverdue ? "text-z-alert" : "text-z-debt"
+                        isOverdue ? "text-z-debt" : "text-z-alert"
                       )} />
                     )}
                     <div className="min-w-0">
@@ -123,7 +123,7 @@ export function MobileDashboard({
                       </p>
                       <p className={cn(
                         "text-xs",
-                        isOverdue ? "text-z-alert font-medium" : isToday ? "text-z-debt font-medium" : "text-muted-foreground"
+                        isOverdue ? "text-z-debt font-medium" : isToday ? "text-z-alert font-medium" : "text-muted-foreground"
                       )}>
                         {isOverdue ? "Vencido — " : isToday ? "Hoy — " : ""}
                         {formatDate(payment.dueDate, "dd MMM")}
@@ -133,7 +133,8 @@ export function MobileDashboard({
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={cn(
                       "text-sm font-semibold",
-                      (isOverdue || isToday) && "text-z-debt"
+                      isOverdue && "text-z-debt",
+                      isToday && "text-z-alert"
                     )}>
                       {formatCurrency(
                         payment.amount,

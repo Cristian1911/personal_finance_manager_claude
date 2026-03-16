@@ -96,14 +96,14 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
           if (items.length === 0) return null;
           return (
             <div key={group}>
-              <p className={`text-xs font-medium mb-2 ${group === "today" ? "text-z-debt" : "text-muted-foreground"}`}>
+              <p className={`text-xs font-medium mb-2 ${group === "today" ? "text-z-alert" : "text-muted-foreground"}`}>
                 {groupLabels[group]}
               </p>
               <div className="space-y-2">
                 {items.map((item) => (
                   <div key={item.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {group === "today" && <CircleAlert className="h-3.5 w-3.5 text-z-debt" />}
+                      {group === "today" && <CircleAlert className="h-3.5 w-3.5 text-z-alert" />}
                       <span className="text-sm">{item.name}</span>
                     </div>
                     <div className="text-right">
