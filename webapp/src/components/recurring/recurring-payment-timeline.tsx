@@ -70,9 +70,9 @@ function CategoryIcon({
 function dateGroupClasses(status: DateStatus) {
   switch (status) {
     case "past":
-      return "border-z-alert/20 bg-z-alert/[0.08]";
+      return "border-z-alert/40 bg-z-alert/15 border-l-[3px] border-l-z-alert";
     case "today":
-      return "border-z-income/20 bg-z-income/[0.08]";
+      return "border-z-income/30 bg-z-income/10 border-l-[3px] border-l-z-income";
     case "future":
       return "border-border bg-background";
   }
