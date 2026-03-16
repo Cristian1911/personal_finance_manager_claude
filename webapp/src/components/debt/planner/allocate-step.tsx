@@ -201,6 +201,37 @@ export function AllocateStep({
             description="Paga primero el saldo más bajo — victorias rápidas para motivación"
             onClick={() => handleStrategyChange("snowball")}
           />
+
+          {/* Show account priority based on selected strategy */}
+          {scenario.strategy !== "custom" && (
+            <div className="mt-3 rounded-md bg-z-surface-2 px-3 py-2.5">
+              <p className="text-xs font-medium text-muted-foreground mb-2">
+                Orden de ataque ({scenario.strategy === "avalanche" ? "tasa más alta primero" : "saldo más bajo primero"}):
+              </p>
+              <div className="space-y-1">
+                {[...accounts]
+                  .filter((a) => a.balance > 0)
+                  .sort((a, b) =>
+                    scenario.strategy === "avalanche"
+                      ? ((b.interestRate ?? 0) - (a.interestRate ?? 0)) || (a.balance - b.balance)
+                      : (a.balance - b.balance) || ((b.interestRate ?? 0) - (a.interestRate ?? 0))
+                  )
+                  .map((a, i) => (
+                    <div key={a.id} className="flex items-center gap-2 text-xs">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-muted text-[9px] font-bold text-muted-foreground shrink-0">
+                        {i + 1}
+                      </span>
+                      <span className="font-medium truncate">{a.name}</span>
+                      <span className="text-muted-foreground ml-auto shrink-0">
+                        {a.interestRate != null ? `${a.interestRate}% EA` : "sin tasa"}
+                        {" · "}
+                        {formatCurrency(a.balance, a.currency as CurrencyCode)}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
           <StrategyCard
             value="custom"
             selected={scenario.strategy === "custom"}
