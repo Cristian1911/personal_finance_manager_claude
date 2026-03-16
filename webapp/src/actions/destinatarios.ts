@@ -8,7 +8,7 @@ import {
 } from "@/lib/validators/destinatario";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
-import { cleanDescription, type DestinatarioRule } from "@zeta/shared";
+import { cleanDescription, groupByCommonPrefix, type DestinatarioRule, type DestinatarioSuggestion } from "@zeta/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +37,52 @@ export type TransactionPreview = {
   category_icon: string | null;
   account_name: string;
 };
+
+// ─── testDestinatarioPattern ──────────────────────────────────────────────────
+
+export interface PatternTestResult {
+  matchCount: number;
+  samples: { id: string; rawDescription: string; date: string; amount: number }[];
+}
+
+export async function testDestinatarioPattern(
+  pattern: string,
+  matchType: "contains" | "exact"
+): Promise<ActionResult<PatternTestResult>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("id, raw_description, transaction_date, amount")
+    .eq("user_id", user.id)
+    .is("destinatario_id", null)
+    .not("raw_description", "is", null)
+    .order("transaction_date", { ascending: false })
+    .limit(1000);
+
+  if (error) return { success: false, error: error.message };
+
+  const lowerPattern = pattern.toLowerCase();
+  const matches = (data ?? []).filter((tx) => {
+    if (!tx.raw_description) return false;
+    const desc = tx.raw_description.toLowerCase();
+    return matchType === "exact" ? desc === lowerPattern : desc.includes(lowerPattern);
+  });
+
+  return {
+    success: true,
+    data: {
+      matchCount: matches.length,
+      samples: matches.slice(0, 5).map((tx) => ({
+        id: tx.id,
+        rawDescription: tx.raw_description!,
+        date: tx.transaction_date,
+        amount: tx.amount,
+      })),
+    },
+  };
+}
 
 // ─── getDestinatarios ─────────────────────────────────────────────────────────
 
@@ -322,6 +368,21 @@ export async function addDestinatarioRule(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
+  // Check for conflicting patterns
+  const { data: existingRules } = await supabase
+    .from("destinatario_rules")
+    .select("pattern, destinatario_id")
+    .eq("user_id", user.id);
+
+  const newPatternLower = parsed.data.pattern.toLowerCase();
+  const conflicts: { pattern: string; destinatarioId: string }[] = [];
+  for (const rule of existingRules ?? []) {
+    const existingLower = rule.pattern.toLowerCase();
+    if (existingLower.includes(newPatternLower) || newPatternLower.includes(existingLower)) {
+      conflicts.push({ pattern: rule.pattern, destinatarioId: rule.destinatario_id });
+    }
+  }
+
   const { data, error } = await supabase
     .from("destinatario_rules")
     .insert({
@@ -340,7 +401,7 @@ export async function addDestinatarioRule(
   }
 
   revalidatePath("/destinatarios");
-  return { success: true, data };
+  return { success: true, data, conflicts } as any;
 }
 
 // ─── removeDestinatarioRule ───────────────────────────────────────────────────
@@ -470,7 +531,22 @@ export async function getDestinatarioSuggestions(): Promise<
 
   suggestions.sort((a, b) => b.count - a.count);
 
-  return { success: true, data: suggestions.slice(0, 20) };
+  // Group related patterns by common prefix (e.g., "NEQUI PAGO" variants)
+  const asShared: DestinatarioSuggestion[] = suggestions.map((s) => ({
+    cleanedPattern: s.cleanedPattern,
+    count: s.count,
+    rawDescriptions: s.sampleTransactions.map((t) => t.rawDescription),
+    transactionPreviews: s.sampleTransactions,
+  }));
+  const grouped = groupByCommonPrefix(asShared);
+  const groupedResults: DestinatarioSuggestionResult[] = grouped.map((g) => ({
+    cleanedPattern: g.cleanedPattern,
+    count: g.count,
+    dateRange: { from: "", to: "" },
+    sampleTransactions: g.transactionPreviews.slice(0, 5),
+  }));
+
+  return { success: true, data: groupedResults.slice(0, 20) };
 }
 
 // ─── getDestinatarioTransactions ──────────────────────────────────────────────

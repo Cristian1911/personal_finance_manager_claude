@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -43,10 +43,12 @@ import {
   deleteDestinatario,
   addDestinatarioRule,
   removeDestinatarioRule,
+  testDestinatarioPattern,
 } from "@/actions/destinatarios";
 import type {
   DestinatarioWithRules,
   TransactionPreview,
+  PatternTestResult,
 } from "@/actions/destinatarios";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -244,6 +246,10 @@ function RulesSection({
   destinatarioId: string;
   rules: DestinatarioRuleRow[];
 }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [testResult, setTestResult] = useState<PatternTestResult | null>(null);
+  const [testing, setTesting] = useState(false);
+
   const boundAddRule = addDestinatarioRule.bind(null, destinatarioId);
 
   const [addState, addFormAction, addPending] = useActionState<
@@ -252,12 +258,29 @@ function RulesSection({
   >(
     async (prevState, formData) => {
       const result = await boundAddRule(prevState, formData);
-      if (result.success) toast.success("Regla agregada");
-      else toast.error(result.error);
+      if (result.success) {
+        toast.success("Regla agregada");
+        setTestResult(null);
+      } else {
+        toast.error(result.error);
+      }
       return result;
     },
     { success: false, error: "" }
   );
+
+  async function handleTestPattern() {
+    if (!formRef.current) return;
+    const fd = new FormData(formRef.current);
+    const pattern = fd.get("pattern") as string | null;
+    const matchType = (fd.get("match_type") as "contains" | "exact") ?? "contains";
+    if (!pattern || pattern.length < 2) return;
+    setTesting(true);
+    setTestResult(null);
+    const result = await testDestinatarioPattern(pattern, matchType);
+    if (result.success) setTestResult(result.data);
+    setTesting(false);
+  }
 
   return (
     <Card>
@@ -290,7 +313,7 @@ function RulesSection({
               {addState.error}
             </div>
           )}
-          <form action={addFormAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <form ref={formRef} action={addFormAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1">
               <Label htmlFor="pattern" className="text-xs">
                 Patrón
@@ -317,11 +340,30 @@ function RulesSection({
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" size="sm" disabled={addPending}>
-              <Plus className="size-4 mr-1" />
-              {addPending ? "Agregando..." : "Agregar"}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" type="button" onClick={handleTestPattern} disabled={testing}>
+                {testing ? "Probando..." : "Probar"}
+              </Button>
+              <Button type="submit" size="sm" disabled={addPending}>
+                <Plus className="size-4 mr-1" />
+                {addPending ? "Agregando..." : "Agregar"}
+              </Button>
+            </div>
           </form>
+          {testResult && (
+            <div className="rounded-md bg-z-surface-2 p-3 text-xs space-y-1 mt-3">
+              <p className={testResult.matchCount > 0 ? "text-z-income font-medium" : "text-muted-foreground"}>
+                {testResult.matchCount} transacciones coinciden
+              </p>
+              {testResult.samples.length > 0 && (
+                <ul className="space-y-0.5 text-muted-foreground">
+                  {testResult.samples.map((s) => (
+                    <li key={s.id}>{s.rawDescription} · {formatCurrency(s.amount)}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -330,6 +372,9 @@ function RulesSection({
 
 function RuleItem({ rule }: { rule: DestinatarioRuleRow }) {
   const [removing, startTransition] = useTransition();
+
+  const matchCount = (rule as DestinatarioRuleRow & { match_count?: number }).match_count ?? 0;
+  const lastMatchedAt = (rule as DestinatarioRuleRow & { last_matched_at?: string | null }).last_matched_at;
 
   function handleRemove() {
     startTransition(async () => {
@@ -341,11 +386,20 @@ function RuleItem({ rule }: { rule: DestinatarioRuleRow }) {
 
   return (
     <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <code className="text-sm font-mono truncate">{rule.pattern}</code>
-        <Badge variant="outline" className="text-[10px] shrink-0">
-          {rule.match_type === "exact" ? "Exacto" : "Contiene"}
-        </Badge>
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="flex items-center gap-2">
+          <code className="text-sm font-mono truncate">{rule.pattern}</code>
+          <Badge variant="outline" className="text-[10px] shrink-0">
+            {rule.match_type === "exact" ? "Exacto" : "Contiene"}
+          </Badge>
+          {matchCount === 0 && (
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">Sin uso</Badge>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {matchCount > 0 ? `Usada ${matchCount} veces` : "Sin uso"}
+          {lastMatchedAt && ` · ${new Date(lastMatchedAt).toLocaleDateString("es-CO")}`}
+        </span>
       </div>
       <Button
         variant="ghost"
@@ -407,7 +461,7 @@ function RecentTransactions({
                 <span
                   className={`shrink-0 font-medium tabular-nums ${
                     tx.direction === "INFLOW"
-                      ? "text-z-income"
+                      ? "text-emerald-600"
                       : "text-foreground"
                   }`}
                 >
