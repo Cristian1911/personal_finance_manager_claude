@@ -27,7 +27,8 @@ export interface IncomeEstimate {
  * by filtering to only checking/savings accounts.
  */
 export async function getEstimatedIncome(
-  currency?: CurrencyCode
+  currency?: CurrencyCode,
+  month?: string // "YYYY-MM" — if provided, return income for that specific month
 ): Promise<IncomeEstimate | null> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return null;
@@ -72,8 +73,16 @@ export async function getEstimatedIncome(
   const totalIncome = [...monthlyTotals.values()].reduce((s, v) => s + v, 0);
   const monthlyAverage = monthsOfData > 0 ? totalIncome / monthsOfData : 0;
 
-  // Return most recent income transactions for user context (up to 10)
-  const recentTransactions = transactions.slice(0, 10).map((tx) => ({
+  // If a specific month is requested, return that month's income (or average as fallback)
+  const effectiveIncome = month && monthlyTotals.has(month)
+    ? monthlyTotals.get(month)!
+    : monthlyAverage;
+
+  // Return income transactions for the requested month (or most recent)
+  const filteredTransactions = month
+    ? transactions.filter((tx) => tx.transaction_date.startsWith(month))
+    : transactions;
+  const recentTransactions = filteredTransactions.slice(0, 10).map((tx) => ({
     id: tx.id,
     description: tx.clean_description ?? tx.raw_description ?? "Ingreso",
     amount: tx.amount,
@@ -81,7 +90,7 @@ export async function getEstimatedIncome(
   }));
 
   return {
-    monthlyAverage,
+    monthlyAverage: effectiveIncome,
     currency: baseCurrency,
     monthsOfData,
     totalIncome,
