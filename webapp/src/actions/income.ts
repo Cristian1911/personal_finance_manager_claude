@@ -10,6 +10,7 @@ export interface IncomeEstimate {
   currency: CurrencyCode;
   monthsOfData: number;
   totalIncome: number;
+  source: "profile" | "transactions"; // where the income figure came from
   recentTransactions: {
     id: string;
     description: string;
@@ -34,6 +35,24 @@ export async function getEstimatedIncome(
   if (!user) return null;
 
   const baseCurrency = currency ?? "COP";
+
+  // Check if user has a profile salary set — if so, use it directly
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("monthly_salary")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.monthly_salary && profile.monthly_salary > 0) {
+    return {
+      monthlyAverage: profile.monthly_salary,
+      currency: baseCurrency,
+      monthsOfData: 0,
+      totalIncome: 0,
+      source: "profile" as const,
+      recentTransactions: [],
+    };
+  }
 
   // Get non-debt account IDs to filter transfers from credit cards
   const { data: liquidAccounts } = await supabase
@@ -94,6 +113,7 @@ export async function getEstimatedIncome(
     currency: baseCurrency,
     monthsOfData,
     totalIncome,
+    source: "transactions" as const,
     recentTransactions,
   };
 }

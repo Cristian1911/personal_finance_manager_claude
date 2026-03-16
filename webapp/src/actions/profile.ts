@@ -29,6 +29,10 @@ const profileSchema = z.object({
   preferred_currency: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
   locale: z.string().default("es-CO"),
   timezone: z.string().default("America/Bogota"),
+  monthly_salary: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? null : Number(v)),
+    z.number().int().positive("El salario debe ser positivo").nullable()
+  ),
 });
 
 export async function getProfile(): Promise<ActionResult<Profile>> {
@@ -59,6 +63,7 @@ export async function updateProfile(
     preferred_currency: formData.get("preferred_currency"),
     locale: formData.get("locale") || "es-CO",
     timezone: formData.get("timezone") || "America/Bogota",
+    monthly_salary: formData.get("monthly_salary"),
   });
 
   if (!parsed.success) {
@@ -76,5 +81,6 @@ export async function updateProfile(
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
+  revalidatePath("/deudas");
   return { success: true, data };
 }
