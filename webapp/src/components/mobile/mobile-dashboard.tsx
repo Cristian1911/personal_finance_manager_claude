@@ -9,7 +9,9 @@ import {
   ArrowUpRight,
   ChevronRight,
   CalendarClock,
+  CircleAlert,
 } from "lucide-react";
+import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 import { BurnRateCard, BurnRateCardEmpty } from "@/components/dashboard/burn-rate-card";
@@ -93,31 +95,56 @@ export function MobileDashboard({
             </Link>
           </div>
           <div className="rounded-xl border divide-y">
-            {upcomingPayments.slice(0, 5).map((payment) => (
-              <Link
-                key={payment.id}
-                href="/recurrentes"
-                className="flex items-center justify-between px-4 py-3.5 active:bg-muted transition-colors"
-              >
-                <div className="min-w-0 mr-3">
-                  <p className="text-sm font-medium truncate">
-                    {payment.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(payment.dueDate, "dd MMM")}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-sm font-semibold">
-                    {formatCurrency(
-                      payment.amount,
-                      payment.currencyCode as CurrencyCode
+            {upcomingPayments.slice(0, 5).map((payment) => {
+              const today = toISODateString(new Date());
+              const isOverdue = payment.dueDate < today;
+              const isToday = payment.dueDate === today;
+
+              return (
+                <Link
+                  key={payment.id}
+                  href="/recurrentes"
+                  className={cn(
+                    "flex items-center justify-between px-4 py-3.5 active:bg-muted transition-colors",
+                    isOverdue && "bg-z-alert/[0.08] border-l-2 border-l-z-alert",
+                    isToday && "bg-z-debt/[0.08] border-l-2 border-l-z-debt",
+                  )}
+                >
+                  <div className="flex items-center gap-2 min-w-0 mr-3">
+                    {(isOverdue || isToday) && (
+                      <CircleAlert className={cn(
+                        "h-4 w-4 shrink-0",
+                        isOverdue ? "text-z-alert" : "text-z-debt"
+                      )} />
                     )}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </Link>
-            ))}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {payment.name}
+                      </p>
+                      <p className={cn(
+                        "text-xs",
+                        isOverdue ? "text-z-alert font-medium" : isToday ? "text-z-debt font-medium" : "text-muted-foreground"
+                      )}>
+                        {isOverdue ? "Vencido — " : isToday ? "Hoy — " : ""}
+                        {formatDate(payment.dueDate, "dd MMM")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={cn(
+                      "text-sm font-semibold",
+                      (isOverdue || isToday) && "text-z-debt"
+                    )}>
+                      {formatCurrency(
+                        payment.amount,
+                        payment.currencyCode as CurrencyCode
+                      )}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
