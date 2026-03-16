@@ -486,6 +486,30 @@ export type Database = {
           },
         ]
       }
+      exchange_rate_cache: {
+        Row: {
+          avg_30d: number | null
+          fetched_at: string
+          pair: string
+          rate: number
+          rates_30d: Json
+        }
+        Insert: {
+          avg_30d?: number | null
+          fetched_at?: string
+          pair: string
+          rate: number
+          rates_30d?: Json
+        }
+        Update: {
+          avg_30d?: number | null
+          fetched_at?: string
+          pair?: string
+          rate?: number
+          rates_30d?: Json
+        }
+        Relationships: []
+      }
       product_events: {
         Row: {
           created_at: string
