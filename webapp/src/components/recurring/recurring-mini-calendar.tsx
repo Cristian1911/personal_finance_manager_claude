@@ -143,8 +143,8 @@ export function RecurringMiniCalendar({
                       key={i}
                       className={cn(
                         "inline-block size-1 rounded-full",
-                        color === "amber" && "bg-amber-500",
-                        color === "green" && "bg-green-500"
+                        color === "amber" && "bg-z-alert",
+                        color === "green" && "bg-z-income"
                       )}
                     />
                   ))}

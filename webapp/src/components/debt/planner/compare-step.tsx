@@ -149,7 +149,7 @@ export function CompareStep({
               />
               {s.name}
               {i === recommendedIndex && (
-                <Trophy className="h-3 w-3 text-amber-500" />
+                <Trophy className="h-3 w-3 text-z-expense" />
               )}
             </button>
           ))}
@@ -194,7 +194,7 @@ export function CompareStep({
                         {i === recommendedIndex && (
                           <Badge
                             variant="secondary"
-                            className="bg-green-500/10 text-green-700 border-green-500/20 text-[10px] px-1.5 py-0"
+                            className="bg-z-income/10 text-z-income border-z-income/20 text-[10px] px-1.5 py-0"
                           >
                             Recomendado
                           </Badge>
@@ -219,7 +219,7 @@ export function CompareStep({
                       <TableCell key={i} className="text-center font-semibold">
                         {r ? formatMonths(r.totalMonths) : "—"}
                         {r && r.totalMonths < baseline.totalMonths && (
-                          <span className="block text-xs text-green-600 font-normal">
+                          <span className="block text-xs text-z-income font-normal">
                             {baseline.totalMonths - r.totalMonths} meses menos
                           </span>
                         )}
@@ -233,13 +233,13 @@ export function CompareStep({
                   <TableCell className="font-medium text-sm text-muted-foreground">
                     Total intereses
                   </TableCell>
-                  <TableCell className="text-center font-semibold text-amber-600">
+                  <TableCell className="text-center font-semibold text-z-expense">
                     {formatCurrency(baseline.totalInterestPaid, currency)}
                   </TableCell>
                   {scenarios.map((_, i) => {
                     const r = results[i];
                     return (
-                      <TableCell key={i} className="text-center font-semibold text-amber-600">
+                      <TableCell key={i} className="text-center font-semibold text-z-expense">
                         {r ? formatCurrency(r.totalInterestPaid, currency) : "—"}
                       </TableCell>
                     );
@@ -297,13 +297,13 @@ export function CompareStep({
           return (
             <Card
               key={i}
-              className="border-green-500/20 bg-gradient-to-br from-green-500/5 to-emerald-500/5"
+              className="border-z-income/20 bg-gradient-to-br from-z-income/5 to-z-income/5"
             >
               <CardContent className="pt-5 pb-4">
                 <div className="flex items-start gap-2.5">
-                  <TrendingDown className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                  <TrendingDown className="h-4 w-4 text-z-income mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-green-700 leading-snug">
+                    <p className="text-sm font-medium text-z-income leading-snug">
                       <strong>{s.name}</strong> ahorra{" "}
                       <strong>{formatCurrency(interestSaved, currency)}</strong> en
                       intereses vs solo pagos mínimos

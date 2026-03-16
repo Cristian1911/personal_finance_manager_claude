@@ -22,7 +22,7 @@ export function InterestCostCard({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-2xl font-bold text-green-600">$0</p>
+          <p className="text-2xl font-bold text-z-income">$0</p>
           <p className="text-sm text-muted-foreground mt-1">
             No estás pagando intereses. Excelente.
           </p>
@@ -38,11 +38,11 @@ export function InterestCostCard({
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Intereses mensuales (est.)
           </CardTitle>
-          <Flame className="h-4 w-4 text-amber-500" />
+          <Flame className="h-4 w-4 text-z-expense" />
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold text-amber-600">
+        <p className="text-2xl font-bold text-z-expense">
           {formatCurrency(monthlyInterest)}
         </p>
         <div className="mt-3 space-y-1.5">
@@ -50,12 +50,12 @@ export function InterestCostCard({
             Eso equivale a:
           </p>
           <div className="flex gap-4">
-            <div className="bg-amber-500/10 rounded-lg px-3 py-2 text-center">
-              <p className="text-lg font-bold text-amber-700">{almuerzos}</p>
+            <div className="bg-z-expense/10 rounded-lg px-3 py-2 text-center">
+              <p className="text-lg font-bold text-z-expense">{almuerzos}</p>
               <p className="text-xs text-muted-foreground">almuerzos</p>
             </div>
-            <div className="bg-amber-500/10 rounded-lg px-3 py-2 text-center">
-              <p className="text-lg font-bold text-amber-700">{horas}</p>
+            <div className="bg-z-expense/10 rounded-lg px-3 py-2 text-center">
+              <p className="text-lg font-bold text-z-expense">{horas}</p>
               <p className="text-xs text-muted-foreground">horas de salario mín.</p>
             </div>
           </div>

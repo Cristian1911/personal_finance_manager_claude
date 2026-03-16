@@ -10,9 +10,9 @@ import {
 } from "recharts";
 
 function getUtilizationColor(pct: number): string {
-  if (pct <= 30) return "#22c55e"; // green
-  if (pct <= 70) return "#f59e0b"; // amber
-  return "#ef4444"; // red
+  if (pct <= 30) return "var(--z-income)"; // green
+  if (pct <= 70) return "var(--z-alert)"; // amber
+  return "var(--z-debt)"; // red
 }
 
 function getUtilizationLabel(pct: number): string {
@@ -87,7 +87,7 @@ export function UtilizationGauge({
             </div>
             <div>
               <p className="text-muted-foreground">Disponible</p>
-              <p className="font-medium text-green-600">
+              <p className="font-medium text-z-income">
                 {formatCurrency(Math.max(totalLimit - totalUsed, 0))}
               </p>
             </div>

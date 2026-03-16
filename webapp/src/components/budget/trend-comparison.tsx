@@ -45,8 +45,8 @@ export function TrendComparison({ categories }: TrendComparisonProps) {
                   className={cn(
                     "text-[10px] px-1.5",
                     diff > 0
-                      ? "border-red-200 text-red-600"
-                      : "border-green-200 text-green-600"
+                      ? "border-z-debt/30 text-z-debt"
+                      : "border-z-income/30 text-z-income"
                   )}
                 >
                   {diff > 0 ? "+" : ""}

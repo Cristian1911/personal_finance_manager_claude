@@ -491,6 +491,141 @@
   <div class="note"><strong>Cross-brand rule:</strong> If Zeta and Venti5 content appear together (e.g. a dashboard linking to both), use neutral darks and let each brand's accent colors speak for their own elements only. Never mix Zeta's income green with Venti5's service green — they serve different semantic purposes.</div>
 </div>
 
+<!-- ──────────────────────────────── -->
+<!-- 10. STATUS SURFACES -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">10 — Status Surfaces</div>
+  <h2>Status Surface Pattern</h2>
+  <p class="section-desc">The badge color matrix (section 06) applies at <strong style="color:#ccc;">any scale</strong> — not just small badges, but also cards, callouts, sections, and timeline groups. This is Zeta's primary tool for giving visual meaning to containers.</p>
+
+  <div class="note"><strong>The formula:</strong> text = semantic color · border = semantic color at 20% opacity · background = semantic color at 8% opacity. This creates a tinted surface that conveys meaning without competing with content.</div>
+
+  <h3 style="font-size:13px;font-weight:700;color:#888;margin:24px 0 12px;letter-spacing:0.06em;text-transform:uppercase;">Surface Definitions</h3>
+  <pre><span style="color:#555;">/* Status surfaces — use these for cards, callouts, timeline groups, sections */</span>
+
+<span style="color:#555;">/* Income / Success / Positive */</span>
+.surface-income  { color: var(--z-income);  border-color: color-mix(in srgb, var(--z-income) 20%, transparent);  background: color-mix(in srgb, var(--z-income) 8%, transparent); }
+<span style="color:#555;">/* Tailwind: text-z-income border-z-income/20 bg-z-income/[0.08] */</span>
+
+<span style="color:#555;">/* Expense / In Progress / Warning */</span>
+.surface-expense { color: var(--z-expense); border-color: color-mix(in srgb, var(--z-expense) 20%, transparent); background: color-mix(in srgb, var(--z-expense) 8%, transparent); }
+<span style="color:#555;">/* Tailwind: text-z-expense border-z-expense/20 bg-z-expense/[0.08] */</span>
+
+<span style="color:#555;">/* Debt / Failed / Danger */</span>
+.surface-debt    { color: var(--z-debt);    border-color: color-mix(in srgb, var(--z-debt) 20%, transparent);    background: color-mix(in srgb, var(--z-debt) 8%, transparent); }
+<span style="color:#555;">/* Tailwind: text-z-debt border-z-debt/20 bg-z-debt/[0.08] */</span>
+
+<span style="color:#555;">/* Alert / Pending / Attention */</span>
+.surface-alert   { color: var(--z-alert);   border-color: color-mix(in srgb, var(--z-alert) 20%, transparent);   background: color-mix(in srgb, var(--z-alert) 8%, transparent); }
+<span style="color:#555;">/* Tailwind: text-z-alert border-z-alert/20 bg-z-alert/[0.08] */</span>
+
+<span style="color:#555;">/* Neutral — for future/inactive states. Clean, no tint. */</span>
+.surface-neutral { color: var(--z-sage-dark); border-color: var(--z-border); background: var(--z-ink); }
+<span style="color:#555;">/* Tailwind: text-muted-foreground border-border bg-background */</span></pre>
+
+  <h3 style="font-size:13px;font-weight:700;color:#888;margin:24px 0 12px;letter-spacing:0.06em;text-transform:uppercase;">When to Use</h3>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <div class="comp-name">Timeline Date Groups</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;margin-top:8px;">
+        Past/overdue dates → <code class="inline-code">surface-alert</code><br>
+        Today's date → <code class="inline-code">surface-income</code><br>
+        Future dates → <code class="inline-code">surface-neutral</code>
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-name">Insight/CTA Cards</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;margin-top:8px;">
+        Savings opportunity → <code class="inline-code">surface-income</code><br>
+        Spending alert → <code class="inline-code">surface-expense</code><br>
+        Debt warning → <code class="inline-code">surface-debt</code><br>
+        Informational tip → <code class="inline-code">surface-alert</code>
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-name">Balance/Amount Colors</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;margin-top:8px;">
+        Positive balance/inflow → <code class="inline-code">text-z-income</code><br>
+        Expense amount → <code class="inline-code">text-z-expense</code><br>
+        Debt/negative amount → <code class="inline-code">text-z-debt</code><br>
+        Interest costs → <code class="inline-code">text-z-expense</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="note warn"><strong>Anti-pattern:</strong> Never use <code class="inline-code">bg-muted/30</code> or <code class="inline-code">bg-primary/5</code> for status-carrying containers. These produce muddy, low-contrast surfaces on dark backgrounds. Use the status surface pattern instead — it guarantees contrast and semantic clarity.</div>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 11. CHART COLORS -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">11 — Chart Colors</div>
+  <h2>Data Visualization</h2>
+  <p class="section-desc">All charts must use Zeta financial tokens. Never hardcode Tailwind default colors (emerald, amber, red) or hex values that diverge from the brand palette.</p>
+
+  <h3 style="font-size:13px;font-weight:700;color:#888;margin:24px 0 12px;letter-spacing:0.06em;text-transform:uppercase;">Chart Color Mapping</h3>
+  <table class="token-table">
+    <thead><tr><th>Chart Var</th><th>Maps To</th><th>Value</th><th>Data Meaning</th></tr></thead>
+    <tbody>
+      <tr><td class="token-name">--chart-1</td><td class="token-value">--z-income</td><td class="token-value">#52B788</td><td>Income, inflows, positive trends</td></tr>
+      <tr><td class="token-name">--chart-2</td><td class="token-value">--z-expense</td><td class="token-value">#F4A261</td><td>Expenses, outflows, spending</td></tr>
+      <tr><td class="token-name">--chart-3</td><td class="token-value">--z-alert</td><td class="token-value">#E9C46A</td><td>Projections, budgets, neutral data</td></tr>
+      <tr><td class="token-name">--chart-4</td><td class="token-value">--z-debt</td><td class="token-value">#C44536</td><td>Debt balances, over-budget</td></tr>
+      <tr><td class="token-name">--chart-5</td><td class="token-value">--z-sage</td><td class="token-value">#C5BFAE</td><td>Tertiary/reference lines</td></tr>
+    </tbody>
+  </table>
+
+  <pre><span style="color:#555;">/* In SVG/recharts attributes, use CSS variables: */</span>
+stroke="var(--z-income)"
+fill="var(--z-expense)"
+
+<span style="color:#555;">/* In Tailwind classes: */</span>
+className="text-z-income"
+className="bg-z-income/10"
+
+<span style="color:#555;">/* In chart config objects: */</span>
+color: "var(--chart-1)"    <span style="color:#555;">/* resolves to var(--z-income) */</span>
+
+<span style="color:#555;">/* NEVER use: */</span>
+stroke="#10b981"           <span style="color:#555;">/* ✗ hardcoded emerald-500 */</span>
+stroke="#f59e0b"           <span style="color:#555;">/* ✗ hardcoded amber-500   */</span>
+className="text-emerald-600"  <span style="color:#555;">/* ✗ generic Tailwind      */</span></pre>
+
+  <h3 style="font-size:13px;font-weight:700;color:#888;margin:24px 0 12px;letter-spacing:0.06em;text-transform:uppercase;">Gradient Fills</h3>
+  <div style="font-size:12px;color:#888;line-height:1.8;">
+    Area charts use vertical linear gradients with the semantic color:<br>
+    Top stop: semantic color at 40% opacity.<br>
+    Bottom stop: semantic color at 5% opacity.<br>
+    This ensures visibility on dark backgrounds without overwhelming the chart.
+  </div>
+</div>
+
+<!-- ──────────────────────────────── -->
+<!-- 12. TAILWIND INTEGRATION -->
+<!-- ──────────────────────────────── -->
+<div class="section">
+  <div class="section-num">12 — Tailwind Integration</div>
+  <h2>Using Zeta Tokens in Code</h2>
+  <p class="section-desc">All Zeta design tokens are exposed as Tailwind color utilities. Use these instead of generic Tailwind colors to maintain brand consistency.</p>
+
+  <h3 style="font-size:13px;font-weight:700;color:#888;margin:24px 0 12px;letter-spacing:0.06em;text-transform:uppercase;">Available Utilities</h3>
+  <table class="token-table">
+    <thead><tr><th>Tailwind Class</th><th>CSS Variable</th><th>Use Instead Of</th></tr></thead>
+    <tbody>
+      <tr><td class="token-name">text-z-income</td><td class="token-value">var(--z-income)</td><td style="color:#666;">text-emerald-*, text-green-*</td></tr>
+      <tr><td class="token-name">text-z-expense</td><td class="token-value">var(--z-expense)</td><td style="color:#666;">text-amber-* (expense context)</td></tr>
+      <tr><td class="token-name">text-z-debt</td><td class="token-value">var(--z-debt)</td><td style="color:#666;">text-red-*</td></tr>
+      <tr><td class="token-name">text-z-alert</td><td class="token-value">var(--z-alert)</td><td style="color:#666;">text-amber-* (warning context)</td></tr>
+      <tr><td class="token-name">bg-z-income/10</td><td class="token-value">var(--z-income) @ 10%</td><td style="color:#666;">bg-emerald-500/10</td></tr>
+      <tr><td class="token-name">border-z-debt/20</td><td class="token-value">var(--z-debt) @ 20%</td><td style="color:#666;">border-red-500/20</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note"><strong>Rule:</strong> If you're writing <code class="inline-code">emerald</code>, <code class="inline-code">amber</code>, <code class="inline-code">red</code>, or <code class="inline-code">green</code> in a financial context, you're using the wrong color. Use the <code class="inline-code">z-*</code> tokens instead. These map to the same hues but ensure consistency when the palette evolves.</div>
+</div>
+
 </div>
 </body>
 </html>

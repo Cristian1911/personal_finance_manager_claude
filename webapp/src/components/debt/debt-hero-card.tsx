@@ -13,11 +13,11 @@ interface DebtHeroCardProps {
 
 export function DebtHeroCard({ totalDebt, secondaryCurrencies }: DebtHeroCardProps) {
   return (
-    <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
+    <Card className="border-z-expense/20 bg-gradient-to-br from-z-expense/5 to-z-expense/5">
       <CardContent className="pt-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-amber-500/10">
-            <Landmark className="h-8 w-8 text-amber-600" />
+          <div className="p-3 rounded-xl bg-z-expense/10">
+            <Landmark className="h-8 w-8 text-z-expense" />
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Deuda total</p>

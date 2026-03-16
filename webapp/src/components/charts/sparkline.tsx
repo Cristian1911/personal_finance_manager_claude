@@ -4,9 +4,9 @@ import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { SemanticColor } from "@/lib/utils/dashboard";
 
 const colorMap: Record<SemanticColor, { stroke: string; fill: string }> = {
-  positive: { stroke: "#10b981", fill: "#10b98120" },
-  warning: { stroke: "#f59e0b", fill: "#f59e0b20" },
-  danger: { stroke: "#ef4444", fill: "#ef444420" },
+  positive: { stroke: "var(--z-income)", fill: "color-mix(in srgb, var(--z-income) 12%, transparent)" },
+  warning: { stroke: "var(--z-expense)", fill: "color-mix(in srgb, var(--z-expense) 12%, transparent)" },
+  danger: { stroke: "var(--z-debt)", fill: "color-mix(in srgb, var(--z-debt) 12%, transparent)" },
   neutral: { stroke: "#a1a1aa", fill: "#a1a1aa20" },
 };
 

@@ -12,9 +12,9 @@ const iconMap = {
 
 const colorMap = {
   warning: {
-    bg: "bg-amber-500/10",
-    text: "text-amber-700",
-    icon: "text-amber-500",
+    bg: "bg-z-alert/10",
+    text: "text-z-alert",
+    icon: "text-z-alert",
   },
   info: {
     bg: "bg-blue-500/10",
@@ -22,9 +22,9 @@ const colorMap = {
     icon: "text-blue-500",
   },
   success: {
-    bg: "bg-green-500/10",
-    text: "text-green-700",
-    icon: "text-green-500",
+    bg: "bg-z-income/10",
+    text: "text-z-income",
+    icon: "text-z-income",
   },
 };
 
@@ -35,7 +35,7 @@ export function DebtInsights({ insights }: { insights: DebtInsight[] }) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Lightbulb className="h-4 w-4 text-amber-500" />
+          <Lightbulb className="h-4 w-4 text-z-alert" />
           Insights
         </CardTitle>
       </CardHeader>

@@ -58,9 +58,9 @@ export function BudgetCategoryCard({
   const totalPercent = spentPercent;
   const barColor =
     totalPercent >= 100
-      ? "bg-red-500"
+      ? "bg-z-debt"
       : totalPercent >= 80
-        ? "bg-amber-500"
+        ? "bg-z-expense"
         : undefined;
 
   return (

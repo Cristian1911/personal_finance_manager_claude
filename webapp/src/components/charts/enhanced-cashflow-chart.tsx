@@ -38,8 +38,8 @@ type ViewMode = "net-balance" | "dual" | "cumulative";
 
 // Colors
 const COLORS = {
-  income: "#22c55e",
-  expenses: "#ef4444",
+  income: "var(--z-income)",
+  expenses: "var(--z-debt)",
   balance: "#3b82f6",
   net: "#8b5cf6",
 };
@@ -108,12 +108,12 @@ export function EnhancedCashflowChart({ data, monthLabel }: EnhancedCashflowChar
             <div className="flex items-center gap-2">
               <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS.income }} />
               <span className="text-muted-foreground">Ingresos:</span>
-              <span className="font-medium ml-auto text-green-600">{formatCurrency(d.income)}</span>
+              <span className="font-medium ml-auto text-z-income">{formatCurrency(d.income)}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS.expenses }} />
               <span className="text-muted-foreground">Gastos:</span>
-              <span className="font-medium ml-auto text-red-600">{formatCurrency(d.expenses)}</span>
+              <span className="font-medium ml-auto text-z-debt">{formatCurrency(d.expenses)}</span>
             </div>
           </div>
         )}
@@ -121,7 +121,7 @@ export function EnhancedCashflowChart({ data, monthLabel }: EnhancedCashflowChar
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Saldo:</span>
-              <span className={`font-medium ml-auto ${d.balance >= 0 ? "text-green-600" : "text-red-600"}`}>
+              <span className={`font-medium ml-auto ${d.balance >= 0 ? "text-z-income" : "text-z-debt"}`}>
                 {formatCurrency(d.balance)}
               </span>
             </div>

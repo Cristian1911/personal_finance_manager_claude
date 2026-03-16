@@ -70,20 +70,20 @@ function CategoryIcon({
 function dateGroupClasses(status: DateStatus) {
   switch (status) {
     case "past":
-      return "border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20";
+      return "border-z-alert/20 bg-z-alert/[0.08]";
     case "today":
-      return "border-primary/30 bg-primary/5";
+      return "border-z-income/20 bg-z-income/[0.08]";
     case "future":
-      return "border-border bg-muted/30";
+      return "border-border bg-background";
   }
 }
 
 function dateLabelClasses(status: DateStatus) {
   switch (status) {
     case "past":
-      return "text-amber-700 dark:text-amber-400";
+      return "text-z-alert font-semibold";
     case "today":
-      return "text-primary font-semibold";
+      return "text-z-income font-semibold";
     case "future":
       return "text-muted-foreground";
   }

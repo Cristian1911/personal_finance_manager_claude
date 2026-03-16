@@ -108,7 +108,7 @@ export function BudgetPaceChart({ data, totalBudget, totalSpent, monthLabel }: B
               <Line
                 type="monotone"
                 dataKey="actual"
-                stroke={overBudgetPace ? "#ef4444" : "#10b981"}
+                stroke={overBudgetPace ? "var(--z-debt)" : "var(--z-income)"}
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
@@ -120,7 +120,7 @@ export function BudgetPaceChart({ data, totalBudget, totalSpent, monthLabel }: B
                   x={chartData[cutoffIndex]?.label}
                   y={referencePoint.actualCumulative}
                   r={4}
-                  fill={overBudgetPace ? "#ef4444" : "#10b981"}
+                  fill={overBudgetPace ? "var(--z-debt)" : "var(--z-income)"}
                   stroke="white"
                   strokeWidth={2}
                 />
@@ -135,7 +135,7 @@ export function BudgetPaceChart({ data, totalBudget, totalSpent, monthLabel }: B
             <span className="text-muted-foreground">
               {isPastMonth ? "Final" : "Hoy"}: {formatCurrency(referencePoint.actualCumulative)}
             </span>
-            <span className={overBudgetPace ? "text-red-600" : "text-emerald-600"}>
+            <span className={overBudgetPace ? "text-z-debt" : "text-z-income"}>
               {formatCurrency(totalSpent)} de {formatCurrency(totalBudget)} — {progress}%
             </span>
           </div>

@@ -51,8 +51,8 @@ export function InboxTransactionRow({
       <div
         className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
           isOutflow
-            ? "bg-red-500/10 text-red-500"
-            : "bg-emerald-500/10 text-emerald-500"
+            ? "bg-z-debt/10 text-z-debt"
+            : "bg-z-income/10 text-z-income"
         }`}
       >
         {isOutflow ? (
@@ -68,7 +68,7 @@ export function InboxTransactionRow({
           <p className="text-sm font-medium truncate">{description}</p>
           <p
             className={`text-sm font-semibold tabular-nums whitespace-nowrap ${
-              isOutflow ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+              isOutflow ? "text-z-debt" : "text-z-income"
             }`}
           >
             {isOutflow ? "-" : "+"}
@@ -98,7 +98,7 @@ export function InboxTransactionRow({
         <div className="flex items-center gap-2 flex-wrap">
           {suggestion ? (
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+              <span className="inline-flex items-center gap-1 text-xs text-z-alert">
                 <Lightbulb className="h-3 w-3" />
                 {getCategoryName(suggestion.category_id)}
               </span>

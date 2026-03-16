@@ -53,10 +53,10 @@ const cardConfigs: Record<MetricType, {
   "income": {
     icon: ArrowDownLeft,
     title: "Ingresos del mes",
-    color: "text-green-600",
-    bgColor: "bg-green-500/10",
-    borderColor: "border-green-500/20",
-    indicatorColor: "#16a34a",
+    color: "text-z-income",
+    bgColor: "bg-z-income/10",
+    borderColor: "border-z-income/20",
+    indicatorColor: "var(--z-income)",
   },
   "expenses": {
     icon: ArrowUpRight,
@@ -85,10 +85,10 @@ const cardConfigs: Record<MetricType, {
   "budget": {
     icon: DollarSign,
     title: "Presupuesto",
-    color: "text-red-600",
-    bgColor: "bg-red-500/10",
-    borderColor: "border-red-500/20",
-    indicatorColor: "#dc2626",
+    color: "text-z-debt",
+    bgColor: "bg-z-debt/10",
+    borderColor: "border-z-debt/20",
+    indicatorColor: "var(--z-debt)",
   },
 };
 
@@ -148,15 +148,15 @@ export function InteractiveMetricCard({
                 : formatCurrency(Math.abs(data.value), data.currency)}
             </span>
             {isPositive && data.value > 0 && type !== "expenses" && type !== "budget" && (
-              <span className="text-xs text-green-600 font-medium">+</span>
+              <span className="text-xs text-z-income font-medium">+</span>
             )}
           </div>
           
           {/* Trend indicator */}
           {trend && trend.percentage !== 0 && (
             <div className={`flex items-center gap-1 mt-1 text-xs ${
-              trend.direction === "up" ? "text-green-600" : 
-              trend.direction === "down" ? "text-red-600" : "text-muted-foreground"
+              trend.direction === "up" ? "text-z-income" : 
+              trend.direction === "down" ? "text-z-debt" : "text-muted-foreground"
             }`}>
               {trend.direction === "up" ? <TrendingUp className="h-3 w-3" /> : 
                trend.direction === "down" ? <TrendingDown className="h-3 w-3" /> : null}
@@ -219,15 +219,15 @@ export function InteractiveMetricCard({
             {/* Big value display */}
             <div className="text-center py-4 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground mb-1">Valor actual</p>
-              <p className={`text-4xl font-bold ${isPositive ? "text-foreground" : "text-red-600"}`}>
+              <p className={`text-4xl font-bold ${isPositive ? "text-foreground" : "text-z-debt"}`}>
                 {type === "savings-rate"
                   ? `${data.value.toFixed(1)}%`
                   : formatCurrency(Math.abs(data.value), data.currency)}
               </p>
               {trend && (
                 <div className={`flex items-center justify-center gap-1 mt-2 text-sm ${
-                  trend.direction === "up" ? "text-green-600" : 
-                  trend.direction === "down" ? "text-red-600" : "text-muted-foreground"
+                  trend.direction === "up" ? "text-z-income" : 
+                  trend.direction === "down" ? "text-z-debt" : "text-muted-foreground"
                 }`}>
                   {trend.direction === "up" ? <TrendingUp className="h-4 w-4" /> : 
                    trend.direction === "down" ? <TrendingDown className="h-4 w-4" /> : null}
@@ -329,7 +329,7 @@ export function QuickStat({ label, value, trend, icon: Icon }: QuickStatProps) {
         <p className="font-medium truncate">{value}</p>
       </div>
       {trend && (
-        <div className={`text-xs ${trend.direction === "up" ? "text-green-600" : "text-red-600"}`}>
+        <div className={`text-xs ${trend.direction === "up" ? "text-z-income" : "text-z-debt"}`}>
           {trend.direction === "up" ? "↑" : "↓"} {trend.value}
         </div>
       )}

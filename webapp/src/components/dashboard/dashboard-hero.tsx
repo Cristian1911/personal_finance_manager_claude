@@ -26,7 +26,7 @@ export function DashboardHero({ data }: DashboardHeroProps) {
           Disponible para gastar
           <span className="text-sm font-normal text-muted-foreground ml-2">En {data.currency}</span>
         </p>
-        <p className={`text-4xl font-bold tracking-tight ${availableToSpend < 0 ? "text-red-600" : ""}`}>
+        <p className={`text-4xl font-bold tracking-tight ${availableToSpend < 0 ? "text-z-debt" : ""}`}>
           {formatCurrency(availableToSpend, code)}
         </p>
         {hasOtherCurrencies && (
@@ -71,7 +71,7 @@ export function DashboardHero({ data }: DashboardHeroProps) {
               <Banknote className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Libre</span>
             </div>
-            <p className={`text-lg font-semibold ${availableToSpend < 0 ? "text-red-600" : "text-emerald-600"}`}>
+            <p className={`text-lg font-semibold ${availableToSpend < 0 ? "text-z-debt" : "text-z-income"}`}>
               {formatCurrency(availableToSpend, code)}
             </p>
           </CardContent>

@@ -71,7 +71,7 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
               (Date.now() - new Date(account.updated_at).getTime()) / (24 * 60 * 60 * 1000)
             );
             if (daysAgo < 30) return null;
-            const color = daysAgo >= 60 ? "text-destructive" : "text-amber-500 dark:text-amber-400";
+            const color = daysAgo >= 60 ? "text-destructive" : "text-z-alert";
             return (
               <p className={`text-xs ${color}`}>
                 hace {daysAgo} días

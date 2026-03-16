@@ -199,14 +199,14 @@ export function StepDestinatarios({
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center gap-2 rounded-md border bg-emerald-500/5 p-3 text-left text-sm"
+              className="flex w-full items-center gap-2 rounded-md border bg-z-income/5 p-3 text-left text-sm"
             >
               {matchedOpen ? (
-                <ChevronDown className="h-4 w-4 shrink-0 text-emerald-600" />
+                <ChevronDown className="h-4 w-4 shrink-0 text-z-income" />
               ) : (
-                <ChevronRight className="h-4 w-4 shrink-0 text-emerald-600" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-z-income" />
               )}
-              <span className="font-medium text-emerald-800">
+              <span className="font-medium text-z-income">
                 {totalMatchedCount} transacciones ya tienen destinatario asignado
               </span>
             </button>
@@ -329,7 +329,7 @@ export function StepDestinatarios({
                       </div>
                     </div>
 
-                    {formError && <p className="text-xs text-red-600">{formError}</p>}
+                    {formError && <p className="text-xs text-z-debt">{formError}</p>}
 
                     <div className="flex items-center gap-2">
                       <Button
@@ -374,7 +374,7 @@ export function StepDestinatarios({
       )}
 
       {createdPatterns.size > 0 && visibleSuggestions.length === 0 && (
-        <div className="rounded-md bg-emerald-500/10 p-3 text-sm text-emerald-700">
+        <div className="rounded-md bg-z-income/10 p-3 text-sm text-z-income">
           Todos los patrones sugeridos han sido procesados.
         </div>
       )}

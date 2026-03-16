@@ -58,7 +58,7 @@ export function MobileDashboard({
         <p
           className={cn(
             "text-3xl font-bold mt-1",
-            heroData.availableToSpend < 0 && "text-red-600"
+            heroData.availableToSpend < 0 && "text-z-debt"
           )}
         >
           {formatCurrency(heroData.availableToSpend, code)}
@@ -146,7 +146,7 @@ export function MobileDashboard({
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {tx.direction === "INFLOW" ? (
-                    <ArrowDownLeft className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                    <ArrowDownLeft className="h-3.5 w-3.5 text-z-income shrink-0" />
                   ) : (
                     <ArrowUpRight className="h-3.5 w-3.5 text-orange-500 shrink-0" />
                   )}
@@ -155,7 +155,7 @@ export function MobileDashboard({
                 <span
                   className={cn(
                     "text-sm font-medium shrink-0 ml-2",
-                    tx.direction === "INFLOW" && "text-green-600"
+                    tx.direction === "INFLOW" && "text-z-income"
                   )}
                 >
                   {tx.direction === "INFLOW" ? "+" : "-"}
