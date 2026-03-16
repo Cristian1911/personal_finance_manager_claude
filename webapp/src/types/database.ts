@@ -242,6 +242,7 @@ export type Database = {
           created_at: string
           direction: Database["public"]["Enums"]["transaction_direction"] | null
           display_order: number
+          expense_type: string | null
           icon: string
           id: string
           is_active: boolean
@@ -261,6 +262,7 @@ export type Database = {
             | Database["public"]["Enums"]["transaction_direction"]
             | null
           display_order?: number
+          expense_type?: string | null
           icon?: string
           id?: string
           is_active?: boolean
@@ -280,6 +282,7 @@ export type Database = {
             | Database["public"]["Enums"]["transaction_direction"]
             | null
           display_order?: number
+          expense_type?: string | null
           icon?: string
           id?: string
           is_active?: boolean

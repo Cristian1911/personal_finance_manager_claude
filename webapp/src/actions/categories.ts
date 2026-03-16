@@ -251,6 +251,25 @@ export async function updateCategoryOrder(
   return { success: true, data: undefined };
 }
 
+export async function updateCategoryExpenseType(
+  categoryId: string,
+  expenseType: "fixed" | "variable" | null
+): Promise<ActionResult<undefined>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("categories")
+    .update({ expense_type: expenseType })
+    .eq("id", categoryId)
+    .or(`user_id.eq.${user.id},is_system.eq.true`);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/categories");
+  return { success: true, data: undefined };
+}
+
 export async function getCategoryTransactionCount(
   categoryId: string
 ): Promise<ActionResult<number>> {
@@ -366,6 +385,7 @@ export async function getAllCategoriesForManagement(): Promise<
     is_essential: cat.is_essential ?? false,
     is_active: cat.is_active ?? true,
     direction: cat.direction as TransactionDirection,
+    expense_type: (cat.expense_type as "fixed" | "variable") ?? null,
     budget: null,
     spent: 0,
     committedRecurring: 0,
@@ -507,6 +527,7 @@ export async function getCategoriesWithBudgetData(
       is_essential: cat.is_essential ?? false,
       is_active: cat.is_active ?? true,
       direction: cat.direction as TransactionDirection,
+      expense_type: (cat.expense_type as "fixed" | "variable") ?? null,
       budget,
       spent,
       committedRecurring,
