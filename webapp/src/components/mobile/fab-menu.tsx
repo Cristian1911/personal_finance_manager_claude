@@ -21,7 +21,7 @@ interface FabMenuProps {
 }
 
 const SUB_ACTIONS: ContextAction[] = [
-  { id: "expense", label: "Gasto rapido", icon: ArrowUpRight, bg: "bg-orange-500" },
+  { id: "expense", label: "Gasto rápido", icon: ArrowUpRight, bg: "bg-orange-500" },
   { id: "income", label: "Ingreso", icon: ArrowDownLeft, bg: "bg-green-500" },
   { id: "transfer", label: "Transferencia", icon: ArrowLeftRight, bg: "bg-blue-500" },
 ];
