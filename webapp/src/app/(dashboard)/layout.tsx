@@ -9,6 +9,7 @@ import { getCategories } from "@/actions/categories";
 import { MobileTopbar } from "@/components/mobile/mobile-topbar";
 import { BottomTabBar } from "@/components/mobile/bottom-tab-bar";
 import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
+import { PageTransition } from "@/components/ui/page-transition";
 
 export default async function DashboardLayout({
   children,
@@ -59,7 +60,9 @@ export default async function DashboardLayout({
 
         <main className="flex-1 overflow-x-hidden p-4 lg:p-6 pb-20 lg:pb-6">
           <MobileSheetProvider accounts={accounts} categories={categories}>
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </MobileSheetProvider>
         </main>
 
