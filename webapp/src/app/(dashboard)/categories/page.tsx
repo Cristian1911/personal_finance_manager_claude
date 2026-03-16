@@ -12,6 +12,7 @@ import { MobilePresupuesto } from "@/components/mobile/mobile-presupuesto";
 import { MonthSelector } from "@/components/month-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
+import { getPreferredCurrency } from "@/actions/profile";
 
 export default async function CategoriesPage({
   searchParams,
@@ -20,9 +21,10 @@ export default async function CategoriesPage({
 }) {
   const { month } = await searchParams;
   const selectedMonth = parseMonth(month);
+  const currency = await getPreferredCurrency();
 
   const [result, manageResult, uncategorized, categoryTreeResult] = await Promise.all([
-    getCategoriesWithBudgetData(month),
+    getCategoriesWithBudgetData(month, currency),
     getAllCategoriesForManagement(),
     getUncategorizedTransactions(),
     getCategories(),

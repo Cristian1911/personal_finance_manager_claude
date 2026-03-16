@@ -6,7 +6,7 @@ import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { categorySchema } from "@/lib/validators/category";
 import type { ActionResult } from "@/types/actions";
 import { parseMonth, monthStartStr, monthEndStr, monthsBeforeStart } from "@/lib/utils/date";
-import type { Category, CategoryWithChildren, CategoryWithBudget, CategoryBudgetData, TransactionDirection } from "@/types/domain";
+import type { Category, CategoryWithChildren, CategoryWithBudget, CategoryBudgetData, TransactionDirection, CurrencyCode } from "@/types/domain";
 
 export async function getCategories(
   direction?: TransactionDirection
@@ -378,10 +378,13 @@ export async function getAllCategoriesForManagement(): Promise<
 }
 
 export async function getCategoriesWithBudgetData(
-  month?: string
+  month?: string,
+  currency?: CurrencyCode
 ): Promise<ActionResult<CategoryBudgetData[]>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  const baseCurrency = currency ?? "COP";
 
   const target = parseMonth(month);
 
@@ -409,6 +412,7 @@ export async function getCategoriesWithBudgetData(
         .select("amount, category_id")
         .eq("direction", "OUTFLOW")
         .eq("is_excluded", false)
+        .eq("currency_code", baseCurrency)
         .gte("transaction_date", monthStartStr(target))
         .lte("transaction_date", monthEndStr(target))
     ),
@@ -420,6 +424,7 @@ export async function getCategoriesWithBudgetData(
         .select("amount, category_id, transaction_date")
         .eq("direction", "OUTFLOW")
         .eq("is_excluded", false)
+        .eq("currency_code", baseCurrency)
         .gte("transaction_date", monthsBeforeStart(target, 3))
         .lt("transaction_date", monthStartStr(target))
     ),
@@ -430,7 +435,8 @@ export async function getCategoriesWithBudgetData(
       .select("category_id, amount")
       .eq("user_id", user.id)
       .eq("is_active", true)
-      .eq("direction", "OUTFLOW"),
+      .eq("direction", "OUTFLOW")
+      .eq("currency_code", baseCurrency),
   ]);
 
   if (catRes.error) return { success: false, error: catRes.error.message };
