@@ -118,28 +118,42 @@ function computeDebtFromCurrencyBalance(cb: CurrencyBalance): number {
   return Math.abs(cb.current_balance ?? 0);
 }
 
+// Rates below these thresholds are almost certainly monthly (MV), not annual (EA).
+const MV_THRESHOLD = { CREDIT_CARD: 6, LOAN: 3 } as const;
+const MIN_EA_RATE = { CREDIT_CARD: 10, LOAN: 3 } as const;
+const MAX_EA_RATE = 150;
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/** Convert a monthly percentage rate (MV) to annual effective rate (EA). */
+export function mvToEaPercent(monthlyPercent: number): number {
+  return round2((((1 + monthlyPercent / 100) ** 12) - 1) * 100);
+}
+
 /**
- * Sanitize an interest rate at read time.
- * If a rate looks like a monthly rate (< 6% for credit cards, < 3% for loans),
- * convert it to E.A. This protects against bad stored data from older imports.
+ * Sanitize an interest rate. If it looks like monthly (MV), convert to EA.
+ * Rejects rates outside plausible bounds (returns null).
+ * Used at both import time and read time.
  */
-function sanitizeInterestRate(
-  rate: number | null,
+export function sanitizeInterestRate(
+  rate: number | null | undefined,
   accountType: "CREDIT_CARD" | "LOAN"
 ): number | null {
-  if (rate == null || rate <= 0) return rate;
+  if (rate == null || !Number.isFinite(rate) || rate <= 0) return null;
 
-  // Credit cards: anything under 6% EA is almost certainly a monthly rate
-  // (Colombian credit cards range ~20-35% EA; global minimum is ~10% EA)
-  // Loans: anything under 3% EA might be monthly
-  const threshold = accountType === "CREDIT_CARD" ? 6 : 3;
+  let sanitized = rate;
 
-  if (rate < threshold) {
-    // Convert monthly (MV) to annual (EA): ((1 + r/100)^12 - 1) * 100
-    return Math.round((((1 + rate / 100) ** 12) - 1) * 100 * 100) / 100;
+  if (sanitized < MV_THRESHOLD[accountType]) {
+    sanitized = mvToEaPercent(sanitized);
   }
 
-  return rate;
+  if (sanitized < MIN_EA_RATE[accountType] || sanitized > MAX_EA_RATE) {
+    return null;
+  }
+
+  return round2(sanitized);
 }
 
 /**

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { DebtAccount, ScenarioResult } from "@zeta/shared";
 import type { CurrencyCode } from "@zeta/shared";
 import type { PlannerAction, ScenarioState } from "../scenario-planner";
+import { PLAN_COLORS, formatDebtFreeDate } from "./utils";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   type ChartConfig,
@@ -41,19 +42,7 @@ interface Props {
   dispatch: React.Dispatch<PlannerAction>;
 }
 
-const PLAN_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-] as const;
-
 const PLAN_GRADIENT_IDS = ["fillPlan0", "fillPlan1", "fillPlan2"] as const;
-
-function formatDebtFreeDate(yyyyMm: string): string {
-  const [year, month] = yyyyMm.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("es-CO", { year: "numeric", month: "long" });
-}
 
 function formatMonths(months: number): string {
   if (months === 1) return "1 mes";

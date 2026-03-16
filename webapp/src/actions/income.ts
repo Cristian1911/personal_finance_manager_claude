@@ -36,13 +36,13 @@ export async function getEstimatedIncome(
 
   const baseCurrency = currency ?? "COP";
 
-  // Check if user has a profile salary set — if so, use it directly
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("monthly_salary")
-    .eq("id", user.id)
-    .single();
+  // Fetch profile salary and liquid accounts in parallel
+  const [{ data: profile }, { data: liquidAccounts }] = await Promise.all([
+    supabase.from("profiles").select("monthly_salary").eq("id", user.id).single(),
+    supabase.from("accounts").select("id").eq("user_id", user.id).eq("is_active", true).in("account_type", ["CHECKING", "SAVINGS"]),
+  ]);
 
+  // If user has a profile salary set, use it directly
   if (profile?.monthly_salary && profile.monthly_salary > 0) {
     return {
       monthlyAverage: profile.monthly_salary,
@@ -53,14 +53,6 @@ export async function getEstimatedIncome(
       recentTransactions: [],
     };
   }
-
-  // Get non-debt account IDs to filter transfers from credit cards
-  const { data: liquidAccounts } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .in("account_type", ["CHECKING", "SAVINGS"]);
 
   const liquidAccountIds = liquidAccounts?.map((a) => a.id) ?? [];
   if (liquidAccountIds.length === 0) return null;

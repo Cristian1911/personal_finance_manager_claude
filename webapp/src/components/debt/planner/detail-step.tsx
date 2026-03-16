@@ -9,6 +9,7 @@ import type {
 } from "@zeta/shared";
 import type { CurrencyCode } from "@zeta/shared";
 import type { ScenarioState } from "../scenario-planner";
+import { PLAN_COLORS, formatDebtFreeDate } from "./utils";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   type ChartConfig,
@@ -57,12 +58,6 @@ interface Props {
   income?: number;
 }
 
-const PLAN_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-] as const;
-
 const SPANISH_MONTHS = [
   "Ene",
   "Feb",
@@ -82,12 +77,6 @@ function formatCalendarMonth(yyyyMm: string): string {
   const [year, month] = yyyyMm.split("-");
   const monthIdx = Number(month) - 1;
   return `${SPANISH_MONTHS[monthIdx] ?? month} ${year}`;
-}
-
-function formatDebtFreeDate(yyyyMm: string): string {
-  const [year, month] = yyyyMm.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("es-CO", { year: "numeric", month: "long" });
 }
 
 function abbreviateName(name: string, maxLen = 12): string {
