@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { CalendarPlus, Landmark } from "lucide-react";
 import {
@@ -60,7 +60,7 @@ export function MobileSheetProvider({
   const [activeAction, setActiveAction] = useState<FabAction | null>(null);
   const pathname = usePathname();
 
-  const contextActions = getContextActions(pathname);
+  const contextActions = useMemo(() => getContextActions(pathname), [pathname]);
 
   return (
     <>

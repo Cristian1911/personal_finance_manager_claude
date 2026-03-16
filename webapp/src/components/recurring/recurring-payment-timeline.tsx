@@ -99,6 +99,8 @@ function dateLabelClasses(status: DateStatus) {
   }
 }
 
+const STATUS_ORDER: Record<DateStatus, number> = { past: 0, today: 1, future: 2 };
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -115,17 +117,9 @@ export function PaymentTimeline({
   // Sort dates: past first, then today, then future
   const sortedDates = Array.from(pendingByDate.keys())
     .filter((date) => (selectedDate ? date === selectedDate : true))
-    .sort((a, b) => {
-      const statusOrder: Record<DateStatus, number> = {
-        past: 0,
-        today: 1,
-        future: 2,
-      };
-      const statusA = statusOrder[getDateStatus(a)];
-      const statusB = statusOrder[getDateStatus(b)];
-      if (statusA !== statusB) return statusA - statusB;
-      return a.localeCompare(b);
-    });
+    .map((date) => ({ date, order: STATUS_ORDER[getDateStatus(date)] }))
+    .sort((a, b) => a.order - b.order || a.date.localeCompare(b.date))
+    .map(({ date }) => date);
 
   if (sortedDates.length === 0) {
     return (

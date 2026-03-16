@@ -29,6 +29,7 @@ export function SalaryBar({ breakdown, currency }: Props) {
   const { income, segments, freePercentage } = breakdown;
   const debtSegments = segments.filter((s) => s.accountId !== "libre");
   const libreSegment = segments.find((s) => s.accountId === "libre");
+  const totalDebtAmount = debtSegments.reduce((s, d) => s + d.amount, 0);
   const [openPopover, setOpenPopover] = useState<string | null>(null);
 
   return (
@@ -103,14 +104,9 @@ export function SalaryBar({ breakdown, currency }: Props) {
                     <div className="text-xs text-muted-foreground">
                       {seg.percentage.toFixed(1)}% de tu ingreso
                     </div>
-                    {seg.accountId !== "libre" && debtSegments.length > 1 && (
+                    {seg.accountId !== "libre" && debtSegments.length > 1 && totalDebtAmount > 0 && (
                       <div className="text-xs text-muted-foreground border-t pt-1.5 mt-1">
-                        {(
-                          (seg.amount /
-                            debtSegments.reduce((s, d) => s + d.amount, 0)) *
-                          100
-                        ).toFixed(0)}
-                        % del total de deudas
+                        {((seg.amount / totalDebtAmount) * 100).toFixed(0)}% del total de deudas
                       </div>
                     )}
                   </div>

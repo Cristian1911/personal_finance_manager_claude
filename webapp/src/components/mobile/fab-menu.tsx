@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 
 export type FabAction = "expense" | "income" | "transfer" | "new-recurring" | "new-account";
 
@@ -45,6 +45,7 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
     <div className="lg:hidden">
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent>
+          <DrawerTitle className="sr-only">Acciones</DrawerTitle>
           <div className="px-4 pb-4">
             {/* Section 1: Acciones rapidas */}
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

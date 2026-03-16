@@ -48,6 +48,7 @@ export function MobileDashboard({
   recentTransactions,
   burnRateData,
 }: MobileDashboardProps) {
+  const today = toISODateString(new Date());
   const code = heroData.currency as CurrencyCode;
 
   return (
@@ -96,7 +97,6 @@ export function MobileDashboard({
           </div>
           <div className="rounded-xl border divide-y">
             {upcomingPayments.slice(0, 5).map((payment) => {
-              const today = toISODateString(new Date());
               const isOverdue = payment.dueDate < today;
               const isToday = payment.dueDate === today;
 
