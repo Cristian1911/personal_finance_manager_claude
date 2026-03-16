@@ -16,6 +16,8 @@ import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
 import { formatMonthParam } from "@/lib/utils/date";
+import { getExchangeRate } from "@/actions/exchange-rate";
+import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
 
 export default async function DeudasPage({
   searchParams,
@@ -61,6 +63,11 @@ export default async function DeudasPage({
   const preferredCurrencyCreditCards = creditCards.filter((a) => a.currency === currency);
   const totalCreditUsed = preferredCurrencyCreditCards.reduce((sum, a) => sum + a.balance, 0);
   const secondaryCurrencies = overview.debtByCurrency.filter((d) => d.currency !== currency && d.totalDebt > 0);
+
+  // Fetch exchange rate for secondary currency debts (e.g., USD)
+  const exchangeRate = secondaryCurrencies.length > 0
+    ? await getExchangeRate(secondaryCurrencies[0].currency as CurrencyCode, currency)
+    : null;
 
   // Salary breakdown — only if income is detected
   const salaryBreakdown = incomeEstimate && incomeEstimate.monthlyAverage > 0
@@ -118,6 +125,17 @@ export default async function DeudasPage({
         )}
         <InterestCostCard monthlyInterest={overview.monthlyInterestEstimate} />
       </div>
+
+      {/* Exchange rate nudge */}
+      {exchangeRate && secondaryCurrencies.length > 0 && (
+        <ExchangeRateNudge
+          rate={exchangeRate.rate}
+          avg30d={exchangeRate.avg30d}
+          percentVsAvg={exchangeRate.percentVsAvg}
+          from={secondaryCurrencies[0].currency as CurrencyCode}
+          to={currency}
+        />
+      )}
 
       {/* Insights */}
       <DebtInsights insights={overview.insights} />
