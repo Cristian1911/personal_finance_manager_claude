@@ -373,8 +373,8 @@ function RulesSection({
 function RuleItem({ rule }: { rule: DestinatarioRuleRow }) {
   const [removing, startTransition] = useTransition();
 
-  const matchCount = (rule as DestinatarioRuleRow & { match_count?: number }).match_count ?? 0;
-  const lastMatchedAt = (rule as DestinatarioRuleRow & { last_matched_at?: string | null }).last_matched_at;
+  const matchCount = rule.match_count ?? 0;
+  const lastMatchedAt = rule.last_matched_at;
 
   function handleRemove() {
     startTransition(async () => {
@@ -398,7 +398,7 @@ function RuleItem({ rule }: { rule: DestinatarioRuleRow }) {
         </div>
         <span className="text-xs text-muted-foreground">
           {matchCount > 0 ? `Usada ${matchCount} veces` : "Sin uso"}
-          {lastMatchedAt && ` · ${new Date(lastMatchedAt).toLocaleDateString("es-CO")}`}
+          {lastMatchedAt && ` · ${formatDate(lastMatchedAt)}`}
         </span>
       </div>
       <Button
@@ -461,7 +461,7 @@ function RecentTransactions({
                 <span
                   className={`shrink-0 font-medium tabular-nums ${
                     tx.direction === "INFLOW"
-                      ? "text-emerald-600"
+                      ? "text-z-income"
                       : "text-foreground"
                   }`}
                 >

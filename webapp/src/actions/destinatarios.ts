@@ -354,11 +354,15 @@ export async function mergeDestinatarios(
 
 // ─── addDestinatarioRule ──────────────────────────────────────────────────────
 
+export type AddRuleResult = ActionResult<DestinatarioRuleRow> & {
+  conflicts?: { pattern: string; destinatarioId: string }[];
+};
+
 export async function addDestinatarioRule(
   destinatarioId: string,
-  _prevState: ActionResult<DestinatarioRuleRow>,
+  _prevState: AddRuleResult,
   formData: FormData
-): Promise<ActionResult<DestinatarioRuleRow>> {
+): Promise<AddRuleResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -405,7 +409,7 @@ export async function addDestinatarioRule(
   }
 
   revalidatePath("/destinatarios");
-  return { success: true, data, conflicts } as any;
+  return { success: true, data, conflicts };
 }
 
 // ─── removeDestinatarioRule ───────────────────────────────────────────────────
