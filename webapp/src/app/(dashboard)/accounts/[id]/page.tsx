@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getAccount } from "@/actions/accounts";
 import { getStatementSnapshots } from "@/actions/statement-snapshots";
@@ -111,7 +112,9 @@ export default async function AccountDetailPage({
 
       {showHistory && (
         <div className="space-y-6">
-          <BalanceHistoryChart snapshots={snapshots} currency={account.currency_code} />
+          <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+            <BalanceHistoryChart snapshots={snapshots} currency={account.currency_code} />
+          </Suspense>
 
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Historial de extractos</h2>

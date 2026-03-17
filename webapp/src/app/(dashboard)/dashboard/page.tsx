@@ -198,17 +198,14 @@ export default async function DashboardPage({
     );
   }
 
-  // Fetch all dashboard data in parallel
-  const [heroData, accountsData, budgetPaceData, cashflowData, categoryData, allAccountsResult, latestSnapshotDates, burnRateData] =
+  // Fast data: hero, burn rate, accounts, snapshots — renders immediately
+  const [heroData, allAccountsResult, latestSnapshotDates, burnRateData, accountsData] =
     await Promise.all([
       getDashboardHeroData(month, currency),
-      getAccountsWithSparklineData(),
-      getDailyBudgetPace(month, currency),
-      getMonthlyCashflow(month, currency),
-      getCategorySpending(month, currency),
       getAccounts(),
       getLatestSnapshotDates(),
       getBurnRate(currency),
+      getAccountsWithSparklineData(),
     ]);
 
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
@@ -306,20 +303,19 @@ export default async function DashboardPage({
             latestSnapshotDates={latestSnapshotDates}
           />
 
-          {/* 3. Analysis */}
-          <div>
-            <h2 className="text-lg font-semibold mb-4">Análisis</h2>
-            <div className="grid gap-6 lg:grid-cols-2">
-              <BudgetPaceChart
-                data={budgetPaceData.data}
-                totalBudget={budgetPaceData.totalBudget}
-                totalSpent={budgetPaceData.totalSpent}
-                monthLabel={monthLabel}
-              />
-              <IncomeVsExpensesChart data={cashflowData} monthLabel={monthLabel} />
-              <DashboardBudgetBar data={categoryData} monthLabel={monthLabel} />
+          {/* 3. Analysis — lazy loaded via Suspense */}
+          <Suspense fallback={
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Análisis</h2>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="h-64 rounded-xl bg-muted animate-pulse" />
+                <div className="h-64 rounded-xl bg-muted animate-pulse" />
+                <div className="h-64 rounded-xl bg-muted animate-pulse" />
+              </div>
             </div>
-          </div>
+          }>
+            <DashboardCharts month={month} currency={currency} monthLabel={monthLabel} />
+          </Suspense>
 
           {/* 4. Recent Transactions */}
           <Card>
@@ -353,9 +349,9 @@ export default async function DashboardPage({
                     >
                       <div className="flex items-center gap-3">
                         {tx.direction === "INFLOW" ? (
-                          <ArrowDownLeft className="h-4 w-4 text-green-500" />
+                          <ArrowDownLeft className="h-4 w-4 text-z-income" />
                         ) : (
-                          <ArrowUpRight className="h-4 w-4 text-orange-500" />
+                          <ArrowUpRight className="h-4 w-4 text-z-expense" />
                         )}
                         <div>
                           <p className="text-sm font-medium">
@@ -369,7 +365,7 @@ export default async function DashboardPage({
                         </div>
                       </div>
                       <span
-                        className={`text-sm font-medium ${tx.direction === "INFLOW" ? "text-green-600" : ""}`}
+                        className={`text-sm font-medium ${tx.direction === "INFLOW" ? "text-z-income" : ""}`}
                       >
                         {tx.direction === "INFLOW" ? "+" : "-"}
                         {formatCurrency(tx.amount, tx.currency_code as Parameters<typeof formatCurrency>[1])}
@@ -383,5 +379,30 @@ export default async function DashboardPage({
         </div>
       </div>
     </>
+  );
+}
+
+/** Async component for heavy chart data — wrapped in Suspense by parent */
+async function DashboardCharts({ month, currency, monthLabel }: { month: string | undefined; currency: CurrencyCode; monthLabel: string }) {
+  const [budgetPaceData, cashflowData, categoryData] = await Promise.all([
+    getDailyBudgetPace(month, currency),
+    getMonthlyCashflow(month, currency),
+    getCategorySpending(month, currency),
+  ]);
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold mb-4">Análisis</h2>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <BudgetPaceChart
+          data={budgetPaceData.data}
+          totalBudget={budgetPaceData.totalBudget}
+          totalSpent={budgetPaceData.totalSpent}
+          monthLabel={monthLabel}
+        />
+        <IncomeVsExpensesChart data={cashflowData} monthLabel={monthLabel} />
+        <DashboardBudgetBar data={categoryData} monthLabel={monthLabel} />
+      </div>
+    </div>
   );
 }
