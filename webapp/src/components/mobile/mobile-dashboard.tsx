@@ -176,7 +176,7 @@ export function MobileDashboard({
                   {tx.direction === "INFLOW" ? (
                     <ArrowDownLeft className="h-3.5 w-3.5 text-z-income shrink-0" />
                   ) : (
-                    <ArrowUpRight className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                    <ArrowUpRight className="h-3.5 w-3.5 text-z-expense shrink-0" />
                   )}
                   <span className="text-sm truncate">{tx.description}</span>
                 </div>

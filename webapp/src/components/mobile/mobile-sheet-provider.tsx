@@ -29,7 +29,7 @@ const TRANSACTION_ACTIONS: Record<
   "expense" | "income" | "transfer",
   { title: string; direction: TransactionDirection }
 > = {
-  expense: { title: "Gasto rapido", direction: "OUTFLOW" },
+  expense: { title: "Gasto rápido", direction: "OUTFLOW" },
   income: { title: "Ingreso", direction: "INFLOW" },
   transfer: { title: "Transferencia", direction: "OUTFLOW" },
 };

@@ -130,13 +130,13 @@ export function MobileMovimientos({
         <div className="flex items-center gap-6">
           <div>
             <p className="text-xs text-muted-foreground">Gastos</p>
-            <p className="font-semibold text-orange-500">
+            <p className="font-semibold text-z-expense">
               {formatCurrency(outflow, currency)}
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Ingresos</p>
-            <p className="font-semibold text-green-500">
+            <p className="font-semibold text-z-income">
               {formatCurrency(inflow, currency)}
             </p>
           </div>
@@ -192,8 +192,8 @@ export function MobileMovimientos({
                         className={cn(
                           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
                           tx.direction === "INFLOW"
-                            ? "bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400"
-                            : "bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-400"
+                            ? "bg-z-income/10 text-z-income"
+                            : "bg-z-expense/10 text-z-expense"
                         )}
                       >
                         {tx.direction === "INFLOW" ? (
@@ -209,7 +209,7 @@ export function MobileMovimientos({
                     <span
                       className={cn(
                         "text-sm font-medium shrink-0 ml-2",
-                        tx.direction === "INFLOW" && "text-green-600",
+                        tx.direction === "INFLOW" && "text-z-income",
                         tx.is_excluded && "line-through"
                       )}
                     >

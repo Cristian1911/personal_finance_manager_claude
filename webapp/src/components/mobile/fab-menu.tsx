@@ -21,9 +21,9 @@ interface FabMenuProps {
 }
 
 const SUB_ACTIONS: ContextAction[] = [
-  { id: "expense", label: "Gasto rápido", icon: ArrowUpRight, bg: "bg-orange-500" },
-  { id: "income", label: "Ingreso", icon: ArrowDownLeft, bg: "bg-green-500" },
-  { id: "transfer", label: "Transferencia", icon: ArrowLeftRight, bg: "bg-blue-500" },
+  { id: "expense", label: "Gasto rápido", icon: ArrowUpRight, bg: "bg-z-expense" },
+  { id: "income", label: "Ingreso", icon: ArrowDownLeft, bg: "bg-z-income" },
+  { id: "transfer", label: "Transferencia", icon: ArrowLeftRight, bg: "bg-z-sage-dark" },
 ];
 
 export function FabMenu({ onAction, contextActions }: FabMenuProps) {
@@ -47,9 +47,9 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
         <DrawerContent>
           <DrawerTitle className="sr-only">Acciones</DrawerTitle>
           <div className="px-4 pb-4">
-            {/* Section 1: Acciones rapidas */}
+            {/* Section 1: Acciones rápidas */}
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Acciones rapidas
+              Acciones rápidas
             </p>
             <div className="grid grid-cols-3 gap-3">
               {SUB_ACTIONS.map((action) => (
@@ -75,11 +75,11 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
               ))}
             </div>
 
-            {/* Section 2: En esta pagina */}
+            {/* Section 2: En esta página */}
             {contextActions && contextActions.length > 0 && (
               <>
                 <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  En esta pagina
+                  En esta página
                 </p>
                 <div className="space-y-1">
                   {contextActions.map((action) => (
@@ -117,7 +117,7 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-5 left-1/2 z-50 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg mb-[env(safe-area-inset-bottom)]"
+          className="fixed bottom-5 left-1/2 z-50 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-z-white text-z-ink shadow-lg mb-[env(safe-area-inset-bottom)]"
           aria-label="Abrir menu de acciones"
         >
           <Plus className="size-7" strokeWidth={2.5} />
