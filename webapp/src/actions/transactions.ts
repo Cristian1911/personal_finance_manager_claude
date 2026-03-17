@@ -72,8 +72,6 @@ async function persistTransaction(
   }
 
   revalidatePath("/transactions");
-  revalidatePath("/dashboard");
-  revalidatePath("/accounts");
   return { success: true, data };
 }
 
@@ -272,7 +270,6 @@ export async function updateTransaction(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/transactions");
-  revalidatePath("/dashboard");
   return { success: true, data };
 }
 
@@ -286,8 +283,6 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/transactions");
-  revalidatePath("/dashboard");
-  revalidatePath("/accounts");
   return { success: true, data: undefined };
 }
 
@@ -308,7 +303,6 @@ export async function toggleExcludeTransaction(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/transactions");
-  revalidatePath("/dashboard");
   return { success: true, data: undefined };
 }
 
@@ -329,6 +323,5 @@ export async function bulkExcludeTransactions(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/transactions");
-  revalidatePath("/dashboard");
   return { success: true, data: undefined };
 }

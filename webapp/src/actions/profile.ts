@@ -80,7 +80,5 @@ export async function updateProfile(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/settings");
-  revalidatePath("/dashboard");
-  revalidatePath("/deudas");
   return { success: true, data };
 }

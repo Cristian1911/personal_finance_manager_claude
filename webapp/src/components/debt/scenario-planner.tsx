@@ -1,7 +1,6 @@
 "use client";
 
 import { useReducer, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   type DebtAccount,
@@ -148,7 +147,6 @@ interface Props {
 }
 
 export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: Props) {
-  const router = useRouter();
   const [state, dispatch] = useReducer(plannerReducer, initialState);
 
   // Compute results for all scenarios
@@ -259,7 +257,7 @@ export function ScenarioPlanner({ accounts, currency, savedScenarios, income }: 
         savedScenarios={savedScenarios as any[]}
         currency={currency}
         dispatch={dispatch}
-        onScenariosChange={() => router.refresh()}
+        onScenariosChange={() => {}}
       />
     </div>
   );

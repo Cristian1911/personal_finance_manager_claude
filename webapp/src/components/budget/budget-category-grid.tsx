@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import {
@@ -20,16 +19,19 @@ interface BudgetCategoryGridProps {
 }
 
 export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [localCategories, setLocalCategories] = useState(categories);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [expenseType, setExpenseType] = useState<ExpenseType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
   function handleSetBudget(categoryId: string) {
-    const cat = categories.find((c) => c.id === categoryId);
+    const cat = localCategories.find((c) => c.id === categoryId);
     setAmount(cat?.budget ? cat.budget.toString() : "");
     setExpenseType(cat?.expense_type ?? null);
     setSaveError(null);
@@ -46,15 +48,20 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
       formData.append("amount", amount);
       formData.append("period", "monthly");
 
+      // Optimistic update
+      const budgetAmount = parseFloat(amount);
+      setLocalCategories(prev => prev.map(c =>
+        c.id === editingId ? { ...c, budget: budgetAmount, percentUsed: budgetAmount > 0 ? c.spent / budgetAmount * 100 : 0 } : c
+      ));
+      setEditingId(null);
+      setAmount("");
+
       const [budgetResult] = await Promise.all([
         upsertBudget({ success: false, error: "" }, formData),
         updateCategoryExpenseType(editingId, expenseType),
       ]);
-      if (budgetResult.success) {
-        setEditingId(null);
-        setAmount("");
-        startTransition(() => router.refresh());
-      } else {
+      if (!budgetResult.success) {
+        setLocalCategories(categories);
         setSaveError(budgetResult.error ?? "Error al guardar");
       }
     } finally {
@@ -70,7 +77,7 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {categories.map((cat) => (
+      {localCategories.map((cat) => (
         <Popover
           key={cat.id}
           open={editingId === cat.id}
@@ -124,14 +131,14 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleCancel}
-                  disabled={isSaving || isPending}
+                  disabled={isSaving}
                 >
                   Cancelar
                 </Button>
                 <Button
                   size="sm"
                   onClick={handleSave}
-                  disabled={isSaving || isPending || !amount}
+                  disabled={isSaving || !amount}
                 >
                   {isSaving ? "Guardando..." : "Guardar"}
                 </Button>

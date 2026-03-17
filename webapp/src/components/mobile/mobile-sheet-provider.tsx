@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { toast } from "sonner";
 import { CalendarPlus, Landmark } from "lucide-react";
 import {
   Drawer,
@@ -59,14 +60,13 @@ export function MobileSheetProvider({
 }: MobileSheetProviderProps) {
   const [activeAction, setActiveAction] = useState<FabAction | null>(null);
   const pathname = usePathname();
-  const router = useRouter();
 
   const contextActions = useMemo(() => getContextActions(pathname), [pathname]);
 
   const handleSuccess = useCallback(() => {
     setActiveAction(null);
-    router.refresh();
-  }, [router]);
+    toast.success("Guardado");
+  }, []);
 
   return (
     <>

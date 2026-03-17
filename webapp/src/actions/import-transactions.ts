@@ -613,9 +613,7 @@ export async function importTransactions(
   });
 
   revalidatePath("/transactions");
-  revalidatePath("/dashboard");
   revalidatePath("/accounts");
-  revalidatePath("/deudas");
 
   await trackProductEvent({
     event_name: "import_completed",

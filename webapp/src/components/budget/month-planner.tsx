@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Badge } from "@/components/ui/badge";
 import { CalendarCheck, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 import { upsertBudget } from "@/actions/budgets";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CategoryBudgetData } from "@/types/domain";
@@ -19,8 +19,6 @@ export function MonthPlanner({ categories }: Props) {
   const [open, setOpen] = useState(false);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
   function handleOpen() {
     const initial: Record<string, string> = {};
@@ -41,7 +39,7 @@ export function MonthPlanner({ categories }: Props) {
     setSaving(true);
     try {
       const entries = Object.entries(amounts).filter(([, v]) => v && parseFloat(v) > 0);
-      await Promise.all(
+      const results = await Promise.all(
         entries.map(([catId, amt]) => {
           const fd = new FormData();
           fd.append("category_id", catId);
@@ -51,7 +49,10 @@ export function MonthPlanner({ categories }: Props) {
         })
       );
       setOpen(false);
-      startTransition(() => router.refresh());
+      const failures = results.filter(r => !r.success);
+      if (failures.length > 0) {
+        toast.error(`${failures.length} presupuestos no se guardaron`);
+      }
     } finally {
       setSaving(false);
     }
@@ -122,7 +123,7 @@ export function MonthPlanner({ categories }: Props) {
           <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
             Cancelar
           </Button>
-          <Button size="sm" onClick={handleSaveAll} disabled={saving || isPending} className="gap-1">
+          <Button size="sm" onClick={handleSaveAll} disabled={saving} className="gap-1">
             {saving ? "Guardando..." : "Guardar todo"}
             <ArrowRight className="h-3.5 w-3.5" />
           </Button>

@@ -150,7 +150,6 @@ export async function categorizeTransaction(
   }
 
   revalidatePath("/categorizar");
-  revalidatePath("/transactions");
   return { success: true, data: undefined };
 }
 
@@ -214,7 +213,6 @@ export async function bulkCategorize(
   }
 
   revalidatePath("/categorizar");
-  revalidatePath("/transactions");
   return { success: true, data: { categorized } };
 }
 
@@ -296,8 +294,7 @@ export async function assignDestinatario(
     );
   }
 
-  revalidatePath("/transactions");
-  revalidatePath("/destinatarios");
+  revalidatePath("/categorizar");
   return { success: true, data: undefined };
 }
 
@@ -320,6 +317,6 @@ export async function removeDestinatarioFromTransaction(
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/transactions");
+  revalidatePath("/categorizar");
   return { success: true, data: undefined };
 }

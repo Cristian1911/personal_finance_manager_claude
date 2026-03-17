@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ChevronDown, ChevronRight, Loader2, Plus, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import {
   cleanDescription,
   matchDestinatario,
@@ -52,7 +51,6 @@ export function StepDestinatarios({
   onContinue,
   onBack,
 }: StepDestinatariosProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [createdPatterns, setCreatedPatterns] = useState<Set<string>>(new Set());
   const [dismissedPatterns, setDismissedPatterns] = useState<Set<string>>(new Set());
@@ -178,7 +176,6 @@ export function StepDestinatarios({
         setCreatedPatterns((prev) => new Set(prev).add(pattern));
         setEditingPattern(null);
         setFormError(null);
-        router.refresh();
       } else {
         setFormError(result.error);
       }

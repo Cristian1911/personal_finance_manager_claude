@@ -2,7 +2,6 @@
 
 import { useCallback, useState, useTransition } from "react";
 import { ChevronRight, Loader2, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { createDestinatario } from "@/actions/destinatarios";
 import type { DestinatarioSuggestionResult } from "@/actions/destinatarios";
 import { Button } from "@/components/ui/button";
@@ -56,7 +55,6 @@ export function DestinatarioSuggestionsTab({
   suggestions: DestinatarioSuggestionResult[];
   categories: CategoryWithChildren[];
 }) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [dismissed, setDismissed] = useState<Set<string>>(() => getDismissed());
   const [createdPatterns, setCreatedPatterns] = useState<Set<string>>(new Set());
@@ -103,7 +101,6 @@ export function DestinatarioSuggestionsTab({
         setCreatedPatterns((prev) => new Set(prev).add(pattern));
         setEditingPattern(null);
         setFormError(null);
-        router.refresh();
       } else {
         setFormError(result.error);
       }

@@ -27,9 +27,11 @@ export default async function DeudasPage({
   const { month } = await searchParams;
   const currency = await getPreferredCurrency();
 
-  const [overview, incomeEstimate] = await Promise.all([
+  // Fetch all data in parallel — exchange rate is cached 24h, cheap even if not needed
+  const [overview, incomeEstimate, exchangeRateResult] = await Promise.all([
     getDebtOverview(currency),
     getEstimatedIncome(currency, month),
+    getExchangeRate("USD" as CurrencyCode, currency).catch(() => null),
   ]);
 
   if (overview.accounts.length === 0) {
@@ -64,10 +66,8 @@ export default async function DeudasPage({
   const totalCreditUsed = preferredCurrencyCreditCards.reduce((sum, a) => sum + a.balance, 0);
   const secondaryCurrencies = overview.debtByCurrency.filter((d) => d.currency !== currency && d.totalDebt > 0);
 
-  // Fetch exchange rate for secondary currency debts (e.g., USD)
-  const exchangeRate = secondaryCurrencies.length > 0
-    ? await getExchangeRate(secondaryCurrencies[0].currency as CurrencyCode, currency)
-    : null;
+  // Use pre-fetched exchange rate only if there are secondary currency debts
+  const exchangeRate = secondaryCurrencies.length > 0 ? exchangeRateResult : null;
 
   // Salary breakdown — only if income is detected
   const salaryBreakdown = incomeEstimate && incomeEstimate.monthlyAverage > 0

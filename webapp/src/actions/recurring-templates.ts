@@ -157,7 +157,6 @@ export async function createRecurringTemplate(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/recurrentes");
-  revalidatePath("/dashboard");
   return { success: true, data };
 }
 
@@ -226,7 +225,6 @@ export async function updateRecurringTemplate(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/recurrentes");
-  revalidatePath("/dashboard");
   return { success: true, data };
 }
 
@@ -246,7 +244,6 @@ export async function deleteRecurringTemplate(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/recurrentes");
-  revalidatePath("/dashboard");
   return { success: true, data: undefined };
 }
 
@@ -267,7 +264,6 @@ export async function toggleRecurringTemplate(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/recurrentes");
-  revalidatePath("/dashboard");
   return { success: true, data: undefined };
 }
 
@@ -710,10 +706,6 @@ export async function recordRecurringOccurrencePayment(input: {
   });
 
   revalidatePath("/recurrentes");
-  revalidatePath("/dashboard");
-  revalidatePath("/transactions");
-  revalidatePath("/accounts");
-  revalidatePath("/deudas");
 
   return {
     success: true,

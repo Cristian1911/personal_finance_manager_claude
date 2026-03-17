@@ -31,18 +31,18 @@ export default async function AccountDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const result = await getAccount(id);
+
+  // Fetch account and snapshots in parallel — snapshots return empty for non-history types (cheap)
+  const [result, snapshotsResult] = await Promise.all([
+    getAccount(id),
+    getStatementSnapshots(id),
+  ]);
 
   if (!result.success) notFound();
 
   const account = result.data;
-
   const showHistory = TYPES_WITH_HISTORY.includes(account.account_type);
-  const snapshotsResult = showHistory
-    ? await getStatementSnapshots(account.id)
-    : null;
-  const snapshots =
-    snapshotsResult?.success ? snapshotsResult.data : [];
+  const snapshots = showHistory && snapshotsResult?.success ? snapshotsResult.data : [];
 
   return (
     <div className="space-y-6">

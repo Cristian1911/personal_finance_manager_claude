@@ -111,7 +111,6 @@ export async function createAccount(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/accounts");
-  revalidatePath("/dashboard");
   return { success: true, data: result };
 }
 
@@ -143,7 +142,6 @@ export async function updateAccount(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/accounts");
-  revalidatePath("/dashboard");
   return { success: true, data: result };
 }
 
@@ -157,8 +155,6 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/accounts");
-  revalidatePath("/dashboard");
-  revalidatePath("/transactions");
   return { success: true, data: undefined };
 }
 
@@ -178,7 +174,7 @@ export async function toggleDashboardVisibility(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/dashboard");
+  revalidatePath("/accounts");
   return { success: true, data: undefined };
 }
 
@@ -249,6 +245,5 @@ export async function reconcileBalance(
   if (updateError) return { success: false, error: updateError.message };
 
   revalidatePath("/accounts");
-  revalidatePath("/dashboard");
   return { success: true, data: { delta } };
 }

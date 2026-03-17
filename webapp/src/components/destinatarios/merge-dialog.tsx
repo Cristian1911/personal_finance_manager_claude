@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Merge } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,6 @@ export function MergeDialog({ selected, onMerged }: MergeDialogProps) {
   const [open, setOpen] = useState(false);
   const [targetId, setTargetId] = useState<string>(selected[0]?.id ?? "");
   const [merging, setMerging] = useState(false);
-  const router = useRouter();
 
   if (selected.length < 2) return null;
 
@@ -50,7 +48,6 @@ export function MergeDialog({ selected, onMerged }: MergeDialogProps) {
       setOpen(false);
       toast.success("Destinatarios fusionados");
       onMerged?.();
-      router.refresh();
     } else {
       toast.error(result.error);
     }

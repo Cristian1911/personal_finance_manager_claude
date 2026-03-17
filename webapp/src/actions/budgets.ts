@@ -60,7 +60,6 @@ export async function upsertBudget(
     if (error) return { success: false, error: error.message };
 
     revalidatePath("/categories");
-    revalidatePath("/dashboard");
     return { success: true, data };
 }
 
@@ -74,7 +73,6 @@ export async function deleteBudget(id: string): Promise<ActionResult> {
     if (error) return { success: false, error: error.message };
 
     revalidatePath("/categories");
-    revalidatePath("/dashboard");
     return { success: true, data: undefined };
 }
 

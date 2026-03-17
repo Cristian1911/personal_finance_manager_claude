@@ -71,8 +71,8 @@ export default async function DashboardPage({
 
   if (!user) return null;
 
-  // Fetch preferred currency, recent transactions, and accounts in parallel
-  const [preferredCurrency, { data: recentTransactions }, { data: accounts }] = await Promise.all([
+  // Fetch preferred currency, recent transactions, accounts, and fallback currency ALL in parallel
+  const [preferredCurrency, { data: recentTransactions }, { data: accounts }, { data: currencyCheck }, { data: fallbackAccount }] = await Promise.all([
     getPreferredCurrency(),
     executeVisibleTransactionQuery(() =>
       supabase
@@ -88,28 +88,18 @@ export default async function DashboardPage({
       .select("id")
       .eq("is_active", true)
       .limit(1),
+    // Check if preferred currency has active accounts
+    getPreferredCurrency().then(curr =>
+      supabase.from("accounts").select("id").eq("user_id", user.id).eq("is_active", true).eq("currency_code", curr).limit(1)
+    ),
+    // Fallback: first account's currency
+    supabase.from("accounts").select("currency_code").eq("user_id", user.id).eq("is_active", true).order("created_at").limit(1).single(),
   ]);
 
-  // Fallback if no accounts exist in preferred currency
+  // Resolve currency: preferred if it has accounts, else fallback to first account
   let currency = preferredCurrency;
-  const { data: currencyCheck } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .eq("currency_code", currency)
-    .limit(1);
-
-  if (!currencyCheck?.length) {
-    const { data: fallback } = await supabase
-      .from("accounts")
-      .select("currency_code")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .order("created_at")
-      .limit(1)
-      .single();
-    if (fallback) currency = fallback.currency_code as CurrencyCode;
+  if (!currencyCheck?.length && fallbackAccount) {
+    currency = fallbackAccount.currency_code as CurrencyCode;
   }
 
   const recentTx = (recentTransactions ?? []) as DashboardTransactionRow[];

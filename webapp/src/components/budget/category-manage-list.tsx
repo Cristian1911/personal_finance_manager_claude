@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,7 @@ import {
   toggleCategoryActive,
 } from "@/actions/categories";
 import { Trash2, Plus, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 import type { CategoryBudgetData } from "@/types/domain";
 
 interface CategoryManageListProps {
@@ -19,12 +19,15 @@ interface CategoryManageListProps {
 }
 
 export function CategoryManageList({ categories }: CategoryManageListProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [localCategories, setLocalCategories] = useState(categories);
   const [addingToParent, setAddingToParent] = useState<string | null>(null);
   const [newSubName, setNewSubName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
 
   async function handleAddSubcategory(parentId: string) {
     if (!newSubName.trim()) return;
@@ -32,7 +35,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
     setError(null);
 
     try {
-      const parent = categories.find((c) => c.id === parentId);
+      const parent = localCategories.find((c) => c.id === parentId);
       const formData = new FormData();
       formData.append("name", newSubName.trim());
       formData.append("name_es", newSubName.trim());
@@ -54,9 +57,6 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
       if (result.success) {
         setAddingToParent(null);
         setNewSubName("");
-        startTransition(() => {
-          router.refresh();
-        });
       } else {
         setError(result.error ?? "Error al crear subcategoría");
       }
@@ -66,31 +66,27 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
   }
 
   async function handleDeleteSubcategory(id: string) {
+    setLocalCategories(prev => prev.filter(c => c.id !== id));
     const result = await deleteCategory(id);
-    if (result.success) {
-      startTransition(() => {
-        router.refresh();
-      });
+    if (!result.success) {
+      setLocalCategories(categories);
+      toast.error("Error al eliminar");
     }
   }
 
   async function handleToggleActive(id: string, currentlyActive: boolean) {
-    setIsSaving(true);
-    try {
-      const result = await toggleCategoryActive(id, !currentlyActive);
-      if (result.success) {
-        startTransition(() => {
-          router.refresh();
-        });
-      }
-    } finally {
-      setIsSaving(false);
+    setLocalCategories(prev => prev.map(c =>
+      c.id === id ? { ...c, is_active: !currentlyActive } : c
+    ));
+    const result = await toggleCategoryActive(id, !currentlyActive);
+    if (!result.success) {
+      setLocalCategories(categories);
     }
   }
 
   return (
     <div className="space-y-4">
-      {categories.map((cat) => (
+      {localCategories.map((cat) => (
         <div
           key={cat.id}
           className={cn("rounded-lg border", !cat.is_active && "opacity-50")}
@@ -128,7 +124,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => handleToggleActive(cat.id, cat.is_active)}
-                disabled={isPending || isSaving}
+                disabled={isSaving}
                 title={cat.is_active ? "Ocultar categoría" : "Mostrar categoría"}
               >
                 {cat.is_active ? (
@@ -148,7 +144,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                     setNewSubName("");
                     setError(null);
                   }}
-                  disabled={isPending || isSaving}
+                  disabled={isSaving}
                 >
                   <Plus className="size-3.5" />
                   <span className="hidden sm:inline">Subcategoría</span>
@@ -171,7 +167,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                     size="icon"
                     className="text-muted-foreground hover:text-destructive h-7 w-7"
                     onClick={() => handleDeleteSubcategory(child.id)}
-                    disabled={isPending || isSaving}
+                    disabled={isSaving}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
@@ -199,7 +195,7 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
                 <Button
                   size="sm"
                   onClick={() => handleAddSubcategory(cat.id)}
-                  disabled={isPending || isSaving || !newSubName.trim()}
+                  disabled={isSaving || !newSubName.trim()}
                 >
                   {isSaving ? "..." : "Agregar"}
                 </Button>
