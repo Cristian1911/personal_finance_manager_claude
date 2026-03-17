@@ -2,7 +2,8 @@
 
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { revalidatePath } from "next/cache";
-import { Database } from "@/types/database";
+import { Database, type Json } from "@/types/database";
+import type { DashboardConfig } from "@/types/dashboard-config";
 
 export type OnboardingProfileData = {
     app_purpose: string;
@@ -22,7 +23,8 @@ export type InitialAccountData = {
 
 export async function finishOnboarding(
     profileData: OnboardingProfileData,
-    accountData: InitialAccountData
+    accountData: InitialAccountData,
+    dashboardConfig?: DashboardConfig | null,
 ) {
     const { supabase, user } = await getAuthenticatedClient();
 
@@ -65,6 +67,7 @@ export async function finishOnboarding(
             timezone: profileData.timezone,
             locale: profileData.locale,
             onboarding_completed: true,
+            ...(dashboardConfig ? { dashboard_config: dashboardConfig as unknown as Json } : {}),
         })
         .eq("id", user.id);
 

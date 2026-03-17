@@ -11,29 +11,82 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, ArrowRight, ArrowLeft, Target, Wallet, PiggyBank, TrendingUp, CheckCircle2 } from "lucide-react";
+import {
+    Loader2,
+    ArrowRight,
+    ArrowLeft,
+    Target,
+    Wallet,
+    PiggyBank,
+    TrendingUp,
+    CheckCircle2,
+    CreditCard,
+    ArrowLeftRight,
+    Repeat2,
+    TrendingDown,
+    LayoutDashboard,
+    Menu,
+    FileUp,
+    Tags,
+} from "lucide-react";
 import { trackClientEvent } from "@/lib/utils/analytics";
+import { getDefaultConfig } from "@/lib/dashboard-config-defaults";
+import type { AppPurpose, DashboardConfig, TabConfig } from "@/types/dashboard-config";
+
+const ICON_MAP: Record<string, typeof CreditCard> = {
+    CreditCard,
+    PiggyBank,
+    ArrowLeftRight,
+    Repeat2,
+    TrendingDown,
+    LayoutDashboard,
+    Menu,
+};
+
+const TAB_OPTIONS: TabConfig[] = [
+    { id: "debt-recurring", label: "Deudas", icon: "CreditCard", features: ["debt", "recurring"], position: 2 },
+    { id: "movimientos", label: "Movimientos", icon: "ArrowLeftRight", features: ["transactions"], position: 2 },
+    { id: "presupuesto", label: "Presupuesto", icon: "PiggyBank", features: ["budget"], position: 3 },
+    { id: "presupuesto-ahorro", label: "Presupuesto", icon: "PiggyBank", features: ["budget", "savings"], position: 2 },
+    { id: "movimientos-presupuesto", label: "Gastos", icon: "TrendingDown", features: ["transactions", "budget"], position: 2 },
+    { id: "recurrentes", label: "Recurrentes", icon: "Repeat2", features: ["recurring"], position: 3 },
+];
+
+const QUICK_WIN: Record<string, { label: string; href: string; icon: typeof FileUp }> = {
+    manage_debt: { label: "Importa tu primer extracto", href: "/import", icon: FileUp },
+    track_spending: { label: "Registra tu primer gasto", href: "/dashboard", icon: Wallet },
+    save_money: { label: "Configura tu primer presupuesto", href: "/categories", icon: Tags },
+    improve_habits: { label: "Registra tu primer gasto", href: "/dashboard", icon: Wallet },
+};
 
 export default function OnboardingPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
-    // Profile Form State
+    // Step 1: Purpose
     const [purpose, setPurpose] = useState("");
-    const [income, setIncome] = useState("");
-    const [expenses, setExpenses] = useState("");
+
+    // Step 2: Profile (was step 3)
     const [fullName, setFullName] = useState("");
     const [currency, setCurrency] = useState("USD");
     const [timezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-    // Account Form State
+    // Step 3: Finanzas (was step 2)
+    const [income, setIncome] = useState("");
+    const [expenses, setExpenses] = useState("");
+    const [debtCount, setDebtCount] = useState("");
+
+    // Step 4: Tab preview
+    const [dashboardConfig, setDashboardConfig] = useState<DashboardConfig | null>(null);
+
+    // Step 5: First account
     const [accountName, setAccountName] = useState("");
     const [accountType, setAccountType] = useState("CHECKING");
     const [balance, setBalance] = useState("");
-    const startedAtRef = useRef<number>(Date.now());
 
-    const totalSteps = 4;
+    const startedAtRef = useRef<number>(Date.now());
+    const totalSteps = 6;
 
     useEffect(() => {
         void trackClientEvent({
@@ -46,18 +99,24 @@ export default function OnboardingPage() {
         });
     }, []);
 
+    // Generate dashboard config when purpose is selected and we reach step 4
+    useEffect(() => {
+        if (step === 4 && purpose && !dashboardConfig) {
+            setDashboardConfig(getDefaultConfig(purpose as AppPurpose));
+        }
+    }, [step, purpose, dashboardConfig]);
+
     const nextStep = () => {
-        // Basic validation
         if (step === 1 && !purpose) {
             toast.error("Elige un objetivo para continuar.");
             return;
         }
-        if (step === 2 && (!income || !expenses)) {
-            toast.error("Ingresa tus ingresos y gastos estimados.");
+        if (step === 2 && !fullName) {
+            toast.error("Ingresa tu nombre.");
             return;
         }
-        if (step === 3 && !fullName) {
-            toast.error("Ingresa tu nombre.");
+        if (step === 3 && (!income || !expenses)) {
+            toast.error("Ingresa tus ingresos y gastos estimados.");
             return;
         }
         void trackClientEvent({
@@ -95,9 +154,10 @@ export default function OnboardingPage() {
                     name: accountName,
                     account_type: accountType,
                     current_balance: parseFloat(balance) || 0,
-                }
+                },
+                dashboardConfig,
             );
-            toast.success("Configuracion completada");
+            toast.success("Configuración completada");
             void trackClientEvent({
                 event_name: "onboarding_completed",
                 flow: "onboarding",
@@ -107,10 +167,8 @@ export default function OnboardingPage() {
                 duration_ms: Date.now() - startedAtRef.current,
                 metadata: { total_steps: totalSteps },
             });
-            setStep(5);
-            setTimeout(() => {
-                router.push("/dashboard");
-            }, 1500);
+            // Go to quick win step
+            setStep(6);
         } catch (error) {
             void trackClientEvent({
                 event_name: "onboarding_completed",
@@ -121,17 +179,39 @@ export default function OnboardingPage() {
                 duration_ms: Date.now() - startedAtRef.current,
                 error_code: "finish_onboarding_failed",
             });
-            toast.error(error instanceof Error ? error.message : "Ocurrio un error inesperado");
+            toast.error(error instanceof Error ? error.message : "Ocurrió un error inesperado");
         } finally {
             setLoading(false);
         }
     };
 
+    function swapTab(position: 2 | 3) {
+        if (!dashboardConfig) return;
+        const current = dashboardConfig.tabs.find(t => t.position === position);
+        // Get available options not already in use
+        const usedIds = new Set(dashboardConfig.tabs.map(t => t.id));
+        const available = TAB_OPTIONS.filter(t => !usedIds.has(t.id));
+        if (available.length === 0) return;
+
+        // Cycle to next option
+        const currentIdx = TAB_OPTIONS.findIndex(t => t.id === current?.id);
+        let nextIdx = (currentIdx + 1) % TAB_OPTIONS.length;
+        while (usedIds.has(TAB_OPTIONS[nextIdx].id) && nextIdx !== currentIdx) {
+            nextIdx = (nextIdx + 1) % TAB_OPTIONS.length;
+        }
+        const next = { ...TAB_OPTIONS[nextIdx], position };
+
+        setDashboardConfig({
+            ...dashboardConfig,
+            tabs: dashboardConfig.tabs.map(t => t.position === position ? next : t),
+        });
+    }
+
     const purposes = [
         { id: "manage_debt", label: "Salir de deudas", icon: Target },
         { id: "track_spending", label: "Entender mis gastos", icon: Wallet },
         { id: "save_money", label: "Ahorrar para una meta", icon: PiggyBank },
-        { id: "improve_habits", label: "Mejorar habitos financieros", icon: TrendingUp },
+        { id: "improve_habits", label: "Mejorar hábitos financieros", icon: TrendingUp },
     ];
 
     const incomeNumber = parseFloat(income) || 0;
@@ -139,9 +219,11 @@ export default function OnboardingPage() {
     const availableToBudget = Math.max(incomeNumber - expensesNumber, 0);
     const progressStep = Math.min(step, totalSteps);
 
+    const quickWin = QUICK_WIN[purpose] ?? QUICK_WIN.track_spending;
+
     return (
         <div className="mx-auto w-full max-w-lg">
-            {step <= totalSteps && (
+            {step <= totalSteps && step < 6 && (
                 <div className="mb-4 rounded-xl border bg-card/80 p-4">
                     <div className="mb-2 flex items-center justify-between text-sm">
                         <span className="font-medium text-muted-foreground">Onboarding Zeta</span>
@@ -156,6 +238,7 @@ export default function OnboardingPage() {
                 </div>
             )}
             <AnimatePresence mode="wait">
+                {/* Step 1: Objetivo (unchanged) */}
                 {step === 1 && (
                     <motion.div
                         key="step1"
@@ -166,7 +249,7 @@ export default function OnboardingPage() {
                         <Card className="border-border">
                             <CardHeader>
                                 <CardTitle className="text-2xl">Bienvenido a Zeta</CardTitle>
-                                <CardDescription>Antes de arrancar, cuentanos que quieres lograr.</CardDescription>
+                                <CardDescription>Antes de arrancar, cuéntanos qué quieres lograr.</CardDescription>
                             </CardHeader>
                             <CardContent className="grid gap-4">
                                 {purposes.map((p) => {
@@ -175,8 +258,7 @@ export default function OnboardingPage() {
                                         <button
                                             key={p.id}
                                             onClick={() => setPurpose(p.id)}
-                                            className={`flex items-center gap-4 rounded-lg border p-4 transition-all hover:bg-muted ${purpose === p.id ? "border-primary bg-primary/10" : ""
-                                                }`}
+                                            className={`flex items-center gap-4 rounded-lg border p-4 transition-all hover:bg-muted ${purpose === p.id ? "border-primary bg-primary/10" : ""}`}
                                         >
                                             <div className="rounded-full bg-muted p-2 text-primary">
                                                 <Icon size={24} />
@@ -188,7 +270,7 @@ export default function OnboardingPage() {
                             </CardContent>
                             <CardFooter className="flex justify-between border-t p-6">
                                 <Button variant="ghost" disabled>
-                                    Atras
+                                    Atrás
                                 </Button>
                                 <Button onClick={nextStep} disabled={!purpose}>
                                     Siguiente <ArrowRight className="ml-2 h-4 w-4" />
@@ -198,6 +280,7 @@ export default function OnboardingPage() {
                     </motion.div>
                 )}
 
+                {/* Step 2: Perfil (was step 3) */}
                 {step === 2 && (
                     <motion.div
                         key="step2"
@@ -207,9 +290,60 @@ export default function OnboardingPage() {
                     >
                         <Card className="border-border">
                             <CardHeader>
+                                <CardTitle className="text-2xl">Tu perfil</CardTitle>
+                                <CardDescription>Personaliza cómo quieres ver tu dinero.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="grid gap-6">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="fullName">Nombre completo</Label>
+                                    <Input
+                                        id="fullName"
+                                        placeholder="Ej: María Pérez"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="currency">Moneda preferida</Label>
+                                    <Select value={currency} onValueChange={setCurrency}>
+                                        <SelectTrigger id="currency">
+                                            <SelectValue placeholder="Selecciona una moneda" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="USD">USD ($)</SelectItem>
+                                            <SelectItem value="EUR">EUR (€)</SelectItem>
+                                            <SelectItem value="COP">COP ($)</SelectItem>
+                                            <SelectItem value="MXN">MXN ($)</SelectItem>
+                                            <SelectItem value="BRL">BRL (R$)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </CardContent>
+                            <CardFooter className="flex justify-between border-t p-6">
+                                <Button variant="ghost" onClick={prevStep}>
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
+                                </Button>
+                                <Button onClick={nextStep} disabled={!fullName}>
+                                    Siguiente <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    </motion.div>
+                )}
+
+                {/* Step 3: Finanzas (was step 2, enhanced) */}
+                {step === 3 && (
+                    <motion.div
+                        key="step3"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                    >
+                        <Card className="border-border">
+                            <CardHeader>
                                 <CardTitle className="text-2xl">Pulso mensual</CardTitle>
                                 <CardDescription>
-                                    Arranquemos con una estimacion rapida de tus ingresos y gastos.
+                                    Arranquemos con una estimación rápida de tus ingresos y gastos.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="grid gap-6">
@@ -235,14 +369,34 @@ export default function OnboardingPage() {
                                     <div className="rounded-lg border bg-muted/30 p-3 text-sm">
                                         <p className="font-medium">Disponible para presupuesto: {availableToBudget.toLocaleString()}</p>
                                         <p className="text-muted-foreground">
-                                            Esta referencia nos ayuda a sugerirte limites de gasto desde el dia 1.
+                                            Esta referencia nos ayuda a sugerirte límites de gasto desde el día 1.
                                         </p>
+                                    </div>
+                                )}
+                                {/* Enhanced: debt count for manage_debt users */}
+                                {purpose === "manage_debt" && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="debtCount">¿Cuántas tarjetas de crédito o préstamos tienes?</Label>
+                                        <Input
+                                            id="debtCount"
+                                            type="number"
+                                            min="0"
+                                            max="20"
+                                            placeholder="Ej: 3"
+                                            value={debtCount}
+                                            onChange={(e) => setDebtCount(e.target.value)}
+                                        />
+                                        {debtCount && parseInt(debtCount) > 0 && (
+                                            <p className="text-sm text-z-income">
+                                                Perfecto, Zeta te ayudará a organizar tus {debtCount} deudas.
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </CardContent>
                             <CardFooter className="flex justify-between border-t p-6">
                                 <Button variant="ghost" onClick={prevStep}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atras
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
                                 </Button>
                                 <Button onClick={nextStep} disabled={!income || !expenses}>
                                     Siguiente <ArrowRight className="ml-2 h-4 w-4" />
@@ -252,49 +406,85 @@ export default function OnboardingPage() {
                     </motion.div>
                 )}
 
-                {step === 3 && (
+                {/* Step 4: Tu app — tab preview (NEW) */}
+                {step === 4 && dashboardConfig && (
                     <motion.div
-                        key="step3"
+                        key="step4"
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
                     >
                         <Card className="border-border">
                             <CardHeader>
-                                <CardTitle className="text-2xl">Tu perfil</CardTitle>
-                                <CardDescription>Personaliza como quieres ver tu dinero.</CardDescription>
+                                <CardTitle className="text-2xl">Tu app</CardTitle>
+                                <CardDescription>
+                                    Basado en tu objetivo, así se ve tu Zeta. Toca las pestañas para cambiarlas.
+                                </CardDescription>
                             </CardHeader>
-                            <CardContent className="grid gap-6">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="fullName">Nombre completo</Label>
-                                    <Input
-                                        id="fullName"
-                                        placeholder="Ej: Maria Perez"
-                                        value={fullName}
-                                        onChange={(e) => setFullName(e.target.value)}
-                                    />
+                            <CardContent>
+                                {/* Phone mockup */}
+                                <div className="mx-auto w-64 rounded-2xl border-2 border-border bg-z-ink p-3">
+                                    {/* Screen content placeholder */}
+                                    <div className="h-48 rounded-xl bg-z-surface flex items-center justify-center">
+                                        <p className="text-sm text-muted-foreground">Tu dashboard</p>
+                                    </div>
+                                    {/* Tab bar mockup */}
+                                    <div className="mt-3 flex items-center justify-around rounded-xl bg-z-surface-2 p-2">
+                                        {/* Tab 1: fixed */}
+                                        <div className="flex flex-col items-center gap-0.5">
+                                            <LayoutDashboard className="size-4 text-primary" />
+                                            <span className="text-[9px] font-bold text-primary">Inicio</span>
+                                        </div>
+                                        {/* Tab 2: tappable */}
+                                        <button
+                                            type="button"
+                                            onClick={() => swapTab(2)}
+                                            className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1 hover:bg-z-surface-3 transition-colors"
+                                        >
+                                            {(() => {
+                                                const tab = dashboardConfig.tabs.find(t => t.position === 2);
+                                                const Icon = ICON_MAP[tab?.icon ?? "PiggyBank"] ?? PiggyBank;
+                                                return (
+                                                    <>
+                                                        <Icon className="size-4 text-muted-foreground" />
+                                                        <span className="text-[9px] text-muted-foreground">{tab?.label ?? "?"}</span>
+                                                    </>
+                                                );
+                                            })()}
+                                        </button>
+                                        {/* Tab 3: tappable */}
+                                        <button
+                                            type="button"
+                                            onClick={() => swapTab(3)}
+                                            className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1 hover:bg-z-surface-3 transition-colors"
+                                        >
+                                            {(() => {
+                                                const tab = dashboardConfig.tabs.find(t => t.position === 3);
+                                                const Icon = ICON_MAP[tab?.icon ?? "PiggyBank"] ?? PiggyBank;
+                                                return (
+                                                    <>
+                                                        <Icon className="size-4 text-muted-foreground" />
+                                                        <span className="text-[9px] text-muted-foreground">{tab?.label ?? "?"}</span>
+                                                    </>
+                                                );
+                                            })()}
+                                        </button>
+                                        {/* Tab 4: fixed */}
+                                        <div className="flex flex-col items-center gap-0.5">
+                                            <Menu className="size-4 text-muted-foreground" />
+                                            <span className="text-[9px] text-muted-foreground">Más</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="currency">Moneda preferida</Label>
-                                    <Select value={currency} onValueChange={setCurrency}>
-                                        <SelectTrigger id="currency">
-                                            <SelectValue placeholder="Selecciona una moneda" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="USD">USD ($)</SelectItem>
-                                            <SelectItem value="EUR">EUR (€)</SelectItem>
-                                            <SelectItem value="COP">COP ($)</SelectItem>
-                                            <SelectItem value="MXN">MXN ($)</SelectItem>
-                                            <SelectItem value="BRL">BRL (R$)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <p className="text-xs text-muted-foreground text-center mt-4">
+                                    Toca las pestañas del centro para explorar opciones
+                                </p>
                             </CardContent>
                             <CardFooter className="flex justify-between border-t p-6">
                                 <Button variant="ghost" onClick={prevStep}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atras
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
                                 </Button>
-                                <Button onClick={nextStep} disabled={!fullName}>
+                                <Button onClick={nextStep}>
                                     Siguiente <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </CardFooter>
@@ -302,9 +492,10 @@ export default function OnboardingPage() {
                     </motion.div>
                 )}
 
-                {step === 4 && (
+                {/* Step 5: Primera cuenta (was step 4) */}
+                {step === 5 && (
                     <motion.div
-                        key="step4"
+                        key="step5"
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
@@ -335,7 +526,7 @@ export default function OnboardingPage() {
                                         <SelectContent>
                                             <SelectItem value="CHECKING">Corriente</SelectItem>
                                             <SelectItem value="SAVINGS">Ahorros</SelectItem>
-                                            <SelectItem value="CREDIT_CARD">Tarjeta de credito</SelectItem>
+                                            <SelectItem value="CREDIT_CARD">Tarjeta de crédito</SelectItem>
                                             <SelectItem value="CASH">Efectivo</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -352,7 +543,7 @@ export default function OnboardingPage() {
                             </CardContent>
                             <CardFooter className="flex justify-between border-t p-6">
                                 <Button variant="ghost" onClick={prevStep} disabled={loading}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atras
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
                                 </Button>
                                 <Button onClick={onSubmit} disabled={loading || !accountName || !balance}>
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -363,22 +554,41 @@ export default function OnboardingPage() {
                     </motion.div>
                 )}
 
-                {step === 5 && (
+                {/* Step 6: Quick win (NEW) */}
+                {step === 6 && (
                     <motion.div
-                        key="step5"
+                        key="step6"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                     >
-                        <Card className="border-border text-center pb-8 border-transparent shadow-none bg-transparent">
-                            <CardHeader>
-                                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-500/10 text-green-500">
-                                    <CheckCircle2 size={48} />
+                        <Card className="border-border">
+                            <CardHeader className="text-center">
+                                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-z-income/10 text-z-income">
+                                    <CheckCircle2 size={40} />
                                 </div>
-                                <CardTitle className="text-3xl">Listo, {fullName.split(" ")[0] || "vamos"}.</CardTitle>
-                                <CardDescription className="text-lg mt-2">
-                                    Preparando tu dashboard de Zeta...
+                                <CardTitle className="text-2xl">Listo, {fullName.split(" ")[0] || "vamos"}!</CardTitle>
+                                <CardDescription className="text-base mt-1">
+                                    Tu Zeta está configurado. ¿Qué quieres hacer primero?
                                 </CardDescription>
                             </CardHeader>
+                            <CardContent className="grid gap-3">
+                                <Button
+                                    size="lg"
+                                    className="w-full gap-2"
+                                    onClick={() => router.push(quickWin.href)}
+                                >
+                                    <quickWin.icon className="h-5 w-5" />
+                                    {quickWin.label}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="lg"
+                                    className="w-full"
+                                    onClick={() => router.push("/dashboard")}
+                                >
+                                    Explorar primero
+                                </Button>
+                            </CardContent>
                         </Card>
                     </motion.div>
                 )}
