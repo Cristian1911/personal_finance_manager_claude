@@ -3,16 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ArrowLeftRight,
+  CreditCard,
   LayoutDashboard,
-  Repeat2,
+  Menu,
   PiggyBank,
-  Wrench,
+  Repeat2,
+  TrendingDown,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { TabConfig } from "@/types/dashboard-config";
 
 interface BottomTabBarProps {
   uncategorizedCount?: number;
+  tabConfig?: TabConfig[];
 }
 
 type Tab = {
@@ -20,21 +25,70 @@ type Tab = {
   href: string;
   icon: LucideIcon;
   badge?: "uncategorized";
-  position: "left" | "right";
 };
 
-const TABS: Tab[] = [
-  { title: "Inicio", href: "/dashboard", icon: LayoutDashboard, position: "left" },
-  { title: "Recurrentes", href: "/recurrentes", icon: Repeat2, position: "left" },
-  { title: "Presupuesto", href: "/categories", icon: PiggyBank, badge: "uncategorized", position: "right" },
-  { title: "Gestionar", href: "/gestionar", icon: Wrench, position: "right" },
-];
+const ICON_MAP: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  CreditCard,
+  PiggyBank,
+  ArrowLeftRight,
+  Repeat2,
+  TrendingDown,
+  Menu,
+};
 
-export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
+/** Map TabConfig.features to a route */
+function featuresToHref(features: string[]): string {
+  const key = features.sort().join("+");
+  const map: Record<string, string> = {
+    "debt+recurring": "/deudas",
+    budget: "/categories",
+    transactions: "/transactions",
+    "budget+transactions": "/categories",
+    "budget+savings": "/categories",
+    recurring: "/recurrentes",
+  };
+  return map[key] ?? "/categories";
+}
+
+function buildTabs(tabConfig?: TabConfig[]): { left: Tab[]; right: Tab[] } {
+  const tab1: Tab = { title: "Inicio", href: "/dashboard", icon: LayoutDashboard };
+
+  const tab4: Tab = { title: "Más", href: "/gestionar", icon: Menu };
+
+  if (!tabConfig || tabConfig.length === 0) {
+    // Fallback: default tab bar
+    return {
+      left: [tab1, { title: "Recurrentes", href: "/recurrentes", icon: Repeat2 }],
+      right: [{ title: "Presupuesto", href: "/categories", icon: PiggyBank, badge: "uncategorized" }, tab4],
+    };
+  }
+
+  const sorted = [...tabConfig].sort((a, b) => a.position - b.position);
+
+  const dynamicTabs: Tab[] = sorted.map((tc) => {
+    const hasBudget = tc.features.includes("budget");
+    return {
+      title: tc.label,
+      href: featuresToHref(tc.features),
+      icon: ICON_MAP[tc.icon] ?? PiggyBank,
+      badge: hasBudget ? "uncategorized" : undefined,
+    };
+  });
+
+  // Tab 2 goes left, Tab 3 goes right
+  const tab2 = dynamicTabs[0];
+  const tab3 = dynamicTabs[1];
+
+  return {
+    left: [tab1, ...(tab2 ? [tab2] : [])],
+    right: [...(tab3 ? [tab3] : []), tab4],
+  };
+}
+
+export function BottomTabBar({ uncategorizedCount = 0, tabConfig }: BottomTabBarProps) {
   const pathname = usePathname();
-
-  const leftTabs = TABS.filter((t) => t.position === "left");
-  const rightTabs = TABS.filter((t) => t.position === "right");
+  const { left, right } = buildTabs(tabConfig);
 
   function renderTab(tab: Tab) {
     const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
@@ -78,13 +132,13 @@ export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
     >
       <div className="flex h-14">
         {/* Left tabs */}
-        {leftTabs.map(renderTab)}
+        {left.map(renderTab)}
 
         {/* Center gap for FAB */}
         <div className="w-16 shrink-0" />
 
         {/* Right tabs */}
-        {rightTabs.map(renderTab)}
+        {right.map(renderTab)}
       </div>
     </nav>
   );

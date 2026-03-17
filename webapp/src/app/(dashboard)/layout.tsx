@@ -10,6 +10,8 @@ import { MobileTopbar } from "@/components/mobile/mobile-topbar";
 import { BottomTabBar } from "@/components/mobile/bottom-tab-bar";
 import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
 import { PageTransition } from "@/components/ui/page-transition";
+import type { TabConfig } from "@/types/dashboard-config";
+import { getDefaultConfigForProfile } from "@/lib/dashboard-config-defaults";
 
 export default async function DashboardLayout({
   children,
@@ -47,6 +49,12 @@ export default async function DashboardLayout({
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
 
+  // Dashboard config: use DB value or fall back to purpose-driven defaults
+  const dashboardConfig = profile.dashboard_config
+    ? (profile.dashboard_config as unknown as { tabs: TabConfig[] })
+    : getDefaultConfigForProfile(profile.app_purpose);
+  const tabConfig = dashboardConfig.tabs;
+
   return (
     <div className="flex min-h-screen">
       <Sidebar uncategorizedCount={uncategorizedCount} />
@@ -67,7 +75,7 @@ export default async function DashboardLayout({
         </main>
 
         {/* Mobile bottom navigation */}
-        <BottomTabBar uncategorizedCount={uncategorizedCount} />
+        <BottomTabBar uncategorizedCount={uncategorizedCount} tabConfig={tabConfig} />
       </div>
     </div>
   );

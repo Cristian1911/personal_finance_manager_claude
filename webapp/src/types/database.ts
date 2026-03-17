@@ -586,6 +586,7 @@ export type Database = {
           app_purpose: string | null
           avatar_url: string | null
           created_at: string
+          dashboard_config: Json | null
           email: string
           estimated_monthly_expenses: number | null
           estimated_monthly_income: number | null
@@ -602,6 +603,7 @@ export type Database = {
           app_purpose?: string | null
           avatar_url?: string | null
           created_at?: string
+          dashboard_config?: Json | null
           email: string
           estimated_monthly_expenses?: number | null
           estimated_monthly_income?: number | null
@@ -618,6 +620,7 @@ export type Database = {
           app_purpose?: string | null
           avatar_url?: string | null
           created_at?: string
+          dashboard_config?: Json | null
           email?: string
           estimated_monthly_expenses?: number | null
           estimated_monthly_income?: number | null
