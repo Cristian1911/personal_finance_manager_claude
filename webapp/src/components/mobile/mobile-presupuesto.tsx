@@ -7,6 +7,7 @@ import { categorizeTransaction } from "@/actions/categorize";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
 import { formatDate } from "@/lib/utils/date";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
@@ -22,6 +23,7 @@ import {
   PlusCircle,
   Tag,
 } from "lucide-react";
+import { StaggerList, StaggerItem } from "./motion";
 import type { CategoryBudgetData, CategoryWithChildren, TransactionWithRelations } from "@/types/domain";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -89,9 +91,13 @@ export function MobilePresupuesto({
           <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Con presupuesto
           </h3>
-          {activeBudgets.map((cat) => (
-            <BudgetRow key={cat.id} category={cat} />
-          ))}
+          <StaggerList className="space-y-3">
+            {activeBudgets.map((cat) => (
+              <StaggerItem key={cat.id}>
+                <BudgetRow category={cat} />
+              </StaggerItem>
+            ))}
+          </StaggerList>
         </div>
       )}
 
@@ -116,6 +122,8 @@ export function MobilePresupuesto({
             type="button"
             onClick={() => setInboxExpanded(!inboxExpanded)}
             className="flex w-full items-center gap-2 mb-2"
+            aria-label={`${visibleInbox.length} transacciones sin categoría`}
+            aria-expanded={inboxExpanded}
           >
             <AlertTriangle className="size-4 text-z-alert" />
             <span className="text-sm font-semibold">
@@ -129,8 +137,9 @@ export function MobilePresupuesto({
           </button>
 
           {inboxExpanded && (
-            <div className="rounded-lg border p-3 space-y-2">
+            <StaggerList className="rounded-lg border p-3 space-y-2">
               {visibleInbox.map((tx) => (
+                <StaggerItem key={tx.id}>
                 <InboxRow
                   key={tx.id}
                   transaction={tx}
@@ -142,8 +151,9 @@ export function MobilePresupuesto({
                     setExpandedTxId(expandedTxId === tx.id ? null : tx.id)
                   }
                 />
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerList>
           )}
         </div>
       )}
@@ -318,9 +328,13 @@ function BudgetRow({ category }: { category: CategoryBudgetData }) {
             {category.name_es ?? category.name}
           </span>
         </div>
-        <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-          {formatCurrency(category.spent)} / {formatCurrency(category.budget!)}
-        </span>
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          {percent > 90 && <AlertTriangle className="size-3.5 text-z-debt" />}
+          {percent >= 70 && percent <= 90 && <AlertCircle className="size-3.5 text-z-expense" />}
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {formatCurrency(category.spent)} / {formatCurrency(category.budget!)}
+          </span>
+        </div>
       </div>
       <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
         <div

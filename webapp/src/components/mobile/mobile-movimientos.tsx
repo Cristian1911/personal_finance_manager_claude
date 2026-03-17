@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { StaggerList, StaggerItem, FadeIn } from "./motion";
 import type {
   Transaction,
   Category,
@@ -126,6 +127,7 @@ export function MobileMovimientos({
   return (
     <div className="space-y-5">
       {/* Summary header */}
+      <FadeIn>
       <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center gap-6">
           <div>
@@ -144,29 +146,34 @@ export function MobileMovimientos({
 
         {/* Category chips — horizontally scrollable */}
         {categoryChips.length > 0 && (
-          <div
-            className="mt-3 -mx-4 px-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"
-          >
-            {categoryChips.map((chip) => (
-              <span
-                key={chip.id}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
-              >
+          <div className="relative mt-3 -mx-4">
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-card to-transparent z-10" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-card to-transparent z-10" />
+            <div
+              className="px-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"
+            >
+              {categoryChips.map((chip) => (
                 <span
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: chip.color }}
-                />
-                {chip.name} {formatCurrency(chip.total, currency)}
-              </span>
-            ))}
+                  key={chip.id}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: chip.color }}
+                  />
+                  {chip.name} {formatCurrency(chip.total, currency)}
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>
+      </FadeIn>
 
       {/* Date-grouped transaction feed */}
-      <div className="space-y-4">
+      <StaggerList className="space-y-4">
         {groupedByDate.map(([date, txs]) => (
-          <div key={date}>
+          <StaggerItem key={date}>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
               {formatDate(date, "EEEE, dd MMM")}
             </p>
@@ -220,9 +227,9 @@ export function MobileMovimientos({
                 );
               })}
             </div>
-          </div>
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerList>
     </div>
   );
 }

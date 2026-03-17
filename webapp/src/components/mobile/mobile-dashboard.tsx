@@ -11,6 +11,7 @@ import {
   CalendarClock,
   CircleAlert,
 } from "lucide-react";
+import { StaggerList, StaggerItem, FadeIn } from "./motion";
 import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 import type { BurnRateResponse } from "@/actions/burn-rate";
@@ -54,23 +55,25 @@ export function MobileDashboard({
   return (
     <div className="space-y-5">
       {/* 1. Hero card */}
-      <div className="rounded-xl border bg-card p-5">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Disponible para gastar
-        </p>
-        <p
-          className={cn(
-            "text-3xl font-bold mt-1",
-            heroData.availableToSpend < 0 && "text-z-debt"
-          )}
-        >
-          {formatCurrency(heroData.availableToSpend, code)}
-        </p>
-        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-          <span>Saldo: {formatCurrency(heroData.totalBalance, code)}</span>
-          <span>Fijos: {formatCurrency(heroData.pendingFixed, code)}</span>
+      <FadeIn>
+        <div className="rounded-xl border bg-card p-5">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Disponible para gastar
+          </p>
+          <p
+            className={cn(
+              "text-3xl font-bold mt-1",
+              heroData.availableToSpend < 0 && "text-z-debt"
+            )}
+          >
+            {formatCurrency(heroData.availableToSpend, code)}
+          </p>
+          <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+            <span>Saldo: {formatCurrency(heroData.totalBalance, code)}</span>
+            <span>Fijos: {formatCurrency(heroData.pendingFixed, code)}</span>
+          </div>
         </div>
-      </div>
+      </FadeIn>
 
       {/* 1.5. Burn Rate Card */}
       {burnRateData ? (
@@ -95,14 +98,14 @@ export function MobileDashboard({
               <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="rounded-xl border divide-y">
+          <StaggerList className="rounded-xl border divide-y">
             {upcomingPayments.slice(0, 5).map((payment) => {
               const isOverdue = payment.dueDate < today;
               const isToday = payment.dueDate === today;
 
               return (
+                <StaggerItem key={payment.id}>
                 <Link
-                  key={payment.id}
                   href="/recurrentes"
                   className={cn(
                     "flex items-center justify-between px-4 py-3.5 active:bg-muted transition-colors",
@@ -144,9 +147,10 @@ export function MobileDashboard({
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </Link>
+                </StaggerItem>
               );
             })}
-          </div>
+          </StaggerList>
         </div>
       )}
 
@@ -165,8 +169,9 @@ export function MobileDashboard({
               <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-0.5">
+          <StaggerList className="space-y-0.5">
             {recentTransactions.slice(0, 3).map((tx) => (
+              <StaggerItem key={tx.id}>
               <Link
                 key={tx.id}
                 href={`/transactions/${tx.id}`}
@@ -193,8 +198,9 @@ export function MobileDashboard({
                   )}
                 </span>
               </Link>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
         </div>
       )}
     </div>
