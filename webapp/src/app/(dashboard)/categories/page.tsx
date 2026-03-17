@@ -8,10 +8,13 @@ import { BudgetSummaryBar } from "@/components/budget/budget-summary-bar";
 import { BudgetCategoryGrid } from "@/components/budget/budget-category-grid";
 import { TrendComparison } from "@/components/budget/trend-comparison";
 import { CategoryManageList } from "@/components/budget/category-manage-list";
+import { MonthEndInsight } from "@/components/budget/month-end-insight";
 import { MobilePresupuesto } from "@/components/mobile/mobile-presupuesto";
+import { MonthPlanner } from "@/components/budget/month-planner";
 import { MonthSelector } from "@/components/month-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
+import { getPreferredCurrency } from "@/actions/profile";
 
 export default async function CategoriesPage({
   searchParams,
@@ -20,9 +23,10 @@ export default async function CategoriesPage({
 }) {
   const { month } = await searchParams;
   const selectedMonth = parseMonth(month);
+  const currency = await getPreferredCurrency();
 
   const [result, manageResult, uncategorized, categoryTreeResult] = await Promise.all([
-    getCategoriesWithBudgetData(month),
+    getCategoriesWithBudgetData(month, currency),
     getAllCategoriesForManagement(),
     getUncategorizedTransactions(),
     getCategories(),
@@ -42,7 +46,10 @@ export default async function CategoriesPage({
           <h1 className="text-2xl font-bold">Presupuesto</h1>
           <p className="text-muted-foreground">¿Cómo vas este mes?</p>
         </div>
-        <MonthSelector />
+        <div className="flex items-center gap-2">
+          <MonthPlanner categories={outflowCategories} />
+          <MonthSelector />
+        </div>
       </div>
 
       {/* Mobile view */}
@@ -61,6 +68,8 @@ export default async function CategoriesPage({
           daysRemaining={daysRemaining}
           monthLabel={monthLabel}
         />
+
+        <MonthEndInsight categories={outflowCategories} daysRemaining={daysRemaining} />
 
         <Tabs defaultValue="presupuesto">
           <TabsList>

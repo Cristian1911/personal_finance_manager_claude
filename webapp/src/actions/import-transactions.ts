@@ -48,7 +48,7 @@ const IMPORT_DETAIL_MESSAGES = {
     `Cuenta ${accountId}: ${label} ${rate}% E.A. fuera de rango (${minRate}%-${maxRate}%). Se ignora.`,
 } as const;
 
-import { sanitizeInterestRate, mvToEaPercent } from "@zeta/shared";
+import { sanitizeInterestRate, mvToEaPercent, MV_THRESHOLD } from "@zeta/shared";
 
 function sanitizeEaRate(
   rawRate: number | null | undefined,
@@ -61,7 +61,7 @@ function sanitizeEaRate(
 
   // Log conversion if rate looks monthly
   const accountType = kind === "credit_card" ? "CREDIT_CARD" : "LOAN";
-  const mvThreshold = kind === "credit_card" ? 6 : 3;
+  const mvThreshold = MV_THRESHOLD[accountType];
   if (rawRate < mvThreshold) {
     const converted = mvToEaPercent(rawRate);
     details.push(IMPORT_DETAIL_MESSAGES.monthlyToAnnual(accountId, label, rawRate, converted));

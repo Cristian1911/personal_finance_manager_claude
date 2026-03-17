@@ -119,7 +119,7 @@ function computeDebtFromCurrencyBalance(cb: CurrencyBalance): number {
 }
 
 // Rates below these thresholds are almost certainly monthly (MV), not annual (EA).
-const MV_THRESHOLD = { CREDIT_CARD: 6, LOAN: 3 } as const;
+export const MV_THRESHOLD = { CREDIT_CARD: 6, LOAN: 3 } as const;
 const MIN_EA_RATE = { CREDIT_CARD: 10, LOAN: 3 } as const;
 const MAX_EA_RATE = 150;
 

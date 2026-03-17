@@ -38,6 +38,56 @@ export type TransactionPreview = {
   account_name: string;
 };
 
+// ─── testDestinatarioPattern ──────────────────────────────────────────────────
+
+export interface PatternTestResult {
+  matchCount: number;
+  samples: { id: string; rawDescription: string; date: string; amount: number }[];
+}
+
+export async function testDestinatarioPattern(
+  pattern: string,
+  matchType: "contains" | "exact"
+): Promise<ActionResult<PatternTestResult>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Use server-side filtering via ilike instead of fetching 1000 rows
+  let query = supabase
+    .from("transactions")
+    .select("id, raw_description, transaction_date, amount")
+    .eq("user_id", user.id)
+    .is("destinatario_id", null)
+    .not("raw_description", "is", null);
+
+  if (matchType === "exact") {
+    query = query.ilike("raw_description", pattern);
+  } else {
+    query = query.ilike("raw_description", `%${pattern}%`);
+  }
+
+  const { data, error, count } = await query
+    .order("transaction_date", { ascending: false })
+    .limit(5);
+
+  if (error) return { success: false, error: error.message };
+
+  const matches = data ?? [];
+
+  return {
+    success: true,
+    data: {
+      matchCount: matches.length,
+      samples: matches.map((tx) => ({
+        id: tx.id,
+        rawDescription: tx.raw_description!,
+        date: tx.transaction_date,
+        amount: tx.amount,
+      })),
+    },
+  };
+}
+
 // ─── getDestinatarios ─────────────────────────────────────────────────────────
 
 export async function getDestinatarios(): Promise<
@@ -304,11 +354,15 @@ export async function mergeDestinatarios(
 
 // ─── addDestinatarioRule ──────────────────────────────────────────────────────
 
+export type AddRuleResult = ActionResult<DestinatarioRuleRow> & {
+  conflicts?: { pattern: string; destinatarioId: string }[];
+};
+
 export async function addDestinatarioRule(
   destinatarioId: string,
-  _prevState: ActionResult<DestinatarioRuleRow>,
+  _prevState: AddRuleResult,
   formData: FormData
-): Promise<ActionResult<DestinatarioRuleRow>> {
+): Promise<AddRuleResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -320,6 +374,21 @@ export async function addDestinatarioRule(
 
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  // Check for conflicting patterns
+  const { data: existingRules } = await supabase
+    .from("destinatario_rules")
+    .select("pattern, destinatario_id")
+    .eq("user_id", user.id);
+
+  const newPatternLower = parsed.data.pattern.toLowerCase();
+  const conflicts: { pattern: string; destinatarioId: string }[] = [];
+  for (const rule of existingRules ?? []) {
+    const existingLower = rule.pattern.toLowerCase();
+    if (existingLower.includes(newPatternLower) || newPatternLower.includes(existingLower)) {
+      conflicts.push({ pattern: rule.pattern, destinatarioId: rule.destinatario_id });
+    }
   }
 
   const { data, error } = await supabase
@@ -340,7 +409,7 @@ export async function addDestinatarioRule(
   }
 
   revalidatePath("/destinatarios");
-  return { success: true, data };
+  return { success: true, data, conflicts };
 }
 
 // ─── removeDestinatarioRule ───────────────────────────────────────────────────
@@ -403,6 +472,44 @@ export type DestinatarioSuggestionResult = {
   dateRange: { from: string; to: string };
   sampleTransactions: { date: string; rawDescription: string; amount: number }[];
 };
+
+function groupSuggestionsByPrefix(
+  suggestions: DestinatarioSuggestionResult[]
+): DestinatarioSuggestionResult[] {
+  if (suggestions.length <= 1) return suggestions;
+  const sorted = [...suggestions].sort((a, b) =>
+    a.cleanedPattern.localeCompare(b.cleanedPattern)
+  );
+  const groups: DestinatarioSuggestionResult[] = [];
+  let current = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    const next = sorted[i];
+    const tokensA = current.cleanedPattern.split(/\s+/);
+    const tokensB = next.cleanedPattern.split(/\s+/);
+    const common: string[] = [];
+    for (let j = 0; j < Math.min(tokensA.length, tokensB.length); j++) {
+      if (tokensA[j] === tokensB[j]) common.push(tokensA[j]);
+      else break;
+    }
+    if (common.length >= 2) {
+      current = {
+        cleanedPattern: common.join(" "),
+        count: current.count + next.count,
+        dateRange: {
+          from: current.dateRange.from < next.dateRange.from ? current.dateRange.from : next.dateRange.from,
+          to: current.dateRange.to > next.dateRange.to ? current.dateRange.to : next.dateRange.to,
+        },
+        sampleTransactions: [...current.sampleTransactions, ...next.sampleTransactions].slice(0, 5),
+      };
+    } else {
+      groups.push(current);
+      current = next;
+    }
+  }
+  groups.push(current);
+  groups.sort((a, b) => b.count - a.count);
+  return groups;
+}
 
 export async function getDestinatarioSuggestions(): Promise<
   ActionResult<DestinatarioSuggestionResult[]>
@@ -470,7 +577,10 @@ export async function getDestinatarioSuggestions(): Promise<
 
   suggestions.sort((a, b) => b.count - a.count);
 
-  return { success: true, data: suggestions.slice(0, 20) };
+  // Group related patterns by common prefix (e.g., "NEQUI PAGO" variants)
+  const grouped = groupSuggestionsByPrefix(suggestions);
+
+  return { success: true, data: grouped.slice(0, 20) };
 }
 
 // ─── getDestinatarioTransactions ──────────────────────────────────────────────

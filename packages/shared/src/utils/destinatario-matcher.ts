@@ -174,3 +174,62 @@ export function detectDestinatarioSuggestions(
 
   return suggestions;
 }
+
+// ─── groupByCommonPrefix ──────────────────────────────────────────────────────
+
+function getCommonPrefix(a: string, b: string): string {
+  const tokensA = a.split(/\s+/);
+  const tokensB = b.split(/\s+/);
+  const common: string[] = [];
+  for (let i = 0; i < Math.min(tokensA.length, tokensB.length); i++) {
+    if (tokensA[i] === tokensB[i]) {
+      common.push(tokensA[i]);
+    } else {
+      break;
+    }
+  }
+  return common.join(" ");
+}
+
+/**
+ * Group suggestions by longest common prefix (minimum 2 tokens).
+ * Merges "NEQUI PAGO", "NEQUI PAGO TRANSFERENCIAS", "NEQUI PAGO 1234"
+ * into one group with pattern "NEQUI PAGO" and combined count.
+ */
+export function groupByCommonPrefix(
+  suggestions: DestinatarioSuggestion[]
+): DestinatarioSuggestion[] {
+  if (suggestions.length <= 1) return suggestions;
+
+  const sorted = [...suggestions].sort((a, b) =>
+    a.cleanedPattern.localeCompare(b.cleanedPattern)
+  );
+
+  const groups: DestinatarioSuggestion[] = [];
+  let current = sorted[0];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const next = sorted[i];
+    const prefix = getCommonPrefix(current.cleanedPattern, next.cleanedPattern);
+    const prefixTokens = prefix.trim().split(/\s+/).filter(Boolean);
+
+    if (prefixTokens.length >= 2) {
+      current = {
+        cleanedPattern: prefix.trim(),
+        count: current.count + next.count,
+        rawDescriptions: [...current.rawDescriptions, ...next.rawDescriptions],
+        transactionPreviews: [
+          ...current.transactionPreviews,
+          ...next.transactionPreviews,
+        ].slice(0, 5),
+      };
+    } else {
+      groups.push(current);
+      current = next;
+    }
+  }
+  groups.push(current);
+
+  groups.sort((a, b) => b.count - a.count);
+  return groups;
+}

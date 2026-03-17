@@ -29,6 +29,8 @@ export type CategoryWithBudget = CategoryWithChildren & {
   childBudgetTotal: number; // Sum of children's monthly budgets (0 if none)
 };
 
+export type ExpenseType = "fixed" | "variable";
+
 export type CategoryBudgetData = {
   id: string;
   name: string;
@@ -39,6 +41,7 @@ export type CategoryBudgetData = {
   is_essential: boolean;
   is_active: boolean;
   direction: TransactionDirection;
+  expense_type: ExpenseType | null;
   budget: number | null;
   spent: number;
   committedRecurring: number;

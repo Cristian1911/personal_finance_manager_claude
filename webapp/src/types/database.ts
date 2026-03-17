@@ -242,6 +242,7 @@ export type Database = {
           created_at: string
           direction: Database["public"]["Enums"]["transaction_direction"] | null
           display_order: number
+          expense_type: string | null
           icon: string
           id: string
           is_active: boolean
@@ -261,6 +262,7 @@ export type Database = {
             | Database["public"]["Enums"]["transaction_direction"]
             | null
           display_order?: number
+          expense_type?: string | null
           icon?: string
           id?: string
           is_active?: boolean
@@ -280,6 +282,7 @@ export type Database = {
             | Database["public"]["Enums"]["transaction_direction"]
             | null
           display_order?: number
+          expense_type?: string | null
           icon?: string
           id?: string
           is_active?: boolean
@@ -398,6 +401,8 @@ export type Database = {
           created_at: string
           destinatario_id: string
           id: string
+          last_matched_at: string | null
+          match_count: number
           match_type: string
           pattern: string
           priority: number
@@ -407,6 +412,8 @@ export type Database = {
           created_at?: string
           destinatario_id: string
           id?: string
+          last_matched_at?: string | null
+          match_count?: number
           match_type?: string
           pattern: string
           priority?: number
@@ -416,6 +423,8 @@ export type Database = {
           created_at?: string
           destinatario_id?: string
           id?: string
+          last_matched_at?: string | null
+          match_count?: number
           match_type?: string
           pattern?: string
           priority?: number
@@ -485,6 +494,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      exchange_rate_cache: {
+        Row: {
+          avg_30d: number | null
+          fetched_at: string
+          pair: string
+          rate: number
+          rates_30d: Json
+        }
+        Insert: {
+          avg_30d?: number | null
+          fetched_at?: string
+          pair: string
+          rate: number
+          rates_30d?: Json
+        }
+        Update: {
+          avg_30d?: number | null
+          fetched_at?: string
+          pair?: string
+          rate?: number
+          rates_30d?: Json
+        }
+        Relationships: []
       }
       product_events: {
         Row: {

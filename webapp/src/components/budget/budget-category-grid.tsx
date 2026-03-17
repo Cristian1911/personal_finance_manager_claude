@@ -10,8 +10,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { upsertBudget } from "@/actions/budgets";
+import { updateCategoryExpenseType } from "@/actions/categories";
 import { BudgetCategoryCard } from "./budget-category-card";
 import type { CategoryBudgetData } from "@/types/domain";
+import type { ExpenseType } from "@/types/domain";
 
 interface BudgetCategoryGridProps {
   categories: CategoryBudgetData[];
@@ -22,12 +24,14 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
+  const [expenseType, setExpenseType] = useState<ExpenseType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   function handleSetBudget(categoryId: string) {
     const cat = categories.find((c) => c.id === categoryId);
     setAmount(cat?.budget ? cat.budget.toString() : "");
+    setExpenseType(cat?.expense_type ?? null);
     setSaveError(null);
     setEditingId(categoryId);
   }
@@ -42,15 +46,16 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
       formData.append("amount", amount);
       formData.append("period", "monthly");
 
-      const result = await upsertBudget({ success: false, error: "" }, formData);
-      if (result.success) {
+      const [budgetResult] = await Promise.all([
+        upsertBudget({ success: false, error: "" }, formData),
+        updateCategoryExpenseType(editingId, expenseType),
+      ]);
+      if (budgetResult.success) {
         setEditingId(null);
         setAmount("");
-        startTransition(() => {
-          router.refresh();
-        });
+        startTransition(() => router.refresh());
       } else {
-        setSaveError(result.error ?? "Error al guardar");
+        setSaveError(budgetResult.error ?? "Error al guardar");
       }
     } finally {
       setIsSaving(false);
@@ -91,6 +96,26 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
+              <div className="flex gap-1">
+                <Button
+                  variant={expenseType === "fixed" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 text-xs"
+                  type="button"
+                  onClick={() => setExpenseType(expenseType === "fixed" ? null : "fixed")}
+                >
+                  Fijo
+                </Button>
+                <Button
+                  variant={expenseType === "variable" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 text-xs"
+                  type="button"
+                  onClick={() => setExpenseType(expenseType === "variable" ? null : "variable")}
+                >
+                  Variable
+                </Button>
+              </div>
               {saveError && (
                 <p className="text-xs text-destructive">{saveError}</p>
               )}
