@@ -375,6 +375,9 @@ function RuleItem({ rule }: { rule: DestinatarioRuleRow }) {
 
   const matchCount = rule.match_count ?? 0;
   const lastMatchedAt = rule.last_matched_at;
+  const STALE_DAYS = 90;
+  const isStale = matchCount > 0 && lastMatchedAt
+    && (Date.now() - new Date(lastMatchedAt).getTime()) > STALE_DAYS * 86_400_000;
 
   function handleRemove() {
     startTransition(async () => {
@@ -394,6 +397,9 @@ function RuleItem({ rule }: { rule: DestinatarioRuleRow }) {
           </Badge>
           {matchCount === 0 && (
             <Badge variant="outline" className="text-[10px] text-muted-foreground">Sin uso</Badge>
+          )}
+          {isStale && (
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">Sin uso reciente</Badge>
           )}
         </div>
         <span className="text-xs text-muted-foreground">

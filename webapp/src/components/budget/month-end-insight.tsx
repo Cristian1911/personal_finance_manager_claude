@@ -9,7 +9,8 @@ interface Props {
 }
 
 export function MonthEndInsight({ categories, daysRemaining }: Props) {
-  if (daysRemaining > 5) return null;
+  // Show in last 5 days of month (daysRemaining <= 5) or first 3 days of next month (negative values)
+  if (daysRemaining > 5 || daysRemaining < -3) return null;
 
   const fixed = categories.filter((c) => c.expense_type === "fixed" && c.budget && c.budget > 0);
   const variable = categories.filter((c) => c.expense_type === "variable" && c.budget && c.budget > 0);
