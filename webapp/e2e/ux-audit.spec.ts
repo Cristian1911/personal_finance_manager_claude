@@ -54,7 +54,7 @@ const PAGES = [
   { name: "Cuentas", path: "/accounts" },
   { name: "Importar", path: "/import" },
   { name: "Destinatarios", path: "/destinatarios" },
-  { name: "Gestionar", path: "/gestionar" },
+  { name: "Más", path: "/gestionar" },
   { name: "Ajustes", path: "/settings" },
 ] as const;
 
@@ -74,7 +74,7 @@ test.describe("Mobile UX", () => {
       const tabs = [
         { label: "Inicio", expectedPath: "/dashboard" },
         { label: "Recurrentes", expectedPath: "/recurrentes" },
-        { label: "Gestionar", expectedPath: "/gestionar" },
+        { label: "Más", expectedPath: "/gestionar" },
       ];
 
       for (const tab of tabs) {
@@ -179,7 +179,7 @@ test.describe("Mobile UX", () => {
       await page.goto("/dashboard");
       await waitForNav(page);
 
-      const fab = page.getByRole("button", { name: "Abrir menú de acciones" });
+      const fab = page.getByRole("button", { name: "Abrir menu de acciones" });
       await expect(fab).toBeVisible();
       await fab.click();
 
@@ -193,7 +193,7 @@ test.describe("Mobile UX", () => {
       await page.goto("/dashboard");
       await waitForNav(page);
 
-      const fab = page.getByRole("button", { name: "Abrir menú de acciones" });
+      const fab = page.getByRole("button", { name: "Abrir menu de acciones" });
       await fab.click();
       await expect(page.getByRole("button", { name: "Gasto rápido" })).toBeVisible();
 
@@ -206,7 +206,7 @@ test.describe("Mobile UX", () => {
       await page.goto("/dashboard");
       await waitForNav(page);
 
-      const fab = page.getByRole("button", { name: "Abrir menú de acciones" });
+      const fab = page.getByRole("button", { name: "Abrir menu de acciones" });
       await fab.click();
       await expect(page.getByRole("button", { name: "Gasto rápido" })).toBeVisible();
 
@@ -221,7 +221,7 @@ test.describe("Mobile UX", () => {
       await waitForNav(page);
 
       // Open FAB
-      const fab = page.getByRole("button", { name: "Abrir menú de acciones" });
+      const fab = page.getByRole("button", { name: "Abrir menu de acciones" });
       await fab.click();
       await expect(page.getByRole("button", { name: "Gasto rápido" })).toBeVisible();
 
@@ -257,7 +257,7 @@ test.describe("Mobile UX", () => {
       await waitForNav(page);
 
       // Open FAB
-      const fab = page.getByRole("button", { name: "Abrir menú de acciones" });
+      const fab = page.getByRole("button", { name: "Abrir menu de acciones" });
       await fab.click();
       await expect(page.getByRole("button", { name: "Gasto rápido" })).toBeVisible();
 
@@ -269,7 +269,7 @@ test.describe("Mobile UX", () => {
       await expect(page.getByRole("button", { name: "Gasto rápido" })).not.toBeVisible();
       // The FAB button itself should still be present (closed state)
       await expect(
-        page.getByRole("button", { name: "Abrir menú de acciones" })
+        page.getByRole("button", { name: "Abrir menu de acciones" })
       ).toBeVisible();
     });
 
@@ -277,7 +277,7 @@ test.describe("Mobile UX", () => {
       for (const p of PAGES) {
         await page.goto(p.path);
         await waitForNav(page);
-        const fab = page.getByRole("button", { name: /menú de acciones|Cerrar menú/ });
+        const fab = page.getByRole("button", { name: /menu de acciones|Cerrar menu/ });
         await expect(fab, `FAB missing on ${p.name} (${p.path})`).toBeVisible();
       }
     });
@@ -417,15 +417,19 @@ test.describe("Mobile UX", () => {
     });
   });
 
-  test.describe("Gestionar (Mobile)", () => {
-    test("shows all management action cards", async ({ page }) => {
+  test.describe("Más (Mobile)", () => {
+    test("shows profile header and quick links", async ({ page }) => {
       await page.goto("/gestionar");
       await waitForNav(page);
 
-      await expect(page.getByText("Gestionar")).toBeVisible();
-      await expect(page.getByText("Importar PDF")).toBeVisible();
+      await expect(page.getByText("Más")).toBeVisible();
+      // Profile header
+      await expect(page.getByText("Usuario").or(page.locator("p.font-semibold"))).toBeVisible();
+      // Quick links
+      await expect(page.getByText("Importar")).toBeVisible();
       await expect(page.getByText("Cuentas")).toBeVisible();
       await expect(page.getByText("Destinatarios")).toBeVisible();
+      // Settings section
       await expect(page.getByText("Ajustes")).toBeVisible();
     });
   });
@@ -669,7 +673,7 @@ test.describe("Desktop UX", () => {
       await page.goto("/dashboard");
       await waitForNav(page);
 
-      const fab = page.getByRole("button", { name: /menú de acciones/ });
+      const fab = page.getByRole("button", { name: /menu de acciones/ });
       await expect(fab).not.toBeVisible();
     });
 
