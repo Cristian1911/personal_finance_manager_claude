@@ -86,13 +86,41 @@ Sage (#C5BFAE / rgb 192,185,170) is no longer the primary color. It becomes a **
   - `--z-type-widget-lg`, `--z-type-widget-sm`, `--z-type-label`, `--z-type-caption`, `--z-type-trend`
 - CSS-ify spacing scale: `--z-space-xs` through `--z-space-3xl`
 
+#### Type Scale Values (from brand handoff)
+
+| Token | Size | Weight | Tracking | Line Height |
+|-------|------|--------|----------|-------------|
+| `--z-type-display` | 52px | 800 | -0.04em | 1.0 |
+| `--z-type-hero` | clamp(56px, 8vw, 96px) | 900 | -0.04em | 0.95 |
+| `--z-type-h1` | 28px | 700 | -0.02em | 1.2 |
+| `--z-type-body` | 15px | 400 | 0 | 1.7 |
+| `--z-type-widget-lg` | 22px | 800 | 0 | 1.2 |
+| `--z-type-widget-sm` | 18px | 800 | 0 | 1.2 |
+| `--z-type-label` | 11px | 400 | 0 | 1.4 |
+| `--z-type-caption` | 10px | 500 | 0.08em | 1.4 |
+| `--z-type-trend` | 11px | 400 | 0 | 1.0 |
+
+#### Spacing Scale Values (from brand handoff)
+
+| Token | Value |
+|-------|-------|
+| `--z-space-xs` | 6px |
+| `--z-space-sm` | 8px |
+| `--z-space-md` | 16px |
+| `--z-space-lg` | 20px |
+| `--z-space-xl` | 28px |
+| `--z-space-2xl` | 40px |
+| `--z-space-3xl` | 64px |
+
 ### Migration Impact
 
-- **globals.css**: Update all token values, add new tokens
+- **globals.css**: Update all token values, add new tokens. **Must also add `--color-z-surface-3: var(--z-surface-3)` to the `@theme inline` block** so `bg-z-surface-3` works as a Tailwind utility.
 - **Brand handoff HTML**: Update to reflect new values
 - **All components using z-* tokens**: Automatically pick up new values (no code changes)
 - **Components with hardcoded colors**: Must be migrated (FAB: bg-orange-500 → bg-z-expense, etc.)
-- **shadcn mapping**: `--primary` changes from `var(--z-sage)` to `var(--z-white)`
+- **shadcn mapping**: `--primary` changes from `var(--z-sage)` to `var(--z-white)`. This has cascade effects:
+  - **FAB button** (`fab-menu.tsx`): Currently uses `bg-primary`. With white as primary, the FAB becomes a near-white circle — too low contrast as an action affordance. Change FAB to use a dedicated class: `bg-z-white text-z-ink` explicitly, not `bg-primary`.
+  - **`--border` / `--input` mapping**: The new `--z-border` is `rgba(192,185,170,0.08)` — very low opacity. On `--z-ink` backgrounds this produces near-invisible borders. Remap: `--border: var(--z-border-strong)` and `--input: var(--z-border-strong)` so form inputs and card borders remain legible. Use `--z-border` (0.08) only for subtle dividers within cards.
 
 ---
 
@@ -186,16 +214,19 @@ interface WidgetConfig {
 - Key: `zeta:dashboard_config`
 - On profile load: write config to localStorage
 - On dashboard render: read localStorage first, fall back to DB fetch
-- On config update: write to DB via server action, then update localStorage
-- Hook: `useDashboardConfig()` manages this read-through cache
+- On config update: write to DB via `updateDashboardConfig()` server action, then update localStorage
+- Hook: `useDashboardConfig()` — **client-only hook**. Reads from localStorage on mount, returns config + setter. The setter writes to localStorage immediately (optimistic) and calls the server action in the background.
+- **Existing user fallback**: If `dashboard_config` is NULL (users who onboarded before Phase 2), the hook returns a hardcoded default based on `profile.app_purpose`. If `app_purpose` is also NULL, fall back to `track_spending` defaults.
+- Server action: `updateDashboardConfig(config: DashboardConfig)` — validates with Zod, upserts on `profiles.dashboard_config`, uses `getAuthenticatedClient()`
 
 ### Widget System
 
 Widget registry maps IDs to:
-- React component
-- Data fetcher (server action)
+- React component (Client Component)
 - Default size (compact/standard)
 - Minimum data requirements (e.g., debt-progress needs ≥1 debt account)
+
+**Data fetching architecture**: Widgets receive data as props, NOT via individual server action calls. The dashboard page (Server Component) fetches all needed data in a single `Promise.all` at the page level (extending the existing pattern), then passes data down to widgets via the render engine. This keeps the existing RSC architecture and avoids waterfall client-side fetches. Widgets that need no data (e.g., nudge-cards) can be pure client components.
 
 ~8 initial widgets:
 1. **spending-trend** — This month vs last, bar or sparkline
@@ -224,6 +255,13 @@ Dashboard renders: filter visible widgets → sort by order → render in vertic
 ### Purpose-Driven Tab Bar
 
 Tab bar reads `dashboard_config.tabs` to render dynamic tabs 2-3. Tab 1 (Inicio) and Tab 4 (Más) are always fixed.
+
+**Structural change required**: The current `BottomTabBar` uses a hardcoded `TABS` array with a left/right split and a center `w-16` gap for the FAB. This must be restructured:
+- Replace the hardcoded `TABS` array with a dynamic builder: fixed tab 1 (left) + dynamic tabs 2-3 (from config) + fixed tab 4 (right)
+- Maintain the center FAB gap by splitting tabs into `[tab1, tab2]` (left) and `[tab3, tab4]` (right) around the gap div
+- The FAB gap width stays at `w-16`
+
+**Route for "Más" tab**: Create a new route `/mas` (or reuse `/gestionar` with redirect). The `/gestionar` page content is replaced with the Profile/More layout. Add a redirect from `/gestionar` → `/mas` for any bookmarks or cached links. Update `getContextActions()` in `mobile-sheet-provider.tsx` if new sub-routes are added.
 
 ### Profile/More Tab (replaces Gestionar)
 
@@ -255,7 +293,7 @@ Tab bar reads `dashboard_config.tabs` to render dynamic tabs 2-3. Tab 1 (Inicio)
 - Available to save hero (income - expenses - fixed)
 - Budget progress bars (fixed vs variable)
 - Unbudgeted spending alerts
-- Savings streak (consecutive months under budget)
+- Savings streak (consecutive months where total spending < total budgeted amount across all categories with budgets)
 
 ### Remaining Mobile Views
 
@@ -285,12 +323,14 @@ Tab bar reads `dashboard_config.tabs` to render dynamic tabs 2-3. Tab 1 (Inicio)
 
 ### Updated Flow (6 steps)
 
+**Migration note**: The current onboarding has 4 steps in this order: (1) Objetivo, (2) Finanzas, (3) Perfil, (4) Primera cuenta. The new flow reorders steps 2↔3 and inserts two new steps. The `totalSteps` constant in `onboarding/page.tsx` must be updated from 4 to 6, and analytics events (`onboarding_step_completed`) must be updated to reflect the new step numbers.
+
 1. **Objetivo** (existing, unchanged) — 4 purpose cards: manage_debt, track_spending, save_money, improve_habits
-2. **Perfil** (existing, unchanged) — name, preferred currency, timezone/locale auto-detected
-3. **Finanzas** (enhanced) — Monthly income, monthly expenses. For `manage_debt` users: also ask "¿Cuantas tarjetas de crédito o préstamos tienes?" (sets expectations)
+2. **Perfil** (was step 3, moved up) — name, preferred currency, timezone/locale auto-detected
+3. **Finanzas** (was step 2, enhanced) — Monthly income, monthly expenses. For `manage_debt` users: also ask "¿Cuantas tarjetas de crédito o préstamos tienes?" (UX expectation-setting only — not stored as a separate field, just used to show a contextual message like "Perfecto, Zeta te ayudará a organizar tus X deudas")
 4. **Tu app** (NEW) — Shows phone mockup with personalized tab bar based on purpose. "Basado en tu objetivo, asi se ve tu Zeta:" Each tab labeled with its contents. User can tap tabs 2-3 to swap from available options. Generates `dashboard_config` and writes to profile.
 5. **Primera cuenta** (existing, unchanged) — Create first account
-6. **Quick win** (NEW) — Purpose-specific first action:
+6. **Quick win** (NEW) — Purpose-specific first action (opens the relevant existing flow, not a new screen):
    - manage_debt → "Importa tu primer extracto" (link to /import)
    - track_spending → "Registra tu primer gasto" (opens quick capture)
    - save_money → "Configura tu primer presupuesto" (link to /categories)
@@ -324,7 +364,7 @@ Existing guard in `(dashboard)/layout.tsx` checks `profile.onboarding_completed`
 
 - Phase 0 (brand tokens) is a pure CSS change — update globals.css values, all `z-*` classes auto-update
 - Phase 1 is additive (new CSS vars, new motion, new ARIA attrs)
-- Phase 2 requires a DB migration (JSONB column, nullable with defaults)
+- Phase 2 requires a DB migration (JSONB column, nullable with defaults). **After running the migration, regenerate types**: `npx supabase gen types --lang=typescript --project-id tgkhaxipfgskxydotdtu > src/types/database.ts` — without this, `profile.dashboard_config` will be a TypeScript error.
 - Phase 3 is new components, no breaking changes
 - Phase 4 modifies existing onboarding (additive steps, backward compatible)
 
