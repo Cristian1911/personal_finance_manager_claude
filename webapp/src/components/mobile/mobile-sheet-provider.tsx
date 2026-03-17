@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { usePathname } from "next/navigation";
+import { useState, useMemo, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { CalendarPlus, Landmark } from "lucide-react";
 import {
   Drawer,
@@ -59,8 +59,14 @@ export function MobileSheetProvider({
 }: MobileSheetProviderProps) {
   const [activeAction, setActiveAction] = useState<FabAction | null>(null);
   const pathname = usePathname();
+  const router = useRouter();
 
   const contextActions = useMemo(() => getContextActions(pathname), [pathname]);
+
+  const handleSuccess = useCallback(() => {
+    setActiveAction(null);
+    router.refresh();
+  }, [router]);
 
   return (
     <>
@@ -87,7 +93,7 @@ export function MobileSheetProvider({
                 categories={categories}
                 defaultDirection={TRANSACTION_ACTIONS[activeAction as keyof typeof TRANSACTION_ACTIONS].direction}
                 isTransfer={activeAction === "transfer"}
-                onSuccess={() => setActiveAction(null)}
+                onSuccess={handleSuccess}
               />
             )}
 
@@ -95,13 +101,13 @@ export function MobileSheetProvider({
               <RecurringForm
                 accounts={accounts}
                 categories={categories}
-                onSuccess={() => setActiveAction(null)}
+                onSuccess={handleSuccess}
               />
             )}
 
             {activeAction === "new-account" && (
               <SpecializedAccountForm
-                onSuccess={() => setActiveAction(null)}
+                onSuccess={handleSuccess}
               />
             )}
           </div>
