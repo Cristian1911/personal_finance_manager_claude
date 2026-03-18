@@ -55,6 +55,18 @@ import { WidgetSlot } from "@/components/dashboard/widget-slot";
 import { CashFlowHeroStrip } from "@/components/dashboard/cash-flow-hero-strip";
 import { HealthMetersCard } from "@/components/dashboard/health-meters-card";
 import { getHealthMeters } from "@/actions/health-meters";
+import { SpendingHeatmap } from "@/components/charts/spending-heatmap";
+import { getSpendingHeatmap } from "@/actions/spending-heatmap";
+import { AllocationBars5030 } from "@/components/budget/allocation-bars-5030";
+import { get503020Allocation } from "@/actions/allocation";
+import { DebtFreeCountdown } from "@/components/debt/debt-free-countdown";
+import { getDebtFreeCountdown } from "@/actions/debt-countdown";
+import { SavingsRateWidget } from "@/components/dashboard/savings-rate-widget";
+import { EmergencyFundWidget } from "@/components/dashboard/emergency-fund-widget";
+import { InterestPaidWidget } from "@/components/dashboard/interest-paid-widget";
+import { getInterestPaid } from "@/actions/interest-paid";
+import { DebtProgressWidget } from "@/components/dashboard/debt-progress-widget";
+import { getDebtProgress } from "@/actions/debt-progress";
 
 type DashboardTransactionRow = {
   id: string;
@@ -349,24 +361,22 @@ export default async function DashboardPage({
                 </DashboardSection>
               }
             >
-              <PresupuestoSection month={month} currency={currency} monthLabel={monthLabel} />
+              <PresupuestoSection month={month} currency={currency} monthLabel={monthLabel} healthMetersData={healthMetersData} />
             </Suspense>
 
             {/* ── Patrimonio y Deuda Section ── */}
-            <DashboardSection title="Patrimonio y deuda" section="patrimonio">
-              {/* Placeholder: DebtFreeCountdown (Task 17) */}
-              <WidgetSlot widgetId="debt-countdown">
-                <WidgetPlaceholder label="DebtFreeCountdown" />
-              </WidgetSlot>
-              {/* Placeholder: DebtProgressWidget (Task 18) */}
-              <WidgetSlot widgetId="debt-progress">
-                <WidgetPlaceholder label="DebtProgressWidget" />
-              </WidgetSlot>
-              {/* Placeholder: NetWorthHistoryChart (optional, Task 19) */}
-              <WidgetSlot widgetId="net-worth">
-                <WidgetPlaceholder label="NetWorthHistoryChart" />
-              </WidgetSlot>
-            </DashboardSection>
+            <Suspense
+              fallback={
+                <DashboardSection title="Patrimonio y deuda" section="patrimonio">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="h-64 rounded-xl bg-muted animate-pulse" />
+                    <div className="h-64 rounded-xl bg-muted animate-pulse" />
+                  </div>
+                </DashboardSection>
+              }
+            >
+              <PatrimonioSection currency={currency} month={month} healthMetersData={healthMetersData} />
+            </Suspense>
 
             {/* ── Actividad Section ── */}
             <DashboardSection title="Actividad" section="actividad">
@@ -462,9 +472,10 @@ export default async function DashboardPage({
                 </Card>
               </WidgetSlot>
 
-              {/* Placeholder: SpendingHeatmap (optional, Task 20) */}
               <WidgetSlot widgetId="spending-heatmap">
-                <WidgetPlaceholder label="SpendingHeatmap" />
+                <Suspense fallback={<div className="h-40 rounded-xl bg-muted animate-pulse" />}>
+                  <ActividadHeatmap month={month} currency={currency} />
+                </Suspense>
               </WidgetSlot>
             </DashboardSection>
           </div>
@@ -525,14 +536,17 @@ async function PresupuestoSection({
   month,
   currency,
   monthLabel,
+  healthMetersData,
 }: {
   month: string | undefined;
   currency: CurrencyCode;
   monthLabel: string;
+  healthMetersData: import("@/actions/health-meters").HealthMetersData;
 }) {
-  const [budgetPaceData, categoryData] = await Promise.all([
+  const [budgetPaceData, categoryData, allocationData] = await Promise.all([
     getDailyBudgetPace(month, currency),
     getCategorySpending(month, currency),
+    get503020Allocation(month, currency),
   ]);
 
   return (
@@ -546,9 +560,12 @@ async function PresupuestoSection({
         />
       </WidgetSlot>
 
-      {/* Placeholder: AllocationBars5030 (Task 15) */}
       <WidgetSlot widgetId="allocation-5030">
-        <WidgetPlaceholder label="AllocationBars5030" />
+        <AllocationBars5030 data={allocationData} />
+      </WidgetSlot>
+
+      <WidgetSlot widgetId="savings-rate">
+        <SavingsRateWidget data={healthMetersData} />
       </WidgetSlot>
 
       {/* CategoryDonut — top spending categories as donut with legend */}
@@ -567,5 +584,82 @@ async function PresupuestoSection({
         <DashboardBudgetBar data={categoryData} monthLabel={monthLabel} />
       </WidgetSlot>
     </DashboardSection>
+  );
+}
+
+/** Async sub-component for Patrimonio y Deuda section — wrapped in Suspense */
+async function PatrimonioSection({
+  currency,
+  month,
+  healthMetersData,
+}: {
+  currency: CurrencyCode;
+  month: string | undefined;
+  healthMetersData: import("@/actions/health-meters").HealthMetersData;
+}) {
+  const [debtCountdownData, interestPaidData, debtProgressAccounts] = await Promise.all([
+    getDebtFreeCountdown(currency),
+    getInterestPaid(month, currency),
+    getDebtProgress(currency),
+  ]);
+
+  return (
+    <DashboardSection title="Patrimonio y deuda" section="patrimonio">
+      <WidgetSlot widgetId="debt-countdown">
+        <DebtFreeCountdown data={debtCountdownData} />
+      </WidgetSlot>
+
+      <WidgetSlot widgetId="debt-progress">
+        <DebtProgressWidget accounts={debtProgressAccounts} />
+      </WidgetSlot>
+
+      <WidgetSlot widgetId="emergency-fund">
+        <EmergencyFundWidget data={healthMetersData} />
+      </WidgetSlot>
+
+      <WidgetSlot widgetId="interest-paid">
+        <InterestPaidWidget data={interestPaidData} />
+      </WidgetSlot>
+    </DashboardSection>
+  );
+}
+
+/** Async sub-component for Actividad spending heatmap — wrapped in Suspense */
+async function ActividadHeatmap({
+  month,
+  currency,
+}: {
+  month: string | undefined;
+  currency: CurrencyCode;
+}) {
+  const heatmapData = await getSpendingHeatmap(month, currency);
+
+  if (!heatmapData) {
+    return (
+      <Card>
+        <CardContent className="p-5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            Mapa de actividad
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Importa transacciones para ver tu patron de gasto.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Mapa de actividad</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Intensidad de gasto diario
+        </p>
+      </CardHeader>
+      <CardContent>
+        <SpendingHeatmap data={heatmapData} />
+      </CardContent>
+    </Card>
   );
 }
