@@ -168,23 +168,24 @@ export function StepConfirm({
   }
 
   function buildStatementMeta(): StatementMetaForImport[] {
-    return parseResult.statements
-      .map((stmt, stmtIdx) => {
-        const mapping = mappings.find((m) => m.statementIndex === stmtIdx);
-        if (!mapping?.accountId) return null;
-        return {
-          accountId: mapping.accountId,
-          statementIndex: stmtIdx,
-          summary: stmt.summary,
-          creditCardMetadata: stmt.credit_card_metadata,
-          loanMetadata: stmt.loan_metadata,
-          periodFrom: stmt.period_from,
-          periodTo: stmt.period_to,
-          currency: stmt.currency,
-          transactionCount: stmt.transactions.length,
-        };
-      })
-      .filter((value): value is StatementMetaForImport => value !== null);
+    const result: StatementMetaForImport[] = [];
+    parseResult.statements.forEach((stmt, stmtIdx) => {
+      const mapping = mappings.find((m) => m.statementIndex === stmtIdx);
+      if (!mapping?.accountId) return;
+      result.push({
+        accountId: mapping.accountId,
+        statementIndex: stmtIdx,
+        summary: stmt.summary,
+        creditCardMetadata: stmt.credit_card_metadata,
+        loanMetadata: stmt.loan_metadata,
+        periodFrom: stmt.period_from,
+        periodTo: stmt.period_to,
+        currency: stmt.currency,
+        transactionCount: stmt.transactions.length,
+        primaryCurrency: mapping.primaryCurrency,
+      });
+    });
+    return result;
   }
 
   async function handleContinue() {

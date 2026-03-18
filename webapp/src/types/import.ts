@@ -72,6 +72,7 @@ export type StatementAccountMapping = {
   statementIndex: number;
   accountId: string;
   autoMatched: boolean;
+  primaryCurrency?: string; // user's choice when multiple currencies map to same account
 };
 
 export type TransactionToImport = {
@@ -155,6 +156,7 @@ export type StatementMetaForImport = {
   currency: string;
   sourceFilename?: string;
   transactionCount: number;
+  primaryCurrency?: string; // user's choice for the account's primary currency
 };
 
 // Describes a single field change between two snapshots

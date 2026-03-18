@@ -362,7 +362,21 @@ async function processStatementMeta(params: {
     const accountUpdate: Record<string, unknown> = {
       last_synced_at: new Date().toISOString(),
     };
-    const isPrimaryCurrency = account?.currency_code === meta.currency;
+
+    // If user selected a different primary currency, update the account's currency_code
+    // only from the statement that matches the chosen primary currency
+    if (
+      meta.primaryCurrency &&
+      account?.currency_code !== meta.primaryCurrency &&
+      meta.currency === meta.primaryCurrency
+    ) {
+      accountUpdate.currency_code = meta.primaryCurrency;
+    }
+
+    const isPrimaryCurrency =
+      meta.primaryCurrency
+        ? meta.currency === meta.primaryCurrency
+        : account?.currency_code === meta.currency;
 
     if (meta.creditCardMetadata && isPrimaryCurrency) {
       const cc = meta.creditCardMetadata;

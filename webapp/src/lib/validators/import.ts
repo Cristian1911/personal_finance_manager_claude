@@ -84,6 +84,7 @@ const statementMetaSchema = z.object({
   currency: z.string(),
   sourceFilename: z.string().optional(),
   transactionCount: z.number().int().min(0),
+  primaryCurrency: z.string().optional(),
 });
 
 export const importPayloadSchema = z.object({

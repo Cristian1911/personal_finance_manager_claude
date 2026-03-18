@@ -66,6 +66,43 @@ export function StepReview({
     );
   }
 
+  function updatePrimaryCurrency(accountId: string, currency: string) {
+    setLocalMappings((prev) =>
+      prev.map((m) => (m.accountId === accountId ? { ...m, primaryCurrency: currency } : m))
+    );
+  }
+
+  // Returns the set of distinct currencies mapped to a given accountId
+  function getCurrenciesForAccount(accountId: string): string[] {
+    const currencies = new Set<string>();
+    localMappings.forEach((m) => {
+      if (m.accountId === accountId) {
+        const stmt = parseResult.statements[m.statementIndex];
+        if (stmt) currencies.add(stmt.currency);
+      }
+    });
+    return Array.from(currencies);
+  }
+
+  // Returns the default primary currency for an account (most transactions, preferring COP)
+  function getDefaultPrimaryCurrency(accountId: string): string {
+    let best = "";
+    let bestCount = -1;
+    localMappings.forEach((m) => {
+      if (m.accountId !== accountId) return;
+      const stmt = parseResult.statements[m.statementIndex];
+      if (!stmt) return;
+      const count = stmt.transactions.length;
+      if (stmt.currency === "COP" || count > bestCount) {
+        if (best !== "COP") {
+          best = stmt.currency;
+          bestCount = count;
+        }
+      }
+    });
+    return best;
+  }
+
   function openCreateDialog(stmtIndex: number) {
     setDialogStatementIndex(stmtIndex);
     setDialogOpen(true);
@@ -79,10 +116,29 @@ export function StepReview({
 
   const allMapped = localMappings.every((m) => m.accountId !== "");
 
+  // Track which accountIds have already rendered a currency selector
+  const renderedCurrencySelector = new Set<string>();
+
   return (
     <div className="space-y-6">
       {parseResult.statements.map((stmt, idx) => {
         const mapping = localMappings.find((m) => m.statementIndex === idx);
+        const accountId = mapping?.accountId ?? "";
+
+        // Determine if we should show the currency selector for this statement
+        // Only show on the first statement mapped to a given account (no duplication)
+        let showCurrencySelector = false;
+        if (accountId && !renderedCurrencySelector.has(accountId)) {
+          const accountCurrencies = getCurrenciesForAccount(accountId);
+          if (accountCurrencies.length > 1) {
+            showCurrencySelector = true;
+            renderedCurrencySelector.add(accountId);
+          }
+        }
+
+        const primaryCurrency =
+          mapping?.primaryCurrency ?? getDefaultPrimaryCurrency(accountId);
+        const accountCurrencies = accountId ? getCurrenciesForAccount(accountId) : [];
 
         return (
           <div key={idx} className="space-y-3">
@@ -92,7 +148,7 @@ export function StepReview({
               <Label>Asignar a cuenta</Label>
               <div className="flex items-center gap-2">
                 <Select
-                  value={mapping?.accountId ?? ""}
+                  value={accountId}
                   onValueChange={(val) => updateMapping(idx, val)}
                 >
                   <SelectTrigger className="w-full max-w-xs">
@@ -121,7 +177,27 @@ export function StepReview({
                   </span>
                 )}
               </div>
-              {mapping?.accountId && (
+              {showCurrencySelector && accountCurrencies.length > 1 && (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground">Moneda principal</span>
+                  <Select
+                    value={primaryCurrency}
+                    onValueChange={(val) => updatePrimaryCurrency(accountId, val)}
+                  >
+                    <SelectTrigger className="h-7 w-28 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accountCurrencies.map((cur) => (
+                        <SelectItem key={cur} value={cur} className="text-xs">
+                          {cur}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {accountId && (
                 <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-1">
                   <RefreshCw className="h-3 w-3" />
                   Los datos de esta cuenta se actualizaran con el extracto
