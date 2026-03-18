@@ -37,7 +37,9 @@ import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { AccountsOverview } from "@/components/dashboard/accounts-overview";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
 import { BudgetPaceChart } from "@/components/charts/budget-pace-chart";
-import { IncomeVsExpensesChart } from "@/components/charts/income-vs-expenses-chart";
+import { CashFlowViewToggle } from "@/components/charts/cash-flow-view-toggle";
+import { WaterfallChart } from "@/components/charts/waterfall-chart";
+import { CategoryDonut } from "@/components/charts/category-donut";
 import { DashboardBudgetBar } from "@/components/budget/dashboard-budget-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
@@ -312,9 +314,11 @@ export default async function DashboardPage({
 
             {/* ── Flujo de Caja Section ── */}
             <DashboardSection title="Flujo de caja" section="flujo">
-              {/* Placeholder: WaterfallChart (Task 14) */}
+              {/* WaterfallChart — income → category deductions → net remaining */}
               <WidgetSlot widgetId="waterfall">
-                <WidgetPlaceholder label="Waterfall" />
+                <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+                  <FlujoWaterfall month={month} currency={currency} />
+                </Suspense>
               </WidgetSlot>
 
               {/* BurnRateCard — temporary, will be replaced or deprecated by HealthMetersCard */}
@@ -326,7 +330,7 @@ export default async function DashboardPage({
                 )}
               </WidgetSlot>
 
-              {/* IncomeVsExpensesChart — loads via Suspense, will be replaced by CashFlowViewToggle */}
+              {/* CashFlowViewToggle — line/bar view of 6-month income vs expenses trend */}
               <WidgetSlot widgetId="cashflow-trend">
                 <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
                   <FlujoCharts month={month} currency={currency} monthLabel={monthLabel} />
@@ -470,6 +474,37 @@ export default async function DashboardPage({
   );
 }
 
+/** Async sub-component for WaterfallChart — wrapped in Suspense */
+async function FlujoWaterfall({
+  month,
+  currency,
+}: {
+  month: string | undefined;
+  currency: CurrencyCode;
+}) {
+  const [cashflowData, categoryData] = await Promise.all([
+    getMonthlyCashflow(month, currency),
+    getCategorySpending(month, currency),
+  ]);
+
+  const current = cashflowData[cashflowData.length - 1];
+  const income = current?.income ?? 0;
+  const net = current?.net ?? 0;
+  const categories = categoryData.map((c) => ({ name: c.name, amount: c.amount }));
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Flujo del mes</CardTitle>
+        <p className="text-xs text-muted-foreground">Ingresos → Gastos → Neto</p>
+      </CardHeader>
+      <CardContent>
+        <WaterfallChart income={income} categories={categories} net={net} currency={currency} />
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Async sub-component for Flujo de Caja charts — wrapped in Suspense */
 async function FlujoCharts({
   month,
@@ -482,7 +517,7 @@ async function FlujoCharts({
 }) {
   const cashflowData = await getMonthlyCashflow(month, currency);
 
-  return <IncomeVsExpensesChart data={cashflowData} monthLabel={monthLabel} />;
+  return <CashFlowViewToggle data={cashflowData} monthLabel={monthLabel} />;
 }
 
 /** Async sub-component for Presupuesto section — wrapped in Suspense */
@@ -516,9 +551,16 @@ async function PresupuestoSection({
         <WidgetPlaceholder label="AllocationBars5030" />
       </WidgetSlot>
 
-      {/* Placeholder: CategoryDonut (optional, Task 16) */}
+      {/* CategoryDonut — top spending categories as donut with legend */}
       <WidgetSlot widgetId="category-donut">
-        <WidgetPlaceholder label="CategoryDonut" />
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Gastos por categoría</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CategoryDonut data={categoryData} currency={currency} />
+          </CardContent>
+        </Card>
       </WidgetSlot>
 
       <WidgetSlot widgetId="budget-bar">
