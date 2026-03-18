@@ -31,6 +31,7 @@ import {
   getMonthlyCashflow,
 } from "@/actions/charts";
 import { getAccounts } from "@/actions/accounts";
+import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
 import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { AccountsOverview } from "@/components/dashboard/accounts-overview";
@@ -46,6 +47,9 @@ import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import { getBurnRate } from "@/actions/burn-rate";
 import { BurnRateCard, BurnRateCardEmpty } from "@/components/dashboard/burn-rate-card";
+import { DashboardSection } from "@/components/dashboard/dashboard-section";
+import { DashboardConfigProvider } from "@/components/dashboard/dashboard-config-provider";
+import { WidgetSlot } from "@/components/dashboard/widget-slot";
 
 type DashboardTransactionRow = {
   id: string;
@@ -58,6 +62,15 @@ type DashboardTransactionRow = {
   currency_code?: string;
   categories?: { name_es: string | null; name: string } | null;
 };
+
+/** Placeholder for widgets not yet implemented */
+function WidgetPlaceholder({ label }: { label: string }) {
+  return (
+    <div className="h-64 rounded-xl bg-muted/30 flex items-center justify-center text-muted-foreground text-sm">
+      {label} (pendiente)
+    </div>
+  );
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -77,19 +90,21 @@ export default async function DashboardPage({
   // Await currency first (it's server-cached, ~0ms after first call)
   const preferredCurrency = await getPreferredCurrency();
 
-  // Fetch transactions + cached accounts in parallel (replaces 3 raw DB queries)
-  const [{ data: recentTransactions }, allAccountsResult] = await Promise.all([
-    executeVisibleTransactionQuery(() =>
-      supabase
-        .from("transactions")
-        .select("*, categories!category_id(name_es, name)")
-        .eq("is_excluded", false)
-        .order("transaction_date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(5)
-    ),
-    getAccounts(),
-  ]);
+  // Fetch transactions + cached accounts + dashboard config in parallel
+  const [{ data: recentTransactions }, allAccountsResult, dashboardConfigData] =
+    await Promise.all([
+      executeVisibleTransactionQuery(() =>
+        supabase
+          .from("transactions")
+          .select("*, categories!category_id(name_es, name)")
+          .eq("is_excluded", false)
+          .order("transaction_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(5)
+      ),
+      getAccounts(),
+      getDashboardConfigWithPurpose(),
+    ]);
 
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
 
@@ -243,161 +258,253 @@ export default async function DashboardPage({
         />
       </div>
 
-      {/* Desktop dashboard */}
+      {/* Desktop dashboard — section-based layout */}
       <div className="hidden lg:block">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h1 className="text-2xl font-bold">Dashboard</h1>
-              <p className="text-muted-foreground">Tu centro de comando financiero</p>
-            </div>
-            <Suspense fallback={<div className="h-9 w-36 rounded-md bg-muted animate-pulse" />}>
-              <MonthSelector />
-            </Suspense>
-          </div>
-
-          {/* 1. Hero — "Tu dinero ahora" */}
-          <DashboardHero data={heroData} />
-
-          {/* Burn Rate Card - below hero */}
-          {burnRateData ? (
-            <BurnRateCard data={burnRateData} />
-          ) : (
-            <BurnRateCardEmpty />
-          )}
-
-          {/* 2. Payments + Accounts side by side */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <UpcomingPayments
-              obligations={heroData.pendingObligations}
-              totalPending={heroData.totalPending}
-            />
-            <AccountsOverview
-              data={accountsData}
-              picker={
-                <DashboardAccountPicker
-                  accounts={allAccounts.map((a) => ({
-                    id: a.id,
-                    name: a.name,
-                    show_in_dashboard: a.show_in_dashboard,
-                  }))}
-                />
-              }
-            />
-          </div>
-
-          {/* 2.5 Alerts */}
-          <DashboardAlerts
-            accounts={allAccounts.map((a) => ({
-              id: a.id,
-              name: a.name,
-              account_type: a.account_type,
-              updated_at: a.updated_at,
-            }))}
-            latestSnapshotDates={latestSnapshotDates}
-          />
-
-          {/* 3. Analysis — lazy loaded via Suspense */}
-          <Suspense fallback={
-            <div>
-              <h2 className="text-lg font-semibold mb-4">Análisis</h2>
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="h-64 rounded-xl bg-muted animate-pulse" />
-                <div className="h-64 rounded-xl bg-muted animate-pulse" />
-                <div className="h-64 rounded-xl bg-muted animate-pulse" />
+        <DashboardConfigProvider
+          serverConfig={dashboardConfigData.config}
+          appPurpose={dashboardConfigData.appPurpose}
+        >
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h1 className="text-2xl font-bold">Dashboard</h1>
+                <p className="text-muted-foreground">Tu centro de comando financiero</p>
               </div>
+              <Suspense fallback={<div className="h-9 w-36 rounded-md bg-muted animate-pulse" />}>
+                <MonthSelector />
+              </Suspense>
             </div>
-          }>
-            <DashboardCharts month={month} currency={currency} monthLabel={monthLabel} />
-          </Suspense>
 
-          {/* 4. Recent Transactions */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Últimas transacciones</CardTitle>
-              <Link
-                href="/transactions"
-                className="text-sm text-primary hover:underline"
-              >
-                Ver todas
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {recentTx.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No hay transacciones aún.{" "}
-                  <Link
-                    href="/transactions"
-                    className="text-primary hover:underline"
-                  >
-                    Registrar una
-                  </Link>
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {recentTx.map((tx) => (
-                    <PrefetchLink
-                      key={tx.id}
-                      href={`/transactions/${tx.id}`}
-                      className="flex items-center justify-between hover:bg-muted rounded-md px-2 py-1 -mx-2 transition-colors"
+            {/* ── Hero Section — always visible, no collapse ── */}
+            <DashboardHero data={heroData} />
+            {/* Placeholder: CashFlowHeroStrip (Task 11) */}
+            <WidgetSlot widgetId="hero-flow-strip">
+              <WidgetPlaceholder label="CashFlowHeroStrip" />
+            </WidgetSlot>
+
+            {/* ── Niveles Section ── */}
+            <DashboardSection title="Tus niveles" section="niveles" defaultOpen={true} showToggle={false}>
+              {/* Placeholder: HealthMetersCard (Task 12) */}
+              <WidgetSlot widgetId="health-meters">
+                <WidgetPlaceholder label="HealthMetersCard" />
+              </WidgetSlot>
+            </DashboardSection>
+
+            {/* ── Flujo de Caja Section ── */}
+            <DashboardSection title="Flujo de caja" section="flujo">
+              {/* Placeholder: WaterfallChart (Task 14) */}
+              <WidgetSlot widgetId="waterfall">
+                <WidgetPlaceholder label="Waterfall" />
+              </WidgetSlot>
+
+              {/* BurnRateCard — temporary, will be replaced or deprecated by HealthMetersCard */}
+              <WidgetSlot widgetId="burn-rate">
+                {burnRateData ? (
+                  <BurnRateCard data={burnRateData} />
+                ) : (
+                  <BurnRateCardEmpty />
+                )}
+              </WidgetSlot>
+
+              {/* IncomeVsExpensesChart — loads via Suspense, will be replaced by CashFlowViewToggle */}
+              <WidgetSlot widgetId="cashflow-trend">
+                <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+                  <FlujoCharts month={month} currency={currency} monthLabel={monthLabel} />
+                </Suspense>
+              </WidgetSlot>
+            </DashboardSection>
+
+            {/* ── Presupuesto Section ── */}
+            <Suspense
+              fallback={
+                <DashboardSection title="Presupuesto" section="presupuesto">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="h-64 rounded-xl bg-muted animate-pulse" />
+                    <div className="h-64 rounded-xl bg-muted animate-pulse" />
+                  </div>
+                </DashboardSection>
+              }
+            >
+              <PresupuestoSection month={month} currency={currency} monthLabel={monthLabel} />
+            </Suspense>
+
+            {/* ── Patrimonio y Deuda Section ── */}
+            <DashboardSection title="Patrimonio y deuda" section="patrimonio">
+              {/* Placeholder: DebtFreeCountdown (Task 17) */}
+              <WidgetSlot widgetId="debt-countdown">
+                <WidgetPlaceholder label="DebtFreeCountdown" />
+              </WidgetSlot>
+              {/* Placeholder: DebtProgressWidget (Task 18) */}
+              <WidgetSlot widgetId="debt-progress">
+                <WidgetPlaceholder label="DebtProgressWidget" />
+              </WidgetSlot>
+              {/* Placeholder: NetWorthHistoryChart (optional, Task 19) */}
+              <WidgetSlot widgetId="net-worth">
+                <WidgetPlaceholder label="NetWorthHistoryChart" />
+              </WidgetSlot>
+            </DashboardSection>
+
+            {/* ── Actividad Section ── */}
+            <DashboardSection title="Actividad" section="actividad">
+              <WidgetSlot widgetId="upcoming-payments">
+                <UpcomingPayments
+                  obligations={heroData.pendingObligations}
+                  totalPending={heroData.totalPending}
+                />
+              </WidgetSlot>
+
+              <AccountsOverview
+                data={accountsData}
+                picker={
+                  <DashboardAccountPicker
+                    accounts={allAccounts.map((a) => ({
+                      id: a.id,
+                      name: a.name,
+                      show_in_dashboard: a.show_in_dashboard,
+                    }))}
+                  />
+                }
+              />
+
+              <DashboardAlerts
+                accounts={allAccounts.map((a) => ({
+                  id: a.id,
+                  name: a.name,
+                  account_type: a.account_type,
+                  updated_at: a.updated_at,
+                }))}
+                latestSnapshotDates={latestSnapshotDates}
+              />
+
+              {/* Recent Transactions */}
+              <WidgetSlot widgetId="recent-tx">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg">Últimas transacciones</CardTitle>
+                    <Link
+                      href="/transactions"
+                      className="text-sm text-primary hover:underline"
                     >
-                      <div className="flex items-center gap-3">
-                        {tx.direction === "INFLOW" ? (
-                          <ArrowDownLeft className="h-4 w-4 text-z-income" />
-                        ) : (
-                          <ArrowUpRight className="h-4 w-4 text-z-expense" />
-                        )}
-                        <div>
-                          <p className="text-sm font-medium">
-                            {tx.merchant_name ||
-                              tx.clean_description ||
-                              "Sin descripción"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {tx.transaction_date ? formatDate(tx.transaction_date) : "Sin fecha"}
-                          </p>
-                        </div>
+                      Ver todas
+                    </Link>
+                  </CardHeader>
+                  <CardContent>
+                    {recentTx.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No hay transacciones aún.{" "}
+                        <Link
+                          href="/transactions"
+                          className="text-primary hover:underline"
+                        >
+                          Registrar una
+                        </Link>
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {recentTx.map((tx) => (
+                          <PrefetchLink
+                            key={tx.id}
+                            href={`/transactions/${tx.id}`}
+                            className="flex items-center justify-between hover:bg-muted rounded-md px-2 py-1 -mx-2 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              {tx.direction === "INFLOW" ? (
+                                <ArrowDownLeft className="h-4 w-4 text-z-income" />
+                              ) : (
+                                <ArrowUpRight className="h-4 w-4 text-z-expense" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {tx.merchant_name ||
+                                    tx.clean_description ||
+                                    "Sin descripción"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {tx.transaction_date ? formatDate(tx.transaction_date) : "Sin fecha"}
+                                </p>
+                              </div>
+                            </div>
+                            <span
+                              className={`text-sm font-medium ${tx.direction === "INFLOW" ? "text-z-income" : ""}`}
+                            >
+                              {tx.direction === "INFLOW" ? "+" : "-"}
+                              {formatCurrency(tx.amount, tx.currency_code as Parameters<typeof formatCurrency>[1])}
+                            </span>
+                          </PrefetchLink>
+                        ))}
                       </div>
-                      <span
-                        className={`text-sm font-medium ${tx.direction === "INFLOW" ? "text-z-income" : ""}`}
-                      >
-                        {tx.direction === "INFLOW" ? "+" : "-"}
-                        {formatCurrency(tx.amount, tx.currency_code as Parameters<typeof formatCurrency>[1])}
-                      </span>
-                    </PrefetchLink>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </WidgetSlot>
+
+              {/* Placeholder: SpendingHeatmap (optional, Task 20) */}
+              <WidgetSlot widgetId="spending-heatmap">
+                <WidgetPlaceholder label="SpendingHeatmap" />
+              </WidgetSlot>
+            </DashboardSection>
+          </div>
+        </DashboardConfigProvider>
       </div>
     </>
   );
 }
 
-/** Async component for heavy chart data — wrapped in Suspense by parent */
-async function DashboardCharts({ month, currency, monthLabel }: { month: string | undefined; currency: CurrencyCode; monthLabel: string }) {
-  const [budgetPaceData, cashflowData, categoryData] = await Promise.all([
+/** Async sub-component for Flujo de Caja charts — wrapped in Suspense */
+async function FlujoCharts({
+  month,
+  currency,
+  monthLabel,
+}: {
+  month: string | undefined;
+  currency: CurrencyCode;
+  monthLabel: string;
+}) {
+  const cashflowData = await getMonthlyCashflow(month, currency);
+
+  return <IncomeVsExpensesChart data={cashflowData} monthLabel={monthLabel} />;
+}
+
+/** Async sub-component for Presupuesto section — wrapped in Suspense */
+async function PresupuestoSection({
+  month,
+  currency,
+  monthLabel,
+}: {
+  month: string | undefined;
+  currency: CurrencyCode;
+  monthLabel: string;
+}) {
+  const [budgetPaceData, categoryData] = await Promise.all([
     getDailyBudgetPace(month, currency),
-    getMonthlyCashflow(month, currency),
     getCategorySpending(month, currency),
   ]);
 
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-4">Análisis</h2>
-      <div className="grid gap-6 lg:grid-cols-2">
+    <DashboardSection title="Presupuesto" section="presupuesto">
+      <WidgetSlot widgetId="budget-pulse">
         <BudgetPaceChart
           data={budgetPaceData.data}
           totalBudget={budgetPaceData.totalBudget}
           totalSpent={budgetPaceData.totalSpent}
           monthLabel={monthLabel}
         />
-        <IncomeVsExpensesChart data={cashflowData} monthLabel={monthLabel} />
+      </WidgetSlot>
+
+      {/* Placeholder: AllocationBars5030 (Task 15) */}
+      <WidgetSlot widgetId="allocation-5030">
+        <WidgetPlaceholder label="AllocationBars5030" />
+      </WidgetSlot>
+
+      {/* Placeholder: CategoryDonut (optional, Task 16) */}
+      <WidgetSlot widgetId="category-donut">
+        <WidgetPlaceholder label="CategoryDonut" />
+      </WidgetSlot>
+
+      <WidgetSlot widgetId="budget-bar">
         <DashboardBudgetBar data={categoryData} monthLabel={monthLabel} />
-      </div>
-    </div>
+      </WidgetSlot>
+    </DashboardSection>
   );
 }

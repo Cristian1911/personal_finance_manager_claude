@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Settings2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WidgetTogglePanel } from "./widget-toggle-panel";
+import { useDashboardConfigContextSafe } from "./dashboard-config-provider";
 import type { DashboardSection as SectionType } from "@/types/dashboard-config";
 
 interface DashboardSectionProps {
@@ -13,21 +14,27 @@ interface DashboardSectionProps {
   defaultOpen?: boolean;
   summaryText?: string;
   showToggle?: boolean;
+  /** Override widgets list — if omitted, pulls from DashboardConfigProvider */
   onToggleWidget?: (widgetId: string, visible: boolean) => void;
   widgets?: Array<{ id: string; label: string; visible: boolean }>;
 }
 
 export function DashboardSection({
   title,
-  section: _section,
+  section,
   children,
   defaultOpen = true,
   summaryText,
   showToggle = true,
-  onToggleWidget,
-  widgets,
+  onToggleWidget: onToggleWidgetProp,
+  widgets: widgetsProp,
 }: DashboardSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const ctx = useDashboardConfigContextSafe();
+
+  // Pull from context if props not provided
+  const resolvedWidgets = widgetsProp ?? ctx?.getWidgetToggleList(section);
+  const resolvedOnToggle = onToggleWidgetProp ?? ctx?.toggleWidget;
 
   return (
     <div>
@@ -47,8 +54,11 @@ export function DashboardSection({
             {title}
           </span>
         </button>
-        {showToggle && widgets && onToggleWidget && (
-          <WidgetTogglePanel widgets={widgets} onToggle={onToggleWidget} />
+        {showToggle && resolvedWidgets && resolvedOnToggle && (
+          <WidgetTogglePanel
+            widgets={resolvedWidgets}
+            onToggle={resolvedOnToggle}
+          />
         )}
       </div>
 
@@ -57,7 +67,9 @@ export function DashboardSection({
         <div className="space-y-4">{children}</div>
       ) : (
         summaryText && (
-          <p className="text-sm text-muted-foreground lg:hidden">{summaryText}</p>
+          <p className="text-sm text-muted-foreground lg:hidden">
+            {summaryText}
+          </p>
         )
       )}
     </div>
