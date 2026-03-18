@@ -29,7 +29,9 @@ import {
   getDailyBudgetPace,
   getCategorySpending,
   getMonthlyCashflow,
+  getNetWorthHistory,
 } from "@/actions/charts";
+import { NetWorthHistoryChart } from "@/components/charts/net-worth-history-chart";
 import { getAccounts } from "@/actions/accounts";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
@@ -229,7 +231,7 @@ export default async function DashboardPage({
   }
 
   // Fast data: hero, burn rate, snapshots — renders immediately
-  const [heroData, latestSnapshotDates, burnRateData, accountsData, cashflowData, healthMetersData] =
+  const [heroData, latestSnapshotDates, burnRateData, accountsData, cashflowData, healthMetersData, mobileAllocationData, mobileDebtCountdownData] =
     await Promise.all([
       getDashboardHeroData(month, currency),
       getLatestSnapshotDates(),
@@ -237,6 +239,8 @@ export default async function DashboardPage({
       getAccountsWithSparklineData(),
       getMonthlyCashflow(month, currency),
       getHealthMeters(currency, month),
+      get503020Allocation(month, currency),
+      getDebtFreeCountdown(currency),
     ]);
 
   // Cash flow hero strip data — use current month's cashflow
@@ -283,6 +287,16 @@ export default async function DashboardPage({
           upcomingPayments={mobileUpcomingPayments}
           recentTransactions={mobileRecentTx}
           burnRateData={burnRateData}
+          healthMetersData={healthMetersData}
+          allocationData={mobileAllocationData}
+          debtCountdownData={mobileDebtCountdownData}
+          cashFlowStrip={{
+            income: cfIncome,
+            fixedExpenses: cfFixed,
+            variableExpenses: cfVariable,
+            remaining: cfRemaining,
+            currency,
+          }}
         />
       </div>
 
@@ -597,10 +611,11 @@ async function PatrimonioSection({
   month: string | undefined;
   healthMetersData: import("@/actions/health-meters").HealthMetersData;
 }) {
-  const [debtCountdownData, interestPaidData, debtProgressAccounts] = await Promise.all([
+  const [debtCountdownData, interestPaidData, debtProgressAccounts, netWorthHistory] = await Promise.all([
     getDebtFreeCountdown(currency),
     getInterestPaid(month, currency),
     getDebtProgress(currency),
+    getNetWorthHistory(month, currency),
   ]);
 
   return (
@@ -611,6 +626,10 @@ async function PatrimonioSection({
 
       <WidgetSlot widgetId="debt-progress">
         <DebtProgressWidget accounts={debtProgressAccounts} />
+      </WidgetSlot>
+
+      <WidgetSlot widgetId="net-worth">
+        <NetWorthHistoryChart data={netWorthHistory} />
       </WidgetSlot>
 
       <WidgetSlot widgetId="emergency-fund">
