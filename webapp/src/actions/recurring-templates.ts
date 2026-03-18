@@ -272,7 +272,7 @@ export async function createRecurringTemplate(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("recurring", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   return { success: true, data };
 }
 
@@ -341,7 +341,7 @@ export async function updateRecurringTemplate(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("recurring", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   return { success: true, data };
 }
 
@@ -361,7 +361,7 @@ export async function deleteRecurringTemplate(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("recurring", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -382,7 +382,7 @@ export async function toggleRecurringTemplate(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("recurring", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -826,7 +826,7 @@ export async function recordRecurringOccurrencePayment(input: {
 
   revalidateTag("accounts", "zeta");
   revalidateTag("recurring", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("categorize", "zeta");
   revalidateTag("debt", "zeta");
 

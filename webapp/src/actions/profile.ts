@@ -103,6 +103,6 @@ export async function updateProfile(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("profile", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   return { success: true, data };
 }

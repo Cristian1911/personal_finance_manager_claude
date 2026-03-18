@@ -1,5 +1,3 @@
-"use client";
-
 import { formatCurrency } from "@/lib/utils/currency";
 import { freshnessMap } from "@/lib/utils/dashboard";
 import { KPIWidget } from "@/components/ui/kpi-widget";

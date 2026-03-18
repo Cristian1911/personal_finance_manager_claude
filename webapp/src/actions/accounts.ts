@@ -144,7 +144,8 @@ export async function createAccount(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:accounts", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
   return { success: true, data: result };
 }
@@ -177,7 +178,8 @@ export async function updateAccount(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:accounts", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
   return { success: true, data: result };
 }
@@ -192,7 +194,8 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
   if (error) return { success: false, error: error.message };
 
   revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:accounts", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
   return { success: true, data: undefined };
 }
@@ -214,7 +217,8 @@ export async function toggleDashboardVisibility(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:accounts", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -285,7 +289,8 @@ export async function reconcileBalance(
   if (updateError) return { success: false, error: updateError.message };
 
   revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:accounts", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
   return { success: true, data: { delta } };
 }

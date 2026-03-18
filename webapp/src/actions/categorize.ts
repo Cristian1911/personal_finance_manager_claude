@@ -203,7 +203,10 @@ export async function categorizeTransaction(
   }
 
   revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
 }
@@ -268,7 +271,10 @@ export async function bulkCategorize(
   }
 
   revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("destinatarios", "zeta");
   return { success: true, data: { categorized } };
 }
@@ -352,7 +358,10 @@ export async function assignDestinatario(
   }
 
   revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
 }
@@ -377,7 +386,10 @@ export async function removeDestinatarioFromTransaction(
   }
 
   revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
 }

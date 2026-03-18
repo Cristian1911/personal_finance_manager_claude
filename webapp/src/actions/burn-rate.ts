@@ -37,7 +37,7 @@ async function getBurnRateCached(
   currency: string
 ): Promise<BurnRateResponse | null> {
   "use cache";
-  cacheTag("dashboard");
+  cacheTag("dashboard:hero");
   cacheTag("accounts");
   cacheTag("recurring");
   cacheLife("zeta");

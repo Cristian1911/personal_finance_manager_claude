@@ -71,7 +71,10 @@ async function persistTransaction(
     return { success: false, error: error.message };
   }
 
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("categorize", "zeta");
   revalidateTag("debt", "zeta");
   revalidateTag("budgets", "zeta");
@@ -272,7 +275,10 @@ export async function updateTransaction(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("categorize", "zeta");
   revalidateTag("debt", "zeta");
   revalidateTag("budgets", "zeta");
@@ -288,7 +294,10 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("categorize", "zeta");
   revalidateTag("debt", "zeta");
   revalidateTag("budgets", "zeta");
@@ -311,7 +320,10 @@ export async function toggleExcludeTransaction(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("categorize", "zeta");
   revalidateTag("budgets", "zeta");
   return { success: true, data: undefined };
@@ -333,7 +345,10 @@ export async function bulkExcludeTransactions(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
   revalidateTag("categorize", "zeta");
   revalidateTag("budgets", "zeta");
   return { success: true, data: undefined };

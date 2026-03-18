@@ -96,6 +96,7 @@ export function DailySpendingChart({ data, monthLabel }: Props) {
               stroke="var(--color-amount)"
               fill="url(#fillAmount)"
               strokeWidth={2}
+              isAnimationActive={false}
             />
           </AreaChart>
         </ChartContainer>

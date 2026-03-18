@@ -107,8 +107,8 @@ export function MonthlyCashflowChart({ data, monthLabel }: Props) {
               }}
             />
             <ChartLegend content={<ChartLegendContent />} />
-            <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
           </BarChart>
         </ChartContainer>
       </CardContent>

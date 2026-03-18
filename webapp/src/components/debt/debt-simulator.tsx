@@ -339,8 +339,8 @@ function SingleAccountTab({ accounts }: Props) {
                       }}
                     />
                     <ChartLegend content={<ChartLegendContent />} />
-                    <Area type="monotone" dataKey="withoutExtra" stroke="var(--color-withoutExtra)" fill="url(#fillWithout)" strokeWidth={2} />
-                    <Area type="monotone" dataKey="withExtra" stroke="var(--color-withExtra)" fill="url(#fillWith)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="withoutExtra" stroke="var(--color-withoutExtra)" fill="url(#fillWithout)" strokeWidth={2} isAnimationActive={false} />
+                    <Area type="monotone" dataKey="withExtra" stroke="var(--color-withExtra)" fill="url(#fillWith)" strokeWidth={2} isAnimationActive={false} />
                   </AreaChart>
                 </ChartContainer>
               </CardContent>
@@ -620,9 +620,9 @@ function StrategiesTab({ accounts }: Props) {
                       }}
                     />
                     <ChartLegend content={<ChartLegendContent />} />
-                    <Area type="monotone" dataKey="baseline" stroke="var(--color-baseline)" fill="url(#fillBaseline)" strokeWidth={1.5} strokeDasharray="4 4" />
-                    <Area type="monotone" dataKey="snowball" stroke="var(--color-snowball)" fill="url(#fillSnowball)" strokeWidth={2} />
-                    <Area type="monotone" dataKey="avalanche" stroke="var(--color-avalanche)" fill="url(#fillAvalanche)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="baseline" stroke="var(--color-baseline)" fill="url(#fillBaseline)" strokeWidth={1.5} strokeDasharray="4 4" isAnimationActive={false} />
+                    <Area type="monotone" dataKey="snowball" stroke="var(--color-snowball)" fill="url(#fillSnowball)" strokeWidth={2} isAnimationActive={false} />
+                    <Area type="monotone" dataKey="avalanche" stroke="var(--color-avalanche)" fill="url(#fillAvalanche)" strokeWidth={2} isAnimationActive={false} />
                   </AreaChart>
                 </ChartContainer>
               </CardContent>

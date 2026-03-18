@@ -207,6 +207,7 @@ export function EnhancedCashflowChart({ data, monthLabel }: EnhancedCashflowChar
                 dot={false}
                 activeDot={{ r: 4 }}
                 hide={!showIncome}
+                isAnimationActive={false}
               />
               <Line
                 type="linear"
@@ -216,6 +217,7 @@ export function EnhancedCashflowChart({ data, monthLabel }: EnhancedCashflowChar
                 dot={false}
                 activeDot={{ r: 4 }}
                 hide={!showExpenses}
+                isAnimationActive={false}
               />
               <Line
                 type="linear"
@@ -225,6 +227,7 @@ export function EnhancedCashflowChart({ data, monthLabel }: EnhancedCashflowChar
                 dot={false}
                 activeDot={{ r: 4 }}
                 hide={!showBalance}
+                isAnimationActive={false}
               />
               <Line
                 type="linear"
@@ -234,6 +237,7 @@ export function EnhancedCashflowChart({ data, monthLabel }: EnhancedCashflowChar
                 dot={false}
                 activeDot={{ r: 4 }}
                 hide={!showCumulativeIncome}
+                isAnimationActive={false}
               />
               <Line
                 type="linear"
@@ -243,6 +247,7 @@ export function EnhancedCashflowChart({ data, monthLabel }: EnhancedCashflowChar
                 dot={false}
                 activeDot={{ r: 4 }}
                 hide={!showCumulativeExpenses}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>

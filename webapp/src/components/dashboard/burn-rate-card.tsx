@@ -173,6 +173,7 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
                 strokeWidth={2}
                 fill={`url(#${gradientId})`}
                 connectNulls={false}
+                isAnimationActive={false}
               />
               <Area
                 type="monotone"
@@ -182,6 +183,7 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
                 strokeDasharray="4 3"
                 fill="none"
                 connectNulls={false}
+                isAnimationActive={false}
               />
             </AreaChart>
           </ChartContainer>

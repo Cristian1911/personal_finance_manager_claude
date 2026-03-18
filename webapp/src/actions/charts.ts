@@ -47,7 +47,7 @@ async function getCategorySpendingCached(
   currency: CurrencyCode | undefined
 ): Promise<CategorySpending[]> {
   "use cache";
-  cacheTag("dashboard");
+  cacheTag("dashboard:charts");
   cacheLife("zeta");
 
   const supabase = createAdminClient()!;
@@ -129,7 +129,7 @@ async function getMonthlyCashflowCached(
   currency: CurrencyCode | undefined
 ): Promise<MonthlyCashflow[]> {
   "use cache";
-  cacheTag("dashboard");
+  cacheTag("dashboard:cashflow");
   cacheLife("zeta");
 
   const supabase = createAdminClient()!;
@@ -187,7 +187,7 @@ async function getDailySpendingCached(
   currency: CurrencyCode | undefined
 ): Promise<DailySpending[]> {
   "use cache";
-  cacheTag("dashboard");
+  cacheTag("dashboard:charts");
   cacheLife("zeta");
 
   const supabase = createAdminClient()!;
@@ -233,7 +233,7 @@ async function getMonthMetricsCached(
   month: string | undefined
 ): Promise<MonthMetrics> {
   "use cache";
-  cacheTag("dashboard");
+  cacheTag("dashboard:charts");
   cacheLife("zeta");
 
   const supabase = createAdminClient()!;
@@ -275,7 +275,7 @@ async function getDailyCashflowCached(
   month: string | undefined
 ): Promise<DailyCashflow[]> {
   "use cache";
-  cacheTag("dashboard");
+  cacheTag("dashboard:cashflow");
   cacheLife("zeta");
 
   const supabase = createAdminClient()!;
@@ -366,6 +366,7 @@ async function getAccountsWithSparklineDataCached(
 ): Promise<GroupedAccounts> {
   "use cache";
   cacheTag("accounts");
+  cacheTag("dashboard:accounts");
   cacheLife("zeta");
 
   const supabase = createAdminClient()!;

@@ -2,7 +2,7 @@
   "private": true,
   "name": "zeta",
   "engines": {
-    "node": ">=20 <21"
+    "node": ">=20"
   },
   "pnpm": {
     "overrides": {
