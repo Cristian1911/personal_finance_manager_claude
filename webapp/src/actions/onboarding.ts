@@ -1,7 +1,7 @@
 "use server";
 
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { Database, type Json } from "@/types/database";
 import type { DashboardConfig } from "@/types/dashboard-config";
 
@@ -76,6 +76,7 @@ export async function finishOnboarding(
         throw new Error("Failed to finalize onboarding setup. Please try again.");
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/", "layout");
+    revalidateTag("profile", "zeta");
+    revalidateTag("accounts", "zeta");
+    revalidateTag("dashboard", "zeta");
 }

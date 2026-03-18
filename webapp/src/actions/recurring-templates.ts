@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateTag, cacheTag, cacheLife } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { getNextOccurrence, getOccurrencesBetween } from "@zeta/shared";
@@ -56,40 +57,154 @@ function applyBalanceDelta(params: {
   return params.currentBalance - params.amount;
 }
 
-export async function getRecurringTemplates(): Promise<
-  ActionResult<RecurringTemplateWithRelations[]>
-> {
-  const { supabase, user } = await getAuthenticatedClient();
+// ─── Cached inner functions ───────────────────────────────────────────────────
 
-  if (!user) return { success: false, error: "No autenticado" };
+async function getRecurringTemplatesCached(
+  userId: string
+): Promise<RecurringTemplateWithRelations[]> {
+  "use cache";
+  cacheTag("recurring");
+  cacheLife("zeta");
 
+  const supabase = createAdminClient()!;
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("is_active", { ascending: false })
     .order("merchant_name");
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: (data ?? []) as RecurringTemplateWithRelations[] };
+  if (error) throw error;
+  return (data ?? []) as RecurringTemplateWithRelations[];
+}
+
+async function getRecurringTemplateCached(
+  userId: string,
+  id: string
+): Promise<RecurringTemplateWithRelations> {
+  "use cache";
+  cacheTag("recurring");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+  const { data, error } = await supabase
+    .from("recurring_transaction_templates")
+    .select(TEMPLATE_SELECT)
+    .eq("user_id", userId)
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+  return data as RecurringTemplateWithRelations;
+}
+
+async function getUpcomingRecurrencesCached(
+  userId: string,
+  days: number
+): Promise<UpcomingRecurrence[]> {
+  "use cache";
+  cacheTag("recurring");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+  const { data: templates } = await supabase
+    .from("recurring_transaction_templates")
+    .select(TEMPLATE_SELECT)
+    .eq("user_id", userId)
+    .eq("is_active", true);
+
+  if (!templates || templates.length === 0) return [];
+
+  const now = new Date();
+  const rangeEnd = addDays(now, days);
+
+  const upcoming: UpcomingRecurrence[] = [];
+
+  for (const template of templates as RecurringTemplateWithRelations[]) {
+    const dates = getOccurrencesBetween(
+      template.start_date,
+      template.frequency,
+      template.end_date,
+      now,
+      rangeEnd
+    );
+
+    for (const date of dates) {
+      upcoming.push({ template, next_date: date });
+    }
+  }
+
+  upcoming.sort((a, b) => a.next_date.localeCompare(b.next_date));
+
+  return upcoming;
+}
+
+async function getRecurringSummaryCached(userId: string): Promise<{
+  totalMonthlyExpenses: number;
+  totalMonthlyIncome: number;
+  activeCount: number;
+}> {
+  "use cache";
+  cacheTag("recurring");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+  const { data: templates } = await supabase
+    .from("recurring_transaction_templates")
+    .select("amount, direction, frequency, accounts!recurring_transaction_templates_account_id_fkey(account_type)")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+
+  if (!templates)
+    return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0 };
+
+  let totalMonthlyExpenses = 0;
+  let totalMonthlyIncome = 0;
+
+  for (const t of templates) {
+    const monthlyAmount = toMonthlyAmount(t.amount, t.frequency);
+    const accountType = (t.accounts as { account_type?: string } | null)?.account_type;
+    const isDebtPayment = !!accountType && DEBT_ACCOUNT_TYPES.has(accountType);
+    if (t.direction === "OUTFLOW" || isDebtPayment) {
+      totalMonthlyExpenses += monthlyAmount;
+    } else {
+      totalMonthlyIncome += monthlyAmount;
+    }
+  }
+
+  return {
+    totalMonthlyExpenses,
+    totalMonthlyIncome,
+    activeCount: templates.length,
+  };
+}
+
+// ─── Public wrappers ──────────────────────────────────────────────────────────
+
+export async function getRecurringTemplates(): Promise<
+  ActionResult<RecurringTemplateWithRelations[]>
+> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getRecurringTemplatesCached(user.id);
+    return { success: true, data };
+  } catch {
+    return { success: false, error: "Error al cargar las plantillas recurrentes" };
+  }
 }
 
 export async function getRecurringTemplate(
   id: string
 ): Promise<ActionResult<RecurringTemplateWithRelations>> {
-  const { supabase, user } = await getAuthenticatedClient();
-
+  const { user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
-
-  const { data, error } = await supabase
-    .from("recurring_transaction_templates")
-    .select(TEMPLATE_SELECT)
-    .eq("user_id", user.id)
-    .eq("id", id)
-    .single();
-
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data as RecurringTemplateWithRelations };
+  try {
+    const data = await getRecurringTemplateCached(user.id, id);
+    return { success: true, data };
+  } catch {
+    return { success: false, error: "Error al cargar la plantilla recurrente" };
+  }
 }
 
 export async function createRecurringTemplate(
@@ -156,7 +271,8 @@ export async function createRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/recurrentes");
+  revalidateTag("recurring", "zeta");
+  revalidateTag("dashboard", "zeta");
   return { success: true, data };
 }
 
@@ -224,7 +340,8 @@ export async function updateRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/recurrentes");
+  revalidateTag("recurring", "zeta");
+  revalidateTag("dashboard", "zeta");
   return { success: true, data };
 }
 
@@ -243,7 +360,8 @@ export async function deleteRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/recurrentes");
+  revalidateTag("recurring", "zeta");
+  revalidateTag("dashboard", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -263,7 +381,8 @@ export async function toggleRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/recurrentes");
+  revalidateTag("recurring", "zeta");
+  revalidateTag("dashboard", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -705,7 +824,11 @@ export async function recordRecurringOccurrencePayment(input: {
     createdTxs: inserted.createdTxs,
   });
 
-  revalidatePath("/recurrentes");
+  revalidateTag("accounts", "zeta");
+  revalidateTag("recurring", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("categorize", "zeta");
+  revalidateTag("debt", "zeta");
 
   return {
     success: true,
@@ -723,41 +846,9 @@ export async function recordRecurringOccurrencePayment(input: {
 export async function getUpcomingRecurrences(
   days: number = 30
 ): Promise<UpcomingRecurrence[]> {
-  const { supabase, user } = await getAuthenticatedClient();
-
+  const { user } = await getAuthenticatedClient();
   if (!user) return [];
-
-  const { data: templates } = await supabase
-    .from("recurring_transaction_templates")
-    .select(TEMPLATE_SELECT)
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  if (!templates || templates.length === 0) return [];
-
-  const now = new Date();
-  const rangeEnd = addDays(now, days);
-
-  const upcoming: UpcomingRecurrence[] = [];
-
-  for (const template of templates as RecurringTemplateWithRelations[]) {
-    const dates = getOccurrencesBetween(
-      template.start_date,
-      template.frequency,
-      template.end_date,
-      now,
-      rangeEnd
-    );
-
-    for (const date of dates) {
-      upcoming.push({ template, next_date: date });
-    }
-  }
-
-  // Sort by date ascending
-  upcoming.sort((a, b) => a.next_date.localeCompare(b.next_date));
-
-  return upcoming;
+  return getUpcomingRecurrencesCached(user.id, days);
 }
 
 /**
@@ -768,39 +859,9 @@ export async function getRecurringSummary(): Promise<{
   totalMonthlyIncome: number;
   activeCount: number;
 }> {
-  const { supabase, user } = await getAuthenticatedClient();
-
-  if (!user)
-    return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0 };
-
-  const { data: templates } = await supabase
-    .from("recurring_transaction_templates")
-    .select("amount, direction, frequency, accounts!recurring_transaction_templates_account_id_fkey(account_type)")
-    .eq("is_active", true);
-
-  if (!templates)
-    return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0 };
-
-  let totalMonthlyExpenses = 0;
-  let totalMonthlyIncome = 0;
-
-  for (const t of templates) {
-    // Normalize to monthly equivalent
-    const monthlyAmount = toMonthlyAmount(t.amount, t.frequency);
-    const accountType = (t.accounts as { account_type?: string } | null)?.account_type;
-    const isDebtPayment = !!accountType && DEBT_ACCOUNT_TYPES.has(accountType);
-    if (t.direction === "OUTFLOW" || isDebtPayment) {
-      totalMonthlyExpenses += monthlyAmount;
-    } else {
-      totalMonthlyIncome += monthlyAmount;
-    }
-  }
-
-  return {
-    totalMonthlyExpenses,
-    totalMonthlyIncome,
-    activeCount: templates.length,
-  };
+  const { user } = await getAuthenticatedClient();
+  if (!user) return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0 };
+  return getRecurringSummaryCached(user.id);
 }
 
 function toMonthlyAmount(

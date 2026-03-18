@@ -1,4 +1,9 @@
+"use server";
+
+import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { toISODateString } from "@/lib/utils/date";
 
 export interface UpcomingPayment {
     id: string; // snapshot id
@@ -10,22 +15,25 @@ export interface UpcomingPayment {
     total_payment_due: number;
 }
 
-export async function getUpcomingPayments(): Promise<UpcomingPayment[]> {
-    const { supabase, user } = await getAuthenticatedClient();
+// ─── Cached inner function ────────────────────────────────────────────────────
 
-    if (!user) return [];
+async function getUpcomingPaymentsCached(
+  userId: string
+): Promise<UpcomingPayment[]> {
+  "use cache";
+  cacheTag("snapshots");
+  cacheLife("zeta");
 
-    // Get today's date in YYYY-MM-DD format based on local timezone? 
-    // For simplicity, ISO string's date part works generally well enough, or just query `>= today`
-    const today = new Date().toISOString().split("T")[0];
+  const today = toISODateString(new Date());
+  const supabase = createAdminClient()!;
 
-    // We want to fetch the LATEST snapshot for each account
-    // But doing a group-by or distinct-on is tricky in Supabase clients without a view
-    // Let's just grab all recent snapshots with a due date >= today
-    // And filter in memory to essentially keep the most recently created one per account
-    const { data: snapshots } = await supabase
-        .from("statement_snapshots")
-        .select(`
+  // We want to fetch the LATEST snapshot for each account
+  // But doing a group-by or distinct-on is tricky in Supabase clients without a view
+  // Let's just grab all recent snapshots with a due date >= today
+  // And filter in memory to essentially keep the most recently created one per account
+  const { data: snapshots, error } = await supabase
+    .from("statement_snapshots")
+    .select(`
       id,
       account_id,
       payment_due_date,
@@ -38,35 +46,49 @@ export async function getUpcomingPayments(): Promise<UpcomingPayment[]> {
         is_active
       )
     `)
-        .eq("user_id", user.id)
-        .eq("accounts.is_active", true)
-        .not("payment_due_date", "is", null)
-        .gte("payment_due_date", today)
-        .order("created_at", { ascending: false });
+    .eq("user_id", userId)
+    .eq("accounts.is_active", true)
+    .not("payment_due_date", "is", null)
+    .gte("payment_due_date", today)
+    .order("created_at", { ascending: false });
 
-    if (!snapshots) return [];
+  if (error) throw error;
+  if (!snapshots) return [];
 
-    const uniqueByAccount = new Map<string, UpcomingPayment>();
+  const uniqueByAccount = new Map<string, UpcomingPayment>();
 
-    for (const s of snapshots) {
-        // accounts is an object because of the foreign key !inner join
-        const account = Array.isArray(s.accounts) ? s.accounts[0] : s.accounts;
-        if (!account) continue;
+  for (const s of snapshots) {
+    // accounts is an object because of the foreign key !inner join
+    const account = Array.isArray(s.accounts) ? s.accounts[0] : s.accounts;
+    if (!account) continue;
 
-        if (!uniqueByAccount.has(s.account_id)) {
-            uniqueByAccount.set(s.account_id, {
-                id: s.id,
-                account_id: s.account_id,
-                account_name: account.name,
-                account_type: account.account_type,
-                currency_code: s.currency_code,
-                payment_due_date: s.payment_due_date!,
-                total_payment_due: s.total_payment_due || 0,
-            });
-        }
+    if (!uniqueByAccount.has(s.account_id)) {
+      uniqueByAccount.set(s.account_id, {
+        id: s.id,
+        account_id: s.account_id,
+        account_name: account.name,
+        account_type: account.account_type,
+        currency_code: s.currency_code,
+        payment_due_date: s.payment_due_date!,
+        total_payment_due: s.total_payment_due || 0,
+      });
     }
+  }
 
-    // Convert to array and sort by payment_due_date ascending
-    return Array.from(uniqueByAccount.values())
-        .sort((a, b) => new Date(a.payment_due_date).getTime() - new Date(b.payment_due_date).getTime());
+  // Convert to array and sort by payment_due_date ascending
+  return Array.from(uniqueByAccount.values())
+    .sort((a, b) => new Date(a.payment_due_date).getTime() - new Date(b.payment_due_date).getTime());
+}
+
+// ─── Public wrapper ───────────────────────────────────────────────────────────
+
+export async function getUpcomingPayments(): Promise<UpcomingPayment[]> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return [];
+
+  try {
+    return await getUpcomingPaymentsCached(user.id);
+  } catch {
+    return [];
+  }
 }

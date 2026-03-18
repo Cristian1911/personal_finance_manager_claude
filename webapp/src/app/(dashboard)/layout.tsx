@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUserSafely } from "@/lib/supabase/auth";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -18,6 +19,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await connection(); // signal dynamic rendering — auth requires cookies
   const supabase = await createClient();
   const user = await getUserSafely(supabase);
 

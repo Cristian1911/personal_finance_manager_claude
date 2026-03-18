@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 import {
   computeSnapshotDiffs,
   findReconciliationCandidates,
@@ -612,8 +612,12 @@ export async function importTransactions(
     details,
   });
 
-  revalidatePath("/transactions");
-  revalidatePath("/accounts");
+  revalidateTag("accounts", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("categorize", "zeta");
+  revalidateTag("snapshots", "zeta");
+  revalidateTag("debt", "zeta");
+  revalidateTag("budgets", "zeta");
 
   await trackProductEvent({
     event_name: "import_completed",

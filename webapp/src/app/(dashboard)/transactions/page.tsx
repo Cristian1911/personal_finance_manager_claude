@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getTransactions } from "@/actions/transactions";
 import { getAccounts } from "@/actions/accounts";
@@ -17,6 +18,7 @@ export default async function TransactionsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  await connection();
   const params = await searchParams;
 
   const [transactionsResult, accountsResult, categoriesResult, outflowCategoriesResult] =

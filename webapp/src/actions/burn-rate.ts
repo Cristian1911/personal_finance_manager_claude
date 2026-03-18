@@ -1,8 +1,9 @@
 "use server";
 
 import { subMonths } from "date-fns";
+import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { getUpcomingRecurrences } from "@/actions/recurring-templates";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -29,24 +30,43 @@ export interface BurnRateResponse {
   currency: CurrencyCode;
 }
 
-export async function getBurnRate(
-  currency?: string
-): Promise<BurnRateResponse | null> {
-  const { supabase, user } = await getAuthenticatedClient();
+// ─── Cached inner function ────────────────────────────────────────────────────
 
-  if (!user) return null;
+async function getBurnRateCached(
+  userId: string,
+  currency: string
+): Promise<BurnRateResponse | null> {
+  "use cache";
+  cacheTag("dashboard");
+  cacheTag("accounts");
+  cacheTag("recurring");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+  const baseCurrency = currency as CurrencyCode;
+
+  // 0. Compute pending obligations from active recurring templates (OUTFLOW only)
+  const { data: templates } = await supabase
+    .from("recurring_transaction_templates")
+    .select("amount, direction, currency_code")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+
+  const totalPending = (templates ?? [])
+    .filter(t => t.direction === "OUTFLOW" && (t.currency_code ?? "COP") === baseCurrency)
+    .reduce((sum, t) => sum + t.amount, 0);
 
   // 1. Fetch liquid accounts (checking + savings, not credit cards or loans)
-  const { data: accounts } = await supabase
+  const { data: accounts, error: accountsError } = await supabase
     .from("accounts")
     .select("id, current_balance, currency_code, account_type")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("is_active", true)
     .in("account_type", ["CHECKING", "SAVINGS"]);
 
+  if (accountsError) throw accountsError;
   if (!accounts || accounts.length === 0) return null;
 
-  const baseCurrency = (currency ?? "COP") as CurrencyCode;
   const liquidAccounts = accounts.filter(
     (a) => a.currency_code === baseCurrency
   );
@@ -57,36 +77,26 @@ export async function getBurnRate(
 
   // 2. Fetch outflow transactions (last 3 months — enough for stable average + chart)
   const threeMonthsAgo = toISODateString(subMonths(new Date(), 3));
-  const { data: transactions } = await supabase
+  const { data: transactions, error: txError } = await supabase
     .from("transactions")
     .select("id, amount, transaction_date, direction, is_recurring")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
     .eq("currency_code", baseCurrency)
     .gte("transaction_date", threeMonthsAgo)
     .order("transaction_date", { ascending: true });
 
+  if (txError) throw txError;
   if (!transactions || transactions.length === 0) return null;
 
-  // 3. Get upcoming recurrences for pending obligations calculation
-  const recurrences = await getUpcomingRecurrences(30);
-
-  // 4. Compute pending obligations for disponible
-  const totalPending = recurrences
-    .filter(
-      (r) =>
-        r.template.direction === "OUTFLOW" &&
-        (r.template.currency_code ?? "COP") === baseCurrency
-    )
-    .reduce((sum, r) => sum + r.template.amount, 0);
-
+  // 3. Compute disponible using pre-fetched pending obligations
   const disponible = liquidBalance - totalPending;
 
-  // 5. Split transactions into total vs discretionary using is_recurring flag
+  // 4. Split transactions into total vs discretionary using is_recurring flag
   const discretionaryOutflows = transactions.filter((t) => !t.is_recurring);
 
-  // 6. Compute both modes
+  // 5. Compute both modes
   const today = new Date();
   const total = computeBurnRate(transactions, liquidBalance, today, "total");
   const discretionary = computeBurnRate(
@@ -97,6 +107,17 @@ export async function getBurnRate(
   );
 
   return { total, discretionary, liquidBalance, disponible, currency: baseCurrency };
+}
+
+// ─── Public wrapper ───────────────────────────────────────────────────────────
+
+export async function getBurnRate(
+  currency?: string
+): Promise<BurnRateResponse | null> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return null;
+
+  return getBurnRateCached(user.id, currency ?? "COP");
 }
 
 function computeBurnRate(

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { getTransaction, deleteTransaction } from "@/actions/transactions";
 import { getAccounts } from "@/actions/accounts";
@@ -19,6 +20,7 @@ export default async function TransactionDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await connection();
   const { id } = await params;
   const [txResult, accountsResult, categoriesResult, destinatariosResult] =
     await Promise.all([

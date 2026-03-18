@@ -1,7 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   destinatarioSchema,
   destinatarioRuleSchema,
@@ -88,23 +89,26 @@ export async function testDestinatarioPattern(
   };
 }
 
-// ─── getDestinatarios ─────────────────────────────────────────────────────────
+// ─── Cached inner functions ───────────────────────────────────────────────────
 
-export async function getDestinatarios(): Promise<
-  ActionResult<DestinatarioWithCounts[]>
-> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+async function getDestinatariosCached(
+  userId: string
+): Promise<DestinatarioWithCounts[]> {
+  "use cache";
+  cacheTag("destinatarios");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
 
   const { data: destinatarios, error } = await supabase
     .from("destinatarios")
     .select("*, destinatario_rules(count), transactions(count)")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("name", { ascending: true });
 
-  if (error) return { success: false, error: error.message };
+  if (error) throw error;
 
-  const result: DestinatarioWithCounts[] = (destinatarios ?? []).map((d) => {
+  return (destinatarios ?? []).map((d) => {
     const { destinatario_rules, transactions, ...rest } = d;
     return {
       ...rest,
@@ -114,56 +118,54 @@ export async function getDestinatarios(): Promise<
         ?.count ?? 0,
     };
   });
-
-  return { success: true, data: result };
 }
 
-// ─── getDestinatario ──────────────────────────────────────────────────────────
-
-export async function getDestinatario(
+async function getDestinatarioCached(
+  userId: string,
   id: string
-): Promise<ActionResult<DestinatarioWithRules>> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+): Promise<DestinatarioWithRules> {
+  "use cache";
+  cacheTag("destinatarios");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
 
   const { data, error } = await supabase
     .from("destinatarios")
     .select("*, destinatario_rules(*)")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("id", id)
     .single();
 
-  if (error) return { success: false, error: error.message };
-  if (!data) return { success: false, error: "Destinatario no encontrado" };
+  if (error) throw error;
+  if (!data) throw new Error("Destinatario no encontrado");
 
   const { destinatario_rules, ...rest } = data;
 
   return {
-    success: true,
-    data: {
-      ...rest,
-      rules: destinatario_rules ?? [],
-    },
+    ...rest,
+    rules: destinatario_rules ?? [],
   };
 }
 
-// ─── getDestinatarioRules ─────────────────────────────────────────────────────
+async function getDestinatarioRulesCached(
+  userId: string
+): Promise<DestinatarioRule[]> {
+  "use cache";
+  cacheTag("destinatarios");
+  cacheLife("zeta");
 
-export async function getDestinatarioRules(): Promise<
-  ActionResult<DestinatarioRule[]>
-> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const supabase = createAdminClient()!;
 
   const { data, error } = await supabase
     .from("destinatario_rules")
     .select(
       "destinatario_id, match_type, pattern, priority, destinatarios!inner(name, default_category_id, is_active)"
     )
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("priority", { ascending: true });
 
-  if (error) return { success: false, error: error.message };
+  if (error) throw error;
 
   // Shape into DestinatarioRule[], filtering to only active destinatarios
   const rules: DestinatarioRule[] = [];
@@ -181,7 +183,163 @@ export async function getDestinatarioRules(): Promise<
     });
   }
 
-  return { success: true, data: rules };
+  return rules;
+}
+
+async function getUnmatchedDescriptionsCached(
+  userId: string
+): Promise<string[]> {
+  "use cache";
+  cacheTag("destinatarios");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("raw_description")
+    .eq("user_id", userId)
+    .is("destinatario_id", null)
+    .not("raw_description", "is", null)
+    .order("transaction_date", { ascending: false })
+    .limit(500);
+
+  if (error) throw error;
+
+  // Extract distinct raw_description values
+  const seen = new Set<string>();
+  const descriptions: string[] = [];
+  for (const row of data ?? []) {
+    if (row.raw_description && !seen.has(row.raw_description)) {
+      seen.add(row.raw_description);
+      descriptions.push(row.raw_description);
+    }
+  }
+
+  return descriptions;
+}
+
+async function getDestinatarioSuggestionsCached(
+  userId: string
+): Promise<DestinatarioSuggestionResult[]> {
+  "use cache";
+  cacheTag("destinatarios");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+
+  // Fetch unmatched transactions with raw descriptions
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("transaction_date, raw_description, amount")
+    .eq("user_id", userId)
+    .is("destinatario_id", null)
+    .not("raw_description", "is", null)
+    .order("transaction_date", { ascending: false })
+    .limit(1000);
+
+  if (error) throw error;
+
+  // Group by cleaned description
+  const groups = new Map<
+    string,
+    {
+      count: number;
+      dates: string[];
+      samples: { date: string; rawDescription: string; amount: number }[];
+    }
+  >();
+
+  for (const row of data ?? []) {
+    if (!row.raw_description) continue;
+    const cleaned = cleanDescription(row.raw_description);
+    if (cleaned.length === 0) continue;
+
+    if (!groups.has(cleaned)) {
+      groups.set(cleaned, { count: 0, dates: [], samples: [] });
+    }
+    const group = groups.get(cleaned)!;
+    group.count++;
+    group.dates.push(row.transaction_date);
+    if (group.samples.length < 5) {
+      group.samples.push({
+        date: row.transaction_date,
+        rawDescription: row.raw_description,
+        amount: row.amount,
+      });
+    }
+  }
+
+  // Filter to groups with 3+ occurrences, sort by count desc, limit to 20
+  const suggestions: DestinatarioSuggestionResult[] = [];
+  for (const [pattern, group] of groups) {
+    if (group.count < 3) continue;
+    const sortedDates = group.dates.sort();
+    suggestions.push({
+      cleanedPattern: pattern,
+      count: group.count,
+      dateRange: {
+        from: sortedDates[0],
+        to: sortedDates[sortedDates.length - 1],
+      },
+      sampleTransactions: group.samples,
+    });
+  }
+
+  suggestions.sort((a, b) => b.count - a.count);
+
+  // Group related patterns by common prefix (e.g., "NEQUI PAGO" variants)
+  const grouped = groupSuggestionsByPrefix(suggestions);
+
+  return grouped.slice(0, 20);
+}
+
+// ─── getDestinatarios ─────────────────────────────────────────────────────────
+
+export async function getDestinatarios(): Promise<
+  ActionResult<DestinatarioWithCounts[]>
+> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getDestinatariosCached(user.id);
+    return { success: true, data };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error al cargar los destinatarios";
+    return { success: false, error: message };
+  }
+}
+
+// ─── getDestinatario ──────────────────────────────────────────────────────────
+
+export async function getDestinatario(
+  id: string
+): Promise<ActionResult<DestinatarioWithRules>> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getDestinatarioCached(user.id, id);
+    return { success: true, data };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Destinatario no encontrado";
+    return { success: false, error: message };
+  }
+}
+
+// ─── getDestinatarioRules ─────────────────────────────────────────────────────
+
+export async function getDestinatarioRules(): Promise<
+  ActionResult<DestinatarioRule[]>
+> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getDestinatarioRulesCached(user.id);
+    return { success: true, data };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error al cargar las reglas";
+    return { success: false, error: message };
+  }
 }
 
 // ─── createDestinatario ───────────────────────────────────────────────────────
@@ -242,13 +400,13 @@ export async function createDestinatario(
         .insert(rules);
       if (rulesError) {
         // Destinatario was created but rules failed — return partial success with warning
-        revalidatePath("/destinatarios");
+        revalidateTag("destinatarios", "zeta");
         return { success: true, data };
       }
     }
   }
 
-  revalidatePath("/destinatarios");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data };
 }
 
@@ -283,7 +441,7 @@ export async function updateDestinatario(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/destinatarios");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data };
 }
 
@@ -303,7 +461,7 @@ export async function deleteDestinatario(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/destinatarios");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -348,7 +506,7 @@ export async function mergeDestinatarios(
 
   if (deleteError) return { success: false, error: deleteError.message };
 
-  revalidatePath("/destinatarios");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -408,7 +566,7 @@ export async function addDestinatarioRule(
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/destinatarios");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data, conflicts };
 }
 
@@ -428,7 +586,7 @@ export async function removeDestinatarioRule(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/destinatarios");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -437,31 +595,15 @@ export async function removeDestinatarioRule(
 export async function getUnmatchedDescriptions(): Promise<
   ActionResult<string[]>
 > {
-  const { supabase, user } = await getAuthenticatedClient();
+  const { user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("raw_description")
-    .eq("user_id", user.id)
-    .is("destinatario_id", null)
-    .not("raw_description", "is", null)
-    .order("transaction_date", { ascending: false })
-    .limit(500);
-
-  if (error) return { success: false, error: error.message };
-
-  // Extract distinct raw_description values
-  const seen = new Set<string>();
-  const descriptions: string[] = [];
-  for (const row of data ?? []) {
-    if (row.raw_description && !seen.has(row.raw_description)) {
-      seen.add(row.raw_description);
-      descriptions.push(row.raw_description);
-    }
+  try {
+    const data = await getUnmatchedDescriptionsCached(user.id);
+    return { success: true, data };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error al cargar las descripciones";
+    return { success: false, error: message };
   }
-
-  return { success: true, data: descriptions };
 }
 
 // ─── getDestinatarioSuggestions ──────────────────────────────────────────────
@@ -514,73 +656,15 @@ function groupSuggestionsByPrefix(
 export async function getDestinatarioSuggestions(): Promise<
   ActionResult<DestinatarioSuggestionResult[]>
 > {
-  const { supabase, user } = await getAuthenticatedClient();
+  const { user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
-
-  // Fetch unmatched transactions with raw descriptions
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("transaction_date, raw_description, amount")
-    .eq("user_id", user.id)
-    .is("destinatario_id", null)
-    .not("raw_description", "is", null)
-    .order("transaction_date", { ascending: false })
-    .limit(1000);
-
-  if (error) return { success: false, error: error.message };
-
-  // Group by cleaned description
-  const groups = new Map<
-    string,
-    {
-      count: number;
-      dates: string[];
-      samples: { date: string; rawDescription: string; amount: number }[];
-    }
-  >();
-
-  for (const row of data ?? []) {
-    if (!row.raw_description) continue;
-    const cleaned = cleanDescription(row.raw_description);
-    if (cleaned.length === 0) continue;
-
-    if (!groups.has(cleaned)) {
-      groups.set(cleaned, { count: 0, dates: [], samples: [] });
-    }
-    const group = groups.get(cleaned)!;
-    group.count++;
-    group.dates.push(row.transaction_date);
-    if (group.samples.length < 5) {
-      group.samples.push({
-        date: row.transaction_date,
-        rawDescription: row.raw_description,
-        amount: row.amount,
-      });
-    }
+  try {
+    const data = await getDestinatarioSuggestionsCached(user.id);
+    return { success: true, data };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error al cargar las sugerencias";
+    return { success: false, error: message };
   }
-
-  // Filter to groups with 3+ occurrences, sort by count desc, limit to 20
-  const suggestions: DestinatarioSuggestionResult[] = [];
-  for (const [pattern, group] of groups) {
-    if (group.count < 3) continue;
-    const sortedDates = group.dates.sort();
-    suggestions.push({
-      cleanedPattern: pattern,
-      count: group.count,
-      dateRange: {
-        from: sortedDates[0],
-        to: sortedDates[sortedDates.length - 1],
-      },
-      sampleTransactions: group.samples,
-    });
-  }
-
-  suggestions.sort((a, b) => b.count - a.count);
-
-  // Group related patterns by common prefix (e.g., "NEQUI PAGO" variants)
-  const grouped = groupSuggestionsByPrefix(suggestions);
-
-  return { success: true, data: grouped.slice(0, 20) };
 }
 
 // ─── getDestinatarioTransactions ──────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { getRecurringTemplates } from "@/actions/recurring-templates";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
@@ -6,6 +7,7 @@ import { RecurringList } from "@/components/recurring/recurring-list";
 import { RecurringTimelineView } from "@/components/recurring/recurring-timeline-view";
 
 export default async function RecurrentesPage() {
+  await connection();
   const [templatesResult, accountsResult, categoriesResult] =
     await Promise.all([
       getRecurringTemplates(),

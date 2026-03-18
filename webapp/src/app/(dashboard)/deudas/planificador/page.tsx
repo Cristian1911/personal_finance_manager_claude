@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { getPreferredCurrency } from "@/actions/profile";
@@ -8,6 +9,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default async function PlanificadorPage() {
+  await connection();
   const currency = await getPreferredCurrency();
   const [overview, savedScenarios, incomeEstimate] = await Promise.all([
     getDebtOverview(currency),

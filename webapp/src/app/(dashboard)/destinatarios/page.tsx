@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { getDestinatarios, getDestinatarioSuggestions } from "@/actions/destinatarios";
 import { getCategories } from "@/actions/categories";
 import { DestinatarioList } from "@/components/destinatarios/destinatario-list";
@@ -10,6 +11,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default async function DestinatariosPage() {
+  await connection();
   const [destResult, catResult, suggestionsResult] = await Promise.all([
     getDestinatarios(),
     getCategories(),

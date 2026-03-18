@@ -1,9 +1,11 @@
+import { connection } from "next/server";
 import { getUncategorizedTransactions, getUserCategoryRules } from "@/actions/categorize";
 import { getCategories } from "@/actions/categories";
 import { CategoryInbox } from "@/components/categorize/category-inbox";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 
 export default async function CategorizarPage() {
+  await connection();
   const [transactions, categoriesResult, userRules] = await Promise.all([
     getUncategorizedTransactions(),
     getCategories(),

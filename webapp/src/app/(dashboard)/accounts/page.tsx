@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { getAccounts } from "@/actions/accounts";
 import { getPreferredCurrency } from "@/actions/profile";
 import { AccountCard } from "@/components/accounts/account-card";
@@ -7,6 +8,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 
 export default async function AccountsPage() {
+  await connection();
   const [result, currency] = await Promise.all([
     getAccounts(),
     getPreferredCurrency(),

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import {
   getDestinatario,
@@ -13,6 +14,7 @@ type PageProps = {
 };
 
 export default async function DestinatarioDetailPage({ params }: PageProps) {
+  await connection();
   const { id } = await params;
 
   const [destResult, catResult, txResult] = await Promise.all([

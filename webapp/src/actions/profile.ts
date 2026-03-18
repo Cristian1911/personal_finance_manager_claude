@@ -1,28 +1,55 @@
 "use server";
 
-import { cache } from "react";
-import { revalidatePath } from "next/cache";
+import { revalidateTag, cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/types/actions";
 import type { CurrencyCode, Profile } from "@/types/domain";
 import { z } from "zod";
 
-/**
- * Get the user's effective preferred currency, with fallback.
- * Cached per request via React cache() to avoid duplicate queries.
- */
-export const getPreferredCurrency = cache(async (): Promise<CurrencyCode> => {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return "COP" as CurrencyCode;
+// ─── Cached inner functions ───────────────────────────────────────────────────
 
+async function getPreferredCurrencyCached(userId: string): Promise<CurrencyCode> {
+  "use cache";
+  cacheTag("profile");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
   const { data: profile } = await supabase
     .from("profiles")
     .select("preferred_currency")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   return (profile?.preferred_currency ?? "COP") as CurrencyCode;
-});
+}
+
+async function getProfileCached(userId: string): Promise<Profile> {
+  "use cache";
+  cacheTag("profile");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// ─── Public wrappers ──────────────────────────────────────────────────────────
+
+/**
+ * Get the user's effective preferred currency, with fallback.
+ */
+export async function getPreferredCurrency(): Promise<CurrencyCode> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return "COP" as CurrencyCode;
+  return getPreferredCurrencyCached(user.id);
+}
 
 const profileSchema = z.object({
   full_name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -36,18 +63,14 @@ const profileSchema = z.object({
 });
 
 export async function getProfile(): Promise<ActionResult<Profile>> {
-  const { supabase, user } = await getAuthenticatedClient();
-
+  const { user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (error) return { success: false, error: error.message };
-  return { success: true, data };
+  try {
+    const data = await getProfileCached(user.id);
+    return { success: true, data };
+  } catch {
+    return { success: false, error: "Error al cargar el perfil" };
+  }
 }
 
 export async function updateProfile(
@@ -79,6 +102,7 @@ export async function updateProfile(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/settings");
+  revalidateTag("profile", "zeta");
+  revalidateTag("dashboard", "zeta");
   return { success: true, data };
 }

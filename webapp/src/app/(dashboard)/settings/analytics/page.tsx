@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +43,7 @@ type CategorizationFunnelRow = {
 };
 
 export default async function AnalyticsPage() {
+  await connection();
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) redirect("/login");
 

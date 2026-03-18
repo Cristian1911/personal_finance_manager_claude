@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarioRules } from "@/actions/destinatarios";
@@ -5,6 +6,7 @@ import { ImportWizard } from "@/components/import/import-wizard";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 
 export default async function ImportPage() {
+  await connection();
   const [accountResult, categoryResult, rulesResult] = await Promise.all([
     getAccounts(),
     getCategories(),

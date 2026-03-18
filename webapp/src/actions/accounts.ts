@@ -1,43 +1,74 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { accountSchema } from "@/lib/validators/account";
 import { computeIdempotencyKey } from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Account } from "@/types/domain";
 
-export async function getAccounts(): Promise<ActionResult<Account[]>> {
-  const { supabase, user } = await getAuthenticatedClient();
+// ─── Cached inner functions ───────────────────────────────────────────────────
 
-  if (!user) return { success: false, error: "No autenticado" };
+async function getAccountsCached(userId: string): Promise<Account[]> {
+  "use cache";
+  cacheTag("accounts");
+  cacheLife("zeta");
 
+  const supabase = createAdminClient()!;
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("is_active", true)
     .order("display_order", { ascending: true });
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data ?? [] };
+  if (error) throw error;
+  return data ?? [];
 }
 
-export async function getAccount(id: string): Promise<ActionResult<Account>> {
-  const { supabase, user } = await getAuthenticatedClient();
+async function getAccountCached(userId: string, id: string): Promise<Account> {
+  "use cache";
+  cacheTag("accounts");
+  cacheLife("zeta");
 
-  if (!user) return { success: false, error: "No autenticado" };
-
+  const supabase = createAdminClient()!;
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("id", id)
     .single();
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data };
+  if (error) throw error;
+  return data;
 }
+
+// ─── Public wrappers ──────────────────────────────────────────────────────────
+
+export async function getAccounts(): Promise<ActionResult<Account[]>> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getAccountsCached(user.id);
+    return { success: true, data };
+  } catch {
+    return { success: false, error: "Error al cargar las cuentas" };
+  }
+}
+
+export async function getAccount(id: string): Promise<ActionResult<Account>> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getAccountCached(user.id, id);
+    return { success: true, data };
+  } catch {
+    return { success: false, error: "Error al cargar la cuenta" };
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function combineDateFields(formData: FormData, monthKey: string, yearKey: string): string | undefined {
   const month = formData.get(monthKey);
@@ -76,6 +107,8 @@ function buildAccountInsertData(formData: FormData) {
   );
 }
 
+// ─── Mutations ────────────────────────────────────────────────────────────────
+
 export async function createAccount(
   _prevState: ActionResult<Account>,
   formData: FormData
@@ -110,7 +143,9 @@ export async function createAccount(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/accounts");
+  revalidateTag("accounts", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("debt", "zeta");
   return { success: true, data: result };
 }
 
@@ -141,7 +176,9 @@ export async function updateAccount(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/accounts");
+  revalidateTag("accounts", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("debt", "zeta");
   return { success: true, data: result };
 }
 
@@ -154,7 +191,9 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/accounts");
+  revalidateTag("accounts", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("debt", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -174,7 +213,8 @@ export async function toggleDashboardVisibility(
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/accounts");
+  revalidateTag("accounts", "zeta");
+  revalidateTag("dashboard", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -244,6 +284,8 @@ export async function reconcileBalance(
 
   if (updateError) return { success: false, error: updateError.message };
 
-  revalidatePath("/accounts");
+  revalidateTag("accounts", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("debt", "zeta");
   return { success: true, data: { delta } };
 }

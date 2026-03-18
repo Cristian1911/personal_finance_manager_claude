@@ -1,27 +1,31 @@
 "use server";
 
+import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/types/actions";
 import type { Tables } from "@/types/database";
 
 export type StatementSnapshot = Tables<"statement_snapshots">;
 
-/**
- * Get the most recent snapshot created_at per account.
- * Used by the dashboard alerts to determine import staleness.
- */
-export async function getLatestSnapshotDates(): Promise<
-  Record<string, string>
-> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return {};
+// ─── Cached inner functions ───────────────────────────────────────────────────
 
-  const { data } = await supabase
+async function getLatestSnapshotDatesCached(
+  userId: string
+): Promise<Record<string, string>> {
+  "use cache";
+  cacheTag("snapshots");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+
+  const { data, error } = await supabase
     .from("statement_snapshots")
     .select("account_id, created_at")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
+  if (error) throw error;
   if (!data) return {};
 
   // Keep only the most recent per account
@@ -34,20 +38,55 @@ export async function getLatestSnapshotDates(): Promise<
   return result;
 }
 
-export async function getStatementSnapshots(
+async function getStatementSnapshotsCached(
+  userId: string,
   accountId: string
-): Promise<ActionResult<StatementSnapshot[]>> {
-  const { supabase, user } = await getAuthenticatedClient();
+): Promise<StatementSnapshot[]> {
+  "use cache";
+  cacheTag("snapshots");
+  cacheLife("zeta");
 
-  if (!user) return { success: false, error: "No autenticado" };
+  const supabase = createAdminClient()!;
 
   const { data, error } = await supabase
     .from("statement_snapshots")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("account_id", accountId)
     .order("period_to", { ascending: false });
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data ?? [] };
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ─── Public wrappers ──────────────────────────────────────────────────────────
+
+/**
+ * Get the most recent snapshot created_at per account.
+ * Used by the dashboard alerts to determine import staleness.
+ */
+export async function getLatestSnapshotDates(): Promise<
+  Record<string, string>
+> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return {};
+  try {
+    return await getLatestSnapshotDatesCached(user.id);
+  } catch {
+    return {};
+  }
+}
+
+export async function getStatementSnapshots(
+  accountId: string
+): Promise<ActionResult<StatementSnapshot[]>> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getStatementSnapshotsCached(user.id, accountId);
+    return { success: true, data };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error al cargar los extractos";
+    return { success: false, error: message };
+  }
 }

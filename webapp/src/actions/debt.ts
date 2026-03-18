@@ -1,6 +1,8 @@
 "use server";
 
+import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   extractDebtAccounts,
   calcUtilization,
@@ -10,30 +12,40 @@ import {
 } from "@zeta/shared";
 import type { CurrencyCode } from "@zeta/shared";
 
-export async function getDebtOverview(currency?: CurrencyCode): Promise<DebtOverview> {
-  const baseCurrency = currency ?? "COP";
-  const { supabase, user } = await getAuthenticatedClient();
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-  const emptyResult: DebtOverview = {
-    totalDebt: 0,
-    totalCreditLimit: 0,
-    overallUtilization: 0,
-    monthlyInterestEstimate: 0,
-    accounts: [],
-    insights: [],
-    debtByCurrency: [],
-  };
+const EMPTY_DEBT_OVERVIEW: DebtOverview = {
+  totalDebt: 0,
+  totalCreditLimit: 0,
+  overallUtilization: 0,
+  monthlyInterestEstimate: 0,
+  accounts: [],
+  insights: [],
+  debtByCurrency: [],
+};
 
-  if (!user) return emptyResult;
+// ─── Cached inner function ────────────────────────────────────────────────────
 
-  const { data: accounts } = await supabase
+async function getDebtOverviewCached(
+  userId: string,
+  currency: CurrencyCode
+): Promise<DebtOverview> {
+  "use cache";
+  cacheTag("debt");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+  const baseCurrency = currency;
+
+  const { data: accounts, error } = await supabase
     .from("accounts")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("is_active", true)
     .order("display_order");
 
-  if (!accounts) return emptyResult;
+  if (error) throw error;
+  if (!accounts) return EMPTY_DEBT_OVERVIEW;
 
   const debtAccounts = extractDebtAccounts(accounts);
 
@@ -94,4 +106,14 @@ export async function getDebtOverview(currency?: CurrencyCode): Promise<DebtOver
     insights,
     debtByCurrency,
   };
+}
+
+// ─── Public wrapper ───────────────────────────────────────────────────────────
+
+export async function getDebtOverview(currency?: CurrencyCode): Promise<DebtOverview> {
+  const baseCurrency = currency ?? "COP";
+  const { user } = await getAuthenticatedClient();
+
+  if (!user) return EMPTY_DEBT_OVERVIEW;
+  return getDebtOverviewCached(user.id, baseCurrency);
 }

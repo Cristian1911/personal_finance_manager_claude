@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import {
   getCategoriesWithBudgetData,
   getAllCategoriesForManagement,
@@ -21,6 +22,7 @@ export default async function CategoriesPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  await connection();
   const { month } = await searchParams;
   const selectedMonth = parseMonth(month);
   const currency = await getPreferredCurrency();

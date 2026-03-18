@@ -1,12 +1,90 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { extractPattern } from "@zeta/shared";
-import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
+import { applyVisibleTransactionFilter, isMissingReconciliationColumnError } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithRelations } from "@/types/domain";
 import type { UserRule } from "@zeta/shared";
+
+// ─── Cached inner functions ───────────────────────────────────────────────────
+
+async function getUncategorizedTransactionsCached(
+  userId: string
+): Promise<TransactionWithRelations[]> {
+  "use cache";
+  cacheTag("categorize");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+
+  const buildQuery = () =>
+    supabase
+      .from("transactions")
+      .select(
+        "*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)"
+      )
+      .eq("user_id", userId)
+      .is("category_id", null)
+      .eq("is_excluded", false)
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false });
+
+  let result = await applyVisibleTransactionFilter(buildQuery());
+  if (isMissingReconciliationColumnError((result as { error?: unknown }).error)) {
+    result = await buildQuery();
+  }
+
+  const { data, error } = result;
+  if (error) throw error;
+  return (data ?? []) as TransactionWithRelations[];
+}
+
+async function getUncategorizedCountCached(userId: string): Promise<number> {
+  "use cache";
+  cacheTag("categorize");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+
+  const buildQuery = () =>
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .is("category_id", null)
+      .eq("is_excluded", false);
+
+  let result = await applyVisibleTransactionFilter(buildQuery());
+  if (isMissingReconciliationColumnError((result as { error?: unknown }).error)) {
+    result = await buildQuery();
+  }
+
+  const { count, error } = result;
+  if (error) throw error;
+  return count ?? 0;
+}
+
+async function getUserCategoryRulesCached(userId: string): Promise<UserRule[]> {
+  "use cache";
+  cacheTag("categorize");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient()!;
+
+  const { data, error } = await supabase
+    .from("category_rules")
+    .select("pattern, category_id")
+    .eq("user_id", userId)
+    .order("match_count", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ─── Public wrappers ──────────────────────────────────────────────────────────
 
 /**
  * Fetch all uncategorized, non-excluded transactions with account + category joins.
@@ -14,72 +92,47 @@ import type { UserRule } from "@zeta/shared";
 export async function getUncategorizedTransactions(): Promise<
   TransactionWithRelations[]
 > {
-  const { supabase, user } = await getAuthenticatedClient();
+  const { user } = await getAuthenticatedClient();
   if (!user) return [];
-
-  const { data, error } = await executeVisibleTransactionQuery(() =>
-    supabase
-      .from("transactions")
-      .select("*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)")
-      .is("category_id", null)
-      .eq("is_excluded", false)
-      .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false })
-  );
-
-  if (error) {
-    console.error("Error fetching uncategorized transactions:", error);
+  try {
+    return await getUncategorizedTransactionsCached(user.id);
+  } catch (err) {
+    console.error("Error fetching uncategorized transactions:", err);
     return [];
   }
-
-  return (data ?? []) as TransactionWithRelations[];
 }
 
 /**
  * Count uncategorized, non-excluded transactions (for sidebar badge).
  */
 export async function getUncategorizedCount(): Promise<number> {
-  const { supabase, user } = await getAuthenticatedClient();
+  const { user } = await getAuthenticatedClient();
   if (!user) return 0;
-
-  const { count, error } = await executeVisibleTransactionQuery(() =>
-    supabase
-      .from("transactions")
-      .select("id", { count: "exact", head: true })
-      .is("category_id", null)
-      .eq("is_excluded", false)
-  );
-
-  if (error) {
-    if (error.message) {
-      console.warn("Error counting uncategorized:", error.message);
+  try {
+    return await getUncategorizedCountCached(user.id);
+  } catch (err) {
+    if (err && typeof err === "object" && "message" in err) {
+      console.warn("Error counting uncategorized:", (err as { message: string }).message);
     }
     return 0;
   }
-
-  return count ?? 0;
 }
 
 /**
  * Fetch user's category rules for auto-categorization.
  */
 export async function getUserCategoryRules(): Promise<UserRule[]> {
-  const { supabase, user } = await getAuthenticatedClient();
+  const { user } = await getAuthenticatedClient();
   if (!user) return [];
-
-  const { data, error } = await supabase
-    .from("category_rules")
-    .select("pattern, category_id")
-    .eq("user_id", user.id)
-    .order("match_count", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching category rules:", error);
+  try {
+    return await getUserCategoryRulesCached(user.id);
+  } catch (err) {
+    console.error("Error fetching category rules:", err);
     return [];
   }
-
-  return data ?? [];
 }
+
+// ─── Mutations ────────────────────────────────────────────────────────────────
 
 /**
  * Categorize a single transaction and learn the pattern.
@@ -149,7 +202,9 @@ export async function categorizeTransaction(
       .is("default_category_id", null);
   }
 
-  revalidatePath("/categorizar");
+  revalidateTag("categorize", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -212,7 +267,9 @@ export async function bulkCategorize(
     }
   }
 
-  revalidatePath("/categorizar");
+  revalidateTag("categorize", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data: { categorized } };
 }
 
@@ -294,7 +351,9 @@ export async function assignDestinatario(
     );
   }
 
-  revalidatePath("/categorizar");
+  revalidateTag("categorize", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -317,6 +376,8 @@ export async function removeDestinatarioFromTransaction(
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/categorizar");
+  revalidateTag("categorize", "zeta");
+  revalidateTag("dashboard", "zeta");
+  revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
 }

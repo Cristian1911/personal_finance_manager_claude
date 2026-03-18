@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { getPreferredCurrency } from "@/actions/profile";
@@ -20,6 +21,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+import { PrefetchLink } from "@/components/ui/prefetch-link";
 import { Button } from "@/components/ui/button";
 import {
   getDashboardHeroData,
@@ -62,6 +64,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  await connection();
   const params = await searchParams;
   const month = params.month;
   const target = parseMonth(month);
@@ -342,7 +345,7 @@ export default async function DashboardPage({
               ) : (
                 <div className="space-y-3">
                   {recentTx.map((tx) => (
-                    <Link
+                    <PrefetchLink
                       key={tx.id}
                       href={`/transactions/${tx.id}`}
                       className="flex items-center justify-between hover:bg-muted rounded-md px-2 py-1 -mx-2 transition-colors"
@@ -370,7 +373,7 @@ export default async function DashboardPage({
                         {tx.direction === "INFLOW" ? "+" : "-"}
                         {formatCurrency(tx.amount, tx.currency_code as Parameters<typeof formatCurrency>[1])}
                       </span>
-                    </Link>
+                    </PrefetchLink>
                   ))}
                 </div>
               )}

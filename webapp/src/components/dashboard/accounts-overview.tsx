@@ -13,6 +13,7 @@ import { Sparkline } from "@/components/charts/sparkline";
 import { ReconcileBalanceDialog } from "@/components/accounts/reconcile-balance-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { PrefetchLink } from "@/components/ui/prefetch-link";
 import type { AccountWithSparkline, GroupedAccounts } from "@/actions/charts";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -39,7 +40,7 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
 
   return (
     <div className="flex items-center justify-between py-2 px-2 -mx-2 rounded-md group">
-      <Link
+      <PrefetchLink
         href={`/accounts/${account.id}`}
         className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity"
       >
@@ -79,7 +80,7 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
             );
           })()}
         </div>
-      </Link>
+      </PrefetchLink>
 
       <div className="flex items-center gap-2">
         <Sparkline data={sparklineData} color={sparklineColor} />

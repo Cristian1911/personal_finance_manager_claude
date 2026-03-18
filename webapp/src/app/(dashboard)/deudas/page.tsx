@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
@@ -24,6 +25,7 @@ export default async function DeudasPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  await connection();
   const { month } = await searchParams;
   const currency = await getPreferredCurrency();
 

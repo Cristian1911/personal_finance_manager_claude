@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getAccount } from "@/actions/accounts";
@@ -31,6 +32,7 @@ export default async function AccountDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await connection();
   const { id } = await params;
 
   // Fetch account and snapshots in parallel — snapshots return empty for non-history types (cheap)

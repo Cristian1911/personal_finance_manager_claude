@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import {
@@ -29,6 +30,7 @@ const quickLinks = [
 ];
 
 export default async function GestionarPage() {
+  await connection();
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return null;
 

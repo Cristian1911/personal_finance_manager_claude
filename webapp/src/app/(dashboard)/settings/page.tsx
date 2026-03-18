@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { ProfileForm } from "@/components/settings/profile-form";
 import { BugReportForm } from "@/components/settings/bug-report-form";
 
 export default async function SettingsPage() {
+  await connection();
   const supabase = await createClient();
   const {
     data: { user },
