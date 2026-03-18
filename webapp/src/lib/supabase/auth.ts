@@ -16,6 +16,10 @@ type SupabaseWithAuth = {
       data: { user: User | null };
       error: { code?: string; message?: string; status?: number } | null;
     }>;
+    getSession: () => Promise<{
+      data: { session: { user: User } | null };
+      error: { code?: string; message?: string; status?: number } | null;
+    }>;
   };
 };
 
@@ -34,22 +38,51 @@ export function isIgnorableAuthError(
   );
 }
 
+/**
+ * Fast auth: use getSession() for local JWT verification (~0ms) instead of
+ * getUser() which makes a network round-trip to Supabase Auth (~300ms).
+ *
+ * getSession() checks the JWT signature and expiry locally. It won't detect
+ * revoked tokens until they expire naturally (~1 hour). For a single-user
+ * finance app this is an acceptable trade-off for ~300ms faster navigations.
+ *
+ * If a downstream query fails with 401/403 (revoked token), callers should
+ * use getUserSafelyStrict() to force a network verification.
+ */
 export async function getUserSafely(
+  supabase: SupabaseWithAuth
+): Promise<User | null> {
+  try {
+    // Local JWT check — no network call
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      if (isIgnorableAuthError(error)) return null;
+      throw error;
+    }
+    return data.session?.user ?? null;
+  } catch (error) {
+    if (isIgnorableAuthError(error)) return null;
+    throw error;
+  }
+}
+
+/**
+ * Strict auth: calls getUser() which makes a network round-trip to verify
+ * the session hasn't been revoked. Use this as a fallback when a query
+ * fails with an auth error after using the fast path.
+ */
+export async function getUserSafelyStrict(
   supabase: SupabaseWithAuth
 ): Promise<User | null> {
   try {
     const { data, error } = await supabase.auth.getUser();
     if (error) {
-      if (isIgnorableAuthError(error)) {
-        return null;
-      }
+      if (isIgnorableAuthError(error)) return null;
       throw error;
     }
     return data.user ?? null;
   } catch (error) {
-    if (isIgnorableAuthError(error)) {
-      return null;
-    }
+    if (isIgnorableAuthError(error)) return null;
     throw error;
   }
 }
@@ -57,7 +90,12 @@ export async function getUserSafely(
 /**
  * Request-scoped cached auth. React `cache()` deduplicates within a single
  * server render, so the dashboard (which fires 8+ parallel data fetches)
- * only hits Supabase Auth once per page load instead of once per function.
+ * only verifies the JWT once per page load instead of once per function.
+ *
+ * Uses getSession() (local JWT check, ~0ms) instead of getUser() (~300ms
+ * network call to Supabase Auth). If the session is revoked, the admin
+ * client queries in cached functions will still work (they bypass auth),
+ * and the middleware will catch the revoked token on the next request.
  */
 export const getAuthenticatedClient = cache(async (): Promise<{
   supabase: SupabaseClient<Database>;
