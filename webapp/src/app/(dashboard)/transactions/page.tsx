@@ -9,9 +9,14 @@ import { TransactionFormDialog } from "@/components/transactions/transaction-for
 import { QuickCaptureBar } from "@/components/transactions/quick-capture-bar";
 import { Pagination } from "@/components/transactions/pagination";
 import { MonthSelector } from "@/components/month-selector";
-import { PurchaseDecisionCard } from "@/components/dashboard/purchase-decision-card";
 import { MobileMovimientos } from "@/components/mobile/mobile-movimientos";
 import { parseMonth, formatMonthParam } from "@/lib/utils/date";
+import dynamic from "next/dynamic";
+
+const PurchaseDecisionCard = dynamic(
+  () => import("@/components/dashboard/purchase-decision-card").then((m) => ({ default: m.PurchaseDecisionCard })),
+  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" /> }
+);
 
 export default async function TransactionsPage({
   searchParams,

@@ -195,6 +195,7 @@ export function BalanceHistoryChart({ snapshots, currency }: Props) {
               fillOpacity={1}
               stroke="var(--color-balance)"
               strokeWidth={2}
+              isAnimationActive={false}
             />
           </AreaChart>
         </ChartContainer>

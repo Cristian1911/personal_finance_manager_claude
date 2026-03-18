@@ -605,6 +605,7 @@ export function DetailStep({
                     fill={`url(#fillAcct_${a.id})`}
                     strokeWidth={2}
                     stackId="accounts"
+                    isAnimationActive={false}
                   />
                 ))}
               </AreaChart>

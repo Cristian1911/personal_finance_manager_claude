@@ -223,7 +223,8 @@ async function getCategoriesWithBudgetDataCached(
   "use cache";
   cacheTag("categories");
   cacheTag("budgets");
-  cacheTag("dashboard");
+  cacheTag("dashboard:charts");
+  cacheTag("dashboard:budgets");
   cacheLife("zeta");
 
   const supabase = createAdminClient()!;
@@ -470,7 +471,8 @@ export async function createCategory(
 
   revalidateTag("categories", "zeta");
   revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
   return { success: true, data };
 }
 
@@ -509,7 +511,8 @@ export async function updateCategory(
 
   revalidateTag("categories", "zeta");
   revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
   return { success: true, data };
 }
 
@@ -528,7 +531,8 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
 
   revalidateTag("categories", "zeta");
   revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -563,7 +567,8 @@ export async function updateCategoryOrder(
 
   revalidateTag("categories", "zeta");
   revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -584,7 +589,8 @@ export async function updateCategoryExpenseType(
 
   revalidateTag("categories", "zeta");
   revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -619,7 +625,8 @@ export async function reassignAndDeleteCategory(
 
   revalidateTag("categories", "zeta");
   revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -640,6 +647,7 @@ export async function toggleCategoryActive(
 
   revalidateTag("categories", "zeta");
   revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
   return { success: true, data: undefined };
 }

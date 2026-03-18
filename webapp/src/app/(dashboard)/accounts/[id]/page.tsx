@@ -114,7 +114,7 @@ export default async function AccountDetailPage({
 
       {showHistory && (
         <div className="space-y-6">
-          <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+          <Suspense fallback={<Card className="h-64 animate-pulse"><CardContent className="flex items-center justify-center h-full"><div className="h-4 w-32 rounded bg-muted" /></CardContent></Card>}>
             <BalanceHistoryChart snapshots={snapshots} currency={account.currency_code} />
           </Suspense>
 

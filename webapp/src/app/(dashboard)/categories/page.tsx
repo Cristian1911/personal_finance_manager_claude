@@ -25,14 +25,16 @@ export default async function CategoriesPage({
   await connection();
   const { month } = await searchParams;
   const selectedMonth = parseMonth(month);
-  const currency = await getPreferredCurrency();
 
-  const [result, manageResult, uncategorized, categoryTreeResult] = await Promise.all([
-    getCategoriesWithBudgetData(month, currency),
+  // Run currency fetch in parallel with non-dependent queries
+  const [currency, manageResult, uncategorized, categoryTreeResult] = await Promise.all([
+    getPreferredCurrency(),
     getAllCategoriesForManagement(),
     getUncategorizedTransactions(),
     getCategories(),
   ]);
+  // Budget query depends on currency — must await after
+  const result = await getCategoriesWithBudgetData(month, currency);
   const categories = result.success ? result.data : [];
   const outflowCategories = categories.filter((c) => c.direction === "OUTFLOW");
   const allCategories = manageResult.success ? manageResult.data : [];

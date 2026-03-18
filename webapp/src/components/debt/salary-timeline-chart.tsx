@@ -251,6 +251,7 @@ export function SalaryTimelineChart({
                     dataKey={`acct_${id}`}
                     stackId="salary"
                     fill={getDebtColor(id)}
+                    isAnimationActive={false}
                   />
                 ))}
 
@@ -263,6 +264,7 @@ export function SalaryTimelineChart({
                       stackId="salary"
                       fill={getDebtColor(id)}
                       fillOpacity={0.4}
+                      isAnimationActive={false}
                     />
                   ))}
 
@@ -271,6 +273,7 @@ export function SalaryTimelineChart({
                   dataKey="libre"
                   stackId="salary"
                   fill={LIBRE_COLOR}
+                  isAnimationActive={false}
                 />
               </BarChart>
             </ChartContainer>

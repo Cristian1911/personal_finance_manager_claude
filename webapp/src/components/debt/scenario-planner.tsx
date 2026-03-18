@@ -12,13 +12,27 @@ import {
   expandCashEntries,
 } from "@zeta/shared";
 import type { CurrencyCode } from "@zeta/shared";
-import { CashStep } from "./planner/cash-step";
-import { AllocateStep } from "./planner/allocate-step";
-import { CompareStep } from "./planner/compare-step";
-import { DetailStep } from "./planner/detail-step";
+import dynamic from "next/dynamic";
 import { ScenarioManager } from "./planner/scenario-manager";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+
+const CashStep = dynamic(
+  () => import("./planner/cash-step").then((m) => ({ default: m.CashStep })),
+  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" />, ssr: false }
+);
+const AllocateStep = dynamic(
+  () => import("./planner/allocate-step").then((m) => ({ default: m.AllocateStep })),
+  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" />, ssr: false }
+);
+const CompareStep = dynamic(
+  () => import("./planner/compare-step").then((m) => ({ default: m.CompareStep })),
+  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" />, ssr: false }
+);
+const DetailStep = dynamic(
+  () => import("./planner/detail-step").then((m) => ({ default: m.DetailStep })),
+  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" />, ssr: false }
+);
 
 function StepNav({ onNext, nextLabel, showSkip, hint }: {
   onNext: () => void;

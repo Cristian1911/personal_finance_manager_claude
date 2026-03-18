@@ -78,5 +78,6 @@ export async function finishOnboarding(
 
     revalidateTag("profile", "zeta");
     revalidateTag("accounts", "zeta");
-    revalidateTag("dashboard", "zeta");
+    revalidateTag("dashboard:hero", "zeta");
+    revalidateTag("dashboard:accounts", "zeta");
 }

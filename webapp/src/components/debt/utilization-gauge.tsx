@@ -63,6 +63,7 @@ export function UtilizationGauge({
                   paddingAngle={0}
                   dataKey="value"
                   stroke="none"
+                  isAnimationActive={false}
                 >
                   <Cell fill={color} />
                   <Cell fill="hsl(var(--muted))" />

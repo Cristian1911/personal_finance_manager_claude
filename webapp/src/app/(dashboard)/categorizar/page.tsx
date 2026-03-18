@@ -1,8 +1,13 @@
 import { connection } from "next/server";
+import dynamic from "next/dynamic";
 import { getUncategorizedTransactions, getUserCategoryRules } from "@/actions/categorize";
 import { getCategories } from "@/actions/categories";
-import { CategoryInbox } from "@/components/categorize/category-inbox";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+
+const CategoryInbox = dynamic(
+  () => import("@/components/categorize/category-inbox").then((m) => ({ default: m.CategoryInbox })),
+  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" /> }
+);
 
 export default async function CategorizarPage() {
   await connection();

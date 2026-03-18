@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -70,9 +71,11 @@ export default async function DashboardLayout({
 
         <main className="flex-1 overflow-x-hidden p-4 lg:p-6 pb-20 lg:pb-6">
           <MobileSheetProvider accounts={accounts} categories={categories}>
-            <PageTransition>
-              {children}
-            </PageTransition>
+            <Suspense>
+              <PageTransition>
+                {children}
+              </PageTransition>
+            </Suspense>
           </MobileSheetProvider>
         </main>
 

@@ -133,7 +133,7 @@ export async function upsertBudget(
     if (error) return { success: false, error: error.message };
 
     revalidateTag("budgets", "zeta");
-    revalidateTag("dashboard", "zeta");
+    revalidateTag("dashboard:budgets", "zeta");
     return { success: true, data };
 }
 
@@ -147,6 +147,6 @@ export async function deleteBudget(id: string): Promise<ActionResult> {
     if (error) return { success: false, error: error.message };
 
     revalidateTag("budgets", "zeta");
-    revalidateTag("dashboard", "zeta");
+    revalidateTag("dashboard:budgets", "zeta");
     return { success: true, data: undefined };
 }

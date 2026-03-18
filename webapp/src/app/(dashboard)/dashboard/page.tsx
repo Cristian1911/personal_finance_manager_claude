@@ -74,9 +74,11 @@ export default async function DashboardPage({
 
   if (!user) return null;
 
-  // Fetch preferred currency, recent transactions, accounts, and fallback currency ALL in parallel
-  const [preferredCurrency, { data: recentTransactions }, { data: accounts }, { data: currencyCheck }, { data: fallbackAccount }] = await Promise.all([
-    getPreferredCurrency(),
+  // Await currency first (it's server-cached, ~0ms after first call)
+  const preferredCurrency = await getPreferredCurrency();
+
+  // Fetch transactions + cached accounts in parallel (replaces 3 raw DB queries)
+  const [{ data: recentTransactions }, allAccountsResult] = await Promise.all([
     executeVisibleTransactionQuery(() =>
       supabase
         .from("transactions")
@@ -86,27 +88,20 @@ export default async function DashboardPage({
         .order("created_at", { ascending: false })
         .limit(5)
     ),
-    supabase
-      .from("accounts")
-      .select("id")
-      .eq("is_active", true)
-      .limit(1),
-    // Check if preferred currency has active accounts
-    getPreferredCurrency().then(curr =>
-      supabase.from("accounts").select("id").eq("user_id", user.id).eq("is_active", true).eq("currency_code", curr).limit(1)
-    ),
-    // Fallback: first account's currency
-    supabase.from("accounts").select("currency_code").eq("user_id", user.id).eq("is_active", true).order("created_at").limit(1).single(),
+    getAccounts(),
   ]);
 
-  // Resolve currency: preferred if it has accounts, else fallback to first account
+  const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
+
+  // Resolve currency from cached accounts — no extra DB queries
   let currency = preferredCurrency;
-  if (!currencyCheck?.length && fallbackAccount) {
-    currency = fallbackAccount.currency_code as CurrencyCode;
+  const hasCurrencyAccounts = allAccounts.some(a => a.currency_code === preferredCurrency);
+  if (!hasCurrencyAccounts && allAccounts.length > 0) {
+    currency = allAccounts[0].currency_code as CurrencyCode;
   }
 
   const recentTx = (recentTransactions ?? []) as DashboardTransactionRow[];
-  const hasAccounts = (accounts ?? []).length > 0;
+  const hasAccounts = allAccounts.length > 0;
   const starterMode = hasAccounts && recentTx.length === 0;
 
   await trackProductEvent({
@@ -201,17 +196,14 @@ export default async function DashboardPage({
     );
   }
 
-  // Fast data: hero, burn rate, accounts, snapshots — renders immediately
-  const [heroData, allAccountsResult, latestSnapshotDates, burnRateData, accountsData] =
+  // Fast data: hero, burn rate, snapshots — renders immediately
+  const [heroData, latestSnapshotDates, burnRateData, accountsData] =
     await Promise.all([
       getDashboardHeroData(month, currency),
-      getAccounts(),
       getLatestSnapshotDates(),
       getBurnRate(currency),
       getAccountsWithSparklineData(),
     ]);
-
-  const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
 
   // Map data for mobile dashboard
   const mobileHeroData = {
@@ -260,7 +252,7 @@ export default async function DashboardPage({
               <h1 className="text-2xl font-bold">Dashboard</h1>
               <p className="text-muted-foreground">Tu centro de comando financiero</p>
             </div>
-            <Suspense>
+            <Suspense fallback={<div className="h-9 w-36 rounded-md bg-muted animate-pulse" />}>
               <MonthSelector />
             </Suspense>
           </div>

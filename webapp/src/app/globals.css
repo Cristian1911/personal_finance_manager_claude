@@ -221,3 +221,11 @@
   .surface-alert   { color: var(--z-alert);   border-color: color-mix(in srgb, var(--z-alert) 20%, transparent);   background: color-mix(in srgb, var(--z-alert) 8%, transparent); }
   .surface-neutral { color: var(--z-sage-dark); border-color: color-mix(in srgb, var(--z-sage-dark) 20%, transparent); background: color-mix(in srgb, var(--z-sage-dark) 8%, transparent); }
 }
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-page-enter {
+  animation: page-enter 0.1s ease-out;
+}

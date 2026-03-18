@@ -95,6 +95,7 @@ export function NetWorthHistoryChart({ data }: Props) {
                             fillOpacity={1}
                             stroke="var(--color-netWorth)"
                             strokeWidth={2}
+                            isAnimationActive={false}
                         />
                     </AreaChart>
                 </ChartContainer>

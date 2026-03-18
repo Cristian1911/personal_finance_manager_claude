@@ -404,6 +404,7 @@ export function CompareStep({
                   fill="url(#fillBaseline)"
                   strokeWidth={1.5}
                   strokeDasharray="5 5"
+                  isAnimationActive={false}
                 />
                 {/* Plans */}
                 {scenarios.map((_, i) => (
@@ -414,6 +415,7 @@ export function CompareStep({
                     stroke={PLAN_COLORS[i]}
                     fill={`url(#${PLAN_GRADIENT_IDS[i]})`}
                     strokeWidth={2}
+                    isAnimationActive={false}
                   />
                 ))}
               </AreaChart>

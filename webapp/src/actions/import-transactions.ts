@@ -270,6 +270,7 @@ async function processStatementMeta(params: {
     const { data: prevSnapshot } = await supabase
       .from("statement_snapshots")
       .select("*")
+      .eq("user_id", userId)
       .eq("account_id", meta.accountId)
       .eq("currency_code", meta.currency)
       .order("period_to", { ascending: false })
@@ -312,6 +313,7 @@ async function processStatementMeta(params: {
     let existingQuery = supabase
       .from("statement_snapshots")
       .select("id")
+      .eq("user_id", userId)
       .eq("account_id", meta.accountId)
       .eq("currency_code", meta.currency);
     existingQuery = meta.periodFrom
@@ -627,7 +629,11 @@ export async function importTransactions(
   });
 
   revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:accounts", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
   revalidateTag("categorize", "zeta");
   revalidateTag("snapshots", "zeta");
   revalidateTag("debt", "zeta");
