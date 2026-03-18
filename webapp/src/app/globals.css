@@ -56,6 +56,7 @@
   --color-z-expense: var(--z-expense);
   --color-z-debt: var(--z-debt);
   --color-z-alert: var(--z-alert);
+  --color-z-excellent: var(--z-excellent);
   --color-z-surface: var(--z-surface);
   --color-z-surface-2: var(--z-surface-2);
   --color-z-surface-3: var(--z-surface-3);
@@ -76,6 +77,7 @@
   --z-expense: #E8875A;
   --z-debt:    #E05545;
   --z-alert:   #D4A843;
+  --z-excellent: #3D9E6E;
 
   /* Surfaces */
   --z-surface:   #131720;
