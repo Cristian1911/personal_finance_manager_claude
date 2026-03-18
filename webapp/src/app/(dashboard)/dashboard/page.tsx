@@ -50,6 +50,9 @@ import { BurnRateCard, BurnRateCardEmpty } from "@/components/dashboard/burn-rat
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { DashboardConfigProvider } from "@/components/dashboard/dashboard-config-provider";
 import { WidgetSlot } from "@/components/dashboard/widget-slot";
+import { CashFlowHeroStrip } from "@/components/dashboard/cash-flow-hero-strip";
+import { HealthMetersCard } from "@/components/dashboard/health-meters-card";
+import { getHealthMeters } from "@/actions/health-meters";
 
 type DashboardTransactionRow = {
   id: string;
@@ -212,13 +215,24 @@ export default async function DashboardPage({
   }
 
   // Fast data: hero, burn rate, snapshots — renders immediately
-  const [heroData, latestSnapshotDates, burnRateData, accountsData] =
+  const [heroData, latestSnapshotDates, burnRateData, accountsData, cashflowData, healthMetersData] =
     await Promise.all([
       getDashboardHeroData(month, currency),
       getLatestSnapshotDates(),
       getBurnRate(currency),
       getAccountsWithSparklineData(),
+      getMonthlyCashflow(month, currency),
+      getHealthMeters(currency, month),
     ]);
+
+  // Cash flow hero strip data — use current month's cashflow
+  const currentMonthCashflow = cashflowData[cashflowData.length - 1];
+  const cfIncome = currentMonthCashflow?.income ?? 0;
+  const cfExpenses = currentMonthCashflow?.expenses ?? 0;
+  // Use totalPending as proxy for fixed expenses (already fetched, no extra query needed)
+  const cfFixed = heroData.totalPending;
+  const cfVariable = Math.max(0, cfExpenses - cfFixed);
+  const cfRemaining = cfIncome - cfExpenses;
 
   // Map data for mobile dashboard
   const mobileHeroData = {
@@ -278,16 +292,21 @@ export default async function DashboardPage({
 
             {/* ── Hero Section — always visible, no collapse ── */}
             <DashboardHero data={heroData} />
-            {/* Placeholder: CashFlowHeroStrip (Task 11) */}
+            {/* CashFlowHeroStrip — shows income → fixed → variable → remaining */}
             <WidgetSlot widgetId="hero-flow-strip">
-              <WidgetPlaceholder label="CashFlowHeroStrip" />
+              <CashFlowHeroStrip
+                income={cfIncome}
+                fixedExpenses={cfFixed}
+                variableExpenses={cfVariable}
+                remaining={cfRemaining}
+                currency={currency}
+              />
             </WidgetSlot>
 
             {/* ── Niveles Section ── */}
             <DashboardSection title="Tus niveles" section="niveles" defaultOpen={true} showToggle={false}>
-              {/* Placeholder: HealthMetersCard (Task 12) */}
               <WidgetSlot widgetId="health-meters">
-                <WidgetPlaceholder label="HealthMetersCard" />
+                <HealthMetersCard data={healthMetersData} />
               </WidgetSlot>
             </DashboardSection>
 
