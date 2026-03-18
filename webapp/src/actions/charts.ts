@@ -366,6 +366,7 @@ async function getAccountsWithSparklineDataCached(
 ): Promise<GroupedAccounts> {
   "use cache";
   cacheTag("accounts");
+  cacheTag("dashboard:accounts");
   cacheLife("zeta");
 
   const supabase = createAdminClient()!;
