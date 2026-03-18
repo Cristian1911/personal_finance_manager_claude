@@ -39,27 +39,34 @@ export function isIgnorableAuthError(
 }
 
 /**
- * Fast auth: use getSession() for local JWT verification (~0ms) instead of
- * getUser() which makes a network round-trip to Supabase Auth (~300ms).
+ * Fast auth: try getSession() first (~0ms local JWT check), fall back to
+ * getUser() (~300ms network call) if getSession() fails for any reason.
  *
- * getSession() checks the JWT signature and expiry locally. It won't detect
- * revoked tokens until they expire naturally (~1 hour). For a single-user
- * finance app this is an acceptable trade-off for ~300ms faster navigations.
- *
- * If a downstream query fails with 401/403 (revoked token), callers should
- * use getUserSafelyStrict() to force a network verification.
+ * This keeps the fast path for 99% of requests while being resilient to
+ * cookie/JWT edge cases in production (different domain, expired refresh, etc.).
  */
 export async function getUserSafely(
   supabase: SupabaseWithAuth
 ): Promise<User | null> {
+  // Fast path: local JWT check — no network call
   try {
-    // Local JWT check — no network call
     const { data, error } = await supabase.auth.getSession();
+    if (!error && data.session?.user) {
+      return data.session.user;
+    }
+    if (error && isIgnorableAuthError(error)) return null;
+  } catch {
+    // getSession() failed — fall through to getUser()
+  }
+
+  // Slow path: network round-trip to Supabase Auth
+  try {
+    const { data, error } = await supabase.auth.getUser();
     if (error) {
       if (isIgnorableAuthError(error)) return null;
       throw error;
     }
-    return data.session?.user ?? null;
+    return data.user ?? null;
   } catch (error) {
     if (isIgnorableAuthError(error)) return null;
     throw error;
