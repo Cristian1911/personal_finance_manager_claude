@@ -23,6 +23,7 @@ export interface CategorySpending {
   count: number;
   percentage: number;
   budgetTarget?: number;
+  expense_type: "fixed" | "variable" | null;
 }
 
 export interface MonthlyCashflow {
@@ -57,7 +58,7 @@ async function getCategorySpendingCached(
   const [txRes, budgetsRes] = await Promise.all([
     supabase
       .from("transactions")
-      .select("amount, category_id, categories!category_id(name_es, name, color)")
+      .select("amount, category_id, categories!category_id(name_es, name, color, expense_type)")
       .eq("user_id", userId)
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
@@ -90,15 +91,16 @@ async function getCategorySpendingCached(
   // Aggregate by category
   const map = new Map<
     string,
-    { name: string; color: string; amount: number; count: number; categoryId: string | null; budgetTarget?: number }
+    { name: string; color: string; amount: number; count: number; categoryId: string | null; budgetTarget?: number; expense_type: "fixed" | "variable" | null }
   >();
   let total = 0;
 
   for (const tx of transactions) {
     const id = tx.category_id ?? "uncategorized";
-    const cat = tx.categories as { name_es: string | null; name: string; color: string } | null;
+    const cat = tx.categories as { name_es: string | null; name: string; color: string; expense_type: string | null } | null;
 
     if (!map.has(id)) {
+      const rawExpenseType = cat?.expense_type ?? null;
       map.set(id, {
         categoryId: tx.category_id,
         name: cat?.name_es ?? cat?.name ?? "Sin categoría",
@@ -106,6 +108,7 @@ async function getCategorySpendingCached(
         amount: 0,
         count: 0,
         budgetTarget: tx.category_id ? budgetMap.get(tx.category_id) : undefined,
+        expense_type: rawExpenseType === "fixed" || rawExpenseType === "variable" ? rawExpenseType : null,
       });
     }
 

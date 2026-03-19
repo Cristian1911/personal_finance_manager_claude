@@ -12,6 +12,7 @@ const widgetConfigSchema = z.object({
   id: z.string(),
   visible: z.boolean(),
   order: z.number().int().min(0),
+  section: z.enum(["hero", "niveles", "flujo", "presupuesto", "patrimonio", "actividad"]),
 });
 
 export const dashboardConfigSchema = z.object({
