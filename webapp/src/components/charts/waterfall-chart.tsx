@@ -63,15 +63,13 @@ export function WaterfallChart({
 
   return (
     <div
-      className="flex items-end gap-1.5"
-      style={{ height: "180px" }}
+      className="flex items-end gap-1.5 h-[180px]"
       aria-label="Flujo de caja waterfall"
     >
       {bars.map((bar) => (
         <div
           key={bar.label}
-          className="flex flex-col items-center flex-1"
-          style={{ height: "100%", justifyContent: "flex-end" }}
+          className="flex flex-col items-center flex-1 h-full justify-end"
         >
           <span className="text-[10px] font-bold mb-1 leading-none text-center">
             {formatCurrency(bar.amount, currency)}

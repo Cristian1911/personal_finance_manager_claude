@@ -11,10 +11,10 @@ export function AllocationBars5030({ data }: AllocationBars5030Props) {
     return (
       <div className="rounded-xl bg-z-surface-2 border border-z-border p-4">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          Distribucion 50/30/20
+          Distribución 50/30/20
         </p>
         <p className="text-sm text-muted-foreground">
-          Importa un extracto para ver tu distribucion.
+          Importa un extracto para ver tu distribución.
         </p>
       </div>
     );
@@ -86,7 +86,7 @@ export function AllocationBars5030({ data }: AllocationBars5030Props) {
 
       {data.untaggedCategories > 0 && (
         <p className="text-[10px] text-muted-foreground mt-3">
-          {data.untaggedCategories} categor{data.untaggedCategories === 1 ? "ia sin" : "ias sin"} tipo asignado — afecta precision
+          {data.untaggedCategories} categor{data.untaggedCategories === 1 ? "ía sin" : "ías sin"} tipo asignado — afecta precisión
         </p>
       )}
     </div>

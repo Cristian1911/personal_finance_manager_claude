@@ -2,6 +2,7 @@
 
 import { cache } from "react";
 import { getLatestDebtSnapshots } from "@/actions/debt-snapshots";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import type { CurrencyCode } from "@/types/domain";
 
 export interface DebtProgressAccount {
@@ -15,6 +16,9 @@ export interface DebtProgressAccount {
 
 export const getDebtProgress = cache(
   async (currency?: CurrencyCode): Promise<DebtProgressAccount[]> => {
+    const { user } = await getAuthenticatedClient();
+    if (!user) return [];
+
     const baseCurrency = currency ?? "COP";
 
     const { debtAccounts: allDebtAccounts, snapshotsByAccount } =

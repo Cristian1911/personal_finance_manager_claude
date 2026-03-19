@@ -18,12 +18,12 @@ const COLORS = [
   "var(--z-expense)",
   "var(--z-alert)",
   "var(--z-income)",
-  "#7C8BA0",
+  "var(--z-sage-dark)",
   "var(--z-sage-dark)",
   "var(--z-sage)",
 ];
 
-const OTROS_COLOR = "#94a3b8";
+const OTROS_COLOR = "var(--z-sage-muted)";
 
 // ChartContainer needs a config even for Pie charts
 const chartConfig = {} satisfies ChartConfig;

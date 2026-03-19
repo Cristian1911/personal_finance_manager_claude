@@ -40,7 +40,7 @@ const METER_LABELS: Record<MeterType, string> = {
   gasto: "gasto",
   deuda: "deuda",
   ahorro: "ahorro",
-  colchon: "colchon de emergencia",
+  colchon: "colchón de emergencia",
 };
 
 function buildSummaryRoast(
@@ -70,9 +70,9 @@ function buildSummaryRoast(
       (m) => m.level === "solido" || m.level === "excelente",
     ).length;
     if (goodCount >= 2) {
-      return `Hay cosas que van bien, pero tu ${worstLabel} es critico — eso anula el resto.`;
+      return `Hay cosas que van bien, pero tu ${worstLabel} es crítico — eso anula el resto.`;
     }
-    return `Tu ${worstLabel} esta en zona critica y necesita atencion inmediata.`;
+    return `Tu ${worstLabel} está en zona crítica y necesita atención inmediata.`;
   }
 
   if (worstMeter.level === "alto") {
@@ -80,7 +80,7 @@ function buildSummaryRoast(
       (m) => m.type !== worstMeter.type && m.level === "critico",
     );
     if (otherCriticos.length > 0) {
-      return `Multiples areas en rojo — tu ${worstLabel} y otros indicadores requieren atencion urgente.`;
+      return `Múltiples áreas en rojo — tu ${worstLabel} y otros indicadores requieren atención urgente.`;
     }
     const goodMeters = meters.filter(
       (m) =>
@@ -89,13 +89,13 @@ function buildSummaryRoast(
     );
     if (goodMeters.length > 0) {
       const goodLabel = METER_LABELS[goodMeters[0].type];
-      return `Tu ${goodLabel} esta bien, pero tu ${worstLabel} es alto para tu ingreso${monthlyIncome != null ? " mensual" : ""}.`;
+      return `Tu ${goodLabel} está bien, pero tu ${worstLabel} es alto para tu ingreso${monthlyIncome != null ? " mensual" : ""}.`;
     }
-    return `Tu ${worstLabel} esta alto — hay margen para mejorar antes de que sea un problema real.`;
+    return `Tu ${worstLabel} está alto — hay margen para mejorar antes de que sea un problema real.`;
   }
 
   if (worstMeter.level === "atento") {
-    return `En general vas bien — solo tu ${worstLabel} merece atencion antes de que suba de nivel.`;
+    return `En general vas bien — solo tu ${worstLabel} merece atención antes de que suba de nivel.`;
   }
 
   return "Finanzas en buen estado — sigue monitoreando.";

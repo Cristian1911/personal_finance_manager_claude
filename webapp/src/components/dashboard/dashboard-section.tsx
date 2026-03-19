@@ -42,7 +42,8 @@ export function DashboardSection({
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 rounded-sm"
+          aria-expanded={isOpen}
         >
           <ChevronDown
             className={cn(

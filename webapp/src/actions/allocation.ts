@@ -2,6 +2,7 @@
 
 import { cache } from "react";
 import { getMonthlyCashflow, getCategorySpending } from "@/actions/charts";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import type { CurrencyCode } from "@/types/domain";
 
 export interface AllocationData {
@@ -15,6 +16,9 @@ export interface AllocationData {
 
 export const get503020Allocation = cache(
   async (month?: string, currency: CurrencyCode = "COP"): Promise<AllocationData | null> => {
+    const { user } = await getAuthenticatedClient();
+    if (!user) return null;
+
     // Fetch cashflow and category spending in parallel
     const [cashflows, categories] = await Promise.all([
       getMonthlyCashflow(month, currency),

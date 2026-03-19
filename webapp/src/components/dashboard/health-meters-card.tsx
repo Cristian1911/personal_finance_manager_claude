@@ -38,14 +38,10 @@ function MeterRow({
   const label = METER_DISPLAY_LABELS[meter.type];
 
   return (
-    <div
-      className="cursor-pointer space-y-1.5 rounded-lg px-3 py-2.5 transition-colors hover:bg-z-surface-3"
+    <button
+      type="button"
+      className="w-full text-left cursor-pointer space-y-1.5 rounded-lg px-3 py-2.5 transition-colors hover:bg-z-surface-3 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onClick();
-      }}
     >
       {/* Row header */}
       <div className="flex items-center justify-between gap-2">
@@ -90,7 +86,7 @@ function MeterRow({
           }}
         />
       </div>
-    </div>
+    </button>
   );
 }
 

@@ -61,10 +61,10 @@ export function getLevelColor(level: Level): string {
 export function getLevelTag(level: Level): string {
   switch (level) {
     case "excelente": return "EXCELENTE";
-    case "solido":    return "SOLIDO";
+    case "solido":    return "SÓLIDO";
     case "atento":    return "ATENTO";
     case "alto":      return "ALTO";
-    case "critico":   return "CRITICO";
+    case "critico":   return "CRÍTICO";
   }
 }
 
@@ -116,7 +116,7 @@ export const METER_DISPLAY_LABELS: Record<MeterType, string> = {
   gasto: "Gasto",
   deuda: "Deuda",
   ahorro: "Ahorro",
-  colchon: "Colchon",
+  colchon: "Colchón",
 };
 
 export const LEVEL_PRIORITY: Record<Level, number> = {
@@ -167,21 +167,21 @@ function roastGasto(ctx: RoastContext): string {
 
     if (level === "critico") {
       if (range === "low") {
-        return `Gastas ${pct(value)} de lo que ganas. Con ingresos ajustados, este nivel de gasto no deja margen — te queda solo ${formatCurrency(remaining, currency)} al mes para todo lo demas.`;
+        return `Gastas ${pct(value)} de lo que ganas. Con ingresos ajustados, este nivel de gasto no deja margen — te queda solo ${formatCurrency(remaining, currency)} al mes para todo lo demás.`;
       }
       if (range === "mid") {
         return `Gastas ${formatCurrency(expenses, currency)} de los ${formatCurrency(monthlyIncome, currency)} que ganas. Para alguien con tu salario, esto es preocupante — tu margen de maniobra es de solo ${formatCurrency(remaining, currency)} al mes.`;
       }
       // high
-      return `Ganas bien y aun asi gastas el ${pct(value)}. Esto no es falta de ingreso — es falta de control. Te sobran ${formatCurrency(remaining, currency)} pero el patron no cambia solo.`;
+      return `Ganas bien y aún así gastas el ${pct(value)}. Esto no es falta de ingreso — es falta de control. Te sobran ${formatCurrency(remaining, currency)} pero el patrón no cambia solo.`;
     }
 
     if (level === "alto") {
       if (range === "high") {
-        return `Lifestyle creep clasico. Ganas lo suficiente para ahorrar mucho mas, pero el ${pct(value)} se va en gastos. Cada aumento de sueldo se lo come el gasto.`;
+        return `Lifestyle creep clásico. Ganas lo suficiente para ahorrar mucho más, pero el ${pct(value)} se va en gastos. Cada aumento de sueldo se lo come el gasto.`;
       }
       if (range === "mid") {
-        return `El ${pct(value)} en gastos es demasiado para tu nivel de ingreso. Si sube un gasto fijo, te quedas sin colchon. Tienes ${formatCurrency(remaining, currency)} de margen — eso no alcanza para imprevistos.`;
+        return `El ${pct(value)} en gastos es demasiado para tu nivel de ingreso. Si sube un gasto fijo, te quedas sin colchón. Tienes ${formatCurrency(remaining, currency)} de margen — eso no alcanza para imprevistos.`;
       }
       // low
       return `Con ingreso limitado, gastar el ${pct(value)} te deja expuesto. Cualquier imprevisto y entras en rojo. Solo te quedan ${formatCurrency(remaining, currency)}.`;
@@ -189,13 +189,13 @@ function roastGasto(ctx: RoastContext): string {
 
     if (level === "atento") {
       if (range === "high") {
-        return `El ${pct(value)} en gastos es manejable, pero para tu nivel de ingreso deberias estar ahorrando mucho mas. Hay margen que no estas aprovechando.`;
+        return `El ${pct(value)} en gastos es manejable, pero para tu nivel de ingreso deberías estar ahorrando mucho más. Hay margen que no estás aprovechando.`;
       }
-      return `Gastos en ${pct(value)} — no es alarma todavia, pero estas cerca del limite donde el ahorro se vuelve dificil. Tienes ${formatCurrency(remaining, currency)} disponibles; cuida que no se evaporen.`;
+      return `Gastos en ${pct(value)} — no es alarma todavía, pero estás cerca del límite donde el ahorro se vuelve difícil. Tienes ${formatCurrency(remaining, currency)} disponibles; cuida que no se evaporen.`;
     }
 
     if (level === "solido") {
-      return `Gastas el ${pct(value)} — controlado. Te quedan ${formatCurrency(remaining, currency)} para ahorro e imprevistos. Mantener esto es la base de todo lo demas.`;
+      return `Gastas el ${pct(value)} — controlado. Te quedan ${formatCurrency(remaining, currency)} para ahorro e imprevistos. Mantener esto es la base de todo lo demás.`;
     }
 
     // excelente
@@ -205,13 +205,13 @@ function roastGasto(ctx: RoastContext): string {
   // No income available — generic messages by level
   switch (level) {
     case "critico":
-      return `El ${pct(value)} de tus ingresos en gastos es critico. No hay margen para imprevistos ni para ahorrar. Esto necesita atencion inmediata.`;
+      return `El ${pct(value)} de tus ingresos en gastos es crítico. No hay margen para imprevistos ni para ahorrar. Esto necesita atención inmediata.`;
     case "alto":
-      return `El ${pct(value)} en gastos es alto — estas cerca del limite. Pequenos ajustes ahora evitan problemas grandes despues.`;
+      return `El ${pct(value)} en gastos es alto — estás cerca del límite. Pequeños ajustes ahora evitan problemas grandes después.`;
     case "atento":
       return `El ${pct(value)} en gastos — no es urgente, pero tampoco es para ignorar. Hay espacio para optimizar.`;
     case "solido":
-      return `El ${pct(value)} en gastos es un nivel solido. Mantener esta disciplina es lo que separa a quien ahorra de quien no.`;
+      return `El ${pct(value)} en gastos es un nivel sólido. Mantener esta disciplina es lo que separa a quien ahorra de quien no.`;
     case "excelente":
       return `Solo el ${pct(value)} en gastos — excelente control. Eso es lo que permite construir ahorro real.`;
   }
@@ -224,33 +224,33 @@ function roastDeuda(ctx: RoastContext): string {
     const delta = (value - 43).toFixed(1);
     if (monthlyIncome != null && monthlyIncome > 0) {
       const debtPayment = monthlyIncome * (value / 100);
-      return `Tu deuda consume el ${pct(value)} de tu ingreso — ${formatCurrency(debtPayment, currency)} al mes que no puedes usar para nada mas. Los bancos cortan en 36%. Estas ${delta} puntos por encima del limite.`;
+      return `Tu deuda consume el ${pct(value)} de tu ingreso — ${formatCurrency(debtPayment, currency)} al mes que no puedes usar para nada más. Los bancos cortan en 36%. Estás ${delta} puntos por encima del límite.`;
     }
-    return `Tu deuda consume el ${pct(value)} de tu ingreso. Los bancos cortan en 36%. Estas ${delta} puntos por encima del limite. Zona de riesgo real.`;
+    return `Tu deuda consume el ${pct(value)} de tu ingreso. Los bancos cortan en 36%. Estás ${delta} puntos por encima del límite. Zona de riesgo real.`;
   }
 
   if (level === "alto") {
     const delta = (43 - value).toFixed(1);
     if (monthlyIncome != null && monthlyIncome > 0) {
       const debtPayment = monthlyIncome * (value / 100);
-      return `${formatCurrency(debtPayment, currency)} al mes en deuda — el ${pct(value)} de tu ingreso. Estas a solo ${delta} puntos del umbral critico. No tomes mas credito ahora.`;
+      return `${formatCurrency(debtPayment, currency)} al mes en deuda — el ${pct(value)} de tu ingreso. Estás a solo ${delta} puntos del umbral crítico. No tomes más crédito ahora.`;
     }
-    return `El ${pct(value)} en deuda — a ${delta} puntos del umbral donde los bancos te cierran el credito. No es momento de asumir nuevas obligaciones.`;
+    return `El ${pct(value)} en deuda — a ${delta} puntos del umbral donde los bancos te cierran el crédito. No es momento de asumir nuevas obligaciones.`;
   }
 
   if (level === "atento") {
-    return `El ${pct(value)} en deuda es manejable, pero ya estas en la mitad del camino hacia el limite critico. Cada nueva deuda que agregas pesa mas de lo que parece.`;
+    return `El ${pct(value)} en deuda es manejable, pero ya estás en la mitad del camino hacia el límite crítico. Cada nueva deuda que agregas pesa más de lo que parece.`;
   }
 
   if (level === "solido") {
-    return `DTI en ${pct(value)} — bajo control. Tienes capacidad de credito sin riesgo real. Usa esa ventaja con cabeza.`;
+    return `DTI en ${pct(value)} — bajo control. Tienes capacidad de crédito sin riesgo real. Usa esa ventaja con cabeza.`;
   }
 
   // excelente
   if (value < 5) {
     return `Casi sin deuda — ${pct(value)}. Eso es libertad financiera real. Tus ingresos trabajan para ti, no para los bancos.`;
   }
-  return `Solo el ${pct(value)} en deuda. Nivel excelente — tienes el maximo margen para moverte si surge una oportunidad o un imprevisto.`;
+  return `Solo el ${pct(value)} en deuda. Nivel excelente — tienes el máximo margen para moverte si surge una oportunidad o un imprevisto.`;
 }
 
 function roastAhorro(ctx: RoastContext): string {
@@ -263,7 +263,7 @@ function roastAhorro(ctx: RoastContext): string {
 
     if (level === "critico") {
       if (range === "low") {
-        return `Ahorras solo el ${pct(value)} — con ingreso ajustado, esto es comprensible, pero igual es riesgoso. Sin colchon, cualquier imprevisto se vuelve deuda.`;
+        return `Ahorras solo el ${pct(value)} — con ingreso ajustado, esto es comprensible, pero igual es riesgoso. Sin colchón, cualquier imprevisto se vuelve deuda.`;
       }
       if (range === "mid") {
         return `Solo ${formatCurrency(savings, currency)} al mes en ahorro — el ${pct(value)} de lo que ganas. Para tu nivel de ingreso esto es muy poco. Un gasto inesperado y entras en deuda.`;
@@ -273,21 +273,21 @@ function roastAhorro(ctx: RoastContext): string {
 
     if (level === "alto") {
       if (monthsTo6 != null) {
-        return `El ${pct(value)} ahorrado — por debajo del 10% recomendado. A este ritmo necesitas ${monthsTo6} meses para tener 6 meses de colchon. Cualquier ajuste ayuda.`;
+        return `El ${pct(value)} ahorrado — por debajo del 10% recomendado. A este ritmo necesitas ${monthsTo6} meses para tener 6 meses de colchón. Cualquier ajuste ayuda.`;
       }
-      return `El ${pct(value)} ahorrado es insuficiente. Estas por debajo del minimo recomendado y sin margen real para emergencias.`;
+      return `El ${pct(value)} ahorrado es insuficiente. Estás por debajo del mínimo recomendado y sin margen real para emergencias.`;
     }
 
     if (level === "atento") {
-      return `El ${pct(value)} en ahorro — dentro del rango aceptable pero no del bueno. Aumentar 5 puntos mas marca la diferencia entre tener colchon y no tenerlo.`;
+      return `El ${pct(value)} en ahorro — dentro del rango aceptable pero no del bueno. Aumentar 5 puntos más marca la diferencia entre tener colchón y no tenerlo.`;
     }
 
     if (level === "solido") {
       const monthsToTarget = monthsTo6 != null && monthsTo6 > 0 ? monthsTo6 : null;
       if (monthsToTarget != null && monthsToTarget <= 12) {
-        return `Ahorras el ${pct(value)} — por encima del 20% recomendado. A este ritmo tienes 6 meses de colchon en ${monthsToTarget} meses. Vas bien.`;
+        return `Ahorras el ${pct(value)} — por encima del 20% recomendado. A este ritmo tienes 6 meses de colchón en ${monthsToTarget} meses. Vas bien.`;
       }
-      return `El ${pct(value)} en ahorro es solido — por encima del benchmark del 20%. Mantener esto construye patrimonio real con el tiempo.`;
+      return `El ${pct(value)} en ahorro es sólido — por encima del benchmark del 20%. Mantener esto construye patrimonio real con el tiempo.`;
     }
 
     // excelente
@@ -297,13 +297,13 @@ function roastAhorro(ctx: RoastContext): string {
   // Generic
   switch (level) {
     case "critico":
-      return `Solo el ${pct(value)} en ahorro — nivel critico. Sin reservas, el primer imprevisto se convierte en deuda. Necesitas cambiar esto antes que cualquier otra cosa.`;
+      return `Solo el ${pct(value)} en ahorro — nivel crítico. Sin reservas, el primer imprevisto se convierte en deuda. Necesitas cambiar esto antes que cualquier otra cosa.`;
     case "alto":
-      return `El ${pct(value)} ahorrado es bajo. Estas debajo del 10% minimo recomendado. Pequenos recortes en gasto pueden mover este numero rapido.`;
+      return `El ${pct(value)} ahorrado es bajo. Estás debajo del 10% mínimo recomendado. Pequeños recortes en gasto pueden mover este número rápido.`;
     case "atento":
-      return `El ${pct(value)} en ahorro — no es malo, pero tampoco da tranquilidad. Llegar al 20% cambia cuanto tardas en tener un colchon real.`;
+      return `El ${pct(value)} en ahorro — no es malo, pero tampoco da tranquilidad. Llegar al 20% cambia cuánto tardas en tener un colchón real.`;
     case "solido":
-      return `Ahorras el ${pct(value)} — por encima del 20% recomendado. Mantener esto ${value >= 25 ? "varios" : "algunos"} meses mas y vas a tener colchon real.`;
+      return `Ahorras el ${pct(value)} — por encima del 20% recomendado. Mantener esto ${value >= 25 ? "varios" : "algunos"} meses más y vas a tener colchón real.`;
     case "excelente":
       return `El ${pct(value)} en ahorro es excepcional. Eso pone tu dinero a trabajar, no solo a sobrevivir el mes.`;
   }
@@ -315,9 +315,9 @@ function roastColchon(ctx: RoastContext): string {
   if (level === "critico") {
     if (monthlyIncome != null && monthlyIncome > 0) {
       const balance = monthlyIncome * value;
-      return `Tienes ${formatCurrency(balance, currency)} liquidos — menos de un mes de gastos. Si pierdes el ingreso hoy, en semanas estas en ceros. Esto es urgente.`;
+      return `Tienes ${formatCurrency(balance, currency)} líquidos — menos de un mes de gastos. Si pierdes el ingreso hoy, en semanas estás en ceros. Esto es urgente.`;
     }
-    return `Menos de un mes de colchon. Si el ingreso se detiene hoy, en dias entras en problemas. Construir reserva es la prioridad numero uno.`;
+    return `Menos de un mes de colchón. Si el ingreso se detiene hoy, en días entras en problemas. Construir reserva es la prioridad número uno.`;
   }
 
   if (level === "alto") {
@@ -325,9 +325,9 @@ function roastColchon(ctx: RoastContext): string {
     if (monthlyIncome != null && monthlyIncome > 0) {
       const balance = monthlyIncome * value;
       const monthsNeeded = Math.ceil(6 - value);
-      return `Tienes ${formatCurrency(balance, currency)} — ${months} meses de cobertura. Estas en la zona fragil. Necesitas ${monthsNeeded} meses mas de ahorro para llegar a un nivel seguro.`;
+      return `Tienes ${formatCurrency(balance, currency)} — ${months} meses de cobertura. Estás en la zona frágil. Necesitas ${monthsNeeded} meses más de ahorro para llegar a un nivel seguro.`;
     }
-    return `${months} meses de colchon — funciona para imprevistos menores, pero no para perder el ingreso. La meta real son 6 meses.`;
+    return `${months} meses de colchón — funciona para imprevistos menores, pero no para perder el ingreso. La meta real son 6 meses.`;
   }
 
   if (level === "atento") {
@@ -335,19 +335,19 @@ function roastColchon(ctx: RoastContext): string {
     if (monthlyIncome != null && monthlyIncome > 0) {
       const balance = monthlyIncome * value;
       const monthsExpenses = monthlyIncome; // approximate monthly expenses ≈ income for message
-      return `Tienes ${formatCurrency(balance, currency)} liquidos contra ~${formatCurrency(monthsExpenses, currency)}/mes. ${months} meses de cobertura — suficiente para aguantar, no para estar tranquilo.`;
+      return `Tienes ${formatCurrency(balance, currency)} líquidos contra ~${formatCurrency(monthsExpenses, currency)}/mes. ${months} meses de cobertura — suficiente para aguantar, no para estar tranquilo.`;
     }
-    return `${months} meses de colchon — te cubre para emergencias menores pero no para una crisis de ingreso larga. Sigue acumulando.`;
+    return `${months} meses de colchón — te cubre para emergencias menores pero no para una crisis de ingreso larga. Sigue acumulando.`;
   }
 
   if (level === "solido") {
     const months = value.toFixed(1).replace(/\.0$/, "");
-    return `${months} meses de colchon — estas dentro del rango solido. Tienes margen real para aguantar un cambio de trabajo o un imprevisto grande sin entrar en panico.`;
+    return `${months} meses de colchón — estás dentro del rango sólido. Tienes margen real para aguantar un cambio de trabajo o un imprevisto grande sin entrar en pánico.`;
   }
 
   // excelente
   const months = Math.floor(value);
-  return `Mas de ${months} meses de colchon. Eso es libertad de decision — puedes cambiar de trabajo, tomar riesgos calculados o aguantar una crisis larga sin comprometer tu estabilidad.`;
+  return `Más de ${months} meses de colchón. Eso es libertad de decisión — puedes cambiar de trabajo, tomar riesgos calculados o aguantar una crisis larga sin comprometer tu estabilidad.`;
 }
 
 // ---------------------------------------------------------------------------

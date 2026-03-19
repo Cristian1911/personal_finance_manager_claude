@@ -78,7 +78,7 @@ export function CashFlowViewToggle({
             <button
               onClick={() => setView("line")}
               className={cn(
-                "px-3 py-1 text-xs rounded-sm transition-colors",
+                "px-3 py-1 text-xs rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                 view === "line"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -89,7 +89,7 @@ export function CashFlowViewToggle({
             <button
               onClick={() => setView("bar")}
               className={cn(
-                "px-3 py-1 text-xs rounded-sm transition-colors",
+                "px-3 py-1 text-xs rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                 view === "bar"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"

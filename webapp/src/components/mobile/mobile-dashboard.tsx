@@ -11,7 +11,6 @@ import {
   CalendarClock,
   CircleAlert,
 } from "lucide-react";
-import { StaggerList, StaggerItem, FadeIn } from "./motion";
 import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 import type { BurnRateResponse } from "@/actions/burn-rate";
@@ -77,7 +76,7 @@ export function MobileDashboard({
   return (
     <div className="space-y-5">
       {/* 1. Hero card + mini cash flow strip */}
-      <FadeIn>
+      <div>
         <div className="rounded-xl border bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Disponible para gastar
@@ -120,7 +119,7 @@ export function MobileDashboard({
             </div>
           )}
         </div>
-      </FadeIn>
+      </div>
 
       {/* 2. Health Meters — compact 4-bar card */}
       {healthMetersData && (
@@ -150,13 +149,13 @@ export function MobileDashboard({
               <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <StaggerList className="rounded-xl border divide-y">
+          <div className="rounded-xl border divide-y">
             {upcomingPayments.slice(0, 5).map((payment) => {
               const isOverdue = payment.dueDate < today;
               const isToday = payment.dueDate === today;
 
               return (
-                <StaggerItem key={payment.id}>
+                <div key={payment.id}>
                 <Link
                   href="/recurrentes"
                   className={cn(
@@ -199,10 +198,10 @@ export function MobileDashboard({
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </Link>
-                </StaggerItem>
+                </div>
               );
             })}
-          </StaggerList>
+          </div>
         </div>
       )}
 
@@ -247,11 +246,10 @@ export function MobileDashboard({
               <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <StaggerList className="space-y-0.5">
+          <div className="space-y-0.5">
             {recentTransactions.slice(0, 3).map((tx) => (
-              <StaggerItem key={tx.id}>
+              <div key={tx.id}>
               <Link
-                key={tx.id}
                 href={`/transactions/${tx.id}`}
                 className="flex items-center justify-between rounded-md px-2 py-1.5 -mx-2 active:bg-muted transition-colors"
               >
@@ -276,9 +274,9 @@ export function MobileDashboard({
                   )}
                 </span>
               </Link>
-              </StaggerItem>
+              </div>
             ))}
-          </StaggerList>
+          </div>
         </div>
       )}
     </div>

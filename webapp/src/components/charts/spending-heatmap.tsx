@@ -58,15 +58,15 @@ export function SpendingHeatmap({ data }: SpendingHeatmapProps) {
         {([0, 1, 2, 3, 4] as const).map((l) => (
           <div key={l} className="w-3 h-3 rounded-sm" style={{ background: levelColors[l] }} />
         ))}
-        <span className="text-[9px] text-muted-foreground">Mas</span>
+        <span className="text-[9px] text-muted-foreground">Más</span>
       </div>
 
       {/* Pattern detection */}
       {data.patterns.weekendRatio > 1.3 && (
         <p className="text-[11px] text-muted-foreground mt-2">
-          Patron detectado:{" "}
+          Patrón detectado:{" "}
           <strong className="text-foreground">
-            Gastas {data.patterns.weekendRatio.toFixed(1)}x mas los fines de semana
+            Gastas {data.patterns.weekendRatio.toFixed(1)}x más los fines de semana
           </strong>
         </p>
       )}

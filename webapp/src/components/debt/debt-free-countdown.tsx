@@ -1,5 +1,6 @@
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDebtFreeDate } from "@/components/debt/planner/utils";
+import { CheckCircle2 } from "lucide-react";
 import type { DebtCountdownData } from "@/actions/debt-countdown";
 
 interface DebtFreeCountdownProps {
@@ -11,11 +12,11 @@ export function DebtFreeCountdown({ data }: DebtFreeCountdownProps) {
   if (!data) {
     return (
       <div className="rounded-xl bg-z-surface-2 border border-z-border p-4 flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-z-income/15 text-xl">
-          ✓
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-z-income/15">
+          <CheckCircle2 className="h-5 w-5 text-z-income" aria-hidden="true" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-z-income">Libre de deudas!</p>
+          <p className="text-sm font-semibold text-z-income">¡Libre de deudas!</p>
           <p className="text-xs text-muted-foreground">No tienes cuentas de deuda activas.</p>
         </div>
       </div>

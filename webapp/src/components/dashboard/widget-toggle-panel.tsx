@@ -13,7 +13,7 @@ export function WidgetTogglePanel({ widgets, onToggle }: WidgetTogglePanelProps)
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground">
+        <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label="Configurar widgets">
           <Settings2 className="h-3.5 w-3.5" />
         </button>
       </PopoverTrigger>
