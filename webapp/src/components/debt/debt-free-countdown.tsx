@@ -1,15 +1,9 @@
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatDebtFreeDate } from "@/components/debt/planner/utils";
 import type { DebtCountdownData } from "@/actions/debt-countdown";
 
 interface DebtFreeCountdownProps {
   data: DebtCountdownData | null;
-}
-
-// Convert YYYY-MM to a readable Spanish month+year label
-function formatProjectedDate(yyyyMM: string): string {
-  const [year, month] = yyyyMM.split("-").map(Number);
-  const date = new Date(year, month - 1, 1);
-  return date.toLocaleDateString("es-CO", { month: "long", year: "numeric" });
 }
 
 export function DebtFreeCountdown({ data }: DebtFreeCountdownProps) {
@@ -43,7 +37,7 @@ export function DebtFreeCountdown({ data }: DebtFreeCountdownProps) {
           <span className="text-2xl font-bold">meses</span>
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          {formatProjectedDate(data.projectedDate)} al ritmo actual
+          {formatDebtFreeDate(data.projectedDate)} al ritmo actual
         </p>
       </div>
 

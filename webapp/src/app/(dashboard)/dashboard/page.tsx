@@ -138,7 +138,7 @@ export default async function DashboardPage({
   const hasAccounts = allAccounts.length > 0;
   const starterMode = hasAccounts && recentTx.length === 0;
 
-  await trackProductEvent({
+  void trackProductEvent({
     event_name: "dashboard_viewed",
     flow: "dashboard",
     step: "main",

@@ -2,7 +2,8 @@
 
 import { cache } from "react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { getAccounts } from "@/actions/accounts";
+import { getLatestDebtSnapshots } from "@/actions/debt-snapshots";
+import { formatMonthParam } from "@/lib/utils/date";
 import { compareStrategies } from "@zeta/shared";
 import type { DebtAccount } from "@zeta/shared";
 import type { CurrencyCode } from "@/types/domain";
@@ -25,54 +26,22 @@ export interface DebtCountdownData {
 
 export const getDebtFreeCountdown = cache(
   async (currency?: CurrencyCode): Promise<DebtCountdownData | null> => {
-    const { supabase, user } = await getAuthenticatedClient();
+    const { user } = await getAuthenticatedClient();
     if (!user) return null;
 
     const baseCurrency = currency ?? "COP";
 
-    // 1. Get all active accounts, filter to debt accounts in this currency
-    const accountsResult = await getAccounts();
-    if (!accountsResult.success || !accountsResult.data) return null;
+    // 1. Get all active debt accounts + latest snapshots
+    const { debtAccounts: allDebtAccounts, snapshotsByAccount: latestSnapshotByAccount } =
+      await getLatestDebtSnapshots();
 
-    const debtAccounts = accountsResult.data.filter(
-      (a) =>
-        (a.account_type === "CREDIT_CARD" || a.account_type === "LOAN") &&
-        a.currency_code === baseCurrency
+    const debtAccounts = allDebtAccounts.filter(
+      (a: { currency_code: string }) => a.currency_code === baseCurrency
     );
 
     if (debtAccounts.length === 0) return null;
 
-    // 2. Get latest snapshot per debt account
-    const accountIds = debtAccounts.map((a) => a.id);
-
-    const { data: snapshots, error } = await supabase
-      .from("statement_snapshots")
-      .select(
-        "account_id, interest_rate, minimum_payment, remaining_balance, initial_amount, period_to, created_at"
-      )
-      .eq("user_id", user.id)
-      .in("account_id", accountIds)
-      .order("period_to", { ascending: false });
-
-    if (error) throw error;
-
-    // Group snapshots by account_id — take the first (most recent) per account
-    const latestSnapshotByAccount = new Map<
-      string,
-      {
-        interest_rate: number | null;
-        minimum_payment: number | null;
-        remaining_balance: number | null;
-        initial_amount: number | null;
-      }
-    >();
-    for (const snap of snapshots ?? []) {
-      if (!latestSnapshotByAccount.has(snap.account_id)) {
-        latestSnapshotByAccount.set(snap.account_id, snap);
-      }
-    }
-
-    // 3. Build DebtAccount[] for the simulator, tracking incomplete accounts
+    // 2. Build DebtAccount[] for the simulator, tracking incomplete accounts
     const simulatorAccounts: DebtAccount[] = [];
     const incompleteAccounts: string[] = [];
     let originalDebt = 0;
@@ -128,7 +97,7 @@ export const getDebtFreeCountdown = cache(
     // Projected payoff date
     const now = new Date();
     const projectedDate = new Date(now.getFullYear(), now.getMonth() + monthsToFree, 1);
-    const projectedDateStr = `${projectedDate.getFullYear()}-${String(projectedDate.getMonth() + 1).padStart(2, "0")}`;
+    const projectedDateStr = formatMonthParam(projectedDate);
 
     // Progress percentage
     const progressPercent =

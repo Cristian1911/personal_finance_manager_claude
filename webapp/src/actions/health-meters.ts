@@ -4,10 +4,11 @@ import { cache } from "react";
 import { getMonthlyCashflow, getCategorySpending } from "@/actions/charts";
 import { getAccounts } from "@/actions/accounts";
 import { getEstimatedIncome } from "@/actions/income";
-import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { getLatestDebtSnapshots } from "@/actions/debt-snapshots";
 import {
   classifyLevel,
   getRoastMessage,
+  getWorstLevel,
 } from "@/lib/health-levels";
 import type { CurrencyCode } from "@/types/domain";
 import type { Level, MeterType } from "@/lib/health-levels";
@@ -110,12 +111,13 @@ export const getHealthMeters = cache(
     month?: string,
   ): Promise<HealthMetersData> => {
     // 1. Parallel fetch all data
-    const [cashflowData, categoryData, accountsResult, incomeEstimate] =
+    const [cashflowData, categoryData, accountsResult, incomeEstimate, debtSnapshotsResult] =
       await Promise.all([
         getMonthlyCashflow(month, currency),
         getCategorySpending(month, currency),
         getAccounts(),
         getEstimatedIncome(currency, month),
+        getLatestDebtSnapshots(),
       ]);
 
     const currentMonth = cashflowData[cashflowData.length - 1];
@@ -129,30 +131,10 @@ export const getHealthMeters = cache(
     const gastoValue = income > 0 ? (expenses / income) * 100 : 0;
 
     // 3. DEUDA — DTI ratio
-    // Need minimum payments from latest statement_snapshots per debt account
-    const debtAccounts = accounts.filter(
-      (a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN",
-    );
-
+    const { snapshotsByAccount } = debtSnapshotsResult;
     let monthlyDebtPayments = 0;
-    if (debtAccounts.length > 0) {
-      const { supabase } = await getAuthenticatedClient();
-      const debtAccountIds = debtAccounts.map((a) => a.id);
-      const { data: snapshots } = await supabase
-        .from("statement_snapshots")
-        .select("account_id, minimum_payment, total_payment_due")
-        .in("account_id", debtAccountIds)
-        .order("period_to", { ascending: false });
-
-      // Deduplicate: keep only the latest snapshot per account
-      const seen = new Set<string>();
-      for (const snap of snapshots ?? []) {
-        if (!seen.has(snap.account_id)) {
-          seen.add(snap.account_id);
-          monthlyDebtPayments +=
-            snap.minimum_payment ?? snap.total_payment_due ?? 0;
-        }
-      }
+    for (const snap of snapshotsByAccount.values()) {
+      monthlyDebtPayments += snap.minimum_payment ?? snap.total_payment_due ?? 0;
     }
 
     const effectiveIncome = monthlyIncome ?? income;
@@ -228,16 +210,8 @@ export const getHealthMeters = cache(
     );
 
     // 7. Summary roast — pick the worst meter and highlight it
-    const levelPriority: Record<Level, number> = {
-      critico: 0,
-      alto: 1,
-      atento: 2,
-      solido: 3,
-      excelente: 4,
-    };
-    const worstMeter = meters.reduce((worst, m) =>
-      levelPriority[m.level] < levelPriority[worst.level] ? m : worst,
-    );
+    const worstLevel = getWorstLevel(meters.map((m) => m.level));
+    const worstMeter = meters.find((m) => m.level === worstLevel) ?? meters[0];
 
     const summaryRoast = buildSummaryRoast(
       meters,

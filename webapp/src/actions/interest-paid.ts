@@ -2,6 +2,7 @@
 
 import { cache } from "react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { formatMonthParam } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 
 export interface InterestPaidData {
@@ -23,13 +24,13 @@ export const getInterestPaid = cache(
     if (month) {
       targetMonth = month.substring(0, 7); // normalize to YYYY-MM
     } else {
-      targetMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      targetMonth = formatMonthParam(now);
     }
 
     // Compute previous month
     const [targetYear, targetMonthNum] = targetMonth.split("-").map(Number);
     const prevDate = new Date(targetYear, targetMonthNum - 2, 1); // month - 2 because months are 0-indexed
-    const previousMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+    const previousMonth = formatMonthParam(prevDate);
 
     // Current year prefix for YTD
     const currentYear = targetMonth.substring(0, 4);

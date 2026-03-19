@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -19,9 +20,9 @@ interface FlowNodeProps {
 
 function FlowNode({ label, amount, currency, valueClassName = "", nodeClassName = "" }: FlowNodeProps) {
   return (
-    <div className={`bg-z-surface-2 border border-z-border rounded-[10px] px-3 py-2 ${nodeClassName}`}>
+    <div className={cn("bg-z-surface-2 border border-z-border rounded-[10px] px-3 py-2", nodeClassName)}>
       <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{label}</p>
-      <p className={`text-[16px] font-extrabold ${valueClassName}`}>
+      <p className={cn("text-[16px] font-extrabold", valueClassName)}>
         {formatCurrency(amount, currency)}
       </p>
     </div>

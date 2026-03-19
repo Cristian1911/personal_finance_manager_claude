@@ -5,6 +5,8 @@ import {
   getLevelColor,
   getLevelTag,
   getNormalizedPosition,
+  METER_DISPLAY_LABELS,
+  LEVEL_PRIORITY,
 } from "@/lib/health-levels";
 import type { HealthMetersData, HealthMeter } from "@/actions/health-meters";
 import type { MeterType, Level } from "@/lib/health-levels";
@@ -16,25 +18,11 @@ interface HealthMetersCardProps {
   onMeterClick?: (type: MeterType) => void;
 }
 
-const METER_LABELS: Record<MeterType, string> = {
-  gasto: "Gasto",
-  deuda: "Deuda",
-  ahorro: "Ahorro",
-  colchon: "Colchón",
-};
-
 const GRADIENT =
   "linear-gradient(to right, var(--z-debt), var(--z-expense), var(--z-alert), var(--z-income), var(--z-excellent))";
 
 function levelBgStyle(level: Level): React.CSSProperties {
-  const colorMap: Record<Level, string> = {
-    excelente: "rgba(61,158,110,0.15)",
-    solido: "rgba(92,184,138,0.15)",
-    atento: "rgba(212,168,67,0.15)",
-    alto: "rgba(232,135,90,0.15)",
-    critico: "rgba(224,85,69,0.15)",
-  };
-  return { backgroundColor: colorMap[level] };
+  return { backgroundColor: `color-mix(in srgb, ${getLevelColor(level)} 15%, transparent)` };
 }
 
 function MeterRow({
@@ -47,7 +35,7 @@ function MeterRow({
   const color = getLevelColor(meter.level);
   const tag = getLevelTag(meter.level);
   const pinPosition = getNormalizedPosition(meter.type, meter.value);
-  const label = METER_LABELS[meter.type];
+  const label = METER_DISPLAY_LABELS[meter.type];
 
   return (
     <div
@@ -119,15 +107,8 @@ export function HealthMetersCard({ data, onMeterClick }: HealthMetersCardProps) 
     : null;
 
   // Determine worst level for summary box color
-  const levelPriority: Record<Level, number> = {
-    critico: 0,
-    alto: 1,
-    atento: 2,
-    solido: 3,
-    excelente: 4,
-  };
   const worstMeter = data.meters.reduce((worst, m) =>
-    levelPriority[m.level] < levelPriority[worst.level] ? m : worst,
+    LEVEL_PRIORITY[m.level] < LEVEL_PRIORITY[worst.level] ? m : worst,
   );
   const summaryColor = getLevelColor(worstMeter.level);
 

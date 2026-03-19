@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { getLevelColor, getLevelTag, getNormalizedPosition } from "@/lib/health-levels";
+import { getLevelColor, getLevelTag, getNormalizedPosition, METER_DISPLAY_LABELS } from "@/lib/health-levels";
 import type { HealthMeter } from "@/actions/health-meters";
 import type { CurrencyCode } from "@/types/domain";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -24,13 +24,6 @@ interface HealthMeterExpandedProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const METER_LABELS: Record<string, string> = {
-  gasto: "Gasto",
-  deuda: "Deuda",
-  ahorro: "Ahorro",
-  colchon: "Colchón",
-};
 
 const METER_META: Record<
   string,
@@ -137,7 +130,7 @@ function Speedometer({ meter }: { meter: HealthMeter }) {
 function MeterContent({ meter, income, currency }: { meter: HealthMeter; income: number | null; currency: CurrencyCode }) {
   const color = getLevelColor(meter.level);
   const tag = getLevelTag(meter.level);
-  const label = METER_LABELS[meter.type] ?? meter.type;
+  const label = METER_DISPLAY_LABELS[meter.type] ?? meter.type;
   const meta = METER_META[meter.type];
 
   return (
@@ -202,7 +195,7 @@ export function HealthMeterExpanded({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="sr-only">
-              {METER_LABELS[meter.type] ?? meter.type}
+              {METER_DISPLAY_LABELS[meter.type] ?? meter.type}
             </DialogTitle>
           </DialogHeader>
           <MeterContent meter={meter} income={income} currency={currency} />
@@ -215,7 +208,7 @@ export function HealthMeterExpanded({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl pb-8">
         <SheetHeader className="sr-only">
-          <SheetTitle>{METER_LABELS[meter.type] ?? meter.type}</SheetTitle>
+          <SheetTitle>{METER_DISPLAY_LABELS[meter.type] ?? meter.type}</SheetTitle>
         </SheetHeader>
         <div className="pt-2 px-1">
           <MeterContent meter={meter} income={income} currency={currency} />

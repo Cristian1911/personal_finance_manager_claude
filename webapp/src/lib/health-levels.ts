@@ -1,4 +1,5 @@
 import type { CurrencyCode } from "@/types/domain";
+import { formatCurrency } from "@/lib/utils/currency";
 
 export type Level = "excelente" | "solido" | "atento" | "alto" | "critico";
 export type MeterType = "gasto" | "deuda" | "ahorro" | "colchon";
@@ -108,6 +109,27 @@ export function getNormalizedPosition(meter: MeterType, value: number): number {
 }
 
 // ---------------------------------------------------------------------------
+// Shared display labels & priority maps
+// ---------------------------------------------------------------------------
+
+export const METER_DISPLAY_LABELS: Record<MeterType, string> = {
+  gasto: "Gasto",
+  deuda: "Deuda",
+  ahorro: "Ahorro",
+  colchon: "Colchon",
+};
+
+export const LEVEL_PRIORITY: Record<Level, number> = {
+  critico: 0, alto: 1, atento: 2, solido: 3, excelente: 4,
+};
+
+export function getWorstLevel(levels: Level[]): Level {
+  return levels.reduce((worst, l) =>
+    LEVEL_PRIORITY[l] < LEVEL_PRIORITY[worst] ? l : worst
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
@@ -117,23 +139,6 @@ function incomeRange(monthlyIncome: number): IncomeRange {
   if (monthlyIncome < 4_000_000) return "low";
   if (monthlyIncome <= 10_000_000) return "mid";
   return "high";
-}
-
-function fmt(amount: number, currency: CurrencyCode = "COP"): string {
-  const locales: Record<CurrencyCode, string> = {
-    COP: "es-CO", BRL: "pt-BR", MXN: "es-MX", USD: "en-US",
-    EUR: "de-DE", PEN: "es-PE", CLP: "es-CL", ARS: "es-AR",
-  };
-  const decimals: Record<CurrencyCode, number> = {
-    COP: 0, BRL: 2, MXN: 2, USD: 2,
-    EUR: 2, PEN: 2, CLP: 0, ARS: 2,
-  };
-  return new Intl.NumberFormat(locales[currency], {
-    style: "currency",
-    currency,
-    minimumFractionDigits: decimals[currency],
-    maximumFractionDigits: decimals[currency],
-  }).format(amount);
 }
 
 function pct(value: number): string {
@@ -162,13 +167,13 @@ function roastGasto(ctx: RoastContext): string {
 
     if (level === "critico") {
       if (range === "low") {
-        return `Gastas ${pct(value)} de lo que ganas. Con ingresos ajustados, este nivel de gasto no deja margen — te queda solo ${fmt(remaining, currency)} al mes para todo lo demas.`;
+        return `Gastas ${pct(value)} de lo que ganas. Con ingresos ajustados, este nivel de gasto no deja margen — te queda solo ${formatCurrency(remaining, currency)} al mes para todo lo demas.`;
       }
       if (range === "mid") {
-        return `Gastas ${fmt(expenses, currency)} de los ${fmt(monthlyIncome, currency)} que ganas. Para alguien con tu salario, esto es preocupante — tu margen de maniobra es de solo ${fmt(remaining, currency)} al mes.`;
+        return `Gastas ${formatCurrency(expenses, currency)} de los ${formatCurrency(monthlyIncome, currency)} que ganas. Para alguien con tu salario, esto es preocupante — tu margen de maniobra es de solo ${formatCurrency(remaining, currency)} al mes.`;
       }
       // high
-      return `Ganas bien y aun asi gastas el ${pct(value)}. Esto no es falta de ingreso — es falta de control. Te sobran ${fmt(remaining, currency)} pero el patron no cambia solo.`;
+      return `Ganas bien y aun asi gastas el ${pct(value)}. Esto no es falta de ingreso — es falta de control. Te sobran ${formatCurrency(remaining, currency)} pero el patron no cambia solo.`;
     }
 
     if (level === "alto") {
@@ -176,25 +181,25 @@ function roastGasto(ctx: RoastContext): string {
         return `Lifestyle creep clasico. Ganas lo suficiente para ahorrar mucho mas, pero el ${pct(value)} se va en gastos. Cada aumento de sueldo se lo come el gasto.`;
       }
       if (range === "mid") {
-        return `El ${pct(value)} en gastos es demasiado para tu nivel de ingreso. Si sube un gasto fijo, te quedas sin colchon. Tienes ${fmt(remaining, currency)} de margen — eso no alcanza para imprevistos.`;
+        return `El ${pct(value)} en gastos es demasiado para tu nivel de ingreso. Si sube un gasto fijo, te quedas sin colchon. Tienes ${formatCurrency(remaining, currency)} de margen — eso no alcanza para imprevistos.`;
       }
       // low
-      return `Con ingreso limitado, gastar el ${pct(value)} te deja expuesto. Cualquier imprevisto y entras en rojo. Solo te quedan ${fmt(remaining, currency)}.`;
+      return `Con ingreso limitado, gastar el ${pct(value)} te deja expuesto. Cualquier imprevisto y entras en rojo. Solo te quedan ${formatCurrency(remaining, currency)}.`;
     }
 
     if (level === "atento") {
       if (range === "high") {
         return `El ${pct(value)} en gastos es manejable, pero para tu nivel de ingreso deberias estar ahorrando mucho mas. Hay margen que no estas aprovechando.`;
       }
-      return `Gastos en ${pct(value)} — no es alarma todavia, pero estas cerca del limite donde el ahorro se vuelve dificil. Tienes ${fmt(remaining, currency)} disponibles; cuida que no se evaporen.`;
+      return `Gastos en ${pct(value)} — no es alarma todavia, pero estas cerca del limite donde el ahorro se vuelve dificil. Tienes ${formatCurrency(remaining, currency)} disponibles; cuida que no se evaporen.`;
     }
 
     if (level === "solido") {
-      return `Gastas el ${pct(value)} — controlado. Te quedan ${fmt(remaining, currency)} para ahorro e imprevistos. Mantener esto es la base de todo lo demas.`;
+      return `Gastas el ${pct(value)} — controlado. Te quedan ${formatCurrency(remaining, currency)} para ahorro e imprevistos. Mantener esto es la base de todo lo demas.`;
     }
 
     // excelente
-    return `Solo el ${pct(value)} en gastos. Disciplina real — te sobran ${fmt(remaining, currency)} para construir patrimonio. Muy pocos llegan a esto.`;
+    return `Solo el ${pct(value)} en gastos. Disciplina real — te sobran ${formatCurrency(remaining, currency)} para construir patrimonio. Muy pocos llegan a esto.`;
   }
 
   // No income available — generic messages by level
@@ -219,7 +224,7 @@ function roastDeuda(ctx: RoastContext): string {
     const delta = (value - 43).toFixed(1);
     if (monthlyIncome != null && monthlyIncome > 0) {
       const debtPayment = monthlyIncome * (value / 100);
-      return `Tu deuda consume el ${pct(value)} de tu ingreso — ${fmt(debtPayment, currency)} al mes que no puedes usar para nada mas. Los bancos cortan en 36%. Estas ${delta} puntos por encima del limite.`;
+      return `Tu deuda consume el ${pct(value)} de tu ingreso — ${formatCurrency(debtPayment, currency)} al mes que no puedes usar para nada mas. Los bancos cortan en 36%. Estas ${delta} puntos por encima del limite.`;
     }
     return `Tu deuda consume el ${pct(value)} de tu ingreso. Los bancos cortan en 36%. Estas ${delta} puntos por encima del limite. Zona de riesgo real.`;
   }
@@ -228,7 +233,7 @@ function roastDeuda(ctx: RoastContext): string {
     const delta = (43 - value).toFixed(1);
     if (monthlyIncome != null && monthlyIncome > 0) {
       const debtPayment = monthlyIncome * (value / 100);
-      return `${fmt(debtPayment, currency)} al mes en deuda — el ${pct(value)} de tu ingreso. Estas a solo ${delta} puntos del umbral critico. No tomes mas credito ahora.`;
+      return `${formatCurrency(debtPayment, currency)} al mes en deuda — el ${pct(value)} de tu ingreso. Estas a solo ${delta} puntos del umbral critico. No tomes mas credito ahora.`;
     }
     return `El ${pct(value)} en deuda — a ${delta} puntos del umbral donde los bancos te cierran el credito. No es momento de asumir nuevas obligaciones.`;
   }
@@ -261,9 +266,9 @@ function roastAhorro(ctx: RoastContext): string {
         return `Ahorras solo el ${pct(value)} — con ingreso ajustado, esto es comprensible, pero igual es riesgoso. Sin colchon, cualquier imprevisto se vuelve deuda.`;
       }
       if (range === "mid") {
-        return `Solo ${fmt(savings, currency)} al mes en ahorro — el ${pct(value)} de lo que ganas. Para tu nivel de ingreso esto es muy poco. Un gasto inesperado y entras en deuda.`;
+        return `Solo ${formatCurrency(savings, currency)} al mes en ahorro — el ${pct(value)} de lo que ganas. Para tu nivel de ingreso esto es muy poco. Un gasto inesperado y entras en deuda.`;
       }
-      return `Ganas bien y ahorras solo el ${pct(value)}. Eso es ${fmt(savings, currency)} al mes — casi nada para lo que ingresas. El gasto se come todo.`;
+      return `Ganas bien y ahorras solo el ${pct(value)}. Eso es ${formatCurrency(savings, currency)} al mes — casi nada para lo que ingresas. El gasto se come todo.`;
     }
 
     if (level === "alto") {
@@ -286,7 +291,7 @@ function roastAhorro(ctx: RoastContext): string {
     }
 
     // excelente
-    return `El ${pct(value)} en ahorro — eso es ${fmt(savings, currency)} al mes que van a construir algo real. Muy pocos mantienen este nivel. No lo bajes.`;
+    return `El ${pct(value)} en ahorro — eso es ${formatCurrency(savings, currency)} al mes que van a construir algo real. Muy pocos mantienen este nivel. No lo bajes.`;
   }
 
   // Generic
@@ -310,7 +315,7 @@ function roastColchon(ctx: RoastContext): string {
   if (level === "critico") {
     if (monthlyIncome != null && monthlyIncome > 0) {
       const balance = monthlyIncome * value;
-      return `Tienes ${fmt(balance, currency)} liquidos — menos de un mes de gastos. Si pierdes el ingreso hoy, en semanas estas en ceros. Esto es urgente.`;
+      return `Tienes ${formatCurrency(balance, currency)} liquidos — menos de un mes de gastos. Si pierdes el ingreso hoy, en semanas estas en ceros. Esto es urgente.`;
     }
     return `Menos de un mes de colchon. Si el ingreso se detiene hoy, en dias entras en problemas. Construir reserva es la prioridad numero uno.`;
   }
@@ -320,7 +325,7 @@ function roastColchon(ctx: RoastContext): string {
     if (monthlyIncome != null && monthlyIncome > 0) {
       const balance = monthlyIncome * value;
       const monthsNeeded = Math.ceil(6 - value);
-      return `Tienes ${fmt(balance, currency)} — ${months} meses de cobertura. Estas en la zona fragil. Necesitas ${monthsNeeded} meses mas de ahorro para llegar a un nivel seguro.`;
+      return `Tienes ${formatCurrency(balance, currency)} — ${months} meses de cobertura. Estas en la zona fragil. Necesitas ${monthsNeeded} meses mas de ahorro para llegar a un nivel seguro.`;
     }
     return `${months} meses de colchon — funciona para imprevistos menores, pero no para perder el ingreso. La meta real son 6 meses.`;
   }
@@ -330,7 +335,7 @@ function roastColchon(ctx: RoastContext): string {
     if (monthlyIncome != null && monthlyIncome > 0) {
       const balance = monthlyIncome * value;
       const monthsExpenses = monthlyIncome; // approximate monthly expenses ≈ income for message
-      return `Tienes ${fmt(balance, currency)} liquidos contra ~${fmt(monthsExpenses, currency)}/mes. ${months} meses de cobertura — suficiente para aguantar, no para estar tranquilo.`;
+      return `Tienes ${formatCurrency(balance, currency)} liquidos contra ~${formatCurrency(monthsExpenses, currency)}/mes. ${months} meses de cobertura — suficiente para aguantar, no para estar tranquilo.`;
     }
     return `${months} meses de colchon — te cubre para emergencias menores pero no para una crisis de ingreso larga. Sigue acumulando.`;
   }
