@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-25T19:34:33.371Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 02-02-PLAN.md (UUID constants + validator)
+last_updated: "2026-03-25T19:35:36.037Z"
 progress:
   total_phases: 10
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -49,6 +49,7 @@ Plan: 2 of 2
 | Phase 01-security-foundation P02 | 12 | 2 tasks | 15 files |
 | Phase 01-security-foundation P01 | 15 | 2 tasks | 4 files |
 | Phase 02-income-data-foundation P01 | 201 | 2 tasks | 3 files |
+| Phase 02-income-data-foundation P02 | 3 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Recent decisions affecting current work:
 - [Phase 01-security-foundation]: DashboardError uses hard <a href> not <Link> to avoid re-triggering same error context
 - [Phase 02-income-data-foundation]: estimated_monthly_income takes priority over monthly_salary in income estimation — onboarding writes the former, settings writes the latter
 - [Phase 02-income-data-foundation]: hasIncomeData flag uses formattedValue='—' as sentinel so the UI can detect no-data meters without extra props
+- [Phase 02-income-data-foundation]: Seed category UUIDs consolidated into @zeta/shared constants as single source of truth; re-export pattern used in mobile to preserve backward compat
+- [Phase 02-income-data-foundation]: Permissive UUID validator (uuidStr) extracted to webapp/src/lib/validators/shared.ts; z.string().uuid() eliminated from all server actions to support seed UUIDs
 
 ### Pending Todos
 
@@ -79,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T19:34:33.368Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-03-25T19:35:36.034Z
+Stopped at: Completed 02-02-PLAN.md (UUID constants + validator)
 Resume file: None

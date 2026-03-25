@@ -56,7 +56,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Fix income column mismatch + null-income health meter UX (DATA-01, DATA-02)
-- [ ] 02-02-PLAN.md — Consolidate category UUID constants + fix z.string().uuid() validators (DATA-03, DATA-04)
+- [x] 02-02-PLAN.md — Consolidate category UUID constants + fix z.string().uuid() validators (DATA-03, DATA-04)
 
 ### Phase 3: Categorization Engine
 **Goal**: Auto-categorization is accurate, resistant to false positives, and respects manual user corrections
