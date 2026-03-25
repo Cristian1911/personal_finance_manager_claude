@@ -9,9 +9,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Security & Infrastructure
 
-- [ ] **SEC-01**: All dashboard routes protected by middleware (not just the current 6-path list)
-- [ ] **SEC-02**: Error boundary (`error.tsx`) at dashboard layout level for graceful failure recovery
-- [ ] **SEC-03**: Custom 404 page (`not-found.tsx`) with navigation back to dashboard
+- [x] **SEC-01**: All dashboard routes protected by middleware (not just the current 6-path list)
+- [x] **SEC-02**: Error boundary (`error.tsx`) at dashboard layout level for graceful failure recovery
+- [x] **SEC-03**: Custom 404 page (`not-found.tsx`) with navigation back to dashboard
 - [x] **SEC-04**: Admin client `createAdminClient()` throws descriptive error instead of returning null with `!` assertions
 
 ### Income & Data Foundation
@@ -122,9 +122,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | Phase 1 | Pending |
-| SEC-02 | Phase 1 | Pending |
-| SEC-03 | Phase 1 | Pending |
+| SEC-01 | Phase 1 | Complete |
+| SEC-02 | Phase 1 | Complete |
+| SEC-03 | Phase 1 | Complete |
 | SEC-04 | Phase 1 | Complete |
 | DATA-01 | Phase 2 | Pending |
 | DATA-02 | Phase 2 | Pending |
