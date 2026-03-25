@@ -15,7 +15,7 @@ redesign. Visual polish comes last, once structure is stable.
 - Integer phases (1–10): Planned milestone work
 - Decimal phases (e.g. 2.1): Urgent insertions via `/gsd:insert-phase`
 
-- [ ] **Phase 1: Security Foundation** - Harden middleware and add error recovery pages
+- [x] **Phase 1: Security Foundation** - Harden middleware and add error recovery pages (completed 2026-03-25)
 - [ ] **Phase 2: Income & Data Foundation** - Fix income wiring and consolidate shared constants
 - [ ] **Phase 3: Categorization Engine** - Normalize descriptions, add regex rules, protect manual intent
 - [ ] **Phase 4: Dashboard Performance** - Suspense streaming, lazy charts, remove framer-motion
@@ -40,8 +40,8 @@ redesign. Visual polish comes last, once structure is stable.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Middleware blacklist rewrite + error/404 pages (SEC-01, SEC-02, SEC-03)
-- [ ] 01-02-PLAN.md — Admin client hardening + remove 36 non-null assertions (SEC-04)
+- [x] 01-01-PLAN.md — Middleware blacklist rewrite + error/404 pages (SEC-01, SEC-02, SEC-03)
+- [x] 01-02-PLAN.md — Admin client hardening + remove 36 non-null assertions (SEC-04)
 
 ### Phase 2: Income & Data Foundation
 **Goal**: Health meters and budget calculations receive real income data and shared constants are unified
@@ -160,7 +160,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security Foundation | 0/2 | Planned | - |
+| 1. Security Foundation | 2/2 | Complete   | 2026-03-25 |
 | 2. Income & Data Foundation | 0/TBD | Not started | - |
 | 3. Categorization Engine | 0/TBD | Not started | - |
 | 4. Dashboard Performance | 0/TBD | Not started | - |
