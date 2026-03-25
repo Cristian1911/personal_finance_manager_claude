@@ -16,8 +16,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Income & Data Foundation
 
-- [ ] **DATA-01**: Fix income column mismatch — `getEstimatedIncomeCached` reads `estimated_monthly_income` (what onboarding writes), not `monthly_salary`
-- [ ] **DATA-02**: Health meters show "Sin datos de ingresos" instead of "0% — excelente" when income is null
+- [x] **DATA-01**: Fix income column mismatch — `getEstimatedIncomeCached` reads `estimated_monthly_income` (what onboarding writes), not `monthly_salary`
+- [x] **DATA-02**: Health meters show "Sin datos de ingresos" instead of "0% — excelente" when income is null
 - [ ] **DATA-03**: Seed category UUIDs consolidated into `@zeta/shared/constants/categories.ts`, imported everywhere
 - [ ] **DATA-04**: Fix `z.string().uuid()` usage in recurring-templates and purchase-decision actions to use permissive regex
 
@@ -126,8 +126,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-02 | Phase 1 | Complete |
 | SEC-03 | Phase 1 | Complete |
 | SEC-04 | Phase 1 | Complete |
-| DATA-01 | Phase 2 | Pending |
-| DATA-02 | Phase 2 | Pending |
+| DATA-01 | Phase 2 | Complete |
+| DATA-02 | Phase 2 | Complete |
 | DATA-03 | Phase 2 | Pending |
 | DATA-04 | Phase 2 | Pending |
 | CAT-01 | Phase 3 | Pending |
