@@ -45,18 +45,17 @@ export async function updateSession(request: NextRequest) {
     clearAuthCookies(request, supabaseResponse);
   }
 
-  // Protected routes: redirect to login if not authenticated
-  const protectedPaths = [
-    "/dashboard",
-    "/transactions",
-    "/accounts",
-    "/categories",
-    "/destinatarios",
-    "/settings",
+  // Blacklist pattern: everything is protected unless explicitly listed as public
+  const publicPaths = [
+    "/login",
+    "/signup",
+    "/forgot-password",
+    "/onboarding",
+    "/auth",
   ];
-  const isProtected = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  );
+  const pathname = request.nextUrl.pathname;
+  const isPublic = publicPaths.some((p) => pathname.startsWith(p));
+  const isProtected = !isPublic;
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
