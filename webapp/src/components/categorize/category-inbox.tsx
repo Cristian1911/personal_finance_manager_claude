@@ -31,6 +31,11 @@ export function CategoryInbox({
   const suggestions = useMemo(() => {
     const map = new Map<string, CategorizationResult>();
     for (const tx of transactions) {
+      // CAT-05: skip manually categorized transactions (per D-14)
+      if (
+        tx.categorization_source === "USER_OVERRIDE" ||
+        tx.categorization_source === "USER_CREATED"
+      ) continue;
       const desc =
         tx.merchant_name ?? tx.clean_description ?? tx.raw_description ?? "";
       const result = autoCategorize(desc, userRules);
