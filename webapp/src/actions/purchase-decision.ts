@@ -11,6 +11,7 @@ import {
   type PurchaseUrgency,
 } from "@zeta/shared";
 import { z } from "zod";
+import { uuidStr } from "@/lib/validators/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { monthEndStr, monthStartStr, parseMonth } from "@/lib/utils/date";
@@ -22,8 +23,8 @@ import type { Account } from "@/types/domain";
 
 const purchaseDecisionSchema = z.object({
   amount: z.coerce.number().positive(),
-  accountId: z.string().uuid(),
-  categoryId: z.string().uuid().nullable().optional(),
+  accountId: uuidStr("ID de cuenta invalido"),
+  categoryId: uuidStr("ID de categoria invalido").nullable().optional(),
   urgency: z.enum(["NECESSARY", "USEFUL", "IMPULSE"]),
   fundingType: z.enum(["ONE_TIME", "INSTALLMENTS"]),
   installments: z.coerce.number().int().min(2).max(36).nullable().optional(),

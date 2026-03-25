@@ -1,10 +1,5 @@
 import { z } from "zod";
-
-// Zod 4's .uuid() enforces RFC 9562 version/variant bits, which rejects
-// our manually-crafted seed category UUIDs (e.g. a0000001-0000-0000-...).
-// Use a permissive 8-4-4-4-12 hex pattern instead.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const uuidStr = (msg = "UUID inválido") => z.string().regex(UUID_RE, msg);
+import { uuidStr } from "./shared";
 
 export const transactionSchema = z.object({
   account_id: uuidStr("Cuenta inválida"),

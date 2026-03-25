@@ -14,6 +14,7 @@ import {
 } from "@zeta/shared";
 import { addDays } from "date-fns";
 import { z } from "zod";
+import { uuidStr } from "@/lib/validators/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 import type {
@@ -390,11 +391,11 @@ export async function toggleRecurringTemplate(
 }
 
 const recurringOccurrencePaymentSchema = z.object({
-  templateId: z.string().uuid(),
+  templateId: uuidStr("ID de plantilla invalido"),
   occurrenceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   actualAmount: z.coerce.number().positive(),
-  sourceAccountId: z.string().uuid().nullable().optional(),
+  sourceAccountId: uuidStr("ID de cuenta invalido").nullable().optional(),
 });
 
 type ServerSupabase = SupabaseClient<Database>;
