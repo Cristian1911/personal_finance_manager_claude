@@ -15,7 +15,7 @@ async function getAccountsCached(userId: string): Promise<Account[]> {
   cacheTag("accounts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
@@ -32,7 +32,7 @@ async function getAccountCached(userId: string, id: string): Promise<Account> {
   cacheTag("accounts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("accounts")
     .select("*")

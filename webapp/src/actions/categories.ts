@@ -74,7 +74,7 @@ async function getCategoriesCached(
   cacheTag("categories");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   let query = supabase
     .from("categories")
@@ -103,7 +103,7 @@ async function getCategoriesWithBudgetsCached(
   cacheTag("categories");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   let query = supabase
     .from("categories")
@@ -141,7 +141,7 @@ async function getAllCategoriesForManagementCached(
   cacheTag("categories");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   // Fetch ALL parent categories (including inactive) for management
   const { data: parents, error } = await supabase
@@ -201,7 +201,7 @@ async function getCategoryTransactionCountCached(
   cacheTag("categories");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const { count, error } = await executeVisibleTransactionQuery(() =>
     supabase
@@ -227,7 +227,7 @@ async function getCategoriesWithBudgetDataCached(
   cacheTag("dashboard:budgets");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const baseCurrency = currency ?? "COP";
   const target = parseMonth(month);
 

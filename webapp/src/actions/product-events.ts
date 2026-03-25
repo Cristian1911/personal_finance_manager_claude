@@ -36,7 +36,12 @@ export async function trackProductEvent(input: ProductEventInput): Promise<void>
     metadata: input.metadata ?? {},
   };
 
-  const db = createAdminClient() ?? supabase;
+  let db;
+  try {
+    db = createAdminClient();
+  } catch {
+    db = supabase;
+  }
   const { error } = await db.from("product_events").insert(payload);
   if (error) {
     const dbError = error as { code?: string; message?: string };

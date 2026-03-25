@@ -18,7 +18,7 @@ async function getUncategorizedTransactionsCached(
   cacheTag("categorize");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const buildQuery = () =>
     supabase
@@ -47,7 +47,7 @@ async function getUncategorizedCountCached(userId: string): Promise<number> {
   cacheTag("categorize");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const buildQuery = () =>
     supabase
@@ -72,7 +72,7 @@ async function getUserCategoryRulesCached(userId: string): Promise<UserRule[]> {
   cacheTag("categorize");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("category_rules")

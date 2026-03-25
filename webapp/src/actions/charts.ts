@@ -51,7 +51,7 @@ async function getCategorySpendingCached(
   cacheTag("dashboard:charts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
 
   // Fetch transactions and budgets in parallel
@@ -135,7 +135,7 @@ async function getMonthlyCashflowCached(
   cacheTag("dashboard:cashflow");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
 
   const { data: transactions, error } = await supabase
@@ -193,7 +193,7 @@ async function getDailySpendingCached(
   cacheTag("dashboard:charts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
 
   const { data: transactions, error } = await supabase
@@ -239,7 +239,7 @@ async function getMonthMetricsCached(
   cacheTag("dashboard:charts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
 
   const { data: transactions, error } = await supabase
@@ -281,7 +281,7 @@ async function getDailyCashflowCached(
   cacheTag("dashboard:cashflow");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
   const startStr = monthStartStr(target);
   const endStr = monthEndStr(target);
@@ -372,7 +372,7 @@ async function getAccountsWithSparklineDataCached(
   cacheTag("dashboard:accounts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   // 1. Fetch active accounts marked for dashboard
   const { data: accounts, error: accountsError } = await supabase
@@ -475,7 +475,7 @@ async function getDashboardAccountsCached(userId: string): Promise<{
   cacheTag("accounts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const [{ data: liquidAccounts, error: liquidError }, { data: allActiveAccounts, error: allError }] =
     await Promise.all([

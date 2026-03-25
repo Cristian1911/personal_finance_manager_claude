@@ -19,7 +19,7 @@ async function getBudgetsCached(userId: string): Promise<Budget[]> {
     cacheTag("budgets");
     cacheLife("zeta");
 
-    const supabase = createAdminClient()!;
+    const supabase = createAdminClient();
     const { data, error } = await supabase
         .from("budgets")
         .select("*")
@@ -35,7 +35,7 @@ async function getBudgetSummaryCached(userId: string, month?: string): Promise<B
     cacheTag("budgets");
     cacheLife("zeta");
 
-    const supabase = createAdminClient()!;
+    const supabase = createAdminClient();
 
     const { data: budgets } = await supabase
         .from("budgets")

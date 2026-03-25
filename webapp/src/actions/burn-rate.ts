@@ -42,7 +42,7 @@ async function getBurnRateCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const baseCurrency = currency as CurrencyCode;
 
   // 0. Compute pending obligations from active recurring templates (OUTFLOW only)

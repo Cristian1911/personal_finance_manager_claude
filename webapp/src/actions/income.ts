@@ -33,7 +33,7 @@ async function getEstimatedIncomeCached(
   cacheTag("profile");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const baseCurrency = currency;
 
   // Fetch profile salary and liquid accounts in parallel

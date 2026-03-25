@@ -66,7 +66,7 @@ async function getRecurringTemplatesCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
@@ -86,7 +86,7 @@ async function getRecurringTemplateCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
@@ -106,7 +106,7 @@ async function getUpcomingRecurrencesCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data: templates } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
@@ -148,7 +148,7 @@ async function getRecurringSummaryCached(userId: string): Promise<{
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data: templates } = await supabase
     .from("recurring_transaction_templates")
     .select("amount, direction, frequency, accounts!recurring_transaction_templates_account_id_fkey(account_type)")

@@ -98,7 +98,7 @@ async function getDestinatariosCached(
   cacheTag("destinatarios");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const { data: destinatarios, error } = await supabase
     .from("destinatarios")
@@ -128,7 +128,7 @@ async function getDestinatarioCached(
   cacheTag("destinatarios");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("destinatarios")
@@ -155,7 +155,7 @@ async function getDestinatarioRulesCached(
   cacheTag("destinatarios");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("destinatario_rules")
@@ -193,7 +193,7 @@ async function getUnmatchedDescriptionsCached(
   cacheTag("destinatarios");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("transactions")
@@ -226,7 +226,7 @@ async function getDestinatarioSuggestionsCached(
   cacheTag("destinatarios");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   // Fetch unmatched transactions with raw descriptions
   const { data, error } = await supabase
