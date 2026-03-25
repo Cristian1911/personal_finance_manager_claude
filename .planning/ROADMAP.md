@@ -17,7 +17,7 @@ redesign. Visual polish comes last, once structure is stable.
 
 - [x] **Phase 1: Security Foundation** - Harden middleware and add error recovery pages (completed 2026-03-25)
 - [x] **Phase 2: Income & Data Foundation** - Fix income wiring and consolidate shared constants (completed 2026-03-25)
-- [ ] **Phase 3: Categorization Engine** - Normalize descriptions, add regex rules, protect manual intent
+- [x] **Phase 3: Categorization Engine** - Normalize descriptions, add regex rules, protect manual intent (completed 2026-03-25)
 - [ ] **Phase 4: Dashboard Performance** - Suspense streaming, lazy charts, remove framer-motion
 - [ ] **Phase 5: Onboarding Audit** - Generate HTML walkthrough of current onboarding for review
 - [ ] **Phase 6: Dashboard Redesign** - "Am I on track?" narrative, health grade, debt-free hero
@@ -72,7 +72,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md — TDD: normalization, word boundary, regex rules, keyword expansion (CAT-01, CAT-02, CAT-03, CAT-04)
-- [ ] 03-02-PLAN.md — Manual categorization guard clause + schema verification (CAT-05, CAT-06)
+- [x] 03-02-PLAN.md — Manual categorization guard clause + schema verification (CAT-05, CAT-06)
 
 ### Phase 4: Dashboard Performance
 **Goal**: The dashboard hero loads near-instantly and heavy chart libraries do not block first paint
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Security Foundation | 2/2 | Complete   | 2026-03-25 |
 | 2. Income & Data Foundation | 2/2 | Complete   | 2026-03-25 |
-| 3. Categorization Engine | 1/2 | In Progress|  |
+| 3. Categorization Engine | 2/2 | Complete   | 2026-03-25 |
 | 4. Dashboard Performance | 0/TBD | Not started | - |
 | 5. Onboarding Audit | 0/TBD | Not started | - |
 | 6. Dashboard Redesign | 0/TBD | Not started | - |
