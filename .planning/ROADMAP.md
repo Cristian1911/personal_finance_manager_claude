@@ -68,7 +68,11 @@ Plans:
   3. A transaction that the user manually categorized retains that category after re-running auto-categorization
   4. The database schema records which transactions were manually categorized vs. auto-categorized
   5. Regex patterns can be added to the auto-categorization rule set without code changes to the engine interface
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — TDD: normalization, word boundary, regex rules, keyword expansion (CAT-01, CAT-02, CAT-03, CAT-04)
+- [ ] 03-02-PLAN.md — Manual categorization guard clause + schema verification (CAT-05, CAT-06)
 
 ### Phase 4: Dashboard Performance
 **Goal**: The dashboard hero loads near-instantly and heavy chart libraries do not block first paint
@@ -166,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Security Foundation | 2/2 | Complete   | 2026-03-25 |
 | 2. Income & Data Foundation | 2/2 | Complete   | 2026-03-25 |
-| 3. Categorization Engine | 0/TBD | Not started | - |
+| 3. Categorization Engine | 0/2 | Not started | - |
 | 4. Dashboard Performance | 0/TBD | Not started | - |
 | 5. Onboarding Audit | 0/TBD | Not started | - |
 | 6. Dashboard Redesign | 0/TBD | Not started | - |
