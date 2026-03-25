@@ -39,7 +39,7 @@ async function getEstimatedIncomeCached(
   // Fetch profile salary and liquid accounts in parallel
   const [{ data: profile, error: profileError }, { data: liquidAccounts, error: accountsError }] =
     await Promise.all([
-      supabase.from("profiles").select("monthly_salary").eq("id", userId).single(),
+      supabase.from("profiles").select("monthly_salary, estimated_monthly_income").eq("id", userId).single(),
       supabase
         .from("accounts")
         .select("id")
@@ -51,10 +51,16 @@ async function getEstimatedIncomeCached(
   if (profileError && profileError.code !== "PGRST116") throw profileError;
   if (accountsError) throw accountsError;
 
-  // If user has a profile salary set, use it directly
-  if (profile?.monthly_salary && profile.monthly_salary > 0) {
+  // Priority: estimated_monthly_income (onboarding) > monthly_salary (settings) > transaction inference
+  const profileIncome = (profile?.estimated_monthly_income && profile.estimated_monthly_income > 0)
+    ? profile.estimated_monthly_income
+    : (profile?.monthly_salary && profile.monthly_salary > 0)
+      ? profile.monthly_salary
+      : null;
+
+  if (profileIncome !== null) {
     return {
-      monthlyAverage: profile.monthly_salary,
+      monthlyAverage: profileIncome,
       currency: baseCurrency,
       monthsOfData: 0,
       totalIncome: 0,
