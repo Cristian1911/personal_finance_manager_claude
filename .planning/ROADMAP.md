@@ -71,7 +71,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — TDD: normalization, word boundary, regex rules, keyword expansion (CAT-01, CAT-02, CAT-03, CAT-04)
+- [x] 03-01-PLAN.md — TDD: normalization, word boundary, regex rules, keyword expansion (CAT-01, CAT-02, CAT-03, CAT-04)
 - [ ] 03-02-PLAN.md — Manual categorization guard clause + schema verification (CAT-05, CAT-06)
 
 ### Phase 4: Dashboard Performance
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Security Foundation | 2/2 | Complete   | 2026-03-25 |
 | 2. Income & Data Foundation | 2/2 | Complete   | 2026-03-25 |
-| 3. Categorization Engine | 0/2 | Not started | - |
+| 3. Categorization Engine | 1/2 | In Progress|  |
 | 4. Dashboard Performance | 0/TBD | Not started | - |
 | 5. Onboarding Audit | 0/TBD | Not started | - |
 | 6. Dashboard Redesign | 0/TBD | Not started | - |

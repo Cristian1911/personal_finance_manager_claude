@@ -23,10 +23,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Categorization Engine
 
-- [ ] **CAT-01**: Normalize transaction descriptions before matching (accent removal, noise token stripping, lowercase)
-- [ ] **CAT-02**: Word-boundary matching to prevent false positives ("ara" matching "compra")
-- [ ] **CAT-03**: Regex rule support in auto-categorize engine
-- [ ] **CAT-04**: Expand keyword coverage for Colombian bank transaction formats
+- [x] **CAT-01**: Normalize transaction descriptions before matching (accent removal, noise token stripping, lowercase)
+- [x] **CAT-02**: Word-boundary matching to prevent false positives ("ara" matching "compra")
+- [x] **CAT-03**: Regex rule support in auto-categorize engine
+- [x] **CAT-04**: Expand keyword coverage for Colombian bank transaction formats
 - [ ] **CAT-05**: `manually_categorized` flag (or equivalent) to protect user corrections from being overwritten by auto-rules
 - [ ] **CAT-06**: Schema migration for manually_categorized tracking
 
@@ -130,10 +130,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATA-02 | Phase 2 | Complete |
 | DATA-03 | Phase 2 | Complete |
 | DATA-04 | Phase 2 | Complete |
-| CAT-01 | Phase 3 | Pending |
-| CAT-02 | Phase 3 | Pending |
-| CAT-03 | Phase 3 | Pending |
-| CAT-04 | Phase 3 | Pending |
+| CAT-01 | Phase 3 | Complete |
+| CAT-02 | Phase 3 | Complete |
+| CAT-03 | Phase 3 | Complete |
+| CAT-04 | Phase 3 | Complete |
 | CAT-05 | Phase 3 | Pending |
 | CAT-06 | Phase 3 | Pending |
 | CATUX-01 | Phase 7 | Pending |
