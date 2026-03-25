@@ -1,4 +1,4 @@
-export const DEBT_PAYMENT_CATEGORY_ID = "a0000001-0001-4000-8000-000000000019";
+export { DEBT_PAYMENT_CATEGORY_ID } from "@zeta/shared";
 
 export function isDebtAccountType(accountType: string | null | undefined): boolean {
   return accountType === "CREDIT_CARD" || accountType === "LOAN";

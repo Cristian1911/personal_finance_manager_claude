@@ -1,11 +1,17 @@
 import * as Crypto from "expo-crypto";
+import {
+  CATEGORY_SALARIO,
+  CATEGORY_ALIMENTACION,
+  CATEGORY_SERVICIOS,
+  CATEGORY_PAGOS_DEUDA,
+} from "@zeta/shared";
 import { clearDatabase, getDatabase } from "./db/database";
 
 const DEMO_USER_ID = "00000000-0000-4000-8000-000000000000";
 
 const DEMO_CATEGORIES = [
   {
-    id: "a0000001-0001-4000-8000-000000000013",
+    id: CATEGORY_SALARIO,
     name: "Salary",
     name_es: "Salario",
     color: "#16A34A",
@@ -14,7 +20,7 @@ const DEMO_CATEGORIES = [
     display_order: 1,
   },
   {
-    id: "a0000001-0001-4000-8000-000000000002",
+    id: CATEGORY_ALIMENTACION,
     name: "Food",
     name_es: "Alimentacion",
     color: "#F59E0B",
@@ -23,7 +29,7 @@ const DEMO_CATEGORIES = [
     display_order: 2,
   },
   {
-    id: "a0000001-0001-4000-8000-000000000004",
+    id: CATEGORY_SERVICIOS,
     name: "Services",
     name_es: "Servicios",
     color: "#3B82F6",
@@ -32,7 +38,7 @@ const DEMO_CATEGORIES = [
     display_order: 3,
   },
   {
-    id: "a0000001-0001-4000-8000-000000000019",
+    id: CATEGORY_PAGOS_DEUDA,
     name: "Debt Payments",
     name_es: "Abonos a deuda",
     color: "#0EA5E9",
@@ -171,7 +177,7 @@ export async function seedDemoData(): Promise<void> {
       direction: "INFLOW",
       description: "Nomina Demo",
       date: dateShift(-15),
-      categoryId: "a0000001-0001-4000-8000-000000000013",
+      categoryId: CATEGORY_SALARIO,
     },
     {
       accountId: checkingId,
@@ -179,7 +185,7 @@ export async function seedDemoData(): Promise<void> {
       direction: "OUTFLOW",
       description: "Mercado semanal",
       date: dateShift(-10),
-      categoryId: "a0000001-0001-4000-8000-000000000002",
+      categoryId: CATEGORY_ALIMENTACION,
     },
     {
       accountId: checkingId,
@@ -187,7 +193,7 @@ export async function seedDemoData(): Promise<void> {
       direction: "OUTFLOW",
       description: "Internet hogar",
       date: dateShift(-7),
-      categoryId: "a0000001-0001-4000-8000-000000000004",
+      categoryId: CATEGORY_SERVICIOS,
     },
     {
       accountId: creditCardId,
@@ -195,7 +201,7 @@ export async function seedDemoData(): Promise<void> {
       direction: "INFLOW",
       description: "Pago tarjeta desde cuenta principal",
       date: dateShift(-5),
-      categoryId: "a0000001-0001-4000-8000-000000000019",
+      categoryId: CATEGORY_PAGOS_DEUDA,
     },
     {
       accountId: loanId,
@@ -203,7 +209,7 @@ export async function seedDemoData(): Promise<void> {
       direction: "INFLOW",
       description: "Cuota credito vehiculo",
       date: dateShift(-2),
-      categoryId: "a0000001-0001-4000-8000-000000000019",
+      categoryId: CATEGORY_PAGOS_DEUDA,
     },
   ];
 

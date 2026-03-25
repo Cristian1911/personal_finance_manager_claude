@@ -6,7 +6,12 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
-import { getNextOccurrence, getOccurrencesBetween } from "@zeta/shared";
+import {
+  getNextOccurrence,
+  getOccurrencesBetween,
+  DEBT_PAYMENT_CATEGORY_ID,
+  TRANSFER_CATEGORY_ID,
+} from "@zeta/shared";
 import { addDays } from "date-fns";
 import { z } from "zod";
 import type { ActionResult } from "@/types/actions";
@@ -18,8 +23,6 @@ import type {
 } from "@/types/domain";
 
 const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
-const DEBT_PAYMENT_CATEGORY_ID = "a0000001-0001-4000-8000-000000000019";
-const TRANSFER_CATEGORY_ID = "a0000001-0001-4000-8000-000000000020";
 
 const TEMPLATE_SELECT = `
   *,
