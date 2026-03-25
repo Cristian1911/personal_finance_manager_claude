@@ -16,7 +16,7 @@ redesign. Visual polish comes last, once structure is stable.
 - Decimal phases (e.g. 2.1): Urgent insertions via `/gsd:insert-phase`
 
 - [x] **Phase 1: Security Foundation** - Harden middleware and add error recovery pages (completed 2026-03-25)
-- [ ] **Phase 2: Income & Data Foundation** - Fix income wiring and consolidate shared constants
+- [x] **Phase 2: Income & Data Foundation** - Fix income wiring and consolidate shared constants (completed 2026-03-25)
 - [ ] **Phase 3: Categorization Engine** - Normalize descriptions, add regex rules, protect manual intent
 - [ ] **Phase 4: Dashboard Performance** - Suspense streaming, lazy charts, remove framer-motion
 - [ ] **Phase 5: Onboarding Audit** - Generate HTML walkthrough of current onboarding for review
@@ -165,7 +165,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Security Foundation | 2/2 | Complete   | 2026-03-25 |
-| 2. Income & Data Foundation | 1/2 | In Progress|  |
+| 2. Income & Data Foundation | 2/2 | Complete   | 2026-03-25 |
 | 3. Categorization Engine | 0/TBD | Not started | - |
 | 4. Dashboard Performance | 0/TBD | Not started | - |
 | 5. Onboarding Audit | 0/TBD | Not started | - |
