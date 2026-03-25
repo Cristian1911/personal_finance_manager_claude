@@ -37,7 +37,11 @@ redesign. Visual polish comes last, once structure is stable.
   2. A runtime error inside a dashboard route shows a friendly error page with a "Back to dashboard" link, not a crash screen
   3. Navigating to a non-existent URL shows a custom 404 page with navigation options
   4. `createAdminClient()` throws a descriptive error message instead of silently returning a broken client
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Middleware blacklist rewrite + error/404 pages (SEC-01, SEC-02, SEC-03)
+- [ ] 01-02-PLAN.md — Admin client hardening + remove 36 non-null assertions (SEC-04)
 
 ### Phase 2: Income & Data Foundation
 **Goal**: Health meters and budget calculations receive real income data and shared constants are unified
@@ -156,7 +160,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security Foundation | 0/TBD | Not started | - |
+| 1. Security Foundation | 0/2 | Planned | - |
 | 2. Income & Data Foundation | 0/TBD | Not started | - |
 | 3. Categorization Engine | 0/TBD | Not started | - |
 | 4. Dashboard Performance | 0/TBD | Not started | - |
