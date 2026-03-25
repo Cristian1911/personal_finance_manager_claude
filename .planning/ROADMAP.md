@@ -52,7 +52,11 @@ Plans:
   2. Health meters display "Sin datos de ingresos" instead of a misleading 0% when income is genuinely absent
   3. Seed category UUIDs are imported from `@zeta/shared/constants/categories.ts` in all three packages — no hardcoded UUID strings elsewhere
   4. Server actions for recurring templates and purchase decisions accept seed UUIDs without validation errors
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Fix income column mismatch + null-income health meter UX (DATA-01, DATA-02)
+- [ ] 02-02-PLAN.md — Consolidate category UUID constants + fix z.string().uuid() validators (DATA-03, DATA-04)
 
 ### Phase 3: Categorization Engine
 **Goal**: Auto-categorization is accurate, resistant to false positives, and respects manual user corrections
@@ -161,7 +165,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Security Foundation | 2/2 | Complete   | 2026-03-25 |
-| 2. Income & Data Foundation | 0/TBD | Not started | - |
+| 2. Income & Data Foundation | 0/2 | Planned | - |
 | 3. Categorization Engine | 0/TBD | Not started | - |
 | 4. Dashboard Performance | 0/TBD | Not started | - |
 | 5. Onboarding Audit | 0/TBD | Not started | - |
