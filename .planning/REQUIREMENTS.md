@@ -39,9 +39,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Dashboard Performance
 
 - [x] **PERF-01**: Dashboard Suspense streaming — tier 1 (hero/health) renders immediately, tier 2 (charts/sections) streams with skeletons
-- [ ] **PERF-02**: Lazy-load recharts via `next/dynamic` — chart components not in initial bundle
+- [x] **PERF-02**: Lazy-load recharts via `next/dynamic` — chart components not in initial bundle
 - [x] **PERF-03**: Remove framer-motion dependency (replace single real import with CSS animation)
-- [ ] **PERF-04**: Upgrade recharts v2 → v3 (CSS variable syntax alignment with shadcn/ui)
+- [x] **PERF-04**: Upgrade recharts v2 → v3 (CSS variable syntax alignment with shadcn/ui)
 - [x] **PERF-05**: Meaningful skeleton components for each dashboard section (not generic spinners)
 
 ### Dashboard Redesign
@@ -140,9 +140,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CATUX-02 | Phase 7 | Pending |
 | CATUX-03 | Phase 7 | Pending |
 | PERF-01 | Phase 4 | Complete |
-| PERF-02 | Phase 4 | Pending |
+| PERF-02 | Phase 4 | Complete |
 | PERF-03 | Phase 4 | Complete |
-| PERF-04 | Phase 4 | Pending |
+| PERF-04 | Phase 4 | Complete |
 | PERF-05 | Phase 4 | Complete |
 | DASH-01 | Phase 6 | Pending |
 | DASH-02 | Phase 6 | Pending |

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 04-03-PLAN.md — recharts v3 upgrade + TypeScript type fixes
-last_updated: "2026-03-26T14:18:37.821Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 04-04-PLAN.md — dynamic chart imports with content-shaped loading skeletons
+last_updated: "2026-03-26T14:28:13.209Z"
 progress:
   total_phases: 10
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -55,6 +55,7 @@ Plan: 4 of 4
 | Phase 04-dashboard-performance P02 | 2 | 1 tasks | 3 files |
 | Phase 04-dashboard-performance P01 | 325 | 2 tasks | 3 files |
 | Phase 04-dashboard-performance P03 | 9 | 1 tasks | 4 files |
+| Phase 04-dashboard-performance P04 | 6 | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase 04-dashboard-performance]: CashFlowHeroStrip deferred to tier 2 — avoids adding 3rd fetch to tier 1 critical path
 - [Phase 04-dashboard-performance]: AccountsSection combines AccountsOverview + DashboardAlerts + latestSnapshotDates into single async sub-component to reduce visual churn
 - [Phase 04-dashboard-performance]: recharts v3: TooltipContentProps replaces TooltipProps for custom tooltip content; LegendPayload array replaces LegendProps['payload'] for legend content; dataKey is String()-coerced in key props
+- [Phase 04-dashboard-performance]: Server Component pages cannot use ssr:false with next/dynamic — dynamic() without ssr:false achieves code splitting while chart components own their use client boundary
+- [Phase 04-dashboard-performance]: Client Component files (accounts-overview, detail-step) use ssr:false in dynamic() since they are valid use client contexts
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T14:18:37.818Z
-Stopped at: Completed 04-03-PLAN.md — recharts v3 upgrade + TypeScript type fixes
+Last session: 2026-03-26T14:28:13.206Z
+Stopped at: Completed 04-04-PLAN.md — dynamic chart imports with content-shaped loading skeletons
 Resume file: None

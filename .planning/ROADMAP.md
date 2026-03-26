@@ -90,7 +90,7 @@ Plans:
 - [x] 04-01-PLAN.md — Suspense tier split + content-shaped skeletons + mobile refactor (PERF-01, PERF-05)
 - [x] 04-02-PLAN.md — Remove framer-motion, replace with CSS transitions (PERF-03)
 - [x] 04-03-PLAN.md — Recharts v3 upgrade and type fixes (PERF-04)
-- [ ] 04-04-PLAN.md — next/dynamic lazy-loading for all chart components (PERF-02)
+- [x] 04-04-PLAN.md — next/dynamic lazy-loading for all chart components (PERF-02)
 
 ### Phase 5: Onboarding Audit
 **Goal**: A static HTML walkthrough of the current onboarding flow exists for human review before any redesign begins
