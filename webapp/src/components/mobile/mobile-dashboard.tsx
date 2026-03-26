@@ -13,16 +13,11 @@ import {
 } from "lucide-react";
 import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
-import type { BurnRateResponse } from "@/actions/burn-rate";
-import { BurnRateCard, BurnRateCardEmpty } from "@/components/dashboard/burn-rate-card";
 import { HealthMetersCard } from "@/components/dashboard/health-meters-card";
-import { AllocationBars5030 } from "@/components/budget/allocation-bars-5030";
-import { DebtFreeCountdown } from "@/components/debt/debt-free-countdown";
-import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import type { HealthMetersData } from "@/actions/health-meters";
-import type { AllocationData } from "@/actions/allocation";
-import type { DebtCountdownData } from "@/actions/debt-countdown";
 
+// Tier 1 props only — tier 2 data (burn rate, allocation, debt, cashflow strip)
+// is now streamed in via Suspense sub-components from the dashboard page.
 interface MobileDashboardProps {
   heroData: {
     availableToSpend: number;
@@ -46,36 +41,21 @@ interface MobileDashboardProps {
     date: string;
     category_name?: string;
   }>;
-  burnRateData?: BurnRateResponse | null;
-  // New props:
   healthMetersData?: HealthMetersData | null;
-  allocationData?: AllocationData | null;
-  debtCountdownData?: DebtCountdownData | null;
-  cashFlowStrip?: {
-    income: number;
-    fixedExpenses: number;
-    variableExpenses: number;
-    remaining: number;
-    currency: CurrencyCode;
-  } | null;
 }
 
 export function MobileDashboard({
   heroData,
   upcomingPayments,
   recentTransactions,
-  burnRateData,
   healthMetersData,
-  allocationData,
-  debtCountdownData,
-  cashFlowStrip,
 }: MobileDashboardProps) {
   const today = toISODateString(new Date());
   const code = heroData.currency as CurrencyCode;
 
   return (
     <div className="space-y-5">
-      {/* 1. Hero card + mini cash flow strip */}
+      {/* 1. Hero card */}
       <div>
         <div className="rounded-xl border bg-card p-5">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -93,31 +73,6 @@ export function MobileDashboard({
             <span>Saldo: {formatCurrency(heroData.totalBalance, code)}</span>
             <span>Fijos: {formatCurrency(heroData.pendingFixed, code)}</span>
           </div>
-          {/* Mini cash flow strip */}
-          {cashFlowStrip && (
-            <div className="flex items-center gap-1.5 mt-3 text-[10px] text-muted-foreground flex-wrap">
-              <span className="text-z-income font-bold">
-                {formatCurrency(cashFlowStrip.income, cashFlowStrip.currency)}
-              </span>
-              <span>→</span>
-              <span className="text-z-expense font-bold">
-                -{formatCurrency(cashFlowStrip.fixedExpenses, cashFlowStrip.currency)}
-              </span>
-              <span>→</span>
-              <span className="text-z-expense font-bold">
-                -{formatCurrency(cashFlowStrip.variableExpenses, cashFlowStrip.currency)}
-              </span>
-              <span>→</span>
-              <span
-                className={cn(
-                  "font-bold",
-                  cashFlowStrip.remaining >= 0 ? "text-z-income" : "text-z-debt"
-                )}
-              >
-                {formatCurrency(cashFlowStrip.remaining, cashFlowStrip.currency)}
-              </span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -126,14 +81,7 @@ export function MobileDashboard({
         <HealthMetersCard data={healthMetersData} />
       )}
 
-      {/* 3. Flujo — Burn Rate Card */}
-      {burnRateData ? (
-        <BurnRateCard data={burnRateData} />
-      ) : (
-        <BurnRateCardEmpty />
-      )}
-
-      {/* 4. Próximos pagos — prominent */}
+      {/* 3. Próximos pagos — prominent */}
       {upcomingPayments.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -205,33 +153,7 @@ export function MobileDashboard({
         </div>
       )}
 
-      {/* 5. Presupuesto — 50/30/20 (collapsible) */}
-      {allocationData && (
-        <DashboardSection
-          title="Presupuesto"
-          section="presupuesto"
-          defaultOpen={false}
-          showToggle={false}
-          summaryText={`${Math.round(allocationData.needs.percent + allocationData.wants.percent)}% gastado`}
-        >
-          <AllocationBars5030 data={allocationData} />
-        </DashboardSection>
-      )}
-
-      {/* 6. Patrimonio — Debt Countdown (collapsible) */}
-      {debtCountdownData && (
-        <DashboardSection
-          title="Deuda"
-          section="patrimonio"
-          defaultOpen={false}
-          showToggle={false}
-          summaryText={`${debtCountdownData.monthsToFree} meses para libre`}
-        >
-          <DebtFreeCountdown data={debtCountdownData} />
-        </DashboardSection>
-      )}
-
-      {/* 7. Actividad reciente — compact */}
+      {/* 4. Actividad reciente — compact */}
       {recentTransactions.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">
