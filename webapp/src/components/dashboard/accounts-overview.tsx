@@ -126,7 +126,7 @@ function GroupedAccountList({ accounts }: { accounts: AccountWithSparkline[] }) 
   const grouped = Object.entries(Object.groupBy(accounts, (a) => a.currency_code));
   const multiCurrency = grouped.length > 1;
   return (
-    <>
+    <div>
       {grouped.map(([curr, accts]) => (
         <div key={curr}>
           {multiCurrency && (
@@ -139,7 +139,7 @@ function GroupedAccountList({ accounts }: { accounts: AccountWithSparkline[] }) 
           </div>
         </div>
       ))}
-    </>
+    </div>
   );
 }
 
