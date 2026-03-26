@@ -225,13 +225,13 @@ export function SalaryTimelineChart({
                           {payload
                             .filter((p) => Number(p.value) > 0)
                             .map((p) => (
-                              <div key={p.dataKey} className="flex items-center gap-2">
+                              <div key={String(p.dataKey)} className="flex items-center gap-2">
                                 <div
                                   className="h-2.5 w-2.5 rounded-full shrink-0"
                                   style={{ backgroundColor: String(p.color) }}
                                 />
                                 <span className="text-muted-foreground">
-                                  {chartConfig[String(p.dataKey)]?.label ?? p.dataKey}:
+                                  {chartConfig[String(p.dataKey)]?.label ?? String(p.dataKey)}:
                                 </span>
                                 <span className="font-medium ml-auto">
                                   {formatCurrency(Number(p.value), currency)}
