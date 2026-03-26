@@ -49,7 +49,7 @@ Goals for this milestone — polish, tech debt, and UX improvements:
 - [ ] Dead code removal: reconciliation column fallback, unused `any`-typed wrappers
 - [ ] Type safety cleanup: eliminate `any` leaks in transaction utils, tab router, exchange rate
 - [ ] Error boundaries: add `error.tsx` and `not-found.tsx` for graceful failure handling
-- [ ] Performance: Suspense streaming for dashboard, lazy-load heavy chart libraries
+- [x] Performance: Suspense streaming for dashboard, lazy-load heavy chart libraries — Validated in Phase 4: dashboard-performance
 - [ ] Consolidate seed category UUIDs into `@zeta/shared` constants
 - [ ] Fix `z.string().uuid()` usage in recurring-templates and purchase-decision actions
 
@@ -111,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after Phase 3 (Categorization Engine) completion*
+*Last updated: 2026-03-26 after Phase 4 (Dashboard Performance) completion*
