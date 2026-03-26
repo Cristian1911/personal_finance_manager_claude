@@ -31,17 +31,14 @@ import {
   getMonthlyCashflow,
   getNetWorthHistory,
 } from "@/actions/charts";
-import { NetWorthHistoryChart } from "@/components/charts/net-worth-history-chart";
+import dynamic from "next/dynamic";
 import { getAccounts } from "@/actions/accounts";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
 import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { AccountsOverview } from "@/components/dashboard/accounts-overview";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
-import { BudgetPaceChart } from "@/components/charts/budget-pace-chart";
-import { CashFlowViewToggle } from "@/components/charts/cash-flow-view-toggle";
 import { WaterfallChart } from "@/components/charts/waterfall-chart";
-import { CategoryDonut } from "@/components/charts/category-donut";
 import { DashboardBudgetBar } from "@/components/budget/dashboard-budget-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
@@ -50,7 +47,6 @@ import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import { getBurnRate } from "@/actions/burn-rate";
-import { BurnRateCard, BurnRateCardEmpty } from "@/components/dashboard/burn-rate-card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { DashboardConfigProvider } from "@/components/dashboard/dashboard-config-provider";
 import { WidgetSlot } from "@/components/dashboard/widget-slot";
@@ -69,6 +65,55 @@ import { InterestPaidWidget } from "@/components/dashboard/interest-paid-widget"
 import { getInterestPaid } from "@/actions/interest-paid";
 import { DebtProgressWidget } from "@/components/dashboard/debt-progress-widget";
 import { getDebtProgress } from "@/actions/debt-progress";
+
+// ── Dynamic imports — chart JS is NOT in the initial bundle ──────────────────
+
+// Server Component pages cannot use ssr: false — chart components are already "use client"
+// so recharts DOM APIs never run server-side. Dynamic imports here achieve code splitting.
+const NetWorthHistoryChart = dynamic(
+  () => import("@/components/charts/net-worth-history-chart").then((m) => ({ default: m.NetWorthHistoryChart })),
+  { loading: () => <div className="h-[300px] w-full rounded-xl bg-muted animate-pulse" /> }
+);
+
+const BudgetPaceChart = dynamic(
+  () => import("@/components/charts/budget-pace-chart").then((m) => ({ default: m.BudgetPaceChart })),
+  { loading: () => <div className="h-[240px] w-full rounded-xl bg-muted animate-pulse" /> }
+);
+
+const CashFlowViewToggle = dynamic(
+  () => import("@/components/charts/cash-flow-view-toggle").then((m) => ({ default: m.CashFlowViewToggle })),
+  {
+    loading: () => (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="h-5 w-36 rounded bg-muted animate-pulse" />
+          <div className="flex gap-1">
+            <div className="h-7 w-16 rounded bg-muted animate-pulse" />
+            <div className="h-7 w-16 rounded bg-muted animate-pulse" />
+          </div>
+        </div>
+        <div className="h-[280px] w-full rounded-xl bg-muted animate-pulse" />
+      </div>
+    ),
+  }
+);
+
+const CategoryDonut = dynamic(
+  () => import("@/components/charts/category-donut").then((m) => ({ default: m.CategoryDonut })),
+  { loading: () => <div className="h-[280px] w-full rounded-xl bg-muted animate-pulse" /> }
+);
+
+const BurnRateCard = dynamic(
+  () => import("@/components/dashboard/burn-rate-card").then((m) => ({ default: m.BurnRateCard })),
+  { loading: () => <div className="h-40 w-full rounded-xl bg-muted animate-pulse" /> }
+);
+
+const BurnRateCardEmpty = dynamic(
+  () => import("@/components/dashboard/burn-rate-card").then((m) => ({ default: m.BurnRateCardEmpty })),
+  { loading: () => <div className="h-40 w-full rounded-xl bg-muted animate-pulse" /> }
+);
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 type DashboardTransactionRow = {
   id: string;

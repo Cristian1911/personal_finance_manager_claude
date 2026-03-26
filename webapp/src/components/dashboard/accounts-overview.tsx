@@ -9,7 +9,15 @@ import {
   freshnessMap,
 } from "@/lib/utils/dashboard";
 import { RefreshCw } from "lucide-react";
-import { Sparkline } from "@/components/charts/sparkline";
+import dynamic from "next/dynamic";
+
+const Sparkline = dynamic(
+  () => import("@/components/charts/sparkline").then((m) => ({ default: m.Sparkline })),
+  {
+    ssr: false,
+    loading: () => <div className="h-8 w-24 rounded bg-muted animate-pulse" />,
+  }
+);
 import { ReconcileBalanceDialog } from "@/components/accounts/reconcile-balance-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";

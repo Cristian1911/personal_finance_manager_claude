@@ -47,7 +47,15 @@ import {
   Zap,
   ArrowRight,
 } from "lucide-react";
-import { SalaryTimelineChart } from "@/components/debt/salary-timeline-chart";
+import dynamic from "next/dynamic";
+
+const SalaryTimelineChart = dynamic(
+  () => import("@/components/debt/salary-timeline-chart").then((m) => ({ default: m.SalaryTimelineChart })),
+  {
+    ssr: false,
+    loading: () => <div className="h-[250px] w-full rounded-xl bg-muted animate-pulse" />,
+  }
+);
 
 interface Props {
   accounts: DebtAccount[];

@@ -3,7 +3,13 @@ import { Suspense } from "react";
 import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { DebtHeroCard } from "@/components/debt/debt-hero-card";
-import { UtilizationGauge } from "@/components/debt/utilization-gauge";
+import dynamic from "next/dynamic";
+
+// Server Component — chart component is already "use client", no ssr: false needed
+const UtilizationGauge = dynamic(
+  () => import("@/components/debt/utilization-gauge").then((m) => ({ default: m.UtilizationGauge })),
+  { loading: () => <div className="h-[200px] w-full rounded-xl bg-muted animate-pulse" /> }
+);
 import { InterestCostCard } from "@/components/debt/interest-cost-card";
 import { DebtAccountCard } from "@/components/debt/debt-account-card";
 import { DebtInsights } from "@/components/debt/debt-insights";
