@@ -2,8 +2,13 @@ import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { WidgetSlot } from "@/components/dashboard/widget-slot";
 import { DebtFreeCountdown } from "@/components/debt/debt-free-countdown";
 import { DebtProgressWidget } from "@/components/dashboard/debt-progress-widget";
-import { NetWorthHistoryChart } from "@/components/charts/net-worth-history-chart";
+import dynamic from "next/dynamic";
 import { EmergencyFundWidget } from "@/components/dashboard/emergency-fund-widget";
+
+const NetWorthHistoryChart = dynamic(
+  () => import("@/components/charts/net-worth-history-chart").then((m) => ({ default: m.NetWorthHistoryChart })),
+  { loading: () => <div className="h-[300px] w-full rounded-xl bg-muted animate-pulse" /> }
+);
 import { InterestPaidWidget } from "@/components/dashboard/interest-paid-widget";
 import { getDebtFreeCountdown } from "@/actions/debt-countdown";
 import { getInterestPaid } from "@/actions/interest-paid";

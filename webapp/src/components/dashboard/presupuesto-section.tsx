@@ -1,9 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { WidgetSlot } from "@/components/dashboard/widget-slot";
-import { BudgetPaceChart } from "@/components/charts/budget-pace-chart";
-import { CategoryDonut } from "@/components/charts/category-donut";
+import dynamic from "next/dynamic";
 import { AllocationBars5030 } from "@/components/budget/allocation-bars-5030";
+
+const BudgetPaceChart = dynamic(
+  () => import("@/components/charts/budget-pace-chart").then((m) => ({ default: m.BudgetPaceChart })),
+  { loading: () => <div className="h-[240px] w-full rounded-xl bg-muted animate-pulse" /> }
+);
+
+const CategoryDonut = dynamic(
+  () => import("@/components/charts/category-donut").then((m) => ({ default: m.CategoryDonut })),
+  { loading: () => <div className="h-[280px] w-full rounded-xl bg-muted animate-pulse" /> }
+);
 import { DashboardBudgetBar } from "@/components/budget/dashboard-budget-bar";
 import { SavingsRateWidget } from "@/components/dashboard/savings-rate-widget";
 import { getDailyBudgetPace, getCategorySpending } from "@/actions/charts";
