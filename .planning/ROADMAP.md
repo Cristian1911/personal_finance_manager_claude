@@ -18,7 +18,7 @@ redesign. Visual polish comes last, once structure is stable.
 - [x] **Phase 1: Security Foundation** - Harden middleware and add error recovery pages (completed 2026-03-25)
 - [x] **Phase 2: Income & Data Foundation** - Fix income wiring and consolidate shared constants (completed 2026-03-25)
 - [x] **Phase 3: Categorization Engine** - Normalize descriptions, add regex rules, protect manual intent (completed 2026-03-25)
-- [ ] **Phase 4: Dashboard Performance** - Suspense streaming, lazy charts, remove framer-motion
+- [x] **Phase 4: Dashboard Performance** - Suspense streaming, lazy charts, remove framer-motion (completed 2026-03-26)
 - [ ] **Phase 5: Onboarding Audit** - Generate HTML walkthrough of current onboarding for review
 - [ ] **Phase 6: Dashboard Redesign** - "Am I on track?" narrative, health grade, debt-free hero
 - [ ] **Phase 7: Categorization UX** - Inline quick-edit, unreviewed queue, rule feedback loop
@@ -91,7 +91,7 @@ Plans:
 - [x] 04-02-PLAN.md — Remove framer-motion, replace with CSS transitions (PERF-03)
 - [x] 04-03-PLAN.md — Recharts v3 upgrade and type fixes (PERF-04)
 - [x] 04-04-PLAN.md — next/dynamic lazy-loading for all chart components (PERF-02)
-- [ ] 04-05-PLAN.md — Gap closure: move dynamic() into section files, remove dead code (PERF-02)
+- [x] 04-05-PLAN.md — Gap closure: move dynamic() into section files, remove dead code (PERF-02)
 
 ### Phase 5: Onboarding Audit
 **Goal**: A static HTML walkthrough of the current onboarding flow exists for human review before any redesign begins
@@ -177,7 +177,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Security Foundation | 2/2 | Complete   | 2026-03-25 |
 | 2. Income & Data Foundation | 2/2 | Complete   | 2026-03-25 |
 | 3. Categorization Engine | 2/2 | Complete   | 2026-03-25 |
-| 4. Dashboard Performance | 4/5 | In Progress|  |
+| 4. Dashboard Performance | 5/5 | Complete   | 2026-03-26 |
 | 5. Onboarding Audit | 0/TBD | Not started | - |
 | 6. Dashboard Redesign | 0/TBD | Not started | - |
 | 7. Categorization UX | 0/TBD | Not started | - |

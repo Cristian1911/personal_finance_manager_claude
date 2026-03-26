@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase complete — ready for verification
-stopped_at: Completed 04-04-PLAN.md — dynamic chart imports with content-shaped loading skeletons
-last_updated: "2026-03-26T14:28:13.209Z"
+status: Ready to execute
+stopped_at: "Completed 04-05-PLAN.md — PERF-02 gap closure: dynamic chart imports moved to section files"
+last_updated: "2026-03-26T21:56:17.352Z"
 progress:
   total_phases: 10
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 11
+  completed_plans: 11
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 ## Current Position
 
 Phase: 04 (dashboard-performance) — EXECUTING
-Plan: 4 of 4
+Plan: 2 of 5
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Plan: 4 of 4
 | Phase 04-dashboard-performance P01 | 325 | 2 tasks | 3 files |
 | Phase 04-dashboard-performance P03 | 9 | 1 tasks | 4 files |
 | Phase 04-dashboard-performance P04 | 6 | 1 tasks | 5 files |
+| Phase 04-dashboard-performance P05 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,8 @@ Recent decisions affecting current work:
 - [Phase 04-dashboard-performance]: recharts v3: TooltipContentProps replaces TooltipProps for custom tooltip content; LegendPayload array replaces LegendProps['payload'] for legend content; dataKey is String()-coerced in key props
 - [Phase 04-dashboard-performance]: Server Component pages cannot use ssr:false with next/dynamic — dynamic() without ssr:false achieves code splitting while chart components own their use client boundary
 - [Phase 04-dashboard-performance]: Client Component files (accounts-overview, detail-step) use ssr:false in dynamic() since they are valid use client contexts
+- [Phase 04-dashboard-performance]: dynamic() wrappers moved from page.tsx into section files that render the chart — colocation prevents orphaned dead code
+- [Phase 04-dashboard-performance]: No ssr:false on Server Component section file dynamic() calls — chart components own their use client boundary
 
 ### Pending Todos
 
@@ -100,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T14:28:13.206Z
-Stopped at: Completed 04-04-PLAN.md — dynamic chart imports with content-shaped loading skeletons
+Last session: 2026-03-26T21:56:17.349Z
+Stopped at: Completed 04-05-PLAN.md — PERF-02 gap closure: dynamic chart imports moved to section files
 Resume file: None
