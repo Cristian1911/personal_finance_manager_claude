@@ -101,8 +101,14 @@ None yet.
 - [Pre-work]: `manually_categorized` schema design (CAT-05/06) needed before CAT UX (P7) builds on top of it
 - [Research flag]: Health score weighting algorithm (P6) — equal weights recommended as starting point, adjust after
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260326-o04 | Split debt page into Suspense tiers for streaming performance | 2026-03-26 | 2500587 | [260326-o04-split-debt-page-into-suspense-tiers-for-](./quick/260326-o04-split-debt-page-into-suspense-tiers-for-/) |
+
 ## Session Continuity
 
-Last session: 2026-03-26T21:56:17.349Z
-Stopped at: Completed 04-05-PLAN.md — PERF-02 gap closure: dynamic chart imports moved to section files
+Last session: 2026-03-26T22:16:56.450Z
+Stopped at: Completed quick task 260326-o04: Split debt page into Suspense tiers
 Resume file: None
