@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-26T14:02:30.253Z"
+stopped_at: Completed 04-01-PLAN.md — Suspense tier split + content-shaped skeletons
+last_updated: "2026-03-26T14:06:07.094Z"
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 ## Current Position
 
 Phase: 04 (dashboard-performance) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Plan: 2 of 4
 | Phase 03-categorization-engine P01 | 8 | 1 tasks | 2 files |
 | Phase 03-categorization-engine P02 | 5 | 2 tasks | 1 files |
 | Phase 04-dashboard-performance P02 | 2 | 1 tasks | 3 files |
+| Phase 04-dashboard-performance P01 | 325 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase Phase 03-categorization-engine]: CAT-06 satisfied by existing categorization_source enum — no migration needed; guard clause in category-inbox.tsx uses continue before autoCategorize() to protect USER_OVERRIDE and USER_CREATED transactions
 - [Phase 04-dashboard-performance]: Exit animations dropped intentionally — enter-only fade+slide with immediate unmount removes AnimatePresence dependency entirely
 - [Phase 04-dashboard-performance]: CSS animation pattern established: animate-in fade-in slide-in-from-right-4 duration-200 on conditional divs; key prop triggers remount which re-fires CSS animation
+- [Phase 04-dashboard-performance]: Tier 1 Promise.all reduced to getDashboardHeroData + getHealthMeters — hero and health meters render before any other fetch completes
+- [Phase 04-dashboard-performance]: CashFlowHeroStrip deferred to tier 2 — avoids adding 3rd fetch to tier 1 critical path
+- [Phase 04-dashboard-performance]: AccountsSection combines AccountsOverview + DashboardAlerts + latestSnapshotDates into single async sub-component to reduce visual churn
 
 ### Pending Todos
 
@@ -91,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T14:02:30.250Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-26T14:06:07.092Z
+Stopped at: Completed 04-01-PLAN.md — Suspense tier split + content-shaped skeletons
 Resume file: None

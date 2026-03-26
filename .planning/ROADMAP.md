@@ -87,7 +87,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Suspense tier split + content-shaped skeletons + mobile refactor (PERF-01, PERF-05)
+- [x] 04-01-PLAN.md — Suspense tier split + content-shaped skeletons + mobile refactor (PERF-01, PERF-05)
 - [x] 04-02-PLAN.md — Remove framer-motion, replace with CSS transitions (PERF-03)
 - [ ] 04-03-PLAN.md — Recharts v3 upgrade and type fixes (PERF-04)
 - [ ] 04-04-PLAN.md — next/dynamic lazy-loading for all chart components (PERF-02)
@@ -176,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Security Foundation | 2/2 | Complete   | 2026-03-25 |
 | 2. Income & Data Foundation | 2/2 | Complete   | 2026-03-25 |
 | 3. Categorization Engine | 2/2 | Complete   | 2026-03-25 |
-| 4. Dashboard Performance | 1/4 | In Progress|  |
+| 4. Dashboard Performance | 2/4 | In Progress|  |
 | 5. Onboarding Audit | 0/TBD | Not started | - |
 | 6. Dashboard Redesign | 0/TBD | Not started | - |
 | 7. Categorization UX | 0/TBD | Not started | - |
