@@ -1,7 +1,7 @@
 # Zeta — Ideas Inbox
 
 > Drop ideas here. Review weekly. Promote to TASKS.md or BACKLOG.md if actionable.
-> Last triaged: 2026-03-13
+> Last triaged: 2026-03-24
 
 - **Geolocation expense entry** — Auto-detect merchant via GPS + Google Places when adding manual expense. [Effort: M | Impact: Low | Parked: nice UX polish, not core. Revisit when mobile app matures]
 - **Social benchmarking** — "People with your income spend 20% less on restaurants" (anonymous aggregates). [Effort: L | Impact: Medium | Confidence: Low | Parked: privacy concerns + needs large user base]

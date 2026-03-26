@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-11T20:20:39.682488+00:00",
+  "generated_at_utc": "2026-03-25T13:29:49.885135+00:00",
   "project_root": "/Users/cristian/Documents/developing/current-projects/zeta",
   "technologies": [
     "Next.js",
@@ -9,33 +9,35 @@
     "pnpm workspace"
   ],
   "totals": {
-    "text_files_scanned": 745,
+    "text_files_scanned": 847,
     "languages": {
       "JSON": 282,
-      "TypeScript/React": 193,
-      "TypeScript": 108,
-      "Markdown": 67,
-      "SQL": 29,
+      "TypeScript/React": 243,
+      "TypeScript": 137,
+      "Markdown": 78,
+      "SQL": 34,
       "Python": 22,
-      "YAML": 10,
+      "HTML": 21,
+      "YAML": 11,
       "Shell": 10,
-      "JavaScript": 10,
-      "CSS": 7,
-      "HTML": 5,
+      "JavaScript": 5,
+      "CSS": 2,
       "TOML": 2
     }
   },
   "top_level_directories": {
     "mobile": 354,
-    "webapp": 258,
-    "supabase": 31,
-    "docs": 26,
+    "webapp": 292,
+    "docs": 58,
+    "supabase": 36,
+    "packages": 26,
     "services": 24,
-    "packages": 18,
+    ".superpowers": 16,
     "(root)": 15,
-    ".claude": 10,
-    ".github": 5,
+    ".claude": 14,
+    ".github": 6,
     "infra": 2,
+    "mockups": 2,
     "brand": 1,
     "test-results": 1
   },
@@ -83,35 +85,13 @@
         "webapp/src/app/(dashboard)/layout.tsx",
         "webapp/src/app/(dashboard)/settings/page.tsx",
         "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
+        "webapp/src/app/(dashboard)/gestionar/page.tsx",
         "webapp/src/app/(dashboard)/dashboard/page.tsx",
         "webapp/src/actions/statement-snapshots.ts",
+        "webapp/src/actions/dashboard-config.ts",
+        "webapp/src/actions/interest-paid.ts",
         "webapp/src/actions/recurring-templates.ts",
-        "webapp/src/actions/debt.ts",
-        "webapp/src/actions/categorize.ts",
-        "webapp/src/actions/product-events.ts",
-        "webapp/src/actions/budgets.ts"
-      ]
-    },
-    {
-      "name": "zod-validators",
-      "description": "Validation layer using Zod",
-      "matched_files": 15,
-      "examples": [
-        "webapp/playwright-report/trace/uiMode.CQJ9SCIQ.js",
-        "webapp/playwright-report/trace/sw.bundle.js",
-        "webapp/playwright-report/trace/assets/defaultSettingsView-CJSZINFr.js",
-        "webapp/playwright-report/trace/assets/codeMirrorModule-a5XoALAZ.js",
-        "webapp/src/actions/recurring-templates.ts",
-        "webapp/src/actions/profile.ts",
-        "webapp/src/actions/purchase-decision.ts",
-        "webapp/src/lib/validators/account.ts",
-        "webapp/src/lib/validators/category.ts",
-        "webapp/src/lib/validators/destinatario.ts",
-        "webapp/src/lib/validators/transaction.ts",
-        "webapp/src/lib/validators/budget.ts",
-        "webapp/src/lib/validators/recurring-template.ts",
-        "webapp/src/lib/validators/import.ts",
-        "webapp/src/lib/validators/auth.ts"
+        "webapp/src/actions/debt.ts"
       ]
     },
     {
@@ -132,8 +112,8 @@
         "webapp/src/app/(auth)/reset-password/page.tsx",
         "webapp/src/app/(auth)/login/page.tsx",
         "webapp/src/app/(dashboard)/layout.tsx",
-        "webapp/src/app/(dashboard)/settings/page.tsx",
-        "webapp/src/app/(dashboard)/settings/analytics/page.tsx"
+        "webapp/src/app/(dashboard)/loading.tsx",
+        "webapp/src/app/(dashboard)/settings/page.tsx"
       ]
     },
     {
@@ -142,20 +122,20 @@
       "matched_files": 15,
       "examples": [
         "webapp/src/actions/statement-snapshots.ts",
+        "webapp/src/actions/dashboard-config.ts",
+        "webapp/src/actions/interest-paid.ts",
         "webapp/src/actions/recurring-templates.ts",
         "webapp/src/actions/debt.ts",
         "webapp/src/actions/categorize.ts",
         "webapp/src/actions/product-events.ts",
         "webapp/src/actions/budgets.ts",
+        "webapp/src/actions/allocation.ts",
         "webapp/src/actions/payment-reminders.ts",
+        "webapp/src/actions/exchange-rate.ts",
+        "webapp/src/actions/debt-snapshots.ts",
+        "webapp/src/actions/spending-heatmap.ts",
         "webapp/src/actions/import-transactions.ts",
-        "webapp/src/actions/profile.ts",
-        "webapp/src/actions/onboarding.ts",
-        "webapp/src/actions/categories.ts",
-        "webapp/src/actions/transactions.ts",
-        "webapp/src/actions/destinatarios.ts",
-        "webapp/src/actions/accounts.ts",
-        "webapp/src/actions/charts.ts"
+        "webapp/src/actions/debt-countdown.ts"
       ]
     },
     {
@@ -203,6 +183,27 @@
       ]
     },
     {
+      "name": "zod-validators",
+      "description": "Validation layer using Zod",
+      "matched_files": 14,
+      "examples": [
+        "webapp/src/actions/recurring-templates.ts",
+        "webapp/src/actions/profile.ts",
+        "webapp/src/actions/purchase-decision.ts",
+        "webapp/src/lib/validators/account.ts",
+        "webapp/src/lib/validators/dashboard-config.ts",
+        "webapp/src/lib/validators/category.ts",
+        "webapp/src/lib/validators/scenario.ts",
+        "webapp/src/lib/validators/destinatario.ts",
+        "webapp/src/lib/validators/transaction.ts",
+        "webapp/src/lib/validators/budget.ts",
+        "webapp/src/lib/validators/recurring-template.ts",
+        "webapp/src/lib/validators/import.ts",
+        "webapp/src/lib/validators/auth.ts",
+        ".claude/skills/codebase-context/scripts/build_context.py"
+      ]
+    },
+    {
       "name": "repository-pattern",
       "description": "Repository pattern in mobile/lib/repositories",
       "matched_files": 4,
@@ -233,7 +234,7 @@
     "webapp/src/app/(dashboard)/destinatarios/[id]/page.tsx",
     "webapp/src/app/(dashboard)/destinatarios/page.tsx",
     "webapp/src/app/(dashboard)/deudas/page.tsx",
-    "webapp/src/app/(dashboard)/deudas/simulador/page.tsx",
+    "webapp/src/app/(dashboard)/deudas/planificador/page.tsx",
     "webapp/src/app/(dashboard)/gestionar/page.tsx",
     "webapp/src/app/(dashboard)/import/page.tsx",
     "webapp/src/app/(dashboard)/layout.tsx",
@@ -256,7 +257,7 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 608
+      "count": 883
     },
     {
       "from": "mobile",
@@ -265,20 +266,16 @@
     }
   ],
   "recent_changes": [
-    ".gitignore",
-    "pnpm-lock.yaml",
-    "webapp/package.json",
-    "webapp/src/components/dashboard/accounts-overview.tsx",
-    "webapp/src/components/dashboard/dashboard-account-picker.tsx",
-    "webapp/src/components/dashboard/interactive-metric-card.tsx",
-    "webapp/src/components/import/parsed-transaction-table.tsx",
-    "webapp/src/components/mobile/bottom-tab-bar.tsx",
-    "webapp/src/components/mobile/fab-menu.tsx",
-    "webapp/src/components/mobile/mobile-presupuesto.tsx",
-    "webapp/src/components/settings/bug-report-form.tsx",
-    "webapp/src/components/ui/tabs.tsx",
-    ".claude/launch.json",
-    "webapp/e2e/",
-    "webapp/playwright.config.ts"
+    "CLAUDE.md",
+    "IDEAS.md",
+    "TASKS.md",
+    ".claude/agents/frontend-auditor.md",
+    ".claude/skills/frontend-audit/",
+    "docs/FRONTEND_STANDARDS.md",
+    "docs/agent/FINANCIAL_HEALTH_STRATEGY.md",
+    "docs/research/",
+    "docs/superpowers/plans/2026-03-18-dashboard-metrics-redesign.md",
+    "docs/superpowers/specs/2026-03-18-dashboard-metrics-redesign.md",
+    "mockups/"
   ]
 }

@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zeta — Dashboard Design Showcase</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  /* ── Zeta Design Tokens ── */
+  :root {
+    --z-ink: #0A0E14;
+    --z-sage: #C5BFAE;
+    --z-sage-light: #D8D2C4;
+    --z-sage-dark: #9E9888;
+    --z-white: #F0EDE6;
+    --z-income: #5CB88A;
+    --z-expense: #E8875A;
+    --z-debt: #E05545;
+    --z-alert: #D4A843;
+    --z-surface: #131720;
+    --z-surface-2: #1C1F28;
+    --z-surface-3: #262A34;
+    --z-border: rgba(192,185,170,0.08);
+    --z-border-strong: rgba(192,185,170,0.14);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Geist', 'Inter', system-ui, sans-serif; background: #080A0F; color: var(--z-white); line-height: 1.5; }
+
+  /* ── Layout ── */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 260px; position: fixed; top: 0; left: 0; bottom: 0;
+    background: var(--z-ink); border-right: 1px solid var(--z-border-strong);
+    padding: 24px 16px; overflow-y: auto; z-index: 100;
+  }
+  .sidebar h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .sidebar .sub { font-size: 11px; color: var(--z-sage-dark); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 20px; }
+  .sidebar nav { display: flex; flex-direction: column; gap: 2px; }
+  .sidebar a {
+    display: block; padding: 8px 12px; border-radius: 8px; font-size: 13px;
+    color: var(--z-sage); text-decoration: none; transition: all 0.15s;
+  }
+  .sidebar a:hover, .sidebar a.active { background: var(--z-surface-2); color: var(--z-white); }
+  .sidebar .section-label { font-size: 10px; color: var(--z-sage-dark); text-transform: uppercase; letter-spacing: 0.1em; padding: 16px 12px 4px; font-weight: 600; }
+
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1200px; }
+
+  /* ── Section ── */
+  section { margin-bottom: 80px; scroll-margin-top: 20px; }
+  section > h2 { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+  section > .desc { font-size: 14px; color: var(--z-sage-dark); margin-bottom: 32px; max-width: 700px; line-height: 1.6; }
+
+  /* ── Comparison Grid ── */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px; }
+  .compare.triple { grid-template-columns: 1fr 1fr 1fr; }
+  .compare.single { grid-template-columns: 1fr; max-width: 700px; }
+  .compare.quad { grid-template-columns: 1fr 1fr; }
+
+  .option {
+    background: var(--z-surface); border: 1px solid var(--z-border-strong);
+    border-radius: var(--radius); padding: 24px; position: relative;
+  }
+  .option.recommended { border-color: var(--z-income); }
+  .option.recommended::after {
+    content: 'RECOMENDADO'; position: absolute; top: -10px; right: 16px;
+    background: var(--z-income); color: var(--z-ink); font-size: 9px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px; letter-spacing: 0.05em;
+  }
+  .option.current::after {
+    content: 'ACTUAL'; position: absolute; top: -10px; right: 16px;
+    background: var(--z-sage-dark); color: var(--z-ink); font-size: 9px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px; letter-spacing: 0.05em;
+  }
+  .option h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .option .tag { font-size: 11px; color: var(--z-sage-dark); margin-bottom: 16px; }
+  .option .pros { margin-top: 16px; font-size: 12px; color: var(--z-sage); }
+  .option .pros li { margin-bottom: 4px; }
+  .option .pros li::before { content: '+ '; color: var(--z-income); font-weight: 700; }
+  .option .cons { margin-top: 8px; font-size: 12px; color: var(--z-sage); }
+  .option .cons li { margin-bottom: 4px; }
+  .option .cons li::before { content: '- '; color: var(--z-expense); font-weight: 700; }
+
+  /* ── Card Mockups ── */
+  .mock-card {
+    background: var(--z-surface-2); border-radius: 12px; padding: 16px;
+    border: 1px solid var(--z-border);
+  }
+  .mock-card .label { font-size: 10px; color: var(--z-sage-dark); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .mock-card .value { font-size: 28px; font-weight: 800; margin-top: 4px; letter-spacing: -0.03em; }
+  .mock-card .value.sm { font-size: 22px; }
+  .mock-card .trend { font-size: 11px; margin-top: 2px; }
+  .mock-card .trend.up { color: var(--z-income); }
+  .mock-card .trend.down { color: var(--z-debt); }
+  .mock-card .trend.flat { color: var(--z-sage-dark); }
+  .mock-card + .mock-card { margin-top: 12px; }
+
+  /* ── KPI Strip ── */
+  .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpi-strip .kpi {
+    background: var(--z-surface-2); border-radius: 12px; padding: 14px;
+    border: 1px solid var(--z-border);
+  }
+  .kpi-strip .kpi .label { font-size: 10px; color: var(--z-sage-dark); text-transform: uppercase; letter-spacing: 0.06em; }
+  .kpi-strip .kpi .val { font-size: 20px; font-weight: 800; margin-top: 2px; letter-spacing: -0.02em; }
+  .kpi-strip .kpi .sub { font-size: 11px; color: var(--z-sage-dark); margin-top: 2px; }
+
+  /* ── Chart Container ── */
+  .chart-wrap { position: relative; height: 200px; margin-top: 12px; }
+  .chart-wrap.tall { height: 260px; }
+  .chart-wrap.short { height: 150px; }
+
+  /* ── Dashboard mockup frame ── */
+  .dash-frame {
+    background: var(--z-ink); border: 1px solid var(--z-border-strong); border-radius: 16px;
+    padding: 20px; min-height: 400px;
+  }
+  .dash-frame .row { display: flex; gap: 16px; margin-bottom: 16px; }
+  .dash-frame .col { flex: 1; }
+  .dash-frame .placeholder {
+    background: var(--z-surface-2); border-radius: 12px; padding: 16px;
+    border: 1px solid var(--z-border); min-height: 60px;
+  }
+  .dash-frame .placeholder.hero { min-height: 100px; background: var(--z-surface); }
+  .dash-frame .placeholder .ph-label { font-size: 10px; color: var(--z-sage-dark); text-transform: uppercase; letter-spacing: 0.08em; }
+  .dash-frame .placeholder .ph-value { font-size: 18px; font-weight: 800; margin-top: 4px; }
+  .dash-frame .section-title { font-size: 12px; font-weight: 600; color: var(--z-sage-dark); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* ── Flow diagram ── */
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .flow-node {
+    background: var(--z-surface-2); border: 1px solid var(--z-border-strong);
+    border-radius: 10px; padding: 10px 14px; text-align: center; min-width: 90px;
+  }
+  .flow-node .fn-label { font-size: 9px; color: var(--z-sage-dark); text-transform: uppercase; letter-spacing: 0.06em; }
+  .flow-node .fn-value { font-size: 16px; font-weight: 800; margin-top: 2px; }
+  .flow-arrow { color: var(--z-sage-dark); font-size: 18px; }
+
+  /* ── Score ring ── */
+  .score-ring {
+    width: 120px; height: 120px; position: relative; margin: 0 auto;
+  }
+  .score-ring svg { width: 100%; height: 100%; }
+  .score-ring .score-value {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 32px; font-weight: 900; letter-spacing: -0.03em;
+  }
+  .score-ring .score-label {
+    text-align: center; font-size: 11px; color: var(--z-sage-dark); margin-top: 8px;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar { height: 8px; background: var(--z-surface-3); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .progress-bar .fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+
+  /* ── Waterfall ── */
+  .waterfall { display: flex; align-items: flex-end; gap: 6px; height: 180px; margin-top: 12px; }
+  .waterfall .wf-bar { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+  .waterfall .wf-bar .bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; position: relative; }
+  .waterfall .wf-bar .bar.positive { background: var(--z-income); }
+  .waterfall .wf-bar .bar.negative { background: var(--z-expense); }
+  .waterfall .wf-bar .bar.net { background: var(--z-sage); }
+  .waterfall .wf-bar .wf-label { font-size: 9px; color: var(--z-sage-dark); margin-top: 6px; text-align: center; }
+  .waterfall .wf-bar .wf-value { font-size: 10px; font-weight: 700; margin-bottom: 4px; }
+
+  /* ── Donut placeholder ── */
+  .donut-area { display: flex; align-items: center; gap: 20px; margin-top: 12px; }
+  .donut-chart { width: 140px; height: 140px; flex-shrink: 0; }
+  .donut-legend { flex: 1; }
+  .donut-legend .item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+  .donut-legend .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .donut-legend .item-val { margin-left: auto; font-weight: 700; font-size: 12px; }
+
+  /* ── Tab mock ── */
+  .tab-bar { display: flex; gap: 2px; background: var(--z-surface-2); border-radius: 8px; padding: 3px; margin-bottom: 16px; width: fit-content; }
+  .tab-bar .tab { padding: 6px 14px; border-radius: 6px; font-size: 12px; color: var(--z-sage-dark); cursor: default; }
+  .tab-bar .tab.active { background: var(--z-surface-3); color: var(--z-white); font-weight: 600; }
+
+  /* ── Gauge ── */
+  .gauge-wrap { text-align: center; margin-top: 12px; }
+
+  /* ── Heatmap ── */
+  .heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 12px; }
+  .heatmap .cell { aspect-ratio: 1; border-radius: 4px; min-height: 20px; }
+  .heatmap .cell.l0 { background: var(--z-surface-3); }
+  .heatmap .cell.l1 { background: color-mix(in srgb, var(--z-expense) 20%, var(--z-surface-3)); }
+  .heatmap .cell.l2 { background: color-mix(in srgb, var(--z-expense) 40%, var(--z-surface-3)); }
+  .heatmap .cell.l3 { background: color-mix(in srgb, var(--z-expense) 60%, var(--z-surface-3)); }
+  .heatmap .cell.l4 { background: var(--z-expense); }
+  .heatmap .day-label { font-size: 8px; color: var(--z-sage-dark); text-align: center; padding: 2px 0; }
+
+  /* ── Sankey mockup ── */
+  .sankey-mock { position: relative; height: 220px; margin-top: 12px; }
+  .sankey-mock svg { width: 100%; height: 100%; }
+
+  /* ── Health radar ── */
+  .radar-wrap { display: flex; align-items: center; gap: 24px; margin-top: 12px; }
+  .radar-chart { width: 200px; height: 200px; flex-shrink: 0; }
+  .radar-list { flex: 1; }
+  .radar-list .ri { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--z-border); font-size: 13px; }
+  .radar-list .ri .ri-label { color: var(--z-sage); }
+  .radar-list .ri .ri-val { font-weight: 700; }
+  .radar-list .ri .ri-val.good { color: var(--z-income); }
+  .radar-list .ri .ri-val.warn { color: var(--z-alert); }
+  .radar-list .ri .ri-val.bad { color: var(--z-debt); }
+
+  /* ── Mobile frame ── */
+  .phone-frame {
+    width: 320px; min-height: 600px; background: var(--z-ink);
+    border: 2px solid var(--z-surface-3); border-radius: 32px; padding: 20px 16px;
+    margin: 0 auto; position: relative; overflow: hidden;
+  }
+  .phone-frame::before {
+    content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 80px; height: 4px; background: var(--z-surface-3); border-radius: 2px;
+  }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid var(--z-border-strong); margin: 40px 0; }
+
+  /* ── Utility ── */
+  .text-income { color: var(--z-income); }
+  .text-expense { color: var(--z-expense); }
+  .text-debt { color: var(--z-debt); }
+  .text-alert { color: var(--z-alert); }
+  .text-sage { color: var(--z-sage); }
+  .text-sage-dark { color: var(--z-sage-dark); }
+  .text-sm { font-size: 13px; }
+  .text-xs { font-size: 11px; }
+  .font-bold { font-weight: 700; }
+  .mt-2 { margin-top: 8px; }
+  .mt-4 { margin-top: 16px; }
+  .mb-2 { margin-bottom: 8px; }
+  .mb-4 { margin-bottom: 16px; }
+  .gap-3 { gap: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── Sidebar Navigation ── -->
+<aside class="sidebar">
+  <h1>Zeta Showcase</h1>
+  <p class="sub">Dashboard Design Options</p>
+  <nav>
+    <div class="section-label">Layouts</div>
+    <a href="#layouts">Dashboard Layouts</a>
+    <a href="#hero">Hero Section Variants</a>
+
+    <div class="section-label">Metrics</div>
+    <a href="#new-kpis">New KPI Cards</a>
+    <a href="#health">Financial Health Score</a>
+
+    <div class="section-label">Visualizations</div>
+    <a href="#cashflow-viz">Cash Flow Charts</a>
+    <a href="#category-viz">Category Spending</a>
+    <a href="#sankey-vs">Sankey vs Alternatives</a>
+    <a href="#heatmap">Spending Heatmap</a>
+
+    <div class="section-label">Pages</div>
+    <a href="#budget-page">Budget Page Upgrades</a>
+    <a href="#debt-page">Debt Page Upgrades</a>
+
+    <div class="section-label">Flows</div>
+    <a href="#monthly-report">Monthly Report Flow</a>
+    <a href="#mobile">Mobile Experience</a>
+  </nav>
+</aside>
+
+<!-- ── Main Content ── -->
+<div class="main">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 1: DASHBOARD LAYOUTS -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="layouts">
+  <h2>Dashboard Layouts</h2>
+  <p class="desc">Four approaches to organizing the main dashboard. The current layout is vertically stacked. Each alternative optimizes for different user goals.</p>
+
+  <div class="compare">
+    <!-- Option A: Current Enhanced -->
+    <div class="option current">
+      <h3>A. Actual + Mejorado</h3>
+      <p class="tag">Wire orphaned charts, add KPI strip below hero</p>
+      <div class="dash-frame">
+        <div class="placeholder hero">
+          <div class="ph-label">Disponible para gastar</div>
+          <div class="ph-value">$2,340,000</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <div style="flex:1;background:var(--z-surface-2);border-radius:8px;padding:8px">
+              <div class="ph-label" style="font-size:9px">Saldo</div>
+              <div style="font-size:14px;font-weight:700">$4,200,000</div>
+            </div>
+            <div style="flex:1;background:var(--z-surface-2);border-radius:8px;padding:8px">
+              <div class="ph-label" style="font-size:9px">Fijos</div>
+              <div style="font-size:14px;font-weight:700">$1,860,000</div>
+            </div>
+            <div style="flex:1;background:var(--z-surface-2);border-radius:8px;padding:8px">
+              <div class="ph-label" style="font-size:9px">Libre</div>
+              <div style="font-size:14px;font-weight:700;color:var(--z-income)">$2,340,000</div>
+            </div>
+          </div>
+        </div>
+        <div class="row"><div class="col"><div class="placeholder"><div class="ph-label">Ritmo de gasto</div><div class="ph-value">23 dias</div></div></div></div>
+        <div class="row"><div class="col"><div class="placeholder"><div class="ph-label">Pagos proximos</div></div></div><div class="col"><div class="placeholder"><div class="ph-label">Cuentas</div></div></div></div>
+        <div class="section-title">Analisis</div>
+        <div class="row"><div class="col"><div class="placeholder"><div class="ph-label">Ritmo presupuesto</div></div></div><div class="col"><div class="placeholder"><div class="ph-label">Ingresos vs Gastos</div></div></div></div>
+        <div class="row"><div class="col"><div class="placeholder"><div class="ph-label">Categorias</div></div></div></div>
+      </div>
+      <ul class="pros"><li>Minimal changes, low risk</li><li>Users already understand the layout</li><li>Just wire 4 orphaned charts</li></ul>
+      <ul class="cons"><li>Long scroll, no hierarchy change</li><li>Doesn't add new metrics visibility</li></ul>
+    </div>
+
+    <!-- Option B: KPI-First -->
+    <div class="option recommended">
+      <h3>B. KPI Strip + Sections</h3>
+      <p class="tag">Headline metrics strip, then collapsible sections</p>
+      <div class="dash-frame">
+        <div class="placeholder hero">
+          <div class="ph-label">Disponible para gastar</div>
+          <div class="ph-value">$2,340,000</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
+          <div class="placeholder" style="min-height:50px"><div class="ph-label" style="font-size:8px">Tasa ahorro</div><div style="font-size:16px;font-weight:800;color:var(--z-income)">24%</div></div>
+          <div class="placeholder" style="min-height:50px"><div class="ph-label" style="font-size:8px">Patrimonio</div><div style="font-size:16px;font-weight:800">$18.2M</div></div>
+          <div class="placeholder" style="min-height:50px"><div class="ph-label" style="font-size:8px">Fondo emergencia</div><div style="font-size:16px;font-weight:800;color:var(--z-alert)">2.1 meses</div></div>
+          <div class="placeholder" style="min-height:50px"><div class="ph-label" style="font-size:8px">Ritmo gasto</div><div style="font-size:16px;font-weight:800">23 dias</div></div>
+        </div>
+        <div class="section-title">Flujo de caja</div>
+        <div class="row"><div class="col"><div class="placeholder" style="min-height:80px"><div class="ph-label">Ingresos vs Gastos (barras)</div></div></div></div>
+        <div class="section-title">Presupuesto</div>
+        <div class="row"><div class="col"><div class="placeholder" style="min-height:60px"><div class="ph-label">Pace + Categorias donut</div></div></div></div>
+        <div class="section-title">Patrimonio y deuda</div>
+        <div class="row"><div class="col"><div class="placeholder" style="min-height:60px"><div class="ph-label">Net worth trend + Debt progress</div></div></div></div>
+      </div>
+      <ul class="pros"><li>All key metrics visible without scrolling</li><li>Sections organize information by concern</li><li>KPI strip provides instant health check</li><li>Each section can expand/collapse</li></ul>
+      <ul class="cons"><li>More complex layout to build</li><li>May feel dense for new users</li></ul>
+    </div>
+  </div>
+
+  <div class="compare">
+    <!-- Option C: Tab-based -->
+    <div class="option">
+      <h3>C. Tab-Based Dashboard</h3>
+      <p class="tag">Persistent hero, tabbed sections below</p>
+      <div class="dash-frame">
+        <div class="placeholder hero">
+          <div class="ph-label">Disponible para gastar</div>
+          <div class="ph-value">$2,340,000</div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab active">Resumen</div>
+          <div class="tab">Flujo</div>
+          <div class="tab">Presupuesto</div>
+          <div class="tab">Patrimonio</div>
+        </div>
+        <div class="placeholder" style="min-height:200px">
+          <div class="ph-label">Active tab content</div>
+          <p style="font-size:11px;color:var(--z-sage-dark);margin-top:8px">Each tab shows focused content:<br>
+            <strong>Resumen</strong> — pagos, cuentas, transacciones<br>
+            <strong>Flujo</strong> — cashflow charts, income vs expenses<br>
+            <strong>Presupuesto</strong> — pace, categories, budget bars<br>
+            <strong>Patrimonio</strong> — net worth, debt, health score
+          </p>
+        </div>
+      </div>
+      <ul class="pros"><li>Reduces scroll depth dramatically</li><li>Each tab = focused context</li><li>Easy to add new tabs later</li></ul>
+      <ul class="cons"><li>Hides information behind clicks</li><li>Users may not discover all tabs</li><li>Loses the "full picture at a glance"</li></ul>
+    </div>
+
+    <!-- Option D: Monarch-style widgets -->
+    <div class="option">
+      <h3>D. Widget Grid (Monarch-style)</h3>
+      <p class="tag">User-customizable widget positions and sizes</p>
+      <div class="dash-frame">
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+          <div class="placeholder hero" style="grid-row:span 2">
+            <div class="ph-label">Disponible</div>
+            <div class="ph-value">$2,340,000</div>
+            <div style="margin-top:12px;height:60px;background:var(--z-surface-2);border-radius:8px"></div>
+          </div>
+          <div class="placeholder"><div class="ph-label" style="font-size:8px">Tasa ahorro</div><div style="font-size:16px;font-weight:800;color:var(--z-income)">24%</div></div>
+          <div class="placeholder"><div class="ph-label" style="font-size:8px">Patrimonio</div><div style="font-size:16px;font-weight:800">$18.2M</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+          <div class="placeholder" style="min-height:100px"><div class="ph-label">Gastos por categoria</div></div>
+          <div class="placeholder" style="min-height:100px"><div class="ph-label">Flujo mensual</div></div>
+          <div class="placeholder" style="min-height:80px"><div class="ph-label">Proximos pagos</div></div>
+          <div class="placeholder" style="min-height:80px"><div class="ph-label">Deuda</div></div>
+        </div>
+        <div style="text-align:center;margin-top:12px;padding:12px;border:1px dashed var(--z-border-strong);border-radius:8px">
+          <span style="font-size:11px;color:var(--z-sage-dark)">+ Agregar widget</span>
+        </div>
+      </div>
+      <ul class="pros"><li>Maximum flexibility</li><li>Users see exactly what they want</li><li>Premium feel (Monarch charges $15/mo)</li></ul>
+      <ul class="cons"><li>Significant engineering effort</li><li>Blank-canvas problem for new users</li><li>Overkill for a focused tool</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 2: HERO VARIANTS -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="hero">
+  <h2>Hero Section Variants</h2>
+  <p class="desc">The hero is the first thing users see. It should answer "how am I doing?" in under 2 seconds.</p>
+
+  <div class="compare">
+    <!-- Current hero -->
+    <div class="option current">
+      <h3>Actual: Disponible para Gastar</h3>
+      <p class="tag">Single headline + 3 KPI sub-cards</p>
+      <div class="mock-card">
+        <div class="label">Disponible para gastar</div>
+        <div class="value">$2,340,000</div>
+        <div style="font-size:11px;color:var(--z-sage-dark);margin-top:4px">En COP</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">
+          <div style="background:var(--z-surface-3);border-radius:10px;padding:10px">
+            <div style="font-size:9px;color:var(--z-sage-dark)">Saldo total</div>
+            <div style="font-size:16px;font-weight:800;margin-top:2px">$4,200,000</div>
+          </div>
+          <div style="background:var(--z-surface-3);border-radius:10px;padding:10px">
+            <div style="font-size:9px;color:var(--z-sage-dark)">Fijos pendientes</div>
+            <div style="font-size:16px;font-weight:800;margin-top:2px;color:var(--z-expense)">$1,860,000</div>
+            <div style="font-size:10px;color:var(--z-sage-dark)">→ 4 pagos</div>
+          </div>
+          <div style="background:var(--z-surface-3);border-radius:10px;padding:10px">
+            <div style="font-size:9px;color:var(--z-sage-dark)">Libre</div>
+            <div style="font-size:16px;font-weight:800;margin-top:2px;color:var(--z-income)">$2,340,000</div>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>Clear, focused, one number</li><li>Already built and tested</li></ul>
+      <ul class="cons"><li>Doesn't show trends</li><li>No health/progress context</li></ul>
+    </div>
+
+    <!-- Hero B: With health score -->
+    <div class="option recommended">
+      <h3>Disponible + KPI Strip + Trend</h3>
+      <p class="tag">Keep current hero, add 4-metric strip below with sparklines</p>
+      <div class="mock-card">
+        <div class="label">Disponible para gastar</div>
+        <div class="value">$2,340,000</div>
+        <div style="font-size:11px;color:var(--z-sage-dark);margin-top:4px">En COP · <span style="color:var(--z-income)">↑ 12% vs mes anterior</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px">
+        <div style="background:var(--z-surface-2);border-radius:10px;padding:10px;border:1px solid var(--z-border)">
+          <div style="font-size:9px;color:var(--z-sage-dark)">TASA AHORRO</div>
+          <div style="font-size:18px;font-weight:800;color:var(--z-income);margin-top:2px">24%</div>
+          <div style="font-size:10px;color:var(--z-income)">↑ 3pp</div>
+        </div>
+        <div style="background:var(--z-surface-2);border-radius:10px;padding:10px;border:1px solid var(--z-border)">
+          <div style="font-size:9px;color:var(--z-sage-dark)">PATRIMONIO NETO</div>
+          <div style="font-size:18px;font-weight:800;margin-top:2px">$18.2M</div>
+          <div style="font-size:10px;color:var(--z-income)">↑ $1.2M</div>
+        </div>
+        <div style="background:var(--z-surface-2);border-radius:10px;padding:10px;border:1px solid var(--z-border)">
+          <div style="font-size:9px;color:var(--z-sage-dark)">FONDO EMERGENCIA</div>
+          <div style="font-size:18px;font-weight:800;color:var(--z-alert);margin-top:2px">2.1</div>
+          <div style="font-size:10px;color:var(--z-sage-dark)">meses · meta: 6</div>
+        </div>
+        <div style="background:var(--z-surface-2);border-radius:10px;padding:10px;border:1px solid var(--z-border)">
+          <div style="font-size:9px;color:var(--z-sage-dark)">RUNWAY</div>
+          <div style="font-size:18px;font-weight:800;margin-top:2px">23 dias</div>
+          <div style="font-size:10px;color:var(--z-sage-dark)">→ estable</div>
+        </div>
+      </div>
+      <ul class="pros"><li>All key metrics visible at once</li><li>Trends show direction</li><li>Extends current hero naturally</li><li>Additive, doesn't replace anything</li></ul>
+      <ul class="cons"><li>Slightly more vertical space</li></ul>
+    </div>
+  </div>
+
+  <div class="compare">
+    <!-- Hero C: Score-centered -->
+    <div class="option">
+      <h3>Financial Health Score Hero</h3>
+      <p class="tag">Score ring as the primary anchor, metrics around it</p>
+      <div class="mock-card" style="text-align:center;padding:24px">
+        <div class="score-ring">
+          <svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--z-surface-3)" stroke-width="8"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--z-income)" stroke-width="8"
+              stroke-dasharray="235 314" stroke-dashoffset="-157" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+          </svg>
+          <div class="score-value" style="color:var(--z-income)">75</div>
+        </div>
+        <div style="font-size:11px;color:var(--z-sage-dark);margin-top:8px">Salud Financiera · <span style="color:var(--z-income)">Buena</span></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px">
+          <div><div style="font-size:9px;color:var(--z-sage-dark)">Disponible</div><div style="font-size:16px;font-weight:800">$2.3M</div></div>
+          <div><div style="font-size:9px;color:var(--z-sage-dark)">Patrimonio</div><div style="font-size:16px;font-weight:800">$18.2M</div></div>
+          <div><div style="font-size:9px;color:var(--z-sage-dark)">Ahorro</div><div style="font-size:16px;font-weight:800;color:var(--z-income)">24%</div></div>
+        </div>
+      </div>
+      <ul class="pros"><li>Gamified — score motivates improvement</li><li>Single-glance health check</li><li>Unique differentiator</li></ul>
+      <ul class="cons"><li>Score methodology needs careful design</li><li>Users may distrust composite scores</li><li>Less directly actionable than "disponible"</li></ul>
+    </div>
+
+    <!-- Hero D: Cashflow waterfall micro -->
+    <div class="option">
+      <h3>Micro Cash Flow Hero</h3>
+      <p class="tag">Visual money flow: Income → Fixed → Variable → Savings</p>
+      <div class="mock-card" style="padding:20px">
+        <div class="flow">
+          <div class="flow-node">
+            <div class="fn-label">Ingresos</div>
+            <div class="fn-value text-income">$6.8M</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node">
+            <div class="fn-label">Fijos</div>
+            <div class="fn-value text-expense">-$2.8M</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node">
+            <div class="fn-label">Variable</div>
+            <div class="fn-value text-expense">-$1.7M</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node" style="border-color:var(--z-income)">
+            <div class="fn-label">Queda</div>
+            <div class="fn-value text-income">$2.3M</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:16px;font-size:11px;color:var(--z-sage-dark)">
+          <span>Tasa ahorro: <strong style="color:var(--z-income)">24%</strong></span>
+          <span>Runway: <strong style="color:var(--z-white)">23 dias</strong></span>
+          <span>Patrimonio: <strong style="color:var(--z-white)">$18.2M</strong></span>
+        </div>
+      </div>
+      <ul class="pros"><li>Shows the FLOW of money, not just snapshots</li><li>Immediately answers "where does it go?"</li><li>Lightweight alternative to Sankey</li></ul>
+      <ul class="cons"><li>Takes more horizontal space</li><li>May confuse users unfamiliar with flow diagrams</li><li>Doesn't show balance/account info</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 3: NEW KPI CARDS -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="new-kpis">
+  <h2>New KPI Cards</h2>
+  <p class="desc">These metrics don't exist in Zeta today. Each one uses data already available in the database. Shown as they'd appear using the existing KPIWidget component style.</p>
+
+  <div class="compare triple">
+    <div class="option recommended">
+      <h3>Tasa de Ahorro</h3>
+      <p class="tag">(Income - Expenses) / Income</p>
+      <div class="mock-card">
+        <div class="label">Tasa de ahorro</div>
+        <div class="value" style="color:var(--z-income)">24%</div>
+        <div class="trend up">↑ 3pp vs mes anterior</div>
+        <div class="progress-bar" style="margin-top:12px">
+          <div class="fill" style="width:24%;background:var(--z-income)"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-sage-dark);margin-top:4px">
+          <span>0%</span><span>Meta: 20%</span><span>50%</span>
+        </div>
+      </div>
+      <ul class="pros"><li>THE most requested personal finance metric</li><li>Data already computed in IncomeVsExpensesChart</li><li>Target 20% per 50/30/20 rule</li></ul>
+    </div>
+
+    <div class="option recommended">
+      <h3>Patrimonio Neto</h3>
+      <p class="tag">Assets - Liabilities</p>
+      <div class="mock-card">
+        <div class="label">Patrimonio neto</div>
+        <div class="value sm">$18,240,000</div>
+        <div class="trend up">↑ $1,200,000 (7%) este mes</div>
+        <div class="chart-wrap short">
+          <canvas id="netWorthChart"></canvas>
+        </div>
+      </div>
+      <ul class="pros"><li>Chart component already built (orphaned)</li><li>Data fetcher exists in charts.ts</li><li>The #1 long-term health metric</li></ul>
+    </div>
+
+    <div class="option recommended">
+      <h3>Fondo de Emergencia</h3>
+      <p class="tag">Liquid Savings / Monthly Essential Expenses</p>
+      <div class="mock-card">
+        <div class="label">Fondo de emergencia</div>
+        <div class="value" style="color:var(--z-alert)">2.1 <span style="font-size:14px;font-weight:400;color:var(--z-sage-dark)">meses</span></div>
+        <div class="trend flat">→ Meta: 3-6 meses</div>
+        <div style="margin-top:12px;display:flex;gap:2px;height:8px">
+          <div style="flex:2.1;background:var(--z-alert);border-radius:4px 0 0 4px"></div>
+          <div style="flex:0.9;background:var(--z-surface-3)"></div>
+          <div style="flex:3;background:var(--z-surface-3);border-radius:0 4px 4px 0;border-left:2px dashed var(--z-income)"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-sage-dark);margin-top:4px">
+          <span>0</span><span style="color:var(--z-alert)">↑ 2.1</span><span>3 min</span><span>6 ideal</span>
+        </div>
+      </div>
+      <ul class="pros"><li>"How many months can I survive?"</li><li>Uses existing account + expense data</li><li>Motivates saving behavior</li></ul>
+    </div>
+  </div>
+
+  <div class="compare triple">
+    <div class="option">
+      <h3>Intereses Pagados</h3>
+      <p class="tag">Sum of interest_charged from snapshots</p>
+      <div class="mock-card">
+        <div class="label">Intereses pagados este mes</div>
+        <div class="value sm" style="color:var(--z-debt)">$124,500</div>
+        <div class="trend down">↓ $18,200 vs mes anterior</div>
+        <div style="margin-top:12px;font-size:11px;color:var(--z-sage-dark)">
+          Acumulado 2026: <strong style="color:var(--z-debt)">$892,300</strong>
+        </div>
+      </div>
+      <ul class="pros"><li>Data exists in statement_snapshots.interest_charged</li><li>"Cost of debt" is a powerful motivator</li></ul>
+    </div>
+
+    <div class="option">
+      <h3>Deuda-a-Ingreso (DTI)</h3>
+      <p class="tag">Monthly Debt Payments / Monthly Income</p>
+      <div class="mock-card">
+        <div class="label">Ratio deuda / ingresos</div>
+        <div class="value" style="color:var(--z-alert)">32%</div>
+        <div class="trend flat">→ Meta: &lt; 36%</div>
+        <div style="margin-top:12px;position:relative;height:12px;background:linear-gradient(to right, var(--z-income) 0%, var(--z-income) 20%, var(--z-alert) 36%, var(--z-debt) 50%);border-radius:6px;opacity:0.3"></div>
+        <div style="position:relative;margin-top:-12px;height:12px">
+          <div style="position:absolute;left:32%;top:0;width:3px;height:12px;background:var(--z-white);border-radius:2px"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-sage-dark);margin-top:6px">
+          <span>0%</span><span style="color:var(--z-income)">20% bueno</span><span style="color:var(--z-alert)">36% limite</span><span>50%+</span>
+        </div>
+      </div>
+      <ul class="pros"><li>Standard lender metric (mortgage threshold)</li><li>Data from debt page salary bar already</li></ul>
+    </div>
+
+    <div class="option">
+      <h3>Progreso Pago Deudas</h3>
+      <p class="tag">(Original - Current) / Original per loan</p>
+      <div class="mock-card">
+        <div class="label">Progreso pago de deudas</div>
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span>Visa Gold</span>
+            <span style="font-weight:700;color:var(--z-expense)">$2.4M / $5M</span>
+          </div>
+          <div class="progress-bar"><div class="fill" style="width:52%;background:var(--z-expense)"></div></div>
+
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:12px;margin-bottom:4px">
+            <span>Credito Libre</span>
+            <span style="font-weight:700;color:var(--z-income)">$8M / $20M</span>
+          </div>
+          <div class="progress-bar"><div class="fill" style="width:60%;background:var(--z-income)"></div></div>
+
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:12px;margin-bottom:4px">
+            <span>Vehiculo</span>
+            <span style="font-weight:700;color:var(--z-income)">$3.2M / $15M</span>
+          </div>
+          <div class="progress-bar"><div class="fill" style="width:79%;background:var(--z-income)"></div></div>
+        </div>
+      </div>
+      <ul class="pros"><li>Data exists in loan snapshots (initial_amount, remaining_balance)</li><li>Visual motivation to keep paying</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 4: FINANCIAL HEALTH SCORE -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="health">
+  <h2>Financial Health Score</h2>
+  <p class="desc">A composite score combining savings rate, DTI, emergency fund, utilization, and net worth trend. Three visualization approaches.</p>
+
+  <div class="compare triple">
+    <div class="option recommended">
+      <h3>A. Score Ring + Breakdown</h3>
+      <p class="tag">Single score with factor drill-down</p>
+      <div class="mock-card" style="padding:20px">
+        <div style="display:flex;align-items:center;gap:24px">
+          <div class="score-ring">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--z-surface-3)" stroke-width="8"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--z-income)" stroke-width="8"
+                stroke-dasharray="235 314" stroke-dashoffset="-157" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="score-value" style="color:var(--z-income)">75</div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;margin-bottom:12px">Salud Financiera: <span style="color:var(--z-income)">Buena</span></div>
+            <div style="font-size:12px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--z-sage)">Tasa ahorro</span><span style="font-weight:700;color:var(--z-income)">24% ✓</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--z-sage)">DTI</span><span style="font-weight:700;color:var(--z-alert)">32% ⚠</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--z-sage)">Fondo emerg.</span><span style="font-weight:700;color:var(--z-debt)">2.1m ✗</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--z-sage)">Utilización TC</span><span style="font-weight:700;color:var(--z-income)">28% ✓</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--z-sage)">Patrimonio</span><span style="font-weight:700;color:var(--z-income)">↑ creciendo ✓</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>Clean, scannable</li><li>Shows both score and factors</li><li>Actionable — user sees what to fix</li></ul>
+    </div>
+
+    <div class="option">
+      <h3>B. Radar Chart</h3>
+      <p class="tag">Multi-dimensional spider diagram</p>
+      <div class="mock-card" style="padding:20px">
+        <div class="radar-wrap">
+          <div class="radar-chart">
+            <canvas id="radarChart"></canvas>
+          </div>
+          <div class="radar-list">
+            <div class="ri"><span class="ri-label">Ahorro</span><span class="ri-val good">24%</span></div>
+            <div class="ri"><span class="ri-label">DTI</span><span class="ri-val warn">32%</span></div>
+            <div class="ri"><span class="ri-label">Emergencia</span><span class="ri-val bad">2.1m</span></div>
+            <div class="ri"><span class="ri-label">Utilización</span><span class="ri-val good">28%</span></div>
+            <div class="ri"><span class="ri-label">Patrimonio</span><span class="ri-val good">↑</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>Visually striking</li><li>Shows relative strengths/weaknesses</li></ul>
+      <ul class="cons"><li>Harder to read precisely</li><li>Can feel gimmicky</li></ul>
+    </div>
+
+    <div class="option">
+      <h3>C. Traffic Light Grid</h3>
+      <p class="tag">Simple red/yellow/green status per metric</p>
+      <div class="mock-card" style="padding:20px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:color-mix(in srgb, var(--z-income) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-income) 20%, transparent);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:var(--z-income);text-transform:uppercase;letter-spacing:0.06em">Ahorro</div>
+            <div style="font-size:20px;font-weight:800;color:var(--z-income)">24%</div>
+            <div style="font-size:10px;color:var(--z-sage-dark)">Meta: 20%</div>
+          </div>
+          <div style="background:color-mix(in srgb, var(--z-alert) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-alert) 20%, transparent);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:var(--z-alert);text-transform:uppercase;letter-spacing:0.06em">DTI</div>
+            <div style="font-size:20px;font-weight:800;color:var(--z-alert)">32%</div>
+            <div style="font-size:10px;color:var(--z-sage-dark)">Limite: 36%</div>
+          </div>
+          <div style="background:color-mix(in srgb, var(--z-debt) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-debt) 20%, transparent);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:var(--z-debt);text-transform:uppercase;letter-spacing:0.06em">Emergencia</div>
+            <div style="font-size:20px;font-weight:800;color:var(--z-debt)">2.1m</div>
+            <div style="font-size:10px;color:var(--z-sage-dark)">Min: 3 meses</div>
+          </div>
+          <div style="background:color-mix(in srgb, var(--z-income) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-income) 20%, transparent);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:var(--z-income);text-transform:uppercase;letter-spacing:0.06em">Utilización TC</div>
+            <div style="font-size:20px;font-weight:800;color:var(--z-income)">28%</div>
+            <div style="font-size:10px;color:var(--z-sage-dark)">Limite: 30%</div>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>Uses Zeta's existing surface-* semantic classes</li><li>Instantly scannable</li><li>Zero learning curve</li></ul>
+      <ul class="cons"><li>Less sophisticated feel</li><li>No single score to track</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 5: CASH FLOW VISUALIZATIONS -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="cashflow-viz">
+  <h2>Cash Flow Visualizations</h2>
+  <p class="desc">How to show money coming in and going out over time. The current Income vs Expenses line chart is functional but not the most intuitive format.</p>
+
+  <div class="compare">
+    <div class="option current">
+      <h3>Actual: Line Chart (6 meses)</h3>
+      <p class="tag">Two lines — income (green) and expenses (orange)</p>
+      <div class="mock-card">
+        <div class="label">Ingresos vs Gastos</div>
+        <div class="chart-wrap">
+          <canvas id="cashflowLineChart"></canvas>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--z-sage-dark)">
+          <span><span style="color:var(--z-income)">●</span> Ingresos</span>
+          <span><span style="color:var(--z-expense)">●</span> Gastos</span>
+          <span style="margin-left:auto;color:var(--z-income)">Ahorro: 24%</span>
+        </div>
+      </div>
+      <ul class="pros"><li>Already built</li><li>Shows 6-month trend</li><li>Gap between lines = savings</li></ul>
+      <ul class="cons"><li>Lines can overlap/cross confusingly</li><li>Hard to see net at a glance</li></ul>
+    </div>
+
+    <div class="option recommended">
+      <h3>Bar Chart (Income vs Expenses)</h3>
+      <p class="tag">Side-by-side bars — immediately shows surplus/deficit</p>
+      <div class="mock-card">
+        <div class="label">Flujo de caja mensual</div>
+        <div class="chart-wrap">
+          <canvas id="cashflowBarChart"></canvas>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--z-sage-dark)">
+          <span><span style="color:var(--z-income)">■</span> Ingresos</span>
+          <span><span style="color:var(--z-expense)">■</span> Gastos</span>
+          <span><span style="color:var(--z-sage)">─</span> Neto</span>
+        </div>
+      </div>
+      <ul class="pros"><li>Component already built (MonthlyCashflowChart — orphaned)</li><li>Surplus/deficit instantly visible</li><li>Most intuitive cash flow format</li></ul>
+      <ul class="cons"><li>Takes slightly more space than lines</li></ul>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="option">
+      <h3>Waterfall Chart</h3>
+      <p class="tag">Shows how income flows through expense categories to net</p>
+      <div class="mock-card">
+        <div class="label">Flujo este mes</div>
+        <div class="waterfall">
+          <div class="wf-bar"><div class="wf-value text-income">$6.8M</div><div class="bar positive" style="height:100%"></div><div class="wf-label">Ingresos</div></div>
+          <div class="wf-bar"><div class="wf-value text-expense">-$1.8M</div><div class="bar negative" style="height:26%"></div><div class="wf-label">Vivienda</div></div>
+          <div class="wf-bar"><div class="wf-value text-expense">-$850K</div><div class="bar negative" style="height:13%"></div><div class="wf-label">Transporte</div></div>
+          <div class="wf-bar"><div class="wf-value text-expense">-$720K</div><div class="bar negative" style="height:11%"></div><div class="wf-label">Comida</div></div>
+          <div class="wf-bar"><div class="wf-value text-expense">-$480K</div><div class="bar negative" style="height:7%"></div><div class="wf-label">Otros</div></div>
+          <div class="wf-bar"><div class="wf-value text-expense">-$610K</div><div class="bar negative" style="height:9%"></div><div class="wf-label">Deudas</div></div>
+          <div class="wf-bar"><div class="wf-value text-income">$2.3M</div><div class="bar net" style="height:34%;border:1px solid var(--z-income)"></div><div class="wf-label" style="font-weight:700">Queda</div></div>
+        </div>
+      </div>
+      <ul class="pros"><li>Shows WHERE money goes, not just totals</li><li>Alternative to Sankey with much less complexity</li><li>Reads left-to-right, natural flow</li></ul>
+      <ul class="cons"><li>Needs new component (Recharts doesn't have native waterfall)</li><li>Best for single-month view, not trends</li></ul>
+    </div>
+
+    <div class="option">
+      <h3>Enhanced 3-View Toggle</h3>
+      <p class="tag">Already built (orphaned EnhancedCashflowChart) — 3 modes</p>
+      <div class="mock-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="label">Flujo de caja</div>
+          <div class="tab-bar" style="margin:0">
+            <div class="tab">Dual</div>
+            <div class="tab active">Neto</div>
+            <div class="tab">Acumulado</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="cashflowNetChart"></canvas>
+        </div>
+      </div>
+      <ul class="pros"><li>Already built — just wire in</li><li>Three perspectives on same data</li><li>"Net" view is the clearest cash flow view</li></ul>
+      <ul class="cons"><li>Toggle may be confusing for some users</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 6: CATEGORY SPENDING -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="category-viz">
+  <h2>Category Spending Visualizations</h2>
+  <p class="desc">Currently only a CSS stacked bar. Category breakdown is the most requested visualization in personal finance.</p>
+
+  <div class="compare">
+    <div class="option current">
+      <h3>Actual: Stacked Bar</h3>
+      <p class="tag">Horizontal CSS bar showing top 5 categories</p>
+      <div class="mock-card">
+        <div class="label">Gastos por categoria — Marzo</div>
+        <div style="margin-top:12px;height:28px;display:flex;border-radius:8px;overflow:hidden">
+          <div style="flex:28;background:var(--z-expense)" title="Vivienda 28%"></div>
+          <div style="flex:18;background:color-mix(in srgb, var(--z-expense) 75%, var(--z-alert))" title="Transporte 18%"></div>
+          <div style="flex:15;background:var(--z-alert)" title="Comida 15%"></div>
+          <div style="flex:12;background:color-mix(in srgb, var(--z-alert) 60%, var(--z-sage))" title="Entretenimiento 12%"></div>
+          <div style="flex:27;background:var(--z-sage-dark)" title="Otros 27%"></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:10px;color:var(--z-sage-dark)">
+          <span><span style="color:var(--z-expense)">■</span> Vivienda 28%</span>
+          <span><span style="color:color-mix(in srgb, var(--z-expense) 75%, var(--z-alert))">■</span> Transporte 18%</span>
+          <span><span style="color:var(--z-alert)">■</span> Comida 15%</span>
+          <span><span style="color:color-mix(in srgb, var(--z-alert) 60%, var(--z-sage))">■</span> Entret. 12%</span>
+          <span><span style="color:var(--z-sage-dark)">■</span> Otros 27%</span>
+        </div>
+      </div>
+      <ul class="pros"><li>Compact, already built</li><li>Shows proportions at a glance</li></ul>
+      <ul class="cons"><li>Hard to read exact values</li><li>Small categories invisible</li><li>No amounts, only percentages</li></ul>
+    </div>
+
+    <div class="option recommended">
+      <h3>Donut + Legend List</h3>
+      <p class="tag">The most expected PF visualization — shows % and amounts</p>
+      <div class="mock-card">
+        <div class="label">Gastos por categoria — Marzo</div>
+        <div class="donut-area">
+          <div class="donut-chart">
+            <canvas id="donutChart"></canvas>
+          </div>
+          <div class="donut-legend">
+            <div class="item"><div class="dot" style="background:var(--z-expense)"></div>Vivienda<span class="item-val">$1,820K</span></div>
+            <div class="item"><div class="dot" style="background:#D4A843"></div>Transporte<span class="item-val">$850K</span></div>
+            <div class="item"><div class="dot" style="background:#5CB88A"></div>Comida<span class="item-val">$720K</span></div>
+            <div class="item"><div class="dot" style="background:#7C8BA0"></div>Entretenimiento<span class="item-val">$610K</span></div>
+            <div class="item"><div class="dot" style="background:#9E9888"></div>Otros<span class="item-val">$480K</span></div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--z-sage-dark)">Total: <strong>$4,480,000</strong></div>
+      </div>
+      <ul class="pros"><li>Universal recognition — every PF app has this</li><li>Shows both % and amounts</li><li>Recharts PieChart ready to use</li></ul>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="option">
+      <h3>Treemap</h3>
+      <p class="tag">Area-proportional rectangles — good for many categories</p>
+      <div class="mock-card">
+        <div class="label">Gastos por categoria — Marzo</div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:28fr 18fr 15fr;grid-template-rows:1fr 1fr;gap:3px;height:150px">
+          <div style="background:var(--z-expense);border-radius:6px;padding:8px;grid-row:span 2;display:flex;flex-direction:column;justify-content:center">
+            <div style="font-size:12px;font-weight:700">Vivienda</div>
+            <div style="font-size:10px;opacity:0.8">$1,820K · 28%</div>
+          </div>
+          <div style="background:var(--z-alert);border-radius:6px;padding:8px;display:flex;flex-direction:column;justify-content:center">
+            <div style="font-size:11px;font-weight:700">Transporte</div>
+            <div style="font-size:9px;opacity:0.8">$850K</div>
+          </div>
+          <div style="background:var(--z-income);border-radius:6px;padding:8px;display:flex;flex-direction:column;justify-content:center">
+            <div style="font-size:11px;font-weight:700">Comida</div>
+            <div style="font-size:9px;opacity:0.8">$720K</div>
+          </div>
+          <div style="background:#7C8BA0;border-radius:6px;padding:8px;display:flex;flex-direction:column;justify-content:center">
+            <div style="font-size:10px;font-weight:700">Entret.</div>
+            <div style="font-size:9px;opacity:0.8">$610K</div>
+          </div>
+          <div style="background:var(--z-sage-dark);border-radius:6px;padding:8px;display:flex;flex-direction:column;justify-content:center">
+            <div style="font-size:10px;font-weight:700">Otros</div>
+            <div style="font-size:9px;opacity:0.8">$480K</div>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>Efficient use of space</li><li>Scales to many categories</li><li>Visual impact — area = amount</li></ul>
+      <ul class="cons"><li>Recharts Treemap is tricky to style</li><li>Less familiar to users</li><li>Small categories become unreadable</li></ul>
+    </div>
+
+    <div class="option">
+      <h3>Horizontal Bars + Budget Overlay</h3>
+      <p class="tag">Each category shows spent vs budget with amounts</p>
+      <div class="mock-card">
+        <div class="label">Gastos por categoria — Marzo</div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>Vivienda</span><span style="color:var(--z-sage-dark)">$1,820K <span style="font-size:10px">/ $2,000K</span></span>
+            </div>
+            <div style="height:8px;background:var(--z-surface-3);border-radius:4px;position:relative">
+              <div style="width:91%;height:100%;background:var(--z-expense);border-radius:4px"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>Transporte</span><span style="color:var(--z-debt);font-weight:700">$850K <span style="font-size:10px">/ $700K ⚠</span></span>
+            </div>
+            <div style="height:8px;background:var(--z-surface-3);border-radius:4px;position:relative">
+              <div style="width:100%;height:100%;background:var(--z-debt);border-radius:4px"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>Comida</span><span style="color:var(--z-sage-dark)">$720K <span style="font-size:10px">/ $900K</span></span>
+            </div>
+            <div style="height:8px;background:var(--z-surface-3);border-radius:4px;position:relative">
+              <div style="width:80%;height:100%;background:var(--z-alert);border-radius:4px"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>Entretenimiento</span><span style="color:var(--z-sage-dark)">$610K <span style="font-size:10px">/ $800K</span></span>
+            </div>
+            <div style="height:8px;background:var(--z-surface-3);border-radius:4px;position:relative">
+              <div style="width:76%;height:100%;background:var(--z-income);border-radius:4px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>Shows budget context alongside spending</li><li>Overspend instantly visible (red)</li><li>Similar to budget page cards but compact</li></ul>
+      <ul class="cons"><li>Duplicates budget page functionality</li><li>Doesn't show proportions as well as donut</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 7: SANKEY VS ALTERNATIVES -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="sankey-vs">
+  <h2>Sankey vs Alternatives</h2>
+  <p class="desc">Sankey diagrams show money flow from sources to destinations. Popular on Reddit, but complex to build and read. Here are alternatives that convey the same insight.</p>
+
+  <div class="compare">
+    <div class="option">
+      <h3>Sankey Diagram</h3>
+      <p class="tag">Full flow visualization: income → categories → savings</p>
+      <div class="mock-card" style="padding:20px">
+        <div class="label">Flujo de dinero — Marzo</div>
+        <div class="sankey-mock">
+          <svg viewBox="0 0 600 200">
+            <!-- Income source -->
+            <rect x="0" y="10" width="20" height="180" rx="4" fill="var(--z-income)" opacity="0.8"/>
+            <text x="25" y="95" fill="var(--z-sage)" font-size="10" dominant-baseline="middle">Salario $6.8M</text>
+
+            <!-- Flow paths -->
+            <path d="M 20,30 C 150,30 200,20 300,20" stroke="var(--z-expense)" stroke-width="30" fill="none" opacity="0.2"/>
+            <path d="M 20,70 C 150,70 200,60 300,60" stroke="var(--z-expense)" stroke-width="18" fill="none" opacity="0.2"/>
+            <path d="M 20,100 C 150,100 200,95 300,95" stroke="var(--z-expense)" stroke-width="14" fill="none" opacity="0.2"/>
+            <path d="M 20,130 C 150,130 200,125 300,125" stroke="var(--z-expense)" stroke-width="12" fill="none" opacity="0.2"/>
+            <path d="M 20,160 C 150,160 200,155 300,155" stroke="var(--z-debt)" stroke-width="10" fill="none" opacity="0.2"/>
+            <path d="M 20,185 C 150,185 200,180 300,180" stroke="var(--z-income)" stroke-width="16" fill="none" opacity="0.3"/>
+
+            <!-- Category blocks -->
+            <rect x="300" y="5" width="16" height="35" rx="3" fill="var(--z-expense)"/>
+            <text x="322" y="25" fill="var(--z-sage)" font-size="9">Vivienda $1.8M</text>
+            <rect x="300" y="48" width="16" height="22" rx="3" fill="var(--z-expense)"/>
+            <text x="322" y="62" fill="var(--z-sage)" font-size="9">Transporte $850K</text>
+            <rect x="300" y="80" width="16" height="18" rx="3" fill="var(--z-alert)"/>
+            <text x="322" y="92" fill="var(--z-sage)" font-size="9">Comida $720K</text>
+            <rect x="300" y="108" width="16" height="15" rx="3" fill="var(--z-sage-dark)"/>
+            <text x="322" y="118" fill="var(--z-sage)" font-size="9">Otros $610K</text>
+            <rect x="300" y="140" width="16" height="14" rx="3" fill="var(--z-debt)"/>
+            <text x="322" y="150" fill="var(--z-sage)" font-size="9">Deudas $480K</text>
+            <rect x="300" y="168" width="16" height="20" rx="3" fill="var(--z-income)"/>
+            <text x="322" y="180" fill="var(--z-income)" font-size="9" font-weight="bold">Ahorro $2.3M</text>
+          </svg>
+        </div>
+      </div>
+      <ul class="pros"><li>Most complete money flow visualization</li><li>"Wow factor" — impressive in demos</li><li>Shows proportional flow</li></ul>
+      <ul class="cons"><li>Complex to build (no native Recharts support)</li><li>Hard to read on mobile</li><li>Confusing with many categories</li><li>Diminishing returns after first "aha"</li></ul>
+    </div>
+
+    <div class="option recommended">
+      <h3>Simplified Flow Diagram</h3>
+      <p class="tag">Linear flow: same insight, 10% of the complexity</p>
+      <div class="mock-card" style="padding:20px">
+        <div class="label">Flujo de dinero — Marzo</div>
+        <div style="margin-top:16px">
+          <!-- Income bar -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:60px;font-size:10px;color:var(--z-sage-dark);text-align:right">Ingresos</div>
+            <div style="flex:1;height:24px;background:var(--z-income);border-radius:6px;display:flex;align-items:center;padding:0 10px">
+              <span style="font-size:11px;font-weight:700;color:var(--z-ink)">$6,800,000</span>
+            </div>
+          </div>
+          <!-- Expense breakdown -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <div style="width:60px;font-size:10px;color:var(--z-sage-dark);text-align:right">Fijos</div>
+            <div style="flex:0 0 calc(68% * 0.41);height:18px;background:var(--z-expense);border-radius:4px;display:flex;align-items:center;padding:0 8px">
+              <span style="font-size:10px;font-weight:600">$2,800K</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <div style="width:60px;font-size:10px;color:var(--z-sage-dark);text-align:right">Variable</div>
+            <div style="flex:0 0 calc(68% * 0.25);height:18px;background:var(--z-alert);border-radius:4px;display:flex;align-items:center;padding:0 8px">
+              <span style="font-size:10px;font-weight:600">$1,700K</span>
+            </div>
+          </div>
+          <!-- Remaining -->
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--z-border-strong)">
+            <div style="width:60px;font-size:10px;color:var(--z-income);text-align:right;font-weight:600">Queda</div>
+            <div style="flex:0 0 calc(68% * 0.34);height:24px;background:color-mix(in srgb, var(--z-income) 15%, transparent);border:1px solid var(--z-income);border-radius:6px;display:flex;align-items:center;padding:0 10px">
+              <span style="font-size:11px;font-weight:700;color:var(--z-income)">$2,300,000</span>
+            </div>
+            <span style="font-size:11px;color:var(--z-income);font-weight:600">34%</span>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>Same insight as Sankey, fraction of the complexity</li><li>Reads naturally top-to-bottom</li><li>Works perfectly on mobile</li><li>Can be built with CSS divs (no chart library)</li></ul>
+      <ul class="cons"><li>Less "wow" than Sankey</li><li>Doesn't show individual category flows</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 8: SPENDING HEATMAP -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="heatmap">
+  <h2>Spending Heatmap</h2>
+  <p class="desc">Calendar-style view showing spending intensity per day. Helps users spot patterns (e.g., weekends = high spending).</p>
+
+  <div class="compare single">
+    <div class="option">
+      <h3>GitHub-Style Spending Heatmap</h3>
+      <p class="tag">Each cell = one day, color intensity = spending amount</p>
+      <div class="mock-card" style="padding:20px">
+        <div class="label">Calendario de gastos — Marzo 2026</div>
+        <div style="display:flex;gap:4px;margin-top:8px;margin-bottom:6px;font-size:9px;color:var(--z-sage-dark)">
+          <div style="width:calc(100%/7);text-align:center">Lun</div>
+          <div style="width:calc(100%/7);text-align:center">Mar</div>
+          <div style="width:calc(100%/7);text-align:center">Mie</div>
+          <div style="width:calc(100%/7);text-align:center">Jue</div>
+          <div style="width:calc(100%/7);text-align:center">Vie</div>
+          <div style="width:calc(100%/7);text-align:center">Sab</div>
+          <div style="width:calc(100%/7);text-align:center">Dom</div>
+        </div>
+        <div class="heatmap">
+          <!-- Week 1 (March starts on Sunday) -->
+          <div class="cell l0"></div><div class="cell l0"></div><div class="cell l0"></div><div class="cell l0"></div><div class="cell l0"></div><div class="cell l0"></div><div class="cell l1"></div>
+          <!-- Week 2 -->
+          <div class="cell l2"></div><div class="cell l1"></div><div class="cell l0"></div><div class="cell l1"></div><div class="cell l3"></div><div class="cell l4"></div><div class="cell l3"></div>
+          <!-- Week 3 -->
+          <div class="cell l1"></div><div class="cell l1"></div><div class="cell l2"></div><div class="cell l0"></div><div class="cell l2"></div><div class="cell l4"></div><div class="cell l2"></div>
+          <!-- Week 4 -->
+          <div class="cell l0"></div><div class="cell l3"></div><div class="cell l1"></div><div class="cell l1"></div><div class="cell l2"></div><div class="cell l3"></div><div class="cell l1"></div>
+          <!-- Week 5 (partial) -->
+          <div class="cell l1"></div><div class="cell l0"></div><div class="cell l0"></div><div class="cell l0"></div><div class="cell l0"></div><div class="cell l0"></div><div class="cell l0"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;margin-top:12px;justify-content:flex-end">
+          <span style="font-size:9px;color:var(--z-sage-dark)">Menos</span>
+          <div style="width:12px;height:12px;border-radius:3px;background:var(--z-surface-3)"></div>
+          <div style="width:12px;height:12px;border-radius:3px;background:color-mix(in srgb, var(--z-expense) 25%, var(--z-surface-3))"></div>
+          <div style="width:12px;height:12px;border-radius:3px;background:color-mix(in srgb, var(--z-expense) 50%, var(--z-surface-3))"></div>
+          <div style="width:12px;height:12px;border-radius:3px;background:color-mix(in srgb, var(--z-expense) 75%, var(--z-surface-3))"></div>
+          <div style="width:12px;height:12px;border-radius:3px;background:var(--z-expense)"></div>
+          <span style="font-size:9px;color:var(--z-sage-dark)">Mas</span>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:var(--z-sage-dark)">
+          Patron detectado: <strong style="color:var(--z-white)">Gastas 2.3x mas los sabados</strong>
+        </div>
+      </div>
+      <ul class="pros"><li>Reveals spending patterns (weekday vs weekend)</li><li>Uses existing daily spending data (getDailySpending)</li><li>Visually distinctive</li><li>Pattern detection adds insight layer</li></ul>
+      <ul class="cons"><li>New component to build</li><li>Less immediately useful than raw metrics</li><li>Best as a discovery/exploration tool, not daily use</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 9: BUDGET PAGE -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="budget-page">
+  <h2>Budget Page Upgrades</h2>
+  <p class="desc">The current budget page has per-category cards with progress bars, trend comparison, and a summary bar. Here are improvements.</p>
+
+  <div class="compare">
+    <div class="option recommended">
+      <h3>50/30/20 Allocation View</h3>
+      <p class="tag">Show how spending maps to the Needs/Wants/Savings framework</p>
+      <div class="mock-card" style="padding:20px">
+        <div class="label">Distribucion 50/30/20</div>
+        <div style="margin-top:12px">
+          <!-- Needs -->
+          <div style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span>Necesidades <span style="color:var(--z-sage-dark)">(meta: 50%)</span></span>
+              <span style="font-weight:700">48% · $3,264,000</span>
+            </div>
+            <div style="height:20px;background:var(--z-surface-3);border-radius:6px;position:relative;overflow:hidden">
+              <div style="width:48%;height:100%;background:var(--z-income);border-radius:6px"></div>
+              <div style="position:absolute;left:50%;top:0;height:100%;width:1px;border-left:2px dashed var(--z-white);opacity:0.3"></div>
+            </div>
+            <div style="font-size:10px;color:var(--z-sage-dark);margin-top:4px">Vivienda, transporte, servicios, seguros</div>
+          </div>
+          <!-- Wants -->
+          <div style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span>Deseos <span style="color:var(--z-sage-dark)">(meta: 30%)</span></span>
+              <span style="font-weight:700;color:var(--z-alert)">35% · $2,380,000</span>
+            </div>
+            <div style="height:20px;background:var(--z-surface-3);border-radius:6px;position:relative;overflow:hidden">
+              <div style="width:35%;height:100%;background:var(--z-alert);border-radius:6px"></div>
+              <div style="position:absolute;left:30%;top:0;height:100%;width:1px;border-left:2px dashed var(--z-white);opacity:0.3"></div>
+            </div>
+            <div style="font-size:10px;color:var(--z-sage-dark);margin-top:4px">Entretenimiento, restaurantes, shopping</div>
+          </div>
+          <!-- Savings -->
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span>Ahorro/Deuda <span style="color:var(--z-sage-dark)">(meta: 20%)</span></span>
+              <span style="font-weight:700;color:var(--z-debt)">17% · $1,156,000</span>
+            </div>
+            <div style="height:20px;background:var(--z-surface-3);border-radius:6px;position:relative;overflow:hidden">
+              <div style="width:17%;height:100%;background:var(--z-debt);border-radius:6px"></div>
+              <div style="position:absolute;left:20%;top:0;height:100%;width:1px;border-left:2px dashed var(--z-white);opacity:0.3"></div>
+            </div>
+            <div style="font-size:10px;color:var(--z-sage-dark);margin-top:4px">Ahorro, pagos deuda, inversiones</div>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>Most popular budgeting framework per research</li><li>Needs category tagging (expense_type already exists!)</li><li>Simple comparison: actual vs target</li></ul>
+      <ul class="cons"><li>Requires mapping all categories to Needs/Wants/Savings</li></ul>
+    </div>
+
+    <div class="option">
+      <h3>Budget Forecast: Projected vs Actual</h3>
+      <p class="tag">Show projected end-of-month based on current pace + recurring</p>
+      <div class="mock-card" style="padding:20px">
+        <div class="label">Proyeccion fin de mes</div>
+        <div style="margin-top:12px;display:flex;gap:16px">
+          <div style="flex:1;text-align:center">
+            <div style="font-size:10px;color:var(--z-sage-dark)">PRESUPUESTADO</div>
+            <div style="font-size:22px;font-weight:800;margin-top:4px">$4,500K</div>
+          </div>
+          <div style="width:1px;background:var(--z-border-strong)"></div>
+          <div style="flex:1;text-align:center">
+            <div style="font-size:10px;color:var(--z-sage-dark)">PROYECTADO</div>
+            <div style="font-size:22px;font-weight:800;margin-top:4px;color:var(--z-alert)">$4,820K</div>
+            <div style="font-size:10px;color:var(--z-debt)">↑ $320K sobre presupuesto</div>
+          </div>
+          <div style="width:1px;background:var(--z-border-strong)"></div>
+          <div style="flex:1;text-align:center">
+            <div style="font-size:10px;color:var(--z-sage-dark)">GASTADO HOY</div>
+            <div style="font-size:22px;font-weight:800;margin-top:4px">$2,640K</div>
+            <div style="font-size:10px;color:var(--z-sage-dark)">58% del mes</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;padding:12px;background:color-mix(in srgb, var(--z-alert) 8%, transparent);border:1px solid color-mix(in srgb, var(--z-alert) 20%, transparent);border-radius:8px;font-size:12px;color:var(--z-alert)">
+          Al ritmo actual, terminaras $320K sobre presupuesto. Reduce gastos variables $22K/dia para llegar a meta.
+        </div>
+      </div>
+      <ul class="pros"><li>Forward-looking (most apps only look backwards)</li><li>Actionable daily target</li><li>Uses burn rate data already computed</li></ul>
+      <ul class="cons"><li>Projections can be inaccurate early in month</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 10: DEBT PAGE -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="debt-page">
+  <h2>Debt Page Upgrades</h2>
+  <p class="desc">Current debt page shows total debt, utilization gauge, interest costs, and per-account cards. Potential additions:</p>
+
+  <div class="compare">
+    <div class="option recommended">
+      <h3>Interest Rate History Chart</h3>
+      <p class="tag">Track rate changes over time from statement snapshots</p>
+      <div class="mock-card" style="padding:20px">
+        <div class="label">Historial tasa de interes</div>
+        <div class="chart-wrap">
+          <canvas id="interestRateChart"></canvas>
+        </div>
+        <div style="font-size:11px;color:var(--z-sage-dark);margin-top:8px">
+          Datos de extractos importados · Visa Gold: <span style="color:var(--z-debt)">28.8% → 31.2% EA</span> (+2.4pp en 6 meses)
+        </div>
+      </div>
+      <ul class="pros"><li>Data already in statement_snapshots.interest_rate</li><li>Tracks hidden rate increases</li><li>Unique feature — no competitor does this</li></ul>
+    </div>
+
+    <div class="option">
+      <h3>Debt-Free Countdown</h3>
+      <p class="tag">Projected payoff timeline at current payment rate</p>
+      <div class="mock-card" style="padding:20px">
+        <div style="text-align:center">
+          <div class="label">Libre de deudas en</div>
+          <div style="font-size:42px;font-weight:900;letter-spacing:-0.04em;margin-top:8px">14 <span style="font-size:18px;font-weight:400;color:var(--z-sage-dark)">meses</span></div>
+          <div style="font-size:12px;color:var(--z-sage-dark);margin-top:4px">Mayo 2027 al ritmo actual</div>
+        </div>
+        <div style="margin-top:16px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--z-sage-dark);margin-bottom:4px">
+            <span>Deuda restante</span><span style="font-weight:700;color:var(--z-white)">$12,400,000</span>
+          </div>
+          <div class="progress-bar"><div class="fill" style="width:62%;background:linear-gradient(to right, var(--z-income), var(--z-alert))"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-sage-dark);margin-top:4px">
+            <span>$20M original</span><span>$0 meta</span>
+          </div>
+        </div>
+        <div style="margin-top:16px;padding:10px;background:var(--z-surface-2);border-radius:8px;font-size:11px;color:var(--z-sage)">
+          Pagando $100K extra/mes → libre en <strong style="color:var(--z-income)">11 meses</strong> (ahorras <strong style="color:var(--z-income)">$892K</strong> en intereses)
+        </div>
+      </div>
+      <ul class="pros"><li>Highly motivational</li><li>Shows impact of extra payments</li><li>Uses existing debt + payment data</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 11: MONTHLY REPORT -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="monthly-report">
+  <h2>Monthly Report Flow</h2>
+  <p class="desc">End-of-month summary showing how the user did. Can be triggered automatically in the last 5 days of the month (the insight mechanism already exists).</p>
+
+  <div class="compare single">
+    <div class="option recommended">
+      <h3>Monthly Financial Report</h3>
+      <p class="tag">Auto-generated at month end — email or in-app</p>
+      <div class="mock-card" style="padding:24px;max-width:500px;margin:0 auto">
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;letter-spacing:0.1em">Resumen Financiero</div>
+          <div style="font-size:22px;font-weight:800;margin-top:4px">Febrero 2026</div>
+        </div>
+
+        <!-- Score -->
+        <div style="text-align:center;padding:20px;background:var(--z-surface-2);border-radius:12px;margin-bottom:16px">
+          <div style="font-size:11px;color:var(--z-sage-dark)">Tu mes en un numero</div>
+          <div style="font-size:48px;font-weight:900;color:var(--z-income);letter-spacing:-0.04em">B+</div>
+          <div style="font-size:12px;color:var(--z-sage-dark)">Mejor que enero (B-)</div>
+        </div>
+
+        <!-- Key metrics -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div style="background:var(--z-surface-2);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:var(--z-sage-dark);text-transform:uppercase">Ingresos</div>
+            <div style="font-size:18px;font-weight:800;color:var(--z-income)">$6,800K</div>
+            <div style="font-size:10px;color:var(--z-income)">↑ 5% vs ene</div>
+          </div>
+          <div style="background:var(--z-surface-2);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:var(--z-sage-dark);text-transform:uppercase">Gastos</div>
+            <div style="font-size:18px;font-weight:800;color:var(--z-expense)">$4,480K</div>
+            <div style="font-size:10px;color:var(--z-income)">↓ 3% vs ene</div>
+          </div>
+          <div style="background:var(--z-surface-2);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:var(--z-sage-dark);text-transform:uppercase">Ahorro</div>
+            <div style="font-size:18px;font-weight:800;color:var(--z-income)">$2,320K</div>
+            <div style="font-size:10px;color:var(--z-income)">↑ tasa: 34%</div>
+          </div>
+          <div style="background:var(--z-surface-2);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:var(--z-sage-dark);text-transform:uppercase">Patrimonio</div>
+            <div style="font-size:18px;font-weight:800">$18.2M</div>
+            <div style="font-size:10px;color:var(--z-income)">↑ $1.2M</div>
+          </div>
+        </div>
+
+        <!-- Highlights -->
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">Destacados</div>
+        <div style="font-size:12px;color:var(--z-sage);margin-bottom:6px">
+          <span style="color:var(--z-income)">✓</span> Mejor tasa de ahorro en 3 meses
+        </div>
+        <div style="font-size:12px;color:var(--z-sage);margin-bottom:6px">
+          <span style="color:var(--z-income)">✓</span> Transporte bajo 12% vs promedio
+        </div>
+        <div style="font-size:12px;color:var(--z-sage);margin-bottom:6px">
+          <span style="color:var(--z-alert)">⚠</span> Comida subio 8% — $720K vs $667K promedio
+        </div>
+        <div style="font-size:12px;color:var(--z-sage)">
+          <span style="color:var(--z-debt)">✗</span> Fondo emergencia aun bajo 3 meses (2.1 actual)
+        </div>
+      </div>
+      <ul class="pros"><li>Automatic financial check-in</li><li>Uses ALL existing data (cashflow, budget, savings rate, net worth)</li><li>Letter grade is simple gamification</li><li>Insights mechanism already exists for month-end</li></ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SECTION 12: MOBILE -->
+<!-- ═══════════════════════════════════════════ -->
+<section id="mobile">
+  <h2>Mobile Experience</h2>
+  <p class="desc">Current mobile dashboard shows: hero card → burn rate → upcoming payments → recent transactions. Options for enhanced mobile.</p>
+
+  <div class="compare triple">
+    <div class="option current">
+      <h3>Actual Mobile</h3>
+      <p class="tag">Vertical card stack</p>
+      <div class="phone-frame">
+        <div style="margin-top:16px">
+          <!-- Hero -->
+          <div style="background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:12px;padding:16px;margin-bottom:12px">
+            <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;letter-spacing:0.06em">Disponible para gastar</div>
+            <div style="font-size:28px;font-weight:800;margin-top:4px">$2,340,000</div>
+            <div style="display:flex;gap:12px;font-size:10px;color:var(--z-sage-dark);margin-top:6px">
+              <span>Saldo: $4.2M</span><span>Fijos: $1.8M</span>
+            </div>
+          </div>
+          <!-- Burn rate -->
+          <div style="background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:12px;padding:16px;margin-bottom:12px">
+            <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase">Ritmo de gasto</div>
+            <div style="font-size:24px;font-weight:800;margin-top:4px">23 dias</div>
+            <div style="height:40px;background:var(--z-surface-2);border-radius:6px;margin-top:8px"></div>
+          </div>
+          <!-- Payments -->
+          <div style="margin-bottom:12px">
+            <div style="font-size:12px;font-weight:600;margin-bottom:6px">Proximos pagos</div>
+            <div style="background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:12px;overflow:hidden">
+              <div style="padding:10px 14px;border-bottom:1px solid var(--z-border);display:flex;justify-content:space-between;font-size:12px">
+                <span>Visa Gold</span><span style="font-weight:600">$480K</span>
+              </div>
+              <div style="padding:10px 14px;display:flex;justify-content:space-between;font-size:12px">
+                <span>Netflix</span><span style="font-weight:600">$45K</span>
+              </div>
+            </div>
+          </div>
+          <!-- Recent tx -->
+          <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;margin-bottom:4px">Actividad reciente</div>
+          <div style="font-size:12px;padding:4px 0;display:flex;justify-content:space-between"><span>Exito</span><span>-$82K</span></div>
+          <div style="font-size:12px;padding:4px 0;display:flex;justify-content:space-between"><span>Rappi</span><span>-$35K</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="option recommended">
+      <h3>Enhanced: Scrollable KPI Strip</h3>
+      <p class="tag">Horizontal scroll of key metrics above the fold</p>
+      <div class="phone-frame">
+        <div style="margin-top:16px">
+          <!-- Hero -->
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase">Disponible</div>
+            <div style="font-size:28px;font-weight:800">$2,340,000</div>
+          </div>
+          <!-- KPI scroll strip -->
+          <div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px">
+            <div style="min-width:100px;background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:10px;padding:10px;flex-shrink:0">
+              <div style="font-size:9px;color:var(--z-sage-dark)">AHORRO</div>
+              <div style="font-size:16px;font-weight:800;color:var(--z-income)">24%</div>
+              <div style="font-size:9px;color:var(--z-income)">↑ 3pp</div>
+            </div>
+            <div style="min-width:100px;background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:10px;padding:10px;flex-shrink:0">
+              <div style="font-size:9px;color:var(--z-sage-dark)">PATRIMONIO</div>
+              <div style="font-size:16px;font-weight:800">$18.2M</div>
+              <div style="font-size:9px;color:var(--z-income)">↑ 7%</div>
+            </div>
+            <div style="min-width:100px;background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:10px;padding:10px;flex-shrink:0">
+              <div style="font-size:9px;color:var(--z-sage-dark)">RUNWAY</div>
+              <div style="font-size:16px;font-weight:800">23d</div>
+              <div style="font-size:9px;color:var(--z-sage-dark)">→ estable</div>
+            </div>
+            <div style="min-width:100px;background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:10px;padding:10px;flex-shrink:0">
+              <div style="font-size:9px;color:var(--z-sage-dark)">EMERGENCIA</div>
+              <div style="font-size:16px;font-weight:800;color:var(--z-alert)">2.1m</div>
+              <div style="font-size:9px;color:var(--z-sage-dark)">meta: 6</div>
+            </div>
+          </div>
+          <!-- Compact sections -->
+          <div style="background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:12px;padding:14px;margin-bottom:10px">
+            <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;margin-bottom:8px">Ritmo de gasto</div>
+            <div style="height:50px;background:var(--z-surface-2);border-radius:6px"></div>
+          </div>
+          <div style="background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:12px;overflow:hidden;margin-bottom:10px">
+            <div style="padding:10px 14px;font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;border-bottom:1px solid var(--z-border)">Proximos pagos</div>
+            <div style="padding:8px 14px;display:flex;justify-content:space-between;font-size:12px"><span>Visa Gold</span><span style="font-weight:600">$480K</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>4 metrics visible without scrolling</li><li>Horizontal scroll feels native on mobile</li><li>Compact but information-rich</li></ul>
+    </div>
+
+    <div class="option">
+      <h3>Score-First Mobile</h3>
+      <p class="tag">Health score anchors the experience</p>
+      <div class="phone-frame">
+        <div style="margin-top:16px;text-align:center">
+          <!-- Score hero -->
+          <div style="padding:20px">
+            <div class="score-ring" style="width:100px;height:100px">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="var(--z-surface-3)" stroke-width="8"/>
+                <circle cx="60" cy="60" r="50" fill="none" stroke="var(--z-income)" stroke-width="8"
+                  stroke-dasharray="235 314" stroke-dashoffset="-157" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+              </svg>
+              <div class="score-value" style="color:var(--z-income);font-size:28px">75</div>
+            </div>
+            <div style="font-size:11px;color:var(--z-sage-dark);margin-top:8px">Salud Financiera</div>
+          </div>
+          <!-- Compact metrics -->
+          <div style="text-align:left;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <div style="background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:10px;padding:10px">
+              <div style="font-size:9px;color:var(--z-sage-dark)">DISPONIBLE</div>
+              <div style="font-size:16px;font-weight:800">$2.3M</div>
+            </div>
+            <div style="background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:10px;padding:10px">
+              <div style="font-size:9px;color:var(--z-sage-dark)">PATRIMONIO</div>
+              <div style="font-size:16px;font-weight:800">$18.2M</div>
+            </div>
+          </div>
+          <!-- Quick insights -->
+          <div style="text-align:left;background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:12px;padding:14px;margin-bottom:10px">
+            <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;margin-bottom:8px">Hoy</div>
+            <div style="font-size:12px;color:var(--z-sage);margin-bottom:4px"><span style="color:var(--z-income)">✓</span> Ahorrando 24% este mes</div>
+            <div style="font-size:12px;color:var(--z-sage);margin-bottom:4px"><span style="color:var(--z-alert)">⚠</span> Visa Gold vence en 3 dias</div>
+            <div style="font-size:12px;color:var(--z-sage)"><span style="color:var(--z-debt)">✗</span> Comida +8% sobre promedio</div>
+          </div>
+        </div>
+      </div>
+      <ul class="pros"><li>Gamified — score drives engagement</li><li>Insights are immediately actionable</li><li>Differentiated from competitors</li></ul>
+      <ul class="cons"><li>Score replaces "disponible" as anchor</li><li>Score methodology is complex to explain</li></ul>
+    </div>
+  </div>
+</section>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── Chart.js Initialization ── -->
+<script>
+Chart.defaults.color = '#9E9888';
+Chart.defaults.borderColor = 'rgba(192,185,170,0.08)';
+Chart.defaults.font.family = '-apple-system, Geist, Inter, system-ui, sans-serif';
+Chart.defaults.font.size = 11;
+
+// Net Worth Chart
+new Chart(document.getElementById('netWorthChart'), {
+  type: 'line',
+  data: {
+    labels: ['Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar'],
+    datasets: [{
+      data: [14200000, 15100000, 15800000, 16400000, 17000000, 18240000],
+      borderColor: '#5CB88A',
+      backgroundColor: 'rgba(92,184,138,0.1)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 0,
+      borderWidth: 2
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { display: false } } }
+});
+
+// Radar Chart
+new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Ahorro', 'DTI', 'Emergencia', 'Utilización', 'Patrimonio'],
+    datasets: [{
+      data: [85, 68, 35, 80, 90],
+      borderColor: '#5CB88A',
+      backgroundColor: 'rgba(92,184,138,0.15)',
+      borderWidth: 2,
+      pointBackgroundColor: '#5CB88A',
+      pointRadius: 3
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: { r: { beginAtZero: true, max: 100, grid: { color: 'rgba(192,185,170,0.08)' }, angleLines: { color: 'rgba(192,185,170,0.08)' }, ticks: { display: false } } },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// Cashflow Line Chart (current)
+new Chart(document.getElementById('cashflowLineChart'), {
+  type: 'line',
+  data: {
+    labels: ['Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar'],
+    datasets: [
+      { label: 'Ingresos', data: [6200000, 6500000, 7100000, 6400000, 6800000, 6800000], borderColor: '#5CB88A', backgroundColor: 'rgba(92,184,138,0.05)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 },
+      { label: 'Gastos', data: [5100000, 4800000, 5900000, 5200000, 4700000, 4480000], borderColor: '#E8875A', backgroundColor: 'rgba(232,135,90,0.05)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => (v/1000000).toFixed(1) + 'M' } } } }
+});
+
+// Cashflow Bar Chart (recommended)
+new Chart(document.getElementById('cashflowBarChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar'],
+    datasets: [
+      { label: 'Ingresos', data: [6200000, 6500000, 7100000, 6400000, 6800000, 6800000], backgroundColor: '#5CB88A', borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.7 },
+      { label: 'Gastos', data: [5100000, 4800000, 5900000, 5200000, 4700000, 4480000], backgroundColor: '#E8875A', borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.7 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => (v/1000000).toFixed(1) + 'M' } } } }
+});
+
+// Net cashflow line
+new Chart(document.getElementById('cashflowNetChart'), {
+  type: 'line',
+  data: {
+    labels: ['Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar'],
+    datasets: [{
+      label: 'Flujo neto',
+      data: [1100000, 1700000, 1200000, 1200000, 2100000, 2320000],
+      borderColor: '#C5BFAE',
+      backgroundColor: 'rgba(197,191,174,0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 4,
+      pointBackgroundColor: function(ctx) { return ctx.raw > 1500000 ? '#5CB88A' : '#E8875A'; },
+      borderWidth: 2
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => (v/1000000).toFixed(1) + 'M' } } } }
+});
+
+// Donut chart
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Vivienda', 'Transporte', 'Comida', 'Entretenimiento', 'Otros'],
+    datasets: [{
+      data: [1820, 850, 720, 610, 480],
+      backgroundColor: ['#E8875A', '#D4A843', '#5CB88A', '#7C8BA0', '#9E9888'],
+      borderWidth: 0,
+      borderRadius: 2,
+      spacing: 2
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
+});
+
+// Interest rate history
+new Chart(document.getElementById('interestRateChart'), {
+  type: 'line',
+  data: {
+    labels: ['Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar'],
+    datasets: [
+      { label: 'Visa Gold', data: [28.8, 29.2, 29.8, 30.1, 30.8, 31.2], borderColor: '#E05545', borderWidth: 2, tension: 0.3, pointRadius: 3 },
+      { label: 'Credito Libre', data: [18.5, 18.5, 18.5, 19.0, 19.0, 19.0], borderColor: '#D4A843', borderWidth: 2, tension: 0.3, pointRadius: 3 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } }, scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => v + '% EA' } } } }
+});
+
+// Sidebar active state
+const links = document.querySelectorAll('.sidebar a');
+const sections = document.querySelectorAll('section');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (s.getBoundingClientRect().top <= 100) current = s.id; });
+  links.forEach(a => { a.classList.toggle('active', a.getAttribute('href') === '#' + current); });
+});
+</script>
+
+</body>
+</html>

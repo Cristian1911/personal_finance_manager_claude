@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zeta — Gamified Health Score Showcase</title>
+<style>
+  :root {
+    --z-ink: #0A0E14;
+    --z-sage: #C5BFAE;
+    --z-sage-light: #D8D2C4;
+    --z-sage-dark: #9E9888;
+    --z-white: #F0EDE6;
+    --z-income: #5CB88A;
+    --z-expense: #E8875A;
+    --z-debt: #E05545;
+    --z-alert: #D4A843;
+    --z-surface: #131720;
+    --z-surface-2: #1C1F28;
+    --z-surface-3: #262A34;
+    --z-border: rgba(192,185,170,0.08);
+    --z-border-strong: rgba(192,185,170,0.14);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Geist', 'Inter', system-ui, sans-serif;
+    background: #080A0F; color: var(--z-white); line-height: 1.5;
+    padding: 40px; max-width: 1100px; margin: 0 auto;
+  }
+  h1 { font-size: 32px; font-weight: 900; letter-spacing: -0.04em; margin-bottom: 8px; }
+  .subtitle { font-size: 14px; color: var(--z-sage-dark); margin-bottom: 48px; max-width: 680px; line-height: 1.7; }
+  .subtitle em { color: var(--z-sage); font-style: normal; }
+
+  section { margin-bottom: 72px; }
+  section > h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
+  section > .desc { font-size: 13px; color: var(--z-sage-dark); margin-bottom: 28px; max-width: 640px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+
+  .card {
+    background: var(--z-surface); border: 1px solid var(--z-border-strong);
+    border-radius: 16px; padding: 28px; position: relative;
+  }
+  .card.pick { border-color: var(--z-income); }
+  .card.pick::after {
+    content: 'FAVORITO'; position: absolute; top: -10px; right: 16px;
+    background: var(--z-income); color: var(--z-ink); font-size: 9px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px; letter-spacing: 0.05em;
+  }
+  .card h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .card .tag { font-size: 11px; color: var(--z-sage-dark); margin-bottom: 20px; }
+
+  .divider { border: none; border-top: 1px solid var(--z-border-strong); margin: 56px 0; }
+
+  /* ── The Meters ── */
+
+  /* Vertical gauge (Stitch-style) */
+  .gauge-vertical {
+    width: 48px; height: 260px; border-radius: 24px; position: relative;
+    background: linear-gradient(to top,
+      var(--z-debt) 0%,
+      var(--z-expense) 25%,
+      var(--z-alert) 50%,
+      var(--z-income) 80%,
+      #3D9E6E 100%
+    );
+    opacity: 0.85;
+  }
+  .gauge-vertical .track {
+    position: absolute; inset: 3px; border-radius: 21px;
+    background: linear-gradient(to top,
+      var(--z-debt) 0%,
+      var(--z-expense) 25%,
+      var(--z-alert) 50%,
+      var(--z-income) 80%,
+      #3D9E6E 100%
+    );
+  }
+  .gauge-vertical .marker {
+    position: absolute; left: -8px; width: 64px; height: 4px;
+    background: var(--z-white); border-radius: 2px;
+    box-shadow: 0 0 12px rgba(240,237,230,0.5);
+    transition: bottom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .gauge-vertical .marker::after {
+    content: '◀'; position: absolute; right: -16px; top: -8px;
+    font-size: 14px; color: var(--z-white);
+  }
+  .gauge-labels {
+    position: absolute; left: 68px; top: 0; bottom: 0;
+    display: flex; flex-direction: column; justify-content: space-between;
+    font-size: 10px; color: var(--z-sage-dark); padding: 6px 0;
+  }
+  .gauge-labels span { white-space: nowrap; }
+
+  /* Horizontal gauge */
+  .gauge-h {
+    height: 14px; border-radius: 7px; position: relative;
+    background: linear-gradient(to right,
+      var(--z-debt) 0%,
+      var(--z-expense) 25%,
+      var(--z-alert) 50%,
+      var(--z-income) 80%,
+      #3D9E6E 100%
+    );
+  }
+  .gauge-h .pin {
+    position: absolute; top: -6px; width: 4px; height: 26px;
+    background: var(--z-white); border-radius: 2px;
+    box-shadow: 0 0 10px rgba(240,237,230,0.6);
+    transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .gauge-h .pin::after {
+    content: '▼'; position: absolute; top: -14px; left: -5px;
+    font-size: 10px; color: var(--z-white);
+  }
+
+  /* Semicircle gauge */
+  .gauge-semi {
+    width: 200px; height: 110px; position: relative; margin: 0 auto;
+    overflow: hidden;
+  }
+  .gauge-semi svg { width: 100%; height: 100%; }
+  .gauge-semi .needle {
+    position: absolute; bottom: 0; left: 50%; width: 3px; height: 90px;
+    background: var(--z-white); border-radius: 2px;
+    transform-origin: bottom center;
+    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 8px rgba(240,237,230,0.4);
+  }
+  .gauge-semi .needle-dot {
+    position: absolute; bottom: -4px; left: 50%; width: 10px; height: 10px;
+    background: var(--z-white); border-radius: 50%; transform: translateX(-50%);
+  }
+  .gauge-semi .val {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    font-size: 28px; font-weight: 900; letter-spacing: -0.03em;
+  }
+
+  /* Personality text */
+  .roast {
+    margin-top: 16px; padding: 14px 16px;
+    border-radius: 12px; font-size: 13px; line-height: 1.5;
+  }
+  .roast.danger {
+    background: color-mix(in srgb, var(--z-debt) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--z-debt) 25%, transparent);
+    color: var(--z-debt);
+  }
+  .roast.warning {
+    background: color-mix(in srgb, var(--z-alert) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--z-alert) 25%, transparent);
+    color: var(--z-alert);
+  }
+  .roast.good {
+    background: color-mix(in srgb, var(--z-income) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--z-income) 25%, transparent);
+    color: var(--z-income);
+  }
+  .roast strong { color: var(--z-white); }
+
+  /* Level tag */
+  .level-tag {
+    display: inline-block; padding: 3px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .level-tag.critical { background: var(--z-debt); color: var(--z-ink); }
+  .level-tag.high { background: var(--z-expense); color: var(--z-ink); }
+  .level-tag.moderate { background: var(--z-alert); color: var(--z-ink); }
+  .level-tag.good { background: var(--z-income); color: var(--z-ink); }
+  .level-tag.excellent { background: #3D9E6E; color: var(--z-ink); }
+
+  /* Context bar */
+  .context-bar {
+    display: flex; align-items: center; gap: 12px; margin-top: 12px;
+    font-size: 11px; color: var(--z-sage-dark);
+  }
+  .context-bar .you-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--z-white); box-shadow: 0 0 6px rgba(240,237,230,0.5);
+  }
+
+  /* Stitch-style full panel */
+  .stitch-panel {
+    display: flex; gap: 32px; align-items: stretch;
+  }
+  .stitch-gauge-col {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    position: relative; flex-shrink: 0;
+  }
+  .stitch-details { flex: 1; }
+
+  /* Phone mockup */
+  .phone {
+    width: 340px; min-height: 620px; background: var(--z-ink);
+    border: 2px solid var(--z-surface-3); border-radius: 36px;
+    padding: 24px 18px; position: relative; overflow: hidden;
+    margin: 0 auto;
+  }
+  .phone::before {
+    content: ''; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 80px; height: 4px; background: var(--z-surface-3); border-radius: 2px;
+  }
+
+  .pros { margin-top: 16px; font-size: 12px; color: var(--z-sage); list-style: none; }
+  .pros li { margin-bottom: 4px; }
+  .pros li::before { content: '+ '; color: var(--z-income); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>Gamified Health Score</h1>
+<p class="subtitle">
+  Inspired by the Lilo &amp; Stitch "goodness level" meter — a gauge with <em>personality</em> that tells you
+  where you stand and doesn't sugarcoat it. Each meter contextualizes your numbers against your salary,
+  so the message is always: <em>"this is what YOUR numbers mean for someone like YOU."</em>
+</p>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- CONCEPT 1: VERTICAL GAUGE (STITCH)    -->
+<!-- ═══════════════════════════════════════ -->
+<section>
+  <h2>Concepto 1: El Medidor Vertical</h2>
+  <p class="desc">Direct Stitch reference — a vertical gauge with a sliding marker and blunt personality copy.</p>
+
+  <div class="grid-2">
+    <!-- Spending Level -->
+    <div class="card pick">
+      <h3>Nivel de Gasto</h3>
+      <div class="tag">Tu gasto mensual vs tu ingreso</div>
+      <div class="stitch-panel">
+        <div class="stitch-gauge-col">
+          <div style="position:relative">
+            <div class="gauge-vertical">
+              <div class="marker" style="bottom: 28%"></div>
+            </div>
+            <div class="gauge-labels">
+              <span style="color:#3D9E6E">Minimalista</span>
+              <span style="color:var(--z-income)">Sano</span>
+              <span style="color:var(--z-alert)">Atento</span>
+              <span style="color:var(--z-expense)">Alto</span>
+              <span style="color:var(--z-debt)">Critico</span>
+            </div>
+          </div>
+        </div>
+        <div class="stitch-details">
+          <div style="margin-bottom:12px">
+            <span class="level-tag high">ALTO</span>
+          </div>
+          <div style="font-size:32px;font-weight:900;letter-spacing:-0.04em">76%</div>
+          <div style="font-size:12px;color:var(--z-sage-dark);margin-top:2px">de tu ingreso se va en gastos</div>
+
+          <div class="roast danger">
+            Gastas <strong>$5.2M</strong> de los <strong>$6.8M</strong> que ganas.
+            Para alguien con tu salario, esto es <strong>preocupante</strong> — tu margen
+            de maniobra es de solo $1.6M al mes. Una emergencia medica o un gasto
+            imprevisto te deja en rojo.
+          </div>
+
+          <div class="context-bar">
+            <div class="you-dot"></div>
+            <span>Tu: 76% · Recomendado: &lt;70% · Ideal: &lt;60%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debt Level -->
+    <div class="card pick">
+      <h3>Nivel de Deuda</h3>
+      <div class="tag">Tu carga de deuda vs capacidad de pago</div>
+      <div class="stitch-panel">
+        <div class="stitch-gauge-col">
+          <div style="position:relative">
+            <div class="gauge-vertical">
+              <div class="marker" style="bottom: 18%"></div>
+            </div>
+            <div class="gauge-labels">
+              <span style="color:#3D9E6E">Libre</span>
+              <span style="color:var(--z-income)">Manejable</span>
+              <span style="color:var(--z-alert)">Pesado</span>
+              <span style="color:var(--z-expense)">Peligroso</span>
+              <span style="color:var(--z-debt)">Critico</span>
+            </div>
+          </div>
+        </div>
+        <div class="stitch-details">
+          <div style="margin-bottom:12px">
+            <span class="level-tag critical">CRITICO</span>
+          </div>
+          <div style="font-size:32px;font-weight:900;letter-spacing:-0.04em;color:var(--z-debt)">42%</div>
+          <div style="font-size:12px;color:var(--z-sage-dark);margin-top:2px">de tu ingreso va a pagar deudas</div>
+
+          <div class="roast danger">
+            Pagas <strong>$2.9M/mes</strong> en deudas con un ingreso de <strong>$6.8M</strong>.
+            Estas por encima del limite de <strong>36%</strong> que los bancos consideran
+            sostenible. No te van a aprobar creditos nuevos y un mes malo te puede
+            dejar sin cubrir minimos.
+          </div>
+
+          <div class="context-bar">
+            <div class="you-dot"></div>
+            <span>Tu: 42% · Limite: 36% · Sano: &lt;28%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:28px">
+    <!-- Savings Level (good example) -->
+    <div class="card">
+      <h3>Nivel de Ahorro</h3>
+      <div class="tag">Que tanto de tu ingreso guardas</div>
+      <div class="stitch-panel">
+        <div class="stitch-gauge-col">
+          <div style="position:relative">
+            <div class="gauge-vertical">
+              <div class="marker" style="bottom: 72%"></div>
+            </div>
+            <div class="gauge-labels">
+              <span style="color:#3D9E6E">FIRE</span>
+              <span style="color:var(--z-income)">Solido</span>
+              <span style="color:var(--z-alert)">Minimo</span>
+              <span style="color:var(--z-expense)">Insuficiente</span>
+              <span style="color:var(--z-debt)">Nulo</span>
+            </div>
+          </div>
+        </div>
+        <div class="stitch-details">
+          <div style="margin-bottom:12px">
+            <span class="level-tag good">SOLIDO</span>
+          </div>
+          <div style="font-size:32px;font-weight:900;letter-spacing:-0.04em;color:var(--z-income)">24%</div>
+          <div style="font-size:12px;color:var(--z-sage-dark);margin-top:2px">de tu ingreso se queda contigo</div>
+
+          <div class="roast good">
+            Ahorras <strong>$1.6M/mes</strong> — bien por encima del <strong>20%</strong>
+            recomendado. A este ritmo, en <strong>2.1 meses</strong> completas un
+            fondo de emergencia basico. Mantener esto 12 meses mas y vas a tener
+            colchon real.
+          </div>
+
+          <div class="context-bar">
+            <div class="you-dot"></div>
+            <span>Tu: 24% · Minimo: 20% · FIRE: &gt;50%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Emergency Fund -->
+    <div class="card">
+      <h3>Nivel de Colchon</h3>
+      <div class="tag">Cuantos meses sobrevives sin ingreso</div>
+      <div class="stitch-panel">
+        <div class="stitch-gauge-col">
+          <div style="position:relative">
+            <div class="gauge-vertical">
+              <div class="marker" style="bottom: 22%"></div>
+            </div>
+            <div class="gauge-labels">
+              <span style="color:#3D9E6E">Blindado (12+)</span>
+              <span style="color:var(--z-income)">Seguro (6-12)</span>
+              <span style="color:var(--z-alert)">Justo (3-6)</span>
+              <span style="color:var(--z-expense)">Fragil (1-3)</span>
+              <span style="color:var(--z-debt)">Expuesto (&lt;1)</span>
+            </div>
+          </div>
+        </div>
+        <div class="stitch-details">
+          <div style="margin-bottom:12px">
+            <span class="level-tag high">FRAGIL</span>
+          </div>
+          <div style="font-size:32px;font-weight:900;letter-spacing:-0.04em;color:var(--z-expense)">2.1 <span style="font-size:16px;font-weight:400;color:var(--z-sage-dark)">meses</span></div>
+          <div style="font-size:12px;color:var(--z-sage-dark);margin-top:2px">de gastos esenciales cubiertos</div>
+
+          <div class="roast warning">
+            Tienes <strong>$4.2M</strong> liquidos contra <strong>$2M/mes</strong> en
+            gastos fijos. Si pierdes el ingreso hoy, en <strong>2 meses</strong>
+            estas en ceros. El minimo para dormir tranquilo es <strong>3 meses</strong>,
+            lo ideal es <strong>6</strong>.
+          </div>
+
+          <div class="context-bar">
+            <div class="you-dot"></div>
+            <span>Tu: 2.1m · Minimo: 3m · Ideal: 6m · Blindado: 12m+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ul class="pros" style="margin-top:24px">
+    <li>Direct Stitch aesthetic — vertical gauge with marker sliding to your level</li>
+    <li>Contextual copy that references YOUR salary, YOUR numbers</li>
+    <li>Level tags (CRITICO, ALTO, SOLIDO) give instant reading</li>
+    <li>Color gradient makes it visceral — low = red, high = green</li>
+    <li>Works for any metric: spending, debt, savings, emergency fund</li>
+  </ul>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════ -->
+<!-- CONCEPT 2: SEMICIRCLE SPEEDOMETER     -->
+<!-- ═══════════════════════════════════════ -->
+<section>
+  <h2>Concepto 2: Speedometer con Aguja</h2>
+  <p class="desc">Semicircle gauge with a physical needle — feels like a dashboard instrument. More compact than vertical.</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h3>Gasto</h3>
+      <div class="tag">% del ingreso en gastos</div>
+      <div class="gauge-semi">
+        <svg viewBox="0 0 200 110">
+          <!-- Background arc -->
+          <path d="M 10 100 A 90 90 0 0 1 190 100" fill="none" stroke="var(--z-surface-3)" stroke-width="16" stroke-linecap="round"/>
+          <!-- Colored arc segments -->
+          <path d="M 10 100 A 90 90 0 0 1 46 28" fill="none" stroke="#3D9E6E" stroke-width="16" stroke-linecap="round"/>
+          <path d="M 46 28 A 90 90 0 0 1 100 10" fill="none" stroke="var(--z-income)" stroke-width="16"/>
+          <path d="M 100 10 A 90 90 0 0 1 154 28" fill="none" stroke="var(--z-alert)" stroke-width="16"/>
+          <path d="M 154 28 A 90 90 0 0 1 190 100" fill="none" stroke="var(--z-debt)" stroke-width="16" stroke-linecap="round"/>
+        </svg>
+        <!-- Needle pointing to 76% (roughly 136deg from left) -->
+        <div class="needle" style="transform: rotate(-17deg)"></div>
+        <div class="needle-dot"></div>
+      </div>
+      <div style="text-align:center;margin-top:8px">
+        <div style="font-size:28px;font-weight:900;color:var(--z-expense)">76%</div>
+        <span class="level-tag high" style="margin-top:4px">ALTO</span>
+      </div>
+      <div class="roast danger" style="font-size:12px">
+        Para tu ingreso de <strong>$6.8M</strong>, gastar el 76% es andar en la cuerda floja.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Deuda</h3>
+      <div class="tag">DTI — deuda vs ingreso</div>
+      <div class="gauge-semi">
+        <svg viewBox="0 0 200 110">
+          <path d="M 10 100 A 90 90 0 0 1 190 100" fill="none" stroke="var(--z-surface-3)" stroke-width="16" stroke-linecap="round"/>
+          <path d="M 10 100 A 90 90 0 0 1 46 28" fill="none" stroke="#3D9E6E" stroke-width="16" stroke-linecap="round"/>
+          <path d="M 46 28 A 90 90 0 0 1 100 10" fill="none" stroke="var(--z-income)" stroke-width="16"/>
+          <path d="M 100 10 A 90 90 0 0 1 154 28" fill="none" stroke="var(--z-alert)" stroke-width="16"/>
+          <path d="M 154 28 A 90 90 0 0 1 190 100" fill="none" stroke="var(--z-debt)" stroke-width="16" stroke-linecap="round"/>
+        </svg>
+        <div class="needle" style="transform: rotate(-5deg)"></div>
+        <div class="needle-dot"></div>
+      </div>
+      <div style="text-align:center;margin-top:8px">
+        <div style="font-size:28px;font-weight:900;color:var(--z-debt)">42%</div>
+        <span class="level-tag critical" style="margin-top:4px">CRITICO</span>
+      </div>
+      <div class="roast danger" style="font-size:12px">
+        Los bancos no te prestan mas alla de <strong>36%</strong>. Estas 6 puntos por encima.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Ahorro</h3>
+      <div class="tag">% de ingreso ahorrado</div>
+      <div class="gauge-semi">
+        <svg viewBox="0 0 200 110">
+          <path d="M 10 100 A 90 90 0 0 1 190 100" fill="none" stroke="var(--z-surface-3)" stroke-width="16" stroke-linecap="round"/>
+          <path d="M 10 100 A 90 90 0 0 1 46 28" fill="none" stroke="var(--z-debt)" stroke-width="16" stroke-linecap="round"/>
+          <path d="M 46 28 A 90 90 0 0 1 100 10" fill="none" stroke="var(--z-alert)" stroke-width="16"/>
+          <path d="M 100 10 A 90 90 0 0 1 154 28" fill="none" stroke="var(--z-income)" stroke-width="16"/>
+          <path d="M 154 28 A 90 90 0 0 1 190 100" fill="none" stroke="#3D9E6E" stroke-width="16" stroke-linecap="round"/>
+        </svg>
+        <!-- 24% savings → roughly 43deg from left, which is good zone -->
+        <div class="needle" style="transform: rotate(-44deg)"></div>
+        <div class="needle-dot"></div>
+      </div>
+      <div style="text-align:center;margin-top:8px">
+        <div style="font-size:28px;font-weight:900;color:var(--z-income)">24%</div>
+        <span class="level-tag good" style="margin-top:4px">SOLIDO</span>
+      </div>
+      <div class="roast good" style="font-size:12px">
+        Por encima del <strong>20%</strong> recomendado. Sigue asi.
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════ -->
+<!-- CONCEPT 3: HORIZONTAL LEVEL BARS      -->
+<!-- ═══════════════════════════════════════ -->
+<section>
+  <h2>Concepto 3: Barras de Nivel Horizontal</h2>
+  <p class="desc">Most compact — stacks all metrics in one card. The pin shows where you are on the gradient. Good for the KPI strip or a summary card.</p>
+
+  <div class="grid-2">
+    <div class="card pick">
+      <h3>Dashboard Card: Tu Nivel Financiero</h3>
+      <div class="tag">All 4 meters in one compact card</div>
+
+      <div style="padding:4px 0">
+        <!-- Spending -->
+        <div style="margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:12px;font-weight:600">Gasto</span>
+            <div>
+              <span style="font-size:18px;font-weight:800;color:var(--z-expense)">76%</span>
+              <span class="level-tag high" style="margin-left:6px;font-size:9px">ALTO</span>
+            </div>
+          </div>
+          <div class="gauge-h">
+            <div class="pin" style="left: 76%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-sage-dark);margin-top:4px">
+            <span>0%</span>
+            <span style="color:var(--z-income)">60% ideal</span>
+            <span style="color:var(--z-alert)">70% atento</span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <!-- Debt -->
+        <div style="margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:12px;font-weight:600">Deuda</span>
+            <div>
+              <span style="font-size:18px;font-weight:800;color:var(--z-debt)">42%</span>
+              <span class="level-tag critical" style="margin-left:6px;font-size:9px">CRITICO</span>
+            </div>
+          </div>
+          <div class="gauge-h">
+            <div class="pin" style="left: 84%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-sage-dark);margin-top:4px">
+            <span>0%</span>
+            <span style="color:var(--z-income)">20% sano</span>
+            <span style="color:var(--z-debt)">36% limite</span>
+            <span>50%+</span>
+          </div>
+        </div>
+
+        <!-- Savings (inverted — higher is better, so gradient is reversed) -->
+        <div style="margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:12px;font-weight:600">Ahorro</span>
+            <div>
+              <span style="font-size:18px;font-weight:800;color:var(--z-income)">24%</span>
+              <span class="level-tag good" style="margin-left:6px;font-size:9px">SOLIDO</span>
+            </div>
+          </div>
+          <div class="gauge-h" style="background:linear-gradient(to right, var(--z-debt) 0%, var(--z-expense) 20%, var(--z-alert) 35%, var(--z-income) 55%, #3D9E6E 100%)">
+            <div class="pin" style="left: 48%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-sage-dark);margin-top:4px">
+            <span>0%</span>
+            <span style="color:var(--z-alert)">10% minimo</span>
+            <span style="color:var(--z-income)">20% bien</span>
+            <span>50%+</span>
+          </div>
+        </div>
+
+        <!-- Emergency Fund -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:12px;font-weight:600">Colchon</span>
+            <div>
+              <span style="font-size:18px;font-weight:800;color:var(--z-expense)">2.1m</span>
+              <span class="level-tag high" style="margin-left:6px;font-size:9px">FRAGIL</span>
+            </div>
+          </div>
+          <div class="gauge-h" style="background:linear-gradient(to right, var(--z-debt) 0%, var(--z-expense) 15%, var(--z-alert) 30%, var(--z-income) 55%, #3D9E6E 100%)">
+            <div class="pin" style="left: 17%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-sage-dark);margin-top:4px">
+            <span>0m</span>
+            <span style="color:var(--z-alert)">3m min</span>
+            <span style="color:var(--z-income)">6m ideal</span>
+            <span>12m+</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="roast danger" style="margin-top:20px">
+        Resumen: Tu ahorro es solido pero tu deuda es <strong>critica</strong> y
+        tu colchon es <strong>fragil</strong>. Prioridad #1: bajar el DTI a menos
+        de 36% — eso libera <strong>$408K/mes</strong> que puedes redirigir al
+        fondo de emergencia.
+      </div>
+    </div>
+
+    <!-- How it looks in context -->
+    <div class="card">
+      <h3>En contexto: Dashboard KPI Strip</h3>
+      <div class="tag">How the bars look inline with other dashboard metrics</div>
+
+      <div style="background:var(--z-ink);border-radius:12px;padding:16px;border:1px solid var(--z-border-strong)">
+        <!-- Mini hero -->
+        <div style="margin-bottom:16px">
+          <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;letter-spacing:0.06em">Disponible para gastar</div>
+          <div style="font-size:28px;font-weight:800;margin-top:2px">$2,340,000</div>
+        </div>
+
+        <!-- Mini level meters -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:var(--z-surface-2);border-radius:10px;padding:10px">
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px">
+              <span style="color:var(--z-sage-dark)">GASTO</span>
+              <span style="font-weight:700;color:var(--z-expense)">76%</span>
+            </div>
+            <div class="gauge-h" style="height:6px;border-radius:3px">
+              <div class="pin" style="left:76%;height:14px;top:-4px;width:3px"></div>
+            </div>
+          </div>
+
+          <div style="background:var(--z-surface-2);border-radius:10px;padding:10px">
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px">
+              <span style="color:var(--z-sage-dark)">DEUDA</span>
+              <span style="font-weight:700;color:var(--z-debt)">42%</span>
+            </div>
+            <div class="gauge-h" style="height:6px;border-radius:3px">
+              <div class="pin" style="left:84%;height:14px;top:-4px;width:3px"></div>
+            </div>
+          </div>
+
+          <div style="background:var(--z-surface-2);border-radius:10px;padding:10px">
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px">
+              <span style="color:var(--z-sage-dark)">AHORRO</span>
+              <span style="font-weight:700;color:var(--z-income)">24%</span>
+            </div>
+            <div class="gauge-h" style="height:6px;border-radius:3px;background:linear-gradient(to right, var(--z-debt), var(--z-alert), var(--z-income), #3D9E6E)">
+              <div class="pin" style="left:48%;height:14px;top:-4px;width:3px"></div>
+            </div>
+          </div>
+
+          <div style="background:var(--z-surface-2);border-radius:10px;padding:10px">
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px">
+              <span style="color:var(--z-sage-dark)">COLCHON</span>
+              <span style="font-weight:700;color:var(--z-expense)">2.1m</span>
+            </div>
+            <div class="gauge-h" style="height:6px;border-radius:3px;background:linear-gradient(to right, var(--z-debt), var(--z-expense), var(--z-alert), var(--z-income), #3D9E6E)">
+              <div class="pin" style="left:17%;height:14px;top:-4px;width:3px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════ -->
+<!-- CONCEPT 4: THE PERSONALITY COPY        -->
+<!-- ═══════════════════════════════════════ -->
+<section>
+  <h2>Concepto 4: El Copy que no te miente</h2>
+  <p class="desc">The meters are just visuals. The real gamification is the COPY — honest, contextual, salary-aware messages that make you feel something. Here's the tone system.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Tono por Nivel</h3>
+      <div class="tag">How the personality shifts with your numbers</div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+        <div class="roast" style="background:color-mix(in srgb, #3D9E6E 10%, transparent);border:1px solid color-mix(in srgb, #3D9E6E 25%, transparent);color:#3D9E6E">
+          <strong style="color:var(--z-white)">EXCELENTE</strong> — "Ahorras mas que el 95% de la gente con tu ingreso. Literal podrias jubilarte antes de los 50 si mantienes esto."
+        </div>
+        <div class="roast good">
+          <strong style="color:var(--z-white)">SOLIDO</strong> — "Buen ritmo. Ahorras $1.6M/mes y tu deuda es manejable. No es perfecto pero es sostenible."
+        </div>
+        <div class="roast warning">
+          <strong style="color:var(--z-white)">ATENTO</strong> — "No es alarma, pero tampoco para ignorar. Tu gasto subio 8% este mes y el colchon no crece. Un empujon mas y se complica."
+        </div>
+        <div class="roast" style="background:color-mix(in srgb, var(--z-expense) 10%, transparent);border:1px solid color-mix(in srgb, var(--z-expense) 25%, transparent);color:var(--z-expense)">
+          <strong style="color:var(--z-white)">ALTO</strong> — "Gastas 76% de lo que ganas. Para alguien con $6.8M/mes, eso deja muy poco espacio. Un gasto imprevisto de $500K te pone en rojo."
+        </div>
+        <div class="roast danger">
+          <strong style="color:var(--z-white)">CRITICO</strong> — "Tu deuda consume 42% de tu ingreso. Los bancos cortan en 36%. Estas 6 puntos por encima del limite — esto no es sostenible."
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Contexto Salarial</h3>
+      <div class="tag">Same metric, different message depending on salary</div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;margin-top:4px">
+        <div style="background:var(--z-surface-2);border-radius:10px;padding:14px">
+          <div style="font-size:10px;color:var(--z-sage-dark);margin-bottom:6px">SALARIO: $3,500,000/mes</div>
+          <div style="font-size:13px;color:var(--z-sage)">
+            Gasto de <strong style="color:var(--z-white)">$2.6M</strong> (76%) — "Con tu salario, cada peso cuenta.
+            Estas gastando lo que muchos ganan. El margen de <strong style="color:var(--z-white)">$900K</strong>
+            no cubre ni medio mes de emergencia."
+          </div>
+        </div>
+
+        <div style="background:var(--z-surface-2);border-radius:10px;padding:14px">
+          <div style="font-size:10px;color:var(--z-sage-dark);margin-bottom:6px">SALARIO: $6,800,000/mes</div>
+          <div style="font-size:13px;color:var(--z-sage)">
+            Gasto de <strong style="color:var(--z-white)">$5.2M</strong> (76%) — "Tienes un ingreso que te permite ahorrar
+            en serio, pero lo estas dejando ir. <strong style="color:var(--z-white)">$1.6M</strong> de
+            margen es poco para quien gana $6.8M."
+          </div>
+        </div>
+
+        <div style="background:var(--z-surface-2);border-radius:10px;padding:14px">
+          <div style="font-size:10px;color:var(--z-sage-dark);margin-bottom:6px">SALARIO: $15,000,000/mes</div>
+          <div style="font-size:13px;color:var(--z-sage)">
+            Gasto de <strong style="color:var(--z-white)">$11.4M</strong> (76%) — "Lifestyle creep clasico.
+            Ganas lo suficiente para ahorrar <strong style="color:var(--z-white)">$5M+/mes</strong> pero solo guardas
+            $3.6M. Estas dejando una fortuna sobre la mesa."
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════ -->
+<!-- CONCEPT 5: MOBILE FULL EXPERIENCE      -->
+<!-- ═══════════════════════════════════════ -->
+<section>
+  <h2>Concepto 5: Vista Movil Completa</h2>
+  <p class="desc">How it all comes together on mobile — the primary surface where users check daily.</p>
+
+  <div class="grid-2">
+    <div class="card pick">
+      <h3>Mobile: Card Scroll + Tap to Expand</h3>
+      <div class="tag">Compact meters, tap any to see full roast</div>
+      <div class="phone">
+        <div style="margin-top:20px">
+          <!-- Hero -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase">Disponible</div>
+            <div style="font-size:28px;font-weight:800">$2,340,000</div>
+          </div>
+
+          <!-- Level meters section -->
+          <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Tus niveles</div>
+
+          <!-- Compact meters -->
+          <div style="background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:12px;overflow:hidden;margin-bottom:12px">
+            <!-- Gasto -->
+            <div style="padding:12px 14px;border-bottom:1px solid var(--z-border)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600">Gasto</span>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:16px;font-weight:800;color:var(--z-expense)">76%</span>
+                  <span class="level-tag high" style="font-size:8px;padding:2px 6px">ALTO</span>
+                </div>
+              </div>
+              <div class="gauge-h" style="height:6px;border-radius:3px">
+                <div class="pin" style="left:76%;height:14px;top:-4px;width:3px"></div>
+              </div>
+            </div>
+            <!-- Deuda -->
+            <div style="padding:12px 14px;border-bottom:1px solid var(--z-border)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600">Deuda</span>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:16px;font-weight:800;color:var(--z-debt)">42%</span>
+                  <span class="level-tag critical" style="font-size:8px;padding:2px 6px">CRITICO</span>
+                </div>
+              </div>
+              <div class="gauge-h" style="height:6px;border-radius:3px">
+                <div class="pin" style="left:84%;height:14px;top:-4px;width:3px"></div>
+              </div>
+            </div>
+            <!-- Ahorro -->
+            <div style="padding:12px 14px;border-bottom:1px solid var(--z-border)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600">Ahorro</span>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:16px;font-weight:800;color:var(--z-income)">24%</span>
+                  <span class="level-tag good" style="font-size:8px;padding:2px 6px">SOLIDO</span>
+                </div>
+              </div>
+              <div class="gauge-h" style="height:6px;border-radius:3px;background:linear-gradient(to right, var(--z-debt), var(--z-alert), var(--z-income), #3D9E6E)">
+                <div class="pin" style="left:48%;height:14px;top:-4px;width:3px"></div>
+              </div>
+            </div>
+            <!-- Colchon -->
+            <div style="padding:12px 14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600">Colchon</span>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:16px;font-weight:800;color:var(--z-expense)">2.1m</span>
+                  <span class="level-tag high" style="font-size:8px;padding:2px 6px">FRAGIL</span>
+                </div>
+              </div>
+              <div class="gauge-h" style="height:6px;border-radius:3px;background:linear-gradient(to right, var(--z-debt), var(--z-expense), var(--z-alert), var(--z-income), #3D9E6E)">
+                <div class="pin" style="left:17%;height:14px;top:-4px;width:3px"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary roast -->
+          <div class="roast warning" style="font-size:11px">
+            Tu ahorro esta bien, pero tu deuda es <strong>critica</strong> para tu ingreso de $6.8M.
+            Prioridad: bajar DTI a &lt;36%.
+          </div>
+
+          <!-- Rest of mobile -->
+          <div style="margin-top:16px;background:var(--z-surface);border:1px solid var(--z-border-strong);border-radius:12px;padding:12px">
+            <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;margin-bottom:6px">Ritmo de gasto</div>
+            <div style="font-size:20px;font-weight:800">23 dias</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expanded state -->
+    <div class="card">
+      <h3>Mobile: Expanded Meter (on tap)</h3>
+      <div class="tag">When user taps a meter, it expands to full Stitch-style view</div>
+      <div class="phone">
+        <div style="margin-top:20px">
+          <!-- Back button -->
+          <div style="font-size:12px;color:var(--z-sage-dark);margin-bottom:16px">← Tus niveles</div>
+
+          <!-- Full expanded meter -->
+          <div style="text-align:center;margin-bottom:16px">
+            <div style="font-size:11px;color:var(--z-sage-dark);text-transform:uppercase;letter-spacing:0.06em">Nivel de Deuda</div>
+            <div style="margin:16px 0">
+              <span class="level-tag critical" style="font-size:12px;padding:4px 14px">CRITICO</span>
+            </div>
+            <div style="font-size:42px;font-weight:900;color:var(--z-debt);letter-spacing:-0.04em">42%</div>
+            <div style="font-size:12px;color:var(--z-sage-dark)">de tu ingreso va a deudas</div>
+          </div>
+
+          <!-- Horizontal gauge full width -->
+          <div style="padding:0 8px;margin-bottom:20px">
+            <div class="gauge-h" style="height:12px;border-radius:6px">
+              <div class="pin" style="left:84%;height:24px;top:-6px;width:4px"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-sage-dark);margin-top:6px">
+              <span>0%</span>
+              <span style="color:var(--z-income)">20%</span>
+              <span style="color:var(--z-alert)">36%</span>
+              <span>50%+</span>
+            </div>
+          </div>
+
+          <!-- Full roast -->
+          <div class="roast danger" style="font-size:12px">
+            Pagas <strong>$2.9M/mes</strong> en deudas con un ingreso de <strong>$6.8M</strong>.
+            Estas por encima del limite de <strong>36%</strong> que los bancos consideran
+            sostenible.
+          </div>
+
+          <!-- Breakdown -->
+          <div style="margin-top:16px;background:var(--z-surface-2);border-radius:10px;padding:14px">
+            <div style="font-size:10px;color:var(--z-sage-dark);text-transform:uppercase;margin-bottom:10px">Desglose</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--z-border)">
+              <span>Visa Gold</span>
+              <span style="font-weight:700;color:var(--z-debt)">$1,200K/mes</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--z-border)">
+              <span>Credito Libre</span>
+              <span style="font-weight:700">$980K/mes</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0">
+              <span>Vehiculo</span>
+              <span style="font-weight:700">$720K/mes</span>
+            </div>
+          </div>
+
+          <!-- Action -->
+          <div style="margin-top:16px;background:var(--z-surface-2);border-radius:10px;padding:14px">
+            <div style="font-size:11px;color:var(--z-sage)">
+              Si pagas <strong style="color:var(--z-white)">$200K extra/mes</strong> a Visa Gold
+              (la de mayor tasa), bajas a <strong style="color:var(--z-income)">35% DTI</strong>
+              en <strong style="color:var(--z-income)">4 meses</strong>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SUMMARY COMPARISON                     -->
+<!-- ═══════════════════════════════════════ -->
+<section>
+  <h2>Resumen: Que Forma de Medidor?</h2>
+
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="text-align:left;border-bottom:2px solid var(--z-border-strong)">
+          <th style="padding:12px 16px;color:var(--z-sage-dark);font-size:11px;text-transform:uppercase">Concepto</th>
+          <th style="padding:12px 16px;color:var(--z-sage-dark);font-size:11px;text-transform:uppercase">Impacto</th>
+          <th style="padding:12px 16px;color:var(--z-sage-dark);font-size:11px;text-transform:uppercase">Espacio</th>
+          <th style="padding:12px 16px;color:var(--z-sage-dark);font-size:11px;text-transform:uppercase">Mobile</th>
+          <th style="padding:12px 16px;color:var(--z-sage-dark);font-size:11px;text-transform:uppercase">Esfuerzo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--z-border)">
+          <td style="padding:12px 16px;font-weight:600">Vertical (Stitch)</td>
+          <td style="padding:12px 16px;color:var(--z-income)">Alto — visceral, memorable</td>
+          <td style="padding:12px 16px">Grande — 1 metrica por card</td>
+          <td style="padding:12px 16px;color:var(--z-alert)">Solo expandido</td>
+          <td style="padding:12px 16px">Medio</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--z-border)">
+          <td style="padding:12px 16px;font-weight:600">Speedometer</td>
+          <td style="padding:12px 16px;color:var(--z-income)">Alto — familiar (autos)</td>
+          <td style="padding:12px 16px">Medio — 3 por fila</td>
+          <td style="padding:12px 16px;color:var(--z-alert)">Dificil, muy ancho</td>
+          <td style="padding:12px 16px">Alto (SVG)</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--z-border);background:color-mix(in srgb, var(--z-income) 5%, transparent)">
+          <td style="padding:12px 16px;font-weight:600">Barras Horizontal</td>
+          <td style="padding:12px 16px;color:var(--z-income)">Medio-alto — denso e informativo</td>
+          <td style="padding:12px 16px;color:var(--z-income)">Compacto — 4 en 1 card</td>
+          <td style="padding:12px 16px;color:var(--z-income)">Perfecto</td>
+          <td style="padding:12px 16px;color:var(--z-income)">Bajo</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 16px;font-weight:600">Copy contextual</td>
+          <td style="padding:12px 16px;color:var(--z-income)">MUY alto — es lo que se siente</td>
+          <td style="padding:12px 16px">Variable — se agrega a cualquiera</td>
+          <td style="padding:12px 16px;color:var(--z-income)">Funciona en todo</td>
+          <td style="padding:12px 16px">Bajo (templates)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:24px;padding:20px;background:var(--z-surface);border:1px solid var(--z-income);border-radius:14px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px">Recomendacion</div>
+    <div style="font-size:13px;color:var(--z-sage);line-height:1.7">
+      <strong style="color:var(--z-white)">Barras horizontales</strong> como formato base (compacto, mobile-perfect, bajo esfuerzo) +
+      <strong style="color:var(--z-white)">Copy contextual salary-aware</strong> como layer de personalidad (lo que realmente gamifica) +
+      <strong style="color:var(--z-white)">Vertical Stitch</strong> como vista expandida cuando el usuario toca un meter en mobile.
+      <br><br>
+      La combinacion de los 3 te da: compacto por defecto, visceral al expandir, y honesto siempre.
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
