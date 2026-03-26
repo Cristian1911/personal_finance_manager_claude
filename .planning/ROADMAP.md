@@ -84,12 +84,13 @@ Plans:
   3. The `framer-motion` package is absent from `package.json`; onboarding transitions still animate using CSS classes
   4. Recharts is upgraded to v3 and chart color tokens use the CSS variable format expected by shadcn/ui (`var(--chart-1)` not `hsl(var(--chart-1))`)
   5. Each dashboard section has a meaningful skeleton (not a generic spinner) that matches the eventual content layout
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
 - [ ] 04-01-PLAN.md — Suspense tier split + content-shaped skeletons + mobile refactor (PERF-01, PERF-05)
 - [ ] 04-02-PLAN.md — Remove framer-motion, replace with CSS transitions (PERF-03)
-- [ ] 04-03-PLAN.md — Recharts v3 upgrade + next/dynamic lazy-loading for all charts (PERF-02, PERF-04)
+- [ ] 04-03-PLAN.md — Recharts v3 upgrade and type fixes (PERF-04)
+- [ ] 04-04-PLAN.md — next/dynamic lazy-loading for all chart components (PERF-02)
 
 ### Phase 5: Onboarding Audit
 **Goal**: A static HTML walkthrough of the current onboarding flow exists for human review before any redesign begins
@@ -175,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Security Foundation | 2/2 | Complete   | 2026-03-25 |
 | 2. Income & Data Foundation | 2/2 | Complete   | 2026-03-25 |
 | 3. Categorization Engine | 2/2 | Complete   | 2026-03-25 |
-| 4. Dashboard Performance | 0/3 | Not started | - |
+| 4. Dashboard Performance | 0/4 | Not started | - |
 | 5. Onboarding Audit | 0/TBD | Not started | - |
 | 6. Dashboard Redesign | 0/TBD | Not started | - |
 | 7. Categorization UX | 0/TBD | Not started | - |
