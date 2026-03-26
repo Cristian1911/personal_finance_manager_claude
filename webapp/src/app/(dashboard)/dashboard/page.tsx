@@ -65,7 +65,6 @@ import {
   PresupuestoSkeleton,
   PatrimonioSkeleton,
   HeatmapSkeleton,
-  UpcomingPaymentsSkeleton,
   CashFlowHeroStripSkeleton,
   MobileBurnRateSkeleton,
   MobileAllocationSkeleton,
@@ -74,41 +73,8 @@ import {
 import type { HealthMetersData } from "@/actions/health-meters";
 
 // ── Dynamic imports — chart JS is NOT in the initial bundle ──────────────────
-
-// Server Component pages cannot use ssr: false — chart components are already "use client"
-// so recharts DOM APIs never run server-side. Dynamic imports here achieve code splitting.
-const NetWorthHistoryChart = dynamic(
-  () => import("@/components/charts/net-worth-history-chart").then((m) => ({ default: m.NetWorthHistoryChart })),
-  { loading: () => <div className="h-[300px] w-full rounded-xl bg-muted animate-pulse" /> }
-);
-
-const BudgetPaceChart = dynamic(
-  () => import("@/components/charts/budget-pace-chart").then((m) => ({ default: m.BudgetPaceChart })),
-  { loading: () => <div className="h-[240px] w-full rounded-xl bg-muted animate-pulse" /> }
-);
-
-const CashFlowViewToggle = dynamic(
-  () => import("@/components/charts/cash-flow-view-toggle").then((m) => ({ default: m.CashFlowViewToggle })),
-  {
-    loading: () => (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div className="h-5 w-36 rounded bg-muted animate-pulse" />
-          <div className="flex gap-1">
-            <div className="h-7 w-16 rounded bg-muted animate-pulse" />
-            <div className="h-7 w-16 rounded bg-muted animate-pulse" />
-          </div>
-        </div>
-        <div className="h-[280px] w-full rounded-xl bg-muted animate-pulse" />
-      </div>
-    ),
-  }
-);
-
-const CategoryDonut = dynamic(
-  () => import("@/components/charts/category-donut").then((m) => ({ default: m.CategoryDonut })),
-  { loading: () => <div className="h-[280px] w-full rounded-xl bg-muted animate-pulse" /> }
-);
+// BurnRateCard uses dynamic() here (Client Component file); chart components use dynamic()
+// in their own section files (flujo-charts, presupuesto-section, patrimonio-section).
 
 const BurnRateCard = dynamic(
   () => import("@/components/dashboard/burn-rate-card").then((m) => ({ default: m.BurnRateCard })),
