@@ -27,8 +27,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **CAT-02**: Word-boundary matching to prevent false positives ("ara" matching "compra")
 - [x] **CAT-03**: Regex rule support in auto-categorize engine
 - [x] **CAT-04**: Expand keyword coverage for Colombian bank transaction formats
-- [ ] **CAT-05**: `manually_categorized` flag (or equivalent) to protect user corrections from being overwritten by auto-rules
-- [ ] **CAT-06**: Schema migration for manually_categorized tracking
+- [x] **CAT-05**: `manually_categorized` flag (or equivalent) to protect user corrections from being overwritten by auto-rules
+- [x] **CAT-06**: Schema migration for manually_categorized tracking
 
 ### Categorization UX
 
@@ -134,8 +134,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAT-02 | Phase 3 | Complete |
 | CAT-03 | Phase 3 | Complete |
 | CAT-04 | Phase 3 | Complete |
-| CAT-05 | Phase 3 | Pending |
-| CAT-06 | Phase 3 | Pending |
+| CAT-05 | Phase 3 | Complete |
+| CAT-06 | Phase 3 | Complete |
 | CATUX-01 | Phase 7 | Pending |
 | CATUX-02 | Phase 7 | Pending |
 | CATUX-03 | Phase 7 | Pending |

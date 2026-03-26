@@ -1,7 +1,5 @@
 import { z } from "zod";
-
-// Permissive UUID pattern — see transaction.ts for rationale
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { uuidStr } from "./shared";
 
 export const categorySchema = z.object({
   name: z.string().min(1, "El nombre es requerido").max(50),
@@ -10,7 +8,7 @@ export const categorySchema = z.object({
   icon: z.string().default("tag"),
   color: z.string().default("#6b7280"),
   direction: z.enum(["INFLOW", "OUTFLOW"]).optional().nullable(),
-  parent_id: z.string().regex(UUID_RE, "UUID inválido").optional().nullable(),
+  parent_id: uuidStr().optional().nullable(),
   is_essential: z.boolean().default(false),
 });
 

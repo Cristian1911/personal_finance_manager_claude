@@ -52,11 +52,12 @@ async function getEstimatedIncomeCached(
   if (accountsError) throw accountsError;
 
   // Priority: estimated_monthly_income (onboarding) > monthly_salary (settings) > transaction inference
-  const profileIncome = (profile?.estimated_monthly_income && profile.estimated_monthly_income > 0)
-    ? profile.estimated_monthly_income
-    : (profile?.monthly_salary && profile.monthly_salary > 0)
-      ? profile.monthly_salary
-      : null;
+  let profileIncome: number | null = null;
+  if (profile?.estimated_monthly_income && profile.estimated_monthly_income > 0) {
+    profileIncome = profile.estimated_monthly_income;
+  } else if (profile?.monthly_salary && profile.monthly_salary > 0) {
+    profileIncome = profile.monthly_salary;
+  }
 
   if (profileIncome !== null) {
     return {

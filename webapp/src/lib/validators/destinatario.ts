@@ -1,13 +1,9 @@
 import { z } from "zod";
-
-// Permissive UUID pattern — see transaction.ts for rationale
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { uuidStr } from "./shared";
 
 export const destinatarioSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").max(100),
-  default_category_id: z
-    .string()
-    .regex(UUID_RE, "UUID inválido")
+  default_category_id: uuidStr()
     .optional()
     .nullable()
     .transform((v) => v || null),

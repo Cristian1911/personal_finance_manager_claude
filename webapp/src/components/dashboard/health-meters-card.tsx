@@ -36,7 +36,7 @@ function MeterRow({
   const tag = getLevelTag(meter.level);
   const pinPosition = getNormalizedPosition(meter.type, meter.value);
   const label = METER_DISPLAY_LABELS[meter.type];
-  const isNoData = meter.formattedValue === "—";
+  const isNoData = !meter.hasData;
 
   return (
     <button
