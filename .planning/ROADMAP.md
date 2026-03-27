@@ -101,8 +101,11 @@ Plans:
   1. An HTML file (or set of files) exists that renders each onboarding step as a clickable mockup
   2. The walkthrough accurately represents the current flow — no steps are missing, no invented steps are shown
   3. The document is self-contained and can be opened in a browser without a running server
-**Plans**: TBD
+**Plans**: 1 plan
 **UI hint**: yes
+
+Plans:
+- [ ] 05-01-PLAN.md — Interactive HTML walkthrough of 6-step onboarding wizard with UX annotations (ONB-01)
 
 ### Phase 6: Dashboard Redesign
 **Goal**: A user can answer "Am I on track this month?" by reading the dashboard top-to-bottom without explanation
@@ -178,7 +181,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 2. Income & Data Foundation | 2/2 | Complete   | 2026-03-25 |
 | 3. Categorization Engine | 2/2 | Complete   | 2026-03-25 |
 | 4. Dashboard Performance | 5/5 | Complete   | 2026-03-26 |
-| 5. Onboarding Audit | 0/TBD | Not started | - |
+| 5. Onboarding Audit | 0/1 | Not started | - |
 | 6. Dashboard Redesign | 0/TBD | Not started | - |
 | 7. Categorization UX | 0/TBD | Not started | - |
 | 8. Onboarding Redesign | 0/TBD | Not started | - |
