@@ -122,7 +122,7 @@ Plans:
 
 Plans:
 - [ ] 06-01-PLAN.md — Hero enhancements: StatusHeadline, DebtFreeBanner, DashboardSection subtitle prop, primary tier styling (DASH-01, DASH-03, DASH-04)
-- [ ] 06-02-PLAN.md — Health score section: SpeedometerGauge, composite score computation, HealthScoreSection (DASH-02)
+- [x] 06-02-PLAN.md — Health score section: SpeedometerGauge, composite score computation, HealthScoreSection (DASH-02)
 - [ ] 06-03-PLAN.md — Section subtitles, page wiring, section reorder, visual verification (DASH-03, DASH-05)
 
 ### Phase 7: Categorization UX
