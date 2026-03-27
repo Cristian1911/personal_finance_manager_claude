@@ -38,46 +38,46 @@ completed: 2026-03-27
 
 # Phase 05: Onboarding Audit Summary
 
-**Interactive HTML walkthrough of 5-step onboarding wizard with per-step UX annotations and consolidated scorecard — dashboard personalization removed after human review**
+**Interactive HTML walkthrough of 6-step onboarding wizard with per-step UX annotations, removal banner on Step 4, and consolidated scorecard**
 
 ## Performance
 
-- **Duration:** ~25 min
+- **Duration:** ~30 min
 - **Tasks:** 2 (build + human verify)
 - **Files created:** 1
 
 ## Accomplishments
-- Self-contained HTML file replicating current onboarding flow, opens via file:// without server
-- 5 interactive steps with Back/Next navigation and fade-slide transitions
+- Self-contained HTML file faithfully replicating current 6-step onboarding flow, opens via file:// without server
+- 6 interactive steps with Back/Next navigation and fade-slide transitions
 - Per-step UX annotation callouts (concerns in orange, positive patterns in green)
-- Step 4 Finalizar simulates 800ms loading state
+- Step 4 "Tu app" includes prominent orange removal banner — flagged for elimination in Phase 8
+- Step 5 Finalizar simulates 800ms loading state
 - Summary scorecard consolidating Fortalezas/Fricciones/Oportunidades for Phase 8 planning
-- Removed "Tu app" personalization step after human audit — decision paralysis identified
 
 ## Task Commits
 
 1. **Task 1: Build walkthrough HTML** - `ef5d94e` (feat)
-2. **Task 2: Human verification** - `ecf7cbd` (feat — removed personalization step per user feedback)
+2. **Task 2: Human verification** - `ecf7cbd`, `319d83b` (iterative refinement per user feedback)
 
 ## Files Created/Modified
 - `ui-showcases/onboarding-walkthrough.html` - Complete interactive onboarding walkthrough with UX annotations
 
 ## Decisions Made
-- Removed Step 4 "Tu app" (dashboard tab personalization) — user identified it as decision paralysis
-- Reduced to 5 steps total (4 active + completion screen)
-- Scorecard updated to recommend auto-configuring layout from purpose + post-onboarding prompt
+- Step 4 "Tu app" (dashboard tab personalization) flagged for removal — user identified tab cycling as decision paralysis
+- Step 4 kept in walkthrough with removal banner for audit fidelity — documents current state while capturing the UX finding
+- Recommendation: move personalization to post-onboarding prompt or auto-configure from purpose
 
 ## Deviations from Plan
 
 ### Human-Directed Changes
 
-**1. Removed dashboard personalization step**
+**1. Step 4 flagged for removal with banner**
 - **Found during:** Task 2 (human verification)
 - **Issue:** Tab cycling mechanism caused decision paralysis — too many combinations
 - **First iteration:** Replaced cycling with 3 fixed layout presets
-- **Final decision:** User directed complete removal of personalization from onboarding
-- **Fix:** Removed Step 4 entirely, renumbered Steps 5→4 and 6→5, updated JS/CSS/scorecard
-- **Impact:** Flow is leaner (5 steps vs 6), personalization deferred to post-onboarding
+- **Second iteration:** User directed complete removal from onboarding
+- **Final decision:** Re-added Step 4 with prominent removal banner for audit fidelity
+- **Impact:** Walkthrough faithfully documents all 6 current steps while clearly marking Step 4 for Phase 8 elimination
 
 ## Issues Encountered
 - Pre-existing type error in `webapp/src/actions/accounts.ts` (CurrencyBalanceMap) — unrelated to this plan
