@@ -27,6 +27,7 @@ export function HealthScoreSkeleton() {
   );
 }
 
+
 /** Ritmo de gasto — area chart with header + legend */
 export function BurnRateSkeleton() {
   return (
