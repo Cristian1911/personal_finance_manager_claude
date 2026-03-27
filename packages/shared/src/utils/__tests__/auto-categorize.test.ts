@@ -107,12 +107,10 @@ describe("CAT-02: Word Boundary Matching", () => {
     expect(result!.category_id).toBe(CAT.ENTRETENIMIENTO);
   });
 
-  it("'tienda barranquilla' does NOT match 'bar' (substring of 'barranquilla')", () => {
-    const result = autoCategorize("tienda barranquilla");
-    // 'bar' is a substring of 'barranquilla' — must NOT match ENTRETENIMIENTO
-    if (result !== null) {
-      expect(result.category_id).not.toBe(CAT.ENTRETENIMIENTO);
-    }
+  it("'embarque aereo' does NOT match 'bar' (substring of 'embarque')", () => {
+    const result = autoCategorize("embarque aereo");
+    // 'bar' is a substring of 'embarque' — must NOT match ENTRETENIMIENTO via 'bar'
+    expect(result).toBeNull();
   });
 
   it("'pet store mascotas' matches 'pet' -> MASCOTAS (keyword at boundary)", () => {

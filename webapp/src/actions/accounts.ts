@@ -5,8 +5,15 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { accountSchema } from "@/lib/validators/account";
 import { computeIdempotencyKey } from "@zeta/shared";
+import { getDirectionForBalanceDelta } from "@/lib/utils/account-balance";
+import {
+  parseCurrencyBalanceMap,
+  resolveCurrencyBalanceCurrentValue,
+  type CurrencyBalanceEntry,
+} from "@/lib/utils/currency-balances";
+import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
-import type { Account } from "@/types/domain";
+import type { Account, CurrencyCode } from "@/types/domain";
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
@@ -105,6 +112,23 @@ function buildAccountInsertData(formData: FormData) {
   return Object.fromEntries(
     Object.entries(baseData).filter(([_, v]) => v !== undefined && v !== "")
   );
+}
+
+type ReconcileBalanceInput = {
+  currentBalance?: number;
+  currencyBalances?: Record<string, number>;
+  notes?: string;
+};
+
+function buildPrimaryCurrencyEntry(account: Account): CurrencyBalanceEntry {
+  return {
+    current_balance: account.current_balance ?? 0,
+    credit_limit: account.credit_limit,
+    available_balance: account.available_balance,
+    interest_rate: account.interest_rate,
+    minimum_payment: account.monthly_payment,
+    total_payment_due: null,
+  };
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
@@ -224,9 +248,8 @@ export async function toggleDashboardVisibility(
 
 export async function reconcileBalance(
   accountId: string,
-  newBalance: number,
-  notes?: string
-): Promise<ActionResult<{ delta: number }>> {
+  input: ReconcileBalanceInput
+): Promise<ActionResult<{ delta: number; currencyDeltas: Record<string, number> }>> {
   const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { success: false, error: "No autenticado" };
@@ -243,13 +266,82 @@ export async function reconcileBalance(
     return { success: false, error: fetchError?.message ?? "Cuenta no encontrada" };
   }
 
-  const delta = newBalance - (account.current_balance ?? 0);
+  const requestedBalances =
+    input.currencyBalances && Object.keys(input.currencyBalances).length > 0
+      ? input.currencyBalances
+      : input.currentBalance != null
+        ? { [account.currency_code]: input.currentBalance }
+        : {};
+
+  const currencyDeltas: Record<string, number> = {};
+  const existingCurrencyBalances = parseCurrencyBalanceMap(account.currency_balances);
+  const shouldPersistCurrencyBalances =
+    account.currency_balances !== null ||
+    Object.keys(requestedBalances).some((currency) => currency !== account.currency_code);
   const now = new Date().toISOString();
+  const adjustmentRows: Database["public"]["Tables"]["transactions"]["Insert"][] = [];
 
-  // If there's a difference, create an adjustment transaction
-  if (delta !== 0) {
-    const rawDescription = `Ajuste manual de saldo (${now})`;
+  for (const [currency, newBalance] of Object.entries(requestedBalances)) {
+    if (!Number.isFinite(newBalance) || newBalance < 0) {
+      return { success: false, error: `Saldo invalido para ${currency}` };
+    }
 
+    const baseEntry =
+      currency === account.currency_code
+        ? {
+            ...buildPrimaryCurrencyEntry(account),
+            ...(existingCurrencyBalances[currency] ?? {}),
+          }
+        : (existingCurrencyBalances[currency] ?? {
+            current_balance: null,
+            credit_limit: null,
+            available_balance: null,
+            interest_rate: null,
+            minimum_payment: null,
+            total_payment_due: null,
+          });
+
+    const previousBalance =
+      currency === account.currency_code
+        ? account.current_balance ?? 0
+        : resolveCurrencyBalanceCurrentValue(baseEntry);
+    const delta = newBalance - previousBalance;
+
+    currencyDeltas[currency] = delta;
+
+    if (shouldPersistCurrencyBalances) {
+      const nextEntry: CurrencyBalanceEntry = {
+        ...baseEntry,
+        current_balance: newBalance,
+      };
+
+      if (account.account_type === "CREDIT_CARD") {
+        const creditLimit =
+          nextEntry.credit_limit ??
+          (currency === account.currency_code ? account.credit_limit : null);
+
+        nextEntry.total_payment_due = newBalance;
+        if (creditLimit != null) {
+          nextEntry.credit_limit = creditLimit;
+          nextEntry.available_balance = Math.max(creditLimit - newBalance, 0);
+        }
+      }
+
+      existingCurrencyBalances[currency] = nextEntry;
+    }
+
+    if (delta === 0) continue;
+
+    const adjustmentDirection = getDirectionForBalanceDelta({
+      accountType: account.account_type,
+      delta,
+    });
+
+    if (!adjustmentDirection) {
+      return { success: false, error: "No se pudo determinar el ajuste de saldo." };
+    }
+
+    const rawDescription = `Ajuste manual de saldo ${currency} (${now})`;
     const idempotencyKey = await computeIdempotencyKey({
       provider: "MANUAL",
       transactionDate: now.slice(0, 10),
@@ -257,32 +349,51 @@ export async function reconcileBalance(
       rawDescription,
     });
 
-    const { error: txError } = await supabase.from("transactions").insert({
+    adjustmentRows.push({
       user_id: user.id,
       account_id: accountId,
       amount: Math.abs(delta),
-      currency_code: account.currency_code,
-      direction: delta > 0 ? "INFLOW" : "OUTFLOW",
+      currency_code: currency as CurrencyCode,
+      direction: adjustmentDirection,
       transaction_date: now.slice(0, 10),
       raw_description: rawDescription,
       clean_description: "Ajuste manual de saldo",
       merchant_name: null,
       category_id: null,
-      notes: notes || null,
+      notes: input.notes || null,
       idempotency_key: idempotencyKey,
       provider: "MANUAL",
       capture_method: "MANUAL_FORM",
       categorization_source: "SYSTEM_DEFAULT",
       is_excluded: false,
     });
+  }
+
+  if (adjustmentRows.length > 0) {
+    const { error: txError } = await supabase.from("transactions").insert(adjustmentRows);
 
     if (txError) return { success: false, error: txError.message };
   }
 
-  // Always update the account balance and updated_at (even if delta === 0)
+  const primaryBalance =
+    requestedBalances[account.currency_code] ?? account.current_balance ?? 0;
+  const accountUpdate: Database["public"]["Tables"]["accounts"]["Update"] = {
+    current_balance: primaryBalance,
+    updated_at: now,
+    ...(account.account_type === "CREDIT_CARD"
+      ? {
+          ...(account.credit_limit != null
+            ? { available_balance: Math.max(account.credit_limit - primaryBalance, 0) }
+            : {}),
+        }
+      : {}),
+    ...(shouldPersistCurrencyBalances
+      ? { currency_balances: existingCurrencyBalances as unknown as Database["public"]["Tables"]["accounts"]["Update"]["currency_balances"] }
+      : {}),
+  };
   const { error: updateError } = await supabase
     .from("accounts")
-    .update({ current_balance: newBalance, updated_at: now })
+    .update(accountUpdate)
     .eq("user_id", user.id)
     .eq("id", accountId);
 
@@ -292,5 +403,11 @@ export async function reconcileBalance(
   revalidateTag("dashboard:accounts", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
-  return { success: true, data: { delta } };
+  return {
+    success: true,
+    data: {
+      delta: currencyDeltas[account.currency_code] ?? 0,
+      currencyDeltas,
+    },
+  };
 }

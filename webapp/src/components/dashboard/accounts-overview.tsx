@@ -109,7 +109,9 @@ function AccountRow({ account }: { account: AccountWithSparkline }) {
         <ReconcileBalanceDialog
           accountId={account.id}
           accountName={account.name}
+          accountType={account.account_type}
           currentBalance={account.current_balance}
+          currencyBalances={account.currency_balances}
           currencyCode={account.currency_code}
           trigger={
             <button className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-accent transition-all" aria-label={`Actualizar saldo de ${account.name}`}>

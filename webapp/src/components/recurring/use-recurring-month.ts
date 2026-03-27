@@ -77,23 +77,29 @@ export function useRecurringMonth(
   /* ---- checked items (localStorage) ---- */
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
+  // Load from localStorage on mount and when month changes
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(storageKey);
-      if (!raw) {
-        setCheckedItems({});
-        return;
-      }
-      const parsed = JSON.parse(raw) as Record<string, boolean>;
-      setCheckedItems(parsed ?? {});
+      setCheckedItems(raw ? (JSON.parse(raw) as Record<string, boolean>) : {});
     } catch {
       setCheckedItems({});
     }
   }, [storageKey]);
 
-  useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(checkedItems));
-  }, [storageKey, checkedItems]);
+  // Write helper — syncs to localStorage inside the state update
+  const updateCheckedItems = useCallback(
+    (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => {
+      setCheckedItems((prev) => {
+        const next = updater(prev);
+        try {
+          window.localStorage.setItem(storageKey, JSON.stringify(next));
+        } catch { /* quota exceeded — silent */ }
+        return next;
+      });
+    },
+    [storageKey]
+  );
 
   /* ---- occurrence generation ---- */
   const occurrences = useMemo<OccurrenceItem[]>(() => {
@@ -245,8 +251,8 @@ export function useRecurringMonth(
         return;
       }
 
-      // Optimistically mark as checked
-      setCheckedItems((prev) => ({ ...prev, [item.key]: true }));
+      // Mark as checked and persist to localStorage
+      updateCheckedItems((prev) => ({ ...prev, [item.key]: true }));
 
       const created = result.data?.created ?? 0;
       const duplicates = result.data?.alreadyRecorded ?? 0;
@@ -256,24 +262,21 @@ export function useRecurringMonth(
           ? "Pago registrado como transferencia + abono a deuda"
           : "Pago recurrente registrado";
 
-        toast.success(msg, {
-          duration: 5000,
-          action: {
-            label: "Marcar pendiente",
-            onClick: () => {
-              setCheckedItems((prev) => {
-                const next = { ...prev };
-                delete next[item.key];
-                return next;
-              });
-            },
-          },
-        });
+        toast.success(msg);
       } else if (duplicates > 0) {
         toast.info("Este pago ya estaba registrado anteriormente.");
       }
     },
-    [todayStr]
+    [todayStr, updateCheckedItems]
+  );
+
+  /* ---- skip payment (already paid manually) ---- */
+  const skipPayment = useCallback(
+    (item: OccurrenceItem) => {
+      updateCheckedItems((prev) => ({ ...prev, [item.key]: true }));
+      toast.success("Marcado como completado");
+    },
+    [updateCheckedItems]
   );
 
   /* ---- totals ---- */
@@ -307,6 +310,7 @@ export function useRecurringMonth(
 
     // Actions
     confirmPayment,
+    skipPayment,
     busyItems,
 
     // Helpers

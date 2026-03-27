@@ -2,7 +2,7 @@
 
 import { cache } from "react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { formatMonthParam } from "@/lib/utils/date";
+import { formatMonthParam, monthEndStr, parseMonth } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 
 export interface InterestPaidData {
@@ -42,7 +42,7 @@ export const getInterestPaid = cache(
       .eq("user_id", user.id)
       .not("interest_charged", "is", null)
       .gte("period_to", `${currentYear}-01-01`)
-      .lte("period_to", `${targetMonth}-31`);
+      .lte("period_to", monthEndStr(parseMonth(targetMonth)));
 
     if (error) throw error;
 

@@ -94,10 +94,10 @@ export function CategoryCombobox({
             <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[220px] p-0" align="start">
+        <PopoverContent className="w-[220px] p-0" align="start" onWheel={(e) => e.stopPropagation()}>
           <Command>
             <CommandInput placeholder="Buscar categoría..." />
-            <CommandList>
+            <CommandList className="max-h-[200px]">
               <CommandEmpty>Sin resultados.</CommandEmpty>
 
               {/* "None" option */}

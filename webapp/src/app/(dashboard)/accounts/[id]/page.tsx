@@ -72,7 +72,9 @@ export default async function AccountDetailPage({
         <ReconcileBalanceDialog
           accountId={account.id}
           accountName={account.name}
+          accountType={account.account_type}
           currentBalance={account.current_balance}
+          currencyBalances={account.currency_balances}
           currencyCode={account.currency_code}
         />
         <AccountFormDialog account={account} />

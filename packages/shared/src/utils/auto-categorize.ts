@@ -10,7 +10,17 @@
  */
 
 import type { CategorizationSource } from "../types/domain";
-import { SEED_CATEGORY_IDS as CAT } from "../constants/categories";
+import {
+  SEED_CATEGORY_IDS as CAT,
+  CATEGORY_HOGAR,
+  CATEGORY_ALIMENTACION,
+  CATEGORY_TRANSPORTE,
+  CATEGORY_SALUD,
+  CATEGORY_ESTILO_DE_VIDA,
+  CATEGORY_OBLIGACIONES,
+  CATEGORY_INGRESOS,
+  CATEGORY_OTROS_INGRESOS,
+} from "../constants/categories";
 
 export interface CategorizationResult {
   category_id: string;
@@ -323,29 +333,17 @@ export function autoCategorize(
 
 /**
  * Get a human-readable category name for a seed category UUID.
+ * Uses the 8-category system (no collisions).
  */
 const CATEGORY_NAMES: Record<string, string> = {
-  [CAT.VIVIENDA]: "Vivienda",
-  [CAT.ALIMENTACION]: "Alimentación",
-  [CAT.TRANSPORTE]: "Transporte",
-  [CAT.SERVICIOS]: "Servicios",
-  [CAT.SALUD]: "Salud",
-  [CAT.EDUCACION]: "Educación",
-  [CAT.ENTRETENIMIENTO]: "Entretenimiento",
-  [CAT.COMPRAS]: "Compras",
-  [CAT.SUSCRIPCIONES]: "Suscripciones",
-  [CAT.SEGUROS]: "Seguros",
-  [CAT.IMPUESTOS]: "Impuestos",
-  [CAT.OTROS_GASTOS]: "Otros Gastos",
-  [CAT.SALARIO]: "Salario",
-  [CAT.FREELANCE]: "Freelance",
-  [CAT.INVERSIONES]: "Inversiones",
-  [CAT.REGALOS]: "Regalos",
-  [CAT.OTROS_INGRESOS]: "Otros Ingresos",
-  [CAT.CUIDADO_PERSONAL]: "Cuidado Personal",
-  [CAT.PAGOS_DEUDA]: "Pagos de Deuda",
-  [CAT.TRANSFERENCIAS]: "Transferencias",
-  [CAT.MASCOTAS]: "Mascotas",
+  [CATEGORY_HOGAR]: "Hogar",
+  [CATEGORY_ALIMENTACION]: "Alimentación",
+  [CATEGORY_TRANSPORTE]: "Transporte",
+  [CATEGORY_SALUD]: "Salud",
+  [CATEGORY_ESTILO_DE_VIDA]: "Estilo de vida",
+  [CATEGORY_OBLIGACIONES]: "Obligaciones",
+  [CATEGORY_INGRESOS]: "Ingresos",
+  [CATEGORY_OTROS_INGRESOS]: "Otros ingresos",
 };
 
 export function getCategoryName(categoryId: string): string {

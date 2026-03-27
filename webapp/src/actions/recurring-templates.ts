@@ -6,6 +6,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import {
   getNextOccurrence,
   getOccurrencesBetween,
@@ -44,21 +45,6 @@ async function computeRecurringGroupUuid(templateId: string, occurrenceDate: str
 
   const hex = bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
-}
-
-function applyBalanceDelta(params: {
-  currentBalance: number;
-  accountType: string;
-  direction: "INFLOW" | "OUTFLOW";
-  amount: number;
-}): number {
-  const isDebtAccount = DEBT_ACCOUNT_TYPES.has(params.accountType);
-  if (isDebtAccount) {
-    if (params.direction === "INFLOW") return params.currentBalance - params.amount;
-    return params.currentBalance + params.amount;
-  }
-  if (params.direction === "INFLOW") return params.currentBalance + params.amount;
-  return params.currentBalance - params.amount;
 }
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
@@ -714,7 +700,7 @@ async function updateBalancesForCreatedTransactions(params: {
     const account = params.accountMap.get(tx.account_id);
     if (!account) continue;
 
-    const nextBalance = applyBalanceDelta({
+    const nextBalance = applyAccountBalanceDelta({
       currentBalance: account.current_balance,
       accountType: account.account_type,
       direction: tx.direction,

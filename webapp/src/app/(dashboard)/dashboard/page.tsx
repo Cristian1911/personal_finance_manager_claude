@@ -32,6 +32,10 @@ import dynamic from "next/dynamic";
 import { getAccounts } from "@/actions/accounts";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
+import {
+  QuickValueUpdates,
+  type QuickValueUpdateAccount,
+} from "@/components/dashboard/quick-value-updates";
 import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { AccountsOverview } from "@/components/dashboard/accounts-overview";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
@@ -112,25 +116,20 @@ async function BurnRateSection({ currency }: { currency: CurrencyCode }) {
 async function CashFlowHeroStripSection({
   month,
   currency,
-  totalPending,
 }: {
   month: string | undefined;
   currency: CurrencyCode;
-  totalPending: number;
 }) {
   const cashflowData = await getMonthlyCashflow(month, currency);
   const currentMonthCashflow = cashflowData[cashflowData.length - 1];
   const cfIncome = currentMonthCashflow?.income ?? 0;
   const cfExpenses = currentMonthCashflow?.expenses ?? 0;
-  const cfFixed = totalPending;
-  const cfVariable = Math.max(0, cfExpenses - cfFixed);
-  const cfRemaining = cfIncome - cfExpenses;
+  const cfBalance = cfIncome - cfExpenses;
   return (
     <CashFlowHeroStrip
       income={cfIncome}
-      fixedExpenses={cfFixed}
-      variableExpenses={cfVariable}
-      remaining={cfRemaining}
+      expenses={cfExpenses}
+      balance={cfBalance}
       currency={currency}
     />
   );
@@ -394,6 +393,16 @@ export default async function DashboardPage({
     category_name: tx.categories?.name_es ?? tx.categories?.name ?? undefined,
   }));
 
+  const quickUpdateAccounts: QuickValueUpdateAccount[] = allAccounts.map((account) => ({
+    id: account.id,
+    name: account.name,
+    accountType: account.account_type,
+    currentBalance: account.current_balance ?? 0,
+    currencyBalances: account.currency_balances,
+    currencyCode: account.currency_code,
+    displayOrder: account.display_order,
+  }));
+
   return (
     <>
       {/* Mobile dashboard */}
@@ -404,6 +413,7 @@ export default async function DashboardPage({
             heroData={mobileHeroData}
             upcomingPayments={mobileUpcomingPayments}
             recentTransactions={mobileRecentTx}
+            quickUpdateAccounts={quickUpdateAccounts}
             healthMetersData={healthMetersData}
           />
           {/* Tier 2: burn rate, allocation, debt (streams in) */}
@@ -439,6 +449,7 @@ export default async function DashboardPage({
 
             {/* ── Hero Section — tier 1: always visible, no collapse ── */}
             <DashboardHero data={heroData} />
+            <QuickValueUpdates accounts={quickUpdateAccounts} id="quick-update-values" />
 
             {/* CashFlowHeroStrip — tier 2: streams in with skeleton */}
             <WidgetSlot widgetId="hero-flow-strip">
@@ -446,7 +457,6 @@ export default async function DashboardPage({
                 <CashFlowHeroStripSection
                   month={month}
                   currency={currency}
-                  totalPending={heroData.totalPending}
                 />
               </Suspense>
             </WidgetSlot>

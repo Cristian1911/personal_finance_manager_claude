@@ -50,6 +50,10 @@ export async function getUserSafely(
 ): Promise<User | null> {
   // Fast path: local JWT check — no network call
   try {
+    // Suppress SDK warning — we intentionally use getSession() as a fast path
+    // with layered defense (middleware + RLS + user_id filter on every query).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.auth as any).suppressGetSessionWarning = true;
     const { data, error } = await supabase.auth.getSession();
     if (!error && data.session?.user) {
       return data.session.user;

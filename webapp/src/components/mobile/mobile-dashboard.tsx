@@ -15,6 +15,10 @@ import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 import { HealthMetersCard } from "@/components/dashboard/health-meters-card";
 import type { HealthMetersData } from "@/actions/health-meters";
+import {
+  QuickValueUpdates,
+  type QuickValueUpdateAccount,
+} from "@/components/dashboard/quick-value-updates";
 
 // Tier 1 props only — tier 2 data (burn rate, allocation, debt, cashflow strip)
 // is now streamed in via Suspense sub-components from the dashboard page.
@@ -41,6 +45,7 @@ interface MobileDashboardProps {
     date: string;
     category_name?: string;
   }>;
+  quickUpdateAccounts: QuickValueUpdateAccount[];
   healthMetersData?: HealthMetersData | null;
 }
 
@@ -48,6 +53,7 @@ export function MobileDashboard({
   heroData,
   upcomingPayments,
   recentTransactions,
+  quickUpdateAccounts,
   healthMetersData,
 }: MobileDashboardProps) {
   const today = toISODateString(new Date());
@@ -75,6 +81,8 @@ export function MobileDashboard({
           </div>
         </div>
       </div>
+
+      <QuickValueUpdates accounts={quickUpdateAccounts} variant="mobile" />
 
       {/* 2. Health Meters — compact 4-bar card */}
       {healthMetersData && (

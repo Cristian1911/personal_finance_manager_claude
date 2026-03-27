@@ -22,6 +22,11 @@ import type { CurrencyCode } from "@/types/domain";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
+interface SourceAccount {
+  id: string;
+  name: string;
+}
+
 interface PaymentTimelineProps {
   pendingByDate: Map<string, OccurrenceItem[]>;
   getDateStatus: (date: string) => DateStatus;
@@ -35,6 +40,8 @@ interface PaymentTimelineProps {
   ) => void;
   busyItems: Record<string, boolean>;
   selectedDate: string | null;
+  sourceAccounts: SourceAccount[];
+  onSkip: (item: OccurrenceItem) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -111,6 +118,8 @@ export function PaymentTimeline({
   onConfirm,
   busyItems,
   selectedDate,
+  sourceAccounts,
+  onSkip,
 }: PaymentTimelineProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
@@ -230,8 +239,13 @@ export function PaymentTimeline({
                           });
                           setExpandedKey(null);
                         }}
+                        onSkip={() => {
+                          onSkip(item);
+                          setExpandedKey(null);
+                        }}
                         onCancel={() => setExpandedKey(null)}
                         isPending={!!busyItems[item.key]}
+                        sourceAccounts={sourceAccounts}
                       />
                     )}
                   </div>
