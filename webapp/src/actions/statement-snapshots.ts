@@ -17,7 +17,7 @@ async function getLatestSnapshotDatesCached(
   cacheTag("snapshots");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("statement_snapshots")
@@ -46,7 +46,7 @@ async function getStatementSnapshotsCached(
   cacheTag("snapshots");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("statement_snapshots")

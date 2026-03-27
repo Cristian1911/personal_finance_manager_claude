@@ -61,8 +61,16 @@ export function RecurringTimelineView({
             pendingByDate={hook.pendingByDate}
             getDateStatus={hook.getDateStatus}
             onConfirm={hook.confirmPayment}
+            onSkip={hook.skipPayment}
             busyItems={hook.busyItems}
             selectedDate={selectedDate}
+            sourceAccounts={accounts
+              .filter(
+                (a) =>
+                  a.account_type === "CHECKING" ||
+                  a.account_type === "SAVINGS"
+              )
+              .map((a) => ({ id: a.id, name: a.name }))}
           />
           <RecurringCompletedSection completed={hook.completed} />
         </div>

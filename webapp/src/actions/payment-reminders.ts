@@ -25,7 +25,7 @@ async function getUpcomingPaymentsCached(
   cacheLife("zeta");
 
   const today = toISODateString(new Date());
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   // We want to fetch the LATEST snapshot for each account
   // But doing a group-by or distinct-on is tricky in Supabase clients without a view

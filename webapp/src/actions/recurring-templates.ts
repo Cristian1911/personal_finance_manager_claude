@@ -6,9 +6,16 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
-import { getNextOccurrence, getOccurrencesBetween } from "@zeta/shared";
+import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import {
+  getNextOccurrence,
+  getOccurrencesBetween,
+  DEBT_PAYMENT_CATEGORY_ID,
+  TRANSFER_CATEGORY_ID,
+} from "@zeta/shared";
 import { addDays } from "date-fns";
 import { z } from "zod";
+import { uuidStr } from "@/lib/validators/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 import type {
@@ -18,8 +25,6 @@ import type {
 } from "@/types/domain";
 
 const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
-const DEBT_PAYMENT_CATEGORY_ID = "a0000001-0001-4000-8000-000000000019";
-const TRANSFER_CATEGORY_ID = "a0000001-0001-4000-8000-000000000020";
 
 const TEMPLATE_SELECT = `
   *,
@@ -42,21 +47,6 @@ async function computeRecurringGroupUuid(templateId: string, occurrenceDate: str
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
-function applyBalanceDelta(params: {
-  currentBalance: number;
-  accountType: string;
-  direction: "INFLOW" | "OUTFLOW";
-  amount: number;
-}): number {
-  const isDebtAccount = DEBT_ACCOUNT_TYPES.has(params.accountType);
-  if (isDebtAccount) {
-    if (params.direction === "INFLOW") return params.currentBalance - params.amount;
-    return params.currentBalance + params.amount;
-  }
-  if (params.direction === "INFLOW") return params.currentBalance + params.amount;
-  return params.currentBalance - params.amount;
-}
-
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
 async function getRecurringTemplatesCached(
@@ -66,7 +56,7 @@ async function getRecurringTemplatesCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
@@ -86,7 +76,7 @@ async function getRecurringTemplateCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
@@ -106,7 +96,7 @@ async function getUpcomingRecurrencesCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data: templates } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
@@ -148,7 +138,7 @@ async function getRecurringSummaryCached(userId: string): Promise<{
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data: templates } = await supabase
     .from("recurring_transaction_templates")
     .select("amount, direction, frequency, accounts!recurring_transaction_templates_account_id_fkey(account_type)")
@@ -387,11 +377,11 @@ export async function toggleRecurringTemplate(
 }
 
 const recurringOccurrencePaymentSchema = z.object({
-  templateId: z.string().uuid(),
+  templateId: uuidStr("ID de plantilla invalido"),
   occurrenceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   actualAmount: z.coerce.number().positive(),
-  sourceAccountId: z.string().uuid().nullable().optional(),
+  sourceAccountId: uuidStr("ID de cuenta invalido").nullable().optional(),
 });
 
 type ServerSupabase = SupabaseClient<Database>;
@@ -710,7 +700,7 @@ async function updateBalancesForCreatedTransactions(params: {
     const account = params.accountMap.get(tx.account_id);
     if (!account) continue;
 
-    const nextBalance = applyBalanceDelta({
+    const nextBalance = applyAccountBalanceDelta({
       currentBalance: account.current_balance,
       accountType: account.account_type,
       direction: tx.direction,

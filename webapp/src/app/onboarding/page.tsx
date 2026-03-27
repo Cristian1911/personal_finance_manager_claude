@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { finishOnboarding } from "@/actions/onboarding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -237,14 +236,12 @@ export default function OnboardingPage() {
                     </div>
                 </div>
             )}
-            <AnimatePresence mode="wait">
+            <>
                 {/* Step 1: Objetivo (unchanged) */}
                 {step === 1 && (
-                    <motion.div
+                    <div
                         key="step1"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-200"
                     >
                         <Card className="border-border">
                             <CardHeader>
@@ -277,16 +274,14 @@ export default function OnboardingPage() {
                                 </Button>
                             </CardFooter>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Step 2: Perfil (was step 3) */}
                 {step === 2 && (
-                    <motion.div
+                    <div
                         key="step2"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-200"
                     >
                         <Card className="border-border">
                             <CardHeader>
@@ -328,16 +323,14 @@ export default function OnboardingPage() {
                                 </Button>
                             </CardFooter>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Step 3: Finanzas (was step 2, enhanced) */}
                 {step === 3 && (
-                    <motion.div
+                    <div
                         key="step3"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-200"
                     >
                         <Card className="border-border">
                             <CardHeader>
@@ -403,16 +396,14 @@ export default function OnboardingPage() {
                                 </Button>
                             </CardFooter>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Step 4: Tu app — tab preview (NEW) */}
                 {step === 4 && dashboardConfig && (
-                    <motion.div
+                    <div
                         key="step4"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-200"
                     >
                         <Card className="border-border">
                             <CardHeader>
@@ -489,16 +480,14 @@ export default function OnboardingPage() {
                                 </Button>
                             </CardFooter>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Step 5: Primera cuenta (was step 4) */}
                 {step === 5 && (
-                    <motion.div
+                    <div
                         key="step5"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-200"
                     >
                         <Card className="border-border">
                             <CardHeader>
@@ -551,15 +540,14 @@ export default function OnboardingPage() {
                                 </Button>
                             </CardFooter>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* Step 6: Quick win (NEW) */}
                 {step === 6 && (
-                    <motion.div
+                    <div
                         key="step6"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        className="animate-in fade-in slide-in-from-right-4 duration-200"
                     >
                         <Card className="border-border">
                             <CardHeader className="text-center">
@@ -590,9 +578,9 @@ export default function OnboardingPage() {
                                 </Button>
                             </CardContent>
                         </Card>
-                    </motion.div>
+                    </div>
                 )}
-            </AnimatePresence>
+            </>
         </div>
     );
 }

@@ -12,6 +12,10 @@ import {
 } from "@/lib/validators/transaction";
 import { parseMonth, monthStartStr, monthEndStr } from "@/lib/utils/date";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
+import {
+  applyAccountBalanceDelta,
+  reverseAccountBalanceDelta,
+} from "@/lib/utils/account-balance";
 import type { ActionResult, PaginatedResult } from "@/types/actions";
 import type { Transaction } from "@/types/domain";
 
@@ -29,6 +33,138 @@ type PersistTransactionParams = {
   capture_method?: Transaction["capture_method"];
   capture_input_text?: string | null;
 };
+
+type BalanceAccountRow = {
+  id: string;
+  account_type: string;
+  current_balance: number;
+};
+
+type BalanceTransactionRow = Pick<
+  Transaction,
+  "account_id" | "amount" | "direction" | "is_excluded"
+>;
+
+async function loadBalanceAccounts(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  accountIds: string[]
+): Promise<ActionResult<Map<string, BalanceAccountRow>>> {
+  const uniqueIds = [...new Set(accountIds.filter(Boolean))];
+
+  if (uniqueIds.length === 0) {
+    return { success: true, data: new Map() };
+  }
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("id, account_type, current_balance")
+    .eq("user_id", userId)
+    .in("id", uniqueIds);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  const accountMap = new Map(
+    (data ?? []).map((account) => [
+      account.id,
+      {
+        id: account.id,
+        account_type: account.account_type,
+        current_balance: account.current_balance ?? 0,
+      },
+    ])
+  );
+
+  return { success: true, data: accountMap };
+}
+
+async function adjustBalancesForTransactionChanges(params: {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  changes: Array<{
+    existingTx?: BalanceTransactionRow;
+    nextTx?: BalanceTransactionRow;
+  }>;
+}): Promise<ActionResult<void>> {
+  const accountLookup = await loadBalanceAccounts(
+    params.supabase,
+    params.userId,
+    params.changes.flatMap((change) => [
+      change.existingTx?.account_id ?? "",
+      change.nextTx?.account_id ?? "",
+    ])
+  );
+
+  if (!accountLookup.success) {
+    return { success: false, error: accountLookup.error };
+  }
+
+  const accountMap = accountLookup.data;
+  const dirtyAccounts = new Set<string>();
+
+  for (const change of params.changes) {
+    if (change.existingTx && !change.existingTx.is_excluded) {
+      const account = accountMap.get(change.existingTx.account_id);
+      if (!account) {
+        return { success: false, error: "Cuenta no encontrada para reversar balance" };
+      }
+
+      account.current_balance = reverseAccountBalanceDelta({
+        currentBalance: account.current_balance,
+        accountType: account.account_type,
+        direction: change.existingTx.direction,
+        amount: change.existingTx.amount,
+      });
+      dirtyAccounts.add(account.id);
+    }
+
+    if (change.nextTx && !change.nextTx.is_excluded) {
+      const account = accountMap.get(change.nextTx.account_id);
+      if (!account) {
+        return { success: false, error: "Cuenta no encontrada para aplicar balance" };
+      }
+
+      account.current_balance = applyAccountBalanceDelta({
+        currentBalance: account.current_balance,
+        accountType: account.account_type,
+        direction: change.nextTx.direction,
+        amount: change.nextTx.amount,
+      });
+      dirtyAccounts.add(account.id);
+    }
+  }
+
+  for (const accountId of dirtyAccounts) {
+    const account = accountMap.get(accountId);
+    if (!account) continue;
+
+    const { error } = await params.supabase
+      .from("accounts")
+      .update({ current_balance: account.current_balance })
+      .eq("user_id", params.userId)
+      .eq("id", accountId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  return { success: true, data: undefined };
+}
+
+function revalidateFinancialViews() {
+  revalidateTag("accounts", "zeta");
+  revalidateTag("dashboard:accounts", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("categorize", "zeta");
+  revalidateTag("debt", "zeta");
+  revalidateTag("budgets", "zeta");
+}
 
 async function persistTransaction(
   supabase: SupabaseClient<Database>,
@@ -71,13 +207,17 @@ async function persistTransaction(
     return { success: false, error: error.message };
   }
 
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("categorize", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("budgets", "zeta");
+  const balanceResult = await adjustBalancesForTransactionChanges({
+    supabase,
+    userId: params.userId,
+    changes: [{ nextTx: data }],
+  });
+
+  if (!balanceResult.success) {
+    return { success: false, error: balanceResult.error };
+  }
+
+  revalidateFinancialViews();
   return { success: true, data };
 }
 
@@ -252,12 +392,16 @@ export async function updateTransaction(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("category_id")
+    .select("account_id, amount, direction, is_excluded, category_id")
     .eq("user_id", user.id)
     .eq("id", id)
     .single();
+
+  if (existingError || !existing) {
+    return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
+  }
 
   const categoryChanged = existing?.category_id !== parsed.data.category_id;
 
@@ -275,13 +419,32 @@ export async function updateTransaction(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("categorize", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("budgets", "zeta");
+  const balanceResult = await adjustBalancesForTransactionChanges({
+    supabase,
+    userId: user.id,
+    changes: [
+      {
+        existingTx: {
+          account_id: existing.account_id,
+          amount: existing.amount,
+          direction: existing.direction,
+          is_excluded: existing.is_excluded,
+        },
+        nextTx: {
+          account_id: data.account_id,
+          amount: data.amount,
+          direction: data.direction,
+          is_excluded: data.is_excluded,
+        },
+      },
+    ],
+  });
+
+  if (!balanceResult.success) {
+    return { success: false, error: balanceResult.error };
+  }
+
+  revalidateFinancialViews();
   return { success: true, data };
 }
 
@@ -290,17 +453,32 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
 
   if (!user) return { success: false, error: "No autenticado" };
 
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("account_id, amount, direction, is_excluded")
+    .eq("user_id", user.id)
+    .eq("id", id)
+    .single();
+
+  if (existingError || !existing) {
+    return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
+  }
+
   const { error } = await supabase.from("transactions").delete().eq("user_id", user.id).eq("id", id);
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("categorize", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("budgets", "zeta");
+  const balanceResult = await adjustBalancesForTransactionChanges({
+    supabase,
+    userId: user.id,
+    changes: [{ existingTx: existing }],
+  });
+
+  if (!balanceResult.success) {
+    return { success: false, error: balanceResult.error };
+  }
+
+  revalidateFinancialViews();
   return { success: true, data: undefined };
 }
 
@@ -312,6 +490,17 @@ export async function toggleExcludeTransaction(
 
   if (!user) return { success: false, error: "No autenticado" };
 
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("account_id, amount, direction, is_excluded")
+    .eq("user_id", user.id)
+    .eq("id", id)
+    .single();
+
+  if (existingError || !existing) {
+    return { success: false, error: existingError?.message ?? "Transacción no encontrada" };
+  }
+
   const { error } = await supabase
     .from("transactions")
     .update({ is_excluded: excluded })
@@ -320,12 +509,22 @@ export async function toggleExcludeTransaction(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("categorize", "zeta");
-  revalidateTag("budgets", "zeta");
+  const balanceResult = await adjustBalancesForTransactionChanges({
+    supabase,
+    userId: user.id,
+    changes: [
+      {
+        existingTx: existing,
+        nextTx: { ...existing, is_excluded: excluded },
+      },
+    ],
+  });
+
+  if (!balanceResult.success) {
+    return { success: false, error: balanceResult.error };
+  }
+
+  revalidateFinancialViews();
   return { success: true, data: undefined };
 }
 
@@ -337,6 +536,16 @@ export async function bulkExcludeTransactions(
 
   if (!user) return { success: false, error: "No autenticado" };
 
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("account_id, amount, direction, is_excluded, id")
+    .eq("user_id", user.id)
+    .in("id", ids);
+
+  if (existingError) {
+    return { success: false, error: existingError.message };
+  }
+
   const { error } = await supabase
     .from("transactions")
     .update({ is_excluded: excluded })
@@ -345,11 +554,29 @@ export async function bulkExcludeTransactions(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("categorize", "zeta");
-  revalidateTag("budgets", "zeta");
+  const balanceResult = await adjustBalancesForTransactionChanges({
+    supabase,
+    userId: user.id,
+    changes: (existing ?? []).map((tx) => ({
+      existingTx: {
+        account_id: tx.account_id,
+        amount: tx.amount,
+        direction: tx.direction,
+        is_excluded: tx.is_excluded,
+      },
+      nextTx: {
+        account_id: tx.account_id,
+        amount: tx.amount,
+        direction: tx.direction,
+        is_excluded: excluded,
+      },
+    })),
+  });
+
+  if (!balanceResult.success) {
+    return { success: false, error: balanceResult.error };
+  }
+
+  revalidateFinancialViews();
   return { success: true, data: undefined };
 }

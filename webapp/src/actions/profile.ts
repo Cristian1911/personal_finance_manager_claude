@@ -14,7 +14,7 @@ async function getPreferredCurrencyCached(userId: string): Promise<CurrencyCode>
   cacheTag("profile");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("preferred_currency")
@@ -29,7 +29,7 @@ async function getProfileCached(userId: string): Promise<Profile> {
   cacheTag("profile");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("profiles")
     .select("*")

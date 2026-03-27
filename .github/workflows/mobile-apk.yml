@@ -19,15 +19,16 @@ on:
         options:
           - device
           - local
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/mobile-apk.yml'
-      - 'mobile/**'
-      - 'packages/shared/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
+  # push trigger disabled — re-enable when mobile development resumes
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - '.github/workflows/mobile-apk.yml'
+  #     - 'mobile/**'
+  #     - 'packages/shared/**'
+  #     - 'package.json'
+  #     - 'pnpm-lock.yaml'
+  #     - 'pnpm-workspace.yaml'
 
 env:
   NODE_VERSION: '20'

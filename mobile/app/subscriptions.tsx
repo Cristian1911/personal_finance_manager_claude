@@ -9,13 +9,16 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Repeat, Trash2 } from "lucide-react-native";
-import { formatCurrency, type CurrencyCode, type Database } from "@zeta/shared";
+import {
+  formatCurrency,
+  SUBSCRIPTIONS_CATEGORY_ID,
+  type CurrencyCode,
+  type Database,
+} from "@zeta/shared";
 import { supabase } from "../lib/supabase";
 import { parseLocalizedAmount } from "../lib/amount";
 import { useAuth } from "../lib/auth";
 import { KeyboardScreen } from "../components/common/KeyboardScreen";
-
-const SUBSCRIPTIONS_CATEGORY_ID = "a0000001-0001-4000-8000-000000000009";
 const SUGGESTED_NAMES = [
   "Gym",
   "Netflix",

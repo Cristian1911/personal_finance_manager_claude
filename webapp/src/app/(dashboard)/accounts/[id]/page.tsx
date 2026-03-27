@@ -13,7 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { BalanceHistoryChart } from "@/components/charts/balance-history-chart";
+import dynamic from "next/dynamic";
+
+// Server Component — chart component is already "use client", no ssr: false needed
+const BalanceHistoryChart = dynamic(
+  () => import("@/components/charts/balance-history-chart").then((m) => ({ default: m.BalanceHistoryChart })),
+  { loading: () => <div className="h-[300px] w-full rounded-xl bg-muted animate-pulse" /> }
+);
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   CHECKING: "Cuenta Corriente",
@@ -66,7 +72,9 @@ export default async function AccountDetailPage({
         <ReconcileBalanceDialog
           accountId={account.id}
           accountName={account.name}
+          accountType={account.account_type}
           currentBalance={account.current_balance}
+          currencyBalances={account.currency_balances}
           currencyCode={account.currency_code}
         />
         <AccountFormDialog account={account} />

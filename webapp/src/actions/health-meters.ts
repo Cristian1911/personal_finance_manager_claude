@@ -23,12 +23,14 @@ export interface HealthMeter {
   level: Level;
   roast: string;
   formattedValue: string; // e.g. "76%" or "2.1 meses"
+  hasData: boolean;
 }
 
 export interface HealthMetersData {
   meters: HealthMeter[];
   summaryRoast: string;
   monthlyIncome: number | null;
+  hasIncomeData: boolean;
   currency: CurrencyCode;
 }
 
@@ -124,6 +126,7 @@ export const getHealthMeters = cache(
     const income = currentMonth?.income ?? 0;
     const expenses = currentMonth?.expenses ?? 0;
     const monthlyIncome = incomeEstimate?.monthlyAverage ?? null;
+    const hasIncomeData = (monthlyIncome !== null && monthlyIncome > 0) || income > 0;
 
     const accounts = accountsResult.success ? accountsResult.data : [];
 
@@ -190,26 +193,39 @@ export const getHealthMeters = cache(
       },
     ];
 
+    const noDataTypes = new Set<MeterType>(hasIncomeData ? [] : ["gasto", "deuda"]);
+
     const meters: HealthMeter[] = meterConfigs.map(
       ({ type, value, format }) => {
+        if (noDataTypes.has(type)) {
+          return {
+            type,
+            value,
+            level: classifyLevel(type, value),
+            roast: "Sin datos de ingresos — configura tu ingreso mensual en ajustes para ver este indicador.",
+            formattedValue: "—",
+            hasData: false,
+          };
+        }
         const level = classifyLevel(type, value);
         return {
           type,
           value,
           level,
-          roast: getRoastMessage(
-            type,
-            value,
-            level,
-            monthlyIncome ?? undefined,
-            currency,
-          ),
+          roast: getRoastMessage(type, value, level, monthlyIncome ?? undefined, currency),
           formattedValue: format(value),
+          hasData: true,
         };
       },
     );
 
-    // 7. Summary roast — pick the worst meter and highlight it
+    // 7. When no income data, return early with neutral summary
+    if (!hasIncomeData) {
+      const summaryRoast = "Configura tu ingreso mensual en ajustes para obtener un diagnóstico financiero completo.";
+      return { meters, summaryRoast, monthlyIncome, hasIncomeData, currency };
+    }
+
+    // 8. Summary roast — pick the worst meter and highlight it
     const worstLevel = getWorstLevel(meters.map((m) => m.level));
     const worstMeter = meters.find((m) => m.level === worstLevel) ?? meters[0];
 
@@ -220,6 +236,6 @@ export const getHealthMeters = cache(
       currency,
     );
 
-    return { meters, summaryRoast, monthlyIncome, currency };
+    return { meters, summaryRoast, monthlyIncome, hasIncomeData, currency };
   },
 );

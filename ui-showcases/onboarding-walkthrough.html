@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zeta Onboarding Walkthrough - Audit Document</title>
+
+  <!-- Tailwind CSS CDN (utility supplement — structurally critical CSS is in the style block below) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Geist Sans font -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========================================
+       Zeta Design Tokens (from globals.css)
+       ======================================== */
+    :root {
+      /* Core tokens */
+      --z-ink:           #0A0E14;
+      --z-surface:       #131720;
+      --z-surface-2:     #1C1F28;
+      --z-surface-3:     #262A34;
+      --z-sage:          #C5BFAE;
+      --z-sage-light:    #D8D2C4;
+      --z-sage-dark:     #9E9888;
+      --z-white:         #F0EDE6;
+
+      /* Financial semantics */
+      --z-income:        #5CB88A;
+      --z-expense:       #E8875A;
+      --z-alert:         #D4A843;
+      --z-debt:          #E05545;
+
+      /* Surfaces */
+      --z-border:        rgba(192, 185, 170, 0.08);
+      --z-border-strong: rgba(192, 185, 170, 0.14);
+
+      /* Spacing scale (from globals.css) */
+      --z-space-xs:  6px;
+      --z-space-sm:  8px;
+      --z-space-md:  16px;
+      --z-space-lg:  20px;
+      --z-space-xl:  28px;
+      --z-space-2xl: 40px;
+      --z-space-3xl: 64px;
+
+      /* shadcn semantic mappings */
+      --primary:            var(--z-white);
+      --primary-foreground: var(--z-ink);
+      --muted:              var(--z-surface-2);
+      --muted-foreground:   var(--z-sage-dark);
+      --card:               var(--z-surface);
+      --card-foreground:    var(--z-white);
+      --border:             var(--z-border-strong);
+      --background:         var(--z-ink);
+      --foreground:         var(--z-white);
+    }
+
+    /* ========================================
+       Base Resets
+       ======================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--z-white);
+      background: var(--z-ink);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ========================================
+       Layout Wrapper
+       ======================================== */
+    .layout-wrapper {
+      background: linear-gradient(to bottom, #ecfdf5 0%, #0A0E14 30%, #0A0E14 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .layout-wrapper { padding: 24px; }
+    }
+    @media (min-width: 1024px) {
+      .layout-wrapper { padding: 32px; }
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 512px;
+      margin: 0 auto;
+    }
+
+    /* ========================================
+       Card Component
+       ======================================== */
+    .z-card {
+      background: var(--z-surface);
+      border: 1px solid var(--z-border-strong);
+      border-radius: 12px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .z-card-header {
+      padding: 24px 24px 0 24px;
+    }
+
+    .z-card-title {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      color: var(--z-white);
+      margin-bottom: 4px;
+    }
+
+    .z-card-description {
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.7;
+      color: var(--z-sage-dark);
+      margin-top: 4px;
+    }
+
+    .z-card-content {
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .z-card-content.gap-lg {
+      gap: 24px;
+    }
+
+    .z-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--z-border-strong);
+      padding: 24px;
+    }
+
+    /* ========================================
+       Progress Bar
+       ======================================== */
+    .progress-section {
+      margin-bottom: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--z-border-strong);
+      background: rgba(19, 23, 32, 0.8);
+      padding: 16px;
+    }
+
+    .progress-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .progress-label {
+      font-weight: 500;
+      color: var(--z-sage-dark);
+    }
+
+    .progress-counter {
+      font-weight: 600;
+      color: var(--z-white);
+    }
+
+    .progress-track {
+      height: 8px;
+      border-radius: 9999px;
+      background: var(--z-surface-2);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 8px;
+      border-radius: 9999px;
+      background: var(--z-white);
+      transition: width 300ms ease;
+    }
+
+    /* ========================================
+       Buttons
+       ======================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s ease, background 0.15s ease;
+      font-family: inherit;
+      line-height: 1.4;
+    }
+
+    .btn:hover { opacity: 0.9; }
+
+    .btn-primary {
+      background: var(--z-white);
+      color: var(--z-ink);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--z-sage-light);
+    }
+
+    .btn-ghost:hover {
+      background: var(--z-surface-2);
+    }
+
+    .btn-lg {
+      padding: 14px 24px;
+      font-size: 15px;
+      width: 100%;
+    }
+
+    .btn:disabled, .btn[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn:disabled:hover { opacity: 0.5; }
+
+    /* ========================================
+       Input & Select
+       ======================================== */
+    .z-input, .z-select {
+      background: var(--z-surface-2);
+      border: 1px solid var(--z-border-strong);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--z-white);
+      width: 100%;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .z-input::placeholder {
+      color: var(--z-sage-dark);
+    }
+
+    .z-input:focus, .z-select:focus {
+      border-color: var(--z-sage);
+    }
+
+    .z-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239E9888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+
+    .z-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--z-sage-light);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .field-group {
+      display: grid;
+      gap: 6px;
+    }
+
+    /* ========================================
+       Purpose Buttons
+       ======================================== */
+    .purpose-btn {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--z-border-strong);
+      padding: 16px;
+      background: transparent;
+      color: var(--z-white);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+    }
+
+    .purpose-btn:hover {
+      background: var(--z-surface-2);
+    }
+
+    .purpose-btn.selected {
+      border: 2px solid var(--z-white);
+      background: rgba(240, 237, 230, 0.1);
+    }
+
+    .purpose-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--z-surface-2);
+      color: var(--z-white);
+      flex-shrink: 0;
+    }
+
+    .purpose-label {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    /* ========================================
+       Budget Hint
+       ======================================== */
+    .budget-hint {
+      border-radius: 8px;
+      border: 1px solid var(--z-border-strong);
+      background: rgba(28, 31, 40, 0.3);
+      padding: 12px;
+      font-size: 14px;
+    }
+
+    .budget-hint .amount {
+      font-weight: 500;
+      color: var(--z-white);
+    }
+
+    .budget-hint .hint-sub {
+      color: var(--z-sage-dark);
+      margin-top: 4px;
+      font-size: 13px;
+    }
+
+    .debt-confirm {
+      font-size: 14px;
+      color: var(--z-income);
+    }
+
+    /* Layout personalization removed from onboarding — to be prompted post-onboarding instead */
+
+    /* ========================================
+       Step 6 — Completion
+       ======================================== */
+    .success-icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: color-mix(in srgb, #5CB88A 10%, transparent);
+      margin: 0 auto 16px auto;
+    }
+
+    .success-icon-wrapper svg {
+      color: var(--z-income);
+    }
+
+    .step6-greeting {
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: -0.02em;
+    }
+
+    .step6-sub {
+      font-size: 15px;
+      color: var(--z-sage-dark);
+      text-align: center;
+      margin-top: 4px;
+      line-height: 1.7;
+    }
+
+    .step6-ctas {
+      padding: 24px;
+      display: grid;
+      gap: 12px;
+    }
+
+    /* ========================================
+       Step Transition Animation
+       ======================================== */
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateX(16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .step-enter {
+      animation: fadeSlideIn 200ms ease forwards;
+    }
+
+    /* ========================================
+       Annotation Callouts
+       ======================================== */
+    .annotation-box {
+      background: color-mix(in srgb, #C5BFAE 6%, transparent);
+      border: 1px solid rgba(197, 191, 174, 0.12);
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-top: 16px;
+    }
+
+    .annotation-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--z-sage-dark);
+      margin-bottom: 12px;
+    }
+
+    .annotation-item {
+      margin-bottom: 8px;
+      color: var(--z-sage-light);
+      font-size: 14px;
+      line-height: 1.6;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .annotation-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .annotation-item .icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .annotation-item.concern strong { color: var(--z-expense); }
+    .annotation-item.positive strong { color: var(--z-income); }
+
+    /* ========================================
+       Scorecard
+       ======================================== */
+    .scorecard-section {
+      width: 100%;
+      max-width: 960px;
+      margin: 40px auto 0 auto;
+      padding: 0 16px;
+    }
+
+    .scorecard-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--z-white);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .scorecard-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .scorecard-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    .scorecard-card {
+      background: var(--z-surface-2);
+      border: 1px solid var(--z-border-strong);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .scorecard-card h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .scorecard-card h3.strengths { color: var(--z-income); }
+    .scorecard-card h3.frictions { color: var(--z-expense); }
+    .scorecard-card h3.opportunities { color: var(--z-sage); }
+
+    .scorecard-card ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .scorecard-card li {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--z-sage-light);
+      margin-bottom: 8px;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .scorecard-card li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+    }
+
+    .scorecard-card .strengths + ul li::before { background: var(--z-income); }
+    .scorecard-card .frictions + ul li::before { background: var(--z-expense); }
+    .scorecard-card .opportunities + ul li::before { background: var(--z-sage); }
+
+    /* ========================================
+       Step Containers (hidden by default)
+       ======================================== */
+    .step-container {
+      display: none;
+    }
+
+    .step-container.active {
+      display: block;
+    }
+
+    /* ========================================
+       Spinner
+       ======================================== */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    /* ========================================
+       Document Header
+       ======================================== */
+    .doc-header {
+      text-align: center;
+      padding: 24px 16px 0 16px;
+      max-width: 512px;
+      margin: 0 auto;
+    }
+
+    .doc-header h1 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--z-sage-dark);
+      margin-bottom: 4px;
+    }
+
+    .doc-header p {
+      font-size: 13px;
+      color: var(--z-sage-dark);
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout-wrapper">
+
+    <!-- Document header -->
+    <div class="doc-header">
+      <h1>Onboarding Audit - Phase 5</h1>
+      <p>Walkthrough interactivo del flujo actual de onboarding (6 pasos). Haz clic en "Siguiente" para avanzar.</p>
+    </div>
+
+    <div style="height: 24px;"></div>
+
+    <div class="app-container">
+
+      <!-- ============================
+           Progress Section
+           ============================ -->
+      <div class="progress-section" id="progress-section">
+        <div class="progress-header">
+          <span class="progress-label">Onboarding Zeta</span>
+          <span class="progress-counter" id="step-counter">Paso 1 de 4</span>
+        </div>
+        <div class="progress-track" role="progressbar" aria-valuenow="17" aria-valuemin="0" aria-valuemax="100" id="progress-bar">
+          <div class="progress-fill" id="progress-fill" style="width: 16.67%;"></div>
+        </div>
+      </div>
+
+      <!-- ============================
+           Step 1 - Bienvenido a Zeta
+           ============================ -->
+      <div class="step-container active" id="step-1">
+        <div class="z-card step-enter">
+          <div class="z-card-header">
+            <div class="z-card-title">Bienvenido a Zeta</div>
+            <div class="z-card-description">Antes de arrancar, cuentanos que quieres lograr.</div>
+          </div>
+          <div class="z-card-content">
+            <button class="purpose-btn selected" data-purpose="manage_debt" onclick="selectPurpose(this, 'manage_debt')">
+              <div class="purpose-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+              </div>
+              <span class="purpose-label">Salir de deudas</span>
+            </button>
+            <button class="purpose-btn" data-purpose="track_spending" onclick="selectPurpose(this, 'track_spending')">
+              <div class="purpose-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              </div>
+              <span class="purpose-label">Entender mis gastos</span>
+            </button>
+            <button class="purpose-btn" data-purpose="save_money" onclick="selectPurpose(this, 'save_money')">
+              <div class="purpose-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h0"/></svg>
+              </div>
+              <span class="purpose-label">Ahorrar para una meta</span>
+            </button>
+            <button class="purpose-btn" data-purpose="improve_habits" onclick="selectPurpose(this, 'improve_habits')">
+              <div class="purpose-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+              </div>
+              <span class="purpose-label">Mejorar habitos financieros</span>
+            </button>
+          </div>
+          <div class="z-card-footer">
+            <button class="btn btn-ghost" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              Atras
+            </button>
+            <button class="btn btn-primary" id="step1-next" onclick="nextStep()">
+              Siguiente
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Annotations Step 1 -->
+        <div class="annotation-box">
+          <div class="annotation-title">Hallazgos UX - Paso 1</div>
+          <div class="annotation-item positive">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+            <span><strong>Buen patron:</strong> Las opciones de proposito usan lenguaje de beneficio claro ("Salir de deudas", no "Modo de gestion de deuda")</span>
+          </div>
+          <div class="annotation-item positive">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+            <span><strong>Buen patron:</strong> Semantica de radio-button: re-clic no deselecciona, previniendo deseleccion accidental</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> No hay opcion de "saltar" para usuarios indecisos &mdash; no pueden avanzar sin elegir</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> La eleccion de proposito controla silenciosamente el paso 3 (campo de deudas), paso 4 (preview de tabs) y paso 6 (CTA quick win) &mdash; sin indicacion visible al usuario de que tiene efectos cascada</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================
+           Step 2 - Tu perfil
+           ============================ -->
+      <div class="step-container" id="step-2">
+        <div class="z-card">
+          <div class="z-card-header">
+            <div class="z-card-title">Tu perfil</div>
+            <div class="z-card-description">Personaliza como quieres ver tu dinero.</div>
+          </div>
+          <div class="z-card-content gap-lg">
+            <div class="field-group">
+              <label class="z-label" for="fullName">Nombre completo</label>
+              <input class="z-input" type="text" id="fullName" value="Maria Garcia" placeholder="Ej: Maria Perez">
+            </div>
+            <div class="field-group">
+              <label class="z-label" for="currency">Moneda preferida</label>
+              <select class="z-select" id="currency">
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (&euro;)</option>
+                <option value="COP" selected>COP ($)</option>
+                <option value="MXN">MXN ($)</option>
+                <option value="BRL">BRL (R$)</option>
+              </select>
+            </div>
+          </div>
+          <div class="z-card-footer">
+            <button class="btn btn-ghost" onclick="prevStep()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              Atras
+            </button>
+            <button class="btn btn-primary" onclick="nextStep()">
+              Siguiente
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Annotations Step 2 -->
+        <div class="annotation-box">
+          <div class="annotation-title">Hallazgos UX - Paso 2</div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> La moneda por defecto es USD, no COP &mdash; usuarios colombianos ven el default incorrecto al llegar (setCurrency("USD") en el codigo fuente)</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> Se recopila el apellido pero solo se usa el primer nombre (paso 6: fullName.split(" ")[0]) &mdash; informacion recolectada sin utilizar</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> Zona horaria capturada silenciosamente via Intl.DateTimeFormat() &mdash; el usuario no tiene control ni visibilidad</span>
+          </div>
+          <div class="annotation-item positive">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+            <span><strong>Buen patron:</strong> Las opciones de moneda incluyen COP, MXN, BRL &mdash; regionalmente apropiadas para Latam</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================
+           Step 3 - Pulso mensual
+           ============================ -->
+      <div class="step-container" id="step-3">
+        <div class="z-card">
+          <div class="z-card-header">
+            <div class="z-card-title">Pulso mensual</div>
+            <div class="z-card-description">Arranquemos con una estimacion rapida de tus ingresos y gastos.</div>
+          </div>
+          <div class="z-card-content gap-lg">
+            <div class="field-group">
+              <label class="z-label" for="income">Ingreso mensual estimado</label>
+              <input class="z-input" type="text" id="income" value="$4,500,000" placeholder="Ej: 5.000">
+            </div>
+            <div class="field-group">
+              <label class="z-label" for="expenses">Gasto mensual estimado</label>
+              <input class="z-input" type="text" id="expenses" value="$3,200,000" placeholder="Ej: 4.000">
+            </div>
+
+            <!-- Budget hint (always shown with pre-filled values) -->
+            <div class="budget-hint">
+              <p class="amount">Disponible para presupuesto: $1,300,000</p>
+              <p class="hint-sub">Esta referencia nos ayuda a sugerirte limites de gasto desde el dia 1.</p>
+            </div>
+
+            <!-- Debt count (shown because purpose is manage_debt) -->
+            <div class="field-group" id="debt-count-section">
+              <label class="z-label" for="debtCount">&iquest;Cuantas tarjetas de credito o prestamos tienes?</label>
+              <input class="z-input" type="number" id="debtCount" value="2" min="0" max="20" placeholder="Ej: 3">
+              <p class="debt-confirm" id="debt-confirm">Perfecto, Zeta te ayudara a organizar tus 2 deudas.</p>
+            </div>
+          </div>
+          <div class="z-card-footer">
+            <button class="btn btn-ghost" onclick="prevStep()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              Atras
+            </button>
+            <button class="btn btn-primary" onclick="nextStep()">
+              Siguiente
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Annotations Step 3 -->
+        <div class="annotation-box">
+          <div class="annotation-title">Hallazgos UX - Paso 3</div>
+          <div class="annotation-item positive">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+            <span><strong>Buen patron:</strong> "Disponible para presupuesto" con calculo en vivo da valor inmediato &mdash; primer momento donde la app demuestra utilidad</span>
+          </div>
+          <div class="annotation-item positive">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+            <span><strong>Buen patron:</strong> Campo de cantidad de deudas es condicional al proposito &mdash; reduce longitud del formulario para quienes no lo necesitan</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> La cantidad de deudas se recopila pero se descarta &mdash; NO se pasa a finishOnboarding(), solo se usa para el mensaje de confirmacion inline</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> Si gastos superan ingresos, el hint muestra "Disponible: $0" sin advertencia &mdash; oportunidad perdida para orientar al usuario</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================
+           Step 4 - Primera cuenta
+           (was Step 5 — "Tu app" personalization removed from onboarding)
+           ============================ -->
+      <div class="step-container" id="step-4">
+        <div class="z-card">
+          <div class="z-card-header">
+            <div class="z-card-title">Primera cuenta</div>
+            <div class="z-card-description">Agrega tu cuenta principal para empezar con datos reales.</div>
+          </div>
+          <div class="z-card-content gap-lg">
+            <div class="field-group">
+              <label class="z-label" for="accountName">Nombre de la cuenta</label>
+              <input class="z-input" type="text" id="accountName" value="Bancolombia Ahorros" placeholder="Ej: Cuenta principal">
+            </div>
+            <div class="field-group">
+              <label class="z-label" for="accountType">Tipo de cuenta</label>
+              <select class="z-select" id="accountType">
+                <option value="CHECKING">Corriente</option>
+                <option value="SAVINGS" selected>Ahorros</option>
+                <option value="CREDIT_CARD">Tarjeta de credito</option>
+                <option value="CASH">Efectivo</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="z-label" for="balance">Saldo actual</label>
+              <input class="z-input" type="text" id="balance" value="$1,250,000" placeholder="0">
+            </div>
+          </div>
+          <div class="z-card-footer">
+            <button class="btn btn-ghost" onclick="prevStep()" id="step4-back">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              Atras
+            </button>
+            <button class="btn btn-primary" onclick="simulateSubmit()" id="step4-submit">
+              Finalizar
+            </button>
+          </div>
+        </div>
+
+        <!-- Annotations Step 4 -->
+        <div class="annotation-box">
+          <div class="annotation-title">Hallazgos UX - Paso 4</div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> El tipo de cuenta en el codigo fuente tiene por defecto CHECKING ("Corriente") &mdash; los colombianos mas comunmente tienen Ahorros como cuenta principal</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> No hay entrada de multiples cuentas en el onboarding &mdash; usuarios con varias cuentas deben agregarlas post-onboarding</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> El saldo puede ser "0" (valido) pero parseFloat tiene un edge case sutil: parseFloat("0") || 0 = 0 &mdash; funciona, pero el chequeo del boton requiere string no-vacio, creando una inconsistencia logica</span>
+          </div>
+          <div class="annotation-item positive">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+            <span><strong>Buen patron:</strong> Arrancar con una cuenta real ancla al usuario en datos reales desde el dia 1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================
+           Step 5 - Completion
+           (was Step 6 — flow reduced from 6 to 5 steps)
+           ============================ -->
+      <div class="step-container" id="step-5">
+        <div class="z-card">
+          <div class="z-card-header" style="text-align: center;">
+            <div class="success-icon-wrapper">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #5CB88A;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="step6-greeting">Listo, Maria!</div>
+            <div class="step6-sub">Tu Zeta esta configurado. &iquest;Que quieres hacer primero?</div>
+          </div>
+          <div class="step6-ctas">
+            <a href="#" class="btn btn-primary btn-lg" style="text-decoration: none;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
+              Importa tu primer extracto
+            </a>
+            <a href="#" class="btn btn-ghost btn-lg" style="text-decoration: none;">
+              Explorar primero
+            </a>
+          </div>
+        </div>
+
+        <!-- Annotations Step 5 -->
+        <div class="annotation-box">
+          <div class="annotation-title">Hallazgos UX - Paso 5</div>
+          <div class="annotation-item positive">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+            <span><strong>Buen patron:</strong> CTA de quick win es consciente del proposito elegido &mdash; crea continuidad entre el objetivo declarado y la primera accion</span>
+          </div>
+          <div class="annotation-item positive">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+            <span><strong>Buen patron:</strong> "Explorar primero" como CTA secundario respeta la preferencia de usuarios que quieren mirar antes de actuar</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> "Explorar primero" redirige a /dashboard que puede mostrar estado vacio sin datos &mdash; despues de la pantalla de exito, un dashboard vacio puede sentirse decepcionante</span>
+          </div>
+          <div class="annotation-item concern">
+            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span><strong>Friccion:</strong> No hay barra de progreso en el paso 6 &mdash; correcto segun el codigo fuente, pero el salto visual puede sentirse abrupto</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /app-container -->
+
+    <!-- ============================
+         Scorecard Section
+         ============================ -->
+    <div class="scorecard-section" id="scorecard" style="display: none;">
+      <div class="scorecard-title">Resumen del flujo actual</div>
+      <div class="scorecard-grid">
+
+        <!-- Fortalezas -->
+        <div class="scorecard-card">
+          <h3 class="strengths">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Fortalezas
+          </h3>
+          <ul>
+            <li>Lenguaje de beneficio claro en opciones de proposito &mdash; el usuario entiende que obtiene, no la mecanica interna</li>
+            <li>Calculo en vivo de "Disponible para presupuesto" da valor inmediato y demuestra utilidad desde el paso 3</li>
+            <li>Flujo reducido a 4 pasos activos + completion &mdash; menos friccion, mas rapido al valor real</li>
+            <li>CTA de quick win consciente del proposito crea continuidad narrativa hacia la primera accion real</li>
+            <li>Cuenta real como primer dato ancla al usuario en informacion concreta desde el inicio</li>
+          </ul>
+        </div>
+
+        <!-- Fricciones -->
+        <div class="scorecard-card">
+          <h3 class="frictions">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Fricciones
+          </h3>
+          <ul>
+            <li>Moneda por defecto es USD &mdash; el usuario colombiano debe cambiarla manualmente a COP cada vez</li>
+            <li>Cantidad de deudas se recopila pero se descarta silenciosamente &mdash; nunca se pasa a finishOnboarding()</li>
+            <li>Personalizacion de tabs en onboarding genera paralisis de decision &mdash; mejor diferir a post-onboarding</li>
+            <li>Tipo de cuenta por defecto es CHECKING, no Ahorros que es mas comun en Colombia</li>
+          </ul>
+        </div>
+
+        <!-- Oportunidades -->
+        <div class="scorecard-card">
+          <h3 class="opportunities">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            Oportunidades para Phase 8
+          </h3>
+          <ul>
+            <li>Cambiar default de moneda a COP y tipo de cuenta a Ahorros para el mercado colombiano</li>
+            <li>Pasar debtCount a finishOnboarding() para pre-crear plantillas de deuda en el onboarding</li>
+            <li>Mover personalizacion de dashboard a un prompt post-onboarding (ej: banner en dashboard, o primer acceso a configuracion)</li>
+            <li>Usar el proposito elegido en paso 1 para auto-configurar un layout por defecto sin preguntar al usuario</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /layout-wrapper -->
+
+  <!-- ============================
+       JavaScript: Wizard State Machine
+       ============================ -->
+  <script>
+    /* ============================================================
+       NOTE: This is a self-contained audit document. All DOM
+       updates below use hardcoded SVG strings for icon swapping.
+       No user input is rendered as HTML — all values are static
+       layout presets and purpose selection.
+       ============================================================ */
+
+    // State
+    var currentStep = 1;
+    var selectedPurpose = 'manage_debt'; // Pre-selected per D-07
+
+    var TOTAL_STEPS = 5;
+
+    // ---- Navigation ----
+
+    function showStep(n) {
+      // Hide all steps
+      for (var i = 1; i <= TOTAL_STEPS; i++) {
+        var el = document.getElementById('step-' + i);
+        if (el) {
+          el.classList.remove('active');
+          var card = el.querySelector('.z-card');
+          if (card) card.classList.remove('step-enter');
+        }
+      }
+
+      // Show step n
+      var stepEl = document.getElementById('step-' + n);
+      if (stepEl) {
+        stepEl.classList.add('active');
+        var card = stepEl.querySelector('.z-card');
+        if (card) {
+          card.classList.add('step-enter');
+          setTimeout(function() { card.classList.remove('step-enter'); }, 200);
+        }
+      }
+
+      // Update progress
+      var progressSection = document.getElementById('progress-section');
+      var progressFill = document.getElementById('progress-fill');
+      var stepCounter = document.getElementById('step-counter');
+      var progressBar = document.getElementById('progress-bar');
+      var scorecard = document.getElementById('scorecard');
+
+      if (n === TOTAL_STEPS) {
+        progressSection.style.display = 'none';
+        scorecard.style.display = 'block';
+      } else {
+        progressSection.style.display = 'block';
+        scorecard.style.display = 'none';
+        var pct = Math.round((n / TOTAL_STEPS) * 100);
+        progressFill.style.width = pct + '%';
+        stepCounter.textContent = 'Paso ' + n + ' de ' + (TOTAL_STEPS - 1);
+        progressBar.setAttribute('aria-valuenow', String(pct));
+      }
+    }
+
+    function nextStep() {
+      if (currentStep < TOTAL_STEPS - 1) {
+        currentStep++;
+        showStep(currentStep);
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        currentStep--;
+        showStep(currentStep);
+      }
+    }
+
+    // ---- Purpose Selection (Step 1) ----
+
+    function selectPurpose(btn, purposeId) {
+      // Remove selected from all
+      var allBtns = document.querySelectorAll('.purpose-btn');
+      for (var i = 0; i < allBtns.length; i++) {
+        allBtns[i].classList.remove('selected');
+      }
+      // Select this one
+      btn.classList.add('selected');
+      selectedPurpose = purposeId;
+
+      // Enable next button
+      document.getElementById('step1-next').disabled = false;
+    }
+
+    // ---- Simulated Submit (Step 4) ----
+
+    function simulateSubmit() {
+      var submitBtn = document.getElementById('step4-submit');
+      var backBtn = document.getElementById('step4-back');
+
+      // Disable buttons
+      submitBtn.disabled = true;
+      backBtn.disabled = true;
+
+      // Show spinner using safe DOM methods
+      submitBtn.textContent = '';
+      var spinnerSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      spinnerSvg.setAttribute('class', 'spinner');
+      spinnerSvg.setAttribute('width', '16');
+      spinnerSvg.setAttribute('height', '16');
+      spinnerSvg.setAttribute('viewBox', '0 0 24 24');
+      spinnerSvg.setAttribute('fill', 'none');
+      spinnerSvg.setAttribute('stroke', 'currentColor');
+      spinnerSvg.setAttribute('stroke-width', '2');
+      spinnerSvg.setAttribute('stroke-linecap', 'round');
+      spinnerSvg.setAttribute('stroke-linejoin', 'round');
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M21 12a9 9 0 1 1-6.219-8.56');
+      spinnerSvg.appendChild(path);
+      submitBtn.appendChild(spinnerSvg);
+      submitBtn.appendChild(document.createTextNode(' Guardando...'));
+
+      // After 800ms, advance to step 6
+      setTimeout(function() {
+        currentStep = 6;
+        showStep(5);
+
+        // Reset button state in case user navigates back
+        submitBtn.disabled = false;
+        backBtn.disabled = false;
+        submitBtn.textContent = 'Finalizar';
+      }, 800);
+    }
+
+    // ---- Initialize ----
+    showStep(1);
+  </script>
+</body>
+</html>

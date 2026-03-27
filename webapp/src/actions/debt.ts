@@ -34,7 +34,7 @@ async function getDebtOverviewCached(
   cacheTag("debt");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const baseCurrency = currency;
 
   const { data: accounts, error } = await supabase

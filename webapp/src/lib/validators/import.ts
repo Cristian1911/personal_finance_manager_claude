@@ -1,8 +1,5 @@
 import { z } from "zod";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const uuidStr = (msg = "UUID inválido") => z.string().regex(UUID_RE, msg);
+import { uuidStr } from "./shared";
 
 export const transactionToImportSchema = z.object({
   import_key: z.string().optional(),

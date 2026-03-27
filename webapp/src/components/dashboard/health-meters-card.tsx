@@ -36,6 +36,7 @@ function MeterRow({
   const tag = getLevelTag(meter.level);
   const pinPosition = getNormalizedPosition(meter.type, meter.value);
   const label = METER_DISPLAY_LABELS[meter.type];
+  const isNoData = !meter.hasData;
 
   return (
     <button
@@ -46,46 +47,59 @@ function MeterRow({
       {/* Row header */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-semibold">{label}</span>
-        <div className="flex items-center gap-2">
-          <span
-            className="text-lg font-extrabold"
-            style={{ color }}
-          >
-            {meter.formattedValue}
-          </span>
-          <span
-            className="px-2 py-0.5 rounded text-[9px] font-bold uppercase"
-            style={{ backgroundColor: color, color: "var(--z-ink)" }}
-          >
-            {tag}
-          </span>
-        </div>
+        {isNoData ? (
+          <span className="text-xs text-muted-foreground">Sin datos</span>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span
+              className="text-lg font-extrabold"
+              style={{ color }}
+            >
+              {meter.formattedValue}
+            </span>
+            <span
+              className="px-2 py-0.5 rounded text-[9px] font-bold uppercase"
+              style={{ backgroundColor: color, color: "var(--z-ink)" }}
+            >
+              {tag}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Gradient bar with pin */}
-      <div className="relative" style={{ height: "14px" }}>
-        <div
-          className="absolute inset-0"
-          style={{
-            background: GRADIENT,
-            borderRadius: "7px",
-          }}
-        />
-        {/* White pin marker */}
-        <div
-          className="absolute"
-          style={{
-            left: `${Math.min(Math.max(pinPosition, 2), 98)}%`,
-            top: "-6px",
-            width: "4px",
-            height: "26px",
-            background: "var(--z-white)",
-            borderRadius: "2px",
-            boxShadow: "0 0 10px rgba(240,237,230,0.6)",
-            transform: "translateX(-50%)",
-          }}
-        />
-      </div>
+      {/* Gradient bar with pin — hidden when no income data */}
+      {!isNoData && (
+        <div className="relative" style={{ height: "14px" }}>
+          <div
+            className="absolute inset-0"
+            style={{
+              background: GRADIENT,
+              borderRadius: "7px",
+            }}
+          />
+          {/* White pin marker */}
+          <div
+            className="absolute"
+            style={{
+              left: `${Math.min(Math.max(pinPosition, 2), 98)}%`,
+              top: "-6px",
+              width: "4px",
+              height: "26px",
+              background: "var(--z-white)",
+              borderRadius: "2px",
+              boxShadow: "0 0 10px rgba(240,237,230,0.6)",
+              transform: "translateX(-50%)",
+            }}
+          />
+        </div>
+      )}
+
+      {/* Info line when no income data */}
+      {isNoData && (
+        <p className="text-[11px] text-muted-foreground">
+          Configura tu ingreso en ajustes
+        </p>
+      )}
     </button>
   );
 }

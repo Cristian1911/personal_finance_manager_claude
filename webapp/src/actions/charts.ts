@@ -11,6 +11,7 @@ import {
   monthsBeforeStart,
 } from "@/lib/utils/date";
 import { computeDebtBalance } from "@zeta/shared";
+import type { Json } from "@/types/database";
 import type { CurrencyCode } from "@/types/domain";
 
 // --- Types ---
@@ -51,7 +52,7 @@ async function getCategorySpendingCached(
   cacheTag("dashboard:charts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
 
   // Fetch transactions and budgets in parallel
@@ -135,7 +136,7 @@ async function getMonthlyCashflowCached(
   cacheTag("dashboard:cashflow");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
 
   const { data: transactions, error } = await supabase
@@ -193,7 +194,7 @@ async function getDailySpendingCached(
   cacheTag("dashboard:charts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
 
   const { data: transactions, error } = await supabase
@@ -239,7 +240,7 @@ async function getMonthMetricsCached(
   cacheTag("dashboard:charts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
 
   const { data: transactions, error } = await supabase
@@ -281,7 +282,7 @@ async function getDailyCashflowCached(
   cacheTag("dashboard:cashflow");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
   const target = parseMonth(month);
   const startStr = monthStartStr(target);
   const endStr = monthEndStr(target);
@@ -345,6 +346,7 @@ export interface AccountWithSparkline {
   name: string;
   account_type: string;
   current_balance: number;
+  currency_balances: Json | null;
   credit_limit: number | null;
   currency_code: string;
   updated_at: string;
@@ -372,7 +374,7 @@ async function getAccountsWithSparklineDataCached(
   cacheTag("dashboard:accounts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
   // 1. Fetch active accounts marked for dashboard
   const { data: accounts, error: accountsError } = await supabase
@@ -444,6 +446,7 @@ async function getAccountsWithSparklineDataCached(
       name: account.name,
       account_type: account.account_type,
       current_balance: account.current_balance,
+      currency_balances: account.currency_balances,
       credit_limit: account.credit_limit,
       currency_code: account.currency_code,
       updated_at: account.updated_at,
@@ -468,23 +471,29 @@ async function getAccountsWithSparklineDataCached(
 }
 
 async function getDashboardAccountsCached(userId: string): Promise<{
-  liquidAccounts: { id: string; name: string; current_balance: number; currency_code: string; updated_at: string }[];
+  dashboardAccounts: {
+    id: string;
+    name: string;
+    account_type: string;
+    current_balance: number | null;
+    currency_code: string;
+    updated_at: string | null;
+  }[];
   allActiveAccounts: { currency_code: string }[];
 }> {
   "use cache";
   cacheTag("accounts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient()!;
+  const supabase = createAdminClient();
 
-  const [{ data: liquidAccounts, error: liquidError }, { data: allActiveAccounts, error: allError }] =
+  const [{ data: dashboardAccounts, error: dashboardError }, { data: allActiveAccounts, error: allError }] =
     await Promise.all([
       supabase
         .from("accounts")
-        .select("id, name, current_balance, currency_code, updated_at")
+        .select("id, name, account_type, current_balance, currency_code, updated_at")
         .eq("user_id", userId)
-        .eq("is_active", true)
-        .not("account_type", "in", '("CREDIT_CARD","LOAN")'),
+        .eq("is_active", true),
       supabase
         .from("accounts")
         .select("currency_code")
@@ -492,11 +501,11 @@ async function getDashboardAccountsCached(userId: string): Promise<{
         .eq("is_active", true),
     ]);
 
-  if (liquidError) throw liquidError;
+  if (dashboardError) throw dashboardError;
   if (allError) throw allError;
 
   return {
-    liquidAccounts: liquidAccounts ?? [],
+    dashboardAccounts: dashboardAccounts ?? [],
     allActiveAccounts: allActiveAccounts ?? [],
   };
 }
@@ -686,15 +695,25 @@ export async function getDashboardHeroData(
   const baseCurrency = currency ?? "COP";
 
   // 1. Get liquid accounts + all active accounts for currency detection (cached)
-  const { liquidAccounts: accounts, allActiveAccounts } = await getDashboardAccountsCached(user.id);
+  const { dashboardAccounts, allActiveAccounts } = await getDashboardAccountsCached(user.id);
 
-  const currencyAccounts = accounts.filter((a) => a.currency_code === baseCurrency);
+  const currencyAccounts = dashboardAccounts.filter((a) => a.currency_code === baseCurrency);
+  const liquidAccounts = currencyAccounts.filter(
+    (account) => account.account_type !== "CREDIT_CARD" && account.account_type !== "LOAN"
+  );
+  const creditCardAccounts = currencyAccounts.filter(
+    (account) => account.account_type === "CREDIT_CARD"
+  );
+  const trackedFreshnessAccounts = [...liquidAccounts, ...creditCardAccounts];
   const hasOtherCurrencies = allActiveAccounts.some((a) => a.currency_code !== baseCurrency);
-  const totalLiquid = currencyAccounts.reduce((sum, a) => sum + a.current_balance, 0);
+  const totalLiquid = liquidAccounts.reduce(
+    (sum, account) => sum + (account.current_balance ?? 0),
+    0
+  );
 
-  // 2. Compute freshness from oldest updated_at among liquid accounts
+  // 2. Compute freshness from oldest updated_at among balances that affect disponible
   const { getFreshnessLevel } = await import("@/lib/utils/dashboard");
-  const timestamps = currencyAccounts.map((a) => a.updated_at).filter(Boolean);
+  const timestamps = trackedFreshnessAccounts.map((a) => a.updated_at).filter(Boolean);
   const oldestUpdate = timestamps.length > 0
     ? timestamps.sort()[0]
     : null;
@@ -713,6 +732,10 @@ export async function getDashboardHeroData(
       due_date: r.next_date,
       source: "recurring" as const,
     }));
+  const recurringObligationsForAvailable = upcomingRecurrences
+    .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency)
+    .filter((r) => r.template.account.account_type !== "CREDIT_CARD")
+    .reduce((sum, r) => sum + r.template.amount, 0);
 
   // 4. Get pending obligations from statement payment due dates
   const { getUpcomingPayments } = await import("@/actions/payment-reminders");
@@ -727,13 +750,25 @@ export async function getDashboardHeroData(
       due_date: p.payment_due_date,
       source: "statement" as const,
     }));
+  const creditCardStatementPending = statementPayments
+    .filter((p) => p.currency_code === baseCurrency)
+    .filter((p) => p.account_type === "CREDIT_CARD")
+    .reduce((sum, p) => sum + p.total_payment_due, 0);
+  const nonCardStatementPending = statementPayments
+    .filter((p) => p.currency_code === baseCurrency)
+    .filter((p) => p.account_type !== "CREDIT_CARD")
+    .reduce((sum, p) => sum + p.total_payment_due, 0);
 
   // 5. Merge and sort by due date
   const allObligations = [...recurringObligations, ...statementObligations]
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   const totalPending = allObligations.reduce((sum, o) => sum + o.amount, 0);
-  const availableToSpend = totalLiquid - totalPending;
+  const availableToSpend =
+    totalLiquid
+    - creditCardStatementPending
+    - recurringObligationsForAvailable
+    - nonCardStatementPending;
   return {
     totalLiquid,
     pendingObligations: allObligations,

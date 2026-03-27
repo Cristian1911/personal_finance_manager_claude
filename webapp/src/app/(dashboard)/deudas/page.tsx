@@ -3,7 +3,13 @@ import { Suspense } from "react";
 import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { DebtHeroCard } from "@/components/debt/debt-hero-card";
-import { UtilizationGauge } from "@/components/debt/utilization-gauge";
+import dynamic from "next/dynamic";
+
+// Server Component — chart component is already "use client", no ssr: false needed
+const UtilizationGauge = dynamic(
+  () => import("@/components/debt/utilization-gauge").then((m) => ({ default: m.UtilizationGauge })),
+  { loading: () => <div className="h-[200px] w-full rounded-xl bg-muted animate-pulse" /> }
+);
 import { InterestCostCard } from "@/components/debt/interest-cost-card";
 import { DebtAccountCard } from "@/components/debt/debt-account-card";
 import { DebtInsights } from "@/components/debt/debt-insights";
@@ -16,20 +22,27 @@ import Link from "next/link";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
-import { formatMonthParam } from "@/lib/utils/date";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
+import {
+  DebtOverviewSkeleton,
+  DebtInsightsSkeleton,
+  SalaryBarSkeleton,
+  DebtAccountsSkeleton,
+} from "@/components/debt/debt-skeletons";
 
-export default async function DeudasPage({
-  searchParams,
+// ──────────────────────────────────────────────────────────────────────────────
+// Tier 2 async Server Component — streams in all debt data with skeleton fallback
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function DebtOverviewSection({
+  currency,
+  month,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  currency: CurrencyCode;
+  month: string | undefined;
 }) {
-  await connection();
-  const { month } = await searchParams;
-  const currency = await getPreferredCurrency();
-
-  // Fetch all data in parallel — exchange rate is cached 24h, cheap even if not needed
+  // Fetch all debt data in parallel — same as the original Promise.all
   const [overview, incomeEstimate, exchangeRateResult] = await Promise.all([
     getDebtOverview(currency),
     getEstimatedIncome(currency, month),
@@ -38,26 +51,13 @@ export default async function DeudasPage({
 
   if (overview.accounts.length === 0) {
     return (
-      <div className="space-y-6">
-        <MobilePageHeader title="Deudas" backHref="/gestionar">
-          <Suspense>
-            <MonthSelector />
-          </Suspense>
-        </MobilePageHeader>
-        <div className="hidden lg:block">
-          <h1 className="text-2xl font-bold">Deudas</h1>
-          <p className="text-muted-foreground">
-            Visualiza y gestiona tus deudas
-          </p>
-        </div>
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-muted-foreground mb-2">
-            No tienes cuentas de deuda registradas.
-          </p>
-          <Link href="/accounts" className="text-primary hover:underline text-sm">
-            Agregar tarjeta de crédito o préstamo
-          </Link>
-        </div>
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <p className="text-muted-foreground mb-2">
+          No tienes cuentas de deuda registradas.
+        </p>
+        <Link href="/accounts" className="text-primary hover:underline text-sm">
+          Agregar tarjeta de crédito o préstamo
+        </Link>
       </div>
     );
   }
@@ -66,52 +66,30 @@ export default async function DeudasPage({
   const loans = overview.accounts.filter((a) => a.type === "LOAN");
   const preferredCurrencyCreditCards = creditCards.filter((a) => a.currency === currency);
   const totalCreditUsed = preferredCurrencyCreditCards.reduce((sum, a) => sum + a.balance, 0);
-  const secondaryCurrencies = overview.debtByCurrency.filter((d) => d.currency !== currency && d.totalDebt > 0);
+  const secondaryCurrencies = overview.debtByCurrency.filter(
+    (d) => d.currency !== currency && d.totalDebt > 0
+  );
 
   // Use pre-fetched exchange rate only if there are secondary currency debts
   const exchangeRate = secondaryCurrencies.length > 0 ? exchangeRateResult : null;
 
   // Salary breakdown — only if income is detected
-  const salaryBreakdown = incomeEstimate && incomeEstimate.monthlyAverage > 0
-    ? getCurrentSalaryBreakdown({
-        monthlyIncome: incomeEstimate.monthlyAverage,
-        debtPayments: overview.accounts
-          .filter((a) => a.balance > 0)
-          .map((a) => ({
-            accountId: a.id,
-            name: a.name,
-            amount: getMinPayment(a),
-          })),
-      })
-    : null;
+  const salaryBreakdown =
+    incomeEstimate && incomeEstimate.monthlyAverage > 0
+      ? getCurrentSalaryBreakdown({
+          monthlyIncome: incomeEstimate.monthlyAverage,
+          debtPayments: overview.accounts
+            .filter((a) => a.balance > 0)
+            .map((a) => ({
+              accountId: a.id,
+              name: a.name,
+              amount: getMinPayment(a),
+            })),
+        })
+      : null;
 
   return (
-    <div className="space-y-6">
-      <MobilePageHeader title="Deudas" backHref="/gestionar">
-        <Suspense>
-          <MonthSelector />
-        </Suspense>
-      </MobilePageHeader>
-      <div className="hidden lg:flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">Deudas</h1>
-            <p className="text-muted-foreground">
-              Visualiza y gestiona tus deudas
-            </p>
-          </div>
-          <Suspense>
-            <MonthSelector />
-          </Suspense>
-        </div>
-        <Button variant="outline" asChild>
-          <Link href="/deudas/planificador">
-            <Calculator className="h-4 w-4 mr-2" />
-            Planificador de pagos
-          </Link>
-        </Button>
-      </div>
-
+    <>
       {/* Overview cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <DebtHeroCard
@@ -169,6 +147,63 @@ export default async function DeudasPage({
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Page export — tier 1: headers render instantly, tier 2 streams in with skeleton
+// ──────────────────────────────────────────────────────────────────────────────
+
+export default async function DeudasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  await connection();
+  const { month } = await searchParams;
+  // getPreferredCurrency is server-cached (~0ms after first call)
+  const currency = await getPreferredCurrency();
+
+  return (
+    <div className="space-y-6">
+      {/* Tier 1: headers render instantly — no data fetching blocked */}
+      <MobilePageHeader title="Deudas" backHref="/gestionar">
+        <Suspense>
+          <MonthSelector />
+        </Suspense>
+      </MobilePageHeader>
+      <div className="hidden lg:flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Deudas</h1>
+            <p className="text-muted-foreground">Visualiza y gestiona tus deudas</p>
+          </div>
+          <Suspense>
+            <MonthSelector />
+          </Suspense>
+        </div>
+        <Button variant="outline" asChild>
+          <Link href="/deudas/planificador">
+            <Calculator className="h-4 w-4 mr-2" />
+            Planificador de pagos
+          </Link>
+        </Button>
+      </div>
+
+      {/* Tier 2: all debt data streams in with content-shaped skeleton */}
+      <Suspense
+        fallback={
+          <div className="space-y-6">
+            <DebtOverviewSkeleton />
+            <DebtInsightsSkeleton />
+            <SalaryBarSkeleton />
+            <DebtAccountsSkeleton />
+          </div>
+        }
+      >
+        <DebtOverviewSection currency={currency} month={month} />
+      </Suspense>
     </div>
   );
 }

@@ -5,7 +5,9 @@ export function createAdminClient() {
   const serviceRoleKey = process.env.SUPABASE_SECRET_KEY;
 
   if (!serviceRoleKey) {
-    return null;
+    throw new Error(
+      "Admin client unavailable: SUPABASE_SECRET_KEY not set"
+    );
   }
 
   return createSupabaseClient<Database>(

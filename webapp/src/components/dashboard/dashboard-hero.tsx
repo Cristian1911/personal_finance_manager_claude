@@ -64,10 +64,10 @@ export function DashboardHero({ data }: DashboardHeroProps) {
           <span className="text-xs text-muted-foreground">{f.label}</span>
         </div>
         {freshness === "outdated" && (
-          <Link href="/import">
+          <Link href="#quick-update-values">
             <Button variant="ghost" size="sm" className="gap-1 text-xs">
               <RefreshCw className="h-3 w-3" />
-              Actualizar saldos
+              Actualizar valores
             </Button>
           </Link>
         )}

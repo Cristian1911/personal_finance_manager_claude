@@ -26,23 +26,19 @@ import { Button } from "@/components/ui/button";
 import {
   getDashboardHeroData,
   getAccountsWithSparklineData,
-  getDailyBudgetPace,
-  getCategorySpending,
   getMonthlyCashflow,
-  getNetWorthHistory,
 } from "@/actions/charts";
-import { NetWorthHistoryChart } from "@/components/charts/net-worth-history-chart";
+import dynamic from "next/dynamic";
 import { getAccounts } from "@/actions/accounts";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
+import {
+  AccountsOverview,
+  QuickValueUpdates,
+  type QuickValueUpdateAccount,
+} from "@/components/dashboard/accounts-overview";
 import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
-import { AccountsOverview } from "@/components/dashboard/accounts-overview";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
-import { BudgetPaceChart } from "@/components/charts/budget-pace-chart";
-import { CashFlowViewToggle } from "@/components/charts/cash-flow-view-toggle";
-import { WaterfallChart } from "@/components/charts/waterfall-chart";
-import { CategoryDonut } from "@/components/charts/category-donut";
-import { DashboardBudgetBar } from "@/components/budget/dashboard-budget-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
 import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
@@ -50,25 +46,51 @@ import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import { getBurnRate } from "@/actions/burn-rate";
-import { BurnRateCard, BurnRateCardEmpty } from "@/components/dashboard/burn-rate-card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { DashboardConfigProvider } from "@/components/dashboard/dashboard-config-provider";
 import { WidgetSlot } from "@/components/dashboard/widget-slot";
 import { CashFlowHeroStrip } from "@/components/dashboard/cash-flow-hero-strip";
 import { HealthMetersCard } from "@/components/dashboard/health-meters-card";
 import { getHealthMeters } from "@/actions/health-meters";
-import { SpendingHeatmap } from "@/components/charts/spending-heatmap";
-import { getSpendingHeatmap } from "@/actions/spending-heatmap";
-import { AllocationBars5030 } from "@/components/budget/allocation-bars-5030";
 import { get503020Allocation } from "@/actions/allocation";
-import { DebtFreeCountdown } from "@/components/debt/debt-free-countdown";
 import { getDebtFreeCountdown } from "@/actions/debt-countdown";
-import { SavingsRateWidget } from "@/components/dashboard/savings-rate-widget";
-import { EmergencyFundWidget } from "@/components/dashboard/emergency-fund-widget";
-import { InterestPaidWidget } from "@/components/dashboard/interest-paid-widget";
-import { getInterestPaid } from "@/actions/interest-paid";
-import { DebtProgressWidget } from "@/components/dashboard/debt-progress-widget";
-import { getDebtProgress } from "@/actions/debt-progress";
+import { FlujoWaterfall } from "@/components/dashboard/flujo-waterfall";
+import { FlujoCharts } from "@/components/dashboard/flujo-charts";
+import { PresupuestoSection } from "@/components/dashboard/presupuesto-section";
+import { PatrimonioSection } from "@/components/dashboard/patrimonio-section";
+import { ActividadHeatmap } from "@/components/dashboard/actividad-heatmap";
+import { AllocationBars5030 } from "@/components/budget/allocation-bars-5030";
+import { DebtFreeCountdown } from "@/components/debt/debt-free-countdown";
+import {
+  BurnRateSkeleton,
+  AccountsSkeleton,
+  FlujoWaterfallSkeleton,
+  FlujoChartsSkeleton,
+  PresupuestoSkeleton,
+  PatrimonioSkeleton,
+  HeatmapSkeleton,
+  CashFlowHeroStripSkeleton,
+  MobileBurnRateSkeleton,
+  MobileAllocationSkeleton,
+  MobileDebtSkeleton,
+} from "@/components/dashboard/dashboard-skeletons";
+import type { HealthMetersData } from "@/actions/health-meters";
+
+// ── Dynamic imports — chart JS is NOT in the initial bundle ──────────────────
+// BurnRateCard uses dynamic() here (Client Component file); chart components use dynamic()
+// in their own section files (flujo-charts, presupuesto-section, patrimonio-section).
+
+const BurnRateCard = dynamic(
+  () => import("@/components/dashboard/burn-rate-card").then((m) => ({ default: m.BurnRateCard })),
+  { loading: () => <div className="h-40 w-full rounded-xl bg-muted animate-pulse" /> }
+);
+
+const BurnRateCardEmpty = dynamic(
+  () => import("@/components/dashboard/burn-rate-card").then((m) => ({ default: m.BurnRateCardEmpty })),
+  { loading: () => <div className="h-40 w-full rounded-xl bg-muted animate-pulse" /> }
+);
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 type DashboardTransactionRow = {
   id: string;
@@ -82,14 +104,123 @@ type DashboardTransactionRow = {
   categories?: { name_es: string | null; name: string } | null;
 };
 
-/** Placeholder for widgets not yet implemented */
-function WidgetPlaceholder({ label }: { label: string }) {
+// ──────────────────────────────────────────────────────────────────────────────
+// Tier 2 async Server Components — desktop
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function BurnRateSection({ currency }: { currency: CurrencyCode }) {
+  const burnRateData = await getBurnRate(currency);
+  return burnRateData ? <BurnRateCard data={burnRateData} /> : <BurnRateCardEmpty />;
+}
+
+async function CashFlowHeroStripSection({
+  month,
+  currency,
+}: {
+  month: string | undefined;
+  currency: CurrencyCode;
+}) {
+  const cashflowData = await getMonthlyCashflow(month, currency);
+  const currentMonthCashflow = cashflowData[cashflowData.length - 1];
+  const cfIncome = currentMonthCashflow?.income ?? 0;
+  const cfExpenses = currentMonthCashflow?.expenses ?? 0;
+  const cfBalance = cfIncome - cfExpenses;
   return (
-    <div className="h-64 rounded-xl bg-muted/30 flex items-center justify-center text-muted-foreground text-sm">
-      {label} (pendiente)
-    </div>
+    <CashFlowHeroStrip
+      income={cfIncome}
+      expenses={cfExpenses}
+      balance={cfBalance}
+      currency={currency}
+    />
   );
 }
+
+async function AccountsSection({
+  allAccounts,
+}: {
+  allAccounts: { id: string; name: string; show_in_dashboard: boolean; account_type: string; updated_at: string | null }[];
+}) {
+  const [accountsData, latestSnapshotDates] = await Promise.all([
+    getAccountsWithSparklineData(),
+    getLatestSnapshotDates(),
+  ]);
+  return (
+    <>
+      <AccountsOverview
+        data={accountsData}
+        picker={
+          <DashboardAccountPicker
+            accounts={allAccounts.map((a) => ({
+              id: a.id,
+              name: a.name,
+              show_in_dashboard: a.show_in_dashboard,
+            }))}
+          />
+        }
+      />
+      <DashboardAlerts
+        accounts={allAccounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          account_type: a.account_type,
+          updated_at: a.updated_at,
+        }))}
+        latestSnapshotDates={latestSnapshotDates}
+      />
+    </>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tier 2 async Server Components — mobile
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function MobileBurnRateSection({ currency }: { currency: CurrencyCode }) {
+  const burnRateData = await getBurnRate(currency);
+  return burnRateData ? <BurnRateCard data={burnRateData} /> : <BurnRateCardEmpty />;
+}
+
+async function MobileAllocationSection({
+  month,
+  currency,
+}: {
+  month: string | undefined;
+  currency: CurrencyCode;
+}) {
+  const allocationData = await get503020Allocation(month, currency);
+  if (!allocationData) return null;
+  return (
+    <DashboardSection
+      title="Presupuesto"
+      section="presupuesto"
+      defaultOpen={false}
+      showToggle={false}
+      summaryText={`${Math.round(allocationData.needs.percent + allocationData.wants.percent)}% gastado`}
+    >
+      <AllocationBars5030 data={allocationData} />
+    </DashboardSection>
+  );
+}
+
+async function MobileDebtSection({ currency }: { currency: CurrencyCode }) {
+  const debtCountdownData = await getDebtFreeCountdown(currency);
+  if (!debtCountdownData) return null;
+  return (
+    <DashboardSection
+      title="Deuda"
+      section="patrimonio"
+      defaultOpen={false}
+      showToggle={false}
+      summaryText={`${debtCountdownData.monthsToFree} meses para libre`}
+    >
+      <DebtFreeCountdown data={debtCountdownData} />
+    </DashboardSection>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Page
+// ──────────────────────────────────────────────────────────────────────────────
 
 export default async function DashboardPage({
   searchParams,
@@ -230,29 +361,13 @@ export default async function DashboardPage({
     );
   }
 
-  // Fast data: hero, burn rate, snapshots — renders immediately
-  const [heroData, latestSnapshotDates, burnRateData, accountsData, cashflowData, healthMetersData, mobileAllocationData, mobileDebtCountdownData] =
-    await Promise.all([
-      getDashboardHeroData(month, currency),
-      getLatestSnapshotDates(),
-      getBurnRate(currency),
-      getAccountsWithSparklineData(),
-      getMonthlyCashflow(month, currency),
-      getHealthMeters(currency, month),
-      get503020Allocation(month, currency),
-      getDebtFreeCountdown(currency),
-    ]);
+  // ── Tier 1: hero + health meters — rendered immediately ──
+  const [heroData, healthMetersData] = await Promise.all([
+    getDashboardHeroData(month, currency),
+    getHealthMeters(currency, month),
+  ]);
 
-  // Cash flow hero strip data — use current month's cashflow
-  const currentMonthCashflow = cashflowData[cashflowData.length - 1];
-  const cfIncome = currentMonthCashflow?.income ?? 0;
-  const cfExpenses = currentMonthCashflow?.expenses ?? 0;
-  // Use totalPending as proxy for fixed expenses (already fetched, no extra query needed)
-  const cfFixed = heroData.totalPending;
-  const cfVariable = Math.max(0, cfExpenses - cfFixed);
-  const cfRemaining = cfIncome - cfExpenses;
-
-  // Map data for mobile dashboard
+  // Map data for mobile dashboard (tier 1 props only)
   const mobileHeroData = {
     availableToSpend: heroData.availableToSpend,
     totalBalance: heroData.totalLiquid,
@@ -278,26 +393,40 @@ export default async function DashboardPage({
     category_name: tx.categories?.name_es ?? tx.categories?.name ?? undefined,
   }));
 
+  const quickUpdateAccounts: QuickValueUpdateAccount[] = allAccounts.map((account) => ({
+    id: account.id,
+    name: account.name,
+    accountType: account.account_type,
+    currentBalance: account.current_balance ?? 0,
+    currencyBalances: account.currency_balances,
+    currencyCode: account.currency_code,
+    displayOrder: account.display_order,
+  }));
+
   return (
     <>
       {/* Mobile dashboard */}
       <div className="lg:hidden">
-        <MobileDashboard
-          heroData={mobileHeroData}
-          upcomingPayments={mobileUpcomingPayments}
-          recentTransactions={mobileRecentTx}
-          burnRateData={burnRateData}
-          healthMetersData={healthMetersData}
-          allocationData={mobileAllocationData}
-          debtCountdownData={mobileDebtCountdownData}
-          cashFlowStrip={{
-            income: cfIncome,
-            fixedExpenses: cfFixed,
-            variableExpenses: cfVariable,
-            remaining: cfRemaining,
-            currency,
-          }}
-        />
+        <div className="space-y-5">
+          {/* Tier 1: hero + health (renders immediately) */}
+          <MobileDashboard
+            heroData={mobileHeroData}
+            upcomingPayments={mobileUpcomingPayments}
+            recentTransactions={mobileRecentTx}
+            quickUpdateAccounts={quickUpdateAccounts}
+            healthMetersData={healthMetersData}
+          />
+          {/* Tier 2: burn rate, allocation, debt (streams in) */}
+          <Suspense fallback={<MobileBurnRateSkeleton />}>
+            <MobileBurnRateSection currency={currency} />
+          </Suspense>
+          <Suspense fallback={<MobileAllocationSkeleton />}>
+            <MobileAllocationSection month={month} currency={currency} />
+          </Suspense>
+          <Suspense fallback={<MobileDebtSkeleton />}>
+            <MobileDebtSection currency={currency} />
+          </Suspense>
+        </div>
       </div>
 
       {/* Desktop dashboard — section-based layout */}
@@ -318,20 +447,21 @@ export default async function DashboardPage({
               </Suspense>
             </div>
 
-            {/* ── Hero Section — always visible, no collapse ── */}
+            {/* ── Hero Section — tier 1: always visible, no collapse ── */}
             <DashboardHero data={heroData} />
-            {/* CashFlowHeroStrip — shows income → fixed → variable → remaining */}
+            <QuickValueUpdates accounts={quickUpdateAccounts} id="quick-update-values" />
+
+            {/* CashFlowHeroStrip — tier 2: streams in with skeleton */}
             <WidgetSlot widgetId="hero-flow-strip">
-              <CashFlowHeroStrip
-                income={cfIncome}
-                fixedExpenses={cfFixed}
-                variableExpenses={cfVariable}
-                remaining={cfRemaining}
-                currency={currency}
-              />
+              <Suspense fallback={<CashFlowHeroStripSkeleton />}>
+                <CashFlowHeroStripSection
+                  month={month}
+                  currency={currency}
+                />
+              </Suspense>
             </WidgetSlot>
 
-            {/* ── Niveles Section ── */}
+            {/* ── Niveles Section — tier 1: health meters render immediately ── */}
             <DashboardSection title="Tus niveles" section="niveles" defaultOpen={true} showToggle={false}>
               <WidgetSlot widgetId="health-meters">
                 <HealthMetersCard data={healthMetersData} />
@@ -340,52 +470,44 @@ export default async function DashboardPage({
 
             {/* ── Flujo de Caja Section ── */}
             <DashboardSection title="Flujo de caja" section="flujo">
-              {/* WaterfallChart — income → category deductions → net remaining */}
+              {/* WaterfallChart — tier 2 */}
               <WidgetSlot widgetId="waterfall">
-                <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+                <Suspense fallback={<FlujoWaterfallSkeleton />}>
                   <FlujoWaterfall month={month} currency={currency} />
                 </Suspense>
               </WidgetSlot>
 
-              {/* BurnRateCard — temporary, will be replaced or deprecated by HealthMetersCard */}
+              {/* BurnRateCard — tier 2 */}
               <WidgetSlot widgetId="burn-rate">
-                {burnRateData ? (
-                  <BurnRateCard data={burnRateData} />
-                ) : (
-                  <BurnRateCardEmpty />
-                )}
+                <Suspense fallback={<BurnRateSkeleton />}>
+                  <BurnRateSection currency={currency} />
+                </Suspense>
               </WidgetSlot>
 
-              {/* CashFlowViewToggle — line/bar view of 6-month income vs expenses trend */}
+              {/* CashFlowViewToggle — tier 2 */}
               <WidgetSlot widgetId="cashflow-trend">
-                <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+                <Suspense fallback={<FlujoChartsSkeleton />}>
                   <FlujoCharts month={month} currency={currency} monthLabel={monthLabel} />
                 </Suspense>
               </WidgetSlot>
             </DashboardSection>
 
-            {/* ── Presupuesto Section ── */}
+            {/* ── Presupuesto Section — tier 2 ── */}
             <Suspense
               fallback={
                 <DashboardSection title="Presupuesto" section="presupuesto">
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="h-64 rounded-xl bg-muted animate-pulse" />
-                    <div className="h-64 rounded-xl bg-muted animate-pulse" />
-                  </div>
+                  <PresupuestoSkeleton />
                 </DashboardSection>
               }
             >
               <PresupuestoSection month={month} currency={currency} monthLabel={monthLabel} healthMetersData={healthMetersData} />
             </Suspense>
 
-            {/* ── Patrimonio y Deuda Section ── */}
+            {/* ── Patrimonio y Deuda Section — tier 2 ── */}
             <Suspense
               fallback={
                 <DashboardSection title="Patrimonio y deuda" section="patrimonio">
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="h-64 rounded-xl bg-muted animate-pulse" />
-                    <div className="h-64 rounded-xl bg-muted animate-pulse" />
-                  </div>
+                  <PatrimonioSkeleton />
                 </DashboardSection>
               }
             >
@@ -394,6 +516,7 @@ export default async function DashboardPage({
 
             {/* ── Actividad Section ── */}
             <DashboardSection title="Actividad" section="actividad">
+              {/* Upcoming Payments — tier 1 data (from heroData) */}
               <WidgetSlot widgetId="upcoming-payments">
                 <UpcomingPayments
                   obligations={heroData.pendingObligations}
@@ -401,30 +524,12 @@ export default async function DashboardPage({
                 />
               </WidgetSlot>
 
-              <AccountsOverview
-                data={accountsData}
-                picker={
-                  <DashboardAccountPicker
-                    accounts={allAccounts.map((a) => ({
-                      id: a.id,
-                      name: a.name,
-                      show_in_dashboard: a.show_in_dashboard,
-                    }))}
-                  />
-                }
-              />
+              {/* Accounts + Alerts — tier 2 */}
+              <Suspense fallback={<AccountsSkeleton />}>
+                <AccountsSection allAccounts={allAccounts} />
+              </Suspense>
 
-              <DashboardAlerts
-                accounts={allAccounts.map((a) => ({
-                  id: a.id,
-                  name: a.name,
-                  account_type: a.account_type,
-                  updated_at: a.updated_at,
-                }))}
-                latestSnapshotDates={latestSnapshotDates}
-              />
-
-              {/* Recent Transactions */}
+              {/* Recent Transactions — tier 1 data (already fetched) */}
               <WidgetSlot widgetId="recent-tx">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
@@ -486,8 +591,9 @@ export default async function DashboardPage({
                 </Card>
               </WidgetSlot>
 
+              {/* Spending Heatmap — tier 2 */}
               <WidgetSlot widgetId="spending-heatmap">
-                <Suspense fallback={<div className="h-40 rounded-xl bg-muted animate-pulse" />}>
+                <Suspense fallback={<HeatmapSkeleton />}>
                   <ActividadHeatmap month={month} currency={currency} />
                 </Suspense>
               </WidgetSlot>
@@ -499,186 +605,5 @@ export default async function DashboardPage({
   );
 }
 
-/** Async sub-component for WaterfallChart — wrapped in Suspense */
-async function FlujoWaterfall({
-  month,
-  currency,
-}: {
-  month: string | undefined;
-  currency: CurrencyCode;
-}) {
-  const [cashflowData, categoryData] = await Promise.all([
-    getMonthlyCashflow(month, currency),
-    getCategorySpending(month, currency),
-  ]);
-
-  const current = cashflowData[cashflowData.length - 1];
-  const income = current?.income ?? 0;
-  const net = current?.net ?? 0;
-  const categories = categoryData.map((c) => ({ name: c.name, amount: c.amount }));
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Flujo del mes</CardTitle>
-        <p className="text-xs text-muted-foreground">Ingresos → Gastos → Neto</p>
-      </CardHeader>
-      <CardContent>
-        <WaterfallChart income={income} categories={categories} net={net} currency={currency} />
-      </CardContent>
-    </Card>
-  );
-}
-
-/** Async sub-component for Flujo de Caja charts — wrapped in Suspense */
-async function FlujoCharts({
-  month,
-  currency,
-  monthLabel,
-}: {
-  month: string | undefined;
-  currency: CurrencyCode;
-  monthLabel: string;
-}) {
-  const cashflowData = await getMonthlyCashflow(month, currency);
-
-  return <CashFlowViewToggle data={cashflowData} monthLabel={monthLabel} />;
-}
-
-/** Async sub-component for Presupuesto section — wrapped in Suspense */
-async function PresupuestoSection({
-  month,
-  currency,
-  monthLabel,
-  healthMetersData,
-}: {
-  month: string | undefined;
-  currency: CurrencyCode;
-  monthLabel: string;
-  healthMetersData: import("@/actions/health-meters").HealthMetersData;
-}) {
-  const [budgetPaceData, categoryData, allocationData] = await Promise.all([
-    getDailyBudgetPace(month, currency),
-    getCategorySpending(month, currency),
-    get503020Allocation(month, currency),
-  ]);
-
-  return (
-    <DashboardSection title="Presupuesto" section="presupuesto">
-      <WidgetSlot widgetId="budget-pulse">
-        <BudgetPaceChart
-          data={budgetPaceData.data}
-          totalBudget={budgetPaceData.totalBudget}
-          totalSpent={budgetPaceData.totalSpent}
-          monthLabel={monthLabel}
-        />
-      </WidgetSlot>
-
-      <WidgetSlot widgetId="allocation-5030">
-        <AllocationBars5030 data={allocationData} />
-      </WidgetSlot>
-
-      <WidgetSlot widgetId="savings-rate">
-        <SavingsRateWidget data={healthMetersData} />
-      </WidgetSlot>
-
-      {/* CategoryDonut — top spending categories as donut with legend */}
-      <WidgetSlot widgetId="category-donut">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Gastos por categoría</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CategoryDonut data={categoryData} currency={currency} />
-          </CardContent>
-        </Card>
-      </WidgetSlot>
-
-      <WidgetSlot widgetId="budget-bar">
-        <DashboardBudgetBar data={categoryData} monthLabel={monthLabel} />
-      </WidgetSlot>
-    </DashboardSection>
-  );
-}
-
-/** Async sub-component for Patrimonio y Deuda section — wrapped in Suspense */
-async function PatrimonioSection({
-  currency,
-  month,
-  healthMetersData,
-}: {
-  currency: CurrencyCode;
-  month: string | undefined;
-  healthMetersData: import("@/actions/health-meters").HealthMetersData;
-}) {
-  const [debtCountdownData, interestPaidData, debtProgressAccounts, netWorthHistory] = await Promise.all([
-    getDebtFreeCountdown(currency),
-    getInterestPaid(month, currency),
-    getDebtProgress(currency),
-    getNetWorthHistory(month, currency),
-  ]);
-
-  return (
-    <DashboardSection title="Patrimonio y deuda" section="patrimonio">
-      <WidgetSlot widgetId="debt-countdown">
-        <DebtFreeCountdown data={debtCountdownData} />
-      </WidgetSlot>
-
-      <WidgetSlot widgetId="debt-progress">
-        <DebtProgressWidget accounts={debtProgressAccounts} />
-      </WidgetSlot>
-
-      <WidgetSlot widgetId="net-worth">
-        <NetWorthHistoryChart data={netWorthHistory} />
-      </WidgetSlot>
-
-      <WidgetSlot widgetId="emergency-fund">
-        <EmergencyFundWidget data={healthMetersData} />
-      </WidgetSlot>
-
-      <WidgetSlot widgetId="interest-paid">
-        <InterestPaidWidget data={interestPaidData} />
-      </WidgetSlot>
-    </DashboardSection>
-  );
-}
-
-/** Async sub-component for Actividad spending heatmap — wrapped in Suspense */
-async function ActividadHeatmap({
-  month,
-  currency,
-}: {
-  month: string | undefined;
-  currency: CurrencyCode;
-}) {
-  const heatmapData = await getSpendingHeatmap(month, currency);
-
-  if (!heatmapData) {
-    return (
-      <Card>
-        <CardContent className="p-5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            Mapa de actividad
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Importa transacciones para ver tu patron de gasto.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Mapa de actividad</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Intensidad de gasto diario
-        </p>
-      </CardHeader>
-      <CardContent>
-        <SpendingHeatmap data={heatmapData} />
-      </CardContent>
-    </Card>
-  );
-}
+// Re-export HealthMetersData type used by sub-components that receive it as prop
+export type { HealthMetersData };
