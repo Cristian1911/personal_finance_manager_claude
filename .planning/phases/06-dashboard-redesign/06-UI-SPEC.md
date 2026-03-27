@@ -35,20 +35,20 @@ created: 2026-03-27
 
 Declared values (all multiples of 4, with project exceptions noted):
 
-| Token | CSS Variable | Value | Usage |
-|-------|-------------|-------|-------|
-| xs | `--z-space-xs` | 6px | Icon gaps, inline chip padding |
-| sm | `--z-space-sm` | 8px | Compact row padding, badge inner padding |
-| md | `--z-space-md` | 16px | Default card padding, form element spacing |
-| lg | `--z-space-lg` | 20px | Section internal padding |
-| xl | `--z-space-xl` | 28px | Between sections inside the same tier |
-| 2xl | `--z-space-2xl` | 40px | Between dashboard tiers (hero → health score) |
-| 3xl | `--z-space-3xl` | 64px | Page-level top/bottom padding |
+| Token | CSS Variable | Value | Usage | Justification |
+|-------|-------------|-------|-------|---------------|
+| xs | `--z-space-xs` | 4px | Icon gaps, inline chip padding | Base of 4-point scale |
+| sm | `--z-space-sm` | 8px | Compact row padding, badge inner padding | 2x base |
+| md | `--z-space-md` | 16px | Default card padding, form element spacing | 4x base |
+| lg | `--z-space-lg` | 20px | Section internal padding | 5x base; bridges card padding and section gaps without jumping to 24px |
+| xl | `--z-space-xl` | 28px | Between sections inside the same tier | 7x base; visually separates sections without the density of 24px or the airiness of 32px |
+| 2xl | `--z-space-2xl` | 40px | Between dashboard tiers (hero → health score) | 10x base; creates clear tier-level breathing room between primary sections |
+| 3xl | `--z-space-3xl` | 64px | Page-level top/bottom padding | 16x base |
 
 **Phase-specific exceptions:**
 - Hero "Disponible para gastar" number: `py-6` (24px) vertical clearance above and below
 - Speedometer gauge container: minimum height 160px on mobile, 200px on desktop
-- Health meter rows inside the speedometer section: `px-3 py-2.5` (matches existing `MeterRow` padding)
+- Health meter rows inside the speedometer section: `px-3 py-2.5` — grandfathered from existing `MeterRow` component; do not replicate in new components, use `py-2` (8px) or `py-3` (12px) instead
 - Touch targets for interactive meter rows: minimum 44px height (accessibility floor)
 - Debt-free banner: `px-4 py-3` (16px / 12px) — compact but readable
 
@@ -60,13 +60,15 @@ Four roles, two weights. All sizes reference the `--z-type-*` token system.
 
 | Role | CSS Token | Size | Weight | Line Height | Tracking | Usage |
 |------|-----------|------|--------|-------------|----------|-------|
-| Display | `--z-type-display-*` | 52px | 800 | 1.0 | -0.04em | Hero "Disponible para gastar" number |
+| Display | `--z-type-display-*` | 52px | 700 | 1.0 | -0.04em | Hero "Disponible para gastar" number |
 | Heading | `--z-type-h1-*` | 28px | 700 | 1.2 | -0.02em | Health score number in speedometer; section titles |
 | Body | `--z-type-body-*` | 15px | 400 | 1.7 | 0 | Status headlines, section subtitles, narrative copy |
 | Label | `--z-type-label-*` | 11px | 400 | 1.4 | 0 | Section header text (uppercase + tracking-wide), KPI sub-labels |
 
+**Declared weights:** 700 (semibold) and 400 (regular) only. The 52px Display size provides sufficient hierarchy over 28px Heading without a separate weight graduation.
+
 **Additional widget sizes (already established in `kpi-widget.tsx`):**
-- Widget large value: 22px / weight 800 — KPI card primary numbers
+- Widget large value: 22px / weight 700 — KPI card primary numbers
 - Widget caption / trend: 11px / weight 400 — KPI secondary text
 
 **Rule:** Only these four roles (+ widget variant) may be used. No one-off `text-[Npx]` outside of these established sizes.
@@ -125,7 +127,7 @@ New components required by this phase, all built with existing shadcn/ui + Zeta 
 **Modified components:**
 - `dashboard-hero.tsx`: add `StatusHeadline` below KPI grid; add `DebtFreeBanner` below headline
 - `health-meters-card.tsx`: major refactor — add `SpeedometerGauge` above meters list; upgrade visual tier to primary (remove card border, increase padding)
-- `dashboard-section.tsx`: add optional `subtitle?: string` prop; render as 15px/400 body text in `text-muted-foreground` below the section header
+- `dashboard-section.tsx`: add optional `subtitle?: string` prop; render as 15px/400 body text in `text-muted-foreground` below the section header toggle button
 
 **Speedometer implementation:** Custom SVG arc (no new library). Use `recharts` `RadialBarChart` as fallback only if SVG arc math becomes complex. Recharts is already lazy-loaded via `next/dynamic`.
 
