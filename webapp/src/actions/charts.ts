@@ -475,7 +475,7 @@ async function getDashboardAccountsCached(userId: string): Promise<{
     id: string;
     name: string;
     account_type: string;
-    current_balance: number;
+    current_balance: number | null;
     currency_code: string;
     updated_at: string | null;
   }[];
