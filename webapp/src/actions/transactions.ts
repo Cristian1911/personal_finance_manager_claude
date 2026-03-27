@@ -3,10 +3,13 @@
 import { revalidateTag } from "next/cache";
 import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createDestinatario } from "@/actions/destinatarios";
+import { createRecurringTemplate } from "@/actions/recurring-templates";
 import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import {
   quickCapturePreviewSchema,
+  transactionCreateOptionsSchema,
   transactionFiltersSchema,
   transactionSchema,
 } from "@/lib/validators/transaction";
@@ -28,9 +31,11 @@ type PersistTransactionParams = {
   raw_description?: string | null;
   merchant_name?: string | null;
   category_id?: string | null;
+  destinatario_id?: string | null;
   notes?: string | null;
   capture_method?: Transaction["capture_method"];
   capture_input_text?: string | null;
+  is_subscription?: boolean;
 };
 
 type BalanceAccountRow = {
@@ -43,6 +48,12 @@ type BalanceTransactionRow = Pick<
   Transaction,
   "account_id" | "amount" | "direction" | "is_excluded"
 >;
+
+type RelatedSetup = {
+  destinatarioId: string | null;
+  recurringTemplateId: string | null;
+  merchantName: string | null;
+};
 
 async function loadBalanceAccounts(
   supabase: SupabaseClient<Database>,
@@ -165,6 +176,194 @@ function revalidateFinancialViews() {
   revalidateTag("budgets", "zeta");
 }
 
+function getRecurringScheduleFields(
+  startDate: string,
+  frequency: NonNullable<
+    ReturnType<typeof transactionCreateOptionsSchema.parse>["recurring_frequency"]
+  >
+) {
+  const [year, month, day] = startDate.split("-").map(Number);
+  const anchor = new Date(year, (month ?? 1) - 1, day ?? 1);
+
+  if (Number.isNaN(anchor.getTime())) {
+    return { day_of_month: null, day_of_week: null };
+  }
+
+  if (frequency === "WEEKLY" || frequency === "BIWEEKLY") {
+    return {
+      day_of_month: null,
+      day_of_week: anchor.getDay(),
+    };
+  }
+
+  return {
+    day_of_month: anchor.getDate(),
+    day_of_week: null,
+  };
+}
+
+async function cleanupPreparedSetup(params: {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  destinatarioId?: string | null;
+  recurringTemplateId?: string | null;
+}) {
+  if (params.recurringTemplateId) {
+    await params.supabase
+      .from("recurring_transaction_templates")
+      .delete()
+      .eq("user_id", params.userId)
+      .eq("id", params.recurringTemplateId);
+  }
+
+  if (params.destinatarioId) {
+    await params.supabase
+      .from("destinatario_rules")
+      .delete()
+      .eq("user_id", params.userId)
+      .eq("destinatario_id", params.destinatarioId);
+
+    await params.supabase
+      .from("destinatarios")
+      .delete()
+      .eq("user_id", params.userId)
+      .eq("id", params.destinatarioId);
+  }
+}
+
+async function prepareRelatedSetup(params: {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  core: ReturnType<typeof transactionSchema.parse>;
+  options: ReturnType<typeof transactionCreateOptionsSchema.parse>;
+  baseState: ActionResult<Transaction>;
+}): Promise<ActionResult<RelatedSetup>> {
+  const baseMerchantName =
+    params.core.merchant_name?.trim() || params.core.raw_description?.trim() || null;
+
+  let destinatarioId: string | null = null;
+  let recurringTemplateId: string | null = null;
+  let merchantName = baseMerchantName;
+
+  if (params.options.create_destinatario) {
+    const destinatarioName =
+      params.options.destinatario_name?.trim() || baseMerchantName;
+
+    if (!destinatarioName) {
+      return {
+        success: false,
+        error: "Ingresa una descripción o un nombre para crear el destinatario.",
+      };
+    }
+
+    const destinatarioFormData = new FormData();
+    destinatarioFormData.set("name", destinatarioName);
+    destinatarioFormData.set("is_active", "true");
+
+    if (params.core.category_id) {
+      destinatarioFormData.set("default_category_id", params.core.category_id);
+    }
+
+    const pattern = baseMerchantName || destinatarioName;
+    if (pattern.trim().length >= 2) {
+      destinatarioFormData.set("patterns", JSON.stringify([pattern.trim()]));
+    }
+
+    const destinatarioResult = await createDestinatario(
+      params.baseState as ActionResult<never>,
+      destinatarioFormData
+    );
+
+    if (!destinatarioResult.success) {
+      return { success: false, error: destinatarioResult.error };
+    }
+
+    destinatarioId = destinatarioResult.data.id;
+    merchantName = destinatarioResult.data.name;
+  }
+
+  if (params.options.create_recurring_template) {
+    const recurringName = merchantName?.trim() || params.options.destinatario_name?.trim();
+
+    if (!recurringName) {
+      await cleanupPreparedSetup({
+        supabase: params.supabase,
+        userId: params.userId,
+        destinatarioId,
+      });
+      return {
+        success: false,
+        error: "Agrega una descripción para crear el pago recurrente.",
+      };
+    }
+
+    const recurringStartDate =
+      params.options.recurring_start_date ?? params.core.transaction_date;
+    const recurringFormData = new FormData();
+    const recurringDirection = params.core.direction;
+    const scheduleFields = getRecurringScheduleFields(
+      recurringStartDate,
+      params.options.recurring_frequency
+    );
+
+    recurringFormData.set("account_id", params.core.account_id);
+    recurringFormData.set("amount", String(params.core.amount));
+    recurringFormData.set("currency_code", params.core.currency_code);
+    recurringFormData.set("direction", recurringDirection);
+    recurringFormData.set("frequency", params.options.recurring_frequency);
+    recurringFormData.set("merchant_name", recurringName);
+    recurringFormData.set("start_date", recurringStartDate);
+
+    if (params.core.notes?.trim()) {
+      recurringFormData.set("description", params.core.notes.trim());
+    }
+
+    if (params.core.category_id) {
+      recurringFormData.set("category_id", params.core.category_id);
+    }
+
+    if (scheduleFields.day_of_month != null) {
+      recurringFormData.set("day_of_month", String(scheduleFields.day_of_month));
+    }
+
+    if (scheduleFields.day_of_week != null) {
+      recurringFormData.set("day_of_week", String(scheduleFields.day_of_week));
+    }
+
+    if (params.options.recurring_transfer_source_account_id) {
+      recurringFormData.set(
+        "transfer_source_account_id",
+        params.options.recurring_transfer_source_account_id
+      );
+    }
+
+    const recurringResult = await createRecurringTemplate(
+      params.baseState as ActionResult<never>,
+      recurringFormData
+    );
+
+    if (!recurringResult.success) {
+      await cleanupPreparedSetup({
+        supabase: params.supabase,
+        userId: params.userId,
+        destinatarioId,
+      });
+      return { success: false, error: recurringResult.error };
+    }
+
+    recurringTemplateId = recurringResult.data.id;
+  }
+
+  return {
+    success: true,
+    data: {
+      destinatarioId,
+      recurringTemplateId,
+      merchantName,
+    },
+  };
+}
+
 async function persistTransaction(
   supabase: SupabaseClient<Database>,
   params: PersistTransactionParams
@@ -189,11 +388,13 @@ async function persistTransaction(
       clean_description: params.merchant_name || params.raw_description || null,
       merchant_name: params.merchant_name ?? null,
       category_id: params.category_id ?? null,
+      destinatario_id: params.destinatario_id ?? null,
       notes: params.notes ?? null,
       idempotency_key: idempotencyKey,
       provider: "MANUAL",
       capture_method: params.capture_method ?? "MANUAL_FORM",
       capture_input_text: params.capture_input_text ?? null,
+      is_subscription: params.is_subscription ?? false,
       categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
     })
     .select()
@@ -320,18 +521,63 @@ export async function createTransaction(
     category_id: formData.get("category_id") || undefined,
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
+    is_subscription: formData.get("is_subscription"),
   });
 
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  return persistTransaction(supabase, {
+  const optionsParsed = transactionCreateOptionsSchema.safeParse({
+    create_destinatario: formData.get("create_destinatario"),
+    destinatario_name: formData.get("destinatario_name") || undefined,
+    create_recurring_template: formData.get("create_recurring_template"),
+    recurring_frequency: formData.get("recurring_frequency") || undefined,
+    recurring_start_date: formData.get("recurring_start_date") || undefined,
+    recurring_transfer_source_account_id:
+      formData.get("recurring_transfer_source_account_id") || undefined,
+  });
+
+  if (!optionsParsed.success) {
+    return { success: false, error: optionsParsed.error.issues[0].message };
+  }
+
+  const relatedSetup = await prepareRelatedSetup({
+    supabase,
+    userId: user.id,
+    core: parsed.data,
+    options: optionsParsed.data,
+    baseState: _prevState,
+  });
+
+  if (!relatedSetup.success) {
+    return relatedSetup;
+  }
+
+  const normalizedMerchantName =
+    relatedSetup.data.merchantName ||
+    parsed.data.merchant_name ||
+    parsed.data.raw_description ||
+    null;
+
+  const transactionResult = await persistTransaction(supabase, {
     userId: user.id,
     ...parsed.data,
-    merchant_name: parsed.data.merchant_name || parsed.data.raw_description || null,
+    merchant_name: normalizedMerchantName,
+    destinatario_id: relatedSetup.data.destinatarioId,
     capture_method: "MANUAL_FORM",
   });
+
+  if (!transactionResult.success) {
+    await cleanupPreparedSetup({
+      supabase,
+      userId: user.id,
+      destinatarioId: relatedSetup.data.destinatarioId,
+      recurringTemplateId: relatedSetup.data.recurringTemplateId,
+    });
+  }
+
+  return transactionResult;
 }
 
 export async function createQuickCaptureTransaction(
@@ -353,6 +599,7 @@ export async function createQuickCaptureTransaction(
     category_id: formData.get("category_id") || undefined,
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text"),
+    is_subscription: formData.get("is_subscription"),
   });
 
   if (!parsed.success) {
@@ -389,6 +636,7 @@ export async function updateTransaction(
     category_id: formData.get("category_id") || undefined,
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
+    is_subscription: formData.get("is_subscription"),
   });
 
   if (!parsed.success) {

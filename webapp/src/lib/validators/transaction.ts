@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { uuidStr } from "./shared";
 
+const formBoolean = z.preprocess(
+  (val) => val === true || val === "true" || val === "on",
+  z.boolean().default(false)
+);
+
 export const transactionSchema = z.object({
   account_id: uuidStr("Cuenta inválida"),
   amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
@@ -15,10 +20,34 @@ export const transactionSchema = z.object({
   ),
   notes: z.string().optional(),
   capture_input_text: z.string().optional(),
+  is_subscription: formBoolean,
   tags: z.array(z.string()).optional(),
 });
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
+
+export const transactionCreateOptionsSchema = z.object({
+  create_destinatario: formBoolean,
+  destinatario_name: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    z.string().max(100).optional()
+  ),
+  create_recurring_template: formBoolean,
+  recurring_frequency: z
+    .enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "ANNUAL"])
+    .optional()
+    .default("MONTHLY"),
+  recurring_start_date: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    z.string().optional()
+  ),
+  recurring_transfer_source_account_id: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    uuidStr().optional().nullable()
+  ),
+});
+
+export type TransactionCreateOptions = z.infer<typeof transactionCreateOptionsSchema>;
 
 export const quickCapturePreviewSchema = transactionSchema.extend({
   raw_description: z.string().min(1, "La captura original es requerida"),
