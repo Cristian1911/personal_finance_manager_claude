@@ -105,7 +105,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 05-01-PLAN.md — Interactive HTML walkthrough of 6-step onboarding wizard with UX annotations (ONB-01)
+- [x] 05-01-PLAN.md — Interactive HTML walkthrough of 6-step onboarding wizard with UX annotations (ONB-01)
 
 ### Phase 6: Dashboard Redesign
 **Goal**: A user can answer "Am I on track this month?" by reading the dashboard top-to-bottom without explanation
