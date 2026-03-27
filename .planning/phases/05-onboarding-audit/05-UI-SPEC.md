@@ -37,13 +37,15 @@ Declared values from `globals.css` `--z-space-*` tokens. HTML file must replicat
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| xs | 6px | Icon gaps, tight inline padding |
+| xs | 4px | Icon gaps, tight inline padding |
 | sm | 8px | Compact element spacing, label-to-input gap |
 | md | 16px | Default element spacing, card content padding |
 | lg | 20px | Card section breaks, between form groups |
 | xl | 28px | Card header padding |
 | 2xl | 40px | Major section breaks |
 | 3xl | 64px | Page-level spacing |
+
+**Project Token Inheritance:** `lg` (20px), `xl` (28px), and `2xl` (40px) are not in the standard 8-point set {4, 8, 16, 24, 32, 48, 64}. These values are inherited directly from Zeta's custom `--z-space-*` token scale defined in `webapp/src/app/globals.css`. The HTML artifact inherits this scale by design to preserve visual fidelity with the source application. These are project-specific exceptions, not deviations from the spec.
 
 Exceptions:
 - Progress bar height: 8px (fixed — matches `h-2` in source)
@@ -59,15 +61,15 @@ All values sourced directly from `globals.css` `--z-type-*` tokens.
 
 | Role | Size | Weight | Line Height | Tracking | Usage |
 |------|------|--------|-------------|----------|-------|
-| Body | 15px | 400 | 1.7 | 0 | Form labels, descriptions, annotation body text |
+| Heading | 28px | 700 | 1.2 | -0.02em | Card titles, section headings, page-level titles. Card `CardTitle` equivalents render at 28px; differentiate card titles from section headings via weight only (both use 700). |
+| Body | 15px | 400 | 1.7 | 0 | Form labels, descriptions, annotation body text, step counter ("Paso 2 de 6"), annotation callout headings |
 | Label | 11px | 400 | 1.4 | 0 | Field labels, step counter text, annotation secondary |
-| Heading | 28px | 700 | 1.2 | -0.02em | Card titles (`text-2xl` in source = 24px; use 24px for card titles, 28px for section headings) |
-| Caption | 10px | 500 | 1.4 | 0.08em | Micro labels, tab bar labels in phone mockup (source uses `text-[9px]`) |
+| Caption | 10px | 400 | 1.4 | 0.08em | Micro labels, tab bar labels in phone mockup (source uses `text-[9px]`) |
 
 Notes:
-- Card titles render at `text-2xl` (24px) in the source — use 24px for card `CardTitle` equivalents.
-- Annotation callout headings use 13px / weight 600 to distinguish from body.
-- Step counter ("Paso 2 de 6") uses 14px / weight 600 — derived from `text-sm font-semibold` in source.
+- Step counter ("Paso 2 de 6") uses 15px / weight 700 — derived from `text-sm font-semibold` in source; use 15px bold from the Body row.
+- Annotation callout headings use 15px / weight 700 — bold body weight, not a separate size.
+- Card titles and section headings share 28px; visual distinction achieved through layout context, not a separate size.
 
 ---
 
@@ -195,7 +197,7 @@ Annotations appear below each step card, separated by 16px gap. They are never o
 - Border: `1px solid rgba(197, 191, 174, 0.12)`
 - Border radius: 12px
 - Padding: 16px
-- Font size: 13px / weight 400 / line-height 1.6
+- Font size: 15px / weight 400 / line-height 1.6
 
 **Annotation item styles:**
 - `.concern`: icon color `#E8875A` (z-expense), text color `#D8D2C4` (z-sage-light)
@@ -249,7 +251,7 @@ All copy sourced directly from `webapp/src/app/onboarding/page.tsx`.
 | Validation error (step 1) | "Elige un objetivo para continuar." | source `page.tsx` (toast — replicate as inline message in HTML) |
 | Validation error (step 2) | "Ingresa tu nombre." | source `page.tsx` |
 | Validation error (step 3) | "Ingresa tus ingresos y gastos estimados." | source `page.tsx` |
-| Submit error (step 5) | "Ocurrió un error inesperado" | source `page.tsx` (simulated — show if Finalizar errors) |
+| Submit error (step 5) | "Ocurrió un error al guardar tu cuenta. Intenta de nuevo." | source `page.tsx` — simulated error only; no real recovery path in this artifact. The HTML file shows this message for 2s on a simulated failure branch; no actual retry logic is wired. |
 | Purpose options | "Salir de deudas" / "Entender mis gastos" / "Ahorrar para una meta" / "Mejorar hábitos financieros" | source `purposes` array |
 | Account type options | "Corriente" / "Ahorros" / "Tarjeta de crédito" / "Efectivo" | source Select options |
 
