@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import {
@@ -73,6 +75,21 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
     setEditingId(null);
     setAmount("");
     setSaveError(null);
+  }
+
+  if (localCategories.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <LayoutGrid className="size-12 text-muted-foreground mb-4" />
+        <p className="text-lg font-medium mb-1">Sin categorías de gasto</p>
+        <p className="text-sm text-muted-foreground mb-4">
+          Crea categorías y asígnales presupuesto para controlar tus gastos.
+        </p>
+        <Button asChild size="sm">
+          <Link href="/categories?tab=gestionar">Gestionar categorías</Link>
+        </Button>
+      </div>
+    );
   }
 
   return (

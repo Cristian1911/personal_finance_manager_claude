@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserSafely } from "@/lib/supabase/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import { getUncategorizedCount } from "@/actions/categorize";
+import { getUncategorizedCount, getUnreviewedAutoCount } from "@/actions/categorize";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { MobileTopbar } from "@/components/mobile/mobile-topbar";
@@ -42,12 +42,15 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
-  const [uncategorizedCount, accountsResult, categoriesResult] =
+  const [uncategorizedCount, unreviewedAutoCount, accountsResult, categoriesResult] =
     await Promise.all([
       getUncategorizedCount(),
+      getUnreviewedAutoCount(),
       getAccounts(),
       getCategories(),
     ]);
+
+  const totalReviewCount = uncategorizedCount + unreviewedAutoCount;
 
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
@@ -60,11 +63,11 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar uncategorizedCount={uncategorizedCount} />
+      <Sidebar uncategorizedCount={totalReviewCount} />
       <div className="flex-1 flex flex-col min-w-0">
         {/* Desktop topbar — hidden on mobile */}
         <div className="hidden lg:block">
-          <Topbar profile={profile} uncategorizedCount={uncategorizedCount} />
+          <Topbar profile={profile} uncategorizedCount={totalReviewCount} />
         </div>
         {/* Mobile topbar */}
         <MobileTopbar profile={profile} />
@@ -80,7 +83,7 @@ export default async function DashboardLayout({
         </main>
 
         {/* Mobile bottom navigation */}
-        <BottomTabBar uncategorizedCount={uncategorizedCount} tabConfig={tabConfig} />
+        <BottomTabBar uncategorizedCount={totalReviewCount} tabConfig={tabConfig} />
       </div>
     </div>
   );

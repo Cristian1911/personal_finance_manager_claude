@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useActionState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Loader2,
   ArrowUpRight,
@@ -60,6 +61,7 @@ export function MobileTransactionForm({
   isTransfer,
   onSuccess,
 }: MobileTransactionFormProps) {
+  const router = useRouter();
   // Determine initial transaction type from props (backward compat)
   const initialType: TransactionType = isTransfer
     ? "transfer"
@@ -81,7 +83,10 @@ export function MobileTransactionForm({
   >(
     async (prevState, formData) => {
       const result = await createTransaction(prevState, formData);
-      if (result.success) onSuccess?.();
+      if (result.success) {
+        router.refresh();
+        onSuccess?.();
+      }
       return result;
     },
     { success: false, error: "" },

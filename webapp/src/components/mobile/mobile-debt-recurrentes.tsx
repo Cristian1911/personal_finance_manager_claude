@@ -14,7 +14,7 @@ import {
 import { FadeIn, StaggerList, StaggerItem } from "./motion";
 import type { CurrencyCode } from "@/types/domain";
 
-interface MobileDebtRecurrentesProps {
+export interface MobileDebtRecurrentesProps {
   totalDebt: number;
   monthlyInterest: number;
   currency: string;

@@ -179,7 +179,8 @@ export async function getRecurringTemplates(): Promise<
   try {
     const data = await getRecurringTemplatesCached(user.id);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading recurring templates:", error);
     return { success: false, error: "Error al cargar las plantillas recurrentes" };
   }
 }
@@ -192,7 +193,8 @@ export async function getRecurringTemplate(
   try {
     const data = await getRecurringTemplateCached(user.id, id);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading recurring template:", error);
     return { success: false, error: "Error al cargar la plantilla recurrente" };
   }
 }

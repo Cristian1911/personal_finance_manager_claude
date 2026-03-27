@@ -33,8 +33,14 @@ export async function PatrimonioSection({
     getNetWorthHistory(month, currency),
   ]);
 
+  let patrimonioSubtitle: string | undefined;
+  if (debtCountdownData) {
+    const activeDebts = debtProgressAccounts?.length ?? 0;
+    patrimonioSubtitle = `${activeDebts} ${activeDebts === 1 ? "deuda activa" : "deudas activas"} — libre en ${debtCountdownData.monthsToFree} meses`;
+  }
+
   return (
-    <DashboardSection title="Patrimonio y deuda" section="patrimonio">
+    <DashboardSection title="Patrimonio y deuda" section="patrimonio" subtitle={patrimonioSubtitle}>
       <WidgetSlot widgetId="debt-countdown">
         <DebtFreeCountdown data={debtCountdownData} />
       </WidgetSlot>

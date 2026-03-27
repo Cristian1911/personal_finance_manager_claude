@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequestUser } from "@/app/api/_shared/auth";
 
 const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
-const PARSER_API_KEY = process.env.PDF_PARSER_API_KEY ?? process.env.PARSER_API_KEY ?? "";
+const PARSER_API_KEY = process.env.PDF_PARSER_API_KEY ?? "";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const FETCH_TIMEOUT_MS = 120_000; // 120 seconds (PDF parsing can be slow)
 

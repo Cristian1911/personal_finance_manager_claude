@@ -4,7 +4,6 @@ import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { extractPattern } from "@zeta/shared";
-import { applyVisibleTransactionFilter, isMissingReconciliationColumnError } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithRelations } from "@/types/domain";
 import type { UserRule } from "@zeta/shared";
@@ -20,24 +19,17 @@ async function getUncategorizedTransactionsCached(
 
   const supabase = createAdminClient();
 
-  const buildQuery = () =>
-    supabase
-      .from("transactions")
-      .select(
-        "*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)"
-      )
-      .eq("user_id", userId)
-      .is("category_id", null)
-      .eq("is_excluded", false)
-      .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-  let result = await applyVisibleTransactionFilter(buildQuery());
-  if (isMissingReconciliationColumnError((result as { error?: unknown }).error)) {
-    result = await buildQuery();
-  }
-
-  const { data, error } = result;
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)"
+    )
+    .eq("user_id", userId)
+    .is("category_id", null)
+    .eq("is_excluded", false)
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .is("reconciled_into_transaction_id", null);
   if (error) throw error;
   return (data ?? []) as TransactionWithRelations[];
 }
@@ -49,20 +41,13 @@ async function getUncategorizedCountCached(userId: string): Promise<number> {
 
   const supabase = createAdminClient();
 
-  const buildQuery = () =>
-    supabase
-      .from("transactions")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .is("category_id", null)
-      .eq("is_excluded", false);
-
-  let result = await applyVisibleTransactionFilter(buildQuery());
-  if (isMissingReconciliationColumnError((result as { error?: unknown }).error)) {
-    result = await buildQuery();
-  }
-
-  const { count, error } = result;
+  const { count, error } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("category_id", null)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null);
   if (error) throw error;
   return count ?? 0;
 }
@@ -82,6 +67,51 @@ async function getUserCategoryRulesCached(userId: string): Promise<UserRule[]> {
 
   if (error) throw error;
   return data ?? [];
+}
+
+async function getUnreviewedAutoCategorizedCached(
+  userId: string
+): Promise<TransactionWithRelations[]> {
+  "use cache";
+  cacheTag("categorize");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)"
+    )
+    .eq("user_id", userId)
+    .not("category_id", "is", null)
+    .in("categorization_source", ["SYSTEM_DEFAULT"])
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []) as TransactionWithRelations[];
+}
+
+async function getUnreviewedAutoCountCached(userId: string): Promise<number> {
+  "use cache";
+  cacheTag("categorize");
+  cacheLife("zeta");
+
+  const supabase = createAdminClient();
+
+  const { count, error } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .not("category_id", "is", null)
+    .in("categorization_source", ["SYSTEM_DEFAULT"])
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 // ─── Public wrappers ──────────────────────────────────────────────────────────
@@ -129,6 +159,37 @@ export async function getUserCategoryRules(): Promise<UserRule[]> {
   } catch (err) {
     console.error("Error fetching category rules:", err);
     return [];
+  }
+}
+
+/**
+ * Fetch auto-categorized transactions not yet reviewed by the user.
+ * These have categorization_source = SYSTEM_DEFAULT and a non-null category.
+ */
+export async function getUnreviewedAutoTransactions(): Promise<
+  TransactionWithRelations[]
+> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return [];
+  try {
+    return await getUnreviewedAutoCategorizedCached(user.id);
+  } catch (err) {
+    console.error("Error fetching unreviewed auto-categorized:", err);
+    return [];
+  }
+}
+
+/**
+ * Count auto-categorized transactions not yet reviewed (for badge).
+ */
+export async function getUnreviewedAutoCount(): Promise<number> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return 0;
+  try {
+    return await getUnreviewedAutoCountCached(user.id);
+  } catch (err) {
+    console.error("Error fetching unreviewed auto count:", err);
+    return 0;
   }
 }
 
@@ -209,6 +270,58 @@ export async function categorizeTransaction(
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("destinatarios", "zeta");
   return { success: true, data: undefined };
+}
+
+/**
+ * Confirm an auto-categorized transaction, marking it as user-reviewed.
+ * Keeps the existing category but changes categorization_source to USER_OVERRIDE.
+ */
+export async function confirmAutoCategory(
+  transactionId: string
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({ categorization_source: "USER_OVERRIDE" })
+    .eq("id", transactionId)
+    .eq("user_id", user.id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("categorize", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  return { success: true, data: undefined };
+}
+
+/**
+ * Confirm multiple auto-categorized transactions at once.
+ */
+export async function bulkConfirmAutoCategory(
+  transactionIds: string[]
+): Promise<ActionResult<{ confirmed: number }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error, count } = await supabase
+    .from("transactions")
+    .update({ categorization_source: "USER_OVERRIDE" })
+    .eq("user_id", user.id)
+    .in("id", transactionIds)
+    .in("categorization_source", ["SYSTEM_DEFAULT"]);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("categorize", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  return { success: true, data: { confirmed: count ?? transactionIds.length } };
 }
 
 /**

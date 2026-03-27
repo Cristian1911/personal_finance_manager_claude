@@ -32,6 +32,8 @@ import { trackClientEvent } from "@/lib/utils/analytics";
 import { getDefaultConfig } from "@/lib/dashboard-config-defaults";
 import type { AppPurpose, DashboardConfig, TabConfig } from "@/types/dashboard-config";
 
+const OPTIONAL_STEPS = new Set([1, 4]);
+
 const ICON_MAP: Record<string, typeof CreditCard> = {
     CreditCard,
     PiggyBank,
@@ -129,6 +131,19 @@ export default function OnboardingPage() {
         setStep((prev) => Math.min(prev + 1, totalSteps));
     };
 
+    const skipStep = (defaultAction: () => void) => {
+        void trackClientEvent({
+            event_name: "onboarding_step_skipped",
+            flow: "onboarding",
+            step: `step_${step}`,
+            entry_point: "skip",
+            success: true,
+            metadata: { step_number: step, total_steps: totalSteps },
+        });
+        defaultAction();
+        setStep((prev) => Math.min(prev + 1, totalSteps));
+    };
+
     const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
     const onSubmit = async () => {
@@ -223,16 +238,34 @@ export default function OnboardingPage() {
     return (
         <div className="mx-auto w-full max-w-lg">
             {step <= totalSteps && step < 6 && (
-                <div className="mb-4 rounded-xl border bg-card/80 p-4">
-                    <div className="mb-2 flex items-center justify-between text-sm">
+                <div className="mb-6 rounded-xl border bg-card/80 p-4">
+                    <div className="mb-3 flex items-center justify-between text-sm">
                         <span className="font-medium text-muted-foreground">Onboarding Zeta</span>
                         <span className="font-semibold">Paso {progressStep} de {totalSteps}</span>
                     </div>
-                    <div className="h-2 rounded-full bg-muted">
+                    {/* Progress bar */}
+                    <div className="mb-3 h-2 rounded-full bg-muted">
                         <div
-                            className="h-2 rounded-full bg-primary transition-all"
+                            className="h-2 rounded-full bg-primary transition-all duration-300"
                             style={{ width: `${(progressStep / totalSteps) * 100}%` }}
                         />
+                    </div>
+                    {/* Step dots — optional steps shown lighter */}
+                    <div className="flex items-center justify-center gap-2">
+                        {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
+                            <div
+                                key={s}
+                                className={`h-2 rounded-full transition-all duration-300 ${
+                                    s === step
+                                        ? "w-6 bg-primary"
+                                        : s < step
+                                            ? "w-2 bg-primary/60"
+                                            : OPTIONAL_STEPS.has(s)
+                                                ? "w-2 bg-muted-foreground/20"
+                                                : "w-2 bg-muted-foreground/40"
+                                }`}
+                            />
+                        ))}
                     </div>
                 </div>
             )}
@@ -265,13 +298,22 @@ export default function OnboardingPage() {
                                     );
                                 })}
                             </CardContent>
-                            <CardFooter className="flex justify-between border-t p-6">
-                                <Button variant="ghost" disabled>
-                                    Atrás
-                                </Button>
-                                <Button onClick={nextStep} disabled={!purpose}>
-                                    Siguiente <ArrowRight className="ml-2 h-4 w-4" />
-                                </Button>
+                            <CardFooter className="flex flex-col gap-3 border-t p-6">
+                                <div className="flex w-full justify-between">
+                                    <Button variant="ghost" disabled>
+                                        Atrás
+                                    </Button>
+                                    <Button onClick={nextStep} disabled={!purpose}>
+                                        Siguiente <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => skipStep(() => setPurpose("track_spending"))}
+                                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    Omitir
+                                </button>
                             </CardFooter>
                         </Card>
                     </div>
@@ -471,13 +513,27 @@ export default function OnboardingPage() {
                                     Toca las pestañas del centro para explorar opciones
                                 </p>
                             </CardContent>
-                            <CardFooter className="flex justify-between border-t p-6">
-                                <Button variant="ghost" onClick={prevStep}>
-                                    <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
-                                </Button>
-                                <Button onClick={nextStep}>
-                                    Siguiente <ArrowRight className="ml-2 h-4 w-4" />
-                                </Button>
+                            <CardFooter className="flex flex-col gap-3 border-t p-6">
+                                <div className="flex w-full justify-between">
+                                    <Button variant="ghost" onClick={prevStep}>
+                                        <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
+                                    </Button>
+                                    <Button onClick={nextStep}>
+                                        Siguiente <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => skipStep(() => {
+                                        // Ensure dashboard config uses defaults for the chosen purpose
+                                        if (!dashboardConfig) {
+                                            setDashboardConfig(getDefaultConfig((purpose || "track_spending") as AppPurpose));
+                                        }
+                                    })}
+                                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    Omitir
+                                </button>
                             </CardFooter>
                         </Card>
                     </div>

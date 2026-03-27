@@ -72,7 +72,8 @@ export async function getLatestSnapshotDates(): Promise<
   if (!user) return {};
   try {
     return await getLatestSnapshotDatesCached(user.id);
-  } catch {
+  } catch (error) {
+    console.error("Error loading snapshot dates:", error);
     return {};
   }
 }

@@ -170,10 +170,10 @@ function roastGasto(ctx: RoastContext): string {
         return `Gastas ${pct(value)} de lo que ganas. Con ingresos ajustados, este nivel de gasto no deja margen — te queda solo ${formatCurrency(remaining, currency)} al mes para todo lo demás.`;
       }
       if (range === "mid") {
-        return `Gastas ${formatCurrency(expenses, currency)} de los ${formatCurrency(monthlyIncome, currency)} que ganas. Para alguien con tu salario, esto es preocupante — tu margen de maniobra es de solo ${formatCurrency(remaining, currency)} al mes.`;
+        return `Gastas ${formatCurrency(expenses, currency)} de los ${formatCurrency(monthlyIncome, currency)} que ganas. Tu margen es ${formatCurrency(remaining, currency)} al mes — hay espacio para ajustar y ganar respiro.`;
       }
       // high
-      return `Ganas bien y aún así gastas el ${pct(value)}. Esto no es falta de ingreso — es falta de control. Te sobran ${formatCurrency(remaining, currency)} pero el patrón no cambia solo.`;
+      return `Ganas bien y aún así gastas el ${pct(value)}. Tu ingreso alcanza — ajustar algunos gastos haría gran diferencia. Te sobran ${formatCurrency(remaining, currency)} para empezar.`;
     }
 
     if (level === "alto") {
@@ -181,10 +181,10 @@ function roastGasto(ctx: RoastContext): string {
         return `Lifestyle creep clásico. Ganas lo suficiente para ahorrar mucho más, pero el ${pct(value)} se va en gastos. Cada aumento de sueldo se lo come el gasto.`;
       }
       if (range === "mid") {
-        return `El ${pct(value)} en gastos es demasiado para tu nivel de ingreso. Si sube un gasto fijo, te quedas sin colchón. Tienes ${formatCurrency(remaining, currency)} de margen — eso no alcanza para imprevistos.`;
+        return `El ${pct(value)} en gastos deja poco margen para tu nivel de ingreso. Tienes ${formatCurrency(remaining, currency)} disponibles — encontrar un par de recortes te daría más respiro.`;
       }
       // low
-      return `Con ingreso limitado, gastar el ${pct(value)} te deja expuesto. Cualquier imprevisto y entras en rojo. Solo te quedan ${formatCurrency(remaining, currency)}.`;
+      return `Con ingreso ajustado, gastar el ${pct(value)} deja poco espacio. Tienes ${formatCurrency(remaining, currency)} — pequeños ajustes pueden abrir margen.`;
     }
 
     if (level === "atento") {
@@ -205,7 +205,7 @@ function roastGasto(ctx: RoastContext): string {
   // No income available — generic messages by level
   switch (level) {
     case "critico":
-      return `El ${pct(value)} de tus ingresos en gastos es crítico. No hay margen para imprevistos ni para ahorrar. Esto necesita atención inmediata.`;
+      return `El ${pct(value)} de tus ingresos en gastos deja poco margen. Identificar los gastos más grandes es el primer paso para recuperar espacio.`;
     case "alto":
       return `El ${pct(value)} en gastos es alto — estás cerca del límite. Pequeños ajustes ahora evitan problemas grandes después.`;
     case "atento":
@@ -224,18 +224,18 @@ function roastDeuda(ctx: RoastContext): string {
     const delta = (value - 43).toFixed(1);
     if (monthlyIncome != null && monthlyIncome > 0) {
       const debtPayment = monthlyIncome * (value / 100);
-      return `Tu deuda consume el ${pct(value)} de tu ingreso — ${formatCurrency(debtPayment, currency)} al mes que no puedes usar para nada más. Los bancos cortan en 36%. Estás ${delta} puntos por encima del límite.`;
+      return `Tu deuda usa el ${pct(value)} de tu ingreso — ${formatCurrency(debtPayment, currency)} al mes. Estás por encima del umbral bancario del 36%. Reducir la deuda más cara primero libera margen rápido.`;
     }
-    return `Tu deuda consume el ${pct(value)} de tu ingreso. Los bancos cortan en 36%. Estás ${delta} puntos por encima del límite. Zona de riesgo real.`;
+    return `Tu deuda usa el ${pct(value)} de tu ingreso — por encima del umbral bancario del 36%. Reducir aquí libera margen rápido.`;
   }
 
   if (level === "alto") {
     const delta = (43 - value).toFixed(1);
     if (monthlyIncome != null && monthlyIncome > 0) {
       const debtPayment = monthlyIncome * (value / 100);
-      return `${formatCurrency(debtPayment, currency)} al mes en deuda — el ${pct(value)} de tu ingreso. Estás a solo ${delta} puntos del umbral crítico. No tomes más crédito ahora.`;
+      return `${formatCurrency(debtPayment, currency)} al mes en deuda — el ${pct(value)} de tu ingreso, a ${delta} puntos del umbral. Priorizar pagos aquí te devuelve margen rápido.`;
     }
-    return `El ${pct(value)} en deuda — a ${delta} puntos del umbral donde los bancos te cierran el crédito. No es momento de asumir nuevas obligaciones.`;
+    return `El ${pct(value)} en deuda — a ${delta} puntos del umbral bancario. Enfocarte en reducir aquí mejora tu capacidad crediticia.`;
   }
 
   if (level === "atento") {
@@ -263,19 +263,19 @@ function roastAhorro(ctx: RoastContext): string {
 
     if (level === "critico") {
       if (range === "low") {
-        return `Ahorras solo el ${pct(value)} — con ingreso ajustado, esto es comprensible, pero igual es riesgoso. Sin colchón, cualquier imprevisto se vuelve deuda.`;
+        return `Ahorras el ${pct(value)} — con ingreso ajustado, cada peso cuenta. Reservar algo fijo cada mes, por poco que sea, construye tu red de seguridad.`;
       }
       if (range === "mid") {
-        return `Solo ${formatCurrency(savings, currency)} al mes en ahorro — el ${pct(value)} de lo que ganas. Para tu nivel de ingreso esto es muy poco. Un gasto inesperado y entras en deuda.`;
+        return `Ahorras ${formatCurrency(savings, currency)} al mes — el ${pct(value)} de lo que ganas. Para tu nivel de ingreso hay espacio para más. Subir aunque sea un poco fortalece tu colchón.`;
       }
-      return `Ganas bien y ahorras solo el ${pct(value)}. Eso es ${formatCurrency(savings, currency)} al mes — casi nada para lo que ingresas. El gasto se come todo.`;
+      return `Ganas bien y ahorras el ${pct(value)} — ${formatCurrency(savings, currency)} al mes. Con tu ingreso, hay mucho margen para crecer. Revisar los gastos grandes es buen primer paso.`;
     }
 
     if (level === "alto") {
       if (monthsTo6 != null) {
         return `El ${pct(value)} ahorrado — por debajo del 10% recomendado. A este ritmo necesitas ${monthsTo6} meses para tener 6 meses de colchón. Cualquier ajuste ayuda.`;
       }
-      return `El ${pct(value)} ahorrado es insuficiente. Estás por debajo del mínimo recomendado y sin margen real para emergencias.`;
+      return `El ${pct(value)} ahorrado queda por debajo del 10% recomendado. Un pequeño aumento mensual te acerca al margen de seguridad.`;
     }
 
     if (level === "atento") {
@@ -297,11 +297,11 @@ function roastAhorro(ctx: RoastContext): string {
   // Generic
   switch (level) {
     case "critico":
-      return `Solo el ${pct(value)} en ahorro — nivel crítico. Sin reservas, el primer imprevisto se convierte en deuda. Necesitas cambiar esto antes que cualquier otra cosa.`;
+      return `Solo el ${pct(value)} en ahorro — hay oportunidad de mejorar. Empezar con un monto fijo pequeño cada mes marca la diferencia.`;
     case "alto":
       return `El ${pct(value)} ahorrado es bajo. Estás debajo del 10% mínimo recomendado. Pequeños recortes en gasto pueden mover este número rápido.`;
     case "atento":
-      return `El ${pct(value)} en ahorro — no es malo, pero tampoco da tranquilidad. Llegar al 20% cambia cuánto tardas en tener un colchón real.`;
+      return `Ahorro del ${pct(value)} — buen comienzo. Llegar al 20% acelera tu colchón de seguridad.`;
     case "solido":
       return `Ahorras el ${pct(value)} — por encima del 20% recomendado. Mantener esto ${value >= 25 ? "varios" : "algunos"} meses más y vas a tener colchón real.`;
     case "excelente":
@@ -315,9 +315,9 @@ function roastColchon(ctx: RoastContext): string {
   if (level === "critico") {
     if (monthlyIncome != null && monthlyIncome > 0) {
       const balance = monthlyIncome * value;
-      return `Tienes ${formatCurrency(balance, currency)} líquidos — menos de un mes de gastos. Si pierdes el ingreso hoy, en semanas estás en ceros. Esto es urgente.`;
+      return `Tienes ${formatCurrency(balance, currency)} líquidos — menos de un mes de gastos. Sin colchón aún — cada peso que reserves hoy te da más tranquilidad mañana.`;
     }
-    return `Menos de un mes de colchón. Si el ingreso se detiene hoy, en días entras en problemas. Construir reserva es la prioridad número uno.`;
+    return `Menos de un mes de colchón. Construir reserva es la prioridad — cada aporte, por pequeño que sea, suma tranquilidad.`;
   }
 
   if (level === "alto") {
@@ -325,9 +325,9 @@ function roastColchon(ctx: RoastContext): string {
     if (monthlyIncome != null && monthlyIncome > 0) {
       const balance = monthlyIncome * value;
       const monthsNeeded = Math.ceil(6 - value);
-      return `Tienes ${formatCurrency(balance, currency)} — ${months} meses de cobertura. Estás en la zona frágil. Necesitas ${monthsNeeded} meses más de ahorro para llegar a un nivel seguro.`;
+      return `Tienes ${formatCurrency(balance, currency)} — ${months} meses de cobertura. Con ${monthsNeeded} meses más de ahorro llegas a un nivel sólido. Vas por buen camino.`;
     }
-    return `${months} meses de colchón — funciona para imprevistos menores, pero no para perder el ingreso. La meta real son 6 meses.`;
+    return `${months} meses de colchón — cubre imprevistos menores. Seguir sumando hasta 6 meses te da tranquilidad real.`;
   }
 
   if (level === "atento") {
@@ -335,9 +335,9 @@ function roastColchon(ctx: RoastContext): string {
     if (monthlyIncome != null && monthlyIncome > 0) {
       const balance = monthlyIncome * value;
       const monthsExpenses = monthlyIncome; // approximate monthly expenses ≈ income for message
-      return `Tienes ${formatCurrency(balance, currency)} líquidos contra ~${formatCurrency(monthsExpenses, currency)}/mes. ${months} meses de cobertura — suficiente para aguantar, no para estar tranquilo.`;
+      return `Tienes ${formatCurrency(balance, currency)} líquidos contra ~${formatCurrency(monthsExpenses, currency)}/mes. ${months} meses de cobertura — buen avance. Seguir acumulando te acerca a la tranquilidad total.`;
     }
-    return `${months} meses de colchón — te cubre para emergencias menores pero no para una crisis de ingreso larga. Sigue acumulando.`;
+    return `${months} meses de colchón — buen progreso. Seguir acumulando te da cobertura para situaciones más grandes.`;
   }
 
   if (level === "solido") {

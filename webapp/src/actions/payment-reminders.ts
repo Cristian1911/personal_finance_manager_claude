@@ -88,7 +88,8 @@ export async function getUpcomingPayments(): Promise<UpcomingPayment[]> {
 
   try {
     return await getUpcomingPaymentsCached(user.id);
-  } catch {
+  } catch (error) {
+    console.error("Error loading upcoming payments:", error);
     return [];
   }
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useActionState } from "react";
+import { useRouter } from "next/navigation";
 import { createTransaction, updateTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { CategoryCombobox } from "@/components/ui/category-combobox";
@@ -29,6 +30,7 @@ export function TransactionForm({
   categories: CategoryWithChildren[];
   onSuccess?: () => void;
 }) {
+  const router = useRouter();
   const action = transaction
     ? updateTransaction.bind(null, transaction.id)
     : createTransaction;
@@ -39,7 +41,10 @@ export function TransactionForm({
   >(
     async (prevState, formData) => {
       const result = await action(prevState, formData);
-      if (result.success) onSuccess?.();
+      if (result.success) {
+        router.refresh();
+        onSuccess?.();
+      }
       return result;
     },
     { success: false, error: "" }

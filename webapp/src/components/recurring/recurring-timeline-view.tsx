@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CalendarClock } from "lucide-react";
 import { useRecurringMonth } from "./use-recurring-month";
 import { RecurringSummaryBar } from "./recurring-summary-bar";
 import { RecurringMiniCalendar } from "./recurring-mini-calendar";
@@ -33,6 +34,18 @@ export function RecurringTimelineView({
     if (delta > 0) hook.goNextMonth();
     else hook.goPrevMonth();
   };
+
+  if (templates.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <CalendarClock className="size-12 text-muted-foreground mb-4" />
+        <p className="text-lg font-medium mb-1">Sin pagos recurrentes</p>
+        <p className="text-sm text-muted-foreground mb-4">
+          Registra tus pagos fijos como arriendo, servicios o suscripciones para no olvidar ninguno.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

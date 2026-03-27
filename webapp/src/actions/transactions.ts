@@ -11,7 +11,6 @@ import {
   transactionSchema,
 } from "@/lib/validators/transaction";
 import { parseMonth, monthStartStr, monthEndStr } from "@/lib/utils/date";
-import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import {
   applyAccountBalanceDelta,
   reverseAccountBalanceDelta,
@@ -273,7 +272,7 @@ export async function getTransactions(
     return query;
   };
 
-  const { data, error, count } = await executeVisibleTransactionQuery(buildQuery);
+  const { data, error, count } = await buildQuery().is("reconciled_into_transaction_id", null);
   if (error) return { data: [], count: 0, page, pageSize, totalPages: 0 };
 
   return {
@@ -290,9 +289,13 @@ export async function getTransaction(id: string): Promise<ActionResult<Transacti
 
   if (!user) return { success: false, error: "No autenticado" };
 
-  const { data, error } = await executeVisibleTransactionQuery(() =>
-    supabase.from("transactions").select("*").eq("user_id", user.id).eq("id", id).single()
-  );
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("id", id)
+    .is("reconciled_into_transaction_id", null)
+    .single();
 
   if (error) return { success: false, error: error.message };
   return { success: true, data };

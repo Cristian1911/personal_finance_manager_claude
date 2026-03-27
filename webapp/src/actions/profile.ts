@@ -68,7 +68,8 @@ export async function getProfile(): Promise<ActionResult<Profile>> {
   try {
     const data = await getProfileCached(user.id);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading profile:", error);
     return { success: false, error: "Error al cargar el perfil" };
   }
 }

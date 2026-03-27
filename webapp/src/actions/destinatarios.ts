@@ -383,6 +383,7 @@ export async function createDestinatario(
       const jsonParsed = JSON.parse(patternsRaw);
       patterns = Array.isArray(jsonParsed) ? jsonParsed : [patternsRaw];
     } catch {
+      /* JSON parse failed, fall back to comma split */
       patterns = patternsRaw.split(",").map((p) => p.trim()).filter(Boolean);
     }
 
