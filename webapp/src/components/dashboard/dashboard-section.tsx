@@ -13,6 +13,7 @@ interface DashboardSectionProps {
   children: React.ReactNode;
   defaultOpen?: boolean;
   summaryText?: string;
+  subtitle?: string;
   showToggle?: boolean;
   /** Override widgets list — if omitted, pulls from DashboardConfigProvider */
   onToggleWidget?: (widgetId: string, visible: boolean) => void;
@@ -25,6 +26,7 @@ export function DashboardSection({
   children,
   defaultOpen = true,
   summaryText,
+  subtitle,
   showToggle = true,
   onToggleWidget: onToggleWidgetProp,
   widgets: widgetsProp,
@@ -39,27 +41,32 @@ export function DashboardSection({
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 rounded-sm"
-          aria-expanded={isOpen}
-        >
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 text-muted-foreground transition-transform",
-              !isOpen && "-rotate-90"
-            )}
-          />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            {title}
-          </span>
-        </button>
-        {showToggle && resolvedWidgets && resolvedOnToggle && (
-          <WidgetTogglePanel
-            widgets={resolvedWidgets}
-            onToggle={resolvedOnToggle}
-          />
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 rounded-sm"
+            aria-expanded={isOpen}
+          >
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform",
+                !isOpen && "-rotate-90"
+              )}
+            />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              {title}
+            </span>
+          </button>
+          {showToggle && resolvedWidgets && resolvedOnToggle && (
+            <WidgetTogglePanel
+              widgets={resolvedWidgets}
+              onToggle={resolvedOnToggle}
+            />
+          )}
+        </div>
+        {subtitle && (
+          <p className="text-[15px] text-muted-foreground mt-1 ml-6">{subtitle}</p>
         )}
       </div>
 

@@ -72,7 +72,7 @@ app = FastAPI(
 )
 
 # ── API key auth ─────────────────────────────────────────────────────────────
-_PARSER_API_KEY = os.getenv("PARSER_API_KEY")
+_PARSER_API_KEY = os.getenv("PDF_PARSER_API_KEY")
 _api_key_header = APIKeyHeader(name="X-Parser-Key", auto_error=False)
 
 MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB
@@ -120,7 +120,7 @@ def startup_diagnostics() -> None:
         is_opendataloader_fallback_enabled(),
     )
     if not _PARSER_API_KEY:
-        logger.warning("PARSER_API_KEY is not set — all requests will be rejected with 503")
+        logger.warning("PDF_PARSER_API_KEY is not set — all requests will be rejected with 503")
 
 
 @app.get("/health")

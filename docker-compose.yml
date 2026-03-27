@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
     environment:
       - LOG_LEVEL=${PDF_PARSER_LOG_LEVEL:-INFO}
-      - PARSER_API_KEY=${PDF_PARSER_API_KEY}
+      - PDF_PARSER_API_KEY=${PDF_PARSER_API_KEY}
     expose:
       - "8000"
     healthcheck:

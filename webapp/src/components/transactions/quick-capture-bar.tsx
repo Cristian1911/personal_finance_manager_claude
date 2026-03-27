@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { autoCategorize, parseQuickCaptureText } from "@zeta/shared";
 import { Sparkles, Wand2 } from "lucide-react";
 import { createQuickCaptureTransaction } from "@/actions/transactions";
@@ -47,6 +48,7 @@ export function QuickCaptureBar({
   accounts: Account[];
   categories: CategoryWithChildren[];
 }) {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -69,6 +71,7 @@ export function QuickCaptureBar({
     async (prevState, formData) => {
       const result = await createQuickCaptureTransaction(prevState, formData);
       if (result.success) {
+        router.refresh();
         await trackClientEvent({
           event_name: "quick_capture_saved",
           flow: "categorize",

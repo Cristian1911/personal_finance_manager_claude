@@ -26,12 +26,12 @@ import { Button } from "@/components/ui/button";
 import {
   getDashboardHeroData,
   getAccountsWithSparklineData,
-  getMonthlyCashflow,
 } from "@/actions/charts";
 import dynamic from "next/dynamic";
 import { getAccounts } from "@/actions/accounts";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
+import { DebtFreeBanner } from "@/components/dashboard/debt-free-banner";
 import {
   AccountsOverview,
   QuickValueUpdates,
@@ -41,7 +41,6 @@ import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
-import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
@@ -49,27 +48,22 @@ import { getBurnRate } from "@/actions/burn-rate";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { DashboardConfigProvider } from "@/components/dashboard/dashboard-config-provider";
 import { WidgetSlot } from "@/components/dashboard/widget-slot";
-import { CashFlowHeroStrip } from "@/components/dashboard/cash-flow-hero-strip";
-import { HealthMetersCard } from "@/components/dashboard/health-meters-card";
+import { HealthScoreSection } from "@/components/dashboard/health-score-section";
 import { getHealthMeters } from "@/actions/health-meters";
 import { get503020Allocation } from "@/actions/allocation";
 import { getDebtFreeCountdown } from "@/actions/debt-countdown";
-import { FlujoWaterfall } from "@/components/dashboard/flujo-waterfall";
-import { FlujoCharts } from "@/components/dashboard/flujo-charts";
+import { FlujoSection } from "@/components/dashboard/flujo-section";
 import { PresupuestoSection } from "@/components/dashboard/presupuesto-section";
 import { PatrimonioSection } from "@/components/dashboard/patrimonio-section";
 import { ActividadHeatmap } from "@/components/dashboard/actividad-heatmap";
 import { AllocationBars5030 } from "@/components/budget/allocation-bars-5030";
 import { DebtFreeCountdown } from "@/components/debt/debt-free-countdown";
 import {
-  BurnRateSkeleton,
   AccountsSkeleton,
-  FlujoWaterfallSkeleton,
-  FlujoChartsSkeleton,
   PresupuestoSkeleton,
   PatrimonioSkeleton,
   HeatmapSkeleton,
-  CashFlowHeroStripSkeleton,
+  HealthScoreSkeleton,
   MobileBurnRateSkeleton,
   MobileAllocationSkeleton,
   MobileDebtSkeleton,
@@ -77,7 +71,7 @@ import {
 import type { HealthMetersData } from "@/actions/health-meters";
 
 // ── Dynamic imports — chart JS is NOT in the initial bundle ──────────────────
-// BurnRateCard uses dynamic() here (Client Component file); chart components use dynamic()
+// BurnRateCard moved to flujo-section.tsx; chart components use dynamic()
 // in their own section files (flujo-charts, presupuesto-section, patrimonio-section).
 
 const BurnRateCard = dynamic(
@@ -107,33 +101,6 @@ type DashboardTransactionRow = {
 // ──────────────────────────────────────────────────────────────────────────────
 // Tier 2 async Server Components — desktop
 // ──────────────────────────────────────────────────────────────────────────────
-
-async function BurnRateSection({ currency }: { currency: CurrencyCode }) {
-  const burnRateData = await getBurnRate(currency);
-  return burnRateData ? <BurnRateCard data={burnRateData} /> : <BurnRateCardEmpty />;
-}
-
-async function CashFlowHeroStripSection({
-  month,
-  currency,
-}: {
-  month: string | undefined;
-  currency: CurrencyCode;
-}) {
-  const cashflowData = await getMonthlyCashflow(month, currency);
-  const currentMonthCashflow = cashflowData[cashflowData.length - 1];
-  const cfIncome = currentMonthCashflow?.income ?? 0;
-  const cfExpenses = currentMonthCashflow?.expenses ?? 0;
-  const cfBalance = cfIncome - cfExpenses;
-  return (
-    <CashFlowHeroStrip
-      income={cfIncome}
-      expenses={cfExpenses}
-      balance={cfBalance}
-      currency={currency}
-    />
-  );
-}
 
 async function AccountsSection({
   allAccounts,
@@ -243,15 +210,14 @@ export default async function DashboardPage({
   // Fetch transactions + cached accounts + dashboard config in parallel
   const [{ data: recentTransactions }, allAccountsResult, dashboardConfigData] =
     await Promise.all([
-      executeVisibleTransactionQuery(() =>
-        supabase
-          .from("transactions")
-          .select("*, categories!category_id(name_es, name)")
-          .eq("is_excluded", false)
-          .order("transaction_date", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(5)
-      ),
+      supabase
+        .from("transactions")
+        .select("*, categories!category_id(name_es, name)")
+        .eq("is_excluded", false)
+        .order("transaction_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(5)
+        .is("reconciled_into_transaction_id", null),
       getAccounts(),
       getDashboardConfigWithPurpose(),
     ]);
@@ -362,9 +328,11 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
+    get503020Allocation(month, currency),
+    getDebtFreeCountdown(currency),
   ]);
 
   // Map data for mobile dashboard (tier 1 props only)
@@ -402,6 +370,15 @@ export default async function DashboardPage({
     currencyCode: account.currency_code,
     displayOrder: account.display_order,
   }));
+
+  // Subtitles for sections computed from tier 1 data
+  const accountsSubtitle = allAccounts.length > 0
+    ? `${allAccounts.length} ${allAccounts.length === 1 ? "cuenta activa" : "cuentas activas"}`
+    : "Agrega una cuenta para comenzar";
+
+  const heatmapSubtitle = recentTx.length > 0
+    ? "Actividad de los ultimos meses"
+    : "Sin transacciones registradas";
 
   return (
     <>
@@ -448,51 +425,30 @@ export default async function DashboardPage({
             </div>
 
             {/* ── Hero Section — tier 1: always visible, no collapse ── */}
-            <DashboardHero data={heroData} />
+            <DashboardHero
+              data={heroData}
+              allocationData={allocationData}
+              debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
+            />
             <QuickValueUpdates accounts={quickUpdateAccounts} id="quick-update-values" />
 
-            {/* CashFlowHeroStrip — tier 2: streams in with skeleton */}
-            <WidgetSlot widgetId="hero-flow-strip">
-              <Suspense fallback={<CashFlowHeroStripSkeleton />}>
-                <CashFlowHeroStripSection
-                  month={month}
-                  currency={currency}
-                />
-              </Suspense>
+            {/* ── 2. Health Score — tier 1, primary tier (no section wrapper) ── */}
+            <WidgetSlot widgetId="health-score">
+              <HealthScoreSection data={healthMetersData} />
             </WidgetSlot>
 
-            {/* ── Niveles Section — tier 1: health meters render immediately ── */}
-            <DashboardSection title="Tus niveles" section="niveles" defaultOpen={true} showToggle={false}>
-              <WidgetSlot widgetId="health-meters">
-                <HealthMetersCard data={healthMetersData} />
-              </WidgetSlot>
-            </DashboardSection>
+            {/* ── 3. Cash Flow — tier 2, wrapped in FlujoSection for subtitle ── */}
+            <Suspense
+              fallback={
+                <DashboardSection title="Flujo de caja" section="flujo">
+                  <div className="h-[240px] w-full rounded-xl bg-muted animate-pulse" />
+                </DashboardSection>
+              }
+            >
+              <FlujoSection month={month} currency={currency} monthLabel={monthLabel} />
+            </Suspense>
 
-            {/* ── Flujo de Caja Section ── */}
-            <DashboardSection title="Flujo de caja" section="flujo">
-              {/* WaterfallChart — tier 2 */}
-              <WidgetSlot widgetId="waterfall">
-                <Suspense fallback={<FlujoWaterfallSkeleton />}>
-                  <FlujoWaterfall month={month} currency={currency} />
-                </Suspense>
-              </WidgetSlot>
-
-              {/* BurnRateCard — tier 2 */}
-              <WidgetSlot widgetId="burn-rate">
-                <Suspense fallback={<BurnRateSkeleton />}>
-                  <BurnRateSection currency={currency} />
-                </Suspense>
-              </WidgetSlot>
-
-              {/* CashFlowViewToggle — tier 2 */}
-              <WidgetSlot widgetId="cashflow-trend">
-                <Suspense fallback={<FlujoChartsSkeleton />}>
-                  <FlujoCharts month={month} currency={currency} monthLabel={monthLabel} />
-                </Suspense>
-              </WidgetSlot>
-            </DashboardSection>
-
-            {/* ── Presupuesto Section — tier 2 ── */}
+            {/* ── 4. Budget — tier 2, allocationData passed to avoid duplicate fetch ── */}
             <Suspense
               fallback={
                 <DashboardSection title="Presupuesto" section="presupuesto">
@@ -500,23 +456,20 @@ export default async function DashboardPage({
                 </DashboardSection>
               }
             >
-              <PresupuestoSection month={month} currency={currency} monthLabel={monthLabel} healthMetersData={healthMetersData} />
+              <PresupuestoSection month={month} currency={currency} monthLabel={monthLabel} healthMetersData={healthMetersData} allocationData={allocationData} />
             </Suspense>
 
-            {/* ── Patrimonio y Deuda Section — tier 2 ── */}
-            <Suspense
-              fallback={
-                <DashboardSection title="Patrimonio y deuda" section="patrimonio">
-                  <PatrimonioSkeleton />
-                </DashboardSection>
-              }
-            >
-              <PatrimonioSection currency={currency} month={month} healthMetersData={healthMetersData} />
-            </Suspense>
+            {/* ── 5. Activity Heatmap — tier 2 ── */}
+            <DashboardSection title="Actividad" section="actividad" subtitle={heatmapSubtitle}>
+              <WidgetSlot widgetId="spending-heatmap">
+                <Suspense fallback={<HeatmapSkeleton />}>
+                  <ActividadHeatmap month={month} currency={currency} />
+                </Suspense>
+              </WidgetSlot>
+            </DashboardSection>
 
-            {/* ── Actividad Section ── */}
-            <DashboardSection title="Actividad" section="actividad">
-              {/* Upcoming Payments — tier 1 data (from heroData) */}
+            {/* ── 6. Accounts — mixed tier 1 + tier 2 ── */}
+            <DashboardSection title="Cuentas" section="cuentas" subtitle={accountsSubtitle}>
               <WidgetSlot widgetId="upcoming-payments">
                 <UpcomingPayments
                   obligations={heroData.pendingObligations}
@@ -524,12 +477,10 @@ export default async function DashboardPage({
                 />
               </WidgetSlot>
 
-              {/* Accounts + Alerts — tier 2 */}
               <Suspense fallback={<AccountsSkeleton />}>
                 <AccountsSection allAccounts={allAccounts} />
               </Suspense>
 
-              {/* Recent Transactions — tier 1 data (already fetched) */}
               <WidgetSlot widgetId="recent-tx">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
@@ -590,14 +541,18 @@ export default async function DashboardPage({
                   </CardContent>
                 </Card>
               </WidgetSlot>
-
-              {/* Spending Heatmap — tier 2 */}
-              <WidgetSlot widgetId="spending-heatmap">
-                <Suspense fallback={<HeatmapSkeleton />}>
-                  <ActividadHeatmap month={month} currency={currency} />
-                </Suspense>
-              </WidgetSlot>
             </DashboardSection>
+
+            {/* ── 7. Patrimonio & Deuda — tier 2 ── */}
+            <Suspense
+              fallback={
+                <DashboardSection title="Patrimonio y deuda" section="patrimonio">
+                  <PatrimonioSkeleton />
+                </DashboardSection>
+              }
+            >
+              <PatrimonioSection currency={currency} month={month} healthMetersData={healthMetersData} />
+            </Suspense>
           </div>
         </DashboardConfigProvider>
       </div>

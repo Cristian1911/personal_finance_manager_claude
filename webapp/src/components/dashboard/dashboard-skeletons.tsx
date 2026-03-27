@@ -9,6 +9,25 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 //   • Card/CardHeader/CardContent for structural wrapping (matching real cards)
 // ──────────────────────────────────────────────────────────────────────────────
 
+/** Health score — hero tier gauge placeholder */
+export function HealthScoreSkeleton() {
+  return (
+    <div className="rounded-xl bg-z-surface-2 py-6 px-4 space-y-4">
+      <div className="flex flex-col items-center gap-2">
+        <div className="h-[100px] w-[200px] rounded-lg bg-z-surface-3 animate-pulse" />
+        <div className="h-8 w-12 rounded-md bg-z-surface-3 animate-pulse" />
+        <div className="h-3 w-16 rounded-md bg-z-surface-3 animate-pulse" />
+      </div>
+      <div className="space-y-2">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-10 w-full rounded-lg bg-z-surface-3 animate-pulse" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 /** Ritmo de gasto — area chart with header + legend */
 export function BurnRateSkeleton() {
   return (

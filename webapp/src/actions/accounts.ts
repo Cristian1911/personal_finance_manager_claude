@@ -59,7 +59,8 @@ export async function getAccounts(): Promise<ActionResult<Account[]>> {
   try {
     const data = await getAccountsCached(user.id);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading accounts:", error);
     return { success: false, error: "Error al cargar las cuentas" };
   }
 }
@@ -70,7 +71,8 @@ export async function getAccount(id: string): Promise<ActionResult<Account>> {
   try {
     const data = await getAccountCached(user.id, id);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading account:", error);
     return { success: false, error: "Error al cargar la cuenta" };
   }
 }

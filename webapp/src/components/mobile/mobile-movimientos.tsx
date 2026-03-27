@@ -14,7 +14,7 @@ import type {
   CurrencyCode,
 } from "@/types/domain";
 
-interface MobileMovimientosProps {
+export interface MobileMovimientosProps {
   transactions: Transaction[];
   categories: CategoryWithChildren[];
 }

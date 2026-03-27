@@ -2,6 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { CurrencyCode } from "@/types/domain";
+import type { Database } from "@/types/database";
+
+type ExchangeRateCacheRow = Database["public"]["Tables"]["exchange_rate_cache"]["Row"];
 
 export interface ExchangeRateResult {
   rate: number;
@@ -81,7 +84,8 @@ export async function getExchangeRate(
     const percentVsAvg = avg30d ? ((rate - avg30d) / avg30d) * 100 : null;
 
     return { rate, avg30d, percentVsAvg, fetchedAt: new Date().toISOString(), pair };
-  } catch {
+  } catch (error) {
+    console.error("Error fetching exchange rate:", error);
     return cached ? formatCached(cached, pair) : null;
   }
 }
@@ -92,7 +96,7 @@ function getDateDaysAgo(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function formatCached(cached: any, pair: string): ExchangeRateResult {
+function formatCached(cached: ExchangeRateCacheRow, pair: string): ExchangeRateResult {
   const rate = Number(cached.rate);
   const avg30d = cached.avg_30d ? Number(cached.avg_30d) : null;
   return {

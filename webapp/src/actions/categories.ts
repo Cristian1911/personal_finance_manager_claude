@@ -3,7 +3,6 @@
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { categorySchema } from "@/lib/validators/category";
 import type { ActionResult } from "@/types/actions";
 import { parseMonth, monthStartStr, monthEndStr, monthsBeforeStart } from "@/lib/utils/date";
@@ -203,13 +202,12 @@ async function getCategoryTransactionCountCached(
 
   const supabase = createAdminClient();
 
-  const { count, error } = await executeVisibleTransactionQuery(() =>
-    supabase
-      .from("transactions")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("category_id", categoryId)
-  );
+  const { count, error } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("category_id", categoryId)
+    .is("reconciled_into_transaction_id", null);
 
   if (error) throw error;
   return count ?? 0;
@@ -249,28 +247,26 @@ async function getCategoriesWithBudgetDataCached(
       .eq("period", "monthly"),
 
     // 3. This month's spending
-    executeVisibleTransactionQuery(() =>
-      supabase
-        .from("transactions")
-        .select("amount, category_id")
-        .eq("direction", "OUTFLOW")
-        .eq("is_excluded", false)
-        .eq("currency_code", baseCurrency)
-        .gte("transaction_date", monthStartStr(target))
-        .lte("transaction_date", monthEndStr(target))
-    ),
+    supabase
+      .from("transactions")
+      .select("amount, category_id")
+      .eq("direction", "OUTFLOW")
+      .eq("is_excluded", false)
+      .eq("currency_code", baseCurrency)
+      .gte("transaction_date", monthStartStr(target))
+      .lte("transaction_date", monthEndStr(target))
+      .is("reconciled_into_transaction_id", null),
 
     // 4. Last 3 months spending for averages
-    executeVisibleTransactionQuery(() =>
-      supabase
-        .from("transactions")
-        .select("amount, category_id, transaction_date")
-        .eq("direction", "OUTFLOW")
-        .eq("is_excluded", false)
-        .eq("currency_code", baseCurrency)
-        .gte("transaction_date", monthsBeforeStart(target, 3))
-        .lt("transaction_date", monthStartStr(target))
-    ),
+    supabase
+      .from("transactions")
+      .select("amount, category_id, transaction_date")
+      .eq("direction", "OUTFLOW")
+      .eq("is_excluded", false)
+      .eq("currency_code", baseCurrency)
+      .gte("transaction_date", monthsBeforeStart(target, 3))
+      .lt("transaction_date", monthStartStr(target))
+      .is("reconciled_into_transaction_id", null),
 
     // 5. Active recurring templates (monthly committed amounts per category)
     supabase
@@ -375,7 +371,8 @@ export async function getCategories(
   try {
     const data = await getCategoriesCached(user.id, direction);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading categories:", error);
     return { success: false, error: "Error al cargar las categorías" };
   }
 }
@@ -388,7 +385,8 @@ export async function getCategoriesWithBudgets(
   try {
     const data = await getCategoriesWithBudgetsCached(user.id, direction);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading categories:", error);
     return { success: false, error: "Error al cargar las categorías" };
   }
 }
@@ -401,7 +399,8 @@ export async function getAllCategoriesForManagement(): Promise<
   try {
     const data = await getAllCategoriesForManagementCached(user.id);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading categories:", error);
     return { success: false, error: "Error al cargar las categorías" };
   }
 }
@@ -414,7 +413,8 @@ export async function getCategoryTransactionCount(
   try {
     const data = await getCategoryTransactionCountCached(user.id, categoryId);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading category count:", error);
     return { success: false, error: "Error al cargar el conteo" };
   }
 }
@@ -428,7 +428,8 @@ export async function getCategoriesWithBudgetData(
   try {
     const data = await getCategoriesWithBudgetDataCached(user.id, month, currency);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error loading budget data:", error);
     return { success: false, error: "Error al cargar los datos de presupuesto" };
   }
 }

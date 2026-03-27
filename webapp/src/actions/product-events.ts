@@ -40,6 +40,7 @@ export async function trackProductEvent(input: ProductEventInput): Promise<void>
   try {
     db = createAdminClient();
   } catch {
+    /* admin client unavailable, fall back to user client */
     db = supabase;
   }
   const { error } = await db.from("product_events").insert(payload);

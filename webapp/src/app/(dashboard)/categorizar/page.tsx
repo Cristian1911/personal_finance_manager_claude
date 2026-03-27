@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import dynamic from "next/dynamic";
-import { getUncategorizedTransactions, getUserCategoryRules } from "@/actions/categorize";
+import { getUncategorizedTransactions, getUnreviewedAutoTransactions, getUserCategoryRules } from "@/actions/categorize";
 import { getCategories } from "@/actions/categories";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 
@@ -11,8 +11,9 @@ const CategoryInbox = dynamic(
 
 export default async function CategorizarPage() {
   await connection();
-  const [transactions, categoriesResult, userRules] = await Promise.all([
+  const [transactions, unreviewedAutoTransactions, categoriesResult, userRules] = await Promise.all([
     getUncategorizedTransactions(),
+    getUnreviewedAutoTransactions(),
     getCategories(),
     getUserCategoryRules(),
   ]);
@@ -31,6 +32,7 @@ export default async function CategorizarPage() {
       </div>
       <CategoryInbox
         initialTransactions={transactions}
+        autoCategorizedTransactions={unreviewedAutoTransactions}
         categories={categories}
         userRules={userRules}
       />

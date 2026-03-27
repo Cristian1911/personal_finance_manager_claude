@@ -271,18 +271,27 @@ Conventions not yet established. Will populate as patterns emerge during develop
 ## Cross-Cutting Concerns
 <!-- GSD:architecture-end -->
 
-<!-- GSD:workflow-start source:GSD defaults -->
-## GSD Workflow Enforcement
+## Workflow: Lean Orchestration (default)
 
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+Work directly — no GSD agent swarm by default. The main conversation is the orchestrator.
 
-Use these entry points:
-- `/gsd:quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd:debug` for investigation and bug fixing
-- `/gsd:execute-phase` for planned phase work
+### How it works
+1. **Read context once** — STATE.md, current plan, relevant code. Do this in the main conversation.
+2. **Plan inline** — write or update the plan yourself, no planner agent.
+3. **Spawn agents with embedded context** — when parallelism helps, pass the full context in the agent prompt so agents start working immediately (zero orientation reads).
+4. **Verify inline** — check results + run `pnpm build` yourself. No verifier agent.
 
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
-<!-- GSD:workflow-end -->
+### When to use GSD commands
+- `/gsd:new-project` or `/gsd:new-milestone` — starting from scratch, need roadmap
+- `/gsd:discuss-phase` — genuinely ambiguous scope that needs structured questions
+- `/gsd:execute-phase` — only for large multi-plan phases where full ceremony is worth it
+
+### Rules
+- **1-3 agents max** per task, not 6-7
+- Agents receive context in their prompt — they should NOT re-read STATE.md, ROADMAP.md, or phase files
+- Planning artifacts (PLAN.md, STATE.md) are still maintained — just updated inline, not by spawning dedicated agents
+- Build gates still enforced: `pnpm install` (if deps changed) + `pnpm build` before claiming done
+- Atomic commits with clear messages
 
 <!-- GSD:profile-start -->
 ## Developer Profile

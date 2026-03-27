@@ -4,7 +4,6 @@ import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { budgetSchema } from "@/lib/validators/budget";
-import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
 
@@ -50,17 +49,16 @@ async function getBudgetSummaryCached(userId: string, month?: string): Promise<B
     const { monthStartStr, monthEndStr, parseMonth } = await import("@/lib/utils/date");
     const target = parseMonth(month);
 
-    const { data: transactions } = await executeVisibleTransactionQuery(() =>
-        supabase
-            .from("transactions")
-            .select("amount")
-            .eq("user_id", userId)
-            .eq("direction", "OUTFLOW")
-            .eq("is_excluded", false)
-            .in("category_id", budgetedCategoryIds)
-            .gte("transaction_date", monthStartStr(target))
-            .lte("transaction_date", monthEndStr(target))
-    );
+    const { data: transactions } = await supabase
+        .from("transactions")
+        .select("amount")
+        .eq("user_id", userId)
+        .eq("direction", "OUTFLOW")
+        .eq("is_excluded", false)
+        .in("category_id", budgetedCategoryIds)
+        .gte("transaction_date", monthStartStr(target))
+        .lte("transaction_date", monthEndStr(target))
+        .is("reconciled_into_transaction_id", null);
 
     const totalSpent =
         (transactions as BudgetSummaryTransactionRow[] | null)?.reduce(
@@ -80,7 +78,8 @@ export async function getBudgets(): Promise<ActionResult<Budget[]>> {
     try {
         const data = await getBudgetsCached(user.id);
         return { success: true, data };
-    } catch {
+    } catch (error) {
+        console.error("Error loading budgets:", error);
         return { success: false, error: "Error al cargar los presupuestos" };
     }
 }

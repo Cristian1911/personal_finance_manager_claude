@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useMemo, useTransition } from "react";
 import {
   Table,
   TableBody,
@@ -17,23 +17,47 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { CategoryCombobox } from "@/components/ui/category-combobox";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { toggleExcludeTransaction } from "@/actions/transactions";
-import type { Transaction } from "@/types/domain";
+import { categorizeTransaction } from "@/actions/categorize";
+import { toast } from "sonner";
+import type { Transaction, Category, CategoryWithChildren } from "@/types/domain";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, FileText } from "lucide-react";
+import { flattenCategories } from "@/lib/utils/categories";
 
 export function TransactionTable({
   transactions,
+  categories,
 }: {
   transactions: Transaction[];
+  categories: CategoryWithChildren[];
 }) {
+  const categoryMap = useMemo(() => {
+    const flat = flattenCategories(categories);
+    const map = new Map<string, Category>();
+    for (const cat of flat) {
+      map.set(cat.id, cat);
+    }
+    return map;
+  }, [categories]);
+
   if (transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-muted-foreground">No hay transacciones</p>
+        <FileText className="size-12 text-muted-foreground mb-4" />
+        <p className="text-lg font-medium mb-1">Sin transacciones</p>
+        <p className="text-sm text-muted-foreground mb-4">
+          Importa un extracto PDF o registra tu primer movimiento.
+        </p>
+        <div className="flex gap-2">
+          <Link href="/import">
+            <Button size="sm" variant="default">Importar extracto</Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -43,7 +67,7 @@ export function TransactionTable({
       {/* Mobile: card layout */}
       <div className="sm:hidden space-y-2">
         {transactions.map((tx) => (
-          <MobileTransactionCard key={tx.id} tx={tx} />
+          <MobileTransactionCard key={tx.id} tx={tx} categoryMap={categoryMap} />
         ))}
       </div>
 
@@ -54,6 +78,7 @@ export function TransactionTable({
             <TableRow>
               <TableHead className="w-10"></TableHead>
               <TableHead>Descripción</TableHead>
+              <TableHead>Categoría</TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Monto</TableHead>
@@ -62,7 +87,7 @@ export function TransactionTable({
           </TableHeader>
           <TableBody>
             {transactions.map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} />
+              <TransactionRow key={tx.id} tx={tx} categories={categories} />
             ))}
           </TableBody>
         </Table>
@@ -71,12 +96,19 @@ export function TransactionTable({
   );
 }
 
-function MobileTransactionCard({ tx }: { tx: Transaction }) {
+function MobileTransactionCard({
+  tx,
+  categoryMap,
+}: {
+  tx: Transaction;
+  categoryMap: Map<string, Category>;
+}) {
   const description =
     tx.merchant_name ||
     tx.clean_description ||
     tx.raw_description ||
     "Sin descripción";
+  const category = tx.category_id ? categoryMap.get(tx.category_id) : null;
 
   return (
     <Link href={`/transactions/${tx.id}`}>
@@ -93,6 +125,16 @@ function MobileTransactionCard({ tx }: { tx: Transaction }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{description}</p>
           <p className="text-xs text-muted-foreground">
+            {category && (
+              <>
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full align-middle mr-1"
+                  style={{ backgroundColor: category.color }}
+                />
+                <span>{category.name_es ?? category.name}</span>
+                {" · "}
+              </>
+            )}
             {formatDate(tx.transaction_date)}
             {tx.status !== "POSTED" && (
               <span>
@@ -114,7 +156,13 @@ function MobileTransactionCard({ tx }: { tx: Transaction }) {
   );
 }
 
-function TransactionRow({ tx }: { tx: Transaction }) {
+function TransactionRow({
+  tx,
+  categories,
+}: {
+  tx: Transaction;
+  categories: CategoryWithChildren[];
+}) {
   const [isPending, startTransition] = useTransition();
 
   function handleToggleExclude() {
@@ -146,6 +194,9 @@ function TransactionRow({ tx }: { tx: Transaction }) {
               "Sin descripción"}
           </p>
         </Link>
+      </TableCell>
+      <TableCell>
+        <InlineCategoryEdit tx={tx} categories={categories} />
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
         {formatDate(tx.transaction_date)}
@@ -204,5 +255,40 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         </TooltipProvider>
       </TableCell>
     </TableRow>
+  );
+}
+
+function InlineCategoryEdit({
+  tx,
+  categories,
+}: {
+  tx: Transaction;
+  categories: CategoryWithChildren[];
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleChange(categoryId: string | null) {
+    if (!categoryId) return;
+    startTransition(async () => {
+      const result = await categorizeTransaction(tx.id, categoryId);
+      if (result?.success) {
+        toast.success("Categoría actualizada");
+      } else if (result && !result.success) {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  return (
+    <div className={cn(isPending && "opacity-50 pointer-events-none")}>
+      <CategoryCombobox
+        categories={categories}
+        value={tx.category_id ?? null}
+        onValueChange={handleChange}
+        direction={tx.direction as "INFLOW" | "OUTFLOW" | undefined}
+        placeholder="Sin categoría"
+        triggerClassName="h-7 text-xs px-2 w-auto max-w-[180px] border-dashed"
+      />
+    </div>
   );
 }

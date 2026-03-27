@@ -32,7 +32,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   tag: Tag,
 };
 
-interface MobilePresupuestoAhorroProps {
+export interface MobilePresupuestoAhorroProps {
   availableToSave: number;
   income: number;
   expenses: number;

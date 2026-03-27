@@ -41,7 +41,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   tag: Tag,
 };
 
-interface MobileMovimientosPresupuestoProps {
+export interface MobileMovimientosPresupuestoProps {
   transactions: Transaction[];
   categories: CategoryWithChildren[];
   budgetCategories: CategoryBudgetData[];

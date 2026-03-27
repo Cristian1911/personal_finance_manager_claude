@@ -19,26 +19,46 @@ import { getDailyBudgetPace, getCategorySpending } from "@/actions/charts";
 import { get503020Allocation } from "@/actions/allocation";
 import type { CurrencyCode } from "@/types/domain";
 import type { HealthMetersData } from "@/actions/health-meters";
+import type { AllocationData } from "@/actions/allocation";
 
 export async function PresupuestoSection({
   month,
   currency,
   monthLabel,
   healthMetersData,
+  allocationData: allocationDataProp,
 }: {
   month: string | undefined;
   currency: CurrencyCode;
   monthLabel: string;
   healthMetersData: HealthMetersData;
+  allocationData?: AllocationData | null;
 }) {
-  const [budgetPaceData, categoryData, allocationData] = await Promise.all([
+  const [budgetPaceData, categoryData, resolvedAllocation] = await Promise.all([
     getDailyBudgetPace(month, currency),
     getCategorySpending(month, currency),
-    get503020Allocation(month, currency),
+    allocationDataProp !== undefined
+      ? Promise.resolve(allocationDataProp)
+      : get503020Allocation(month, currency),
   ]);
 
+  let presupuestoSubtitle: string | undefined;
+  if (resolvedAllocation) {
+    const needsPct = Math.round(resolvedAllocation.needs.percent);
+    const totalSpentPct = Math.round(resolvedAllocation.needs.percent + resolvedAllocation.wants.percent);
+    if (totalSpentPct > 100) {
+      presupuestoSubtitle = `Necesidades al ${needsPct}% — por encima del presupuesto`;
+    } else if (totalSpentPct >= 90) {
+      presupuestoSubtitle = `Necesidades al ${needsPct}% — cerca del limite`;
+    } else {
+      presupuestoSubtitle = `Necesidades al ${needsPct}% — dentro del presupuesto`;
+    }
+  } else {
+    presupuestoSubtitle = "Configura tu presupuesto en ajustes";
+  }
+
   return (
-    <DashboardSection title="Presupuesto" section="presupuesto">
+    <DashboardSection title="Presupuesto" section="presupuesto" subtitle={presupuestoSubtitle}>
       <WidgetSlot widgetId="budget-pulse">
         <BudgetPaceChart
           data={budgetPaceData.data}
@@ -49,7 +69,7 @@ export async function PresupuestoSection({
       </WidgetSlot>
 
       <WidgetSlot widgetId="allocation-5030">
-        <AllocationBars5030 data={allocationData} />
+        <AllocationBars5030 data={resolvedAllocation} />
       </WidgetSlot>
 
       <WidgetSlot widgetId="savings-rate">

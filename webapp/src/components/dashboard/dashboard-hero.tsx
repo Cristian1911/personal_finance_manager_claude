@@ -2,22 +2,26 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { freshnessMap } from "@/lib/utils/dashboard";
 import { KPIWidget } from "@/components/ui/kpi-widget";
 import { Button } from "@/components/ui/button";
+import { StatusHeadline } from "./status-headline";
 import { Wallet, Receipt, Banknote, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import type { DashboardHeroData } from "@/actions/charts";
+import type { AllocationData } from "@/actions/allocation";
 import type { CurrencyCode } from "@/types/domain";
 
 interface DashboardHeroProps {
   data: DashboardHeroData;
+  allocationData: AllocationData | null;
+  debtFreeBanner?: React.ReactNode;
 }
 
-export function DashboardHero({ data }: DashboardHeroProps) {
+export function DashboardHero({ data, allocationData, debtFreeBanner }: DashboardHeroProps) {
   const { totalLiquid, totalPending, availableToSpend, freshness, pendingObligations, currency, hasOtherCurrencies } = data;
   const f = freshnessMap[freshness];
   const code = currency as CurrencyCode;
 
   return (
-    <div className="space-y-3">
+    <div className="rounded-xl bg-z-surface-2 py-6 px-4 space-y-3">
       {/* Main number */}
       <div>
         <p className="text-sm text-muted-foreground">
@@ -56,6 +60,10 @@ export function DashboardHero({ data }: DashboardHeroProps) {
           semanticColor={availableToSpend < 0 ? "debt" : "income"}
         />
       </div>
+
+      {/* Status headline + debt-free banner */}
+      <StatusHeadline allocationData={allocationData} />
+      {debtFreeBanner}
 
       {/* Freshness indicator */}
       <div className="flex items-center justify-between">

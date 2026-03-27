@@ -80,7 +80,7 @@ export default async function TransactionsPage({
           defaultMonth={defaultMonth}
         />
 
-        <TransactionTable transactions={transactionsResult.data} />
+        <TransactionTable transactions={transactionsResult.data} categories={categories} />
 
         <Suspense>
           <Pagination

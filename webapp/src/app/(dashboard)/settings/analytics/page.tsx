@@ -47,8 +47,24 @@ export default async function AnalyticsPage() {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) redirect("/login");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- analytics schema exists in DB but not in generated types
-  const analyticsClient = (supabase as any).schema("analytics");
+  // Analytics schema exists in DB but is not included in Supabase generated types.
+  // We type the query builder minimally to match actual usage below.
+  const analyticsClient = (
+    supabase as unknown as {
+      schema(name: string): {
+        from(table: string): {
+          select(columns: string): {
+            order(
+              column: string,
+              options?: { ascending: boolean }
+            ): {
+              limit(count: number): Promise<{ data: unknown[] | null; error: unknown }>;
+            };
+          };
+        };
+      };
+    }
+  ).schema("analytics");
 
   const [dailyCountsRes, activationRes, importRes, categorizeRes] = await Promise.all([
     analyticsClient

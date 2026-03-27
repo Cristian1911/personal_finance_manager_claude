@@ -38,7 +38,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   tag: Tag,
 };
 
-interface MobilePresupuestoProps {
+export interface MobilePresupuestoProps {
   uncategorizedTransactions: TransactionWithRelations[];
   budgetCategories: CategoryBudgetData[];
   categoryTree: CategoryWithChildren[];

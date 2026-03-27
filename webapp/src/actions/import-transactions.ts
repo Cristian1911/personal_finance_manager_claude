@@ -12,10 +12,6 @@ import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { importPayloadSchema } from "@/lib/validators/import";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
-import {
-  applyVisibleTransactionFilter,
-  isMissingReconciliationColumnError,
-} from "@/lib/utils/transactions";
 import type { ActionResult } from "@/types/actions";
 import type {
   AccountUpdateResult,
@@ -119,7 +115,8 @@ function parsePayload(formData: FormData) {
   const rawPayload = formData.get("payload") as string;
   try {
     return importPayloadSchema.safeParse(JSON.parse(rawPayload));
-  } catch {
+  } catch (error) {
+    console.error("Error parsing import payload:", error);
     return null;
   }
 }
@@ -272,23 +269,18 @@ async function fetchReconciliationCandidates(
   const from = dateValues[0];
   const to = dateValues[dateValues.length - 1];
 
-  const { data, error } = await applyVisibleTransactionFilter(
-    supabase
-      .from("transactions")
-      .select(
-        "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
-      )
-      .in("account_id", accountIds)
-      .in("capture_method", ["MANUAL_FORM", "TEXT_QUICK_CAPTURE"])
-      .gte("transaction_date", from)
-      .lte("transaction_date", to)
-  );
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
+    )
+    .in("account_id", accountIds)
+    .in("capture_method", ["MANUAL_FORM", "TEXT_QUICK_CAPTURE"])
+    .gte("transaction_date", from)
+    .lte("transaction_date", to)
+    .is("reconciled_into_transaction_id", null);
   if (error) {
-    const queryError = error as any;
-    if (isMissingReconciliationColumnError(queryError) || queryError?.code === "42703") {
-      return new Map();
-    }
-    throw queryError;
+    throw error;
   }
 
   const grouped = new Map<string, ReconciliationCandidate[]>();
@@ -742,15 +734,15 @@ export async function importTransactions(
       continue;
     }
 
-    const { data: manualTx, error: manualTxError } = await applyVisibleTransactionFilter(
-      supabase
-        .from("transactions")
-        .select(
-          "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id"
-        )
-        .eq("id", decision.candidateTransactionId)
-    ).maybeSingle();
-    if (manualTxError && !isMissingReconciliationColumnError(manualTxError)) {
+    const { data: manualTx, error: manualTxError } = await supabase
+      .from("transactions")
+      .select(
+        "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id"
+      )
+      .eq("id", decision.candidateTransactionId)
+      .is("reconciled_into_transaction_id", null)
+      .maybeSingle();
+    if (manualTxError) {
       throw manualTxError;
     }
 

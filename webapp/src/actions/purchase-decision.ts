@@ -13,7 +13,6 @@ import {
 import { z } from "zod";
 import { uuidStr } from "@/lib/validators/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { executeVisibleTransactionQuery } from "@/lib/utils/transactions";
 import { monthEndStr, monthStartStr, parseMonth } from "@/lib/utils/date";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
@@ -102,14 +101,13 @@ export async function analyzePurchaseDecisionAction(
       .eq("user_id", user.id)
       .eq("is_active", true)
       .order("display_order"),
-    executeVisibleTransactionQuery(() =>
-      supabase
-        .from("transactions")
-        .select("amount, direction, account_id")
-        .eq("is_excluded", false)
-        .gte("transaction_date", monthStartStr(targetMonth))
-        .lte("transaction_date", monthEndStr(targetMonth))
-    ),
+    supabase
+      .from("transactions")
+      .select("amount, direction, account_id")
+      .eq("is_excluded", false)
+      .gte("transaction_date", monthStartStr(targetMonth))
+      .lte("transaction_date", monthEndStr(targetMonth))
+      .is("reconciled_into_transaction_id", null),
     categoryId
       ? supabase
           .from("budgets")
@@ -119,16 +117,15 @@ export async function analyzePurchaseDecisionAction(
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     categoryId
-      ? executeVisibleTransactionQuery(() =>
-          supabase
-            .from("transactions")
-            .select("amount")
-            .eq("direction", "OUTFLOW")
-            .eq("is_excluded", false)
-            .eq("category_id", categoryId)
-            .gte("transaction_date", monthStartStr(targetMonth))
-            .lte("transaction_date", monthEndStr(targetMonth))
-        )
+      ? supabase
+          .from("transactions")
+          .select("amount")
+          .eq("direction", "OUTFLOW")
+          .eq("is_excluded", false)
+          .eq("category_id", categoryId)
+          .gte("transaction_date", monthStartStr(targetMonth))
+          .lte("transaction_date", monthEndStr(targetMonth))
+          .is("reconciled_into_transaction_id", null)
       : Promise.resolve({ data: null, error: null }),
     getUpcomingPayments(),
     getUpcomingRecurrences(30),
