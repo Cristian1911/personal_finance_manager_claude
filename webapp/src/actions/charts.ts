@@ -706,7 +706,10 @@ export async function getDashboardHeroData(
   );
   const trackedFreshnessAccounts = [...liquidAccounts, ...creditCardAccounts];
   const hasOtherCurrencies = allActiveAccounts.some((a) => a.currency_code !== baseCurrency);
-  const totalLiquid = liquidAccounts.reduce((sum, a) => sum + a.current_balance, 0);
+  const totalLiquid = liquidAccounts.reduce(
+    (sum, account) => sum + (account.current_balance ?? 0),
+    0
+  );
 
   // 2. Compute freshness from oldest updated_at among balances that affect disponible
   const { getFreshnessLevel } = await import("@/lib/utils/dashboard");
