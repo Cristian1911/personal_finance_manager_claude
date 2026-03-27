@@ -33,11 +33,11 @@ import { getAccounts } from "@/actions/accounts";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
 import {
+  AccountsOverview,
   QuickValueUpdates,
   type QuickValueUpdateAccount,
-} from "@/components/dashboard/quick-value-updates";
+} from "@/components/dashboard/accounts-overview";
 import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
-import { AccountsOverview } from "@/components/dashboard/accounts-overview";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";

@@ -157,7 +157,9 @@ export function RecurringForm({
             required
           />
           <p className="text-xs text-muted-foreground">
-            Este valor es referencia. En el checklist podras registrar el monto real del pago.
+            {isDebtAccount
+              ? "Si importas un extracto con fecha y total a pagar, actualizamos este monto automaticamente. Al confirmar el pago puedes ajustar el monto pagado."
+              : "Este valor es referencia. En el checklist podras registrar el monto pagado."}
           </p>
         </div>
       </div>

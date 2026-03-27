@@ -211,7 +211,7 @@ export function useRecurringMonth(
     ) => {
       const actualAmount = overrides?.actualAmount ?? item.plannedAmount;
       if (!Number.isFinite(actualAmount) || actualAmount <= 0) {
-        toast.error("Ingresa un monto real válido antes de confirmar el pago.");
+        toast.error("Ingresa un monto pagado valido antes de confirmar el pago.");
         return;
       }
 

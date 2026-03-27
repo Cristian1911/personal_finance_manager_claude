@@ -29,6 +29,30 @@ import type {
 import { trackProductEvent } from "@/actions/product-events";
 
 type DebtKind = "credit_card" | "loan";
+type CurrencyCode = Database["public"]["Enums"]["currency_code"];
+type ImportedAccountRow = Pick<
+  Database["public"]["Tables"]["accounts"]["Row"],
+  "id" | "name" | "currency_code" | "currency_balances" | "account_type"
+>;
+type StatementSnapshotSyncRow = Pick<
+  Database["public"]["Tables"]["statement_snapshots"]["Row"],
+  "period_to" | "payment_due_date"
+>;
+type RecurringTemplateSyncRow = Pick<
+  Database["public"]["Tables"]["recurring_transaction_templates"]["Row"],
+  | "id"
+  | "account_id"
+  | "currency_code"
+  | "merchant_name"
+  | "description"
+  | "direction"
+  | "frequency"
+  | "category_id"
+  | "transfer_source_account_id"
+  | "is_active"
+  | "start_date"
+  | "day_of_month"
+>;
 
 const IMPORT_DETAIL_MESSAGES = {
   monthlyToAnnual: (
@@ -46,9 +70,22 @@ const IMPORT_DETAIL_MESSAGES = {
     maxRate: number
   ) =>
     `Cuenta ${accountId}: ${label} ${rate}% E.A. fuera de rango (${minRate}%-${maxRate}%). Se ignora.`,
+  recurringTemplateCreated: (accountName: string, currency: string) =>
+    `Se creo el recurrente de pago de ${accountName} (${currency}) desde el extracto.`,
+  recurringTemplateUpdated: (accountName: string, currency: string) =>
+    `Se actualizo el recurrente de pago de ${accountName} (${currency}) desde el extracto.`,
+  recurringTemplateSyncFailed: (
+    accountName: string,
+    currency: string,
+    message: string
+  ) =>
+    `No se pudo sincronizar el recurrente de pago de ${accountName} (${currency}): ${message}`,
 } as const;
 
 import { sanitizeInterestRate, mvToEaPercent, MV_THRESHOLD } from "@zeta/shared";
+
+const RECURRING_TEMPLATE_SYNC_SELECT =
+  "id, account_id, currency_code, merchant_name, description, direction, frequency, category_id, transfer_source_account_id, is_active, start_date, day_of_month";
 
 function sanitizeEaRate(
   rawRate: number | null | undefined,
@@ -89,6 +126,139 @@ function parsePayload(formData: FormData) {
 
 function buildDecisionKey(statementIndex: number, transactionIndex: number): string {
   return `${statementIndex}:${transactionIndex}`;
+}
+
+function buildRecurringTemplateKey(accountId: string, currency: string): string {
+  return `${accountId}:${currency.toUpperCase()}`;
+}
+
+function getDayOfMonth(date: string): number | null {
+  const parts = date.split("-");
+  if (parts.length !== 3) return null;
+  const day = Number(parts[2]);
+  return Number.isInteger(day) && day >= 1 && day <= 31 ? day : null;
+}
+
+function shouldSyncCreditCardRecurring(params: {
+  prevSnapshot: StatementSnapshotSyncRow | null;
+  periodTo: string | null;
+  paymentDueDate: string;
+}): boolean {
+  const { prevSnapshot, periodTo, paymentDueDate } = params;
+  if (!prevSnapshot) return true;
+
+  if (prevSnapshot.period_to && periodTo) {
+    return periodTo >= prevSnapshot.period_to;
+  }
+
+  if (prevSnapshot.payment_due_date) {
+    return paymentDueDate >= prevSnapshot.payment_due_date;
+  }
+
+  return true;
+}
+
+function buildDebtPaymentMerchantName(accountName: string): string {
+  return `Pago ${accountName}`;
+}
+
+async function syncCreditCardRecurringTemplate(params: {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  meta: StatementMetaForImport;
+  account?: ImportedAccountRow;
+  prevSnapshot: StatementSnapshotSyncRow | null;
+  existingTemplate?: RecurringTemplateSyncRow;
+  templateMap: Map<string, RecurringTemplateSyncRow>;
+  details: string[];
+}): Promise<void> {
+  const cc = params.meta.creditCardMetadata;
+  if (!cc?.payment_due_date) return;
+  if (cc.total_payment_due == null || !Number.isFinite(cc.total_payment_due) || cc.total_payment_due <= 0) {
+    return;
+  }
+  if (
+    !shouldSyncCreditCardRecurring({
+      prevSnapshot: params.prevSnapshot,
+      periodTo: params.meta.periodTo,
+      paymentDueDate: cc.payment_due_date,
+    })
+  ) {
+    return;
+  }
+
+  const dayOfMonth = getDayOfMonth(cc.payment_due_date);
+  if (!dayOfMonth) return;
+
+  const accountName = params.account?.name ?? "tarjeta";
+  const templateKey = buildRecurringTemplateKey(params.meta.accountId, params.meta.currency);
+  const merchantName =
+    params.existingTemplate?.merchant_name?.trim() ||
+    buildDebtPaymentMerchantName(accountName);
+  const description = params.existingTemplate?.description?.trim() || null;
+  const amount = Math.round(cc.total_payment_due * 100) / 100;
+
+  try {
+    if (params.existingTemplate) {
+      const { data, error } = await params.supabase
+        .from("recurring_transaction_templates")
+        .update({
+          amount,
+          currency_code: params.meta.currency as CurrencyCode,
+          merchant_name: merchantName,
+          description,
+          start_date: cc.payment_due_date,
+          day_of_month: dayOfMonth,
+        })
+        .eq("user_id", params.userId)
+        .eq("id", params.existingTemplate.id)
+        .select(RECURRING_TEMPLATE_SYNC_SELECT)
+        .single();
+
+      if (error) throw error;
+      params.templateMap.set(templateKey, data as RecurringTemplateSyncRow);
+      params.details.push(
+        IMPORT_DETAIL_MESSAGES.recurringTemplateUpdated(accountName, params.meta.currency)
+      );
+      return;
+    }
+
+    const { data, error } = await params.supabase
+      .from("recurring_transaction_templates")
+      .insert({
+        user_id: params.userId,
+        account_id: params.meta.accountId,
+        transfer_source_account_id: null,
+        amount,
+        currency_code: params.meta.currency as CurrencyCode,
+        direction: "INFLOW",
+        frequency: "MONTHLY",
+        merchant_name: merchantName,
+        description,
+        category_id: null,
+        day_of_month: dayOfMonth,
+        day_of_week: null,
+        start_date: cc.payment_due_date,
+        end_date: null,
+      })
+      .select(RECURRING_TEMPLATE_SYNC_SELECT)
+      .single();
+
+    if (error) throw error;
+    params.templateMap.set(templateKey, data as RecurringTemplateSyncRow);
+    params.details.push(
+      IMPORT_DETAIL_MESSAGES.recurringTemplateCreated(accountName, params.meta.currency)
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    params.details.push(
+      IMPORT_DETAIL_MESSAGES.recurringTemplateSyncFailed(
+        accountName,
+        params.meta.currency,
+        message
+      )
+    );
+  }
 }
 
 async function fetchReconciliationCandidates(
@@ -221,7 +391,31 @@ async function processStatementMeta(params: {
     .select("id, name, currency_code, currency_balances, account_type")
     .eq("user_id", userId)
     .in("id", uniqueAccountIds);
-  const accountMap = new Map((accountRows ?? []).map((a) => [a.id, a]));
+  const accountMap = new Map(
+    ((accountRows ?? []) as ImportedAccountRow[]).map((account) => [account.id, account])
+  );
+
+  const hasCreditCardMetadata = statementMeta.some((meta) => meta.creditCardMetadata);
+  const recurringTemplateMap = new Map<string, RecurringTemplateSyncRow>();
+  if (hasCreditCardMetadata) {
+    const { data: recurringTemplates } = await supabase
+      .from("recurring_transaction_templates")
+      .select(RECURRING_TEMPLATE_SYNC_SELECT)
+      .eq("user_id", userId)
+      .in("account_id", uniqueAccountIds)
+      .eq("direction", "INFLOW")
+      .eq("frequency", "MONTHLY")
+      .is("category_id", null)
+      .order("is_active", { ascending: false })
+      .order("updated_at", { ascending: false });
+
+    for (const template of (recurringTemplates ?? []) as RecurringTemplateSyncRow[]) {
+      const key = buildRecurringTemplateKey(template.account_id, template.currency_code);
+      if (!recurringTemplateMap.has(key)) {
+        recurringTemplateMap.set(key, template);
+      }
+    }
+  }
 
   const pendingBalances = new Map<
     string,
@@ -422,6 +616,21 @@ async function processStatementMeta(params: {
       diffs,
       isFirstImport: !prevSnapshot,
     });
+
+    if (meta.creditCardMetadata) {
+      await syncCreditCardRecurringTemplate({
+        supabase,
+        userId,
+        meta,
+        account,
+        prevSnapshot,
+        existingTemplate: recurringTemplateMap.get(
+          buildRecurringTemplateKey(meta.accountId, meta.currency)
+        ),
+        templateMap: recurringTemplateMap,
+        details,
+      });
+    }
   }
 
   return accountUpdates;

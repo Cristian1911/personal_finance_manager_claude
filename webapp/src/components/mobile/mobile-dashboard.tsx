@@ -18,7 +18,7 @@ import type { HealthMetersData } from "@/actions/health-meters";
 import {
   QuickValueUpdates,
   type QuickValueUpdateAccount,
-} from "@/components/dashboard/quick-value-updates";
+} from "@/components/dashboard/accounts-overview";
 
 // Tier 1 props only — tier 2 data (burn rate, allocation, debt, cashflow strip)
 // is now streamed in via Suspense sub-components from the dashboard page.

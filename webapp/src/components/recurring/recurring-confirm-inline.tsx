@@ -75,13 +75,13 @@ export function RecurringConfirmInline({
           {/* Amount */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">
-              Monto
+              Monto pagado
             </label>
             <CurrencyInput
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="h-8 text-sm"
-              placeholder="Monto real"
+              placeholder="Monto pagado"
             />
           </div>
 
