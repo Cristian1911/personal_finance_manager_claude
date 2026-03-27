@@ -117,8 +117,13 @@ Plans:
   3. When the user has active debts, the projected debt-free date is displayed prominently in the hero area
   4. Each dashboard section has a visible "so what?" label or summary — no widget presents raw numbers without context
   5. Primary, secondary, and tertiary data have clear visual weight differences across all dashboard sections
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 06-01-PLAN.md — Hero enhancements: StatusHeadline, DebtFreeBanner, DashboardSection subtitle prop, primary tier styling (DASH-01, DASH-03, DASH-04)
+- [ ] 06-02-PLAN.md — Health score section: SpeedometerGauge, composite score computation, HealthScoreSection (DASH-02)
+- [ ] 06-03-PLAN.md — Section subtitles, page wiring, section reorder, visual verification (DASH-03, DASH-05)
 
 ### Phase 7: Categorization UX
 **Goal**: Users can correct categories inline without leaving the transaction list, and auto-categorized exceptions are surfaced for review
@@ -173,7 +178,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -182,7 +187,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 3. Categorization Engine | 2/2 | Complete   | 2026-03-25 |
 | 4. Dashboard Performance | 5/5 | Complete   | 2026-03-26 |
 | 5. Onboarding Audit | 0/1 | Not started | - |
-| 6. Dashboard Redesign | 0/TBD | Not started | - |
+| 6. Dashboard Redesign | 0/3 | Not started | - |
 | 7. Categorization UX | 0/TBD | Not started | - |
 | 8. Onboarding Redesign | 0/TBD | Not started | - |
 | 9. Visual Polish | 0/TBD | Not started | - |
