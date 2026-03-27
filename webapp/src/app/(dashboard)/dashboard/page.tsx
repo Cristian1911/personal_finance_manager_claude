@@ -32,6 +32,7 @@ import dynamic from "next/dynamic";
 import { getAccounts } from "@/actions/accounts";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
+import { DebtFreeBanner } from "@/components/dashboard/debt-free-banner";
 import {
   AccountsOverview,
   QuickValueUpdates,
@@ -362,9 +363,11 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
+    get503020Allocation(month, currency),
+    getDebtFreeCountdown(currency),
   ]);
 
   // Map data for mobile dashboard (tier 1 props only)
@@ -448,7 +451,11 @@ export default async function DashboardPage({
             </div>
 
             {/* ── Hero Section — tier 1: always visible, no collapse ── */}
-            <DashboardHero data={heroData} />
+            <DashboardHero
+              data={heroData}
+              allocationData={allocationData}
+              debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
+            />
             <QuickValueUpdates accounts={quickUpdateAccounts} id="quick-update-values" />
 
             {/* CashFlowHeroStrip — tier 2: streams in with skeleton */}
