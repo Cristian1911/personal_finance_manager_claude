@@ -359,86 +359,7 @@
       color: var(--z-income);
     }
 
-    /* ========================================
-       Phone Mockup (Step 4)
-       ======================================== */
-    .phone-mockup {
-      border: 2px solid var(--z-border-strong);
-      border-radius: 24px;
-      background: var(--z-ink);
-      overflow: hidden;
-      max-width: 280px;
-      margin: 0 auto;
-      padding: 12px;
-    }
-
-    .phone-screen {
-      height: 192px;
-      border-radius: 12px;
-      background: var(--z-surface);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .phone-screen p {
-      font-size: 14px;
-      color: var(--z-sage-dark);
-    }
-
-    .tab-bar {
-      margin-top: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      border-radius: 12px;
-      background: var(--z-surface-2);
-      padding: 8px 4px;
-    }
-
-    .tab-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-      background: none;
-      border: none;
-      cursor: default;
-      padding: 4px 8px;
-      border-radius: 8px;
-      font-family: inherit;
-    }
-
-    .tab-item.tappable {
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-
-    .tab-item.tappable:hover {
-      background: var(--z-surface-3);
-    }
-
-    .tab-item svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    .tab-item .tab-label {
-      font-size: 9px;
-      white-space: nowrap;
-    }
-
-    .tab-item.active svg { color: var(--z-white); }
-    .tab-item.active .tab-label { color: var(--z-white); font-weight: 700; }
-    .tab-item:not(.active) svg { color: var(--z-sage-dark); }
-    .tab-item:not(.active) .tab-label { color: var(--z-sage-dark); }
-
-    .tab-hint {
-      text-align: center;
-      margin-top: 16px;
-      font-size: 12px;
-      color: var(--z-sage-dark);
-    }
+    /* Layout personalization removed from onboarding — to be prompted post-onboarding instead */
 
     /* ========================================
        Step 6 — Completion
@@ -682,7 +603,7 @@
       <div class="progress-section" id="progress-section">
         <div class="progress-header">
           <span class="progress-label">Onboarding Zeta</span>
-          <span class="progress-counter" id="step-counter">Paso 1 de 6</span>
+          <span class="progress-counter" id="step-counter">Paso 1 de 4</span>
         </div>
         <div class="progress-track" role="progressbar" aria-valuenow="17" aria-valuemin="0" aria-valuemax="100" id="progress-bar">
           <div class="progress-fill" id="progress-fill" style="width: 16.67%;"></div>
@@ -884,83 +805,10 @@
       </div>
 
       <!-- ============================
-           Step 4 - Tu app
+           Step 4 - Primera cuenta
+           (was Step 5 — "Tu app" personalization removed from onboarding)
            ============================ -->
       <div class="step-container" id="step-4">
-        <div class="z-card">
-          <div class="z-card-header">
-            <div class="z-card-title">Tu app</div>
-            <div class="z-card-description">Basado en tu objetivo, asi se ve tu Zeta. Toca las pestanas para cambiarlas.</div>
-          </div>
-          <div class="z-card-content">
-            <!-- Phone mockup -->
-            <div class="phone-mockup">
-              <div class="phone-screen">
-                <p>Tu dashboard</p>
-              </div>
-              <div class="tab-bar">
-                <!-- Tab 1: Inicio (fixed, active) -->
-                <div class="tab-item active" aria-current="step">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-                  <span class="tab-label">Inicio</span>
-                </div>
-                <!-- Tab 2: tappable -->
-                <button class="tab-item tappable" id="tab-2-btn" onclick="cycleTab(2)" aria-label="Cambiar pestana 2">
-                  <svg id="tab-2-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                  <span class="tab-label" id="tab-2-label">Deudas</span>
-                </button>
-                <!-- Tab 3: tappable -->
-                <button class="tab-item tappable" id="tab-3-btn" onclick="cycleTab(3)" aria-label="Cambiar pestana 3">
-                  <svg id="tab-3-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h0"/></svg>
-                  <span class="tab-label" id="tab-3-label">Presupuesto</span>
-                </button>
-                <!-- Tab 4: Mas (fixed) -->
-                <div class="tab-item">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                  <span class="tab-label">Mas</span>
-                </div>
-              </div>
-            </div>
-            <p class="tab-hint">Toca las pestanas del centro para explorar opciones</p>
-          </div>
-          <div class="z-card-footer">
-            <button class="btn btn-ghost" onclick="prevStep()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-              Atras
-            </button>
-            <button class="btn btn-primary" onclick="nextStep()">
-              Siguiente
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Annotations Step 4 -->
-        <div class="annotation-box">
-          <div class="annotation-title">Hallazgos UX - Paso 4</div>
-          <div class="annotation-item concern">
-            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-            <span><strong>Friccion:</strong> Si el usuario vuelve al paso 1 y cambia el proposito, dashboardConfig NO se regenera (protegido por !dashboardConfig en el useEffect) &mdash; el preview de tabs puede reflejar un proposito obsoleto</span>
-          </div>
-          <div class="annotation-item concern">
-            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-            <span><strong>Friccion:</strong> El mockup del telefono muestra solo texto placeholder "Tu dashboard" &mdash; no hay preview del contenido real que vera el usuario</span>
-          </div>
-          <div class="annotation-item concern">
-            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-            <span><strong>Friccion:</strong> La affordance interactiva de las tabs es debil &mdash; solo un texto hint, sin indicador visual de "toca aqui"</span>
-          </div>
-          <div class="annotation-item positive">
-            <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
-            <span><strong>Buen patron:</strong> La personalizacion de tabs durante el onboarding es un diferenciador &mdash; personalizar la app antes del primer uso aumenta el valor percibido</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============================
-           Step 5 - Primera cuenta
-           ============================ -->
-      <div class="step-container" id="step-5">
         <div class="z-card">
           <div class="z-card-header">
             <div class="z-card-title">Primera cuenta</div>
@@ -986,19 +834,19 @@
             </div>
           </div>
           <div class="z-card-footer">
-            <button class="btn btn-ghost" onclick="prevStep()" id="step5-back">
+            <button class="btn btn-ghost" onclick="prevStep()" id="step4-back">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
               Atras
             </button>
-            <button class="btn btn-primary" onclick="simulateSubmit()" id="step5-submit">
+            <button class="btn btn-primary" onclick="simulateSubmit()" id="step4-submit">
               Finalizar
             </button>
           </div>
         </div>
 
-        <!-- Annotations Step 5 -->
+        <!-- Annotations Step 4 -->
         <div class="annotation-box">
-          <div class="annotation-title">Hallazgos UX - Paso 5</div>
+          <div class="annotation-title">Hallazgos UX - Paso 4</div>
           <div class="annotation-item concern">
             <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8875A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
             <span><strong>Friccion:</strong> El tipo de cuenta en el codigo fuente tiene por defecto CHECKING ("Corriente") &mdash; los colombianos mas comunmente tienen Ahorros como cuenta principal</span>
@@ -1019,9 +867,10 @@
       </div>
 
       <!-- ============================
-           Step 6 - Completion
+           Step 5 - Completion
+           (was Step 6 — flow reduced from 6 to 5 steps)
            ============================ -->
-      <div class="step-container" id="step-6">
+      <div class="step-container" id="step-5">
         <div class="z-card">
           <div class="z-card-header" style="text-align: center;">
             <div class="success-icon-wrapper">
@@ -1041,9 +890,9 @@
           </div>
         </div>
 
-        <!-- Annotations Step 6 -->
+        <!-- Annotations Step 5 -->
         <div class="annotation-box">
-          <div class="annotation-title">Hallazgos UX - Paso 6</div>
+          <div class="annotation-title">Hallazgos UX - Paso 5</div>
           <div class="annotation-item positive">
             <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5CB88A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
             <span><strong>Buen patron:</strong> CTA de quick win es consciente del proposito elegido &mdash; crea continuidad entre el objetivo declarado y la primera accion</span>
@@ -1081,7 +930,7 @@
           <ul>
             <li>Lenguaje de beneficio claro en opciones de proposito &mdash; el usuario entiende que obtiene, no la mecanica interna</li>
             <li>Calculo en vivo de "Disponible para presupuesto" da valor inmediato y demuestra utilidad desde el paso 3</li>
-            <li>Personalizacion de tabs en onboarding es diferenciador: el usuario siente que la app se adapta a el</li>
+            <li>Flujo reducido a 4 pasos activos + completion &mdash; menos friccion, mas rapido al valor real</li>
             <li>CTA de quick win consciente del proposito crea continuidad narrativa hacia la primera accion real</li>
             <li>Cuenta real como primer dato ancla al usuario en informacion concreta desde el inicio</li>
           </ul>
@@ -1096,8 +945,7 @@
           <ul>
             <li>Moneda por defecto es USD &mdash; el usuario colombiano debe cambiarla manualmente a COP cada vez</li>
             <li>Cantidad de deudas se recopila pero se descarta silenciosamente &mdash; nunca se pasa a finishOnboarding()</li>
-            <li>dashboardConfig no se regenera al cambiar el proposito si ya fue generado &mdash; stale state posible</li>
-            <li>Phone mockup muestra solo "Tu dashboard" sin preview real &mdash; no genera expectativa del contenido</li>
+            <li>Personalizacion de tabs en onboarding genera paralisis de decision &mdash; mejor diferir a post-onboarding</li>
             <li>Tipo de cuenta por defecto es CHECKING, no Ahorros que es mas comun en Colombia</li>
           </ul>
         </div>
@@ -1111,9 +959,8 @@
           <ul>
             <li>Cambiar default de moneda a COP y tipo de cuenta a Ahorros para el mercado colombiano</li>
             <li>Pasar debtCount a finishOnboarding() para pre-crear plantillas de deuda en el onboarding</li>
-            <li>Regenerar dashboardConfig cuando el proposito cambie (quitar guard !dashboardConfig)</li>
-            <li>Reemplazar placeholder "Tu dashboard" con mini-preview real del contenido del dashboard personalizado</li>
-            <li>Agregar indicador visual "toca aqui" en tabs del paso 4 para mejorar la affordance interactiva</li>
+            <li>Mover personalizacion de dashboard a un prompt post-onboarding (ej: banner en dashboard, o primer acceso a configuracion)</li>
+            <li>Usar el proposito elegido en paso 1 para auto-configurar un layout por defecto sin preguntar al usuario</li>
           </ul>
         </div>
 
@@ -1130,41 +977,20 @@
        NOTE: This is a self-contained audit document. All DOM
        updates below use hardcoded SVG strings for icon swapping.
        No user input is rendered as HTML — all values are static
-       constants defined in TAB_OPTIONS and TAB_ICONS.
+       layout presets and purpose selection.
        ============================================================ */
 
     // State
     var currentStep = 1;
     var selectedPurpose = 'manage_debt'; // Pre-selected per D-07
 
-    // Tab swap state (Step 4)
-    var TAB_OPTIONS = [
-      { id: 'debt-recurring', label: 'Deudas', icon: 'CreditCard' },
-      { id: 'movimientos', label: 'Movimientos', icon: 'ArrowLeftRight' },
-      { id: 'presupuesto', label: 'Presupuesto', icon: 'PiggyBank' },
-      { id: 'presupuesto-ahorro', label: 'Presupuesto', icon: 'PiggyBank' },
-      { id: 'movimientos-presupuesto', label: 'Gastos', icon: 'TrendingDown' },
-      { id: 'recurrentes', label: 'Recurrentes', icon: 'Repeat2' }
-    ];
-
-    // Current tab indices for positions 2 and 3
-    var tab2Index = 0; // debt-recurring
-    var tab3Index = 2; // presupuesto
-
-    // Static SVG icon templates for tab icons (hardcoded, no user input)
-    var TAB_ICONS = {
-      CreditCard: '<svg id="TAB_ID" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>',
-      ArrowLeftRight: '<svg id="TAB_ID" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 3 4 7 8 11"/><line x1="4" y1="7" x2="20" y2="7"/><polyline points="16 21 20 17 16 13"/><line x1="20" y1="17" x2="4" y2="17"/></svg>',
-      PiggyBank: '<svg id="TAB_ID" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h0"/></svg>',
-      TrendingDown: '<svg id="TAB_ID" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>',
-      Repeat2: '<svg id="TAB_ID" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 9 3-3 3 3"/><path d="M13 18H7a2 2 0 0 1-2-2V6"/><path d="m22 15-3 3-3-3"/><path d="M11 6h6a2 2 0 0 1 2 2v10"/></svg>'
-    };
+    var TOTAL_STEPS = 5;
 
     // ---- Navigation ----
 
     function showStep(n) {
       // Hide all steps
-      for (var i = 1; i <= 6; i++) {
+      for (var i = 1; i <= TOTAL_STEPS; i++) {
         var el = document.getElementById('step-' + i);
         if (el) {
           el.classList.remove('active');
@@ -1191,21 +1017,21 @@
       var progressBar = document.getElementById('progress-bar');
       var scorecard = document.getElementById('scorecard');
 
-      if (n === 6) {
+      if (n === TOTAL_STEPS) {
         progressSection.style.display = 'none';
         scorecard.style.display = 'block';
       } else {
         progressSection.style.display = 'block';
         scorecard.style.display = 'none';
-        var pct = Math.round((n / 6) * 100);
+        var pct = Math.round((n / TOTAL_STEPS) * 100);
         progressFill.style.width = pct + '%';
-        stepCounter.textContent = 'Paso ' + n + ' de 6';
+        stepCounter.textContent = 'Paso ' + n + ' de ' + (TOTAL_STEPS - 1);
         progressBar.setAttribute('aria-valuenow', String(pct));
       }
     }
 
     function nextStep() {
-      if (currentStep < 5) {
+      if (currentStep < TOTAL_STEPS - 1) {
         currentStep++;
         showStep(currentStep);
       }
@@ -1234,58 +1060,11 @@
       document.getElementById('step1-next').disabled = false;
     }
 
-    // ---- Tab Swap (Step 4) ----
-
-    function cycleTab(position) {
-      var currentIdx, otherIdx;
-      if (position === 2) {
-        currentIdx = tab2Index;
-        otherIdx = tab3Index;
-      } else {
-        currentIdx = tab3Index;
-        otherIdx = tab2Index;
-      }
-
-      // Cycle to next, skip if same as other position
-      var nextIdx = (currentIdx + 1) % TAB_OPTIONS.length;
-      var attempts = 0;
-      while (TAB_OPTIONS[nextIdx].id === TAB_OPTIONS[otherIdx].id && attempts < TAB_OPTIONS.length) {
-        nextIdx = (nextIdx + 1) % TAB_OPTIONS.length;
-        attempts++;
-      }
-
-      if (position === 2) {
-        tab2Index = nextIdx;
-      } else {
-        tab3Index = nextIdx;
-      }
-
-      // Update DOM using safe DOM methods
-      var tab = TAB_OPTIONS[nextIdx];
-      var iconContainer = document.getElementById('tab-' + position + '-btn');
-      var labelEl = document.getElementById('tab-' + position + '-label');
-      var oldIcon = document.getElementById('tab-' + position + '-icon');
-
-      // Replace icon: parse the static SVG template safely
-      if (oldIcon && TAB_ICONS[tab.icon]) {
-        var template = document.createElement('template');
-        var svgStr = TAB_ICONS[tab.icon].replace('TAB_ID', 'tab-' + position + '-icon');
-        template.innerHTML = svgStr.trim();
-        var newIcon = template.content.firstChild;
-        oldIcon.parentNode.replaceChild(newIcon, oldIcon);
-      }
-
-      // Update label text (textContent is XSS-safe)
-      if (labelEl) {
-        labelEl.textContent = tab.label;
-      }
-    }
-
-    // ---- Simulated Submit (Step 5) ----
+    // ---- Simulated Submit (Step 4) ----
 
     function simulateSubmit() {
-      var submitBtn = document.getElementById('step5-submit');
-      var backBtn = document.getElementById('step5-back');
+      var submitBtn = document.getElementById('step4-submit');
+      var backBtn = document.getElementById('step4-back');
 
       // Disable buttons
       submitBtn.disabled = true;
@@ -1312,7 +1091,7 @@
       // After 800ms, advance to step 6
       setTimeout(function() {
         currentStep = 6;
-        showStep(6);
+        showStep(5);
 
         // Reset button state in case user navigates back
         submitBtn.disabled = false;
