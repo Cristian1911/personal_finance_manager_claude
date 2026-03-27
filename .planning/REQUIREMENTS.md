@@ -46,10 +46,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Dashboard Redesign
 
-- [ ] **DASH-01**: "Am I on track?" single-sentence health headline at top of dashboard
+- [x] **DASH-01**: "Am I on track?" single-sentence health headline at top of dashboard
 - [ ] **DASH-02**: Composite financial health score (single grade) synthesizing existing health dimensions
-- [ ] **DASH-03**: Information hierarchy — clear primary/secondary/tertiary data tiers across all dashboard sections
-- [ ] **DASH-04**: Debt-free date promoted to dashboard hero (when debts exist)
+- [x] **DASH-03**: Information hierarchy — clear primary/secondary/tertiary data tiers across all dashboard sections
+- [x] **DASH-04**: Debt-free date promoted to dashboard hero (when debts exist)
 - [ ] **DASH-05**: Dashboard sections communicate purpose, not just data — each widget has a clear "so what?"
 
 ### Onboarding
@@ -144,10 +144,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-03 | Phase 4 | Complete |
 | PERF-04 | Phase 4 | Complete |
 | PERF-05 | Phase 4 | Complete |
-| DASH-01 | Phase 6 | Pending |
+| DASH-01 | Phase 6 | Complete |
 | DASH-02 | Phase 6 | Pending |
-| DASH-03 | Phase 6 | Pending |
-| DASH-04 | Phase 6 | Pending |
+| DASH-03 | Phase 6 | Complete |
+| DASH-04 | Phase 6 | Complete |
 | DASH-05 | Phase 6 | Pending |
 | ONB-01 | Phase 5 | Pending |
 | ONB-02 | Phase 8 | Pending |
