@@ -38,8 +38,8 @@ export function AccountCard({ account }: { account: Account }) {
   const accentSurface = account.color
     ? `${account.color}20`
     : isDebt
-      ? "color-mix(in srgb, var(--z-brass) 18%, transparent)"
-      : "color-mix(in srgb, var(--z-olive-deep) 18%, transparent)";
+      ? "color-mix(in srgb, var(--z-brass) 12.5%, transparent)"
+      : "color-mix(in srgb, var(--z-olive-deep) 12.5%, transparent)";
 
   return (
     <Link href={`/accounts/${account.id}`} className="block h-full">
