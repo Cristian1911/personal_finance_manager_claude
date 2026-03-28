@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zeta Stitch Handoff</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f15;
+      --panel: #111722;
+      --panel-2: #161e2b;
+      --border: #243043;
+      --text: #e6ecf5;
+      --muted: #92a0b5;
+      --accent: #d4b06a;
+      --good: #5bb98c;
+      --warn: #e3a953;
+      --bad: #eb7b6b;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #152033 0%, var(--bg) 42%);
+      color: var(--text);
+      font: 16px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 40px 0 72px;
+    }
+
+    .hero,
+    .panel {
+      background: color-mix(in srgb, var(--panel) 92%, black 8%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
+    }
+
+    .hero {
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 8px 0 10px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin: 0;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .panel {
+      padding: 24px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+
+    p, li {
+      color: var(--muted);
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .board {
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      display: block;
+      background: #0c1017;
+    }
+
+    .link-list a {
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .link-list a:hover {
+      color: var(--accent);
+    }
+
+    .score {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .score-card {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+    }
+
+    .score-card strong {
+      display: block;
+      font-size: 1.4rem;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .score-card.good strong { color: var(--good); }
+    .score-card.warn strong { color: var(--warn); }
+    .score-card.bad strong { color: var(--bad); }
+
+    .cta {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      font-size: 0.95rem;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: var(--text);
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      main {
+        width: min(100vw - 20px, 1180px);
+        padding-top: 20px;
+      }
+
+      .hero,
+      .panel {
+        border-radius: 16px;
+        padding: 20px;
+      }
+
+      .score {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="eyebrow">Zeta / Stitch handoff</div>
+      <h1>Current state, curated for redesign.</h1>
+      <p class="subtitle">
+        The raw showcases are good archives, but weak redesign prompts. This package shrinks the app down to the
+        screens and principles that should guide the next refinement pass.
+      </p>
+      <div class="chip-row">
+        <span class="chip">Direction: Estado y siguiente paso</span>
+        <span class="chip">Top-level IA: Inicio / Movimientos / Plan / Más</span>
+        <span class="chip">Goal: answer “¿Voy bien?” fast</span>
+      </div>
+      <div class="score">
+        <div class="score-card good">
+          <strong>What exists</strong>
+          Strong real flows: dashboard, transactions, import, debt.
+        </div>
+        <div class="score-card warn">
+          <strong>Main problem</strong>
+          Too many first-class nouns and too much equal-weight UI.
+        </div>
+        <div class="score-card bad">
+          <strong>Why redesign</strong>
+          The product reads like a system map instead of an operating model.
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>Use This In Stitch</h2>
+        <ul>
+          <li>Upload <code>current-state-board.png</code> first.</li>
+          <li>Add any file from <code>inputs/</code> for extra detail on a single flow.</li>
+          <li>Paste the prompt from <code>stitch-brief.md</code>.</li>
+          <li>Keep the direction from <code>../ship-now/01-estado-y-siguiente-paso.html</code>.</li>
+        </ul>
+        <div class="cta">
+          Stitch officially supports image inputs such as screenshots or wireframes, and can later move the result into
+          Figma.
+        </div>
+      </article>
+
+      <aside class="panel">
+        <h2>Key Review Points</h2>
+        <ul>
+          <li>Dashboard needs a single dominant status story.</li>
+          <li>Transactions should feel like an inbox flow, not a toolbox.</li>
+          <li>Debt, budget, and recurring should read as one planning system.</li>
+          <li>Manage belongs under <code>Más</code>, not as a peer to core daily work.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="panel" style="margin-bottom: 24px;">
+      <h2>Curated Board</h2>
+      <img class="board" src="./current-state-board.png" alt="Curated current-state board for Stitch">
+    </section>
+
+    <section class="grid">
+      <article class="panel link-list">
+        <h2>Files</h2>
+        <ul>
+          <li><a href="./review.md">review.md</a></li>
+          <li><a href="./stitch-brief.md">stitch-brief.md</a></li>
+          <li><a href="./inputs/">inputs/</a></li>
+          <li><a href="../desktop-showcase.html">original desktop showcase</a></li>
+          <li><a href="../mobile-showcase.html">original mobile showcase</a></li>
+          <li><a href="../ship-now/01-estado-y-siguiente-paso.html">recommended direction</a></li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>What changed from the raw showcase</h2>
+        <ul>
+          <li>Only the core redesign anchors remain.</li>
+          <li>Very tall pages are cropped to the top-of-flow view.</li>
+          <li>Desktop and mobile are paired together per screen.</li>
+          <li>The written brief explains what should change, not just what exists.</li>
+        </ul>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

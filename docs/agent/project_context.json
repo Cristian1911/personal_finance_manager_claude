@@ -1,110 +1,107 @@
 {
-  "generated_at_utc": "2026-03-25T13:29:49.885135+00:00",
+  "generated_at_utc": "2026-03-27T15:17:11.878000+00:00",
   "project_root": "/Users/cristian/Documents/developing/current-projects/zeta",
   "technologies": [
-    "Next.js",
-    "Expo/React Native",
-    "FastAPI",
-    "Supabase",
-    "pnpm workspace"
+    "Node.js",
+    "Docker",
+    "pnpm workspace",
+    "pnpm"
   ],
   "totals": {
-    "text_files_scanned": 847,
+    "text_files_scanned": 937,
     "languages": {
-      "JSON": 282,
-      "TypeScript/React": 243,
-      "TypeScript": 137,
-      "Markdown": 78,
+      "JSON": 283,
+      "TypeScript/React": 249,
+      "Markdown": 146,
+      "TypeScript": 143,
       "SQL": 34,
-      "Python": 22,
-      "HTML": 21,
-      "YAML": 11,
-      "Shell": 10,
+      "HTML": 26,
+      "Python": 23,
+      "YAML": 12,
+      "Shell": 11,
       "JavaScript": 5,
-      "CSS": 2,
+      "CSS": 3,
       "TOML": 2
     }
   },
   "top_level_directories": {
     "mobile": 354,
-    "webapp": 292,
+    "webapp": 302,
+    ".planning": 62,
     "docs": 58,
     "supabase": 36,
-    "packages": 26,
+    "packages": 28,
     "services": 24,
+    "(root)": 16,
     ".superpowers": 16,
-    "(root)": 15,
     ".claude": 14,
-    ".github": 6,
+    ".agents": 7,
+    "ui-showcases": 7,
+    ".github": 7,
     "infra": 2,
     "mockups": 2,
     "brand": 1,
     "test-results": 1
   },
-  "commands": {
-    "root_scripts": {
-      "start": "pnpm --filter mobile start",
-      "web": "pnpm --filter webapp dev",
-      "mobile": "pnpm --filter mobile start",
-      "ios": "pnpm --filter mobile ios",
-      "android": "pnpm --filter mobile android",
-      "build:web": "pnpm --filter webapp build"
+  "commands": [
+    {
+      "scope": "mobile",
+      "kind": "package.json",
+      "scripts": {
+        "start": "expo start",
+        "android": "expo run:android",
+        "ios": "expo run:ios",
+        "web": "expo start --web",
+        "build:aab:local": "cd android && ./gradlew bundleRelease",
+        "build:apk:local": "eas build --platform android --profile preview-local",
+        "build:apk:device": "eas build --platform android --profile preview-device",
+        "build:aab:production": "eas build --platform android --profile production-android",
+        "build:ios:simulator:local": "eas build --platform ios --profile preview-ios-simulator-local",
+        "build:ios:simulator:device": "eas build --platform ios --profile preview-ios-simulator-device",
+        "build:ios:device": "eas build --platform ios --profile preview-ios-device",
+        "build:ios:production": "eas build --platform ios --profile production-ios"
+      }
     },
-    "webapp_scripts": {
-      "dev": "next dev",
-      "build": "next build",
-      "start": "next start",
-      "lint": "eslint"
+    {
+      "scope": "(root)",
+      "kind": "package.json",
+      "scripts": {
+        "start": "pnpm --filter mobile start",
+        "web": "pnpm --filter webapp dev",
+        "mobile": "pnpm --filter mobile start",
+        "ios": "pnpm --filter mobile ios",
+        "android": "pnpm --filter mobile android",
+        "build:web": "pnpm --filter webapp build"
+      }
     },
-    "mobile_scripts": {
-      "start": "expo start",
-      "android": "expo run:android",
-      "ios": "expo run:ios",
-      "web": "expo start --web",
-      "build:aab:local": "cd android && ./gradlew bundleRelease",
-      "build:apk:local": "eas build --platform android --profile preview-local",
-      "build:apk:device": "eas build --platform android --profile preview-device",
-      "build:aab:production": "eas build --platform android --profile production-android",
-      "build:ios:simulator:local": "eas build --platform ios --profile preview-ios-simulator-local",
-      "build:ios:simulator:device": "eas build --platform ios --profile preview-ios-simulator-device",
-      "build:ios:device": "eas build --platform ios --profile preview-ios-device",
-      "build:ios:production": "eas build --platform ios --profile production-ios"
+    {
+      "scope": "packages/shared",
+      "kind": "package.json",
+      "scripts": {
+        "test": "vitest run",
+        "test:watch": "vitest"
+      }
+    },
+    {
+      "scope": "webapp",
+      "kind": "package.json",
+      "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint"
+      }
     }
-  },
+  ],
   "patterns": [
     {
-      "name": "supabase-integration",
-      "description": "Supabase clients/services in app code",
+      "name": "app-router",
+      "description": "App-router style entrypoints",
       "matched_files": 15,
       "examples": [
-        "webapp/middleware.ts",
-        "webapp/src/app/page.tsx",
-        "webapp/src/app/auth/callback/route.ts",
-        "webapp/src/app/api/bug-reports/route.ts",
-        "webapp/src/app/api/_shared/auth.ts",
-        "webapp/src/app/(dashboard)/layout.tsx",
-        "webapp/src/app/(dashboard)/settings/page.tsx",
-        "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
-        "webapp/src/app/(dashboard)/gestionar/page.tsx",
-        "webapp/src/app/(dashboard)/dashboard/page.tsx",
-        "webapp/src/actions/statement-snapshots.ts",
-        "webapp/src/actions/dashboard-config.ts",
-        "webapp/src/actions/interest-paid.ts",
-        "webapp/src/actions/recurring-templates.ts",
-        "webapp/src/actions/debt.ts"
-      ]
-    },
-    {
-      "name": "next-app-router",
-      "description": "Next.js App Router pages/layouts",
-      "matched_files": 15,
-      "examples": [
-        "webapp/src/app/layout.tsx",
-        "webapp/src/app/page.tsx",
         "webapp/src/app/auth/callback/route.ts",
         "webapp/src/app/api/save-unrecognized/route.ts",
         "webapp/src/app/api/bug-reports/route.ts",
-        "webapp/src/app/api/_shared/auth.ts",
         "webapp/src/app/api/parse-statement/route.ts",
         "webapp/src/app/(auth)/layout.tsx",
         "webapp/src/app/(auth)/signup/page.tsx",
@@ -112,13 +109,38 @@
         "webapp/src/app/(auth)/reset-password/page.tsx",
         "webapp/src/app/(auth)/login/page.tsx",
         "webapp/src/app/(dashboard)/layout.tsx",
-        "webapp/src/app/(dashboard)/loading.tsx",
-        "webapp/src/app/(dashboard)/settings/page.tsx"
+        "webapp/src/app/(dashboard)/settings/page.tsx",
+        "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
+        "webapp/src/app/(dashboard)/deudas/page.tsx",
+        "webapp/src/app/(dashboard)/deudas/planificador/page.tsx",
+        "webapp/src/app/(dashboard)/gestionar/page.tsx"
+      ]
+    },
+    {
+      "name": "ui-components",
+      "description": "Reusable UI component modules",
+      "matched_files": 15,
+      "examples": [
+        "webapp/src/components/month-selector.tsx",
+        "webapp/src/components/ui/tabs.tsx",
+        "webapp/src/components/ui/card.tsx",
+        "webapp/src/components/ui/popover.tsx",
+        "webapp/src/components/ui/progress.tsx",
+        "webapp/src/components/ui/chart.tsx",
+        "webapp/src/components/ui/sheet.tsx",
+        "webapp/src/components/ui/prefetch-link.tsx",
+        "webapp/src/components/ui/label.tsx",
+        "webapp/src/components/ui/sonner.tsx",
+        "webapp/src/components/ui/drawer.tsx",
+        "webapp/src/components/ui/tooltip.tsx",
+        "webapp/src/components/ui/alert.tsx",
+        "webapp/src/components/ui/switch.tsx",
+        "webapp/src/components/ui/amount-input.tsx"
       ]
     },
     {
       "name": "server-actions",
-      "description": "Server Action handlers under webapp/src/actions",
+      "description": "Server-side action modules",
       "matched_files": 15,
       "examples": [
         "webapp/src/actions/statement-snapshots.ts",
@@ -139,88 +161,77 @@
       ]
     },
     {
-      "name": "expo-router",
-      "description": "Expo Router file-based routes",
+      "name": "data-layer",
+      "description": "Schemas, migrations, or database-related code",
       "matched_files": 15,
       "examples": [
-        "mobile/app/subscriptions.tsx",
-        "mobile/app/annotate-screenshot.tsx",
-        "mobile/app/purchase-decision.tsx",
-        "mobile/app/+not-found.tsx",
-        "mobile/app/onboarding.tsx",
-        "mobile/app/_layout.tsx",
-        "mobile/app/bug-report.tsx",
-        "mobile/app/modal.tsx",
-        "mobile/app/+html.tsx",
-        "mobile/app/capture.tsx",
-        "mobile/app/transaction/[id].tsx",
-        "mobile/app/(tabs)/settings.tsx",
-        "mobile/app/(tabs)/index.tsx",
-        "mobile/app/(tabs)/import.tsx",
-        "mobile/app/(tabs)/transactions.tsx"
+        "supabase/migrations/20260214100003_add_transaction_is_excluded.sql",
+        "supabase/migrations/20260227000001_add_updated_at_to_statement_snapshots.sql",
+        "supabase/migrations/20260214100001_seed_categories.sql",
+        "supabase/migrations/20260223030329_create_category_rules.sql",
+        "supabase/migrations/20260220222726_add_onboarding_fields.sql",
+        "supabase/migrations/20260214034921_add_account_specialized_fields.sql",
+        "supabase/migrations/20260227100000_add_github_issue_url_to_bug_reports.sql",
+        "supabase/migrations/20260318113717_fix_budgets_rls_parenthesized.sql",
+        "supabase/migrations/20260223232146_add_installment_columns.sql",
+        "supabase/migrations/20260225204500_create_product_event_analytics_views.sql",
+        "supabase/migrations/20260227000000_enable_rls_core_tables.sql",
+        "supabase/migrations/20260223030254_reorganize_category_groups.sql",
+        "supabase/migrations/20260220211240_create_budgets.sql",
+        "supabase/migrations/20260225201000_create_product_events.sql",
+        "supabase/migrations/20260226100000_add_transfer_source_account_to_recurring_templates.sql"
       ]
     },
     {
-      "name": "fastapi-service",
-      "description": "FastAPI service modules",
-      "matched_files": 15,
+      "name": "tests",
+      "description": "Unit, integration, or e2e tests",
+      "matched_files": 11,
       "examples": [
-        "services/pdf_parser/test_parser.py",
-        "services/pdf_parser/models.py",
-        "services/pdf_parser/storage.py",
-        "services/pdf_parser/main.py",
-        "services/pdf_parser/parsers/davivienda_loan.py",
-        "services/pdf_parser/parsers/nequi_savings.py",
-        "services/pdf_parser/parsers/lulo_loan.py",
-        "services/pdf_parser/parsers/bogota_loan.py",
-        "services/pdf_parser/parsers/bancolombia_loan.py",
-        "services/pdf_parser/parsers/falabella_credit_card.py",
-        "services/pdf_parser/parsers/opendataloader_fallback.py",
-        "services/pdf_parser/parsers/popular_credit_card.py",
-        "services/pdf_parser/parsers/__init__.py",
-        "services/pdf_parser/parsers/bancolombia_savings.py",
-        "services/pdf_parser/parsers/utils.py"
+        "webapp/e2e/security.spec.ts",
+        "webapp/e2e/ux-audit.spec.ts",
+        "webapp/e2e/auth.setup.ts",
+        "webapp/e2e/mobile-redesign.spec.ts",
+        "webapp/src/lib/utils/__tests__/dashboard.test.ts",
+        "webapp/src/lib/utils/__tests__/account-balance.test.ts",
+        "packages/shared/src/utils/__tests__/helpers.ts",
+        "packages/shared/src/utils/__tests__/auto-categorize.test.ts",
+        "packages/shared/src/utils/__tests__/debt.test.ts",
+        "packages/shared/src/utils/__tests__/scenario-engine.test.ts",
+        "packages/shared/src/utils/__tests__/debt-simulator.test.ts"
       ]
     },
     {
-      "name": "zod-validators",
-      "description": "Validation layer using Zod",
-      "matched_files": 14,
-      "examples": [
-        "webapp/src/actions/recurring-templates.ts",
-        "webapp/src/actions/profile.ts",
-        "webapp/src/actions/purchase-decision.ts",
-        "webapp/src/lib/validators/account.ts",
-        "webapp/src/lib/validators/dashboard-config.ts",
-        "webapp/src/lib/validators/category.ts",
-        "webapp/src/lib/validators/scenario.ts",
-        "webapp/src/lib/validators/destinatario.ts",
-        "webapp/src/lib/validators/transaction.ts",
-        "webapp/src/lib/validators/budget.ts",
-        "webapp/src/lib/validators/recurring-template.ts",
-        "webapp/src/lib/validators/import.ts",
-        "webapp/src/lib/validators/auth.ts",
-        ".claude/skills/codebase-context/scripts/build_context.py"
-      ]
-    },
-    {
-      "name": "repository-pattern",
-      "description": "Repository pattern in mobile/lib/repositories",
+      "name": "api-routes",
+      "description": "HTTP or API route handlers",
       "matched_files": 4,
       "examples": [
-        "mobile/lib/repositories/budgets.ts",
-        "mobile/lib/repositories/categories.ts",
-        "mobile/lib/repositories/transactions.ts",
-        "mobile/lib/repositories/accounts.ts"
+        "webapp/src/app/api/save-unrecognized/route.ts",
+        "webapp/src/app/api/bug-reports/route.ts",
+        "webapp/src/app/api/_shared/auth.ts",
+        "webapp/src/app/api/parse-statement/route.ts"
+      ]
+    },
+    {
+      "name": "cli-scripts",
+      "description": "CLI or automation scripts",
+      "matched_files": 4,
+      "examples": [
+        ".agents/skills/codebase-context/scripts/install_git_hook.sh",
+        ".agents/skills/codebase-context/scripts/build_context.py",
+        ".claude/skills/codebase-context/scripts/install_git_hook.sh",
+        ".claude/skills/codebase-context/scripts/build_context.py"
       ]
     }
   ],
   "entrypoints": [
-    "mobile/app/(auth)/_layout.tsx",
-    "mobile/app/(tabs)/_layout.tsx",
-    "mobile/app/_layout.tsx",
-    "packages/shared/src/types/domain.ts",
+    ".agents/skills/codebase-context/scripts/build_context.py",
+    ".agents/skills/codebase-context/scripts/install_git_hook.sh",
+    ".claude/skills/codebase-context/scripts/build_context.py",
+    ".claude/skills/codebase-context/scripts/install_git_hook.sh",
+    "mobile/app/(tabs)/index.tsx",
+    "packages/shared/src/index.ts",
     "services/pdf_parser/main.py",
+    "supabase/functions/notify-bug-report/index.ts",
     "webapp/src/app/(auth)/forgot-password/page.tsx",
     "webapp/src/app/(auth)/layout.tsx",
     "webapp/src/app/(auth)/login/page.tsx",
@@ -243,21 +254,20 @@
     "webapp/src/app/(dashboard)/settings/page.tsx",
     "webapp/src/app/(dashboard)/transactions/[id]/page.tsx",
     "webapp/src/app/(dashboard)/transactions/page.tsx",
+    "webapp/src/app/api/_shared/auth.ts",
     "webapp/src/app/api/bug-reports/route.ts",
     "webapp/src/app/api/parse-statement/route.ts",
     "webapp/src/app/api/save-unrecognized/route.ts",
     "webapp/src/app/auth/callback/route.ts",
-    "webapp/src/app/layout.tsx",
     "webapp/src/app/onboarding/layout.tsx",
     "webapp/src/app/onboarding/page.tsx",
-    "webapp/src/app/page.tsx",
-    "webapp/src/types/domain.ts"
+    "webapp/src/lib/supabase/server.ts"
   ],
   "dependency_edges": [
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 883
+      "count": 892
     },
     {
       "from": "mobile",
@@ -266,16 +276,37 @@
     }
   ],
   "recent_changes": [
-    "CLAUDE.md",
+    ".planning/STATE.md",
     "IDEAS.md",
-    "TASKS.md",
-    ".claude/agents/frontend-auditor.md",
-    ".claude/skills/frontend-audit/",
-    "docs/FRONTEND_STANDARDS.md",
-    "docs/agent/FINANCIAL_HEALTH_STRATEGY.md",
-    "docs/research/",
-    "docs/superpowers/plans/2026-03-18-dashboard-metrics-redesign.md",
-    "docs/superpowers/specs/2026-03-18-dashboard-metrics-redesign.md",
-    "mockups/"
+    "packages/shared/src/constants/categories.ts",
+    "packages/shared/src/utils/__tests__/auto-categorize.test.ts",
+    "packages/shared/src/utils/auto-categorize.ts",
+    "webapp/src/actions/accounts.ts",
+    "webapp/src/actions/charts.ts",
+    "webapp/src/actions/interest-paid.ts",
+    "webapp/src/actions/recurring-templates.ts",
+    "webapp/src/actions/transactions.ts",
+    "webapp/src/app/(dashboard)/accounts/[id]/page.tsx",
+    "webapp/src/app/(dashboard)/dashboard/page.tsx",
+    "webapp/src/components/accounts/reconcile-balance-dialog.tsx",
+    "webapp/src/components/dashboard/accounts-overview.tsx",
+    "webapp/src/components/dashboard/cash-flow-hero-strip.tsx",
+    "webapp/src/components/dashboard/dashboard-hero.tsx",
+    "webapp/src/components/mobile/mobile-dashboard.tsx",
+    "webapp/src/components/recurring/recurring-confirm-inline.tsx",
+    "webapp/src/components/recurring/recurring-payment-timeline.tsx",
+    "webapp/src/components/recurring/recurring-timeline-view.tsx",
+    "webapp/src/components/recurring/use-recurring-month.ts",
+    "webapp/src/components/ui/category-combobox.tsx",
+    "webapp/src/lib/supabase/auth.ts",
+    ".agents/",
+    ".planning/phases/05-onboarding-audit/5-CONTEXT.md",
+    "AGENTS.md",
+    "ui-showcases/.gitkeep",
+    "ui-showcases/ship-now/",
+    "webapp/src/components/dashboard/quick-value-updates.tsx",
+    "webapp/src/lib/utils/__tests__/account-balance.test.ts",
+    "webapp/src/lib/utils/account-balance.ts",
+    "webapp/src/lib/utils/currency-balances.ts"
   ]
 }

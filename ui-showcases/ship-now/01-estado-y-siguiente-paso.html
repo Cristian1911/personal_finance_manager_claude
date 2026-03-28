@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ruta 1 - Estado y siguiente paso</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="page">
+      <div class="topline">
+        <div>
+          <div class="eyebrow">Ruta 1 / Recomendada</div>
+          <h1 class="title">Estado y siguiente paso.</h1>
+          <p class="subtitle">
+            Esta ruta convierte a Zeta en una cabina de mando. El usuario entra, entiende su estado financiero
+            en segundos y recibe una cola corta de acciones con impacto real.
+          </p>
+          <div class="chip-row">
+            <span class="chip good">Pregunta resuelta: "Voy bien?"</span>
+            <span class="chip">Nav reducida</span>
+            <span class="chip warn">Acciones primero, modulos despues</span>
+          </div>
+        </div>
+        <a class="button-ghost" href="./index.html">Volver</a>
+      </div>
+
+      <section class="card shell">
+        <aside class="rail">
+          <div class="brand">
+            <div class="brand-mark">Z</div>
+            Zeta
+          </div>
+          <nav>
+            <a class="nav-item active" href="#">Inicio</a>
+            <a class="nav-item" href="#">Movimientos</a>
+            <a class="nav-item" href="#">Plan</a>
+            <a class="nav-item" href="#">Mas</a>
+          </nav>
+          <div class="rail-foot">
+            La izquierda ya no explica la estructura interna del sistema. Solo muestra los cuatro lugares que el
+            usuario necesita recordar.
+          </div>
+        </aside>
+
+        <section class="content">
+          <div class="content-head">
+            <div>
+              <div class="eyebrow">Hoy / 26 marzo</div>
+              <h2>Vas bien, pero hay dos cosas por cerrar.</h2>
+              <p class="muted">
+                El objetivo no es mostrar todos los modulos. El objetivo es bajar ansiedad y dar claridad operativa.
+              </p>
+            </div>
+            <a class="button" href="#">Actualizar valores</a>
+          </div>
+
+          <div class="kpis">
+            <article class="card card-pad">
+              <span class="metric-label">Disponible esta quincena</span>
+              <div class="metric-value">$1.420.000</div>
+              <p class="metric-note">
+                Baja cuando completas un gasto o pago. No vuelve a bajar cuando el pendiente ya se marca como
+                completado.
+              </p>
+
+              <div class="mini-kpis">
+                <div class="mini-card">
+                  <span class="metric-label">Ritmo</span>
+                  <strong>78/100</strong>
+                  <span class="muted">Mejor que hace 10 dias</span>
+                </div>
+                <div class="mini-card">
+                  <span class="metric-label">Pagos</span>
+                  <strong>2</strong>
+                  <span class="muted">Uno vence hoy</span>
+                </div>
+                <div class="mini-card">
+                  <span class="metric-label">Revision</span>
+                  <strong>12</strong>
+                  <span class="muted">Movimientos sin categoria</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="card card-pad">
+              <div class="score-ring">
+                <div class="score-core">
+                  <div>
+                    <strong>78</strong>
+                    <span>Indice de rumbo</span>
+                  </div>
+                </div>
+              </div>
+              <div class="chip-row">
+                <span class="chip good">Liquidez estable</span>
+                <span class="chip warn">Pago cercano</span>
+                <span class="chip">Sin atrasos criticos</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="spacer"></div>
+
+          <section class="card card-pad quick-sync">
+            <div class="content-head" style="margin-bottom: 12px;">
+              <div>
+                <h3 class="section-title" style="margin-bottom: 6px;">Actualiza valores clave sin salir de Inicio</h3>
+                <p class="muted">
+                  Cuenta principal y tarjetas viven aqui. Sobrescribes el valor actual y Zeta crea un ajuste temporal
+                  hasta que llegue el import mensual.
+                </p>
+              </div>
+              <span class="chip">Impacto inmediato en el estado</span>
+            </div>
+            <div class="update-strip">
+              <div class="update-row">
+                <div>
+                  <strong>Cuenta principal</strong>
+                  <div class="queue-meta">Ahorros Bancolombia</div>
+                </div>
+                <div class="update-value">$3.840.000</div>
+                <div class="update-actions">
+                  <span class="update-action">Sobrescribir saldo</span>
+                  <span class="update-action ghost">Ajustar efectivo</span>
+                </div>
+              </div>
+              <div class="update-row">
+                <div>
+                  <strong>Visa Gold</strong>
+                  <div class="queue-meta">Total por pagar</div>
+                </div>
+                <div class="update-value debt">$380.000</div>
+                <div class="update-actions">
+                  <span class="update-action">Registrar pago</span>
+                  <span class="update-action ghost">Sobrescribir total</span>
+                </div>
+              </div>
+              <div class="update-row">
+                <div>
+                  <strong>Mastercard</strong>
+                  <div class="queue-meta">Saldo usado</div>
+                </div>
+                <div class="update-value">$1.120.000</div>
+                <div class="update-actions">
+                  <span class="update-action">Sobrescribir saldo</span>
+                  <span class="update-action ghost">Ver detalle</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="spacer"></div>
+
+          <section class="grid grid-2">
+            <article class="card card-pad">
+              <h3 class="section-title">Siguiente cola de acciones</h3>
+              <div class="queue-item">
+                <div class="queue-badge">1</div>
+                <div class="queue-copy">
+                  <strong>Paga Visa antes de las 8:00 p. m.</strong>
+                  <p>Evitas recargo y mantienes tu indice de rumbo arriba de 80.</p>
+                </div>
+                <div class="queue-meta">$380.000</div>
+              </div>
+              <div class="queue-item">
+                <div class="queue-badge">2</div>
+                <div class="queue-copy">
+                  <strong>Clasifica 12 movimientos nuevos</strong>
+                  <p>Te faltan datos para que el presupuesto y las alertas del mes sean confiables.</p>
+                </div>
+                <div class="queue-meta">6 min</div>
+              </div>
+              <div class="queue-item">
+                <div class="queue-badge">3</div>
+                <div class="queue-copy">
+                  <strong>Importa el ultimo extracto de Bancolombia</strong>
+                  <p>Actualizar saldo y pagos mejorara el cierre del mes.</p>
+                </div>
+                <div class="queue-meta">Alta</div>
+              </div>
+            </article>
+
+            <div class="stack">
+              <article class="card card-pad">
+                <h3 class="section-title">Proximas presiones</h3>
+                <div class="list">
+                  <div class="list-row">
+                    <div>
+                      <strong>Visa Gold</strong>
+                      <div class="queue-meta">Hoy</div>
+                    </div>
+                    <strong style="color: var(--alert)">$380.000</strong>
+                  </div>
+                  <div class="list-row">
+                    <div>
+                      <strong>Arriendo</strong>
+                      <div class="queue-meta">En 3 dias</div>
+                    </div>
+                    <strong>$1.100.000</strong>
+                  </div>
+                  <div class="list-row">
+                    <div>
+                      <strong>Suscripciones</strong>
+                      <div class="queue-meta">Esta semana</div>
+                    </div>
+                    <strong>$86.000</strong>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card card-pad">
+                <h3 class="section-title">Pulso del mes</h3>
+                <div class="trend"></div>
+              </article>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <div class="spacer"></div>
+
+      <section class="grid grid-2">
+        <article class="card card-pad">
+          <h3 class="section-title">Por que esta ruta encaja mejor con el producto actual</h3>
+          <div class="list">
+            <div class="list-row">
+              <div>
+                <strong>El dashboard ya tiene materia prima</strong>
+                <div class="queue-meta">Hero, medidores, starter mode, obligaciones y actividad reciente.</div>
+              </div>
+            </div>
+            <div class="list-row">
+              <div>
+                <strong>Importar y captura rapida siguen siendo claves</strong>
+                <div class="queue-meta">Pero se vuelven acciones dentro de un flujo, no el producto entero.</div>
+              </div>
+            </div>
+            <div class="list-row">
+              <div>
+                <strong>Es la mejor narrativa para escritorio y movil</strong>
+                <div class="queue-meta">Una misma historia: estado, riesgo, siguiente paso.</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <aside class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="mobile-head">
+              <div>
+                <strong>Inicio</strong>
+                <div class="queue-meta">Hoy / 26 marzo</div>
+              </div>
+              <span class="mobile-head-status">En rumbo</span>
+            </div>
+            <div class="mobile-block">
+              <div class="mobile-card mobile-hero-card">
+                <div class="mobile-hero-top">
+                  <div>
+                    <div class="metric-label">Disponible para gastar</div>
+                    <div class="queue-meta">Reacciona a completados, no duplica pendientes ya liquidados</div>
+                  </div>
+                  <span class="mobile-live">En vivo</span>
+                </div>
+                <div class="mobile-hero-grid">
+                  <div>
+                    <div class="mobile-money">$420.000</div>
+                    <div class="queue-meta">Despues de fijos y pagos cercanos.</div>
+                  </div>
+                  <div class="mobile-health-side">
+                    <div class="mobile-health-ring">
+                      <strong>78</strong>
+                    </div>
+                    <span>Indice de rumbo</span>
+                  </div>
+                </div>
+                <div class="mobile-hints">
+                  <span class="mobile-hint good">Liquidez estable</span>
+                  <span class="mobile-hint warn">Visa vence hoy</span>
+                  <span class="mobile-hint">12 por revisar</span>
+                </div>
+              </div>
+
+              <div class="mobile-card mobile-sync-card">
+                <div class="mobile-section-head">
+                  <strong>Actualiza valores</strong>
+                  <span class="queue-meta">2 toques</span>
+                </div>
+                <div class="mobile-sync-list">
+                  <div class="mobile-sync-item">
+                    <div>
+                      <strong>Cuenta principal</strong>
+                      <div class="queue-meta">Ahorros Bancolombia</div>
+                    </div>
+                    <div class="mobile-sync-side">
+                      <div class="mobile-sync-value">$3.84M</div>
+                      <span class="mobile-sync-action">Sobrescribir</span>
+                    </div>
+                  </div>
+                  <div class="mobile-sync-item">
+                    <div>
+                      <strong>Visa Gold</strong>
+                      <div class="queue-meta">Pago pendiente</div>
+                    </div>
+                    <div class="mobile-sync-side">
+                      <div class="mobile-sync-value debt">$380k</div>
+                      <span class="mobile-sync-action warn">Pagar</span>
+                    </div>
+                  </div>
+                  <div class="mobile-sync-item">
+                    <div>
+                      <strong>Efectivo</strong>
+                      <div class="queue-meta">Bolsa diaria</div>
+                    </div>
+                    <div class="mobile-sync-side">
+                      <div class="mobile-sync-value">$90k</div>
+                      <span class="mobile-sync-action ghost">Corregir</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mobile-card">
+                <div class="mobile-section-head">
+                  <strong>Haz esto ahora</strong>
+                  <span class="queue-meta">Menos de 10 min</span>
+                </div>
+                <div class="mobile-action-list">
+                  <div class="mobile-action">
+                    <div class="mobile-action-index">1</div>
+                    <div>
+                      <strong>Paga Visa hoy</strong>
+                      <div class="queue-meta">Evita recargo y mantienes el indice arriba de 80.</div>
+                    </div>
+                  </div>
+                  <div class="mobile-action">
+                    <div class="mobile-action-index">2</div>
+                    <div>
+                      <strong>Clasifica 12 movimientos</strong>
+                      <div class="queue-meta">Le da precision al presupuesto del mes.</div>
+                    </div>
+                  </div>
+                  <div class="mobile-action">
+                    <div class="mobile-action-index">3</div>
+                    <div>
+                      <strong>Importa el ultimo extracto</strong>
+                      <div class="queue-meta">Actualiza saldo y pagos pendientes.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mobile-card mobile-pressure-card">
+                <div class="mobile-section-head">
+                  <strong>Proxima presion</strong>
+                  <span class="mobile-pressure-tag">3 dias</span>
+                </div>
+                <div class="mobile-pressure-row">
+                  <div>
+                    <strong>Arriendo</strong>
+                    <div class="queue-meta">No compromete liquidez si haces la tarea de hoy.</div>
+                  </div>
+                  <strong>$1.100.000</strong>
+                </div>
+              </div>
+            </div>
+            <div class="mobile-tabs">
+              <span class="mobile-tab active">Inicio</span>
+              <span class="mobile-tab">Movimientos</span>
+              <span class="mobile-tab">Plan</span>
+              <span class="mobile-tab">Mas</span>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>
