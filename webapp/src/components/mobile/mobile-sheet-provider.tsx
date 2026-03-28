@@ -80,12 +80,12 @@ export function MobileSheetProvider({
           if (!open) setActiveAction(null);
         }}
       >
-        <DrawerContent>
-          <DrawerHeader>
+        <DrawerContent className="max-h-[85svh] overflow-hidden">
+          <DrawerHeader className="shrink-0">
             <DrawerTitle>{activeAction ? getSheetTitle(activeAction) : ""}</DrawerTitle>
           </DrawerHeader>
 
-          <div className="overflow-y-auto px-4 pb-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             {activeAction && activeAction in TRANSACTION_ACTIONS && (
               <MobileTransactionForm
                 key={activeAction}

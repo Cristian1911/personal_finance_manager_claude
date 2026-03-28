@@ -1,62 +1,51 @@
 # PROJECT_CONTEXT
 
 Auto-generated project intelligence for fast onboarding and safe edits.
+Treat this as a durable snapshot; prefer jcodemunch for live structure and symbol queries.
 
-- Generated (UTC): `2026-03-25T13:29:49.885135+00:00`
+- Generated (UTC): `2026-03-27T15:17:11.878000+00:00`
 - Project root: `/Users/cristian/Documents/developing/current-projects/zeta`
 
 ## Stack Snapshot
-- Next.js
-- Expo/React Native
-- FastAPI
-- Supabase
+- Node.js
+- Docker
 - pnpm workspace
+- pnpm
 
 ## File/Lang Distribution
-- Text files scanned: 847
-- JSON: 282
-- TypeScript/React: 243
-- TypeScript: 137
-- Markdown: 78
+- Text files scanned: 937
+- JSON: 283
+- TypeScript/React: 249
+- Markdown: 146
+- TypeScript: 143
 - SQL: 34
-- Python: 22
-- HTML: 21
-- YAML: 11
-- Shell: 10
+- HTML: 26
+- Python: 23
+- YAML: 12
+- Shell: 11
 - JavaScript: 5
-- CSS: 2
+- CSS: 3
 - TOML: 2
 
 ## Top-level Areas
 - mobile: 354 files
-- webapp: 292 files
+- webapp: 302 files
+- .planning: 62 files
 - docs: 58 files
 - supabase: 36 files
-- packages: 26 files
+- packages: 28 files
 - services: 24 files
+- (root): 16 files
 - .superpowers: 16 files
-- (root): 15 files
 - .claude: 14 files
-- .github: 6 files
+- .agents: 7 files
+- ui-showcases: 7 files
+- .github: 7 files
 - infra: 2 files
 - mockups: 2 files
-- brand: 1 files
-- test-results: 1 files
 
 ## Key Commands
-### root_scripts
-- `start`: `pnpm --filter mobile start`
-- `web`: `pnpm --filter webapp dev`
-- `mobile`: `pnpm --filter mobile start`
-- `ios`: `pnpm --filter mobile ios`
-- `android`: `pnpm --filter mobile android`
-- `build:web`: `pnpm --filter webapp build`
-### webapp_scripts
-- `dev`: `next dev`
-- `build`: `next build`
-- `start`: `next start`
-- `lint`: `eslint`
-### mobile_scripts
+### mobile (package.json)
 - `start`: `expo start`
 - `android`: `expo run:android`
 - `ios`: `expo run:ios`
@@ -69,43 +58,61 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `build:ios:simulator:device`: `eas build --platform ios --profile preview-ios-simulator-device`
 - `build:ios:device`: `eas build --platform ios --profile preview-ios-device`
 - `build:ios:production`: `eas build --platform ios --profile production-ios`
+### (root) (package.json)
+- `start`: `pnpm --filter mobile start`
+- `web`: `pnpm --filter webapp dev`
+- `mobile`: `pnpm --filter mobile start`
+- `ios`: `pnpm --filter mobile ios`
+- `android`: `pnpm --filter mobile android`
+- `build:web`: `pnpm --filter webapp build`
+### packages/shared (package.json)
+- `test`: `vitest run`
+- `test:watch`: `vitest`
+### webapp (package.json)
+- `dev`: `next dev`
+- `build`: `next build`
+- `start`: `next start`
+- `lint`: `eslint`
 
 ## Patterns Detected
-- `supabase-integration` (15 files): Supabase clients/services in app code
-  - e.g. `webapp/middleware.ts`
-  - e.g. `webapp/src/app/page.tsx`
+- `app-router` (15 files): App-router style entrypoints
   - e.g. `webapp/src/app/auth/callback/route.ts`
-- `next-app-router` (15 files): Next.js App Router pages/layouts
-  - e.g. `webapp/src/app/layout.tsx`
-  - e.g. `webapp/src/app/page.tsx`
-  - e.g. `webapp/src/app/auth/callback/route.ts`
-- `server-actions` (15 files): Server Action handlers under webapp/src/actions
+  - e.g. `webapp/src/app/api/save-unrecognized/route.ts`
+  - e.g. `webapp/src/app/api/bug-reports/route.ts`
+- `ui-components` (15 files): Reusable UI component modules
+  - e.g. `webapp/src/components/month-selector.tsx`
+  - e.g. `webapp/src/components/ui/tabs.tsx`
+  - e.g. `webapp/src/components/ui/card.tsx`
+- `server-actions` (15 files): Server-side action modules
   - e.g. `webapp/src/actions/statement-snapshots.ts`
   - e.g. `webapp/src/actions/dashboard-config.ts`
   - e.g. `webapp/src/actions/interest-paid.ts`
-- `expo-router` (15 files): Expo Router file-based routes
-  - e.g. `mobile/app/subscriptions.tsx`
-  - e.g. `mobile/app/annotate-screenshot.tsx`
-  - e.g. `mobile/app/purchase-decision.tsx`
-- `fastapi-service` (15 files): FastAPI service modules
-  - e.g. `services/pdf_parser/test_parser.py`
-  - e.g. `services/pdf_parser/models.py`
-  - e.g. `services/pdf_parser/storage.py`
-- `zod-validators` (14 files): Validation layer using Zod
-  - e.g. `webapp/src/actions/recurring-templates.ts`
-  - e.g. `webapp/src/actions/profile.ts`
-  - e.g. `webapp/src/actions/purchase-decision.ts`
-- `repository-pattern` (4 files): Repository pattern in mobile/lib/repositories
-  - e.g. `mobile/lib/repositories/budgets.ts`
-  - e.g. `mobile/lib/repositories/categories.ts`
-  - e.g. `mobile/lib/repositories/transactions.ts`
+- `data-layer` (15 files): Schemas, migrations, or database-related code
+  - e.g. `supabase/migrations/20260214100003_add_transaction_is_excluded.sql`
+  - e.g. `supabase/migrations/20260227000001_add_updated_at_to_statement_snapshots.sql`
+  - e.g. `supabase/migrations/20260214100001_seed_categories.sql`
+- `tests` (11 files): Unit, integration, or e2e tests
+  - e.g. `webapp/e2e/security.spec.ts`
+  - e.g. `webapp/e2e/ux-audit.spec.ts`
+  - e.g. `webapp/e2e/auth.setup.ts`
+- `api-routes` (4 files): HTTP or API route handlers
+  - e.g. `webapp/src/app/api/save-unrecognized/route.ts`
+  - e.g. `webapp/src/app/api/bug-reports/route.ts`
+  - e.g. `webapp/src/app/api/_shared/auth.ts`
+- `cli-scripts` (4 files): CLI or automation scripts
+  - e.g. `.agents/skills/codebase-context/scripts/install_git_hook.sh`
+  - e.g. `.agents/skills/codebase-context/scripts/build_context.py`
+  - e.g. `.claude/skills/codebase-context/scripts/install_git_hook.sh`
 
 ## Entrypoints
-- `mobile/app/(auth)/_layout.tsx`
-- `mobile/app/(tabs)/_layout.tsx`
-- `mobile/app/_layout.tsx`
-- `packages/shared/src/types/domain.ts`
+- `.agents/skills/codebase-context/scripts/build_context.py`
+- `.agents/skills/codebase-context/scripts/install_git_hook.sh`
+- `.claude/skills/codebase-context/scripts/build_context.py`
+- `.claude/skills/codebase-context/scripts/install_git_hook.sh`
+- `mobile/app/(tabs)/index.tsx`
+- `packages/shared/src/index.ts`
 - `services/pdf_parser/main.py`
+- `supabase/functions/notify-bug-report/index.ts`
 - `webapp/src/app/(auth)/forgot-password/page.tsx`
 - `webapp/src/app/(auth)/layout.tsx`
 - `webapp/src/app/(auth)/login/page.tsx`
@@ -128,28 +135,44 @@ Auto-generated project intelligence for fast onboarding and safe edits.
 - `webapp/src/app/(dashboard)/settings/page.tsx`
 - `webapp/src/app/(dashboard)/transactions/[id]/page.tsx`
 - `webapp/src/app/(dashboard)/transactions/page.tsx`
-- `webapp/src/app/api/bug-reports/route.ts`
-- `webapp/src/app/api/parse-statement/route.ts`
-- `webapp/src/app/api/save-unrecognized/route.ts`
 
 ## Dependency Signals (Folder-level)
-- `webapp` -> `webapp` (883)
+- `webapp` -> `webapp` (892)
 - `mobile` -> `mobile` (1)
 
 ## Recent Changes (git status)
-- `CLAUDE.md`
+- `.planning/STATE.md`
 - `IDEAS.md`
-- `TASKS.md`
-- `.claude/agents/frontend-auditor.md`
-- `.claude/skills/frontend-audit/`
-- `docs/FRONTEND_STANDARDS.md`
-- `docs/agent/FINANCIAL_HEALTH_STRATEGY.md`
-- `docs/research/`
-- `docs/superpowers/plans/2026-03-18-dashboard-metrics-redesign.md`
-- `docs/superpowers/specs/2026-03-18-dashboard-metrics-redesign.md`
-- `mockups/`
+- `packages/shared/src/constants/categories.ts`
+- `packages/shared/src/utils/__tests__/auto-categorize.test.ts`
+- `packages/shared/src/utils/auto-categorize.ts`
+- `webapp/src/actions/accounts.ts`
+- `webapp/src/actions/charts.ts`
+- `webapp/src/actions/interest-paid.ts`
+- `webapp/src/actions/recurring-templates.ts`
+- `webapp/src/actions/transactions.ts`
+- `webapp/src/app/(dashboard)/accounts/[id]/page.tsx`
+- `webapp/src/app/(dashboard)/dashboard/page.tsx`
+- `webapp/src/components/accounts/reconcile-balance-dialog.tsx`
+- `webapp/src/components/dashboard/accounts-overview.tsx`
+- `webapp/src/components/dashboard/cash-flow-hero-strip.tsx`
+- `webapp/src/components/dashboard/dashboard-hero.tsx`
+- `webapp/src/components/mobile/mobile-dashboard.tsx`
+- `webapp/src/components/recurring/recurring-confirm-inline.tsx`
+- `webapp/src/components/recurring/recurring-payment-timeline.tsx`
+- `webapp/src/components/recurring/recurring-timeline-view.tsx`
+- `webapp/src/components/recurring/use-recurring-month.ts`
+- `webapp/src/components/ui/category-combobox.tsx`
+- `webapp/src/lib/supabase/auth.ts`
+- `.agents/`
+- `.planning/phases/05-onboarding-audit/5-CONTEXT.md`
+- `AGENTS.md`
+- `ui-showcases/.gitkeep`
+- `ui-showcases/ship-now/`
+- `webapp/src/components/dashboard/quick-value-updates.tsx`
+- `webapp/src/lib/utils/__tests__/account-balance.test.ts`
 
 ## Agent Playbook
-- Read this file first, then open only relevant folders/files.
+- Read this file first, then use jcodemunch for live repo outline, tree, and symbol lookups.
 - Prefer paths listed under Patterns and Entrypoints for feature work.
 - Regenerate this file after non-trivial code changes.

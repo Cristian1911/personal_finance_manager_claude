@@ -10,12 +10,15 @@ import { BudgetCategoryGrid } from "@/components/budget/budget-category-grid";
 import { TrendComparison } from "@/components/budget/trend-comparison";
 import { CategoryManageList } from "@/components/budget/category-manage-list";
 import { MonthEndInsight } from "@/components/budget/month-end-insight";
+import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { MobilePresupuesto } from "@/components/mobile/mobile-presupuesto";
 import { MonthPlanner } from "@/components/budget/month-planner";
 import { MonthSelector } from "@/components/month-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
 import { getPreferredCurrency } from "@/actions/profile";
+import Link from "next/link";
 
 export default async function CategoriesPage({
   searchParams,
@@ -45,12 +48,22 @@ export default async function CategoriesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <MobilePageHeader title="Presupuesto" backHref="/plan">
+        <MonthSelector />
+      </MobilePageHeader>
+
+      <div className="hidden lg:flex flex-wrap items-start justify-between gap-2">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Detalle del plan
+          </p>
           <h1 className="text-2xl font-bold">Presupuesto</h1>
-          <p className="text-muted-foreground">¿Cómo vas este mes?</p>
+          <p className="text-muted-foreground">Profundiza en los límites y categorías que sostienen tu plan.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/plan">Volver a Plan</Link>
+          </Button>
           <MonthPlanner categories={outflowCategories} />
           <MonthSelector />
         </div>

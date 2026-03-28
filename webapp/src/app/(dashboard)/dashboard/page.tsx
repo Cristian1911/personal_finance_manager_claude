@@ -14,6 +14,7 @@ import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
+  CalendarClock,
   FileUp,
   Landmark,
   Sparkles,
@@ -53,26 +54,18 @@ import { getHealthMeters } from "@/actions/health-meters";
 import { get503020Allocation } from "@/actions/allocation";
 import { getDebtFreeCountdown } from "@/actions/debt-countdown";
 import { FlujoSection } from "@/components/dashboard/flujo-section";
-import { PresupuestoSection } from "@/components/dashboard/presupuesto-section";
-import { PatrimonioSection } from "@/components/dashboard/patrimonio-section";
+import { PlanTeaserCard } from "@/components/dashboard/plan-teaser-card";
 import { ActividadHeatmap } from "@/components/dashboard/actividad-heatmap";
-import { AllocationBars5030 } from "@/components/budget/allocation-bars-5030";
-import { DebtFreeCountdown } from "@/components/debt/debt-free-countdown";
 import {
   AccountsSkeleton,
-  PresupuestoSkeleton,
-  PatrimonioSkeleton,
   HeatmapSkeleton,
-  HealthScoreSkeleton,
   MobileBurnRateSkeleton,
-  MobileAllocationSkeleton,
-  MobileDebtSkeleton,
 } from "@/components/dashboard/dashboard-skeletons";
 import type { HealthMetersData } from "@/actions/health-meters";
+import type { AllocationData } from "@/actions/allocation";
+import type { DebtCountdownData } from "@/actions/debt-countdown";
 
-// ── Dynamic imports — chart JS is NOT in the initial bundle ──────────────────
-// BurnRateCard moved to flujo-section.tsx; chart components use dynamic()
-// in their own section files (flujo-charts, presupuesto-section, patrimonio-section).
+// ── Dynamic imports — used by mobile burn rate section ───────────────────────
 
 const BurnRateCard = dynamic(
   () => import("@/components/dashboard/burn-rate-card").then((m) => ({ default: m.BurnRateCard })),
@@ -147,44 +140,6 @@ async function MobileBurnRateSection({ currency }: { currency: CurrencyCode }) {
   return burnRateData ? <BurnRateCard data={burnRateData} /> : <BurnRateCardEmpty />;
 }
 
-async function MobileAllocationSection({
-  month,
-  currency,
-}: {
-  month: string | undefined;
-  currency: CurrencyCode;
-}) {
-  const allocationData = await get503020Allocation(month, currency);
-  if (!allocationData) return null;
-  return (
-    <DashboardSection
-      title="Presupuesto"
-      section="presupuesto"
-      defaultOpen={false}
-      showToggle={false}
-      summaryText={`${Math.round(allocationData.needs.percent + allocationData.wants.percent)}% gastado`}
-    >
-      <AllocationBars5030 data={allocationData} />
-    </DashboardSection>
-  );
-}
-
-async function MobileDebtSection({ currency }: { currency: CurrencyCode }) {
-  const debtCountdownData = await getDebtFreeCountdown(currency);
-  if (!debtCountdownData) return null;
-  return (
-    <DashboardSection
-      title="Deuda"
-      section="patrimonio"
-      defaultOpen={false}
-      showToggle={false}
-      summaryText={`${debtCountdownData.monthsToFree} meses para libre`}
-    >
-      <DebtFreeCountdown data={debtCountdownData} />
-    </DashboardSection>
-  );
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Page
 // ──────────────────────────────────────────────────────────────────────────────
@@ -204,12 +159,10 @@ export default async function DashboardPage({
 
   if (!user) return null;
 
-  // Await currency first (it's server-cached, ~0ms after first call)
-  const preferredCurrency = await getPreferredCurrency();
-
-  // Fetch transactions + cached accounts + dashboard config in parallel
-  const [{ data: recentTransactions }, allAccountsResult, dashboardConfigData] =
+  // Fetch currency + transactions + cached accounts + dashboard config in parallel
+  const [preferredCurrency, { data: recentTransactions }, allAccountsResult, dashboardConfigData] =
     await Promise.all([
+      getPreferredCurrency(),
       supabase
         .from("transactions")
         .select("*, categories!category_id(name_es, name)")
@@ -252,25 +205,25 @@ export default async function DashboardPage({
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <h1 className="text-2xl font-bold">Inicio</h1>
             <p className="text-muted-foreground">Tu base ya está lista. Falta activar tu flujo.</p>
           </div>
         </div>
 
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-z-brass/20 bg-[linear-gradient(180deg,rgba(63,70,50,0.18),rgba(18,20,18,0.94))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
-              <Sparkles className="h-5 w-5 text-primary" />
+              <Sparkles className="h-5 w-5 text-z-brass" />
               Primeros pasos recomendados
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             <Link
               href="/import"
-              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+              className="rounded-lg border border-white/6 bg-card/70 p-4 transition-colors hover:bg-white/5"
             >
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <FileUp className="h-4 w-4 text-primary" />
+                <FileUp className="h-4 w-4 text-z-brass" />
                 Importar extracto PDF
               </div>
               <p className="text-sm text-muted-foreground">
@@ -279,10 +232,10 @@ export default async function DashboardPage({
             </Link>
             <Link
               href="/transactions"
-              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+              className="rounded-lg border border-white/6 bg-card/70 p-4 transition-colors hover:bg-white/5"
             >
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <WalletCards className="h-4 w-4 text-primary" />
+                <WalletCards className="h-4 w-4 text-z-brass" />
                 Registrar primer movimiento
               </div>
               <p className="text-sm text-muted-foreground">
@@ -291,10 +244,10 @@ export default async function DashboardPage({
             </Link>
             <Link
               href="/categorizar"
-              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+              className="rounded-lg border border-white/6 bg-card/70 p-4 transition-colors hover:bg-white/5"
             >
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <Tags className="h-4 w-4 text-primary" />
+                <Tags className="h-4 w-4 text-z-brass" />
                 Definir categorías base
               </div>
               <p className="text-sm text-muted-foreground">
@@ -303,10 +256,10 @@ export default async function DashboardPage({
             </Link>
             <Link
               href="/categories"
-              className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+              className="rounded-lg border border-white/6 bg-card/70 p-4 transition-colors hover:bg-white/5"
             >
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <Landmark className="h-4 w-4 text-primary" />
+                <Landmark className="h-4 w-4 text-z-brass" />
                 Crear presupuesto mensual
               </div>
               <p className="text-sm text-muted-foreground">
@@ -316,7 +269,7 @@ export default async function DashboardPage({
           </CardContent>
           <CardContent className="pt-0">
             <Link href="/import">
-              <Button className="gap-2">
+              <Button className="gap-2 bg-z-brass text-z-ink hover:bg-z-brass/90">
                 Empezar ahora
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -377,14 +330,54 @@ export default async function DashboardPage({
     : "Agrega una cuenta para comenzar";
 
   const heatmapSubtitle = recentTx.length > 0
-    ? "Actividad de los ultimos meses"
+    ? "Actividad de los últimos meses"
     : "Sin transacciones registradas";
+
+  const desktopAttention = heroData.pendingObligations.length > 0
+    ? {
+        eyebrow: "Atención hoy",
+        title: `${heroData.pendingObligations.length} ${heroData.pendingObligations.length === 1 ? "frente abierto" : "frentes abiertos"} que pueden mover tu margen`,
+        body: `Hay ${heroData.pendingObligations.length} ${heroData.pendingObligations.length === 1 ? "pago pendiente" : "pagos pendientes"} por ${formatCurrency(heroData.totalPending, currency)}. Revísalos antes de comprometer más gasto este mes.`,
+        href: "/recurrentes",
+        cta: "Revisar pagos",
+      }
+    : heroData.freshness !== "fresh"
+      ? {
+          eyebrow: "Mantener al día",
+          title: "Tu base necesita una revisión corta antes de decidir",
+          body: "Actualiza saldos o importa un extracto para que el resto del dashboard vuelva a representar tu margen real.",
+          href: "#quick-update-values",
+          cta: "Actualizar valores",
+        }
+      : {
+          eyebrow: "Siguiente paso",
+          title: "Tu foto está estable y lista para decidir",
+          body: "Usa este momento para revisar movimientos recientes, ajustar presupuesto o cerrar tareas operativas desde Más.",
+          href: "/transactions",
+          cta: "Ver movimientos",
+        };
 
   return (
     <>
       {/* Mobile dashboard */}
       <div className="lg:hidden">
         <div className="space-y-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                Inicio
+              </p>
+              <div>
+                <h1 className="text-2xl font-semibold">Tu estado financiero de hoy</h1>
+                <p className="text-sm text-muted-foreground">
+                  Claridad para decidir sin perderte entre métricas
+                </p>
+              </div>
+            </div>
+            <div className="rounded-full border border-white/6 bg-z-surface-2 px-3 py-1 text-xs text-muted-foreground">
+              {monthLabel}
+            </div>
+          </div>
           {/* Tier 1: hero + health (renders immediately) */}
           <MobileDashboard
             heroData={mobileHeroData}
@@ -397,12 +390,13 @@ export default async function DashboardPage({
           <Suspense fallback={<MobileBurnRateSkeleton />}>
             <MobileBurnRateSection currency={currency} />
           </Suspense>
-          <Suspense fallback={<MobileAllocationSkeleton />}>
-            <MobileAllocationSection month={month} currency={currency} />
-          </Suspense>
-          <Suspense fallback={<MobileDebtSkeleton />}>
-            <MobileDebtSection currency={currency} />
-          </Suspense>
+          <PlanTeaserCard
+            allocationData={allocationData}
+            debtCountdownData={debtCountdownData}
+            currency={currency}
+            monthLabel={monthLabel}
+            variant="mobile"
+          />
         </div>
       </div>
 
@@ -416,21 +410,65 @@ export default async function DashboardPage({
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h1 className="text-2xl font-bold">Dashboard</h1>
-                <p className="text-muted-foreground">Tu centro de comando financiero</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                  Inicio
+                </p>
+                <h1 className="text-3xl font-semibold tracking-tight">Tu estado financiero de hoy</h1>
+                <p className="text-muted-foreground">
+                  {monthLabel} · claridad para decidir sin perderte entre métricas
+                </p>
               </div>
               <Suspense fallback={<div className="h-9 w-36 rounded-md bg-muted animate-pulse" />}>
                 <MonthSelector />
               </Suspense>
             </div>
 
-            {/* ── Hero Section — tier 1: always visible, no collapse ── */}
-            <DashboardHero
-              data={heroData}
-              allocationData={allocationData}
-              debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
-            />
-            <QuickValueUpdates accounts={quickUpdateAccounts} id="quick-update-values" />
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_24rem]">
+              <div className="space-y-6">
+                {/* ── Hero Section — tier 1: always visible, no collapse ── */}
+                <DashboardHero
+                  data={heroData}
+                  allocationData={allocationData}
+                  debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <Card className="border-white/6 bg-z-surface-2/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                  <CardHeader className="space-y-2 pb-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                      {desktopAttention.eyebrow}
+                    </p>
+                    <CardTitle className="text-xl leading-tight">
+                      {desktopAttention.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      {desktopAttention.body}
+                    </p>
+                    <Button
+                      asChild
+                      className="w-full justify-between bg-z-brass text-z-ink hover:bg-z-brass/90"
+                    >
+                      <Link href={desktopAttention.href}>
+                        {desktopAttention.cta}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <WidgetSlot widgetId="upcoming-payments">
+                  <UpcomingPayments
+                    obligations={heroData.pendingObligations}
+                    totalPending={heroData.totalPending}
+                  />
+                </WidgetSlot>
+
+                <QuickValueUpdates accounts={quickUpdateAccounts} id="quick-update-values" />
+              </div>
+            </div>
 
             {/* ── 2. Health Score — tier 1, primary tier (no section wrapper) ── */}
             <WidgetSlot widgetId="health-score">
@@ -448,16 +486,12 @@ export default async function DashboardPage({
               <FlujoSection month={month} currency={currency} monthLabel={monthLabel} />
             </Suspense>
 
-            {/* ── 4. Budget — tier 2, allocationData passed to avoid duplicate fetch ── */}
-            <Suspense
-              fallback={
-                <DashboardSection title="Presupuesto" section="presupuesto">
-                  <PresupuestoSkeleton />
-                </DashboardSection>
-              }
-            >
-              <PresupuestoSection month={month} currency={currency} monthLabel={monthLabel} healthMetersData={healthMetersData} allocationData={allocationData} />
-            </Suspense>
+            <PlanTeaserCard
+              allocationData={allocationData}
+              debtCountdownData={debtCountdownData}
+              currency={currency}
+              monthLabel={monthLabel}
+            />
 
             {/* ── 5. Activity Heatmap — tier 2 ── */}
             <DashboardSection title="Actividad" section="actividad" subtitle={heatmapSubtitle}>
@@ -470,13 +504,6 @@ export default async function DashboardPage({
 
             {/* ── 6. Accounts — mixed tier 1 + tier 2 ── */}
             <DashboardSection title="Cuentas" section="cuentas" subtitle={accountsSubtitle}>
-              <WidgetSlot widgetId="upcoming-payments">
-                <UpcomingPayments
-                  obligations={heroData.pendingObligations}
-                  totalPending={heroData.totalPending}
-                />
-              </WidgetSlot>
-
               <Suspense fallback={<AccountsSkeleton />}>
                 <AccountsSection allAccounts={allAccounts} />
               </Suspense>
@@ -542,17 +569,6 @@ export default async function DashboardPage({
                 </Card>
               </WidgetSlot>
             </DashboardSection>
-
-            {/* ── 7. Patrimonio & Deuda — tier 2 ── */}
-            <Suspense
-              fallback={
-                <DashboardSection title="Patrimonio y deuda" section="patrimonio">
-                  <PatrimonioSkeleton />
-                </DashboardSection>
-              }
-            >
-              <PatrimonioSection currency={currency} month={month} healthMetersData={healthMetersData} />
-            </Suspense>
           </div>
         </DashboardConfigProvider>
       </div>

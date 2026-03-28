@@ -274,6 +274,14 @@ export function TransactionForm({
             name="create_recurring_template"
             value={createRecurringSetup ? "true" : "false"}
           />
+          <input type="hidden" name="destinatario_name" value={destinatarioName} />
+          <input type="hidden" name="recurring_frequency" value={recurringFrequency} />
+          <input type="hidden" name="recurring_start_date" value={recurringStartDate} />
+          <input
+            type="hidden"
+            name="recurring_transfer_source_account_id"
+            value={recurringTransferSourceAccountId}
+          />
 
           <Collapsible
             open={advancedOpen}
@@ -283,7 +291,7 @@ export function TransactionForm({
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
+                className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left sm:items-center"
               >
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Opciones relacionadas</p>
@@ -300,7 +308,7 @@ export function TransactionForm({
             </CollapsibleTrigger>
 
             <CollapsibleContent forceMount className="space-y-4 border-t px-4 py-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label htmlFor="create_destinatario" className="cursor-pointer">
                     Crear destinatario
@@ -321,7 +329,6 @@ export function TransactionForm({
                   <Label htmlFor="destinatario_name">Nombre del destinatario</Label>
                   <Input
                     id="destinatario_name"
-                    name="destinatario_name"
                     value={destinatarioName}
                     onChange={(event) => setDestinatarioName(event.target.value)}
                     placeholder="Ej: Netflix"
@@ -332,7 +339,7 @@ export function TransactionForm({
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label htmlFor="create_recurring_template" className="cursor-pointer">
                     Crear pago recurrente
@@ -354,7 +361,6 @@ export function TransactionForm({
                     <div className="space-y-2">
                       <Label htmlFor="recurring_frequency">Frecuencia</Label>
                       <Select
-                        name="recurring_frequency"
                         value={recurringFrequency}
                         onValueChange={(value) =>
                           setRecurringFrequency(
@@ -379,7 +385,6 @@ export function TransactionForm({
                       <Label htmlFor="recurring_start_date">Fecha de inicio</Label>
                       <Input
                         id="recurring_start_date"
-                        name="recurring_start_date"
                         type="date"
                         value={recurringStartDate}
                         onChange={(event) => setRecurringStartDate(event.target.value)}
@@ -393,7 +398,6 @@ export function TransactionForm({
                         Cuenta origen del pago
                       </Label>
                       <Select
-                        name="recurring_transfer_source_account_id"
                         value={recurringTransferSourceAccountId}
                         onValueChange={setRecurringTransferSourceAccountId}
                       >

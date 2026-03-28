@@ -7,9 +7,10 @@ import { formatDate } from "@/lib/utils/date";
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  ChevronRight,
   CalendarClock,
+  ChevronRight,
   CircleAlert,
+  FileUp,
 } from "lucide-react";
 import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
@@ -58,39 +59,63 @@ export function MobileDashboard({
 }: MobileDashboardProps) {
   const today = toISODateString(new Date());
   const code = heroData.currency as CurrencyCode;
+  const hasUpcomingPayments = upcomingPayments.length > 0;
 
   return (
     <div className="space-y-5">
       {/* 1. Hero card */}
       <div>
-        <div className="rounded-xl border bg-card p-5">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Disponible para gastar
+        <div className="rounded-[24px] border border-white/6 bg-[radial-gradient(circle_at_top_left,rgba(63,70,50,0.28),transparent_55%),linear-gradient(180deg,rgba(30,34,30,0.96),rgba(18,20,18,0.98))] p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Estado del día
           </p>
           <p
             className={cn(
-              "text-3xl font-bold mt-1",
+              "mt-2 text-3xl font-bold tracking-tight",
               heroData.availableToSpend < 0 && "text-z-debt"
             )}
           >
             {formatCurrency(heroData.availableToSpend, code)}
           </p>
-          <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
+            {hasUpcomingPayments
+              ? `Tienes ${upcomingPayments.length} ${upcomingPayments.length === 1 ? "pago que revisar" : "pagos que revisar"} antes de comprometer más gasto.`
+              : "Tu margen está listo para ayudarte a decidir el siguiente paso sin abrir más ruido."}
+          </p>
+          <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
             <span>Saldo: {formatCurrency(heroData.totalBalance, code)}</span>
             <span>Fijos: {formatCurrency(heroData.pendingFixed, code)}</span>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Link
+              href={hasUpcomingPayments ? "/recurrentes" : "/transactions"}
+              className="flex min-h-9 flex-1 items-center justify-center gap-2 rounded-full bg-z-brass px-3 text-sm font-medium text-z-ink"
+            >
+              {hasUpcomingPayments ? (
+                <>
+                  <CalendarClock className="h-4 w-4" />
+                  Revisar pagos
+                </>
+              ) : (
+                <>
+                  <ChevronRight className="h-4 w-4" />
+                  Ver movimientos
+                </>
+              )}
+            </Link>
+            <Link
+              href="/import"
+              className="flex min-h-9 flex-1 items-center justify-center gap-2 rounded-full border border-white/8 bg-black/10 px-3 text-sm font-medium text-z-sage-light"
+            >
+              <FileUp className="h-4 w-4" />
+              Importar
+            </Link>
           </div>
         </div>
       </div>
 
-      <QuickValueUpdates accounts={quickUpdateAccounts} variant="mobile" />
-
-      {/* 2. Health Meters — compact 4-bar card */}
-      {healthMetersData && (
-        <HealthMetersCard data={healthMetersData} />
-      )}
-
-      {/* 3. Próximos pagos — prominent */}
-      {upcomingPayments.length > 0 && (
+      {/* 2. Próximos pagos — prominent */}
+      {hasUpcomingPayments && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold flex items-center gap-2">
@@ -106,7 +131,7 @@ export function MobileDashboard({
             </Link>
           </div>
           <div className="rounded-xl border divide-y">
-            {upcomingPayments.slice(0, 5).map((payment) => {
+            {upcomingPayments.map((payment) => {
               const isOverdue = payment.dueDate < today;
               const isToday = payment.dueDate === today;
 
@@ -159,6 +184,13 @@ export function MobileDashboard({
             })}
           </div>
         </div>
+      )}
+
+      <QuickValueUpdates accounts={quickUpdateAccounts} variant="mobile" />
+
+      {/* 3. Health Meters — compact 4-bar card */}
+      {healthMetersData && (
+        <HealthMetersCard data={healthMetersData} />
       )}
 
       {/* 4. Actividad reciente — compact */}

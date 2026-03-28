@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zeta UI Showcase — Desktop (1440px)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0a;
+      color: #e5e5e5;
+      padding: 40px;
+    }
+    header {
+      text-align: center;
+      padding: 60px 0 40px;
+      border-bottom: 1px solid #262626;
+      margin-bottom: 60px;
+    }
+    header h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { color: #737373; margin-top: 8px; font-size: 1.1rem; }
+    header .meta { color: #525252; margin-top: 16px; font-size: 0.85rem; }
+
+    .section { margin-bottom: 80px; }
+    .section h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #a3a3a3;
+      margin-bottom: 32px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #1a1a1a;
+      letter-spacing: -0.01em;
+    }
+
+    .page-card {
+      margin-bottom: 60px;
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .page-card .label {
+      padding: 16px 24px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #262626;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .page-card .label h3 { font-size: 1rem; font-weight: 600; }
+    .page-card .label .route {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: #525252;
+      background: #0a0a0a;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .page-card img {
+      width: 100%;
+      display: block;
+    }
+
+    nav.toc {
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 12px;
+      padding: 24px 32px;
+      margin-bottom: 60px;
+    }
+    nav.toc h2 { font-size: 1rem; margin-bottom: 16px; color: #737373; border: none; padding: 0; }
+    nav.toc ul { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    nav.toc a {
+      color: #a3a3a3;
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 6px 0;
+      transition: color 0.15s;
+    }
+    nav.toc a:hover { color: #fff; }
+    nav.toc .num { color: #525252; font-family: monospace; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Zeta UI Showcase</h1>
+    <p>Desktop Viewport — 1440 x 900px</p>
+    <div class="meta">Captured: March 28, 2026 &middot; 18 screens &middot; Full-page screenshots</div>
+  </header>
+
+  <nav class="toc">
+    <h2>Table of Contents</h2>
+    <ul>
+      <li><a href="#dashboard"><span class="num">01</span> Dashboard</a></li>
+      <li><a href="#transactions"><span class="num">02</span> Transacciones</a></li>
+      <li><a href="#transaction-detail"><span class="num">03</span> Detalle Transaccion</a></li>
+      <li><a href="#categorizar"><span class="num">04</span> Categorizar</a></li>
+      <li><a href="#destinatarios"><span class="num">05</span> Destinatarios</a></li>
+      <li><a href="#import"><span class="num">06</span> Importar</a></li>
+      <li><a href="#accounts"><span class="num">07</span> Cuentas</a></li>
+      <li><a href="#account-detail"><span class="num">08</span> Detalle Cuenta</a></li>
+      <li><a href="#deudas"><span class="num">09</span> Deudas</a></li>
+      <li><a href="#deuda-planificador"><span class="num">10</span> Planificador Deuda</a></li>
+      <li><a href="#recurrentes"><span class="num">11</span> Recurrentes</a></li>
+      <li><a href="#presupuesto"><span class="num">12</span> Presupuesto</a></li>
+      <li><a href="#gestionar"><span class="num">13</span> Gestionar</a></li>
+      <li><a href="#settings"><span class="num">14</span> Configuracion</a></li>
+      <li><a href="#settings-analytics"><span class="num">15</span> Analytics</a></li>
+      <li><a href="#login"><span class="num">16</span> Login</a></li>
+      <li><a href="#signup"><span class="num">17</span> Registro</a></li>
+      <li><a href="#forgot-password"><span class="num">18</span> Recuperar Contrasena</a></li>
+    </ul>
+  </nav>
+
+  <section class="section">
+    <h2>App — Dashboard & Core</h2>
+
+    <div class="page-card" id="dashboard">
+      <div class="label"><h3>Dashboard</h3><span class="route">/dashboard</span></div>
+      <img src="screenshots/desktop/01-dashboard.png" alt="Dashboard">
+    </div>
+
+    <div class="page-card" id="transactions">
+      <div class="label"><h3>Transacciones</h3><span class="route">/transactions</span></div>
+      <img src="screenshots/desktop/02-transactions.png" alt="Transacciones">
+    </div>
+
+    <div class="page-card" id="transaction-detail">
+      <div class="label"><h3>Detalle de Transaccion</h3><span class="route">/transactions/[id]</span></div>
+      <img src="screenshots/desktop/03-transaction-detail.png" alt="Detalle Transaccion">
+    </div>
+
+    <div class="page-card" id="categorizar">
+      <div class="label"><h3>Categorizar</h3><span class="route">/categorizar</span></div>
+      <img src="screenshots/desktop/04-categorizar.png" alt="Categorizar">
+    </div>
+
+    <div class="page-card" id="destinatarios">
+      <div class="label"><h3>Destinatarios</h3><span class="route">/destinatarios</span></div>
+      <img src="screenshots/desktop/05-destinatarios.png" alt="Destinatarios">
+    </div>
+
+    <div class="page-card" id="import">
+      <div class="label"><h3>Importar</h3><span class="route">/import</span></div>
+      <img src="screenshots/desktop/06-import.png" alt="Importar">
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Cuentas & Deudas</h2>
+
+    <div class="page-card" id="accounts">
+      <div class="label"><h3>Cuentas</h3><span class="route">/accounts</span></div>
+      <img src="screenshots/desktop/07-accounts.png" alt="Cuentas">
+    </div>
+
+    <div class="page-card" id="account-detail">
+      <div class="label"><h3>Detalle de Cuenta</h3><span class="route">/accounts/[id]</span></div>
+      <img src="screenshots/desktop/08-account-detail.png" alt="Detalle Cuenta">
+    </div>
+
+    <div class="page-card" id="deudas">
+      <div class="label"><h3>Deudas</h3><span class="route">/deudas</span></div>
+      <img src="screenshots/desktop/09-deudas.png" alt="Deudas">
+    </div>
+
+    <div class="page-card" id="deuda-planificador">
+      <div class="label"><h3>Planificador de Deuda</h3><span class="route">/deudas/planificador</span></div>
+      <img src="screenshots/desktop/10-deuda-planificador.png" alt="Planificador Deuda">
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Presupuesto & Recurrentes</h2>
+
+    <div class="page-card" id="recurrentes">
+      <div class="label"><h3>Pagos Recurrentes</h3><span class="route">/recurrentes</span></div>
+      <img src="screenshots/desktop/11-recurrentes.png" alt="Recurrentes">
+    </div>
+
+    <div class="page-card" id="presupuesto">
+      <div class="label"><h3>Presupuesto (Categorias)</h3><span class="route">/categories</span></div>
+      <img src="screenshots/desktop/12-presupuesto.png" alt="Presupuesto">
+    </div>
+
+    <div class="page-card" id="gestionar">
+      <div class="label"><h3>Gestionar</h3><span class="route">/gestionar</span></div>
+      <img src="screenshots/desktop/13-gestionar.png" alt="Gestionar">
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Configuracion</h2>
+
+    <div class="page-card" id="settings">
+      <div class="label"><h3>Configuracion</h3><span class="route">/settings</span></div>
+      <img src="screenshots/desktop/14-settings.png" alt="Configuracion">
+    </div>
+
+    <div class="page-card" id="settings-analytics">
+      <div class="label"><h3>Analytics</h3><span class="route">/settings/analytics</span></div>
+      <img src="screenshots/desktop/15-settings-analytics.png" alt="Analytics">
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Auth</h2>
+
+    <div class="page-card" id="login">
+      <div class="label"><h3>Iniciar Sesion</h3><span class="route">/login</span></div>
+      <img src="screenshots/desktop/16-login.png" alt="Login">
+    </div>
+
+    <div class="page-card" id="signup">
+      <div class="label"><h3>Registro</h3><span class="route">/signup</span></div>
+      <img src="screenshots/desktop/17-signup.png" alt="Signup">
+    </div>
+
+    <div class="page-card" id="forgot-password">
+      <div class="label"><h3>Recuperar Contrasena</h3><span class="route">/forgot-password</span></div>
+      <img src="screenshots/desktop/18-forgot-password.png" alt="Forgot Password">
+    </div>
+  </section>
+</body>
+</html>
