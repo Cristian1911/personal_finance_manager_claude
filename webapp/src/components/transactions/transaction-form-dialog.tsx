@@ -32,18 +32,20 @@ export function TransactionFormDialog({
           {transaction ? "Editar" : "Nueva transacción"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[85svh] flex-col overflow-hidden p-0 sm:max-w-xl">
+        <DialogHeader className="shrink-0 px-4 pt-4 sm:px-6 sm:pt-6">
           <DialogTitle>
             {transaction ? "Editar transacción" : "Nueva transacción"}
           </DialogTitle>
         </DialogHeader>
-        <TransactionForm
-          transaction={transaction}
-          accounts={accounts}
-          categories={categories}
-          onSuccess={() => setOpen(false)}
-        />
+        <div className="min-h-0 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
+          <TransactionForm
+            transaction={transaction}
+            accounts={accounts}
+            categories={categories}
+            onSuccess={() => setOpen(false)}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );
