@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { Search, ArrowUpDown, Plus, Contact } from "lucide-react";
+import { CreateDestinatarioDialog } from "./create-destinatario-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MergeDialog } from "./merge-dialog";
+import type { CategoryWithChildren } from "@/types/domain";
 
 type DestinatarioItem = {
   id: string;
@@ -32,11 +34,13 @@ type SortOption = "name" | "most_used" | "recent";
 interface DestinatarioListProps {
   destinatarios: DestinatarioItem[];
   categoryMap: Record<string, string>;
+  categories: CategoryWithChildren[];
 }
 
 export function DestinatarioList({
   destinatarios,
   categoryMap,
+  categories,
 }: DestinatarioListProps) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("name");
@@ -106,12 +110,7 @@ export function DestinatarioList({
         <p className="text-sm text-muted-foreground mb-6">
           Importa transacciones o crea uno manualmente.
         </p>
-        <Button asChild>
-          <Link href="/destinatarios/nuevo">
-            <Plus className="size-4 mr-2" />
-            Crear destinatario
-          </Link>
-        </Button>
+        <CreateDestinatarioDialog categories={categories} />
       </div>
     );
   }
@@ -119,7 +118,7 @@ export function DestinatarioList({
   return (
     <div className="space-y-4">
       {/* Search + Sort + Create */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-white/6 bg-z-surface-2/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -152,12 +151,15 @@ export function DestinatarioList({
               <SelectItem value="recent">Mas reciente</SelectItem>
             </SelectContent>
           </Select>
-          <Button asChild size="sm" className="hidden sm:inline-flex">
-            <Link href="/destinatarios/nuevo">
-              <Plus className="size-4 mr-2" />
-              Crear
-            </Link>
-          </Button>
+          <CreateDestinatarioDialog
+            categories={categories}
+            trigger={
+              <Button size="sm" className="hidden bg-z-brass text-z-ink hover:bg-z-brass/90 sm:inline-flex">
+                <Plus className="size-4 mr-2" />
+                Crear
+              </Button>
+            }
+          />
         </div>
       </div>
 
@@ -179,11 +181,11 @@ export function DestinatarioList({
 
       {/* Desktop list */}
       <div className="hidden sm:block">
-        <div className="rounded-lg border divide-y">
+        <div className="overflow-hidden rounded-2xl border border-white/6 bg-z-surface-2/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] divide-y divide-white/6">
           {filtered.map((d) => (
             <div
               key={d.id}
-              className="flex items-center gap-2 px-4 py-3 hover:bg-muted/50 transition-colors"
+              className="flex items-center gap-2 px-4 py-3 transition-colors hover:bg-white/5"
             >
               <Checkbox
                 checked={selectedIds.has(d.id)}
@@ -235,7 +237,7 @@ export function DestinatarioList({
             </div>
             <Link
               href={`/destinatarios/${d.id}`}
-              className="block rounded-lg border bg-card p-4 pl-10 active:bg-muted/50"
+              className="block rounded-xl border border-white/6 bg-z-surface-2/80 p-4 pl-10 active:bg-white/5"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">

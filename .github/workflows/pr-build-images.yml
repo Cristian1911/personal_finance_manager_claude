@@ -90,6 +90,8 @@ jobs:
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_BUILD_SHA=${{ github.event.pull_request.head.sha }}
+            NEXT_PUBLIC_BUILD_TIME=${{ github.event.pull_request.updated_at }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

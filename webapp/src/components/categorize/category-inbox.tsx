@@ -436,15 +436,16 @@ export function CategoryInbox({
     <div className="space-y-4">
       {/* Tabs — only show if there are auto-categorized transactions */}
       {showTabs && (
-        <div className="flex gap-1 border-b">
+        <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <div className="flex gap-1">
           <button
             type="button"
             onClick={() => { setActiveTab("uncategorized"); setSelected(new Set()); }}
             className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+              "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors",
               activeTab === "uncategorized"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "bg-z-olive text-z-sage-light"
+                : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
             )}
           >
             Sin categoria
@@ -458,10 +459,10 @@ export function CategoryInbox({
             type="button"
             onClick={() => { setActiveTab("auto-review"); setSelected(new Set()); }}
             className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+              "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors",
               activeTab === "auto-review"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "bg-z-olive text-z-sage-light"
+                : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
             )}
           >
             Auto-categorizadas
@@ -471,6 +472,7 @@ export function CategoryInbox({
               </span>
             )}
           </button>
+          </div>
         </div>
       )}
 
@@ -489,7 +491,7 @@ export function CategoryInbox({
           ) : (
             <>
               {/* Action bar */}
-              <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/6 bg-z-surface-2/80 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Inbox className="h-4 w-4" />
                   <span>
@@ -517,7 +519,7 @@ export function CategoryInbox({
                       size="sm"
                       onClick={handleAcceptAllSuggestions}
                       disabled={isPending}
-                      className="gap-1.5"
+                      className="gap-1.5 bg-z-brass text-z-ink hover:bg-z-brass/90"
                     >
                       <Sparkles className="h-3.5 w-3.5" />
                       Aceptar {suggestedCount}{" "}
@@ -530,7 +532,7 @@ export function CategoryInbox({
                       variant="outline"
                       onClick={handleApplyByMerchant}
                       disabled={isPending}
-                      className="gap-1.5"
+                      className="gap-1.5 border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5 hover:text-z-sage-light"
                     >
                       <CheckCheck className="h-3.5 w-3.5" />
                       Aplicar por comercio ({groupedSuggestionCount})
@@ -599,7 +601,7 @@ export function CategoryInbox({
           ) : (
             <>
               {/* Action bar */}
-              <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/6 bg-z-surface-2/80 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <ShieldCheck className="h-4 w-4" />
                   <span>
@@ -615,7 +617,7 @@ export function CategoryInbox({
                   size="sm"
                   onClick={handleConfirmAllAuto}
                   disabled={isPending}
-                  className="gap-1.5"
+                  className="gap-1.5 bg-z-brass text-z-ink hover:bg-z-brass/90"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                   Confirmar todas ({autoTransactions.length})
