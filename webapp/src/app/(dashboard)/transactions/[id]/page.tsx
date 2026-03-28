@@ -50,6 +50,9 @@ export default async function TransactionDetailPage({
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div className="flex-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Detalle de movimientos
+          </p>
           <h1 className="text-2xl font-bold">
             {tx.merchant_name || tx.clean_description || "Transacción"}
           </h1>

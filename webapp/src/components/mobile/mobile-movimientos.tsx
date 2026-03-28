@@ -119,7 +119,7 @@ export function MobileMovimientos({
   if (transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-muted-foreground">No hay transacciones</p>
+        <p className="text-muted-foreground">No hay movimientos en esta vista</p>
       </div>
     );
   }
@@ -128,16 +128,16 @@ export function MobileMovimientos({
     <div className="space-y-5">
       {/* Summary header */}
       <FadeIn>
-      <div className="rounded-xl border bg-card p-4">
+      <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
         <div className="flex items-center gap-6">
           <div>
-            <p className="text-xs text-muted-foreground">Gastos</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Gastos</p>
             <p className="font-semibold text-z-expense">
               {formatCurrency(outflow, currency)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Ingresos</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Ingresos</p>
             <p className="font-semibold text-z-income">
               {formatCurrency(inflow, currency)}
             </p>
@@ -155,7 +155,7 @@ export function MobileMovimientos({
               {categoryChips.map((chip) => (
                 <span
                   key={chip.id}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/8 bg-black/10 px-2.5 py-1 text-xs"
                 >
                   <span
                     className="h-2 w-2 rounded-full shrink-0"
@@ -190,7 +190,7 @@ export function MobileMovimientos({
                     key={tx.id}
                     href={`/transactions/${tx.id}`}
                     className={cn(
-                      "flex items-center justify-between rounded-lg px-2 py-2 -mx-2 hover:bg-muted transition-colors",
+                      "flex items-center justify-between rounded-xl px-2 py-2 -mx-2 transition-colors hover:bg-white/5",
                       tx.is_excluded && "opacity-40"
                     )}
                   >
