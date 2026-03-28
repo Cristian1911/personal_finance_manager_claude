@@ -40,7 +40,7 @@ When the PR is squash-merged to `main`:
 
 ### 3. VPS Setup
 
-- **Host**: `root@147.93.41.103` (SSH key auth, no password)
+- **Host**: `root@<VPS_IP>` (SSH key auth, no password — check team credentials for actual IP)
 - **Project dir**: `/docker/personal-finance-manager/`
 - **Compose file**: managed by Hostinger deploy action
 - **Network**: `nginx-proxy` (external) connects to Nginx Proxy Manager for SSL termination
@@ -66,17 +66,17 @@ Each image includes `NEXT_PUBLIC_BUILD_SHA` and `NEXT_PUBLIC_BUILD_TIME` baked i
 
 ### Check what's deployed
 ```bash
-ssh root@147.93.41.103 "docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.CreatedAt}}'"
+ssh root@<VPS_IP> "docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.CreatedAt}}'"
 ```
 
 ### Check deployed image
 ```bash
-ssh root@147.93.41.103 "docker exec personal-finance-manager-webapp-1 cat /app/webapp/.next/BUILD_ID"
+ssh root@<VPS_IP> "docker exec personal-finance-manager-webapp-1 cat /app/webapp/.next/BUILD_ID"
 ```
 
 ### Force redeploy (same image)
 ```bash
-ssh root@147.93.41.103 "cd /docker/personal-finance-manager && docker compose pull && docker compose up -d"
+ssh root@<VPS_IP> "cd /docker/personal-finance-manager && docker compose pull && docker compose up -d"
 ```
 
 ### Force full rebuild + deploy
@@ -84,7 +84,7 @@ Trigger from GitHub Actions → "Build and Deploy" → Run workflow → check "F
 
 ### View container logs
 ```bash
-ssh root@147.93.41.103 "docker logs --tail 50 personal-finance-manager-webapp-1"
+ssh root@<VPS_IP> "docker logs --tail 50 personal-finance-manager-webapp-1"
 ```
 
 ## Gotchas

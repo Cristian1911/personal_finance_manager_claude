@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils/date";
 import type { PlanScenarioSummary } from "@/types/plan";
-import { PlanStatCard, BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "./plan-stat-card";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { PlanStatCard } from "./plan-stat-card";
 
 interface PlanScenarioPreviewProps {
   scenarios: PlanScenarioSummary;

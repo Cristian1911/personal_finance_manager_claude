@@ -18,7 +18,7 @@ export const ACCOUNT_TYPE_LABELS: Record<string, string> = {
 export const ACCOUNT_TYPE_SHORT_LABELS: Record<string, string> = {
   CHECKING: "Corriente",
   SAVINGS: "Ahorros",
-  CREDIT_CARD: "Tarjeta de Crédito",
+  CREDIT_CARD: "Tarjeta",
   CASH: "Efectivo",
   INVESTMENT: "Inversión",
   LOAN: "Préstamo",

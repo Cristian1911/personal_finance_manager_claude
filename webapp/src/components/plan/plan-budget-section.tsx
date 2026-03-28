@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 import type { PlanBudgetSummary } from "@/types/plan";
-import { PlanStatCard, BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "./plan-stat-card";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { PlanStatCard } from "./plan-stat-card";
 
 interface PlanBudgetSectionProps {
   budget: PlanBudgetSummary;
