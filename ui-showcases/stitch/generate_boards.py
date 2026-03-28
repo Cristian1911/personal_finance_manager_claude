@@ -37,29 +37,14 @@ MUTED = "#95a3b8"
 ACCENT = "#d3ae69"
 
 
+FONTS_DIR = ROOT / "fonts"
+
+
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    candidates = []
-    if bold:
-        candidates.extend(
-            [
-                "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-                "/System/Library/Fonts/Supplemental/Helvetica Neue Bold.ttf",
-            ]
-        )
-    else:
-        candidates.extend(
-            [
-                "/System/Library/Fonts/Supplemental/Arial.ttf",
-                "/System/Library/Fonts/Supplemental/Helvetica Neue.ttc",
-            ]
-        )
-
-    for path in candidates:
-        try:
-            return ImageFont.truetype(path, size=size)
-        except OSError:
-            continue
-
+    name = "Inter-Bold.ttf" if bold else "Inter-Regular.ttf"
+    bundled = FONTS_DIR / name
+    if bundled.exists():
+        return ImageFont.truetype(str(bundled), size=size)
     return ImageFont.load_default()
 
 

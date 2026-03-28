@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 HOOKS_DIR="$ROOT_DIR/.githooks"
 HOOK_FILE="$HOOKS_DIR/pre-commit"
-GEN_SCRIPT="$ROOT_DIR/.claude/skills/codebase-context/scripts/build_context.py"
+GEN_SCRIPT="$ROOT_DIR/.agents/skills/codebase-context/scripts/build_context.py"
 
 if [[ ! -f "$GEN_SCRIPT" ]]; then
   echo "Missing generator script: $GEN_SCRIPT"
@@ -18,7 +18,7 @@ cat > "$HOOK_FILE" <<'EOF'
 set -euo pipefail
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
-GEN_SCRIPT="$ROOT_DIR/.claude/skills/codebase-context/scripts/build_context.py"
+GEN_SCRIPT="$ROOT_DIR/.agents/skills/codebase-context/scripts/build_context.py"
 
 if [[ ! -f "$GEN_SCRIPT" ]]; then
   exit 0
