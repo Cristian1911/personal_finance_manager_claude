@@ -48,7 +48,9 @@
 
   /* Zeta design tokens exposed as Tailwind colors */
   --color-z-ink: var(--z-ink);
+  --color-z-olive-deep: var(--z-olive-deep);
   --color-z-sage: var(--z-sage);
+  --color-z-brass: var(--z-brass);
   --color-z-sage-light: var(--z-sage-light);
   --color-z-sage-dark: var(--z-sage-dark);
   --color-z-white: var(--z-white);
@@ -65,12 +67,14 @@
 }
 
 :root {
-  /* Zeta core tokens */
-  --z-ink:        #0A0E14;
-  --z-sage:       #C5BFAE;
-  --z-sage-light: #D8D2C4;
-  --z-sage-dark:  #9E9888;
-  --z-white:      #F0EDE6;
+  /* Zeta core tokens — Obsidian & Brass */
+  --z-ink:        #121412;
+  --z-olive-deep: #3F4632;
+  --z-sage:       #768053;
+  --z-brass:      #937844;
+  --z-sage-light: #D9CCB9;
+  --z-sage-dark:  #938C7E;
+  --z-white:      #F6F0E3;
 
   /* Financial semantics */
   --z-income:  #5CB88A;
@@ -80,11 +84,11 @@
   --z-excellent: #3D9E6E;
 
   /* Surfaces */
-  --z-surface:   #131720;
-  --z-surface-2: #1C1F28;
-  --z-surface-3: #262A34;
-  --z-border:    rgba(192, 185, 170, 0.08);
-  --z-border-strong: rgba(192, 185, 170, 0.14);
+  --z-surface:   #171A17;
+  --z-surface-2: #1E221E;
+  --z-surface-3: #262B26;
+  --z-border:    rgba(217, 204, 185, 0.08);
+  --z-border-strong: rgba(217, 204, 185, 0.16);
 
   /* Typography scale */
   --z-type-display-size: 52px;
@@ -143,35 +147,35 @@
   --card-foreground: var(--z-white);
   --popover: var(--z-surface-3);
   --popover-foreground: var(--z-white);
-  --primary: var(--z-white);
-  --primary-foreground: var(--z-ink);
+  --primary: var(--z-brass);
+  --primary-foreground: var(--z-white);
   --secondary: var(--z-surface-2);
   --secondary-foreground: var(--z-sage-light);
   --muted: var(--z-surface-2);
   --muted-foreground: var(--z-sage-dark);
-  --accent: var(--z-surface-2);
-  --accent-foreground: var(--z-sage-light);
+  --accent: var(--z-olive-deep);
+  --accent-foreground: var(--z-white);
   --destructive: var(--z-debt);
   --border: var(--z-border-strong);
   --input: var(--z-border-strong);
-  --ring: var(--z-white);
+  --ring: var(--z-brass);
 
   /* Charts — use financial semantic colors */
   --chart-1: var(--z-income);
   --chart-2: var(--z-expense);
   --chart-3: var(--z-alert);
   --chart-4: var(--z-debt);
-  --chart-5: var(--z-sage);
+  --chart-5: var(--z-brass);
 
   /* Sidebar */
   --sidebar: var(--z-ink);
-  --sidebar-foreground: var(--z-sage);
-  --sidebar-primary: var(--z-sage);
-  --sidebar-primary-foreground: var(--z-ink);
+  --sidebar-foreground: var(--z-sage-light);
+  --sidebar-primary: var(--z-olive-deep);
+  --sidebar-primary-foreground: var(--z-white);
   --sidebar-accent: var(--z-surface);
   --sidebar-accent-foreground: var(--z-sage-light);
   --sidebar-border: var(--z-border);
-  --sidebar-ring: var(--z-sage-dark);
+  --sidebar-ring: var(--z-brass);
 }
 
 /* Dark class maps to same tokens (Zeta is dark-mode-first) */
@@ -182,31 +186,31 @@
   --card-foreground: var(--z-white);
   --popover: var(--z-surface-3);
   --popover-foreground: var(--z-white);
-  --primary: var(--z-white);
-  --primary-foreground: var(--z-ink);
+  --primary: var(--z-brass);
+  --primary-foreground: var(--z-white);
   --secondary: var(--z-surface-2);
   --secondary-foreground: var(--z-sage-light);
   --muted: var(--z-surface-2);
   --muted-foreground: var(--z-sage-dark);
-  --accent: var(--z-surface-2);
-  --accent-foreground: var(--z-sage-light);
+  --accent: var(--z-olive-deep);
+  --accent-foreground: var(--z-white);
   --destructive: var(--z-debt);
   --border: var(--z-border-strong);
   --input: var(--z-border-strong);
-  --ring: var(--z-white);
+  --ring: var(--z-brass);
   --chart-1: var(--z-income);
   --chart-2: var(--z-expense);
   --chart-3: var(--z-alert);
   --chart-4: var(--z-debt);
-  --chart-5: var(--z-sage);
+  --chart-5: var(--z-brass);
   --sidebar: var(--z-ink);
-  --sidebar-foreground: var(--z-sage);
-  --sidebar-primary: var(--z-sage);
-  --sidebar-primary-foreground: var(--z-ink);
+  --sidebar-foreground: var(--z-sage-light);
+  --sidebar-primary: var(--z-olive-deep);
+  --sidebar-primary-foreground: var(--z-white);
   --sidebar-accent: var(--z-surface);
   --sidebar-accent-foreground: var(--z-sage-light);
   --sidebar-border: var(--z-border);
-  --sidebar-ring: var(--z-sage-dark);
+  --sidebar-ring: var(--z-brass);
 }
 
 @layer base {

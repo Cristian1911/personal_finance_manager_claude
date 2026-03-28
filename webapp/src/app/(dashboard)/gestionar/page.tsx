@@ -45,7 +45,12 @@ export default async function GestionarPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Más</h1>
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold">Más</h1>
+        <p className="text-sm text-muted-foreground">
+          Herramientas y configuración de tu espacio financiero
+        </p>
+      </div>
 
       {/* Profile header */}
       <div className="flex items-center gap-4 rounded-xl border bg-card p-4">

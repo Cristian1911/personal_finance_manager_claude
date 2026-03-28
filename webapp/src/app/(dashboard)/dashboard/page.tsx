@@ -252,7 +252,7 @@ export default async function DashboardPage({
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <h1 className="text-2xl font-bold">Inicio</h1>
             <p className="text-muted-foreground">Tu base ya está lista. Falta activar tu flujo.</p>
           </div>
         </div>
@@ -416,8 +416,8 @@ export default async function DashboardPage({
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h1 className="text-2xl font-bold">Dashboard</h1>
-                <p className="text-muted-foreground">Tu centro de comando financiero</p>
+              <h1 className="text-2xl font-bold">Inicio</h1>
+              <p className="text-muted-foreground">Tu estado financiero de hoy</p>
               </div>
               <Suspense fallback={<div className="h-9 w-36 rounded-md bg-muted animate-pulse" />}>
                 <MonthSelector />

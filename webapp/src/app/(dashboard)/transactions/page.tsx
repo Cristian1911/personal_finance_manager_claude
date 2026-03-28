@@ -55,7 +55,7 @@ export default async function TransactionsPage({
       <div className="hidden lg:block space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-bold">Transacciones</h1>
+            <h1 className="text-2xl font-bold">Movimientos</h1>
             <p className="text-muted-foreground">
               {transactionsResult.count} transacciones en total
             </p>
