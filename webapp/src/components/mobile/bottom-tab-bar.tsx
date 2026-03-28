@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { PRIMARY_NAV, isNavItemActive, type NavItem } from "@/lib/constants/navigation";
+import { formatBadgeCount } from "@/components/layout/nav-item-link";
 
 interface BottomTabBarProps {
   uncategorizedCount?: number;
@@ -41,7 +42,7 @@ export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
                   : "bg-primary/15 text-primary"
               )}
             >
-              {uncategorizedCount > 99 ? "99+" : uncategorizedCount}
+              {formatBadgeCount(uncategorizedCount)}
             </span>
           )}
         </span>

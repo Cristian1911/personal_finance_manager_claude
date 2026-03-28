@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 import type { PlanRecurringSummary } from "@/types/plan";
+import { PlanStatCard, BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "./plan-stat-card";
 
 interface PlanRecurringSectionProps {
   recurring: PlanRecurringSummary;
@@ -27,26 +28,18 @@ export function PlanRecurringSection({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Fijos mensuales
-            </p>
-            <p className="mt-3 text-2xl font-semibold">
-              {formatCurrency(recurring.totalMonthlyExpenses, currency)}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Próximos eventos
-            </p>
-            <p className="mt-3 text-2xl font-semibold">{recurring.dueSoonCount}</p>
-          </div>
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Plantillas activas
-            </p>
-            <p className="mt-3 text-2xl font-semibold">{recurring.activeCount}</p>
-          </div>
+          <PlanStatCard
+            label="Fijos mensuales"
+            value={formatCurrency(recurring.totalMonthlyExpenses, currency)}
+          />
+          <PlanStatCard
+            label="Próximos eventos"
+            value={recurring.dueSoonCount}
+          />
+          <PlanStatCard
+            label="Plantillas activas"
+            value={recurring.activeCount}
+          />
         </div>
 
         <div className="space-y-3">
@@ -82,7 +75,7 @@ export function PlanRecurringSection({
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Button asChild className="bg-z-brass text-z-ink hover:bg-z-brass/90">
+          <Button asChild className={BRASS_BUTTON_CLASS}>
             <Link href="/recurrentes">
               Ver recurrentes
               <ArrowRight className="size-4" />
@@ -91,9 +84,9 @@ export function PlanRecurringSection({
           <Button
             asChild
             variant="outline"
-            className="border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5 hover:text-z-sage-light"
+            className={GHOST_BUTTON_CLASS}
           >
-            <Link href="/recurrentes">Ajustar timeline</Link>
+            <Link href="/recurrentes">Ver todas</Link>
           </Button>
         </div>
       </CardContent>

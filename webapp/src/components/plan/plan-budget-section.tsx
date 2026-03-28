@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 import type { PlanBudgetSummary } from "@/types/plan";
+import { PlanStatCard, BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "./plan-stat-card";
 
 interface PlanBudgetSectionProps {
   budget: PlanBudgetSummary;
@@ -56,28 +57,22 @@ export function PlanBudgetSection({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Presupuestado
-            </p>
-            <p className="mt-3 text-2xl font-semibold">{formatCurrency(budget.totalBudgeted, currency)}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {budget.categories.length} categorías con seguimiento mensual
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Ejecutado
-            </p>
-            <p className="mt-3 text-2xl font-semibold">{formatCurrency(budget.totalSpent, currency)}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {budget.overLimitCount > 0
+          <PlanStatCard
+            label="Presupuestado"
+            value={formatCurrency(budget.totalBudgeted, currency)}
+            description={`${budget.categories.length} categorías con seguimiento mensual`}
+          />
+          <PlanStatCard
+            label="Ejecutado"
+            value={formatCurrency(budget.totalSpent, currency)}
+            description={
+              budget.overLimitCount > 0
                 ? `${budget.overLimitCount} categorías ya van por encima`
                 : budget.nearLimitCount > 0
                   ? `${budget.nearLimitCount} categorías están cerca del límite`
-                  : "Tus categorías no muestran alertas fuertes"}
-            </p>
-          </div>
+                  : "Tus categorías no muestran alertas fuertes"
+            }
+          />
         </div>
 
         {budget.allocation ? (
@@ -148,7 +143,7 @@ export function PlanBudgetSection({
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Button asChild className="bg-z-brass text-z-ink hover:bg-z-brass/90">
+          <Button asChild className={BRASS_BUTTON_CLASS}>
             <Link href="/categories">
               Ajustar presupuesto
               <ArrowRight className="size-4" />
@@ -158,7 +153,7 @@ export function PlanBudgetSection({
             <Button
               asChild
               variant="outline"
-              className="border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5 hover:text-z-sage-light"
+              className={GHOST_BUTTON_CLASS}
             >
               <Link href="/categorizar">
                 <Inbox className="size-4" />

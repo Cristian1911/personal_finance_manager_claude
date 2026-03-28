@@ -131,7 +131,7 @@ export function MobileDashboard({
             </Link>
           </div>
           <div className="rounded-xl border divide-y">
-            {upcomingPayments.slice(0, 5).map((payment) => {
+            {upcomingPayments.map((payment) => {
               const isOverdue = payment.dueDate < today;
               const isToday = payment.dueDate === today;
 

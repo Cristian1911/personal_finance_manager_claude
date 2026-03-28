@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import type { IncomeEstimate } from "@/actions/income";
 import type { CurrencyCode } from "@/types/domain";
 import type { PlanHeroSummary } from "@/types/plan";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS, PlanStatCard } from "./plan-stat-card";
 
 interface PlanHeroProps {
   summary: PlanHeroSummary;
@@ -72,7 +73,7 @@ export function PlanHero({
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Button asChild className="bg-z-brass text-z-ink shadow-none hover:bg-z-brass/90">
+          <Button asChild className={cn(BRASS_BUTTON_CLASS, "shadow-none")}>
             <Link href={summary.recommendedAction.href}>
               {summary.recommendedAction.label}
               <ArrowRight className="size-4" />
@@ -81,53 +82,64 @@ export function PlanHero({
           <Button
             asChild
             variant="outline"
-            className="border-white/8 bg-black/10 text-z-sage-light shadow-none hover:bg-white/5 hover:text-z-sage-light"
+            className={cn(GHOST_BUTTON_CLASS, "shadow-none")}
           >
             <Link href="/dashboard">Volver a Inicio</Link>
           </Button>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[18px] bg-black/15 p-4 ring-1 ring-white/5">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              <Wallet className="size-4" />
-              Ingreso base
-            </div>
-            <p className="mt-3 text-2xl font-semibold">
-              {incomeEstimate ? formatCurrency(incomeEstimate.monthlyAverage, currency) : "Sin dato"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {incomeEstimate
-                ? incomeEstimate.source === "profile"
-                  ? "Tomado de tu perfil"
-                  : `Estimado con ${incomeEstimate.monthsOfData} ${incomeEstimate.monthsOfData === 1 ? "mes" : "meses"} de movimientos`
-                : "Configura o detecta ingresos para afinar el plan"}
-            </p>
-          </div>
+          <PlanStatCard
+            className="rounded-[18px] border-0 bg-black/15 ring-1 ring-white/5"
+            label={
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                <Wallet className="size-4" />
+                Ingreso base
+              </div>
+            }
+            value={incomeEstimate ? formatCurrency(incomeEstimate.monthlyAverage, currency) : "Sin dato"}
+            description={
+              <span className="text-xs">
+                {incomeEstimate
+                  ? incomeEstimate.source === "profile"
+                    ? "Tomado de tu perfil"
+                    : `Estimado con ${incomeEstimate.monthsOfData} ${incomeEstimate.monthsOfData === 1 ? "mes" : "meses"} de movimientos`
+                  : "Configura o detecta ingresos para afinar el plan"}
+              </span>
+            }
+          />
 
-          <div className="rounded-[18px] bg-black/15 p-4 ring-1 ring-white/5">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              <Receipt className="size-4" />
-              Obligaciones cerca
-            </div>
-            <p className="mt-3 text-2xl font-semibold">
-              {formatCurrency(summary.pendingTotal, currency)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Lo que puede mover tu margen en el corto plazo
-            </p>
-          </div>
+          <PlanStatCard
+            className="rounded-[18px] border-0 bg-black/15 ring-1 ring-white/5"
+            label={
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                <Receipt className="size-4" />
+                Obligaciones cerca
+              </div>
+            }
+            value={formatCurrency(summary.pendingTotal, currency)}
+            description={
+              <span className="text-xs">
+                Lo que puede mover tu margen en el corto plazo
+              </span>
+            }
+          />
 
-          <div className="rounded-[18px] bg-black/15 p-4 ring-1 ring-white/5">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              <Landmark className="size-4" />
-              Deudas activas
-            </div>
-            <p className="mt-3 text-2xl font-semibold">{summary.activeDebtCount}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {summary.activeDebtCount > 0 ? "Cuentas que siguen afectando tu estrategia" : "No hay deuda activa presionando el plan"}
-            </p>
-          </div>
+          <PlanStatCard
+            className="rounded-[18px] border-0 bg-black/15 ring-1 ring-white/5"
+            label={
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                <Landmark className="size-4" />
+                Deudas activas
+              </div>
+            }
+            value={summary.activeDebtCount}
+            description={
+              <span className="text-xs">
+                {summary.activeDebtCount > 0 ? "Cuentas que siguen afectando tu estrategia" : "No hay deuda activa presionando el plan"}
+              </span>
+            }
+          />
         </div>
 
         {summary.pressure !== "stable" ? (

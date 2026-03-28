@@ -28,19 +28,12 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
   const code = currency as CurrencyCode;
   const hasPendingObligations = pendingObligations.length > 0;
 
-  const freshnessLabel =
-    freshness === "fresh"
-      ? "Base al día"
-      : freshness === "stale"
-        ? "Revisión recomendada"
-        : "Necesita actualización";
-
-  const freshnessBadgeClass =
-    freshness === "fresh"
-      ? "border-z-income/30 bg-z-income/10 text-z-income"
-      : freshness === "stale"
-        ? "border-z-alert/30 bg-z-alert/10 text-z-alert"
-        : "border-z-debt/30 bg-z-debt/10 text-z-debt";
+  const freshnessStyles = {
+    fresh: { label: "Base al día", badge: "border-z-income/30 bg-z-income/10 text-z-income" },
+    stale: { label: "Revisión recomendada", badge: "border-z-alert/30 bg-z-alert/10 text-z-alert" },
+    outdated: { label: "Necesita actualización", badge: "border-z-debt/30 bg-z-debt/10 text-z-debt" },
+  } as const;
+  const fs = freshnessStyles[freshness];
 
   const guidanceCopy = hasPendingObligations
     ? `Tienes ${pendingObligations.length} ${pendingObligations.length === 1 ? "pago" : "pagos"} por ${formatCurrency(totalPending, code)} que pueden mover tu margen antes de cerrar el mes.`
@@ -84,8 +77,8 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
           <span className="rounded-full border border-white/6 bg-black/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-light">
             Estado del mes
           </span>
-          <span className={`rounded-full border px-3 py-1 text-[11px] font-medium ${freshnessBadgeClass}`}>
-            {freshnessLabel}
+          <span className={`rounded-full border px-3 py-1 text-[11px] font-medium ${fs.badge}`}>
+            {fs.label}
           </span>
         </div>
 

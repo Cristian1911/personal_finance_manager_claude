@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils/date";
 import type { PlanScenarioSummary } from "@/types/plan";
+import { PlanStatCard, BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "./plan-stat-card";
 
 interface PlanScenarioPreviewProps {
   scenarios: PlanScenarioSummary;
@@ -23,15 +24,11 @@ export function PlanScenarioPreview({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Guardados
-            </p>
-            <p className="mt-3 text-3xl font-semibold">{scenarios.count}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Planes listos para comparar
-            </p>
-          </div>
+          <PlanStatCard
+            label="Guardados"
+            value={<span className="text-3xl">{scenarios.count}</span>}
+            description="Planes listos para comparar"
+          />
 
           <div className="rounded-2xl border border-white/6 bg-z-surface-2/30 p-4">
             {scenarios.latestScenario ? (
@@ -54,7 +51,7 @@ export function PlanScenarioPreview({
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Button asChild className="bg-z-brass text-z-ink hover:bg-z-brass/90">
+          <Button asChild className={BRASS_BUTTON_CLASS}>
             <Link href="/deudas/planificador">
               Abrir planificador
               <ArrowRight className="size-4" />
@@ -63,7 +60,7 @@ export function PlanScenarioPreview({
           <Button
             asChild
             variant="outline"
-            className="border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5 hover:text-z-sage-light"
+            className={GHOST_BUTTON_CLASS}
           >
             <Link href="/deudas">Volver a deuda</Link>
           </Button>

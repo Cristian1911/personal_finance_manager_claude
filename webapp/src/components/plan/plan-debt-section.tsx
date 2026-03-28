@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 import type { PlanDebtSummary } from "@/types/plan";
+import { PlanStatCard, BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "./plan-stat-card";
 
 interface PlanDebtSectionProps {
   debt: PlanDebtSummary;
@@ -26,50 +27,45 @@ export function PlanDebtSection({ debt, currency }: PlanDebtSectionProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Deuda total
-            </p>
-            <p className="mt-3 text-2xl font-semibold">{formatCurrency(debt.overview.totalDebt, currency)}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {debt.activeDebtCount > 0 ? `${debt.activeDebtCount} cuentas activas siguen en juego` : "No hay deuda activa"}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Interés estimado mensual
-            </p>
-            <p className="mt-3 text-2xl font-semibold">{formatCurrency(debt.overview.monthlyInterestEstimate, currency)}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Costo aproximado por seguir en la misma trayectoria
-            </p>
-          </div>
+          <PlanStatCard
+            label="Deuda total"
+            value={formatCurrency(debt.overview.totalDebt, currency)}
+            description={debt.activeDebtCount > 0 ? `${debt.activeDebtCount} cuentas activas siguen en juego` : "No hay deuda activa"}
+          />
+          <PlanStatCard
+            label="Interés estimado mensual"
+            value={formatCurrency(debt.overview.monthlyInterestEstimate, currency)}
+            description="Costo aproximado por seguir en la misma trayectoria"
+          />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/30 p-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Percent className="size-4 text-z-brass" />
-              Utilización total
-            </div>
-            <p className="mt-3 text-2xl font-semibold">{Math.round(debt.overview.overallUtilization)}%</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Basada en tarjetas de crédito de la moneda activa
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/6 bg-z-surface-2/30 p-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <ShieldAlert className="size-4 text-z-brass" />
-              Mayor presión
-            </div>
-            <p className="mt-3 text-lg font-semibold">
-              {debt.highestInterestAccountName ?? "Sin cuenta dominante"}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              La cuenta con mayor costo relativo para priorizar en el plan
-            </p>
-          </div>
+          <PlanStatCard
+            variant="secondary"
+            label={
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Percent className="size-4 text-z-brass" />
+                Utilización total
+              </div>
+            }
+            value={<>{Math.round(debt.overview.overallUtilization)}%</>}
+            description="Basada en tarjetas de crédito de la moneda activa"
+          />
+          <PlanStatCard
+            variant="secondary"
+            label={
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <ShieldAlert className="size-4 text-z-brass" />
+                Mayor presión
+              </div>
+            }
+            value={
+              <span className="text-lg">
+                {debt.highestInterestAccountName ?? "Sin cuenta dominante"}
+              </span>
+            }
+            description="La cuenta con mayor costo relativo para priorizar en el plan"
+          />
         </div>
 
         {debt.countdown ? (
@@ -86,7 +82,7 @@ export function PlanDebtSection({ debt, currency }: PlanDebtSectionProps) {
         ) : null}
 
         <div className="flex flex-wrap gap-3">
-          <Button asChild className="bg-z-brass text-z-ink hover:bg-z-brass/90">
+          <Button asChild className={BRASS_BUTTON_CLASS}>
             <Link href="/deudas/planificador">
               Abrir planificador
               <ArrowRight className="size-4" />
@@ -95,7 +91,7 @@ export function PlanDebtSection({ debt, currency }: PlanDebtSectionProps) {
           <Button
             asChild
             variant="outline"
-            className="border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5 hover:text-z-sage-light"
+            className={GHOST_BUTTON_CLASS}
           >
             <Link href="/deudas">Ver detalle de deuda</Link>
           </Button>
