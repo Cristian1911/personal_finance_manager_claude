@@ -33,10 +33,10 @@ When the PR is squash-merged to `main`:
 2. **Find PR SHA** — looks up the merged PR's head SHA via GitHub API
 3. **Promote image** — retags `webapp-sha-<HEAD_SHA>` → `webapp-latest` using `docker buildx imagetools create` (no rebuild needed — just a manifest retag)
 4. **Fallback build** — if the SHA tag doesn't exist (direct push, workflow_dispatch), does a full Docker build
-5. **Deploy to VPS** — uses `hostinger/deploy-on-vps@v2` action which:
-   - Connects to the VPS via Hostinger API (not SSH)
-   - Writes the docker-compose file and environment variables
-   - Runs `docker compose pull && docker compose up -d`
+5. **Deploy to VPS** — SSHs into the VPS and runs:
+   - `docker compose down --remove-orphans` (clean slate, no stale containers)
+   - `docker compose pull` (fetch new images)
+   - `docker compose up -d` (start fresh)
 
 ### 3. VPS Setup
 
@@ -93,7 +93,7 @@ ssh root@<VPS_IP> "docker logs --tail 50 personal-finance-manager-webapp-1"
 
 2. **Image promotion, not rebuild** — on merge, the deploy workflow retags the PR-built image. If the PR CI build failed or was skipped, the deploy falls back to a full build.
 
-3. **Hostinger deploy action** — this is NOT an SSH deploy. It uses the Hostinger API. The `.env` and `docker-compose.yml` are written by the action, not manually managed.
+3. **SSH deploy** — the deploy step SSHs into the VPS and runs `down --remove-orphans` + `pull` + `up -d`. The `.env` and `docker-compose.yml` on the VPS are managed separately (initially written by the old Hostinger action, now maintained manually).
 
 4. **Browser caching** — Next.js serves static assets with long cache headers. Hard refresh (`Cmd+Shift+R`) or incognito may be needed to see changes after deploy.
 

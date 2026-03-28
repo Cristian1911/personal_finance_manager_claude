@@ -251,21 +251,30 @@ jobs:
           docker manifest inspect ${{ env.REGISTRY }}/${{ env.REPO }}:webapp-latest > /dev/null
           docker manifest inspect ${{ env.REGISTRY }}/${{ env.REPO }}:parser-latest > /dev/null
 
-      - name: Deploy to Hostinger VPS
-        uses: hostinger/deploy-on-vps@v2
-        with:
-          api-key: ${{ secrets.HOSTINGER_API_KEY }}
-          virtual-machine: ${{ vars.HOSTINGER_VM_ID }}
-          project-name: personal-finance-manager
-          docker-compose-path: docker-compose.prod.yml
-          environment-variables: |
-            GITHUB_REPO=${{ env.REPO }}
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
-            PDF_PARSER_API_KEY=${{ secrets.PDF_PARSER_API_KEY }}
-            SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-            SUPABASE_SECRET_KEY=${{ secrets.SUPABASE_SECRET_KEY }}
-            DOMAIN=${{ vars.DOMAIN }}
-            GHCR_USERNAME=${{ env.GHCR_USERNAME }}
-            GHCR_TOKEN=${{ secrets.GHCR_PAT_READ }}
+      - name: Deploy to VPS via SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          # Setup SSH
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Deploy: down (remove orphans) → pull → up
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "root@${VPS_HOST}" bash -s <<'DEPLOY_SCRIPT'
+            set -euo pipefail
+            cd /docker/personal-finance-manager
+            echo ">>> Stopping containers and removing orphans..."
+            docker compose down --remove-orphans
+            echo ">>> Pulling latest images..."
+            docker compose pull
+            echo ">>> Starting fresh containers..."
+            docker compose up -d
+            echo ">>> Waiting for health checks..."
+            docker compose ps
+          DEPLOY_SCRIPT
+
+          # Cleanup
+          rm -f ~/.ssh/deploy_key
