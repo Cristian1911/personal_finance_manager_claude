@@ -23,11 +23,14 @@ export default async function PlanificadorPage() {
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/deudas">
+            <Link href="/plan">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+              Detalle del plan
+            </p>
             <h1 className="text-2xl font-bold">Planificador de Pagos</h1>
             <p className="text-muted-foreground">
               Crea planes para pagar tus deudas más rápido
@@ -48,13 +51,16 @@ export default async function PlanificadorPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/deudas">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild>
+          <Link href="/plan">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Detalle del plan
+          </p>
           <h1 className="text-2xl font-bold">Planificador de Pagos</h1>
           <p className="text-muted-foreground">
             Crea planes para pagar tus deudas más rápido

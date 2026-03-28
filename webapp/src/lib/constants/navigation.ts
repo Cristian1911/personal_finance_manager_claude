@@ -27,7 +27,17 @@ export type NavItem = {
 export const PRIMARY_NAV: NavItem[] = [
   { title: "Inicio", href: "/dashboard", icon: LayoutDashboard },
   { title: "Movimientos", href: "/transactions", icon: ArrowLeftRight },
-  { title: "Presupuesto", href: "/categories", icon: PiggyBank },
+  {
+    title: "Plan",
+    href: "/plan",
+    icon: PiggyBank,
+    matchHrefs: [
+      "/categories",
+      "/deudas",
+      "/deudas/planificador",
+      "/recurrentes",
+    ],
+  },
   {
     title: "Más",
     href: "/gestionar",
@@ -38,8 +48,6 @@ export const PRIMARY_NAV: NavItem[] = [
       "/destinatarios",
       "/import",
       "/accounts",
-      "/deudas",
-      "/recurrentes",
       "/settings",
     ],
   },

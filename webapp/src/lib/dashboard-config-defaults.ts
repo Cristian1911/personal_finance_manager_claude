@@ -3,10 +3,6 @@ import type { AppPurpose, DashboardConfig } from "@/types/dashboard-config";
 const DEFAULTS: Record<AppPurpose, DashboardConfig> = {
   manage_debt: {
     purpose: "manage_debt",
-    tabs: [
-      { id: "debt-recurring", label: "Deudas", icon: "CreditCard", features: ["debt", "recurring"], position: 2 },
-      { id: "presupuesto", label: "Presupuesto", icon: "PiggyBank", features: ["budget"], position: 3 },
-    ],
     widgets: [
       // Hero (always visible)
       { id: "hero-available", visible: true, order: 0, section: "hero" },
@@ -35,10 +31,6 @@ const DEFAULTS: Record<AppPurpose, DashboardConfig> = {
   },
   track_spending: {
     purpose: "track_spending",
-    tabs: [
-      { id: "movimientos", label: "Movimientos", icon: "ArrowLeftRight", features: ["transactions"], position: 2 },
-      { id: "presupuesto", label: "Presupuesto", icon: "PiggyBank", features: ["budget"], position: 3 },
-    ],
     widgets: [
       // Hero (always visible)
       { id: "hero-available", visible: true, order: 0, section: "hero" },
@@ -67,10 +59,6 @@ const DEFAULTS: Record<AppPurpose, DashboardConfig> = {
   },
   save_money: {
     purpose: "save_money",
-    tabs: [
-      { id: "presupuesto-ahorro", label: "Presupuesto", icon: "PiggyBank", features: ["budget", "savings"], position: 2 },
-      { id: "movimientos", label: "Movimientos", icon: "ArrowLeftRight", features: ["transactions"], position: 3 },
-    ],
     widgets: [
       // Hero (always visible)
       { id: "hero-available", visible: true, order: 0, section: "hero" },
@@ -99,10 +87,6 @@ const DEFAULTS: Record<AppPurpose, DashboardConfig> = {
   },
   improve_habits: {
     purpose: "improve_habits",
-    tabs: [
-      { id: "movimientos-presupuesto", label: "Gastos", icon: "TrendingDown", features: ["transactions", "budget"], position: 2 },
-      { id: "recurrentes", label: "Recurrentes", icon: "Repeat2", features: ["recurring"], position: 3 },
-    ],
     widgets: [
       // Hero (always visible)
       { id: "hero-available", visible: true, order: 0, section: "hero" },

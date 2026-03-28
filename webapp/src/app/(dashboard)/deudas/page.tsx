@@ -17,7 +17,7 @@ import { SalaryBar } from "@/components/debt/salary-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { Button } from "@/components/ui/button";
-import { Calculator } from "lucide-react";
+import { ArrowLeft, Calculator } from "lucide-react";
 import Link from "next/link";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
@@ -168,7 +168,7 @@ export default async function DeudasPage({
   return (
     <div className="space-y-6">
       {/* Tier 1: headers render instantly — no data fetching blocked */}
-      <MobilePageHeader title="Deudas" backHref="/gestionar">
+      <MobilePageHeader title="Deudas" backHref="/plan">
         <Suspense>
           <MonthSelector />
         </Suspense>
@@ -176,19 +176,30 @@ export default async function DeudasPage({
       <div className="hidden lg:flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-4">
           <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+              Detalle del plan
+            </p>
             <h1 className="text-2xl font-bold">Deudas</h1>
-            <p className="text-muted-foreground">Visualiza y gestiona tus deudas</p>
+            <p className="text-muted-foreground">Profundiza en la presión financiera y las decisiones de payoff.</p>
           </div>
           <Suspense>
             <MonthSelector />
           </Suspense>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/deudas/planificador">
-            <Calculator className="h-4 w-4 mr-2" />
-            Planificador de pagos
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/plan">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver a Plan
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/deudas/planificador">
+              <Calculator className="h-4 w-4 mr-2" />
+              Planificador de pagos
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Tier 2: all debt data streams in with content-shaped skeleton */}

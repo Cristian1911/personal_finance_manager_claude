@@ -19,39 +19,14 @@ import {
     PiggyBank,
     TrendingUp,
     CheckCircle2,
-    CreditCard,
-    ArrowLeftRight,
-    Repeat2,
-    TrendingDown,
-    LayoutDashboard,
-    Menu,
     FileUp,
     Tags,
 } from "lucide-react";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { getDefaultConfig } from "@/lib/dashboard-config-defaults";
-import type { AppPurpose, DashboardConfig, TabConfig } from "@/types/dashboard-config";
+import type { AppPurpose } from "@/types/dashboard-config";
 
-const OPTIONAL_STEPS = new Set([1, 4]);
-
-const ICON_MAP: Record<string, typeof CreditCard> = {
-    CreditCard,
-    PiggyBank,
-    ArrowLeftRight,
-    Repeat2,
-    TrendingDown,
-    LayoutDashboard,
-    Menu,
-};
-
-const TAB_OPTIONS: TabConfig[] = [
-    { id: "debt-recurring", label: "Deudas", icon: "CreditCard", features: ["debt", "recurring"], position: 2 },
-    { id: "movimientos", label: "Movimientos", icon: "ArrowLeftRight", features: ["transactions"], position: 2 },
-    { id: "presupuesto", label: "Presupuesto", icon: "PiggyBank", features: ["budget"], position: 3 },
-    { id: "presupuesto-ahorro", label: "Presupuesto", icon: "PiggyBank", features: ["budget", "savings"], position: 2 },
-    { id: "movimientos-presupuesto", label: "Gastos", icon: "TrendingDown", features: ["transactions", "budget"], position: 2 },
-    { id: "recurrentes", label: "Recurrentes", icon: "Repeat2", features: ["recurring"], position: 3 },
-];
+const OPTIONAL_STEPS = new Set([1]);
 
 const QUICK_WIN: Record<string, { label: string; href: string; icon: typeof FileUp }> = {
     manage_debt: { label: "Importa tu primer extracto", href: "/import", icon: FileUp },
@@ -78,16 +53,13 @@ export default function OnboardingPage() {
     const [expenses, setExpenses] = useState("");
     const [debtCount, setDebtCount] = useState("");
 
-    // Step 4: Tab preview
-    const [dashboardConfig, setDashboardConfig] = useState<DashboardConfig | null>(null);
-
-    // Step 5: First account
+    // Step 4: First account
     const [accountName, setAccountName] = useState("");
     const [accountType, setAccountType] = useState("CHECKING");
     const [balance, setBalance] = useState("");
 
     const startedAtRef = useRef<number>(Date.now());
-    const totalSteps = 6;
+    const totalSteps = 5;
 
     useEffect(() => {
         void trackClientEvent({
@@ -99,13 +71,6 @@ export default function OnboardingPage() {
             metadata: { step_number: 1, total_steps: totalSteps },
         });
     }, []);
-
-    // Generate dashboard config when purpose is selected and we reach step 4
-    useEffect(() => {
-        if (step === 4 && purpose && !dashboardConfig) {
-            setDashboardConfig(getDefaultConfig(purpose as AppPurpose));
-        }
-    }, [step, purpose, dashboardConfig]);
 
     const nextStep = () => {
         if (step === 1 && !purpose) {
@@ -169,7 +134,7 @@ export default function OnboardingPage() {
                     account_type: accountType,
                     current_balance: parseFloat(balance) || 0,
                 },
-                dashboardConfig,
+                getDefaultConfig((purpose || "track_spending") as AppPurpose),
             );
             toast.success("Configuración completada");
             void trackClientEvent({
@@ -182,7 +147,7 @@ export default function OnboardingPage() {
                 metadata: { total_steps: totalSteps },
             });
             // Go to quick win step
-            setStep(6);
+            setStep(5);
         } catch (error) {
             void trackClientEvent({
                 event_name: "onboarding_completed",
@@ -198,28 +163,6 @@ export default function OnboardingPage() {
             setLoading(false);
         }
     };
-
-    function swapTab(position: 2 | 3) {
-        if (!dashboardConfig) return;
-        const current = dashboardConfig.tabs.find(t => t.position === position);
-        // Get available options not already in use
-        const usedIds = new Set(dashboardConfig.tabs.map(t => t.id));
-        const available = TAB_OPTIONS.filter(t => !usedIds.has(t.id));
-        if (available.length === 0) return;
-
-        // Cycle to next option
-        const currentIdx = TAB_OPTIONS.findIndex(t => t.id === current?.id);
-        let nextIdx = (currentIdx + 1) % TAB_OPTIONS.length;
-        while (usedIds.has(TAB_OPTIONS[nextIdx].id) && nextIdx !== currentIdx) {
-            nextIdx = (nextIdx + 1) % TAB_OPTIONS.length;
-        }
-        const next = { ...TAB_OPTIONS[nextIdx], position };
-
-        setDashboardConfig({
-            ...dashboardConfig,
-            tabs: dashboardConfig.tabs.map(t => t.position === position ? next : t),
-        });
-    }
 
     const purposes = [
         { id: "manage_debt", label: "Salir de deudas", icon: Target },
@@ -237,7 +180,7 @@ export default function OnboardingPage() {
 
     return (
         <div className="mx-auto w-full max-w-lg">
-            {step <= totalSteps && step < 6 && (
+            {step <= totalSteps && step < 5 && (
                 <div className="mb-6 rounded-xl border bg-card/80 p-4">
                     <div className="mb-3 flex items-center justify-between text-sm">
                         <span className="font-medium text-muted-foreground">Onboarding Zeta</span>
@@ -441,108 +384,10 @@ export default function OnboardingPage() {
                     </div>
                 )}
 
-                {/* Step 4: Tu app — tab preview (NEW) */}
-                {step === 4 && dashboardConfig && (
+                {/* Step 4: Primera cuenta */}
+                {step === 4 && (
                     <div
                         key="step4"
-                        className="animate-in fade-in slide-in-from-right-4 duration-200"
-                    >
-                        <Card className="border-border">
-                            <CardHeader>
-                                <CardTitle className="text-2xl">Tu app</CardTitle>
-                                <CardDescription>
-                                    Basado en tu objetivo, así se ve tu Zeta. Toca las pestañas para cambiarlas.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {/* Phone mockup */}
-                                <div className="mx-auto w-64 rounded-2xl border-2 border-border bg-z-ink p-3">
-                                    {/* Screen content placeholder */}
-                                    <div className="h-48 rounded-xl bg-z-surface flex items-center justify-center">
-                                        <p className="text-sm text-muted-foreground">Tu dashboard</p>
-                                    </div>
-                                    {/* Tab bar mockup */}
-                                    <div className="mt-3 flex items-center justify-around rounded-xl bg-z-surface-2 p-2">
-                                        {/* Tab 1: fixed */}
-                                        <div className="flex flex-col items-center gap-0.5">
-                                            <LayoutDashboard className="size-4 text-primary" />
-                                            <span className="text-[9px] font-bold text-primary">Inicio</span>
-                                        </div>
-                                        {/* Tab 2: tappable */}
-                                        <button
-                                            type="button"
-                                            onClick={() => swapTab(2)}
-                                            className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1 hover:bg-z-surface-3 transition-colors"
-                                        >
-                                            {(() => {
-                                                const tab = dashboardConfig.tabs.find(t => t.position === 2);
-                                                const Icon = ICON_MAP[tab?.icon ?? "PiggyBank"] ?? PiggyBank;
-                                                return (
-                                                    <>
-                                                        <Icon className="size-4 text-muted-foreground" />
-                                                        <span className="text-[9px] text-muted-foreground">{tab?.label ?? "?"}</span>
-                                                    </>
-                                                );
-                                            })()}
-                                        </button>
-                                        {/* Tab 3: tappable */}
-                                        <button
-                                            type="button"
-                                            onClick={() => swapTab(3)}
-                                            className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1 hover:bg-z-surface-3 transition-colors"
-                                        >
-                                            {(() => {
-                                                const tab = dashboardConfig.tabs.find(t => t.position === 3);
-                                                const Icon = ICON_MAP[tab?.icon ?? "PiggyBank"] ?? PiggyBank;
-                                                return (
-                                                    <>
-                                                        <Icon className="size-4 text-muted-foreground" />
-                                                        <span className="text-[9px] text-muted-foreground">{tab?.label ?? "?"}</span>
-                                                    </>
-                                                );
-                                            })()}
-                                        </button>
-                                        {/* Tab 4: fixed */}
-                                        <div className="flex flex-col items-center gap-0.5">
-                                            <Menu className="size-4 text-muted-foreground" />
-                                            <span className="text-[9px] text-muted-foreground">Más</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-muted-foreground text-center mt-4">
-                                    Toca las pestañas del centro para explorar opciones
-                                </p>
-                            </CardContent>
-                            <CardFooter className="flex flex-col gap-3 border-t p-6">
-                                <div className="flex w-full justify-between">
-                                    <Button variant="ghost" onClick={prevStep}>
-                                        <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
-                                    </Button>
-                                    <Button onClick={nextStep}>
-                                        Siguiente <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => skipStep(() => {
-                                        // Ensure dashboard config uses defaults for the chosen purpose
-                                        if (!dashboardConfig) {
-                                            setDashboardConfig(getDefaultConfig((purpose || "track_spending") as AppPurpose));
-                                        }
-                                    })}
-                                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                    Omitir
-                                </button>
-                            </CardFooter>
-                        </Card>
-                    </div>
-                )}
-
-                {/* Step 5: Primera cuenta (was step 4) */}
-                {step === 5 && (
-                    <div
-                        key="step5"
                         className="animate-in fade-in slide-in-from-right-4 duration-200"
                     >
                         <Card className="border-border">
@@ -599,10 +444,10 @@ export default function OnboardingPage() {
                     </div>
                 )}
 
-                {/* Step 6: Quick win (NEW) */}
-                {step === 6 && (
+                {/* Step 5: Quick win */}
+                {step === 5 && (
                     <div
-                        key="step6"
+                        key="step5"
                         className="animate-in fade-in slide-in-from-right-4 duration-200"
                     >
                         <Card className="border-border">
