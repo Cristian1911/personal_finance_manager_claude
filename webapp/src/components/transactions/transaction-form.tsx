@@ -291,7 +291,7 @@ export function TransactionForm({
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left"
+                className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left sm:items-center"
               >
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Opciones relacionadas</p>
@@ -307,7 +307,7 @@ export function TransactionForm({
               </button>
             </CollapsibleTrigger>
 
-            <CollapsibleContent className="space-y-4 border-t px-4 py-4">
+            <CollapsibleContent forceMount className="space-y-4 border-t px-4 py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label htmlFor="create_destinatario" className="cursor-pointer">
