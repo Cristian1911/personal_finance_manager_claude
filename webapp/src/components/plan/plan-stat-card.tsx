@@ -1,8 +1,6 @@
 import { StatCard } from "@/components/ui/stat-card";
 import { cn } from "@/lib/utils";
 
-export { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
-
 interface PlanStatCardProps {
   label: React.ReactNode;
   value: React.ReactNode;
