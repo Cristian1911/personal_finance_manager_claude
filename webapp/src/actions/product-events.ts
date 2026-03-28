@@ -17,13 +17,29 @@ export type ProductEventInput = {
   metadata?: Json;
 };
 
-export async function trackProductEvent(input: ProductEventInput): Promise<void> {
-  const { supabase, user } = await getAuthenticatedClient();
+type ProductEventInsert = {
+  user_id: string;
+  event_name: string;
+  session_id: string | null;
+  platform: "web" | "mobile";
+  entry_point: string | null;
+  flow: ProductEventInput["flow"] | null;
+  step: string | null;
+  success: boolean | null;
+  duration_ms: number | null;
+  error_code: string | null;
+  metadata: Json;
+};
 
-  if (!user || !input.event_name) return;
+type ProductEventWriter = {
+  from(table: "product_events"): {
+    insert(payload: ProductEventInsert): Promise<{ error: { code?: string; message?: string } | null }>;
+  };
+};
 
-  const payload = {
-    user_id: user.id,
+function buildPayload(userId: string, input: ProductEventInput): ProductEventInsert {
+  return {
+    user_id: userId,
     event_name: input.event_name,
     session_id: input.session_id ?? null,
     platform: input.platform ?? "web",
@@ -35,22 +51,47 @@ export async function trackProductEvent(input: ProductEventInput): Promise<void>
     error_code: input.error_code ?? null,
     metadata: input.metadata ?? {},
   };
+}
 
-  let db;
+async function insertProductEvent(db: ProductEventWriter, payload: ProductEventInsert): Promise<void> {
+  const { error } = await db.from("product_events").insert(payload);
+
+  if (!error) return;
+
+  const dbError = error as { code?: string; message?: string };
+  if (isIgnorableAuthError(dbError)) return;
+  if (dbError.code === "42501") {
+    console.warn("trackProductEvent skipped by RLS");
+    return;
+  }
+  console.error("trackProductEvent error:", dbError.message ?? "unknown");
+}
+
+export async function trackProductEvent(input: ProductEventInput): Promise<void> {
+  const { supabase, user } = await getAuthenticatedClient();
+
+  if (!user || !input.event_name) return;
+
+  let db: ProductEventWriter = supabase as unknown as ProductEventWriter;
   try {
-    db = createAdminClient();
+    db = createAdminClient() as unknown as ProductEventWriter;
   } catch {
     /* admin client unavailable, fall back to user client */
-    db = supabase;
   }
-  const { error } = await db.from("product_events").insert(payload);
-  if (error) {
-    const dbError = error as { code?: string; message?: string };
-    if (isIgnorableAuthError(dbError)) return;
-    if (dbError.code === "42501") {
-      console.warn("trackProductEvent skipped by RLS");
-      return;
-    }
-    console.error("trackProductEvent error:", dbError.message ?? "unknown");
+
+  await insertProductEvent(db, buildPayload(user.id, input));
+}
+
+export async function trackProductEventForUser(
+  userId: string,
+  input: ProductEventInput
+): Promise<void> {
+  if (!userId || !input.event_name) return;
+
+  try {
+    const db = createAdminClient() as unknown as ProductEventWriter;
+    await insertProductEvent(db, buildPayload(userId, input));
+  } catch {
+    console.warn("trackProductEventForUser skipped: admin client unavailable");
   }
 }

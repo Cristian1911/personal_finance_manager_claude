@@ -153,6 +153,7 @@ export function MobileTransactionForm({
   const [recurringStartDate, setRecurringStartDate] = useState(today);
   const [recurringTransferSourceAccountId, setRecurringTransferSourceAccountId] =
     useState("");
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const allowRelatedSetup = transactionType !== "transfer";
 
   useEffect(() => {
@@ -164,6 +165,34 @@ export function MobileTransactionForm({
       setRecurringTransferSourceAccountId("");
     }
   }, [transactionType]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+
+    const viewport = window.visualViewport;
+    let rafId = 0;
+
+    const syncKeyboardInset = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const inset = Math.max(
+          0,
+          window.innerHeight - viewport.height - viewport.offsetTop,
+        );
+        setKeyboardInset(inset);
+      });
+    };
+
+    syncKeyboardInset();
+    viewport.addEventListener("resize", syncKeyboardInset);
+    viewport.addEventListener("scroll", syncKeyboardInset);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      viewport.removeEventListener("resize", syncKeyboardInset);
+      viewport.removeEventListener("scroll", syncKeyboardInset);
+    };
+  }, []);
 
   function handleCreateDestinatarioSetup(checked: boolean) {
     setCreateDestinatarioSetup(checked);
@@ -197,7 +226,19 @@ export function MobileTransactionForm({
         : "Registrar gasto";
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form
+      action={formAction}
+      className="space-y-4 pb-4"
+      style={{ paddingBottom: keyboardInset > 0 ? `${keyboardInset + 16}px` : undefined }}
+      onFocusCapture={(event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+
+        window.setTimeout(() => {
+          target.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }, 120);
+      }}
+    >
       {!state.success && state.error && (
         <div
           role="alert"
@@ -356,7 +397,7 @@ export function MobileTransactionForm({
               </button>
             </CollapsibleTrigger>
 
-            <CollapsibleContent forceMount className="space-y-4 border-t px-4 py-4">
+            <CollapsibleContent className="space-y-4 border-t px-4 py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label htmlFor="mobile-create_destinatario" className="cursor-pointer">

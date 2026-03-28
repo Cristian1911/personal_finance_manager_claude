@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { loginSchema, signupSchema, forgotPasswordSchema, resetPasswordSchema } from "@/lib/validators/auth";
-import { trackProductEvent } from "@/actions/product-events";
+import { trackProductEvent, trackProductEventForUser } from "@/actions/product-events";
 
 export type AuthActionResult = {
   error?: string;
@@ -81,7 +81,7 @@ export async function signUp(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
@@ -103,14 +103,16 @@ export async function signUp(
     return { error: error.message };
   }
 
-  await trackProductEvent({
-    event_name: "auth_signup_completed",
-    flow: "onboarding",
-    step: "signup",
-    entry_point: "cta",
-    success: true,
-    metadata: { email: parsed.data.email },
-  });
+  if (data.user?.id) {
+    void trackProductEventForUser(data.user.id, {
+      event_name: "auth_signup_completed",
+      flow: "onboarding",
+      step: "signup",
+      entry_point: "cta",
+      success: true,
+      metadata: { email: parsed.data.email },
+    });
+  }
   return { success: true };
 }
 
