@@ -16,8 +16,11 @@ import { DebtInsights } from "@/components/debt/debt-insights";
 import { SalaryBar } from "@/components/debt/salary-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { PageHero, HeroPill, HeroAccentPill } from "@/components/ui/page-hero";
+import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calculator } from "lucide-react";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { ArrowRight, Calculator, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
@@ -166,41 +169,62 @@ export default async function DeudasPage({
   const currency = await getPreferredCurrency();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-8">
       {/* Tier 1: headers render instantly — no data fetching blocked */}
       <MobilePageHeader title="Deudas" backHref="/plan">
         <Suspense>
           <MonthSelector />
         </Suspense>
       </MobilePageHeader>
-      <div className="hidden lg:flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Detalle del plan
-            </p>
-            <h1 className="text-2xl font-bold">Deudas</h1>
-            <p className="text-muted-foreground">Profundiza en la presión financiera y las decisiones de payoff.</p>
-          </div>
-          <Suspense>
-            <MonthSelector />
-          </Suspense>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/plan">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver a Plan
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
+      <PageHero
+        variant="brass"
+        pills={<><HeroPill>Detalle del plan</HeroPill><HeroAccentPill>Presión financiera</HeroAccentPill></>}
+        title="La capa donde decides cómo reducir la presión sin perder margen"
+        description="Esta vista existe para entender costo, utilización y orden de ataque. Si aquí hay fricción, el resto del plan se vuelve frágil."
+        actions={<>
+          <Button asChild className={BRASS_BUTTON_CLASS}>
             <Link href="/deudas/planificador">
-              <Calculator className="h-4 w-4 mr-2" />
               Planificador de pagos
+              <ArrowRight className="size-4" />
             </Link>
           </Button>
+          <Button
+            asChild
+            variant="outline"
+            className={GHOST_BUTTON_CLASS}
+          >
+            <Link href="/plan">Volver a Plan</Link>
+          </Button>
+          <div className="hidden lg:block">
+            <Suspense>
+              <MonthSelector />
+            </Suspense>
+          </div>
+        </>}
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Moneda de lectura"
+            value={currency}
+            description="Base usada para concentrar la lectura principal de deuda."
+          />
+          <StatCard
+            label={<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark"><Calculator className="size-4 text-z-brass" />Siguiente capa</div>}
+            value={<span className="text-sm font-medium text-z-white">Planificador</span>}
+            description="Cuando ya entiendes la presión, aquí conviertes eso en escenarios comparables."
+          />
+          <StatCard
+            label="Qué ver primero"
+            value={<span className="text-sm font-medium text-z-white">Utilización, interés y pago mínimo</span>}
+            description="Ese orden da la señal más rápida sobre dónde estás perdiendo aire."
+          />
+          <StatCard
+            label={<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark"><ShieldCheck className="size-4 text-z-brass" />Cómo usar esta vista</div>}
+            value=""
+            description="Lee la presión aquí y baja al planificador solo cuando necesites comparar trayectorias."
+          />
         </div>
-      </div>
+      </PageHero>
 
       {/* Tier 2: all debt data streams in with content-shaped skeleton */}
       <Suspense

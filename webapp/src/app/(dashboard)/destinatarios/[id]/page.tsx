@@ -8,6 +8,9 @@ import {
 import { getCategories } from "@/actions/categories";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { buildCategoryMap } from "@/lib/utils/categories";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 const DestinatarioDetail = dynamic(
   () => import("@/components/destinatarios/destinatario-detail").then((m) => ({ default: m.DestinatarioDetail })),
@@ -44,9 +47,26 @@ export default async function DestinatarioDetailPage({ params }: PageProps) {
         title={destinatario.name}
         backHref="/destinatarios"
       />
-      <div className="hidden lg:block">
-        <h1 className="text-2xl font-bold">{destinatario.name}</h1>
-        <p className="text-muted-foreground">Detalle del destinatario</p>
+      <div className="hidden lg:flex lg:items-start lg:justify-between lg:gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Destinatarios
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">{destinatario.name}</h1>
+          <p className="text-muted-foreground">
+            Ajusta reglas, categoría por defecto y contexto para que el sistema lo reconozca mejor.
+          </p>
+        </div>
+        <Button
+          asChild
+          variant="outline"
+          className="border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5 hover:text-z-sage-light"
+        >
+          <Link href="/destinatarios">
+            <ArrowLeft className="size-4 mr-2" />
+            Volver a Destinatarios
+          </Link>
+        </Button>
       </div>
 
       <DestinatarioDetail

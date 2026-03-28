@@ -109,7 +109,7 @@ export function DestinatarioSuggestionsTab({
 
   if (visibleSuggestions.length === 0) {
     return (
-      <div className="rounded-md border bg-muted/50 p-8 text-center">
+      <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
         <p className="text-sm text-muted-foreground">
           No encontramos patrones nuevos. Las sugerencias aparecen cuando tienes transacciones recurrentes sin destinatario asignado.
         </p>
@@ -125,7 +125,10 @@ export function DestinatarioSuggestionsTab({
         const dateTo = formatDate(suggestion.dateRange.to);
 
         return (
-          <div key={suggestion.cleanedPattern} className="rounded-md border bg-background p-4">
+          <div
+            key={suggestion.cleanedPattern}
+            className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+          >
             <div className="flex items-start justify-between gap-2">
               <div>
                 <h3 className="text-sm font-medium">{suggestion.cleanedPattern}</h3>

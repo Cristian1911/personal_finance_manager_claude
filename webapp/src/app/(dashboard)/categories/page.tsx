@@ -15,7 +15,11 @@ import { MobilePresupuesto } from "@/components/mobile/mobile-presupuesto";
 import { MonthPlanner } from "@/components/budget/month-planner";
 import { MonthSelector } from "@/components/month-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHero, HeroPill, HeroAccentPill } from "@/components/ui/page-hero";
+import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { ArrowRight, CalendarClock, Sparkles, Tags } from "lucide-react";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
 import { getPreferredCurrency } from "@/actions/profile";
 import Link from "next/link";
@@ -47,27 +51,51 @@ export default async function CategoriesPage({
   const monthLabel = formatMonthLabel(selectedMonth);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-8">
       <MobilePageHeader title="Presupuesto" backHref="/plan">
         <MonthSelector />
       </MobilePageHeader>
 
-      <div className="hidden lg:flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Detalle del plan
-          </p>
-          <h1 className="text-2xl font-bold">Presupuesto</h1>
-          <p className="text-muted-foreground">Profundiza en los límites y categorías que sostienen tu plan.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/plan">Volver a Plan</Link>
+      <PageHero
+        pills={<><HeroPill>Detalle del plan</HeroPill><HeroAccentPill>Ritmo de gasto</HeroAccentPill></>}
+        title="El presupuesto que define cuánto margen real te queda este mes"
+        description="Aquí aterrizas el plan en categorías concretas: límites, ritmo de consumo y áreas donde conviene corregir antes de cerrar el mes."
+        actions={<>
+          <Button asChild className={BRASS_BUTTON_CLASS}>
+            <Link href="/plan">
+              Volver a Plan
+              <ArrowRight className="size-4" />
+            </Link>
           </Button>
           <MonthPlanner categories={outflowCategories} />
-          <MonthSelector />
+          <div className="hidden lg:block">
+            <MonthSelector />
+          </div>
+        </>}
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Mes activo"
+            value={monthLabel}
+            description="Contexto temporal sobre el que estás ajustando los límites."
+          />
+          <StatCard
+            label={<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark"><CalendarClock className="size-4 text-z-brass" />Días restantes</div>}
+            value={daysRemaining}
+            description="Tiempo que queda para corregir el ritmo antes del cierre."
+          />
+          <StatCard
+            label={<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark"><Tags className="size-4 text-z-brass" />Categorías con límite</div>}
+            value={outflowCategories.length}
+            description="Las categorías que hoy participan en el control mensual."
+          />
+          <StatCard
+            label={<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark"><Sparkles className="size-4 text-z-brass" />Sin categoría</div>}
+            value={uncategorized.length}
+            description="Movimientos que todavía pueden distorsionar la lectura del presupuesto."
+          />
         </div>
-      </div>
+      </PageHero>
 
       {/* Mobile view */}
       <div className="lg:hidden">

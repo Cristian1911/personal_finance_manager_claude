@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { getTrackedCurrencyBalances } from "@/lib/utils/currency-balances";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { Json } from "@/types/database";
+import { ACCOUNT_TYPE_DASHBOARD_LABELS } from "@/lib/constants/account-types";
 import type { AccountType, CurrencyCode } from "@/types/domain";
 
 export type QuickValueUpdateAccount = {
@@ -27,15 +28,6 @@ interface QuickValueUpdatesProps {
 
 const PRIMARY_LIQUID_TYPES = new Set<AccountType>(["CHECKING", "SAVINGS", "CASH"]);
 
-const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
-  CHECKING: "Cuenta principal",
-  SAVINGS: "Cuenta principal",
-  CASH: "Efectivo",
-  CREDIT_CARD: "Tarjeta",
-  INVESTMENT: "Inversión",
-  LOAN: "Préstamo",
-  OTHER: "Cuenta",
-};
 
 function sortByDashboardPriority(a: QuickValueUpdateAccount, b: QuickValueUpdateAccount) {
   return (a.displayOrder ?? Number.MAX_SAFE_INTEGER) - (b.displayOrder ?? Number.MAX_SAFE_INTEGER);
@@ -115,7 +107,7 @@ export function QuickValueUpdates({
                   ) : (
                     <Landmark className="h-4 w-4" />
                   )}
-                  <span>{ACCOUNT_TYPE_LABELS[primaryLiquidAccount.accountType]}</span>
+                  <span>{ACCOUNT_TYPE_DASHBOARD_LABELS[primaryLiquidAccount.accountType]}</span>
                 </div>
                 <div>
                   <p className="font-medium">{primaryLiquidAccount.name}</p>

@@ -1,6 +1,8 @@
 import { connection } from "next/server";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTransaction, deleteTransaction } from "@/actions/transactions";
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, ReceiptText, ShieldCheck } from "lucide-react";
+import { getTransaction } from "@/actions/transactions";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarios } from "@/actions/destinatarios";
@@ -12,8 +14,8 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
-import { ArrowLeft, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { PageHero } from "@/components/ui/page-hero";
+import { StatCard } from "@/components/ui/stat-card";
 
 export default async function TransactionDetailPage({
   params,
@@ -38,98 +40,144 @@ export default async function TransactionDetailPage({
   const destinatarios = destinatariosResult.success
     ? destinatariosResult.data
     : [];
+  const isInflow = tx.direction === "INFLOW";
+  const txStatus =
+    tx.status === "POSTED"
+      ? "Confirmada"
+      : tx.status === "PENDING"
+        ? "Pendiente"
+        : "Cancelada";
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="max-w-4xl space-y-6 lg:space-y-8">
       <MobilePageHeader title="Detalle" backHref="/transactions" />
-      <div className="hidden lg:flex flex-wrap items-center gap-4">
-        <Link
-          href="/transactions"
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Detalle de movimientos
-          </p>
-          <h1 className="text-2xl font-bold">
-            {tx.merchant_name || tx.clean_description || "Transacción"}
-          </h1>
-          <p className="text-muted-foreground">
-            {formatDate(tx.transaction_date, "dd MMMM yyyy")}
-          </p>
-        </div>
-        <TransactionFormDialog
-          transaction={tx}
-          accounts={accounts}
-          categories={categories}
-        />
-        <DeleteTransactionButton transactionId={tx.id} />
-      </div>
-
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {tx.direction === "INFLOW" ? (
-                <ArrowDownLeft className="h-5 w-5 text-green-500" />
-              ) : (
-                <ArrowUpRight className="h-5 w-5 text-orange-500" />
-              )}
-              <Badge>{tx.direction === "INFLOW" ? "Ingreso" : "Gasto"}</Badge>
-            </div>
-            <span
-              className={`text-3xl font-bold ${tx.direction === "INFLOW" ? "text-green-600" : ""}`}
+      <PageHero
+        pills={
+          <>
+            <Link
+              href="/transactions"
+              className="inline-flex items-center gap-2 rounded-full border border-white/6 bg-black/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-light hover:bg-white/5"
             >
-              {tx.direction === "INFLOW" ? "+" : "-"}
-              {formatCurrency(tx.amount, tx.currency_code)}
-            </span>
-          </div>
+              <ArrowLeft className="size-3.5" />
+              Volver a Movimientos
+            </Link>
+            <Badge className={isInflow ? "bg-z-income/15 text-z-income hover:bg-z-income/15" : "bg-z-debt/15 text-z-debt hover:bg-z-debt/15"}>
+              {isInflow ? "Ingreso" : "Gasto"}
+            </Badge>
+            <Badge variant="secondary">{txStatus}</Badge>
+          </>
+        }
+        title={tx.merchant_name || tx.clean_description || "Transacción"}
+        description={`${formatDate(tx.transaction_date, "dd MMMM yyyy")} \u00b7 ${tx.provider}`}
+        actions={
+          <>
+            <TransactionFormDialog
+              transaction={tx}
+              accounts={accounts}
+              categories={categories}
+            />
+            <DeleteTransactionButton transactionId={tx.id} />
+          </>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label={
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                {isInflow ? (
+                  <ArrowDownLeft className="size-4 text-z-income" />
+                ) : (
+                  <ArrowUpRight className="size-4 text-z-debt" />
+                )}
+                Monto
+              </div>
+            }
+            value={
+              <span className={isInflow ? "text-z-income" : "text-z-sage-light"}>
+                {isInflow ? "+" : "-"}
+                {formatCurrency(tx.amount, tx.currency_code)}
+              </span>
+            }
+            description="Valor que realmente movió esta transacción."
+          />
+          <StatCard
+            label="Estado"
+            value={<span className="text-lg">{txStatus}</span>}
+            description="Contexto actual del movimiento dentro de la base."
+          />
+          <StatCard
+            label="Fuente"
+            value={<span className="text-lg">{tx.provider}</span>}
+            description="Origen con el que entró o fue registrado este movimiento."
+          />
+          <StatCard
+            label={
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                <ShieldCheck className="size-4 text-z-brass" />
+                Qué hacer aquí
+              </div>
+            }
+            value={
+              <span className="text-sm font-normal leading-6 text-muted-foreground">
+                Editar, borrar o reasignar destinatario sin salir del flujo operativo de Movimientos.
+              </span>
+            }
+          />
+        </div>
+      </PageHero>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
-            <div>
-              <p className="text-sm text-muted-foreground">Estado</p>
-              <Badge variant="secondary" className="mt-1">
-                {tx.status === "POSTED"
-                  ? "Confirmada"
-                  : tx.status === "PENDING"
-                    ? "Pendiente"
-                    : "Cancelada"}
-              </Badge>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Fuente</p>
-              <p className="text-sm font-medium mt-1">{tx.provider}</p>
-            </div>
-          </div>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <CardHeader>
+            <CardTitle>Contexto del movimiento</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Datos base para entender de dónde viene y cómo quedó registrado.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {tx.raw_description && (
+              <div className="rounded-2xl border border-white/6 bg-black/10 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                  Descripción original
+                </p>
+                <p className="mt-2 text-sm font-mono text-z-white">{tx.raw_description}</p>
+              </div>
+            )}
 
-          {tx.raw_description && (
-            <div className="pt-4 border-t">
-              <p className="text-sm text-muted-foreground">
-                Descripción original
-              </p>
-              <p className="text-sm font-mono mt-1">{tx.raw_description}</p>
-            </div>
-          )}
+            {tx.notes && (
+              <div className="rounded-2xl border border-white/6 bg-black/10 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                  Notas
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">{tx.notes}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {tx.notes && (
-            <div className="pt-4 border-t">
-              <p className="text-sm text-muted-foreground">Notas</p>
-              <p className="text-sm mt-1">{tx.notes}</p>
+        <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+                <ReceiptText className="size-4 text-z-brass" />
+              </div>
+              <div className="space-y-1">
+                <CardTitle>Destinatario</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Ajusta la asociación comercial para mejorar contexto y futuras reglas.
+                </p>
+              </div>
             </div>
-          )}
-
-          <div className="pt-4 border-t">
-            <p className="text-sm text-muted-foreground mb-2">Destinatario</p>
+          </CardHeader>
+          <CardContent>
             <DestinatarioPicker
               transactionId={tx.id}
               currentDestinatarioId={tx.destinatario_id}
               destinatarios={destinatarios}
             />
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

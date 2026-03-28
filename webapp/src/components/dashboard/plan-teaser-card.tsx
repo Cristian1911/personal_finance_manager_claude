@@ -6,7 +6,8 @@ import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 import type { AllocationData } from "@/actions/allocation";
 import type { DebtCountdownData } from "@/actions/debt-countdown";
-import { PlanStatCard, BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/components/plan/plan-stat-card";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { PlanStatCard } from "@/components/plan/plan-stat-card";
 
 export function PlanTeaserCard({
   allocationData,
