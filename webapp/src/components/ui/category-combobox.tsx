@@ -41,6 +41,8 @@ export function CategoryCombobox({
   name,
 }: CategoryComboboxProps) {
   const [open, setOpen] = React.useState(false);
+  const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
 
   // Filter tree by direction (keep roots that match or have no direction)
   const filtered = direction
@@ -63,12 +65,22 @@ export function CategoryCombobox({
     setOpen(false);
   }
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      setPortalContainer(
+        triggerRef.current?.closest("[data-slot='drawer-content']") as HTMLElement | null
+      );
+    }
+    setOpen(nextOpen);
+  }
+
   return (
     <>
       {name && <input type="hidden" name={name} value={value ?? ""} />}
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
+            ref={triggerRef}
             variant="outline"
             role="combobox"
             aria-expanded={open}
@@ -94,10 +106,17 @@ export function CategoryCombobox({
             <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[220px] p-0" align="start" onWheel={(e) => e.stopPropagation()}>
+        <PopoverContent
+          container={portalContainer}
+          className="w-[220px] max-w-[min(22rem,calc(100vw-2rem))] p-0 overscroll-contain touch-pan-y"
+          align="start"
+          sideOffset={8}
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
           <Command>
             <CommandInput placeholder="Buscar categoría..." />
-            <CommandList className="max-h-[200px]">
+            <CommandList className="max-h-[min(18rem,40dvh)] overscroll-contain touch-pan-y">
               <CommandEmpty>Sin resultados.</CommandEmpty>
 
               {/* "None" option */}

@@ -75,12 +75,13 @@ export function MobileSheetProvider({
       <FabMenu onAction={setActiveAction} contextActions={contextActions} />
 
       <Drawer
+        fixed
         open={activeAction !== null}
         onOpenChange={(open) => {
           if (!open) setActiveAction(null);
         }}
       >
-        <DrawerContent className="max-h-[85svh] overflow-hidden">
+        <DrawerContent className="max-h-[85dvh] overflow-hidden">
           <DrawerHeader className="shrink-0">
             <DrawerTitle>{activeAction ? getSheetTitle(activeAction) : ""}</DrawerTitle>
           </DrawerHeader>

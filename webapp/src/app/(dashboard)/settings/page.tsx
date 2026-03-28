@@ -36,12 +36,12 @@ export default async function SettingsPage() {
       <PageHero
         pills={<><HeroPill>Sistema y perfil</HeroPill><HeroAccentPill>Hub de confianza</HeroAccentPill></>}
         title="Ajusta la capa personal y el contexto que sostiene el workspace"
-        description="Aquí no decides sobre dinero; decides sobre la calidad del sistema: tu perfil, la trazabilidad de los errores y las herramientas internas para seguir refinando la app."
+        description="Aquí no decides sobre dinero; decides sobre la calidad del sistema: tu perfil, la trazabilidad de los errores y las señales de uso que ayudan a seguir refinando la app."
         actions={
           <>
             <Button asChild className={BRASS_BUTTON_CLASS}>
               <Link href="/settings/analytics">
-                Ver analytics interno
+                Ver actividad de uso
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -117,9 +117,9 @@ export default async function SettingsPage() {
               <Activity className="size-4 text-z-brass" />
             </div>
             <div className="space-y-1">
-              <CardTitle>Control interno</CardTitle>
+              <CardTitle>Actividad de uso</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Funnel y calidad de producto para revisar fuera del flujo del usuario final.
+                Señales recientes de onboarding, importación y categorización dentro de tu propia cuenta.
               </p>
             </div>
           </div>
@@ -127,12 +127,12 @@ export default async function SettingsPage() {
         <CardContent className="space-y-4">
           <Button asChild className={cn(BRASS_BUTTON_CLASS, "w-full")}>
             <Link href="/settings/analytics">
-              Abrir analytics interno
+              Abrir actividad de uso
               <ArrowRight className="size-4" />
             </Link>
           </Button>
           <p className="text-sm leading-6 text-muted-foreground">
-            Úsalo para revisar funnels de importación, activación y categorización sin mezclarlo con el producto principal.
+            Úsalo para revisar tus recorridos de importación, activación y categorización sin mezclarlo con el producto principal.
           </p>
         </CardContent>
       </Card>

@@ -32,10 +32,14 @@ const ACCOUNT_TYPE_ICONS: Record<string, React.ElementType> = {
 export function AccountCard({ account }: { account: Account }) {
   const Icon = ACCOUNT_TYPE_ICONS[account.account_type] ?? Wallet;
   const isDebt = account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
-  const availableCredit = account.credit_limit != null
-    ? account.credit_limit - account.current_balance
-    : null;
-  const accentColor = account.color ?? (isDebt ? "#937844" : "#4E593C");
+  const availableCredit =
+    account.credit_limit != null ? account.credit_limit - account.current_balance : null;
+  const accentColor = account.color ?? (isDebt ? "var(--z-brass)" : "var(--z-olive-deep)");
+  const accentSurface = account.color
+    ? `${account.color}20`
+    : isDebt
+      ? "color-mix(in srgb, var(--z-brass) 12.5%, transparent)"
+      : "color-mix(in srgb, var(--z-olive-deep) 12.5%, transparent)";
 
   return (
     <Link href={`/accounts/${account.id}`} className="block h-full">
@@ -52,7 +56,7 @@ export function AccountCard({ account }: { account: Account }) {
             <div className="flex min-w-0 items-center gap-3">
               <div
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/6"
-                style={{ backgroundColor: `${accentColor}20` }}
+                style={{ backgroundColor: accentSurface }}
               >
                 <Icon className="h-5 w-5" style={{ color: accentColor }} />
               </div>
