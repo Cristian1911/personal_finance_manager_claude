@@ -75,3 +75,11 @@ export type UpcomingRecurrence = {
   template: RecurringTemplateWithRelations;
   next_date: string;
 };
+
+// Tags
+export type TagGroup = Tables<"tag_groups">;
+export type Tag = Tables<"tags">;
+export type TagWithGroup = Tag & { group: TagGroup | null };
+export type TagGroupWithTags = TagGroup & { tags: Tag[] };
+
+export type TaggableEntity = "category" | "destinatario" | "transaction";
