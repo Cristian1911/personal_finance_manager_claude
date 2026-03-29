@@ -21,9 +21,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import type { Account } from "@/types/domain";
+import type { Account, Tag } from "@/types/domain";
 
-export function TransactionFilters({ accounts }: { accounts: Account[] }) {
+export function TransactionFilters({ accounts, tags = [] }: { accounts: Account[]; tags?: Tag[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -47,6 +47,7 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
   const hasFilters =
     searchParams.get("search") ||
     searchParams.get("accountId") ||
+    searchParams.get("tagId") ||
     searchParams.get("direction") ||
     searchParams.get("dateFrom") ||
     searchParams.get("dateTo") ||
@@ -58,6 +59,7 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
   const activeFilterCount = [
     searchParams.get("search"),
     searchParams.get("accountId"),
+    searchParams.get("tagId"),
     searchParams.get("direction"),
     searchParams.get("dateFrom"),
     searchParams.get("dateTo"),
@@ -123,6 +125,25 @@ export function TransactionFilters({ accounts }: { accounts: Account[] }) {
                 <SelectItem value="INFLOW">Ingresos</SelectItem>
               </SelectContent>
             </Select>
+
+            {tags.length > 0 && (
+              <Select
+                defaultValue={searchParams.get("tagId") ?? "all"}
+                onValueChange={(v) => updateFilter("tagId", v)}
+              >
+                <SelectTrigger className={inputWidth}>
+                  <SelectValue placeholder="Todas las etiquetas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las etiquetas</SelectItem>
+                  {tags.map((tag) => (
+                    <SelectItem key={tag.id} value={tag.id}>
+                      {tag.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {!activeMonth && (
               <>

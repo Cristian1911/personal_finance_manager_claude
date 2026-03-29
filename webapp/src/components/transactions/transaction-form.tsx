@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { createTransaction, updateTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import {
   Collapsible,
   CollapsibleContent,
@@ -227,7 +227,8 @@ export function TransactionForm({
 
       <div className="space-y-2">
         <Label>Categoría</Label>
-        <CategoryCombobox
+        <CategoryZonePicker
+          variant="popover"
           categories={categories}
           value={categoryId}
           onValueChange={setCategoryId}
@@ -307,7 +308,7 @@ export function TransactionForm({
               </button>
             </CollapsibleTrigger>
 
-            <CollapsibleContent forceMount className="space-y-4 border-t px-4 py-4">
+            <CollapsibleContent className="space-y-4 border-t px-4 py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label htmlFor="create_destinatario" className="cursor-pointer">

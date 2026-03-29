@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { createCategory, updateCategory } from "@/actions/categories";
+import { generateSlug } from "@/lib/utils/string";
 import type { CategoryWithBudget } from "@/types/domain";
 
 interface CategoryFormModalProps {
@@ -50,16 +51,6 @@ export function CategoryFormModal({
     setDirection(category?.direction ?? "OUTFLOW");
     setParentId(category?.parent_id ?? defaultParentId ?? "__none__");
   }, [category?.id, defaultParentId]);
-
-  function generateSlug(value: string) {
-    return value
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "")
-      .slice(0, 50);
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

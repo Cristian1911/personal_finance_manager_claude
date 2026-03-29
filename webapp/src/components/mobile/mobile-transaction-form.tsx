@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useActionState } from "react";
+import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import { createTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import {
   Collapsible,
   CollapsibleContent,
@@ -153,7 +154,7 @@ export function MobileTransactionForm({
   const [recurringStartDate, setRecurringStartDate] = useState(today);
   const [recurringTransferSourceAccountId, setRecurringTransferSourceAccountId] =
     useState("");
-  const [keyboardInset, setKeyboardInset] = useState(0);
+  const keyboardInset = useKeyboardInset();
   const allowRelatedSetup = transactionType !== "transfer";
 
   useEffect(() => {
@@ -165,34 +166,6 @@ export function MobileTransactionForm({
       setRecurringTransferSourceAccountId("");
     }
   }, [transactionType]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
-
-    const viewport = window.visualViewport;
-    let rafId = 0;
-
-    const syncKeyboardInset = () => {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        const inset = Math.max(
-          0,
-          window.innerHeight - viewport.height - viewport.offsetTop,
-        );
-        setKeyboardInset(inset);
-      });
-    };
-
-    syncKeyboardInset();
-    viewport.addEventListener("resize", syncKeyboardInset);
-    viewport.addEventListener("scroll", syncKeyboardInset);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      viewport.removeEventListener("resize", syncKeyboardInset);
-      viewport.removeEventListener("scroll", syncKeyboardInset);
-    };
-  }, []);
 
   function handleCreateDestinatarioSetup(checked: boolean) {
     setCreateDestinatarioSetup(checked);
@@ -228,8 +201,8 @@ export function MobileTransactionForm({
   return (
     <form
       action={formAction}
-      className="space-y-4 pb-4"
-      style={{ paddingBottom: keyboardInset > 0 ? `${keyboardInset + 16}px` : undefined }}
+      className="space-y-4"
+      style={{ paddingBottom: keyboardInset > 0 ? `${keyboardInset + 16}px` : "1rem" }}
       onFocusCapture={(event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
@@ -346,7 +319,8 @@ export function MobileTransactionForm({
       {/* Category */}
       <div className="space-y-2">
         <Label>Categoría</Label>
-        <CategoryCombobox
+        <CategoryZonePicker
+          variant="popover"
           categories={categories}
           value={categoryId}
           onValueChange={setCategoryId}

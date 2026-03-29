@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import {
   Table,
   TableBody,
@@ -173,7 +173,8 @@ function MobileList({
                       <span className="text-xs text-muted-foreground">
                         Categoría:
                       </span>
-                      <CategoryCombobox
+                      <CategoryZonePicker
+                        variant="popover"
                         categories={categories}
                         value={catId}
                         onValueChange={(v) => onCategoryChange(i, v)}
@@ -255,7 +256,8 @@ function DesktopTable({
                 </TableCell>
                 {showCategories && (
                   <TableCell>
-                    <CategoryCombobox
+                    <CategoryZonePicker
+                      variant="popover"
                       categories={categories}
                       value={catId}
                       onValueChange={(v) => onCategoryChange(i, v)}

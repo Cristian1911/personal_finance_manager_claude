@@ -6,6 +6,7 @@ import {
   getDestinatarioTransactions,
 } from "@/actions/destinatarios";
 import { getCategories } from "@/actions/categories";
+import { getTagGroups, getTagsForEntity } from "@/actions/tags";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { buildCategoryMap } from "@/lib/utils/categories";
 import { Button } from "@/components/ui/button";
@@ -25,10 +26,12 @@ export default async function DestinatarioDetailPage({ params }: PageProps) {
   await connection();
   const { id } = await params;
 
-  const [destResult, catResult, txResult] = await Promise.all([
+  const [destResult, catResult, txResult, tagGroupsResult, destinatarioTags] = await Promise.all([
     getDestinatario(id),
     getCategories(),
     getDestinatarioTransactions(id),
+    getTagGroups(),
+    getTagsForEntity("destinatario", id),
   ]);
 
   if (!destResult.success || !destResult.data) {
@@ -38,6 +41,7 @@ export default async function DestinatarioDetailPage({ params }: PageProps) {
   const destinatario = destResult.data;
   const categories = catResult.success ? catResult.data : [];
   const transactions = txResult.success ? txResult.data : [];
+  const tagGroups = tagGroupsResult.success ? tagGroupsResult.data : [];
 
   const categoryMap = buildCategoryMap(categories);
 
@@ -74,6 +78,8 @@ export default async function DestinatarioDetailPage({ params }: PageProps) {
         categories={categories}
         categoryMap={categoryMap}
         transactions={transactions}
+        tagGroups={tagGroups}
+        destinatarioTags={destinatarioTags}
       />
     </div>
   );

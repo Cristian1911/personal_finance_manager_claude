@@ -14,6 +14,7 @@ import { FabMenu, type FabAction, type ContextAction } from "./fab-menu";
 import { MobileTransactionForm } from "./mobile-transaction-form";
 import { RecurringForm } from "@/components/recurring/recurring-form";
 import { SpecializedAccountForm } from "@/components/accounts/specialized-account-form";
+import { VoiceCaptureSheet } from "./voice-capture-sheet";
 import type {
   Account,
   CategoryWithChildren,
@@ -48,6 +49,7 @@ function getContextActions(pathname: string): ContextAction[] {
 }
 
 function getSheetTitle(action: FabAction): string {
+  if (action === "voice") return "Captura por voz";
   if (action === "new-recurring") return "Nueva transaccion recurrente";
   if (action === "new-account") return "Nueva cuenta";
   return TRANSACTION_ACTIONS[action as keyof typeof TRANSACTION_ACTIONS]?.title ?? "";
@@ -94,6 +96,14 @@ export function MobileSheetProvider({
                 categories={categories}
                 defaultDirection={TRANSACTION_ACTIONS[activeAction as keyof typeof TRANSACTION_ACTIONS].direction}
                 isTransfer={activeAction === "transfer"}
+                onSuccess={handleSuccess}
+              />
+            )}
+
+            {activeAction === "voice" && (
+              <VoiceCaptureSheet
+                accounts={accounts}
+                categories={categories}
                 onSuccess={handleSuccess}
               />
             )}

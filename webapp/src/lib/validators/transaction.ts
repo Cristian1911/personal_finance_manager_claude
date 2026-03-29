@@ -62,6 +62,7 @@ export const transactionFiltersSchema = z.object({
   pageSize: z.coerce.number().int().positive().max(100).default(20),
   accountId: uuidStr().optional(),
   categoryId: uuidStr().optional(),
+  tagId: uuidStr().optional(),
   direction: z.enum(["INFLOW", "OUTFLOW"]).optional(),
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
   dateFrom: z.string().optional(),

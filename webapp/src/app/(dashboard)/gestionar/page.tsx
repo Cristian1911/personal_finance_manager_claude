@@ -6,9 +6,11 @@ import {
   ChevronRight,
   Contact,
   FileUp,
+  FolderKanban,
   Landmark,
   Repeat2,
   Settings,
+  Tag,
   Tags,
   User,
   Wallet,
@@ -67,6 +69,13 @@ const coreActions: ActionLink[] = [
 
 const organizationActions: ActionLink[] = [
   {
+    href: "/categories",
+    icon: FolderKanban,
+    label: "Categorías",
+    description: "Organiza zonas, subcategorías, íconos y presupuesto desde un solo mapa visual.",
+    accent: "olive",
+  },
+  {
     href: "/categorizar",
     icon: Tags,
     label: "Categorizar",
@@ -77,6 +86,12 @@ const organizationActions: ActionLink[] = [
     icon: Contact,
     label: "Destinatarios",
     description: "Normaliza comercios y reglas para que los movimientos hablen un solo idioma.",
+  },
+  {
+    href: "/etiquetas",
+    icon: Tag,
+    label: "Etiquetas",
+    description: "Crea y organiza etiquetas para anotar transacciones por viaje, persona o evento.",
   },
   {
     href: "/deudas",

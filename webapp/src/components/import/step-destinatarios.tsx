@@ -11,7 +11,7 @@ import type { DestinatarioRule } from "@zeta/shared";
 import { createDestinatario } from "@/actions/destinatarios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import {
   Collapsible,
   CollapsibleContent,
@@ -316,7 +316,8 @@ export function StepDestinatarios({
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs font-medium text-muted-foreground">Categoría (opcional)</label>
-                        <CategoryCombobox
+                        <CategoryZonePicker
+                          variant="popover"
                           categories={categories}
                           value={formCategory}
                           onValueChange={setFormCategory}

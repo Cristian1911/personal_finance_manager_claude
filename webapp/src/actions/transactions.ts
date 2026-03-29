@@ -443,6 +443,21 @@ export async function getTransactions(
     params.dateTo = monthEndStr(target);
   }
 
+  // Tag filter: pre-fetch matching transaction IDs
+  let taggedTransactionIds: string[] | null = null;
+  if (params.tagId) {
+    const { data: taggedIds } = await supabase
+      .from("transaction_tags")
+      .select("transaction_id")
+      .eq("tag_id", params.tagId);
+
+    if (taggedIds && taggedIds.length > 0) {
+      taggedTransactionIds = taggedIds.map((r) => r.transaction_id);
+    } else {
+      return { data: [], count: 0, page, pageSize, totalPages: 0 };
+    }
+  }
+
   const buildQuery = () => {
     let query = supabase
       .from("transactions")
@@ -469,6 +484,7 @@ export async function getTransactions(
     if (params.amountMin !== undefined) query = query.gte("amount", params.amountMin);
     if (params.amountMax !== undefined) query = query.lte("amount", params.amountMax);
     if (!params.showExcluded) query = query.eq("is_excluded", false);
+    if (taggedTransactionIds) query = query.in("id", taggedTransactionIds);
 
     return query;
   };

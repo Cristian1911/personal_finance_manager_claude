@@ -32,7 +32,6 @@ export const PRIMARY_NAV: NavItem[] = [
     href: "/plan",
     icon: PiggyBank,
     matchHrefs: [
-      "/categories",
       "/deudas",
       "/deudas/planificador",
       "/recurrentes",
@@ -44,6 +43,7 @@ export const PRIMARY_NAV: NavItem[] = [
     icon: Menu,
     badge: "uncategorized",
     matchHrefs: [
+      "/categories",
       "/categorizar",
       "/destinatarios",
       "/import",

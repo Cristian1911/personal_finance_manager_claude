@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { X, Tag } from "lucide-react";
+import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { Button } from "@/components/ui/button";
-import { CategoryPickerDialog } from "@/components/categorize/category-picker-dialog";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import type { CategoryWithChildren } from "@/types/domain";
 
 interface BulkActionBarProps {
@@ -22,9 +23,21 @@ export function BulkActionBar({
   isPending,
 }: BulkActionBarProps) {
   const [value, setValue] = useState<string | null>(null);
+  const keyboardInset = useKeyboardInset();
 
   return (
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-lg">
+    <div
+      className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-lg"
+      style={{
+        bottom: keyboardInset > 0
+          ? `${keyboardInset + 12}px`
+          : undefined,
+        marginBottom: keyboardInset === 0
+          ? "env(safe-area-inset-bottom)"
+          : undefined,
+      }}
+      data-testid="bulk-action-bar"
+    >
       <div className="flex items-center gap-2 text-sm font-medium">
         <Tag className="h-4 w-4 text-primary" />
         <span>
@@ -35,7 +48,7 @@ export function BulkActionBar({
 
       <div className="h-5 w-px bg-border" />
 
-      <CategoryPickerDialog
+      <CategoryZonePicker
         categories={categories}
         value={value}
         onValueChange={(id) => {
@@ -55,8 +68,9 @@ export function BulkActionBar({
         className="h-8 w-8 shrink-0"
         onClick={onClearSelection}
         disabled={isPending}
+        aria-label="Limpiar selección"
       >
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4" aria-hidden="true" />
       </Button>
     </div>
   );

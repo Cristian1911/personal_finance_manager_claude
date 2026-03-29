@@ -12,6 +12,7 @@ import { MobileTopbar } from "@/components/mobile/mobile-topbar";
 import { BottomTabBar } from "@/components/mobile/bottom-tab-bar";
 import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
 import { PageTransition } from "@/components/ui/page-transition";
+import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
 
 export default async function DashboardLayout({
   children,
@@ -64,18 +65,20 @@ export default async function DashboardLayout({
         {/* Mobile topbar */}
         <MobileTopbar profile={profile} />
 
-        <main className="flex-1 overflow-x-hidden p-4 lg:p-6 pb-20 lg:pb-6">
-          <MobileSheetProvider accounts={accounts} categories={categories}>
-            <Suspense>
-              <PageTransition>
-                {children}
-              </PageTransition>
-            </Suspense>
-          </MobileSheetProvider>
-        </main>
+        <KeyboardInsetProvider>
+          <main className="flex-1 overflow-x-hidden p-4 lg:p-6 pb-20 lg:pb-6">
+            <MobileSheetProvider accounts={accounts} categories={categories}>
+              <Suspense>
+                <PageTransition>
+                  {children}
+                </PageTransition>
+              </Suspense>
+            </MobileSheetProvider>
+          </main>
 
-        {/* Mobile bottom navigation */}
-        <BottomTabBar uncategorizedCount={totalReviewCount} />
+          {/* Mobile bottom navigation */}
+          <BottomTabBar uncategorizedCount={totalReviewCount} />
+        </KeyboardInsetProvider>
       </div>
     </div>
   );

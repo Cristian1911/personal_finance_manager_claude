@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { categorizeTransaction } from "@/actions/categorize";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { formatDate } from "@/lib/utils/date";
 import {
   AlertCircle,
@@ -266,7 +266,8 @@ function InboxRow({
           </div>
 
           {/* Category picker — full width */}
-          <CategoryCombobox
+          <CategoryZonePicker
+            variant="popover"
             categories={categoryTree}
             value={null}
             onValueChange={(id) => onCategorize(tx.id, id)}

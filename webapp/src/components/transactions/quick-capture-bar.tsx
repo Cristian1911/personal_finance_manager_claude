@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, Transaction, TransactionDirection } from "@/types/domain";
 
@@ -304,7 +304,8 @@ export function QuickCaptureBar({
 
               <div className="space-y-2">
                 <Label>Categoría</Label>
-                <CategoryCombobox
+                <CategoryZonePicker
+                  variant="popover"
                   categories={categories}
                   value={preview.category_id}
                   onValueChange={(value) =>

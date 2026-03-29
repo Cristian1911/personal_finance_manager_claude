@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { getTransactions } from "@/actions/transactions";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
+import { getAllTags } from "@/actions/tags";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TransactionTable } from "@/components/transactions/transaction-table";
@@ -54,12 +55,13 @@ export default async function TransactionsPage({
   await connection();
   const params = await searchParams;
 
-  const [transactionsResult, accountsResult, categoriesResult, outflowCategoriesResult] =
+  const [transactionsResult, accountsResult, categoriesResult, outflowCategoriesResult, allTags] =
     await Promise.all([
       getTransactions(params),
       getAccounts(),
       getCategories(),
       getCategories("OUTFLOW"),
+      getAllTags(),
     ]);
 
   const accounts = accountsResult.success ? accountsResult.data : [];
@@ -72,6 +74,7 @@ export default async function TransactionsPage({
   const activeFilterCount = [
     params.search,
     params.accountId,
+    params.tagId,
     params.direction,
     params.dateFrom,
     params.dateTo,
@@ -156,7 +159,7 @@ export default async function TransactionsPage({
                 {actionCard.body}
               </p>
               <div className="flex items-center gap-2">
-                <TransactionFilters accounts={accounts} />
+                <TransactionFilters accounts={accounts} tags={allTags} />
                 <Button
                   asChild
                   variant="outline"
@@ -298,7 +301,7 @@ export default async function TransactionsPage({
         </div>
 
         <Suspense>
-          <TransactionFilters accounts={accounts} />
+          <TransactionFilters accounts={accounts} tags={allTags} />
         </Suspense>
 
         <QuickCaptureBar accounts={accounts} categories={categories} />
