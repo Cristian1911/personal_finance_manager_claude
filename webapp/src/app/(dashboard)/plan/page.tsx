@@ -2,8 +2,10 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { CalendarRange } from "lucide-react";
 import { getPlanPageData } from "@/actions/plan";
+import { getCategoriesByRhythm } from "@/actions/categories";
 import { MonthSelector } from "@/components/month-selector";
 import { PlanBudgetSection } from "@/components/plan/plan-budget-section";
+import { PlanBudgetToggle } from "@/components/plan/plan-budget-toggle";
 import { PlanDecisionRail } from "@/components/plan/plan-decision-rail";
 import { PlanDebtSection } from "@/components/plan/plan-debt-section";
 import { PlanHero } from "@/components/plan/plan-hero";
@@ -21,6 +23,8 @@ export default async function PlanPage({
   const month = params.month;
   const monthLabel = formatMonthLabel(parseMonth(month));
   const planData = await getPlanPageData(month);
+  const rhythmResult = await getCategoriesByRhythm(month, planData.currency);
+  const rhythmData = rhythmResult.success ? rhythmResult.data : [];
 
   return (
     <div className="space-y-6">
@@ -79,7 +83,11 @@ export default async function PlanPage({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <PlanBudgetSection budget={planData.budget} currency={planData.currency} />
+        <PlanBudgetToggle
+          domainView={<PlanBudgetSection budget={planData.budget} currency={planData.currency} />}
+          rhythmGroups={rhythmData}
+          currency={planData.currency}
+        />
 
         <div className="space-y-6">
           <PlanDebtSection debt={planData.debt} currency={planData.currency} />

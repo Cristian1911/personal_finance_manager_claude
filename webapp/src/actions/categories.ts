@@ -652,3 +652,144 @@ export async function toggleCategoryActive(
   revalidateTag("dashboard:budgets", "zeta");
   return { success: true, data: undefined };
 }
+
+// ─── Rhythm view ──────────────────────────────────────────────────────────────
+
+export type RhythmCategoryData = {
+  id: string;
+  name: string;
+  name_es: string | null;
+  spent: number;
+  budget: number | null;
+};
+
+export type RhythmGroup = {
+  rhythmTag: string;
+  color: string;
+  categories: RhythmCategoryData[];
+};
+
+const RITMO_GROUP_ID = "d0000001-0001-4000-8000-000000000001";
+
+export async function getCategoriesByRhythm(
+  month?: string,
+  currency: CurrencyCode = "COP"
+): Promise<ActionResult<RhythmGroup[]>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  try {
+    const target = parseMonth(month);
+    const baseCurrency = currency;
+
+    // Fetch Ritmo tags
+    const { data: ritmoTags } = await supabase
+      .from("tags")
+      .select("id, name, color, group_id")
+      .eq("group_id", RITMO_GROUP_ID);
+
+    if (!ritmoTags || ritmoTags.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    // Fetch subcategory → tag links for Ritmo tags
+    const { data: categoryTagLinks } = await supabase
+      .from("category_tags")
+      .select("category_id, tag_id")
+      .in(
+        "tag_id",
+        ritmoTags.map((t) => t.id)
+      );
+
+    if (!categoryTagLinks || categoryTagLinks.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const taggedCategoryIds = categoryTagLinks.map((l) => l.category_id);
+
+    // Fetch category details for tagged subcategories
+    const { data: categories } = await supabase
+      .from("categories")
+      .select("id, name, name_es")
+      .in("id", taggedCategoryIds)
+      .eq("is_active", true);
+
+    // Fetch budgets for tagged subcategories
+    const { data: budgets } = await supabase
+      .from("budgets")
+      .select("category_id, amount")
+      .eq("user_id", user.id)
+      .eq("period", "monthly")
+      .in("category_id", taggedCategoryIds);
+
+    // Fetch this month's spending for tagged subcategories
+    const { data: spentRows } = await supabase
+      .from("transactions")
+      .select("amount, category_id")
+      .eq("direction", "OUTFLOW")
+      .eq("is_excluded", false)
+      .eq("currency_code", baseCurrency)
+      .gte("transaction_date", monthStartStr(target))
+      .lte("transaction_date", monthEndStr(target))
+      .is("reconciled_into_transaction_id", null)
+      .in("category_id", taggedCategoryIds);
+
+    // Build lookup maps
+    const budgetMap = new Map<string, number>();
+    for (const b of budgets ?? []) {
+      budgetMap.set(b.category_id, Number(b.amount));
+    }
+
+    const spentMap = new Map<string, number>();
+    for (const tx of spentRows ?? []) {
+      if (tx.category_id) {
+        spentMap.set(tx.category_id, (spentMap.get(tx.category_id) ?? 0) + tx.amount);
+      }
+    }
+
+    // Build category id → Ritmo tag map
+    const categoryRitmoMap = new Map<string, { name: string; color: string }>();
+    for (const link of categoryTagLinks) {
+      const tag = ritmoTags.find((t) => t.id === link.tag_id);
+      if (tag) {
+        categoryRitmoMap.set(link.category_id, {
+          name: tag.name,
+          color: tag.color ?? "#818cf8",
+        });
+      }
+    }
+
+    // Group categories by Ritmo tag
+    const rhythmGroups = new Map<string, { color: string; categories: RhythmCategoryData[] }>();
+    for (const cat of categories ?? []) {
+      const rhythm = categoryRitmoMap.get(cat.id);
+      if (!rhythm) continue;
+
+      if (!rhythmGroups.has(rhythm.name)) {
+        rhythmGroups.set(rhythm.name, { color: rhythm.color, categories: [] });
+      }
+      rhythmGroups.get(rhythm.name)!.categories.push({
+        id: cat.id,
+        name: cat.name,
+        name_es: cat.name_es,
+        spent: spentMap.get(cat.id) ?? 0,
+        budget: budgetMap.get(cat.id) ?? null,
+      });
+    }
+
+    // Return groups in the order the Ritmo tags appear
+    const tagOrder = ritmoTags.map((t) => t.name);
+    const result: RhythmGroup[] = tagOrder
+      .filter((name) => rhythmGroups.has(name))
+      .map((name) => ({
+        rhythmTag: name,
+        color: rhythmGroups.get(name)!.color,
+        categories: rhythmGroups.get(name)!.categories,
+      }));
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("Error loading rhythm data:", error);
+    return { success: false, error: "Error al cargar los datos de ritmo" };
+  }
+}
