@@ -48,7 +48,7 @@ export async function createCaptureToken(
       user_id: user.id,
       token,
       label,
-      default_account_id: defaultAccountId || null,
+      default_account_id: defaultAccountId,
     })
     .select()
     .single();

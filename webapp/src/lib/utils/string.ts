@@ -13,10 +13,12 @@ export function capitalize(s: string): string {
 /** Generate a URL-safe slug from a string. Strips accents, lowercases, max 50 chars. */
 export function generateSlug(value: string): string {
   return value
+    .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 50);
 }

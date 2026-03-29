@@ -12,7 +12,10 @@ import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { BugReportForm } from "@/components/settings/bug-report-form";
+import { IntegrationsCard } from "@/components/settings/integrations-card";
 import { BuildInfo } from "@/components/settings/build-info";
+import { getCaptureTokens } from "@/actions/capture-tokens";
+import type { Account } from "@/types/domain";
 
 export default async function SettingsPage() {
   await connection();
@@ -27,6 +30,17 @@ export default async function SettingsPage() {
 
   if (!profile) redirect("/login");
 
+  const [tokensResult, { data: accounts }] = await Promise.all([
+    getCaptureTokens(),
+    supabase
+      .from("accounts")
+      .select("id, name, currency_code, account_type, is_active")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .order("display_order"),
+  ]);
+
+  const tokens = tokensResult.success ? tokensResult.data : [];
   const memberSince = new Date(profile.created_at).toLocaleDateString("es-CO");
 
   return (
@@ -109,6 +123,8 @@ export default async function SettingsPage() {
           <ProfileForm profile={profile} />
         </CardContent>
       </Card>
+
+      <IntegrationsCard accounts={(accounts ?? []) as Account[]} tokens={tokens} />
 
       <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
         <CardHeader>

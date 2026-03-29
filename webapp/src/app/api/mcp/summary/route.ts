@@ -11,12 +11,19 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const currency = (request.nextUrl.searchParams.get("currency") ?? "COP") as CurrencyCode;
 
-  // Fetch accounts
-  const { data: accounts } = await admin
-    .from("accounts")
-    .select("id, name, account_type, current_balance, currency_code, is_active, credit_limit, interest_rate")
-    .eq("user_id", auth.userId)
-    .eq("is_active", true);
+  const [{ data: accounts }, { data: recurring }] = await Promise.all([
+    admin
+      .from("accounts")
+      .select("id, name, account_type, current_balance, currency_code, is_active, credit_limit, interest_rate")
+      .eq("user_id", auth.userId)
+      .eq("is_active", true),
+    admin
+      .from("recurring_transaction_templates")
+      .select("id, merchant_name, description, amount, currency_code, day_of_month")
+      .eq("user_id", auth.userId)
+      .eq("is_active", true)
+      .eq("currency_code", currency),
+  ]);
 
   if (!accounts || accounts.length === 0) {
     return NextResponse.json({
@@ -29,7 +36,6 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Calculate totals
   const liquidTypes = new Set(["CHECKING", "SAVINGS", "CASH"]);
   const debtTypes = new Set(["CREDIT_CARD", "LOAN"]);
 
@@ -46,21 +52,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Fetch pending recurring obligations
-  const { data: recurring } = await admin
-    .from("recurring_transaction_templates")
-    .select("id, name, amount, currency_code, next_due_date")
-    .eq("user_id", auth.userId)
-    .eq("is_active", true)
-    .eq("currency_code", currency)
-    .not("next_due_date", "is", null);
-
   const now = new Date();
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const monthEndStr = monthEnd.toISOString().split("T")[0];
+  const currentDay = now.getDate();
 
+  // Pending = recurring payments not yet paid this month (day_of_month >= today)
   const pendingThisMonth = (recurring ?? []).filter(
-    (r) => r.next_due_date && r.next_due_date <= monthEndStr,
+    (r) => r.day_of_month != null && r.day_of_month >= currentDay,
   );
   const totalPending = pendingThisMonth.reduce((sum, r) => sum + r.amount, 0);
   const availableToSpend = totalLiquid - totalPending;
@@ -75,9 +72,9 @@ export async function GET(request: NextRequest) {
     available_to_spend: availableToSpend,
     available_to_spend_formatted: formatCurrency(availableToSpend, currency),
     pending_payments: pendingThisMonth.map((r) => ({
-      name: r.name,
+      name: r.merchant_name ?? r.description ?? "Pago recurrente",
       amount: r.amount,
-      due_date: r.next_due_date,
+      day_of_month: r.day_of_month,
     })),
     accounts_count: accounts.length,
     currency,
