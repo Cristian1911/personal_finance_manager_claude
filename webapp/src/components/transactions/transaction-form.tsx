@@ -308,7 +308,7 @@ export function TransactionForm({
               </button>
             </CollapsibleTrigger>
 
-            <CollapsibleContent forceMount className="space-y-4 border-t px-4 py-4">
+            <CollapsibleContent className="space-y-4 border-t px-4 py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label htmlFor="create_destinatario" className="cursor-pointer">
