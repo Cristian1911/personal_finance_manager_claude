@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Contact,
   FileUp,
+  FolderKanban,
   Landmark,
   Repeat2,
   Settings,
@@ -66,6 +67,13 @@ const coreActions: ActionLink[] = [
 ];
 
 const organizationActions: ActionLink[] = [
+  {
+    href: "/categories",
+    icon: FolderKanban,
+    label: "Categorías",
+    description: "Organiza zonas, subcategorías, íconos y presupuesto desde un solo mapa visual.",
+    accent: "olive",
+  },
   {
     href: "/categorizar",
     icon: Tags,
