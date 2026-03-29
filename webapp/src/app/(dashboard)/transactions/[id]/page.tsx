@@ -1,14 +1,16 @@
 import { connection } from "next/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowDownLeft, ArrowLeft, ArrowUpRight, ReceiptText, ShieldCheck } from "lucide-react";
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, ReceiptText, ShieldCheck, Tags } from "lucide-react";
 import { getTransaction } from "@/actions/transactions";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarios } from "@/actions/destinatarios";
+import { getTagGroups, getTagsForEntity } from "@/actions/tags";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
 import { DeleteTransactionButton } from "@/components/transactions/delete-transaction-button";
 import { DestinatarioPicker } from "@/components/transactions/destinatario-picker";
+import { TagPicker } from "@/components/tags/tag-picker";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -24,12 +26,14 @@ export default async function TransactionDetailPage({
 }) {
   await connection();
   const { id } = await params;
-  const [txResult, accountsResult, categoriesResult, destinatariosResult] =
+  const [txResult, accountsResult, categoriesResult, destinatariosResult, tagGroupsResult, transactionTags] =
     await Promise.all([
       getTransaction(id),
       getAccounts(),
       getCategories(),
       getDestinatarios(),
+      getTagGroups(),
+      getTagsForEntity("transaction", id),
     ]);
 
   if (!txResult.success) notFound();
@@ -40,6 +44,7 @@ export default async function TransactionDetailPage({
   const destinatarios = destinatariosResult.success
     ? destinatariosResult.data
     : [];
+  const tagGroups = tagGroupsResult.success ? tagGroupsResult.data : [];
   const isInflow = tx.direction === "INFLOW";
   const txStatus =
     tx.status === "POSTED"
@@ -155,28 +160,54 @@ export default async function TransactionDetailPage({
           </CardContent>
         </Card>
 
-        <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
-                <ReceiptText className="size-4 text-z-brass" />
+        <div className="space-y-6">
+          <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+                  <ReceiptText className="size-4 text-z-brass" />
+                </div>
+                <div className="space-y-1">
+                  <CardTitle>Destinatario</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Ajusta la asociación comercial para mejorar contexto y futuras reglas.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <CardTitle>Destinatario</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Ajusta la asociación comercial para mejorar contexto y futuras reglas.
-                </p>
+            </CardHeader>
+            <CardContent>
+              <DestinatarioPicker
+                transactionId={tx.id}
+                currentDestinatarioId={tx.destinatario_id}
+                destinatarios={destinatarios}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+                  <Tags className="size-4 text-z-brass" />
+                </div>
+                <div className="space-y-1">
+                  <CardTitle>Etiquetas</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Agrega contexto libre: viajes, personas, proyectos.
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <DestinatarioPicker
-              transactionId={tx.id}
-              currentDestinatarioId={tx.destinatario_id}
-              destinatarios={destinatarios}
-            />
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <TagPicker
+                entityType="transaction"
+                entityId={tx.id}
+                currentTags={transactionTags}
+                allTagGroups={tagGroups}
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
