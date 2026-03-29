@@ -7,7 +7,7 @@ import {
   updateRecurringTemplate,
 } from "@/actions/recurring-templates";
 import { Button } from "@/components/ui/button";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -310,7 +310,8 @@ export function RecurringForm({
       ) : (
         <div className="space-y-2">
           <Label>Categoría</Label>
-          <CategoryCombobox
+          <CategoryZonePicker
+            variant="popover"
             categories={categories}
             value={categoryId}
             onValueChange={setCategoryId}

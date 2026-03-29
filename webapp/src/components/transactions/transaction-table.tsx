@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -281,7 +281,8 @@ function InlineCategoryEdit({
 
   return (
     <div className={cn(isPending && "opacity-50 pointer-events-none")}>
-      <CategoryCombobox
+      <CategoryZonePicker
+        variant="popover"
         categories={categories}
         value={tx.category_id ?? null}
         onValueChange={handleChange}

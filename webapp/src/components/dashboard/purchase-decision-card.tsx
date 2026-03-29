@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { ArrowRight, Brain, CircleAlert, Loader2, PiggyBank, Scale, ShieldAlert } from "lucide-react";
 import type { PurchaseDecisionResult, PurchaseFundingType, PurchaseUrgency } from "@zeta/shared";
 import { analyzePurchaseDecisionAction } from "@/actions/purchase-decision";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -209,7 +209,8 @@ export function PurchaseDecisionCard({
 
                 <div className="space-y-2">
                   <Label>Categoría</Label>
-                  <CategoryCombobox
+                  <CategoryZonePicker
+                    variant="popover"
                     categories={categories}
                     value={categoryId}
                     onValueChange={setCategoryId}

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { createTransaction, updateTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
-import { CategoryCombobox } from "@/components/ui/category-combobox";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import {
   Collapsible,
   CollapsibleContent,
@@ -227,7 +227,8 @@ export function TransactionForm({
 
       <div className="space-y-2">
         <Label>Categoría</Label>
-        <CategoryCombobox
+        <CategoryZonePicker
+          variant="popover"
           categories={categories}
           value={categoryId}
           onValueChange={setCategoryId}
