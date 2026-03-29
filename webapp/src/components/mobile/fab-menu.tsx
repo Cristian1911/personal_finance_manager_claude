@@ -2,11 +2,12 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 
-export type FabAction = "expense" | "income" | "transfer" | "new-recurring" | "new-account";
+export type FabAction = "expense" | "income" | "transfer" | "voice" | "new-recurring" | "new-account";
 
 export interface ContextAction {
   id: FabAction;
@@ -29,6 +30,8 @@ const SUB_ACTIONS: ContextAction[] = [
 export function FabMenu({ onAction, contextActions }: FabMenuProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const keyboardInset = useKeyboardInset();
+  const keyboardOpen = keyboardInset > 0;
 
   // Close on route change
   useEffect(() => setOpen(false), [pathname]);
@@ -47,6 +50,26 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
         <DrawerContent>
           <DrawerTitle className="sr-only">Acciones</DrawerTitle>
           <div className="px-4 pb-4">
+            {/* Voice capture — prominent */}
+            <button
+              type="button"
+              onClick={() => handleAction("voice")}
+              className={cn(
+                "mb-4 flex w-full items-center gap-3 rounded-xl border border-z-brass/30 bg-z-brass/10 px-4 py-3",
+                "transition-colors active:bg-z-brass/20",
+              )}
+            >
+              <span className="flex size-10 items-center justify-center rounded-full bg-z-brass text-z-ink">
+                <Mic className="size-5" strokeWidth={2} />
+              </span>
+              <div className="text-left">
+                <span className="text-sm font-semibold">Captura por voz</span>
+                <p className="text-xs text-muted-foreground">
+                  Di tu gasto y Zeta lo interpreta
+                </p>
+              </div>
+            </button>
+
             {/* Section 1: Acciones rápidas */}
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Acciones rápidas
@@ -112,13 +135,14 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
         </DrawerContent>
       </Drawer>
 
-      {/* Main FAB — hidden when drawer is open */}
-      {!open && (
+      {/* Main FAB — hidden when drawer is open or keyboard is visible */}
+      {!open && !keyboardOpen && (
         <button
           type="button"
           onClick={() => setOpen(true)}
           className="fixed bottom-5 left-1/2 z-50 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-z-white text-z-ink shadow-lg mb-[env(safe-area-inset-bottom)]"
           aria-label="Abrir menu de acciones"
+          data-testid="fab-button"
         >
           <Plus className="size-7" strokeWidth={2.5} />
         </button>

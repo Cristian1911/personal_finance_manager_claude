@@ -423,51 +423,48 @@ export default async function DashboardPage({
               </Suspense>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_24rem]">
-              <div className="space-y-6">
-                {/* ── Hero Section — tier 1: always visible, no collapse ── */}
-                <DashboardHero
-                  data={heroData}
-                  allocationData={allocationData}
-                  debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
+            {/* ── Hero Section — full width ── */}
+            <DashboardHero
+              data={heroData}
+              allocationData={allocationData}
+              debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
+            />
+
+            {/* ── Action strip — balanced columns below hero ── */}
+            <div className="grid gap-4 xl:grid-cols-3">
+              <Card className="border-white/6 bg-z-surface-2/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <CardHeader className="space-y-2 pb-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                    {desktopAttention.eyebrow}
+                  </p>
+                  <CardTitle className="text-lg leading-tight">
+                    {desktopAttention.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {desktopAttention.body}
+                  </p>
+                  <Button
+                    asChild
+                    className="w-full justify-between bg-z-brass text-z-ink hover:bg-z-brass/90"
+                  >
+                    <Link href={desktopAttention.href}>
+                      {desktopAttention.cta}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <WidgetSlot widgetId="upcoming-payments">
+                <UpcomingPayments
+                  obligations={heroData.pendingObligations}
+                  totalPending={heroData.totalPending}
                 />
-              </div>
+              </WidgetSlot>
 
-              <div className="space-y-4">
-                <Card className="border-white/6 bg-z-surface-2/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                  <CardHeader className="space-y-2 pb-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-                      {desktopAttention.eyebrow}
-                    </p>
-                    <CardTitle className="text-xl leading-tight">
-                      {desktopAttention.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {desktopAttention.body}
-                    </p>
-                    <Button
-                      asChild
-                      className="w-full justify-between bg-z-brass text-z-ink hover:bg-z-brass/90"
-                    >
-                      <Link href={desktopAttention.href}>
-                        {desktopAttention.cta}
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <WidgetSlot widgetId="upcoming-payments">
-                  <UpcomingPayments
-                    obligations={heroData.pendingObligations}
-                    totalPending={heroData.totalPending}
-                  />
-                </WidgetSlot>
-
-                <QuickValueUpdates accounts={quickUpdateAccounts} id="quick-update-values" />
-              </div>
+              <QuickValueUpdates accounts={quickUpdateAccounts} id="quick-update-values" />
             </div>
 
             {/* ── 2. Health Score — tier 1, primary tier (no section wrapper) ── */}

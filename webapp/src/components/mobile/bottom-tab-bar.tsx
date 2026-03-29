@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { PRIMARY_NAV, isNavItemActive, type NavItem } from "@/lib/constants/navigation";
 import { formatBadgeCount } from "@/components/layout/nav-item-link";
 
@@ -12,6 +13,8 @@ interface BottomTabBarProps {
 
 export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
   const pathname = usePathname();
+  const keyboardInset = useKeyboardInset();
+  const keyboardOpen = keyboardInset > 0;
   const leftTabs = PRIMARY_NAV.slice(0, 2);
   const rightTabs = PRIMARY_NAV.slice(2);
 
@@ -53,10 +56,13 @@ export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
     );
   }
 
+  if (keyboardOpen) return null;
+
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/92 backdrop-blur-xl lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      data-testid="bottom-tab-bar"
     >
       <div className="flex gap-2 px-3 py-2">
         {leftTabs.map(renderTab)}
