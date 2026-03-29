@@ -398,6 +398,36 @@ export type Database = {
           },
         ]
       }
+      category_tags: {
+        Row: {
+          category_id: string
+          tag_id: string
+        }
+        Insert: {
+          category_id: string
+          tag_id: string
+        }
+        Update: {
+          category_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_tags_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       debt_scenarios: {
         Row: {
           allocations: Json
@@ -484,6 +514,36 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      destinatario_tags: {
+        Row: {
+          destinatario_id: string
+          tag_id: string
+        }
+        Insert: {
+          destinatario_id: string
+          tag_id: string
+        }
+        Update: {
+          destinatario_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "destinatario_tags_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "destinatario_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
             referencedColumns: ["id"]
           },
         ]
@@ -875,6 +935,125 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tag_groups: {
+        Row: {
+          color: string | null
+          created_at: string
+          display_order: number
+          id: string
+          is_system: boolean
+          name: string
+          user_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_system?: boolean
+          name: string
+          user_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_system?: boolean
+          name?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tag_groups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          display_order: number
+          group_id: string | null
+          id: string
+          is_system: boolean
+          name: string
+          slug: string
+          user_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          display_order?: number
+          group_id?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          slug: string
+          user_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          display_order?: number
+          group_id?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          slug?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tags_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "tag_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_tags: {
+        Row: {
+          tag_id: string
+          transaction_id: string
+        }
+        Insert: {
+          tag_id: string
+          transaction_id: string
+        }
+        Update: {
+          tag_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_tags_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
         ]
