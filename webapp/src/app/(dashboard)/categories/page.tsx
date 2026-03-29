@@ -8,7 +8,7 @@ import { getUncategorizedTransactions } from "@/actions/categorize";
 import { BudgetSummaryBar } from "@/components/budget/budget-summary-bar";
 import { BudgetCategoryGrid } from "@/components/budget/budget-category-grid";
 import { TrendComparison } from "@/components/budget/trend-comparison";
-import { CategoryManageList } from "@/components/budget/category-manage-list";
+import { CategoryZoneManager } from "@/components/categories/category-zone-manager";
 import { MonthEndInsight } from "@/components/budget/month-end-insight";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { MobilePresupuesto } from "@/components/mobile/mobile-presupuesto";
@@ -132,7 +132,7 @@ export default async function CategoriesPage({
           </TabsContent>
 
           <TabsContent value="gestionar" className="mt-4">
-            <CategoryManageList categories={allCategories} />
+            <CategoryZoneManager categories={allCategories} />
           </TabsContent>
         </Tabs>
       </div>
