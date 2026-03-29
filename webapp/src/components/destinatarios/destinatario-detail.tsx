@@ -50,11 +50,12 @@ import type {
   TransactionPreview,
   PatternTestResult,
 } from "@/actions/destinatarios";
+import { TagPicker } from "@/components/tags/tag-picker";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
-import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
+import type { CategoryWithChildren, CurrencyCode, Tag, TagGroupWithTags } from "@/types/domain";
 
 type Destinatario = Database["public"]["Tables"]["destinatarios"]["Row"];
 type DestinatarioRuleRow =
@@ -65,6 +66,8 @@ interface DestinatarioDetailProps {
   categories: CategoryWithChildren[];
   categoryMap: Record<string, string>;
   transactions: TransactionPreview[];
+  tagGroups: TagGroupWithTags[];
+  destinatarioTags: Tag[];
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
@@ -74,16 +77,37 @@ export function DestinatarioDetail({
   categories,
   categoryMap,
   transactions,
+  tagGroups,
+  destinatarioTags,
 }: DestinatarioDetailProps) {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      {/* Left column: Edit form + Rules */}
+      {/* Left column: Edit form + Tags + Rules */}
       <div className="lg:col-span-2 space-y-6">
         <EditForm
           destinatario={destinatario}
           categories={categories}
           categoryMap={categoryMap}
         />
+
+        {/* Tags card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Etiquetas</CardTitle>
+            <CardDescription>
+              Agrega etiquetas para organizar y filtrar este destinatario
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TagPicker
+              entityType="destinatario"
+              entityId={destinatario.id}
+              currentTags={destinatarioTags}
+              allTagGroups={tagGroups}
+            />
+          </CardContent>
+        </Card>
+
         <RulesSection
           destinatarioId={destinatario.id}
           rules={destinatario.rules}
