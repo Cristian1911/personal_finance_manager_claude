@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createCategory } from "@/actions/categories";
 import { toast } from "sonner";
+import { generateSlug } from "@/lib/utils/string";
 import type { TransactionDirection } from "@/types/domain";
 
 interface InlineCategoryFormProps {
@@ -29,16 +30,6 @@ export function InlineCategoryForm({
 }: InlineCategoryFormProps) {
   const [name, setName] = useState(initialName);
   const [isPending, startTransition] = useTransition();
-
-  function generateSlug(value: string) {
-    return value
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "")
-      .slice(0, 50);
-  }
 
   function handleSubmit() {
     const trimmed = name.trim();

@@ -31,8 +31,9 @@ import {
   zoneTextColor,
   chipBackground,
 } from "@/lib/utils/zone-colors";
-import { findSuggestion } from "@/lib/utils/category-suggestion";
+import { findSuggestion, type CategorySuggestion } from "@/lib/utils/category-suggestion";
 import { InlineCategoryForm } from "./inline-category-form";
+import { ZoneTile } from "./zone-tile";
 import type {
   CategoryWithChildren,
   TransactionDirection,
@@ -129,10 +130,10 @@ export function CategoryZonePicker({
   );
 
   // Currently selected leaf
-  const selected = findLeaf(filtered, value);
+  const selected = useMemo(() => findLeaf(filtered, value), [filtered, value]);
 
   // Parent zone color for the selected chip
-  const selectedParent = findParentZone(filtered, value);
+  const selectedParent = useMemo(() => findParentZone(filtered, value), [filtered, value]);
   const chipColor = selectedParent?.color ?? selected?.color ?? "#6b7280";
 
   // Smart suggestion
@@ -299,15 +300,6 @@ export function CategoryZonePicker({
 // PickerBody — the two-step zone picker content
 // ---------------------------------------------------------------------------
 
-type SuggestionData = {
-  categoryId: string;
-  categoryName: string;
-  categoryIcon: string;
-  categoryColor: string;
-  parentName: string | null;
-  reason: string;
-};
-
 function PickerBody({
   categories,
   value,
@@ -318,7 +310,7 @@ function PickerBody({
   categories: CategoryWithChildren[];
   value: string | null;
   onSelect: (id: string | null) => void;
-  suggestion: SuggestionData | null;
+  suggestion: CategorySuggestion | null;
   direction?: TransactionDirection;
 }) {
   const [search, setSearch] = useState("");
@@ -522,41 +514,17 @@ function PickerBody({
             {/* Zone grid */}
             <div className="grid grid-cols-2 gap-2">
               {zones.map((zone) => (
-                <button
+                <ZoneTile
                   key={zone.id}
-                  type="button"
-                  className={cn(
-                    "rounded-xl p-3 text-left transition-all w-full",
-                    "cursor-pointer hover:scale-[1.02] active:scale-[0.98]",
-                    expandedZoneId === zone.id && "ring-2",
-                  )}
-                  style={{
-                    backgroundColor: zoneBackground(zone.color),
-                    borderWidth: "1px",
-                    borderColor: zoneBorder(zone.color),
-                    ...(expandedZoneId === zone.id
-                      ? { ringColor: zone.color }
-                      : {}),
-                  }}
+                  category={zone}
+                  showChips={false}
+                  isExpanded={expandedZoneId === zone.id}
                   onClick={() =>
                     setExpandedZoneId(
                       expandedZoneId === zone.id ? null : zone.id,
                     )
                   }
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{zone.icon}</span>
-                    <span
-                      className="text-sm font-semibold truncate"
-                      style={{ color: zoneTextColor(zone.color) }}
-                    >
-                      {zone.name_es ?? zone.name}
-                    </span>
-                    <span className="ml-auto text-[11px] text-muted-foreground">
-                      {zone.children.length}
-                    </span>
-                  </div>
-                </button>
+                />
               ))}
             </div>
 

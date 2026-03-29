@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useCallback, useEffect, useTransition } from "react";
 import { Plus, Eye, EyeOff, Trash2, GripVertical, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   toggleCategoryActive,
 } from "@/actions/categories";
 import { toast } from "sonner";
+import { generateSlug } from "@/lib/utils/string";
 import type { CategoryBudgetData } from "@/types/domain";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -30,18 +31,6 @@ interface ZoneEditState {
   name: string;
   icon: string;
   color: string;
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function generateSlug(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .slice(0, 50);
 }
 
 // ─── ZoneCard ────────────────────────────────────────────────────────────────
@@ -487,31 +476,29 @@ function NewZoneTile({ onCreated }: { onCreated: () => void }) {
 // ─── CategoryZoneManager (main) ──────────────────────────────────────────────
 
 export function CategoryZoneManager({ categories }: CategoryZoneManagerProps) {
-  const [localCategories, setLocalCategories] = useState(categories);
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
 
-  useEffect(() => {
-    setLocalCategories(categories);
-  }, [categories]);
-
-  function handleSaved() {
-    // Reset editing state — server revalidation will update categories via props
+  const handleSaved = useCallback(() => {
     setEditingZoneId(null);
-  }
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingZoneId(null);
+  }, []);
 
   return (
     <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-      {localCategories.map((zone) => (
+      {categories.map((zone) => (
         <ZoneCard
           key={zone.id}
           zone={zone}
           isEditing={editingZoneId === zone.id}
           onStartEdit={() => setEditingZoneId(zone.id)}
-          onCancelEdit={() => setEditingZoneId(null)}
+          onCancelEdit={handleCancelEdit}
           onSaved={handleSaved}
         />
       ))}
-      <NewZoneTile onCreated={() => setEditingZoneId(null)} />
+      <NewZoneTile onCreated={handleSaved} />
     </div>
   );
 }
