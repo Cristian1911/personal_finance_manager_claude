@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { zoneBackground, zoneBorder, zoneTextColor } from "@/lib/utils/zone-colors";
+import { CategoryIcon } from "./category-icon";
 import { SubcategoryChip } from "./subcategory-chip";
 import { IconPicker } from "./icon-picker";
 import { ColorPicker } from "./color-picker";
@@ -275,7 +276,7 @@ function ZoneCard({
     >
       {/* Zone header */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">{zone.icon}</span>
+        <CategoryIcon icon={zone.icon} className="text-lg size-5" />
         <span
           className="text-sm font-semibold truncate"
           style={{ color: zoneTextColor(zone.color) }}

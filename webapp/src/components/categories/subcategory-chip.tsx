@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
+import { CategoryIcon } from "./category-icon";
 
 interface SubcategoryChipProps {
   name: string;
@@ -38,7 +39,7 @@ export function SubcategoryChip({
         ...(isSelected ? { ringColor: color } : {}),
       }}
     >
-      {icon && <span className="text-[11px]">{icon}</span>}
+      {icon && <CategoryIcon icon={icon} className="text-[11px] size-3" />}
       <span className="truncate">{name}</span>
     </Component>
   );

@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { zoneBackground, zoneBorder, zoneTextColor } from "@/lib/utils/zone-colors";
+import { CategoryIcon } from "./category-icon";
 import { SubcategoryChip } from "./subcategory-chip";
 import type { CategoryWithChildren } from "@/types/domain";
 
@@ -44,7 +45,7 @@ export function ZoneTile({
       }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">{category.icon}</span>
+        <CategoryIcon icon={category.icon} className="text-lg" />
         <span
           className="text-sm font-semibold truncate"
           style={{ color: zoneTextColor(color) }}

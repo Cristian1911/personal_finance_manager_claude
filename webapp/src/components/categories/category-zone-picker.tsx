@@ -32,6 +32,7 @@ import {
   chipBackground,
 } from "@/lib/utils/zone-colors";
 import { findSuggestion, type CategorySuggestion } from "@/lib/utils/category-suggestion";
+import { CategoryIcon } from "./category-icon";
 import { InlineCategoryForm } from "./inline-category-form";
 import { ZoneTile } from "./zone-tile";
 import type {
@@ -204,7 +205,7 @@ export function CategoryZonePicker({
             color: zoneTextColor(chipColor),
           }}
         >
-          <span className="text-[11px]">{selected.icon}</span>
+          <CategoryIcon icon={selected.icon} className="text-[11px] size-3.5" />
           <span className="truncate">
             {selected.name_es ?? selected.name}
           </span>
@@ -407,7 +408,7 @@ function PickerBody({
                 color: zoneTextColor(suggestion.categoryColor),
               }}
             >
-              <span className="text-[11px]">{suggestion.categoryIcon}</span>
+              <CategoryIcon icon={suggestion.categoryIcon} className="text-[11px] size-3.5" />
               {suggestion.categoryName}
             </span>
             {suggestion.parentName && (
@@ -453,7 +454,7 @@ function PickerBody({
                   className="text-xs font-semibold mb-1.5 px-1 flex items-center gap-1.5"
                   style={{ color: zoneTextColor(zone.color) }}
                 >
-                  <span>{zone.icon}</span>
+                  <CategoryIcon icon={zone.icon} className="size-3.5" />
                   {zone.name_es ?? zone.name}
                 </div>
                 <div className="space-y-0.5">
@@ -633,7 +634,7 @@ function ExpandedSubcategories({
         className="text-xs font-semibold px-2 py-1 flex items-center gap-1.5"
         style={{ color: zoneTextColor(zone.color) }}
       >
-        <span>{zone.icon}</span>
+        <CategoryIcon icon={zone.icon} className="size-3.5" />
         {zone.name_es ?? zone.name}
       </div>
       {zone.children.map((child) => (
@@ -692,7 +693,7 @@ function SubcategoryRow({
           color: zoneTextColor(color),
         }}
       >
-        {category.icon}
+        <CategoryIcon icon={category.icon} className="size-3.5" />
       </span>
       <span className="flex-1 truncate">
         {category.name_es ?? category.name}
