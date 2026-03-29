@@ -245,7 +245,9 @@ export function CategoryZonePicker({
             container={portalContainer}
             className="w-[320px] max-w-[min(22rem,calc(100vw-2rem))] p-0 overscroll-contain touch-pan-y"
             align="start"
+            side="bottom"
             sideOffset={8}
+            collisionPadding={16}
             onWheel={(e) => e.stopPropagation()}
             onTouchMove={(e) => e.stopPropagation()}
           >
@@ -510,35 +512,50 @@ function PickerBody({
             )}
           </div>
         ) : (
-          // ----- Two-step zone picker mode -----
+          // ----- Two-step zone picker mode (inline accordion) -----
           <div className="p-3 space-y-3">
-            {/* Zone grid */}
-            <div className="grid grid-cols-2 gap-2">
-              {zones.map((zone) => (
-                <ZoneTile
-                  key={zone.id}
-                  category={zone}
-                  showChips={false}
-                  isExpanded={expandedZoneId === zone.id}
-                  onClick={() =>
-                    setExpandedZoneId(
-                      expandedZoneId === zone.id ? null : zone.id,
-                    )
-                  }
-                />
-              ))}
+            {/* Zone grid — rows of 2 with inline subcategory expansion */}
+            <div className="space-y-2">
+              {Array.from(
+                { length: Math.ceil(zones.length / 2) },
+                (_, rowIdx) => {
+                  const pair = zones.slice(rowIdx * 2, rowIdx * 2 + 2);
+                  const expandedInRow = pair.find(
+                    (z) => z.id === expandedZoneId,
+                  );
+                  return (
+                    <div key={rowIdx}>
+                      <div className="grid grid-cols-2 gap-2">
+                        {pair.map((zone) => (
+                          <ZoneTile
+                            key={zone.id}
+                            category={zone}
+                            showChips={false}
+                            isExpanded={expandedZoneId === zone.id}
+                            onClick={() =>
+                              setExpandedZoneId(
+                                expandedZoneId === zone.id ? null : zone.id,
+                              )
+                            }
+                          />
+                        ))}
+                      </div>
+                      {expandedInRow && (
+                        <div className="mt-2">
+                          <ExpandedSubcategories
+                            zones={zones}
+                            expandedZoneId={expandedInRow.id}
+                            value={value}
+                            onSelect={onSelect}
+                            direction={direction}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                },
+              )}
             </div>
-
-            {/* Expanded subcategory list */}
-            {expandedZoneId && (
-              <ExpandedSubcategories
-                zones={zones}
-                expandedZoneId={expandedZoneId}
-                value={value}
-                onSelect={onSelect}
-                direction={direction}
-              />
-            )}
 
             {/* Standalone categories (no children) */}
             {standalone.length > 0 && (
