@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Lightbulb, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CategoryPickerDialog } from "@/components/categorize/category-picker-dialog";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { formatCurrency } from "@/lib/utils/currency";
 import { getCategoryName } from "@zeta/shared";
 import type { TransactionWithRelations, CategoryWithChildren, CurrencyCode } from "@/types/domain";
@@ -115,7 +115,7 @@ export function InboxTransactionRow({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <CategoryPickerDialog
+              <CategoryZonePicker
                 categories={categories}
                 value={manualValue}
                 onValueChange={(id) => {

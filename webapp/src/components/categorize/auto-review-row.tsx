@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, ArrowDownLeft, ArrowUpRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CategoryPickerDialog } from "@/components/categorize/category-picker-dialog";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { formatCurrency } from "@/lib/utils/currency";
 import { getCategoryName } from "@zeta/shared";
 import type { TransactionWithRelations, CategoryWithChildren, CurrencyCode } from "@/types/domain";
@@ -107,7 +107,7 @@ export function AutoReviewRow({
           </Button>
 
           {showPicker ? (
-            <CategoryPickerDialog
+            <CategoryZonePicker
               categories={categories}
               value={null}
               onValueChange={(id) => {
