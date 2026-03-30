@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, DatabaseZap, History } from "lucide-react";
-import { getAccount } from "@/actions/accounts";
+import { getAccount, getAccounts } from "@/actions/accounts";
 import { getStatementSnapshots } from "@/actions/statement-snapshots";
+import { QuickPaymentDialog } from "@/components/accounts/quick-payment-dialog";
 import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
 import { DeleteAccountButton } from "@/components/accounts/delete-account-button";
 import { ReconcileBalanceDialog } from "@/components/accounts/reconcile-balance-dialog";
@@ -37,15 +38,17 @@ export default async function AccountDetailPage({
   await connection();
   const { id } = await params;
 
-  // Fetch account and snapshots in parallel — snapshots return empty for non-history types (cheap)
-  const [result, snapshotsResult] = await Promise.all([
+  // Fetch account, snapshots, and all accounts in parallel
+  const [result, snapshotsResult, allAccountsResult] = await Promise.all([
     getAccount(id),
     getStatementSnapshots(id),
+    getAccounts(),
   ]);
 
   if (!result.success) notFound();
 
   const account = result.data;
+  const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
   const showHistory = TYPES_WITH_HISTORY.includes(account.account_type);
   const snapshots = showHistory && snapshotsResult?.success ? snapshotsResult.data : [];
   const latestSnapshot = snapshots[0] ?? null;
@@ -76,6 +79,14 @@ export default async function AccountDetailPage({
           ? `${account.institution_name}${account.mask ? ` · ••${account.mask}` : ""}`
           : "Cuenta sin institución explícita"}
         actions={<>
+          <QuickPaymentDialog
+            accountId={account.id}
+            accountName={account.name}
+            accountType={account.account_type}
+            currentBalance={account.current_balance}
+            currencyCode={account.currency_code}
+            accounts={allAccounts}
+          />
           <ReconcileBalanceDialog
             accountId={account.id}
             accountName={account.name}

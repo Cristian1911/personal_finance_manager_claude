@@ -185,7 +185,7 @@ export default async function AccountsPage() {
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {section.accounts.map((account) => (
-                  <AccountCard key={account.id} account={account} />
+                  <AccountCard key={account.id} account={account} allAccounts={accounts} />
                 ))}
               </div>
             </section>

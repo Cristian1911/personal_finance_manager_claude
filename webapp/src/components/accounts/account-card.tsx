@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { QuickPaymentDialog } from "@/components/accounts/quick-payment-dialog";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils";
 import { ACCOUNT_TYPE_SHORT_LABELS } from "@/lib/constants/account-types";
@@ -16,6 +19,7 @@ import {
   TrendingUp,
   Landmark,
   CircleDot,
+  HandCoins,
 } from "lucide-react";
 
 const ACCOUNT_TYPE_ICONS: Record<string, React.ElementType> = {
@@ -28,8 +32,13 @@ const ACCOUNT_TYPE_ICONS: Record<string, React.ElementType> = {
   OTHER: CircleDot,
 };
 
+interface AccountCardProps {
+  account: Account;
+  /** All accounts (for QuickPaymentDialog source picker) */
+  allAccounts?: Pick<Account, "id" | "name" | "account_type" | "currency_code">[];
+}
 
-export function AccountCard({ account }: { account: Account }) {
+export function AccountCard({ account, allAccounts }: AccountCardProps) {
   const Icon = ACCOUNT_TYPE_ICONS[account.account_type] ?? Wallet;
   const isDebt = account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
   const availableCredit =
@@ -73,15 +82,37 @@ export function AccountCard({ account }: { account: Account }) {
                 ) : null}
               </div>
             </div>
-            <div className="flex flex-wrap justify-end gap-2">
-              <Badge variant="secondary" className="border-white/6 bg-black/15 text-[11px] text-z-white">
-                {ACCOUNT_TYPE_SHORT_LABELS[account.account_type]}
-              </Badge>
-              {account.show_in_dashboard ? (
-                <Badge className="border-z-brass/30 bg-z-brass/10 text-[11px] font-medium text-z-brass hover:bg-z-brass/10">
-                  Inicio
+            <div className="flex items-center gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                <Badge variant="secondary" className="border-white/6 bg-black/15 text-[11px] text-z-white">
+                  {ACCOUNT_TYPE_SHORT_LABELS[account.account_type]}
                 </Badge>
-              ) : null}
+                {account.show_in_dashboard ? (
+                  <Badge className="border-z-brass/30 bg-z-brass/10 text-[11px] font-medium text-z-brass hover:bg-z-brass/10">
+                    Inicio
+                  </Badge>
+                ) : null}
+              </div>
+              {allAccounts && allAccounts.length > 0 && (
+                <div
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  className="shrink-0"
+                >
+                  <QuickPaymentDialog
+                    accountId={account.id}
+                    accountName={account.name}
+                    accountType={account.account_type}
+                    currentBalance={account.current_balance}
+                    currencyCode={account.currency_code}
+                    accounts={allAccounts}
+                    trigger={
+                      <Button variant="ghost" size="icon" className="size-8 rounded-full">
+                        <HandCoins className="size-4" />
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
             </div>
           </div>
         </CardHeader>
