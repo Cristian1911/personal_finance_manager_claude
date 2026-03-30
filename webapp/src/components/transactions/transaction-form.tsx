@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { createTransaction, updateTransaction } from "@/actions/transactions";
+import { addTagToEntity } from "@/actions/tags";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import {
@@ -23,8 +24,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { X } from "lucide-react";
 import type { ActionResult } from "@/types/actions";
-import type { Account, CategoryWithChildren, Transaction, TransactionDirection } from "@/types/domain";
+import type { Account, CategoryWithChildren, Tag, Transaction, TransactionDirection } from "@/types/domain";
 
 const FREQUENCY_OPTIONS = [
   { value: "WEEKLY", label: "Semanal" },
@@ -38,11 +40,13 @@ export function TransactionForm({
   transaction,
   accounts,
   categories,
+  tags,
   onSuccess,
 }: {
   transaction?: Transaction;
   accounts: Account[];
   categories: CategoryWithChildren[];
+  tags?: Tag[];
   onSuccess?: () => void;
 }) {
   const router = useRouter();
@@ -57,6 +61,14 @@ export function TransactionForm({
     async (prevState, formData) => {
       const result = await action(prevState, formData);
       if (result.success) {
+        // Tag the transaction if tags were selected during creation
+        if (!transaction && selectedTagIds.length > 0) {
+          await Promise.all(
+            selectedTagIds.map((tagId) =>
+              addTagToEntity(tagId, "transaction", result.data.id)
+            )
+          );
+        }
         router.refresh();
         onSuccess?.();
       }
@@ -82,6 +94,7 @@ export function TransactionForm({
   const [isSubscription, setIsSubscription] = useState(
     transaction?.is_subscription ?? false
   );
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [createDestinatarioSetup, setCreateDestinatarioSetup] = useState(false);
   const [destinatarioName, setDestinatarioName] = useState(
@@ -236,6 +249,39 @@ export function TransactionForm({
           name="category_id"
         />
       </div>
+
+      {/* Tag selector — available tags as toggleable chips */}
+      {tags && tags.length > 0 && (
+        <div className="space-y-2">
+          <Label>Etiquetas</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map((tag) => {
+              const isSelected = selectedTagIds.includes(tag.id);
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() =>
+                    setSelectedTagIds((prev) =>
+                      isSelected
+                        ? prev.filter((id) => id !== tag.id)
+                        : [...prev, tag.id]
+                    )
+                  }
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                    isSelected
+                      ? "border-z-brass/40 bg-z-brass/15 text-z-brass"
+                      : "border-white/10 text-muted-foreground hover:bg-white/5"
+                  }`}
+                >
+                  {tag.name}
+                  {isSelected && <X className="size-3" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="notes">Notas</Label>
