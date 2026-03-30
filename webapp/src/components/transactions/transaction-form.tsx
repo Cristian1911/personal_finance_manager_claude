@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { createTransaction, updateTransaction } from "@/actions/transactions";
 import { addTagToEntity } from "@/actions/tags";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import {
@@ -268,11 +269,12 @@ export function TransactionForm({
                         : [...prev, tag.id]
                     )
                   }
-                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
                     isSelected
                       ? "border-z-brass/40 bg-z-brass/15 text-z-brass"
-                      : "border-white/10 text-muted-foreground hover:bg-white/5"
-                  }`}
+                      : "border-white/10 text-muted-foreground hover:bg-white/5",
+                  )}
                 >
                   {tag.name}
                   {isSelected && <X className="size-3" />}

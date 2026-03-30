@@ -33,7 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
 import { formatCurrency } from "@/lib/utils/currency";
-import type { CategoryWithChildren, Tag, TagGroupWithTags } from "@/types/domain";
+import type { CategoryWithChildren, CurrencyCode, Tag, TagGroupWithTags } from "@/types/domain";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +56,7 @@ interface DestinatarioListProps {
   categoryMap: Record<string, string>;
   categories: CategoryWithChildren[];
   tagGroups?: TagGroupWithTags[];
+  currency?: CurrencyCode;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -95,6 +96,7 @@ export function DestinatarioList({
   categoryMap,
   categories,
   tagGroups: _tagGroups,
+  currency = "COP",
 }: DestinatarioListProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -462,7 +464,7 @@ export function DestinatarioList({
                         )}
                         {(d.avg_monthly_spend ?? 0) > 0 && (
                           <span className="text-xs text-muted-foreground">
-                            {formatCurrency(d.avg_monthly_spend!, "COP")}/mes
+                            {formatCurrency(d.avg_monthly_spend!, currency)}/mes
                           </span>
                         )}
                       </div>
