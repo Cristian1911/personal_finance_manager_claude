@@ -686,6 +686,7 @@ export type Database = {
         Row: {
           app_purpose: string | null
           avatar_url: string | null
+          budget_mode: string | null
           created_at: string
           dashboard_config: Json | null
           email: string
@@ -703,6 +704,7 @@ export type Database = {
         Insert: {
           app_purpose?: string | null
           avatar_url?: string | null
+          budget_mode?: string | null
           created_at?: string
           dashboard_config?: Json | null
           email: string
@@ -720,6 +722,7 @@ export type Database = {
         Update: {
           app_purpose?: string | null
           avatar_url?: string | null
+          budget_mode?: string | null
           created_at?: string
           dashboard_config?: Json | null
           email?: string

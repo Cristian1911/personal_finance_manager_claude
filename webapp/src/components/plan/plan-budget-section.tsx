@@ -145,8 +145,8 @@ export function PlanBudgetSection({
 
         <div className="flex flex-wrap gap-3">
           <Button asChild className={BRASS_BUTTON_CLASS}>
-            <Link href="/categories">
-              Ajustar presupuesto
+            <Link href="/presupuesto">
+              Gestionar presupuesto
               <ArrowRight className="size-4" />
             </Link>
           </Button>

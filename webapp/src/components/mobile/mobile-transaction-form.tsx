@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useActionState } from "react";
-import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -154,7 +153,6 @@ export function MobileTransactionForm({
   const [recurringStartDate, setRecurringStartDate] = useState(today);
   const [recurringTransferSourceAccountId, setRecurringTransferSourceAccountId] =
     useState("");
-  const keyboardInset = useKeyboardInset();
   const allowRelatedSetup = transactionType !== "transfer";
 
   useEffect(() => {
@@ -201,8 +199,7 @@ export function MobileTransactionForm({
   return (
     <form
       action={formAction}
-      className="space-y-4"
-      style={{ paddingBottom: keyboardInset > 0 ? `${keyboardInset + 16}px` : "1rem" }}
+      className="space-y-4 pb-4"
       onFocusCapture={(event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;

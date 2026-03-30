@@ -310,6 +310,51 @@ export async function getDestinatarios(): Promise<
   }
 }
 
+// ─── getDestinatariosWithSpend ────────────────────────────────────────────────
+
+export async function getDestinatariosWithSpend(): Promise<
+  ActionResult<(DestinatarioWithCounts & { avg_monthly_spend: number })[]>
+> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Get 3-month spend per destinatario
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const since = threeMonthsAgo.toISOString().split("T")[0];
+
+  // Run both queries in parallel
+  const [baseResult, { data: spendData }] = await Promise.all([
+    getDestinatarios(),
+    supabase
+      .from("transactions")
+      .select("destinatario_id, amount")
+      .eq("user_id", user.id)
+      .eq("direction", "OUTFLOW")
+      .eq("is_excluded", false)
+      .gte("transaction_date", since)
+      .not("destinatario_id", "is", null),
+  ]);
+
+  if (!baseResult.success) return baseResult as ActionResult<never>;
+
+  const spendMap = new Map<string, number>();
+  for (const tx of spendData ?? []) {
+    if (!tx.destinatario_id) continue;
+    spendMap.set(
+      tx.destinatario_id,
+      (spendMap.get(tx.destinatario_id) ?? 0) + tx.amount,
+    );
+  }
+
+  const enriched = baseResult.data.map((d) => ({
+    ...d,
+    avg_monthly_spend: Math.round((spendMap.get(d.id) ?? 0) / 3),
+  }));
+
+  return { success: true, data: enriched };
+}
+
 // ─── getDestinatario ──────────────────────────────────────────────────────────
 
 export async function getDestinatario(
@@ -444,6 +489,27 @@ export async function updateDestinatario(
 
   revalidateTag("destinatarios", "zeta");
   return { success: true, data };
+}
+
+// ─── patchDestinatario (lightweight inline update) ───────────────────────────
+
+export async function patchDestinatario(
+  id: string,
+  patch: { default_category_id?: string | null; is_active?: boolean },
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("destinatarios")
+    .update(patch)
+    .eq("user_id", user.id)
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("destinatarios", "zeta");
+  return { success: true, data: null };
 }
 
 // ─── deleteDestinatario ───────────────────────────────────────────────────────
