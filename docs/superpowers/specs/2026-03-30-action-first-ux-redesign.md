@@ -62,7 +62,7 @@ Always two cards side by side. Both always present for layout consistency.
 
 | Metrics (left card) | Attention (right card) | Content zone |
 |---|---|---|
-| Movimientos, Ingresos, Gastos | Sin categoría count, posibles duplicados | List + detail panel |
+| Movimientos, Ingresos, Gastos | Sin categoría count | List + detail panel |
 
 - Quick capture bar stays below filters
 - Month navigator in header row
@@ -71,7 +71,7 @@ Always two cards side by side. Both always present for layout consistency.
 
 | Metrics (left card) | Attention (right card) | Content zone |
 |---|---|---|
-| Patrimonio neto, Cuentas activas, Presión de deuda | Saldos desactualizados | Account cards grouped by type |
+| Patrimonio neto, Cuentas activas, Presión de deuda | — (no signals yet, shows "Al día") | Account cards grouped by type |
 
 - No detail panel — account cards are self-contained
 - Grouped sections (Liquidez, Crédito) keep their titles but lose descriptions
@@ -82,7 +82,7 @@ Always two cards side by side. Both always present for layout consistency.
 |---|---|---|
 | Días restantes, Con límite, Sin categoría | Categorías sobre límite | Budget grid + detail panel |
 
-- Tab interface stays (Presupuesto, Tendencias, Gestionar)
+- Tab interface changes: "Gestionar" tab renamed to "Configurar" (avoids confusion with Bandeja route)
 - MonthEndInsight card removed — its data moves to attention card
 
 ### Destinatarios (`/destinatarios`)
@@ -128,11 +128,12 @@ Always two cards side by side. Both always present for layout consistency.
 
 - Route stays at `/gestionar`, page becomes "Bandeja"
 - Full-width attention hub — no navigation cards (sidebar covers navigation)
-- Groups items by priority:
-  - **Requiere acción** — uncategorized transactions, overdue recurring, unmatched rules
-  - **Sugerencias** — new destinatario rules, budget adjustments
-- Each item: count badge + description + direct action link
-- When everything is clear: positive "Al día" full-page state
+- Reads from `getAttentionSnapshot()` — single source of truth for all signals
+- Groups `signals` by `priority` field:
+  - **Requiere acción** (`priority: "action"`) — uncategorized transactions, overdue recurring
+  - **Sugerencias** (`priority: "suggestion"`) — new destinatario rules, over-budget categories
+- Each item: count badge + label + direct action link (`actionHref`)
+- When `signals` is empty: positive "Al día" full-page state
 
 ### Mobile
 
@@ -180,18 +181,78 @@ Always two cards side by side. Both always present for layout consistency.
 - **MobileLinkGrid** — compact icon+label grid for mobile Bandeja navigation
 - **SidebarBadge** — per-nav-item attention count badge
 
-## Attention Signal Sources
+## Attention State Contract
 
-Server-side computed, per page:
+All attention signals flow through a single shared server-side function. This is the **only source of truth** for counts — every consumer reads from this shape, never computes its own.
 
-| Page | Signals |
-|---|---|
-| Transactions | Uncategorized count, possible duplicates |
-| Accounts | Stale balances (no import in >30 days) |
-| Categories | Over-budget categories this month |
-| Destinatarios | Pending rule suggestions |
-| Recurrentes | Overdue payments, upcoming 7-day payments |
-| Deudas | Minimum payments due soon |
+### `getAttentionSnapshot(): AttentionSnapshot`
+
+```typescript
+type AttentionSignal = {
+  page: string;           // e.g. "transactions", "recurrentes"
+  key: string;            // e.g. "uncategorized", "overdue"
+  count: number;
+  label: string;          // Spanish display label
+  priority: "action" | "suggestion";
+  actionHref: string;     // direct link to resolve
+};
+
+type AttentionSnapshot = {
+  signals: AttentionSignal[];
+  totalAction: number;    // sum of priority=action
+  totalSuggestion: number;
+  perPage: Record<string, number>; // page → total count (for sidebar badges)
+};
+```
+
+### Cache invalidation
+
+The snapshot is cached via `unstable_cache` with tag `"attention"`. Every mutation that could change a signal must call `revalidateTag("attention")` alongside its existing domain tags.
+
+| Signal | Source query | Revalidation triggers |
+|---|---|---|
+| Uncategorized transactions | `transactions` where `category_id IS NULL AND is_excluded = false` | `importTransactions`, `categorizeTransaction`, `deleteTransaction` |
+| Over-budget categories | `transactions` sum vs `categories.monthly_limit` | `importTransactions`, `categorizeTransaction`, `updateCategory` |
+| Pending destinatario suggestions | `destinatario_suggestions` where `status = 'pending'` | `createDestinatario`, `dismissSuggestion`, `importTransactions` |
+| Overdue recurring | `recurring_templates` where next occurrence < today | `recordRecurringOccurrencePayment`, `skipOccurrence` |
+| Upcoming recurring (7 days) | `recurring_templates` computed occurrences | `recordRecurringOccurrencePayment`, `skipOccurrence` |
+| Minimum payments due | `accounts` where type = credit/loan and payment due within 7 days | `registerPayment`, account metadata update on import |
+
+### Consumers
+
+All consumers read the same `AttentionSnapshot`:
+- **Per-page AttentionCard** — filters `signals` by `page` field
+- **Bandeja hub** — renders all `signals` grouped by `priority`
+- **Sidebar badges** — reads `perPage` map for counts
+- **Bandeja nav badge** — reads `totalAction`
+
+### Deliberately excluded signals
+
+- **Possible duplicates** — no durable data source exists. The current duplicate detection only runs inside import reconciliation preview and is not persisted. Adding this requires a `duplicate_review` table, resolution flow, and false-positive handling — out of scope for this redesign. Can be added later as a signal source without changing the attention architecture.
+- **Stale account balances** — removed. "No import in 30 days" would misclassify intentionally manual accounts. Account staleness needs a user-configurable "expected refresh" setting first.
+
+## Route and Label Migration
+
+### URL changes
+
+| Old | New | Action |
+|---|---|---|
+| `/gestionar` | `/gestionar` | Same URL, content changes from nav hub to Bandeja attention hub |
+| `/categories?tab=gestionar` | `/categories?tab=configurar` | Tab renamed from "Gestionar" to "Configurar" |
+
+### Navigation label changes
+
+| Location | Old label | New label |
+|---|---|---|
+| `PRIMARY_NAV` (sidebar + mobile bottom tab) | "Más" | "Bandeja" |
+| `PRIMARY_NAV.matchHrefs` | Includes `/categories`, `/accounts`, etc. | Remove — those pages have their own sidebar links. Bandeja only matches `/gestionar` |
+| Categories page tab | "Gestionar" | "Configurar" |
+
+### Deep link handling
+
+- `/gestionar` keeps working — same route, new content
+- Any hardcoded links to `/gestionar` from other pages (settings "Volver a Más", categorizar breadcrumb) updated to say "Bandeja"
+- `/categories?tab=gestionar` redirected to `/categories?tab=configurar` via tab parameter normalization in the categories page component
 
 ## Not Changing
 
