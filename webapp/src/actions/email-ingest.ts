@@ -235,7 +235,7 @@ export async function approveEmailTransaction(
     clean_description: cleanDescription,
     merchant_name: merchantName,
     idempotency_key: idempotencyKey,
-    provider: "OCR",
+    provider: "EMAIL",
     capture_method: "EMAIL_IMPORT",
     category_id: categoryId,
     categorization_source: categoryId ? "SYSTEM_DEFAULT" : undefined,

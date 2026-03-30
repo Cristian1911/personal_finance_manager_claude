@@ -1423,6 +1423,7 @@ export type Database = {
         | "PLAID"
         | "CSV_IMPORT"
         | "OCR"
+        | "EMAIL"
       recurrence_frequency:
         | "WEEKLY"
         | "BIWEEKLY"
@@ -1590,6 +1591,7 @@ export const Constants = {
         "PLAID",
         "CSV_IMPORT",
         "OCR",
+        "EMAIL",
       ],
       recurrence_frequency: [
         "WEEKLY",
