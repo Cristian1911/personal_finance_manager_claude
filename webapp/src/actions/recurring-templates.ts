@@ -832,6 +832,51 @@ export async function recordRecurringOccurrencePayment(input: {
 }
 
 /**
+ * Check which recurring occurrence keys have already been paid.
+ * Each key is "templateId:occurrenceDate". Returns the subset of keys
+ * that have matching transactions in the DB (via recurrence_group_id).
+ */
+export async function getPaidOccurrenceKeys(
+  occurrenceKeys: string[]
+): Promise<string[]> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user || occurrenceKeys.length === 0) return [];
+
+  // Compute expected recurrence_group_id for each occurrence key
+  const groupIdToKey = new Map<string, string>();
+  await Promise.all(
+    occurrenceKeys.map(async (key) => {
+      const sepIdx = key.indexOf(":");
+      if (sepIdx === -1) return;
+      const templateId = key.slice(0, sepIdx);
+      const occurrenceDate = key.slice(sepIdx + 1);
+      const groupId = await computeRecurringGroupUuid(templateId, occurrenceDate);
+      groupIdToKey.set(groupId, key);
+    })
+  );
+
+  const groupIds = [...groupIdToKey.keys()];
+  if (groupIds.length === 0) return [];
+
+  // Query which group IDs already have transactions
+  const { data } = await supabase
+    .from("transactions")
+    .select("recurrence_group_id")
+    .eq("user_id", user.id)
+    .in("recurrence_group_id", groupIds);
+
+  if (!data) return [];
+
+  const paidKeys: string[] = [];
+  for (const row of data) {
+    if (!row.recurrence_group_id) continue;
+    const key = groupIdToKey.get(row.recurrence_group_id);
+    if (key) paidKeys.push(key);
+  }
+  return paidKeys;
+}
+
+/**
  * Get upcoming recurring payments for the next N days.
  * Computes occurrences on the fly from active templates.
  */

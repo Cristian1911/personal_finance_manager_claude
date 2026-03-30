@@ -28,7 +28,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import type { Account } from "@/types/domain";
 import type { CurrencyCode } from "@/types/domain";
 
-const LIQUID_ACCOUNT_TYPES = new Set(["CHECKING", "SAVINGS", "CASH"]);
+const EXCLUDED_SOURCE_TYPES = new Set(["LOAN", "INVESTMENT"]);
 
 interface QuickPaymentDialogProps {
   accountId: string;
@@ -62,7 +62,7 @@ export function QuickPaymentDialog({
 
   // Only liquid accounts (not the target account itself) as source options
   const sourceAccounts = useMemo(
-    () => accounts.filter((a) => a.id !== accountId && LIQUID_ACCOUNT_TYPES.has(a.account_type)),
+    () => accounts.filter((a) => a.id !== accountId && !EXCLUDED_SOURCE_TYPES.has(a.account_type)),
     [accounts, accountId]
   );
 

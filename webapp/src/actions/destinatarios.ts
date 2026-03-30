@@ -56,7 +56,7 @@ export async function testDestinatarioPattern(
   // Use server-side filtering via ilike instead of fetching 1000 rows
   let query = supabase
     .from("transactions")
-    .select("id, raw_description, transaction_date, amount")
+    .select("id, raw_description, transaction_date, amount", { count: "exact" })
     .eq("user_id", user.id)
     .is("destinatario_id", null)
     .not("raw_description", "is", null);
@@ -78,7 +78,7 @@ export async function testDestinatarioPattern(
   return {
     success: true,
     data: {
-      matchCount: matches.length,
+      matchCount: count ?? matches.length,
       samples: matches.map((tx) => ({
         id: tx.id,
         rawDescription: tx.raw_description!,
