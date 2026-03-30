@@ -379,7 +379,7 @@ export function DestinatarioList({
 
       {/* Card grid */}
       {filtered.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 items-start sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {filtered.map((d) => {
             const isExpanded = expandedId === d.id;
             const parent = findParentForCategory(
