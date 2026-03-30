@@ -275,7 +275,7 @@ export function parseBancolombiaEmail(
       const parsed = pattern.extract(match);
       if (parsed) {
         // Extract raw_line: everything after "Bancolombia: " up to the first sentence end
-        const rawLineMatch = body.match(/Bancolombia:\s*(.+)/s);
+        const rawLineMatch = body.match(/Bancolombia:\s*([\s\S]+)/);
         const raw_line = rawLineMatch ? rawLineMatch[1].trim() : body;
         return { ...parsed, raw_line };
       }

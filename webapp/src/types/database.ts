@@ -596,6 +596,99 @@ export type Database = {
           },
         ]
       }
+      email_ingest_addresses: {
+        Row: {
+          account_id: string | null
+          address_key: string
+          auto_import: boolean
+          created_at: string
+          id: string
+          is_active: boolean
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          address_key: string
+          auto_import?: boolean
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          address_key?: string
+          auto_import?: boolean
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_ingest_addresses_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_ingest_addresses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_ingest_logs: {
+        Row: {
+          created_at: string
+          email_ingest_id: string | null
+          error_message: string | null
+          from_address: string | null
+          id: string
+          raw_body: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_ingest_id?: string | null
+          error_message?: string | null
+          from_address?: string | null
+          id?: string
+          raw_body?: string | null
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_ingest_id?: string | null
+          error_message?: string | null
+          from_address?: string | null
+          id?: string
+          raw_body?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_ingest_logs_email_ingest_id_fkey"
+            columns: ["email_ingest_id"]
+            isOneToOne: false
+            referencedRelation: "email_ingest_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_ingest_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exchange_rate_cache: {
         Row: {
           avg_30d: number | null
@@ -619,6 +712,64 @@ export type Database = {
           rates_30d?: Json
         }
         Relationships: []
+      }
+      pending_email_transactions: {
+        Row: {
+          created_at: string
+          email_ingest_id: string
+          id: string
+          idempotency_key: string
+          parsed_data: Json
+          raw_body: string
+          status: string
+          suggested_account_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_ingest_id: string
+          id?: string
+          idempotency_key: string
+          parsed_data: Json
+          raw_body: string
+          status?: string
+          suggested_account_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_ingest_id?: string
+          id?: string
+          idempotency_key?: string
+          parsed_data?: Json
+          raw_body?: string
+          status?: string
+          suggested_account_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_email_transactions_email_ingest_id_fkey"
+            columns: ["email_ingest_id"]
+            isOneToOne: false
+            referencedRelation: "email_ingest_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_email_transactions_suggested_account_id_fkey"
+            columns: ["suggested_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_email_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_events: {
         Row: {
@@ -1284,6 +1435,7 @@ export type Database = {
         | "PDF_IMPORT"
         | "OCR_BATCH"
         | "OCR_SINGLE"
+        | "EMAIL_IMPORT"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
     }
@@ -1452,6 +1604,7 @@ export const Constants = {
         "PDF_IMPORT",
         "OCR_BATCH",
         "OCR_SINGLE",
+        "EMAIL_IMPORT",
       ],
       transaction_direction: ["INFLOW", "OUTFLOW"],
       transaction_status: ["PENDING", "POSTED", "CANCELLED"],
