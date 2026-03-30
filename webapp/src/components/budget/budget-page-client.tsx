@@ -177,9 +177,7 @@ function IncomeEditor({
           size="sm"
           className="flex-1"
           onClick={() => {
-            const num = parseFloat(
-              value.replace(/\./g, "").replace(",", ".")
-            );
+            const num = parseFloat(value);
             if (!isNaN(num) && num > 0) onSave(num);
             setEditing(false);
           }}
