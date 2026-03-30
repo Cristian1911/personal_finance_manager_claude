@@ -8,6 +8,7 @@ import {
   FileUp,
   FolderKanban,
   Landmark,
+  PiggyBank,
   Repeat2,
   Settings,
   Tag,
@@ -73,6 +74,13 @@ const organizationActions: ActionLink[] = [
     icon: FolderKanban,
     label: "Categorías",
     description: "Organiza zonas, subcategorías, íconos y presupuesto desde un solo mapa visual.",
+    accent: "olive",
+  },
+  {
+    href: "/presupuesto",
+    icon: PiggyBank,
+    label: "Presupuesto",
+    description: "Establece límites por categoría o asigna cada peso de tu ingreso.",
     accent: "olive",
   },
   {

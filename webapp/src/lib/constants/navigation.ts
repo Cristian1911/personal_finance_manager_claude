@@ -49,6 +49,7 @@ export const PRIMARY_NAV: NavItem[] = [
       "/import",
       "/accounts",
       "/settings",
+      "/presupuesto",
     ],
   },
 ];
@@ -58,6 +59,7 @@ export const WORKSPACE_NAV: NavItem[] = [
   { title: "Destinatarios", href: "/destinatarios", icon: Contact },
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
+  { title: "Presupuesto", href: "/presupuesto", icon: PiggyBank },
   { title: "Deudas", href: "/deudas", icon: Landmark },
   { title: "Recurrentes", href: "/recurrentes", icon: Repeat2 },
 ];
