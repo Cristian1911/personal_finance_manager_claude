@@ -4,9 +4,11 @@ import { getTransactions } from "@/actions/transactions";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getAllTags } from "@/actions/tags";
+import { getPendingEmailTransactions } from "@/actions/email-ingest";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TransactionTable } from "@/components/transactions/transaction-table";
+import { PendingEmailTransactions } from "@/components/transactions/pending-email-transactions";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
 import { QuickCaptureBar } from "@/components/transactions/quick-capture-bar";
@@ -55,14 +57,17 @@ export default async function TransactionsPage({
   await connection();
   const params = await searchParams;
 
-  const [transactionsResult, accountsResult, categoriesResult, outflowCategoriesResult, allTags] =
+  const [transactionsResult, accountsResult, categoriesResult, outflowCategoriesResult, allTags, pendingEmailResult] =
     await Promise.all([
       getTransactions(params),
       getAccounts(),
       getCategories(),
       getCategories("OUTFLOW"),
       getAllTags(),
+      getPendingEmailTransactions(),
     ]);
+
+  const pendingTransactions = pendingEmailResult.success ? pendingEmailResult.data : [];
 
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
@@ -188,6 +193,8 @@ export default async function TransactionsPage({
           </div>
         </div>
 
+        <PendingEmailTransactions transactions={pendingTransactions} />
+
         <MobileMovimientos
           transactions={transactionsResult.data}
           categories={categories}
@@ -311,6 +318,8 @@ export default async function TransactionsPage({
           categories={outflowCategories}
           defaultMonth={defaultMonth}
         />
+
+        <PendingEmailTransactions transactions={pendingTransactions} />
 
         <TransactionTable transactions={transactionsResult.data} categories={categories} />
 

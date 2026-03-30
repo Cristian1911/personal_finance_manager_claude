@@ -13,8 +13,10 @@ import { cn } from "@/lib/utils";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { BugReportForm } from "@/components/settings/bug-report-form";
 import { IntegrationsCard } from "@/components/settings/integrations-card";
+import { EmailIngestCard } from "@/components/settings/email-ingest-card";
 import { BuildInfo } from "@/components/settings/build-info";
 import { getCaptureTokens } from "@/actions/capture-tokens";
+import { getEmailIngestAddress } from "@/actions/email-ingest";
 import type { Account } from "@/types/domain";
 
 export default async function SettingsPage() {
@@ -30,7 +32,7 @@ export default async function SettingsPage() {
 
   if (!profile) redirect("/login");
 
-  const [tokensResult, { data: accounts }] = await Promise.all([
+  const [tokensResult, { data: accounts }, emailIngestResult] = await Promise.all([
     getCaptureTokens(),
     supabase
       .from("accounts")
@@ -38,9 +40,11 @@ export default async function SettingsPage() {
       .eq("user_id", user.id)
       .eq("is_active", true)
       .order("display_order"),
+    getEmailIngestAddress(),
   ]);
 
   const tokens = tokensResult.success ? tokensResult.data : [];
+  const emailIngestAddress = emailIngestResult.success ? emailIngestResult.data : null;
   const memberSince = new Date(profile.created_at).toLocaleDateString("es-CO");
 
   return (
@@ -125,6 +129,11 @@ export default async function SettingsPage() {
       </Card>
 
       <IntegrationsCard accounts={(accounts ?? []) as Account[]} tokens={tokens} />
+
+      <EmailIngestCard
+        accounts={(accounts ?? []) as Account[]}
+        initialAddress={emailIngestAddress}
+      />
 
       <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
         <CardHeader>
