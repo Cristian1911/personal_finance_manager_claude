@@ -488,6 +488,27 @@ export async function updateDestinatario(
   return { success: true, data };
 }
 
+// ─── patchDestinatario (lightweight inline update) ───────────────────────────
+
+export async function patchDestinatario(
+  id: string,
+  patch: { default_category_id?: string | null; is_active?: boolean },
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("destinatarios")
+    .update(patch)
+    .eq("user_id", user.id)
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("destinatarios", "zeta");
+  return { success: true, data: null };
+}
+
 // ─── deleteDestinatario ───────────────────────────────────────────────────────
 
 export async function deleteDestinatario(
