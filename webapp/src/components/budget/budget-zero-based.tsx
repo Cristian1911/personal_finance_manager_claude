@@ -58,8 +58,8 @@ export function BudgetZeroBased({
 
   function handleBlur(categoryId: string) {
     const amount = budgetAmounts[categoryId] ?? 0;
-    startTransition(() => {
-      upsertBudgetForCategory(categoryId, amount);
+    startTransition(async () => {
+      await upsertBudgetForCategory(categoryId, amount);
     });
   }
 

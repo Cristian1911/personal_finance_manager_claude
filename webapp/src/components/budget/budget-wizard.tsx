@@ -24,7 +24,7 @@ interface BudgetWizardProps {
   categories: CategoryBudgetData[];
   estimatedIncome: number;
   currency: CurrencyCode;
-  onComplete: () => void;
+  onComplete?: () => void;
 }
 
 // ── Main Component ──────────────────────────────────────────
@@ -108,7 +108,7 @@ export function BudgetWizard({
       await updateEstimatedIncome(income);
       await bulkUpsertBudgets(budgets);
       router.refresh();
-      onComplete();
+      onComplete?.();
     });
   }
 

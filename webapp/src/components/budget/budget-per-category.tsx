@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useMemo, useTransition, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -105,7 +105,7 @@ export function BudgetPerCategory({
   income,
   currency,
 }: BudgetPerCategoryProps) {
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   // Optimistic local budget state
   const [budgetAmounts, setBudgetAmounts] = useState<Record<string, number>>(
@@ -120,11 +120,15 @@ export function BudgetPerCategory({
     }
   );
 
-  const outflowCategories = categories.filter(
-    (c) => c.direction === "OUTFLOW"
+  const outflowCategories = useMemo(
+    () => categories.filter((c) => c.direction === "OUTFLOW"),
+    [categories],
   );
 
-  const assigned = Object.values(budgetAmounts).reduce((s, v) => s + v, 0);
+  const assigned = useMemo(
+    () => Object.values(budgetAmounts).reduce((s, v) => s + v, 0),
+    [budgetAmounts],
+  );
   const remaining = income - assigned;
 
   function handleSave(categoryId: string, amount: number) {
