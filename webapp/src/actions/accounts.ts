@@ -13,7 +13,7 @@ import {
 } from "@/lib/utils/currency-balances";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
-import type { Account, CurrencyCode } from "@/types/domain";
+import type { Account, CurrencyCode, TransactionDirection } from "@/types/domain";
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
@@ -412,4 +412,134 @@ export async function reconcileBalance(
       currencyDeltas,
     },
   };
+}
+
+// ─── Quick Payment ───────────────────────────────────────────────────────────
+
+export async function registerPayment(
+  accountId: string,
+  input: { amount: number; sourceAccountId?: string; notes?: string }
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Get target account details
+  const { data: account, error: accountError } = await supabase
+    .from("accounts")
+    .select("id, name, account_type, currency_code, current_balance, credit_limit")
+    .eq("id", accountId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (accountError || !account) return { success: false, error: "Cuenta no encontrada" };
+
+  const isDebt = account.account_type === "CREDIT_CARD" || account.account_type === "LOAN";
+  const now = new Date().toISOString();
+  const transactionDate = now.slice(0, 10);
+
+  // Get source account name for description
+  let sourceAccountName = "";
+  if (input.sourceAccountId) {
+    const { data: sourceAccount } = await supabase
+      .from("accounts")
+      .select("id, name, current_balance")
+      .eq("id", input.sourceAccountId)
+      .eq("user_id", user.id)
+      .single();
+    if (sourceAccount) sourceAccountName = sourceAccount.name;
+  }
+
+  const merchantName = isDebt
+    ? `Pago - ${account.name}`
+    : `Ingreso - ${account.name}`;
+  const rawDescription = sourceAccountName
+    ? `Pago manual registrado desde ${sourceAccountName} (${now})`
+    : `Pago manual registrado (${now})`;
+
+  const idempotencyKey = await computeIdempotencyKey({
+    provider: "MANUAL",
+    transactionDate,
+    amount: input.amount,
+    rawDescription,
+  });
+
+  // For both debt and savings: INFLOW
+  // Debt INFLOW → payment received → balance decreases
+  // Savings INFLOW → money received → balance increases
+  const direction: TransactionDirection = "INFLOW";
+
+  const { error: txError } = await supabase.from("transactions").insert({
+    user_id: user.id,
+    account_id: accountId,
+    amount: input.amount,
+    currency_code: account.currency_code as CurrencyCode,
+    direction,
+    transaction_date: transactionDate,
+    merchant_name: merchantName,
+    raw_description: rawDescription,
+    clean_description: merchantName,
+    idempotency_key: idempotencyKey,
+    capture_method: "MANUAL_FORM",
+    provider: "MANUAL",
+    categorization_source: "SYSTEM_DEFAULT",
+    notes: input.notes || null,
+    status: "POSTED",
+  });
+
+  if (txError) {
+    if (txError.code === "23505") {
+      return { success: false, error: "Este pago ya fue registrado" };
+    }
+    return { success: false, error: txError.message };
+  }
+
+  // Update target account balance
+  if (isDebt) {
+    const newBalance = Math.max(0, account.current_balance - input.amount);
+    const updateData: Record<string, unknown> = {
+      current_balance: newBalance,
+      updated_at: now,
+    };
+    if (account.credit_limit != null) {
+      updateData.available_balance = account.credit_limit - newBalance;
+    }
+    await supabase.from("accounts").update(updateData).eq("id", accountId).eq("user_id", user.id);
+  } else {
+    await supabase
+      .from("accounts")
+      .update({
+        current_balance: account.current_balance + input.amount,
+        updated_at: now,
+      })
+      .eq("id", accountId)
+      .eq("user_id", user.id);
+  }
+
+  // If source account specified, reduce its balance
+  if (input.sourceAccountId) {
+    const { data: sourceAccount } = await supabase
+      .from("accounts")
+      .select("id, current_balance")
+      .eq("id", input.sourceAccountId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (sourceAccount) {
+      await supabase
+        .from("accounts")
+        .update({
+          current_balance: sourceAccount.current_balance - input.amount,
+          updated_at: now,
+        })
+        .eq("id", input.sourceAccountId)
+        .eq("user_id", user.id);
+    }
+  }
+
+  revalidateTag("accounts", "zeta");
+  revalidateTag("dashboard:accounts", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("debt", "zeta");
+  revalidateTag("zeta", "zeta");
+  return { success: true, data: null };
 }

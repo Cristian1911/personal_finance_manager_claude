@@ -210,7 +210,7 @@ export default async function TransactionsPage({
             <Suspense>
               <MonthSelector />
             </Suspense>
-            <TransactionFormDialog accounts={accounts} categories={categories} />
+            <TransactionFormDialog accounts={accounts} categories={categories} tags={allTags} />
           </div>
         </div>
 

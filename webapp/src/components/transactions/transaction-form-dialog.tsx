@@ -11,16 +11,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { TransactionForm } from "./transaction-form";
 import { Plus } from "lucide-react";
-import type { Account, CategoryWithChildren, Transaction } from "@/types/domain";
+import type { Account, CategoryWithChildren, Tag, Transaction } from "@/types/domain";
 
 export function TransactionFormDialog({
   transaction,
   accounts,
   categories,
+  tags,
 }: {
   transaction?: Transaction;
   accounts: Account[];
   categories: CategoryWithChildren[];
+  tags?: Tag[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -43,6 +45,7 @@ export function TransactionFormDialog({
             transaction={transaction}
             accounts={accounts}
             categories={categories}
+            tags={tags}
             onSuccess={() => setOpen(false)}
           />
         </div>

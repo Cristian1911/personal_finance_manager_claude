@@ -291,6 +291,7 @@ Work directly — no GSD agent swarm by default. The main conversation is the or
 - Agents receive context in their prompt — they should NOT re-read STATE.md, ROADMAP.md, or phase files
 - Planning artifacts (PLAN.md, STATE.md) are still maintained — just updated inline, not by spawning dedicated agents
 - Build gates still enforced: `pnpm install` (if deps changed) + `pnpm build` before claiming done
+- **Before creating a PR**: always dry-merge against main first (`git fetch origin main && git merge --no-commit --no-ff origin/main`) to catch conflicts before pushing. Abort after check (`git merge --abort`).
 - Atomic commits with clear messages
 
 <!-- GSD:profile-start -->
