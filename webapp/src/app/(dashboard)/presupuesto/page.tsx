@@ -1,9 +1,12 @@
 import { connection } from "next/server";
-import { getBudgetMode, getEstimatedIncome } from "@/actions/budget";
+import { getBudgetMode } from "@/actions/budget";
+import { getEstimatedIncome } from "@/actions/income";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { BudgetWizard } from "@/components/budget/budget-wizard";
 import { BudgetPageClient } from "@/components/budget/budget-page-client";
 import { parseMonth, formatMonthLabel } from "@/lib/utils/date";
+import type { CurrencyCode } from "@/types/domain";
 
 export default async function PresupuestoPage({
   searchParams,
@@ -14,14 +17,20 @@ export default async function PresupuestoPage({
   const params = await searchParams;
   const month = params.month;
 
-  const [modeResult, incomeResult, categoriesResult] = await Promise.all([
+  const { supabase, user } = await getAuthenticatedClient();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("preferred_currency").eq("id", user.id).single()
+    : { data: null };
+  const currency = (profile?.preferred_currency ?? "COP") as CurrencyCode;
+
+  const [modeResult, incomeEstimate, categoriesResult] = await Promise.all([
     getBudgetMode(),
-    getEstimatedIncome(),
-    getCategoriesWithBudgetData(month),
+    getEstimatedIncome(currency, month),
+    getCategoriesWithBudgetData(month, currency),
   ]);
 
   const budgetMode = modeResult.success ? modeResult.data : null;
-  const income = incomeResult.success ? incomeResult.data : 0;
+  const income = incomeEstimate?.monthlyAverage ?? 0;
   const categories = categoriesResult.success ? categoriesResult.data : [];
 
   if (!budgetMode) {
@@ -39,7 +48,7 @@ export default async function PresupuestoPage({
         <BudgetWizard
           categories={categories}
           estimatedIncome={income}
-          currency="COP"
+          currency={currency}
         />
       </div>
     );
@@ -50,7 +59,7 @@ export default async function PresupuestoPage({
       mode={budgetMode as "per_category" | "zero_based"}
       categories={categories}
       income={income}
-      currency="COP"
+      currency={currency}
       monthLabel={formatMonthLabel(parseMonth(month))}
     />
   );

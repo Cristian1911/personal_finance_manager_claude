@@ -318,22 +318,25 @@ export async function getDestinatariosWithSpend(): Promise<
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const baseResult = await getDestinatarios();
-  if (!baseResult.success) return baseResult as ActionResult<never>;
-
   // Get 3-month spend per destinatario
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   const since = threeMonthsAgo.toISOString().split("T")[0];
 
-  const { data: spendData } = await supabase
-    .from("transactions")
-    .select("destinatario_id, amount")
-    .eq("user_id", user.id)
-    .eq("direction", "OUTFLOW")
-    .eq("is_excluded", false)
-    .gte("transaction_date", since)
-    .not("destinatario_id", "is", null);
+  // Run both queries in parallel
+  const [baseResult, { data: spendData }] = await Promise.all([
+    getDestinatarios(),
+    supabase
+      .from("transactions")
+      .select("destinatario_id, amount")
+      .eq("user_id", user.id)
+      .eq("direction", "OUTFLOW")
+      .eq("is_excluded", false)
+      .gte("transaction_date", since)
+      .not("destinatario_id", "is", null),
+  ]);
+
+  if (!baseResult.success) return baseResult as ActionResult<never>;
 
   const spendMap = new Map<string, number>();
   for (const tx of spendData ?? []) {

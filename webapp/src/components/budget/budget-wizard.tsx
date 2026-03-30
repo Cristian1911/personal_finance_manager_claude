@@ -13,8 +13,7 @@ import {
   bulkUpsertBudgets,
 } from "@/actions/budget";
 import { Loader2, CheckCircle2, ListChecks, Target } from "lucide-react";
-import type { CategoryBudgetData } from "@/types/domain";
-import type { CurrencyCode } from "@/types/domain";
+import type { CategoryBudgetData, CurrencyCode } from "@/types/domain";
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -104,9 +103,11 @@ export function BudgetWizard({
         .filter(([, amount]) => amount > 0)
         .map(([category_id, amount]) => ({ category_id, amount }));
 
-      await setBudgetMode(selectedMode);
-      await updateEstimatedIncome(income);
-      await bulkUpsertBudgets(budgets);
+      await Promise.all([
+        setBudgetMode(selectedMode),
+        updateEstimatedIncome(income),
+        bulkUpsertBudgets(budgets),
+      ]);
       router.refresh();
       onComplete?.();
     });
@@ -204,7 +205,6 @@ function StepChooseMode({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <ModeCard
-          mode="per_category"
           title="Por categoría"
           description="Pon límites a lo que más importa. Flexible, sin presión de cuadrar todo."
           badge="Recomendado para empezar"
@@ -213,7 +213,6 @@ function StepChooseMode({
           onSelect={() => onSelect("per_category")}
         />
         <ModeCard
-          mode="zero_based"
           title="Base cero"
           description="Cada peso de tu ingreso tiene un trabajo asignado. Más control, más intención."
           badge="Estilo YNAB"
@@ -244,7 +243,6 @@ function ModeCard({
   selected,
   onSelect,
 }: {
-  mode: BudgetMode;
   title: string;
   description: string;
   badge: string;

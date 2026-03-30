@@ -338,14 +338,14 @@ export function DestinatarioList({
                 className={cn(
                   "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                   isActive
-                    ? "ring-1 ring-offset-1 ring-offset-background"
+                    ? ""
                     : "hover:opacity-80",
                 )}
                 style={{
                   backgroundColor: chipBackground(cat.color),
                   color: zoneTextColor(cat.color),
                   ...(isActive
-                    ? { ringColor: zoneTextColor(cat.color) }
+                    ? { outlineColor: zoneTextColor(cat.color), outlineWidth: "1px", outlineStyle: "solid", outlineOffset: "2px" }
                     : {}),
                 }}
                 onClick={() =>

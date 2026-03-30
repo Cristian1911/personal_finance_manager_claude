@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { Settings2 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils/currency";
 import { BudgetPerCategory } from "./budget-per-category";
 import { BudgetZeroBased } from "./budget-zero-based";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -153,7 +154,7 @@ function IncomeEditor({
         <p className="text-sm font-medium">Ingreso mensual</p>
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            {new Intl.NumberFormat("es-CO").format(currentIncome)}
+            {formatCurrency(currentIncome, currency)}
           </p>
           <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
             Editar

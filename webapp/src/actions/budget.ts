@@ -97,37 +97,6 @@ export async function bulkUpsertBudgets(
   return { success: true, data: null };
 }
 
-// ── Get estimated income ─────────────────────────────────
-
-export async function getEstimatedIncome(): Promise<ActionResult<number>> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("estimated_monthly_income, monthly_salary")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.monthly_salary) return { success: true, data: profile.monthly_salary };
-  if (profile?.estimated_monthly_income) return { success: true, data: profile.estimated_monthly_income };
-
-  // Fallback: average last 3 months INFLOW
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-  const { data: inflows } = await supabase
-    .from("transactions")
-    .select("amount")
-    .eq("user_id", user.id)
-    .eq("direction", "INFLOW")
-    .eq("is_excluded", false)
-    .gte("transaction_date", threeMonthsAgo.toISOString().split("T")[0]);
-
-  const total = (inflows ?? []).reduce((sum, tx) => sum + tx.amount, 0);
-  return { success: true, data: Math.round(total / 3) };
-}
-
 // ── Update income in profile ─────────────────────────────
 
 export async function updateEstimatedIncome(
