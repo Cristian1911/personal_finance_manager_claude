@@ -403,10 +403,12 @@ export function DestinatarioList({
                 )}
               >
                 {/* Card header — clickable to expand */}
-                <button
-                  type="button"
-                  className="w-full p-4 text-left"
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="w-full cursor-pointer p-4 text-left"
                   onClick={() => toggleExpand(d.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleExpand(d.id); } }}
                 >
                   <div className="flex items-start gap-3">
                     {/* Checkbox */}
@@ -486,7 +488,7 @@ export function DestinatarioList({
                       </div>
                     </div>
                   </div>
-                </button>
+                </div>
 
                 {/* Expanded section */}
                 {isExpanded && (

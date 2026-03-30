@@ -21,63 +21,54 @@ function InlineBudgetEditor({
   categoryId,
   initialAmount,
   currency,
+  isEditing,
+  onStartEdit,
   onSave,
 }: {
   categoryId: string;
   initialAmount: number;
   currency: CurrencyCode;
+  isEditing: boolean;
+  onStartEdit: () => void;
   onSave: (categoryId: string, amount: number) => void;
 }) {
-  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(initialAmount || ""));
   const inputRef = useRef<HTMLDivElement>(null);
 
   // Focus the inner <input> when entering edit mode
   useEffect(() => {
-    if (editing) {
+    if (isEditing) {
+      setDraft(String(initialAmount || ""));
       const input = inputRef.current?.querySelector("input");
       input?.focus();
       input?.select();
     }
-  }, [editing]);
+  }, [isEditing, initialAmount]);
 
   function commit() {
     const num = parseFloat(draft) || 0;
-    setEditing(false);
     onSave(categoryId, num);
   }
 
-  if (!editing) {
+  if (!isEditing) {
     if (initialAmount > 0) {
       return (
-        <button
-          onClick={() => {
-            setDraft(String(initialAmount));
-            setEditing(true);
-          }}
-          className="text-sm font-semibold tabular-nums hover:text-primary transition-colors"
-        >
+        <span className="text-sm font-semibold tabular-nums">
           {formatCurrency(initialAmount, currency)}
-        </button>
+        </span>
       );
     }
 
     return (
-      <button
-        onClick={() => {
-          setDraft("");
-          setEditing(true);
-        }}
-        className="flex items-center gap-1 text-xs text-primary hover:underline"
-      >
+      <span className="flex items-center gap-1 text-xs text-primary">
         <Plus className="size-3.5" />
         Asignar
-      </button>
+      </span>
     );
   }
 
   return (
-    <div ref={inputRef} className="w-28">
+    <div ref={inputRef} className="w-28" onClick={(e) => e.stopPropagation()}>
       <CurrencyInput
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -88,7 +79,7 @@ function InlineBudgetEditor({
             commit();
           }
           if (e.key === "Escape") {
-            setEditing(false);
+            onSave(categoryId, initialAmount);
           }
         }}
         className="h-7 text-sm px-2"
@@ -106,6 +97,7 @@ export function BudgetPerCategory({
   currency,
 }: BudgetPerCategoryProps) {
   const [, startTransition] = useTransition();
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Optimistic local budget state
   const [budgetAmounts, setBudgetAmounts] = useState<Record<string, number>>(
@@ -132,6 +124,8 @@ export function BudgetPerCategory({
   const remaining = income - assigned;
 
   function handleSave(categoryId: string, amount: number) {
+    setEditingId(null);
+
     // Optimistic update
     setBudgetAmounts((prev) => {
       if (amount <= 0) {
@@ -179,8 +173,12 @@ export function BudgetPerCategory({
           return (
             <div
               key={cat.id}
-              className="rounded-2xl border border-white/6 bg-card p-4"
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer rounded-2xl border border-white/6 bg-card p-4 transition-colors hover:bg-white/[0.02]"
               style={{ borderLeft: `4px solid ${cat.color}` }}
+              onClick={() => setEditingId(cat.id)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setEditingId(cat.id); } }}
             >
               {/* Header */}
               <div className="flex items-center justify-between gap-2">
@@ -203,6 +201,8 @@ export function BudgetPerCategory({
                   categoryId={cat.id}
                   initialAmount={budget}
                   currency={currency}
+                  isEditing={editingId === cat.id}
+                  onStartEdit={() => setEditingId(cat.id)}
                   onSave={handleSave}
                 />
               </div>
