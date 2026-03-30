@@ -1,6 +1,7 @@
 import { connection } from "next/server";
-import { getDestinatarios, getDestinatarioSuggestions } from "@/actions/destinatarios";
+import { getDestinatariosWithSpend, getDestinatarioSuggestions } from "@/actions/destinatarios";
 import { getCategories } from "@/actions/categories";
+import { getTagGroups } from "@/actions/tags";
 import { CreateDestinatarioDialog } from "@/components/destinatarios/create-destinatario-dialog";
 import { DestinatarioList } from "@/components/destinatarios/destinatario-list";
 import { DestinatarioSuggestionsTab } from "@/components/destinatarios/destinatario-suggestions-tab";
@@ -14,15 +15,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function DestinatariosPage() {
   await connection();
-  const [destResult, catResult, suggestionsResult] = await Promise.all([
-    getDestinatarios(),
+  const [destResult, catResult, suggestionsResult, tagGroupsResult] = await Promise.all([
+    getDestinatariosWithSpend(),
     getCategories(),
     getDestinatarioSuggestions(),
+    getTagGroups(),
   ]);
 
   const destinatarios = destResult.success ? destResult.data : [];
   const categories = catResult.success ? catResult.data : [];
   const suggestions = suggestionsResult.success ? suggestionsResult.data : [];
+  const tagGroups = tagGroupsResult.success ? tagGroupsResult.data : [];
 
   const categoryMap = buildCategoryMap(categories);
   const activeDestinatarios = destinatarios.filter((d) => d.is_active).length;
@@ -207,6 +210,7 @@ export default async function DestinatariosPage() {
             destinatarios={destinatarios}
             categoryMap={categoryMap}
             categories={categories}
+            tagGroups={tagGroups}
           />
         </TabsContent>
 
