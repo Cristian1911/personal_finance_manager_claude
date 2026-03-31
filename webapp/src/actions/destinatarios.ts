@@ -447,12 +447,14 @@ export async function createDestinatario(
       if (rulesError) {
         // Destinatario was created but rules failed — return partial success with warning
         revalidateTag("destinatarios", "zeta");
+      revalidateTag("attention", "zeta");
         return { success: true, data };
       }
     }
   }
 
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data };
 }
 
@@ -488,6 +490,7 @@ export async function updateDestinatario(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data };
 }
 
@@ -529,6 +532,7 @@ export async function deleteDestinatario(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -634,6 +638,7 @@ export async function addDestinatarioRule(
   }
 
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data, conflicts };
 }
 
