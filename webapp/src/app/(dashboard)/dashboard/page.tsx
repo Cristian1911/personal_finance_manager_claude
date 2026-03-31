@@ -46,6 +46,8 @@ import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { AttentionCard } from "@/components/ui/attention-card";
 import { getAttentionSnapshot } from "@/actions/attention";
+import { getRecentImpactEvents } from "@/actions/impact-events";
+import { RecentImpactsWidget } from "@/components/impact/recent-impacts-widget";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import { getBurnRate } from "@/actions/burn-rate";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
@@ -283,12 +285,13 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
     getDebtFreeCountdown(currency),
     getAttentionSnapshot(),
+    getRecentImpactEvents(3),
   ]);
 
   // Map data for mobile dashboard (tier 1 props only)
@@ -423,6 +426,11 @@ export default async function DashboardPage({
               </WidgetSlot>
 
               <QuickValueUpdates accounts={quickUpdateAccounts} id="quick-update-values" />
+            </div>
+
+            {/* ── Impact + Pendientes ── */}
+            <div className="grid gap-4 xl:grid-cols-2">
+              <RecentImpactsWidget events={impactEvents} />
             </div>
 
             {/* ── 2. Health Score — tier 1, primary tier (no section wrapper) ── */}
