@@ -403,13 +403,15 @@ export default async function DashboardPage({
               </Suspense>
             </div>
 
-            {/* ── Hero Section — full width ── */}
-            <DashboardHero
-              data={heroData}
-              allocationData={allocationData}
-              debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
-              sidePanel={<AttentionCard signals={attentionSnapshot.signals} />}
-            />
+            {/* ── Hero + Attention — 2/3 hero, 1/3 attention ── */}
+            <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
+              <DashboardHero
+                data={heroData}
+                allocationData={allocationData}
+                debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
+              />
+              <AttentionCard signals={attentionSnapshot.signals} className="h-fit" />
+            </div>
 
             {/* ── Action strip — balanced columns below hero ── */}
             <div className="grid gap-4 xl:grid-cols-2">

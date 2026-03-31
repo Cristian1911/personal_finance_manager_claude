@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { freshnessMap } from "@/lib/utils/dashboard";
 import { KPIWidget } from "@/components/ui/kpi-widget";
@@ -21,11 +20,9 @@ interface DashboardHeroProps {
   data: DashboardHeroData;
   allocationData: AllocationData | null;
   debtFreeBanner?: React.ReactNode;
-  /** Optional right-side panel (e.g. AttentionCard) */
-  sidePanel?: React.ReactNode;
 }
 
-export function DashboardHero({ data, allocationData, debtFreeBanner, sidePanel }: DashboardHeroProps) {
+export function DashboardHero({ data, allocationData, debtFreeBanner }: DashboardHeroProps) {
   const { totalLiquid, totalPending, availableToSpend, freshness, pendingObligations, currency, hasOtherCurrencies } = data;
   const f = freshnessMap[freshness];
   const code = currency as CurrencyCode;
@@ -74,10 +71,7 @@ export function DashboardHero({ data, allocationData, debtFreeBanner, sidePanel 
   const SecondaryActionIcon = secondaryAction.icon;
 
   return (
-    <div className={cn(
-      "overflow-hidden rounded-[28px] border border-white/6 bg-[radial-gradient(circle_at_top_left,rgba(63,70,50,0.32),transparent_52%),linear-gradient(180deg,rgba(30,34,30,0.96),rgba(18,20,18,0.98))] px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
-      sidePanel && "lg:grid lg:grid-cols-[1fr_22rem] lg:gap-6"
-    )}>
+    <div className="overflow-hidden rounded-[28px] border border-white/6 bg-[radial-gradient(circle_at_top_left,rgba(63,70,50,0.32),transparent_52%),linear-gradient(180deg,rgba(30,34,30,0.96),rgba(18,20,18,0.98))] px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <div className="space-y-6">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-white/6 bg-black/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-light">
@@ -164,11 +158,6 @@ export function DashboardHero({ data, allocationData, debtFreeBanner, sidePanel 
           <span className="text-xs text-muted-foreground">{f.label}</span>
         </div>
       </div>
-      {sidePanel && (
-        <div className="hidden lg:flex lg:flex-col lg:gap-4 lg:pt-10">
-          {sidePanel}
-        </div>
-      )}
     </div>
   );
 }
