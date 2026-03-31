@@ -721,7 +721,7 @@ export async function getDashboardHeroData(
 
   // 3. Get pending obligations from upcoming recurring (OUTFLOW only)
   const { getUpcomingRecurrences } = await import("@/actions/recurring-templates");
-  const upcomingRecurrences = await getUpcomingRecurrences(30);
+  const upcomingRecurrences = await getUpcomingRecurrences(10);
   const recurringObligations: PendingObligation[] = upcomingRecurrences
     .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency)
     .map((r) => ({

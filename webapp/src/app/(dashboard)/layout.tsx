@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserSafely } from "@/lib/supabase/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import { getUncategorizedCount, getUnreviewedAutoCount } from "@/actions/categorize";
+import { getAttentionSnapshot } from "@/actions/attention";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { MobileTopbar } from "@/components/mobile/mobile-topbar";
@@ -41,26 +41,22 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
-  const [uncategorizedCount, unreviewedAutoCount, accountsResult, categoriesResult] =
-    await Promise.all([
-      getUncategorizedCount(),
-      getUnreviewedAutoCount(),
-      getAccounts(),
-      getCategories(),
-    ]);
-
-  const totalReviewCount = uncategorizedCount + unreviewedAutoCount;
+  const [attentionSnapshot, accountsResult, categoriesResult] = await Promise.all([
+    getAttentionSnapshot(),
+    getAccounts(),
+    getCategories(),
+  ]);
 
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar uncategorizedCount={totalReviewCount} />
+      <Sidebar attentionSnapshot={attentionSnapshot} />
       <div className="flex-1 flex flex-col min-w-0">
         {/* Desktop topbar — hidden on mobile */}
         <div className="hidden lg:block">
-          <Topbar profile={profile} uncategorizedCount={totalReviewCount} />
+          <Topbar profile={profile} attentionSnapshot={attentionSnapshot} />
         </div>
         {/* Mobile topbar */}
         <MobileTopbar profile={profile} />
@@ -77,7 +73,7 @@ export default async function DashboardLayout({
           </main>
 
           {/* Mobile bottom navigation */}
-          <BottomTabBar uncategorizedCount={totalReviewCount} />
+          <BottomTabBar attentionSnapshot={attentionSnapshot} />
         </KeyboardInsetProvider>
       </div>
     </div>

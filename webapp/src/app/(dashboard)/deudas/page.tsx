@@ -1,11 +1,12 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { DebtHeroCard } from "@/components/debt/debt-hero-card";
 import dynamic from "next/dynamic";
 
-// Server Component — chart component is already "use client", no ssr: false needed
 const UtilizationGauge = dynamic(
   () => import("@/components/debt/utilization-gauge").then((m) => ({ default: m.UtilizationGauge })),
   { loading: () => <div className="h-[200px] w-full rounded-xl bg-muted animate-pulse" /> }
@@ -16,12 +17,9 @@ import { DebtInsights } from "@/components/debt/debt-insights";
 import { SalaryBar } from "@/components/debt/salary-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
-import { PageHero, HeroPill, HeroAccentPill } from "@/components/ui/page-hero";
-import { StatCard } from "@/components/ui/stat-card";
+import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { Button } from "@/components/ui/button";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
-import { ArrowRight, Calculator, ShieldCheck } from "lucide-react";
-import Link from "next/link";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
@@ -45,7 +43,6 @@ async function DebtOverviewSection({
   currency: CurrencyCode;
   month: string | undefined;
 }) {
-  // Fetch all debt data in parallel — same as the original Promise.all
   const [overview, incomeEstimate, exchangeRateResult] = await Promise.all([
     getDebtOverview(currency),
     getEstimatedIncome(currency, month),
@@ -73,10 +70,8 @@ async function DebtOverviewSection({
     (d) => d.currency !== currency && d.totalDebt > 0
   );
 
-  // Use pre-fetched exchange rate only if there are secondary currency debts
   const exchangeRate = secondaryCurrencies.length > 0 ? exchangeRateResult : null;
 
-  // Salary breakdown — only if income is detected
   const salaryBreakdown =
     incomeEstimate && incomeEstimate.monthlyAverage > 0
       ? getCurrentSalaryBreakdown({
@@ -93,7 +88,6 @@ async function DebtOverviewSection({
 
   return (
     <>
-      {/* Overview cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <DebtHeroCard
           totalDebt={overview.totalDebt}
@@ -109,7 +103,6 @@ async function DebtOverviewSection({
         <InterestCostCard monthlyInterest={overview.monthlyInterestEstimate} />
       </div>
 
-      {/* Exchange rate nudge */}
       {exchangeRate && secondaryCurrencies.length > 0 && (
         <ExchangeRateNudge
           rate={exchangeRate.rate}
@@ -120,15 +113,12 @@ async function DebtOverviewSection({
         />
       )}
 
-      {/* Insights */}
       <DebtInsights insights={overview.insights} />
 
-      {/* Salary breakdown */}
       {salaryBreakdown && incomeEstimate && (
         <SalaryBar breakdown={salaryBreakdown} currency={currency} />
       )}
 
-      {/* Per-account cards */}
       {creditCards.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold mb-4">Tarjetas de crédito</h2>
@@ -155,7 +145,7 @@ async function DebtOverviewSection({
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Page export — tier 1: headers render instantly, tier 2 streams in with skeleton
+// Page — tier 1: headers instant, tier 2 streams in
 // ──────────────────────────────────────────────────────────────────────────────
 
 export default async function DeudasPage({
@@ -165,68 +155,39 @@ export default async function DeudasPage({
 }) {
   await connection();
   const { month } = await searchParams;
-  // getPreferredCurrency is server-cached (~0ms after first call)
   const currency = await getPreferredCurrency();
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      {/* Tier 1: headers render instantly — no data fetching blocked */}
       <MobilePageHeader title="Deudas" backHref="/plan">
         <Suspense>
           <MonthSelector />
         </Suspense>
       </MobilePageHeader>
-      <PageHero
-        variant="brass"
-        pills={<><HeroPill>Detalle del plan</HeroPill><HeroAccentPill>Presión financiera</HeroAccentPill></>}
-        title="La capa donde decides cómo reducir la presión sin perder margen"
-        description="Esta vista existe para entender costo, utilización y orden de ataque. Si aquí hay fricción, el resto del plan se vuelve frágil."
-        actions={<>
-          <Button asChild className={BRASS_BUTTON_CLASS}>
-            <Link href="/deudas/planificador">
-              Planificador de pagos
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            className={GHOST_BUTTON_CLASS}
-          >
-            <Link href="/plan">Volver a Plan</Link>
-          </Button>
-          <div className="hidden lg:block">
-            <Suspense>
-              <MonthSelector />
-            </Suspense>
-          </div>
-        </>}
-      >
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Moneda de lectura"
-            value={currency}
-            description="Base usada para concentrar la lectura principal de deuda."
-          />
-          <StatCard
-            label={<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark"><Calculator className="size-4 text-z-brass" />Siguiente capa</div>}
-            value={<span className="text-sm font-medium text-z-white">Planificador</span>}
-            description="Cuando ya entiendes la presión, aquí conviertes eso en escenarios comparables."
-          />
-          <StatCard
-            label="Qué ver primero"
-            value={<span className="text-sm font-medium text-z-white">Utilización, interés y pago mínimo</span>}
-            description="Ese orden da la señal más rápida sobre dónde estás perdiendo aire."
-          />
-          <StatCard
-            label={<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark"><ShieldCheck className="size-4 text-z-brass" />Cómo usar esta vista</div>}
-            value=""
-            description="Lee la presión aquí y baja al planificador solo cuando necesites comparar trayectorias."
-          />
-        </div>
-      </PageHero>
 
-      {/* Tier 2: all debt data streams in with content-shaped skeleton */}
+      <PageHeaderRow
+        title="Deudas"
+        subtitle={`Lectura en ${currency}`}
+        actions={
+          <>
+            <Button asChild className={BRASS_BUTTON_CLASS}>
+              <Link href="/deudas/planificador">
+                Planificador de pagos
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className={GHOST_BUTTON_CLASS}>
+              <Link href="/plan">Volver a Plan</Link>
+            </Button>
+            <div className="hidden lg:block">
+              <Suspense>
+                <MonthSelector />
+              </Suspense>
+            </div>
+          </>
+        }
+      />
+
       <Suspense
         fallback={
           <div className="space-y-6">
