@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-27T15:17:11.878000+00:00",
+  "generated_at_utc": "2026-03-31T17:46:08.962729+00:00",
   "project_root": "/Users/cristian/Documents/developing/current-projects/zeta",
   "technologies": [
     "Node.js",
@@ -8,15 +8,15 @@
     "pnpm"
   ],
   "totals": {
-    "text_files_scanned": 937,
+    "text_files_scanned": 1086,
     "languages": {
-      "JSON": 283,
-      "TypeScript/React": 249,
-      "Markdown": 146,
-      "TypeScript": 143,
-      "SQL": 34,
-      "HTML": 26,
-      "Python": 23,
+      "TypeScript/React": 296,
+      "JSON": 285,
+      "Markdown": 186,
+      "TypeScript": 174,
+      "HTML": 50,
+      "SQL": 38,
+      "Python": 24,
       "YAML": 12,
       "Shell": 11,
       "JavaScript": 5,
@@ -25,18 +25,18 @@
     }
   },
   "top_level_directories": {
+    "webapp": 378,
     "mobile": 354,
-    "webapp": 302,
-    ".planning": 62,
-    "docs": 58,
-    "supabase": 36,
-    "packages": 28,
+    ".planning": 90,
+    "docs": 66,
+    "supabase": 40,
+    ".superpowers": 37,
+    "packages": 32,
     "services": 24,
-    "(root)": 16,
-    ".superpowers": 16,
+    "(root)": 17,
     ".claude": 14,
+    "ui-showcases": 14,
     ".agents": 7,
-    "ui-showcases": 7,
     ".github": 7,
     "infra": 2,
     "mockups": 2,
@@ -75,6 +75,14 @@
       }
     },
     {
+      "scope": "packages/mcp-server",
+      "kind": "package.json",
+      "scripts": {
+        "build": "tsc",
+        "dev": "tsx src/index.ts"
+      }
+    },
+    {
       "scope": "packages/shared",
       "kind": "package.json",
       "scripts": {
@@ -101,19 +109,19 @@
       "examples": [
         "webapp/src/app/auth/callback/route.ts",
         "webapp/src/app/api/save-unrecognized/route.ts",
+        "webapp/src/app/api/capture/route.ts",
+        "webapp/src/app/api/mcp/debts/route.ts",
+        "webapp/src/app/api/mcp/transactions/route.ts",
+        "webapp/src/app/api/mcp/accounts/route.ts",
+        "webapp/src/app/api/mcp/budgets/route.ts",
+        "webapp/src/app/api/mcp/summary/route.ts",
         "webapp/src/app/api/bug-reports/route.ts",
         "webapp/src/app/api/parse-statement/route.ts",
+        "webapp/src/app/api/webhooks/telegram/route.ts",
+        "webapp/src/app/api/webhooks/telegram/setup/route.ts",
         "webapp/src/app/(auth)/layout.tsx",
         "webapp/src/app/(auth)/signup/page.tsx",
-        "webapp/src/app/(auth)/forgot-password/page.tsx",
-        "webapp/src/app/(auth)/reset-password/page.tsx",
-        "webapp/src/app/(auth)/login/page.tsx",
-        "webapp/src/app/(dashboard)/layout.tsx",
-        "webapp/src/app/(dashboard)/settings/page.tsx",
-        "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
-        "webapp/src/app/(dashboard)/deudas/page.tsx",
-        "webapp/src/app/(dashboard)/deudas/planificador/page.tsx",
-        "webapp/src/app/(dashboard)/gestionar/page.tsx"
+        "webapp/src/app/(auth)/forgot-password/page.tsx"
       ]
     },
     {
@@ -129,13 +137,13 @@
         "webapp/src/components/ui/chart.tsx",
         "webapp/src/components/ui/sheet.tsx",
         "webapp/src/components/ui/prefetch-link.tsx",
+        "webapp/src/components/ui/summary-card.tsx",
         "webapp/src/components/ui/label.tsx",
         "webapp/src/components/ui/sonner.tsx",
         "webapp/src/components/ui/drawer.tsx",
         "webapp/src/components/ui/tooltip.tsx",
         "webapp/src/components/ui/alert.tsx",
-        "webapp/src/components/ui/switch.tsx",
-        "webapp/src/components/ui/amount-input.tsx"
+        "webapp/src/components/ui/switch.tsx"
       ]
     },
     {
@@ -154,10 +162,10 @@
         "webapp/src/actions/allocation.ts",
         "webapp/src/actions/payment-reminders.ts",
         "webapp/src/actions/exchange-rate.ts",
+        "webapp/src/actions/quick-view.ts",
         "webapp/src/actions/debt-snapshots.ts",
         "webapp/src/actions/spending-heatmap.ts",
-        "webapp/src/actions/import-transactions.ts",
-        "webapp/src/actions/debt-countdown.ts"
+        "webapp/src/actions/import-transactions.ts"
       ]
     },
     {
@@ -165,6 +173,7 @@
       "description": "Schemas, migrations, or database-related code",
       "matched_files": 15,
       "examples": [
+        "supabase/migrations/20260329050657_create_capture_tokens.sql",
         "supabase/migrations/20260214100003_add_transaction_is_excluded.sql",
         "supabase/migrations/20260227000001_add_updated_at_to_statement_snapshots.sql",
         "supabase/migrations/20260214100001_seed_categories.sql",
@@ -173,26 +182,28 @@
         "supabase/migrations/20260214034921_add_account_specialized_fields.sql",
         "supabase/migrations/20260227100000_add_github_issue_url_to_bug_reports.sql",
         "supabase/migrations/20260318113717_fix_budgets_rls_parenthesized.sql",
+        "supabase/migrations/20260330002608_add_budget_mode.sql",
         "supabase/migrations/20260223232146_add_installment_columns.sql",
         "supabase/migrations/20260225204500_create_product_event_analytics_views.sql",
         "supabase/migrations/20260227000000_enable_rls_core_tables.sql",
         "supabase/migrations/20260223030254_reorganize_category_groups.sql",
-        "supabase/migrations/20260220211240_create_budgets.sql",
-        "supabase/migrations/20260225201000_create_product_events.sql",
-        "supabase/migrations/20260226100000_add_transfer_source_account_to_recurring_templates.sql"
+        "supabase/migrations/20260220211240_create_budgets.sql"
       ]
     },
     {
       "name": "tests",
       "description": "Unit, integration, or e2e tests",
-      "matched_files": 11,
+      "matched_files": 14,
       "examples": [
         "webapp/e2e/security.spec.ts",
         "webapp/e2e/ux-audit.spec.ts",
         "webapp/e2e/auth.setup.ts",
+        "webapp/e2e/mobile-keyboard.spec.ts",
         "webapp/e2e/mobile-redesign.spec.ts",
+        "webapp/src/lib/utils/__tests__/zone-colors.test.ts",
         "webapp/src/lib/utils/__tests__/dashboard.test.ts",
         "webapp/src/lib/utils/__tests__/account-balance.test.ts",
+        "webapp/src/lib/utils/__tests__/category-suggestion.test.ts",
         "packages/shared/src/utils/__tests__/helpers.ts",
         "packages/shared/src/utils/__tests__/auto-categorize.test.ts",
         "packages/shared/src/utils/__tests__/debt.test.ts",
@@ -203,12 +214,21 @@
     {
       "name": "api-routes",
       "description": "HTTP or API route handlers",
-      "matched_files": 4,
+      "matched_files": 13,
       "examples": [
         "webapp/src/app/api/save-unrecognized/route.ts",
+        "webapp/src/app/api/capture/route.ts",
+        "webapp/src/app/api/mcp/debts/route.ts",
+        "webapp/src/app/api/mcp/transactions/route.ts",
+        "webapp/src/app/api/mcp/accounts/route.ts",
+        "webapp/src/app/api/mcp/budgets/route.ts",
+        "webapp/src/app/api/mcp/summary/route.ts",
         "webapp/src/app/api/bug-reports/route.ts",
+        "webapp/src/app/api/_shared/capture-auth.ts",
         "webapp/src/app/api/_shared/auth.ts",
-        "webapp/src/app/api/parse-statement/route.ts"
+        "webapp/src/app/api/parse-statement/route.ts",
+        "webapp/src/app/api/webhooks/telegram/route.ts",
+        "webapp/src/app/api/webhooks/telegram/setup/route.ts"
       ]
     },
     {
@@ -229,6 +249,7 @@
     ".claude/skills/codebase-context/scripts/build_context.py",
     ".claude/skills/codebase-context/scripts/install_git_hook.sh",
     "mobile/app/(tabs)/index.tsx",
+    "packages/mcp-server/src/index.ts",
     "packages/shared/src/index.ts",
     "services/pdf_parser/main.py",
     "supabase/functions/notify-bug-report/index.ts",
@@ -246,18 +267,30 @@
     "webapp/src/app/(dashboard)/destinatarios/page.tsx",
     "webapp/src/app/(dashboard)/deudas/page.tsx",
     "webapp/src/app/(dashboard)/deudas/planificador/page.tsx",
+    "webapp/src/app/(dashboard)/etiquetas/page.tsx",
     "webapp/src/app/(dashboard)/gestionar/page.tsx",
     "webapp/src/app/(dashboard)/import/page.tsx",
     "webapp/src/app/(dashboard)/layout.tsx",
+    "webapp/src/app/(dashboard)/plan/page.tsx",
+    "webapp/src/app/(dashboard)/presupuesto/page.tsx",
     "webapp/src/app/(dashboard)/recurrentes/page.tsx",
     "webapp/src/app/(dashboard)/settings/analytics/page.tsx",
     "webapp/src/app/(dashboard)/settings/page.tsx",
     "webapp/src/app/(dashboard)/transactions/[id]/page.tsx",
     "webapp/src/app/(dashboard)/transactions/page.tsx",
     "webapp/src/app/api/_shared/auth.ts",
+    "webapp/src/app/api/_shared/capture-auth.ts",
     "webapp/src/app/api/bug-reports/route.ts",
+    "webapp/src/app/api/capture/route.ts",
+    "webapp/src/app/api/mcp/accounts/route.ts",
+    "webapp/src/app/api/mcp/budgets/route.ts",
+    "webapp/src/app/api/mcp/debts/route.ts",
+    "webapp/src/app/api/mcp/summary/route.ts",
+    "webapp/src/app/api/mcp/transactions/route.ts",
     "webapp/src/app/api/parse-statement/route.ts",
     "webapp/src/app/api/save-unrecognized/route.ts",
+    "webapp/src/app/api/webhooks/telegram/route.ts",
+    "webapp/src/app/api/webhooks/telegram/setup/route.ts",
     "webapp/src/app/auth/callback/route.ts",
     "webapp/src/app/onboarding/layout.tsx",
     "webapp/src/app/onboarding/page.tsx",
@@ -267,7 +300,7 @@
     {
       "from": "webapp",
       "to": "webapp",
-      "count": 892
+      "count": 1264
     },
     {
       "from": "mobile",
@@ -276,37 +309,8 @@
     }
   ],
   "recent_changes": [
-    ".planning/STATE.md",
-    "IDEAS.md",
-    "packages/shared/src/constants/categories.ts",
-    "packages/shared/src/utils/__tests__/auto-categorize.test.ts",
-    "packages/shared/src/utils/auto-categorize.ts",
-    "webapp/src/actions/accounts.ts",
-    "webapp/src/actions/charts.ts",
-    "webapp/src/actions/interest-paid.ts",
-    "webapp/src/actions/recurring-templates.ts",
-    "webapp/src/actions/transactions.ts",
-    "webapp/src/app/(dashboard)/accounts/[id]/page.tsx",
-    "webapp/src/app/(dashboard)/dashboard/page.tsx",
-    "webapp/src/components/accounts/reconcile-balance-dialog.tsx",
-    "webapp/src/components/dashboard/accounts-overview.tsx",
-    "webapp/src/components/dashboard/cash-flow-hero-strip.tsx",
-    "webapp/src/components/dashboard/dashboard-hero.tsx",
-    "webapp/src/components/mobile/mobile-dashboard.tsx",
-    "webapp/src/components/recurring/recurring-confirm-inline.tsx",
-    "webapp/src/components/recurring/recurring-payment-timeline.tsx",
-    "webapp/src/components/recurring/recurring-timeline-view.tsx",
-    "webapp/src/components/recurring/use-recurring-month.ts",
-    "webapp/src/components/ui/category-combobox.tsx",
-    "webapp/src/lib/supabase/auth.ts",
-    ".agents/",
-    ".planning/phases/05-onboarding-audit/5-CONTEXT.md",
-    "AGENTS.md",
-    "ui-showcases/.gitkeep",
-    "ui-showcases/ship-now/",
-    "webapp/src/components/dashboard/quick-value-updates.tsx",
-    "webapp/src/lib/utils/__tests__/account-balance.test.ts",
-    "webapp/src/lib/utils/account-balance.ts",
-    "webapp/src/lib/utils/currency-balances.ts"
+    "webapp/src/app/page.tsx",
+    "MANUAL_TODOS.md",
+    "webapp/src/components/marketing/"
   ]
 }

@@ -13,19 +13,19 @@ interface UpcomingPaymentsProps {
   totalPending: number;
 }
 
-type TimeGroup = "today" | "this_week" | "this_month";
+type TimeGroup = "today" | "this_week" | "later";
 
 function groupByTime(obligations: PendingObligation[]): Record<TimeGroup, PendingObligation[]> {
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const weekEnd = new Date(now);
-  weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay()));
+  weekEnd.setDate(weekEnd.getDate() + 7);
   const weekEndStr = weekEnd.toISOString().slice(0, 10);
 
   const groups: Record<TimeGroup, PendingObligation[]> = {
     today: [],
     this_week: [],
-    this_month: [],
+    later: [],
   };
 
   for (const o of obligations) {
@@ -34,7 +34,7 @@ function groupByTime(obligations: PendingObligation[]): Record<TimeGroup, Pendin
     } else if (o.due_date <= weekEndStr) {
       groups.this_week.push(o);
     } else {
-      groups.this_month.push(o);
+      groups.later.push(o);
     }
   }
 
@@ -43,8 +43,8 @@ function groupByTime(obligations: PendingObligation[]): Record<TimeGroup, Pendin
 
 const groupLabels: Record<TimeGroup, string> = {
   today: "Hoy",
-  this_week: "Esta semana",
-  this_month: "Este mes",
+  this_week: "Próximos 7 días",
+  later: "Próximos días",
 };
 
 export function UpcomingPayments({ obligations, totalPending }: UpcomingPaymentsProps) {
@@ -54,7 +54,7 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
         <CardContent className="py-4">
           <div className="flex items-center gap-2 text-z-income">
             <Check className="h-4 w-4" />
-            <span className="text-sm">Todos los pagos del mes están al día</span>
+            <span className="text-sm">No hay pagos pendientes en los próximos días</span>
           </div>
         </CardContent>
       </Card>
@@ -69,15 +69,15 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
   const previewGroups: Record<TimeGroup, PendingObligation[]> = {
     today: [],
     this_week: [],
-    this_month: [],
+    later: [],
   };
-  for (const group of ["today", "this_week", "this_month"] as TimeGroup[]) {
+  for (const group of ["today", "this_week", "later"] as TimeGroup[]) {
     const take = groups[group].slice(0, remaining);
     previewGroups[group] = take;
     remaining -= take.length;
     if (remaining <= 0) break;
   }
-  const totalShowing = previewGroups.today.length + previewGroups.this_week.length + previewGroups.this_month.length;
+  const totalShowing = previewGroups.today.length + previewGroups.this_week.length + previewGroups.later.length;
 
   return (
     <Card>
@@ -91,7 +91,7 @@ export function UpcomingPayments({ obligations, totalPending }: UpcomingPayments
         </Link>
       </CardHeader>
       <CardContent className="space-y-4">
-        {(["today", "this_week", "this_month"] as TimeGroup[]).map((group) => {
+        {(["today", "this_week", "later"] as TimeGroup[]).map((group) => {
           const items = previewGroups[group];
           if (items.length === 0) return null;
           return (

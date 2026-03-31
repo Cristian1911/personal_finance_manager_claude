@@ -9,10 +9,12 @@ import { BulkActionBar } from "./bulk-action-bar";
 import { autoCategorize, extractPattern } from "@zeta/shared";
 import {
   categorizeTransaction,
+  uncategorizeTransaction,
   bulkCategorize,
   confirmAutoCategory,
   bulkConfirmAutoCategory,
 } from "@/actions/categorize";
+import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/date";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,14 @@ interface CategoryInboxProps {
   autoCategorizedTransactions?: TransactionWithRelations[];
   categories: CategoryWithChildren[];
   userRules: UserRule[];
+}
+
+function sortTransactionsByDate(
+  items: TransactionWithRelations[]
+): TransactionWithRelations[] {
+  return [...items].sort(
+    (a, b) => b.transaction_date.localeCompare(a.transaction_date)
+  );
 }
 
 export function CategoryInbox({
@@ -183,14 +193,30 @@ export function CategoryInbox({
     return groups;
   }, [autoTransactions]);
 
-  // Ref to avoid stale closures — patternGroups changes with transactions
-  const patternGroupsRef = useRef(patternGroups);
-  patternGroupsRef.current = patternGroups;
+  const restoreTransactionsByIds = useCallback(
+    (ids: Iterable<string>) => {
+      const idsSet = new Set(ids);
+      if (idsSet.size === 0) return;
+
+      setTransactions((prev) => {
+        const merged = new Map(prev.map((tx) => [tx.id, tx]));
+
+        for (const tx of initialTransactions) {
+          if (idsSet.has(tx.id)) {
+            merged.set(tx.id, tx);
+          }
+        }
+
+        return sortTransactionsByDate(Array.from(merged.values()));
+      });
+    },
+    [initialTransactions]
+  );
 
   const handleCategorize = useCallback(
     (tx: TransactionWithRelations, categoryId: string) => {
       const txPattern = extractPattern(tx.merchant_name, tx.clean_description, tx.raw_description);
-      const similarIds = txPattern ? (patternGroupsRef.current.get(txPattern) ?? []) : [];
+      const similarIds = txPattern ? (patternGroups.get(txPattern) ?? []) : [];
       const remainingIds = similarIds.filter((id) => id !== tx.id);
 
       // Optimistic: remove from list immediately
@@ -208,12 +234,7 @@ export function CategoryInbox({
       startTransition(async () => {
         const result = await categorizeTransaction(tx.id, categoryId);
         if (!result.success) {
-          setTransactions((prev) => {
-            const original = initialTransactions.find((t) => t.id === tx.id);
-            return original ? [...prev, original].sort(
-              (a, b) => b.transaction_date.localeCompare(a.transaction_date)
-            ) : prev;
-          });
+          restoreTransactionsByIds([tx.id]);
           setSimilarOffer(null);
           void trackClientEvent({
             event_name: "transaction_categorized",
@@ -224,6 +245,18 @@ export function CategoryInbox({
             error_code: "categorize_failed",
           });
         } else {
+          const desc = tx.merchant_name ?? tx.clean_description ?? "Transacción";
+          toast("Categorizada", {
+            description: desc,
+            action: {
+              label: "Deshacer",
+              onClick: () => {
+                restoreTransactionsByIds([tx.id]);
+                // Undo on server
+                void uncategorizeTransaction(tx.id);
+              },
+            },
+          });
           void trackClientEvent({
             event_name: "transaction_categorized",
             flow: "categorize",
@@ -235,7 +268,7 @@ export function CategoryInbox({
         }
       });
     },
-    [initialTransactions]
+    [patternGroups, restoreTransactionsByIds]
   );
 
   const handleApplySimilar = useCallback(() => {
@@ -256,9 +289,7 @@ export function CategoryInbox({
     startTransition(async () => {
       const result = await bulkCategorize(items);
       if (!result.success) {
-        setTransactions(initialTransactions.filter(
-          (t) => !t.category_id || idsSet.has(t.id)
-        ));
+        restoreTransactionsByIds(remainingIds);
       } else {
         void trackClientEvent({
           event_name: "bulk_categorize_applied",
@@ -270,7 +301,7 @@ export function CategoryInbox({
         });
       }
     });
-  }, [similarOffer, initialTransactions]);
+  }, [restoreTransactionsByIds, similarOffer]);
 
   const handleDismissSimilar = useCallback(() => {
     setSimilarOffer(null);
@@ -295,7 +326,7 @@ export function CategoryInbox({
     startTransition(async () => {
       const result = await bulkCategorize(items);
       if (!result.success) {
-        setTransactions(initialTransactions);
+        restoreTransactionsByIds(suggestedIds);
         void trackClientEvent({
           event_name: "bulk_categorize_applied",
           flow: "categorize",
@@ -315,7 +346,7 @@ export function CategoryInbox({
         });
       }
     });
-  }, [suggestions, initialTransactions]);
+  }, [restoreTransactionsByIds, suggestions]);
 
   const handleApplyByMerchant = useCallback(() => {
     if (groupedSuggestionItems.length === 0) return;
@@ -324,30 +355,30 @@ export function CategoryInbox({
     setTransactions((prev) => prev.filter((t) => !ids.has(t.id)));
     setSelected(new Set());
 
-      startTransition(async () => {
-        const result = await bulkCategorize(groupedSuggestionItems);
-        if (!result.success) {
-          setTransactions(initialTransactions);
-          void trackClientEvent({
-            event_name: "bulk_categorize_applied",
-            flow: "categorize",
-            step: "bulk_merchant",
-            entry_point: "cta",
-            success: false,
-            error_code: "bulk_categorize_failed",
-          });
-        } else {
-          void trackClientEvent({
-            event_name: "bulk_categorize_applied",
-            flow: "categorize",
-            step: "bulk_merchant",
-            entry_point: "cta",
-            success: true,
-            metadata: { count: groupedSuggestionItems.length, source: "merchant_batch" },
-          });
-        }
-      });
-  }, [groupedSuggestionItems, initialTransactions]);
+    startTransition(async () => {
+      const result = await bulkCategorize(groupedSuggestionItems);
+      if (!result.success) {
+        restoreTransactionsByIds(ids);
+        void trackClientEvent({
+          event_name: "bulk_categorize_applied",
+          flow: "categorize",
+          step: "bulk_merchant",
+          entry_point: "cta",
+          success: false,
+          error_code: "bulk_categorize_failed",
+        });
+      } else {
+        void trackClientEvent({
+          event_name: "bulk_categorize_applied",
+          flow: "categorize",
+          step: "bulk_merchant",
+          entry_point: "cta",
+          success: true,
+          metadata: { count: groupedSuggestionItems.length, source: "merchant_batch" },
+        });
+      }
+    });
+  }, [groupedSuggestionItems, restoreTransactionsByIds]);
 
   const handleBulkAssign = useCallback(
     (categoryId: string) => {
@@ -355,6 +386,7 @@ export function CategoryInbox({
         txId,
         categoryId,
       }));
+      const selectedIds = Array.from(selected);
       if (items.length === 0) return;
 
       // Optimistic: remove selected from list
@@ -366,7 +398,8 @@ export function CategoryInbox({
       startTransition(async () => {
         const result = await bulkCategorize(items);
         if (!result.success) {
-          setTransactions(initialTransactions);
+          restoreTransactionsByIds(selectedIds);
+          setSelected(new Set(selectedIds));
           void trackClientEvent({
             event_name: "bulk_categorize_applied",
             flow: "categorize",
@@ -387,7 +420,7 @@ export function CategoryInbox({
         }
       });
     },
-    [selected, initialTransactions]
+    [restoreTransactionsByIds, selected]
   );
 
   // --- Auto-review handlers ---

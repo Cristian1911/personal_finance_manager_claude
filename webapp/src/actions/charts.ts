@@ -720,8 +720,9 @@ export async function getDashboardHeroData(
   const freshness = getFreshnessLevel(oldestUpdate);
 
   // 3. Get pending obligations from upcoming recurring (OUTFLOW only)
+  // 14-day rolling window — ensures cross-month visibility (e.g. March 31 → April 14)
   const { getUpcomingRecurrences } = await import("@/actions/recurring-templates");
-  const upcomingRecurrences = await getUpcomingRecurrences(10);
+  const upcomingRecurrences = await getUpcomingRecurrences(14);
   const recurringObligations: PendingObligation[] = upcomingRecurrences
     .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency)
     .map((r) => ({

@@ -302,6 +302,8 @@ function RulesSection({
       if (result.success) {
         toast.success("Regla agregada");
         setTestResult(null);
+        formRef.current?.reset();
+        router.refresh();
       } else {
         toast.error(result.error);
       }
@@ -417,7 +419,7 @@ function RulesSection({
         ) : (
           <div className="space-y-2">
             {rules.map((rule) => (
-              <RuleItem key={rule.id} rule={rule} />
+              <RuleItem key={rule.id} rule={rule} onRemoved={() => router.refresh()} />
             ))}
           </div>
         )}
@@ -577,7 +579,7 @@ function RulesSection({
   );
 }
 
-function RuleItem({ rule }: { rule: DestinatarioRuleRow }) {
+function RuleItem({ rule, onRemoved }: { rule: DestinatarioRuleRow; onRemoved?: () => void }) {
   const [removing, startTransition] = useTransition();
 
   const matchCount = rule.match_count ?? 0;
@@ -589,8 +591,12 @@ function RuleItem({ rule }: { rule: DestinatarioRuleRow }) {
   function handleRemove() {
     startTransition(async () => {
       const result = await removeDestinatarioRule(rule.id);
-      if (result.success) toast.success("Regla eliminada");
-      else toast.error(result.error);
+      if (result.success) {
+        toast.success("Regla eliminada");
+        onRemoved?.();
+      } else {
+        toast.error(result.error);
+      }
     });
   }
 

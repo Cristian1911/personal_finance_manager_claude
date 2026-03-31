@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Lightbulb, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Check, Lightbulb, ArrowDownLeft, ArrowUpRight, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
@@ -32,6 +32,7 @@ export function InboxTransactionRow({
   isPending,
 }: InboxTransactionRowProps) {
   const [manualValue, setManualValue] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const description =
     tx.merchant_name ?? tx.clean_description ?? tx.raw_description ?? "Sin descripción";
   const isOutflow = tx.direction === "OUTFLOW";
@@ -96,7 +97,7 @@ export function InboxTransactionRow({
 
         {/* Suggestion or manual pick */}
         <div className="flex items-center gap-2 flex-wrap">
-          {suggestion ? (
+          {suggestion && !showPicker ? (
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 text-xs text-z-alert">
                 <Lightbulb className="h-3 w-3" />
@@ -112,6 +113,16 @@ export function InboxTransactionRow({
                 <Check className="h-3 w-3" />
                 Aceptar
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs gap-1 text-muted-foreground"
+                onClick={() => setShowPicker(true)}
+                disabled={isPending}
+              >
+                <Pencil className="h-3 w-3" />
+                Cambiar
+              </Button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -126,6 +137,16 @@ export function InboxTransactionRow({
                 placeholder="Elegir categoría"
                 triggerClassName="h-8 text-xs px-2.5 w-full sm:w-[240px]"
               />
+              {showPicker && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-muted-foreground"
+                  onClick={() => setShowPicker(false)}
+                >
+                  Cancelar
+                </Button>
+              )}
             </div>
           )}
         </div>

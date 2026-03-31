@@ -1,16 +1,13 @@
-import { connection } from "next/server";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getUserSafely } from "@/lib/supabase/auth";
+import type { Metadata } from "next";
 
-export default async function HomePage() {
-  await connection();
-  const supabase = await createClient();
-  const user = await getUserSafely(supabase);
+import { MarketingLandingPage } from "@/components/marketing/landing-page";
 
-  if (user) {
-    redirect("/dashboard");
-  } else {
-    redirect("/login");
-  }
+export const metadata: Metadata = {
+  title: "Zeta | Finanzas personales para Colombia",
+  description:
+    "Controla tus finanzas personales con una vista clara de extractos, presupuesto, deudas, cuentas y pagos recurrentes.",
+};
+
+export default function HomePage() {
+  return <MarketingLandingPage />;
 }
