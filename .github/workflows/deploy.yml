@@ -169,6 +169,7 @@ jobs:
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
             NEXT_PUBLIC_BUILD_SHA=${{ github.sha }}
             NEXT_PUBLIC_BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            NEXT_PUBLIC_EMAIL_INGEST_DOMAIN=${{ secrets.NEXT_PUBLIC_EMAIL_INGEST_DOMAIN }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
