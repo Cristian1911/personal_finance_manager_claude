@@ -1,21 +1,32 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   BanknoteArrowDown,
   BadgeDollarSign,
+  Bot,
   CalendarClock,
+  CalendarRange,
+  Check,
   CheckCircle2,
   CreditCard,
+  FileUp,
+  Filter,
+  Inbox,
   Landmark,
+  Mic,
   PiggyBank,
   Repeat2,
   Scale,
+  Search,
+  Send,
   ShieldCheck,
   Sparkles,
   Target,
   TrendingUp,
   Wallet,
+  WalletCards,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -202,6 +213,239 @@ const supportedInstitutions = [
   "Confiar",
 ];
 
+const showcaseImportSteps = [
+  "PDF",
+  "Cuenta",
+  "Destinatarios",
+  "Revisión",
+  "Conciliación",
+] as const;
+
+const showcaseAccounts = [
+  {
+    name: "Cuenta principal",
+    detail: "COP · liquidez diaria",
+    balance: "$4.8M",
+    status: "Disponible",
+    statusClassName: "bg-z-income/15 text-z-income",
+  },
+  {
+    name: "Tarjeta viajera",
+    detail: "USD · deuda activa",
+    balance: "$1.2M",
+    status: "Pago en 5 días",
+    statusClassName: "bg-z-debt/15 text-z-debt",
+  },
+  {
+    name: "Ahorro viaje",
+    detail: "COP · objetivo",
+    balance: "$920K",
+    status: "62% meta",
+    statusClassName: "bg-primary/15 text-primary",
+  },
+] as const;
+
+const showcaseRecipients = [
+  {
+    name: "Rappi",
+    rules: "4 reglas",
+    spend: "$480K / mes",
+    category: "Comida",
+  },
+  {
+    name: "Éxito",
+    rules: "2 reglas",
+    spend: "$620K / mes",
+    category: "Mercado",
+  },
+  {
+    name: "Spotify",
+    rules: "1 regla",
+    spend: "$24K / mes",
+    category: "Suscripciones",
+  },
+] as const;
+
+const showcaseRecurringItems = [
+  {
+    label: "Tarjeta principal",
+    date: "Vie 12",
+    amount: "$780K",
+    toneClassName: "text-z-debt",
+  },
+  {
+    label: "Arriendo",
+    date: "Lun 15",
+    amount: "$1.6M",
+    toneClassName: "text-z-alert",
+  },
+  {
+    label: "Spotify + iCloud",
+    date: "Jue 18",
+    amount: "$48K",
+    toneClassName: "text-z-sage-light",
+  },
+] as const;
+
+const showcaseDebtPlans = [
+  {
+    name: "Solo mínimos",
+    months: "28 meses",
+    interest: "$4.1M",
+    barWidth: "w-full",
+    barClassName: "bg-white/18",
+    badge: null,
+  },
+  {
+    name: "Avalancha",
+    months: "17 meses",
+    interest: "$2.8M",
+    barWidth: "w-[62%]",
+    barClassName: "bg-z-income",
+    badge: "Recomendado",
+  },
+  {
+    name: "Balanceado",
+    months: "20 meses",
+    interest: "$3.1M",
+    barWidth: "w-[72%]",
+    barClassName: "bg-z-brass",
+    badge: null,
+  },
+] as const;
+
+const showcaseQuickCaptureMessages = [
+  { role: "system", text: "Di tu movimiento o escríbelo abajo." },
+  { role: "user", text: "Gasté 15 mil en café ayer" },
+  { role: "system", text: "Listo. Detecté gasto por $15.000 en café." },
+] as const;
+
+function ShowcasePanel({
+  eyebrow,
+  title,
+  description,
+  icon: Icon,
+  children,
+  className,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card
+      className={`overflow-hidden border-white/8 bg-white/[0.03] py-0 shadow-2xl shadow-black/10 ${className ?? ""}`}
+    >
+      <CardHeader className="gap-4 px-6 py-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-z-sage-light">
+              {eyebrow}
+            </p>
+            <div className="space-y-2">
+              <CardTitle className="text-2xl">{title}</CardTitle>
+              <CardDescription className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                {description}
+              </CardDescription>
+            </div>
+          </div>
+          <div className="hidden size-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 lg:flex">
+            <Icon className="size-5 text-z-sage-light" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="px-6 pb-6">{children}</CardContent>
+    </Card>
+  );
+}
+
+function MockShell({
+  title,
+  children,
+  mobile = false,
+}: {
+  title: string;
+  children: ReactNode;
+  mobile?: boolean;
+}) {
+  return (
+    <div
+      className={`overflow-hidden border border-white/8 bg-[#101111]/95 shadow-[0_20px_80px_rgba(0,0,0,0.28)] ${
+        mobile ? "mx-auto max-w-[23rem] rounded-[2rem] p-2.5" : "rounded-[1.75rem] p-3"
+      }`}
+    >
+      <div className="rounded-[1.15rem] border border-white/6 bg-black/25 px-4 py-3">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-z-brass/70" />
+              <span className="size-2 rounded-full bg-z-sage-light/70" />
+              <span className="size-2 rounded-full bg-white/35" />
+            </div>
+            <p className="text-xs font-medium text-z-white/82">{title}</p>
+          </div>
+          <Badge
+            variant="outline"
+            className="border-white/10 bg-white/5 text-[10px] uppercase tracking-[0.18em] text-z-sage-light"
+          >
+            Zeta
+          </Badge>
+        </div>
+      </div>
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function MockMetric({
+  label,
+  value,
+  context,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  context: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/6 bg-black/12 p-4">
+      <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
+      </p>
+      <p className={`mt-3 text-2xl font-semibold ${valueClassName ?? "text-z-white"}`}>
+        {value}
+      </p>
+      <p className="mt-2 text-xs text-muted-foreground">{context}</p>
+    </div>
+  );
+}
+
+function MockProgress({
+  label,
+  value,
+  fillClassName,
+}: {
+  label: string;
+  value: string;
+  fillClassName: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">{label}</span>
+        <span>{value}</span>
+      </div>
+      <div className="h-2 rounded-full bg-white/8">
+        <div className={`h-2 rounded-full ${fillClassName}`} />
+      </div>
+    </div>
+  );
+}
+
 function SectionHeading({
   eyebrow,
   title,
@@ -291,6 +535,9 @@ export function MarketingLandingPage() {
           </div>
 
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+            <a href="#showcase" className="transition-colors hover:text-foreground">
+              Showcase
+            </a>
             <a href="#funciones" className="transition-colors hover:text-foreground">
               Funciones
             </a>
@@ -527,6 +774,527 @@ export function MarketingLandingPage() {
                   </div>
                 </div>
               </Card>
+            </div>
+          </div>
+        </section>
+
+        <section id="showcase" className="mx-auto max-w-7xl px-6 py-20">
+          <SectionHeading
+            eyebrow="Showcase"
+            title="Un barrido real del producto, construido como HTML y listo para vivir dentro del landing."
+            description="En lugar de prometer funciones con tarjetas genéricas, esta sección muestra mocks hechos con la misma gramática visual de Zeta: dashboard, importación, cuentas, destinatarios, planificación, recurrentes y captura rápida."
+          />
+
+          <div className="mt-12 space-y-6">
+            <ShowcasePanel
+              eyebrow="Inicio"
+              title="Control diario con una sola lectura"
+              description="La capa principal de Zeta junta liquidez, foco operativo y señales de atención en una superficie que responde rápido si el mes va sano o necesita corrección."
+              icon={TrendingUp}
+            >
+              <MockShell title="Inicio / Marzo">
+                <div className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
+                  <div className="rounded-[1.35rem] border border-white/6 bg-[linear-gradient(180deg,rgba(147,120,68,0.16),rgba(17,17,17,0.82)_55%,rgba(17,17,17,0.95))] p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-z-sage-light">
+                          Tu estado financiero de hoy
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold">
+                          Vas en control, pero hay 2 focos que conviene resolver esta semana.
+                        </p>
+                      </div>
+                      <Badge className="bg-z-income/14 text-z-income">En control</Badge>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <MockMetric
+                        label="Ingreso visto"
+                        value="$7.2M"
+                        context="+12% frente al mes pasado"
+                        valueClassName="text-z-income"
+                      />
+                      <MockMetric
+                        label="Margen libre"
+                        value="$1.18M"
+                        context="Listo para ahorro o deuda"
+                      />
+                      <MockMetric
+                        label="Próximo foco"
+                        value="2 pagos"
+                        context="Durante los próximos 7 días"
+                        valueClassName="text-z-alert"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-[1.35rem] border border-z-brass/20 bg-z-surface-2/80 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+                      Necesita atención
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {[
+                        "1 tarjeta por pagar antes del viernes",
+                        "3 suscripciones por confirmar",
+                        "2 movimientos siguen sin categoría",
+                      ].map((item, index) => (
+                        <div
+                          key={item}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-black/10 px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="flex size-5 items-center justify-center rounded-full bg-z-brass/15 text-[10px] font-bold text-z-brass">
+                              {index + 1}
+                            </span>
+                            <span className="text-sm">{item}</span>
+                          </div>
+                          <span className="text-xs font-medium text-z-brass">Resolver →</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_0.95fr]">
+                  <div className="rounded-[1.25rem] border border-white/6 bg-white/[0.03] p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Mapa del mes</p>
+                        <p className="text-xs text-muted-foreground">
+                          Presupuesto, deuda y objetivos en la misma vista
+                        </p>
+                      </div>
+                      <Sparkles className="size-4 text-z-sage-light" />
+                    </div>
+                    <div className="mt-4 space-y-4">
+                      <MockProgress
+                        label="Presupuesto esencial"
+                        value="76%"
+                        fillClassName="w-[76%] bg-z-income"
+                      />
+                      <MockProgress
+                        label="Deuda bajo presión"
+                        value="48%"
+                        fillClassName="w-[48%] bg-z-debt"
+                      />
+                      <MockProgress
+                        label="Ahorro objetivo"
+                        value="62%"
+                        fillClassName="w-[62%] bg-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-[1.25rem] border border-white/6 bg-black/14 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Últimos movimientos</p>
+                        <p className="text-xs text-muted-foreground">
+                          Para seguir el pulso sin abrir tablas pesadas
+                        </p>
+                      </div>
+                      <WalletCards className="size-4 text-z-sage-light" />
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      {[
+                        {
+                          title: "Nómina",
+                          meta: "Hoy · Cuenta principal",
+                          amount: "+$4.200.000",
+                          toneClassName: "text-z-income",
+                        },
+                        {
+                          title: "Supermercado",
+                          meta: "Ayer · Éxito",
+                          amount: "-$182.400",
+                          toneClassName: "text-z-white",
+                        },
+                        {
+                          title: "Tarjeta viajera",
+                          meta: "Lun · Pago manual",
+                          amount: "-$620.000",
+                          toneClassName: "text-z-debt",
+                        },
+                      ].map((item) => (
+                        <div
+                          key={item.title}
+                          className="flex items-center justify-between rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2.5"
+                        >
+                          <div>
+                            <p className="text-sm font-medium">{item.title}</p>
+                            <p className="text-xs text-muted-foreground">{item.meta}</p>
+                          </div>
+                          <p className={`text-sm font-semibold ${item.toneClassName}`}>
+                            {item.amount}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </MockShell>
+            </ShowcasePanel>
+
+            <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+              <ShowcasePanel
+                eyebrow="Importar"
+                title="Extractos que actualizan el sistema completo"
+                description="El flujo no se queda en subir un PDF: asocia cuentas, aprende destinatarios y revisa duplicados antes de escribir en la base."
+                icon={FileUp}
+              >
+                <MockShell title="Importar extracto">
+                  <div className="flex flex-wrap gap-2">
+                    {showcaseImportSteps.map((step, index) => (
+                      <Badge
+                        key={step}
+                        variant="outline"
+                        className={`border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${
+                          index === 2
+                            ? "bg-z-brass/12 text-z-brass"
+                            : "bg-white/[0.03] text-z-white/70"
+                        }`}
+                      >
+                        {step}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 grid gap-3 lg:grid-cols-[0.95fr_1.05fr]">
+                    <div className="rounded-[1.25rem] border border-dashed border-white/12 bg-black/12 p-4">
+                      <div className="rounded-[1.1rem] border border-white/8 bg-white/[0.03] p-4">
+                        <p className="text-sm font-medium">extracto_marzo.pdf</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Bancolombia · 186 movimientos detectados
+                        </p>
+                        <div className="mt-4 rounded-xl border border-white/6 bg-black/20 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-z-sage-light">
+                            Cuenta sugerida
+                          </p>
+                          <p className="mt-2 text-lg font-semibold">Cuenta principal</p>
+                          <p className="text-xs text-muted-foreground">
+                            Coincide por número, moneda y saldo final
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <MockMetric label="Cuentas listas" value="6" context="bases para asociar" />
+                        <MockMetric label="Reglas aprendidas" value="24" context="destinatarios listos" />
+                        <MockMetric label="Duplicados" value="3" context="por revisar" />
+                      </div>
+                      <div className="rounded-[1.25rem] border border-white/6 bg-z-surface-2/80 p-4">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-z-sage-light">
+                          Revisión final
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {[
+                            "Éxito Laureles · Mercado · Confirmado",
+                            "Pago TC Visa · Deuda · Conciliar con manual",
+                            "Spotify · Suscripciones · Crear regla",
+                          ].map((row) => (
+                            <div
+                              key={row}
+                              className="flex items-center justify-between rounded-xl border border-white/6 bg-black/10 px-3 py-2"
+                            >
+                              <span className="text-sm">{row}</span>
+                              <span className="text-xs text-z-sage-light">OK</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </MockShell>
+              </ShowcasePanel>
+
+              <ShowcasePanel
+                eyebrow="Cuentas"
+                title="Liquidez, deuda y patrimonio sin mezclar realidades"
+                description="La organización por tipo de cuenta facilita leer presión, capacidad de maniobra y balances multi-moneda."
+                icon={Wallet}
+              >
+                <MockShell title="Cuentas">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <MockMetric label="Patrimonio neto" value="$8.4M" context="base visible hoy" />
+                    <MockMetric label="Cuentas activas" value="6" context="3 liquidez · 2 deuda" />
+                    <MockMetric
+                      label="Presión de deuda"
+                      value="2"
+                      context="con saldo pendiente"
+                      valueClassName="text-z-debt"
+                    />
+                  </div>
+                  <div className="mt-3 grid gap-3">
+                    {showcaseAccounts.map((account) => (
+                      <div
+                        key={account.name}
+                        className="flex items-center justify-between rounded-[1.1rem] border border-white/6 bg-white/[0.03] px-4 py-3"
+                      >
+                        <div>
+                          <p className="text-sm font-medium">{account.name}</p>
+                          <p className="text-xs text-muted-foreground">{account.detail}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold">{account.balance}</p>
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${account.statusClassName}`}
+                          >
+                            {account.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </MockShell>
+              </ShowcasePanel>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+              <ShowcasePanel
+                eyebrow="Destinatarios"
+                title="Comercios, reglas y gasto agrupados en la misma capa"
+                description="El showcase aterriza la lógica de destinatarios: búsqueda, filtros, reglas activas y gasto mensual por comercio."
+                icon={Search}
+              >
+                <MockShell title="Destinatarios">
+                  <div className="flex items-center gap-2 rounded-[1.1rem] border border-white/6 bg-black/12 px-3 py-2.5">
+                    <Search className="size-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Buscar destinatario...</span>
+                    <Filter className="ml-auto size-4 text-z-sage-light" />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {["Todos", "Comida", "Mercado", "Suscripciones"].map((pill, index) => (
+                      <Badge
+                        key={pill}
+                        variant="outline"
+                        className={`border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${
+                          index === 0
+                            ? "bg-z-sage-light/12 text-z-sage-light"
+                            : "bg-white/[0.03] text-z-white/70"
+                        }`}
+                      >
+                        {pill}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {showcaseRecipients.map((recipient) => (
+                      <div
+                        key={recipient.name}
+                        className="rounded-[1.15rem] border border-white/6 bg-white/[0.03] px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">{recipient.name}</p>
+                            <p className="text-xs text-muted-foreground">{recipient.rules}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold">{recipient.spend}</p>
+                            <span className="text-xs text-z-sage-light">{recipient.category}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </MockShell>
+              </ShowcasePanel>
+
+              <ShowcasePanel
+                eyebrow="Deuda + Plan"
+                title="Simulación que cambia decisiones, no solo números"
+                description="La comparación entre planes deja visible tiempo, intereses y una recomendación clara antes de comprometer el próximo pago."
+                icon={Scale}
+              >
+                <MockShell title="Planificador de deuda">
+                  <div className="flex flex-wrap gap-2">
+                    {showcaseDebtPlans.map((plan) => (
+                      <Badge
+                        key={plan.name}
+                        variant="outline"
+                        className={`border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${
+                          plan.badge ? "bg-z-income/12 text-z-income" : "bg-white/[0.03] text-z-white/70"
+                        }`}
+                      >
+                        {plan.name}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="mt-3 grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
+                    <div className="rounded-[1.25rem] border border-white/6 bg-black/12 p-4">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-z-sage-light">
+                        Resumen de planes
+                      </p>
+                      <div className="mt-3 space-y-3">
+                        {showcaseDebtPlans.map((plan) => (
+                          <div key={plan.name} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <span>{plan.name}</span>
+                              <span className="text-muted-foreground">{plan.months}</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-white/8">
+                              <div className={`h-2 rounded-full ${plan.barWidth} ${plan.barClassName}`} />
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>Intereses</span>
+                              <span>{plan.interest}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[1.25rem] border border-white/6 bg-z-surface-2/80 p-4">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <MockMetric label="Deudas activas" value="4" context="saldo pendiente" />
+                        <MockMetric
+                          label="Tiempo libre"
+                          value="11 meses"
+                          context="menos vs mínimos"
+                          valueClassName="text-z-income"
+                        />
+                        <MockMetric
+                          label="Intereses evitados"
+                          value="$1.3M"
+                          context="con avalancha"
+                          valueClassName="text-z-income"
+                        />
+                      </div>
+                      <div className="mt-3 rounded-[1.1rem] border border-z-income/20 bg-z-income/8 p-4">
+                        <p className="text-sm font-medium text-z-income">
+                          El plan “Avalancha” ahorra más intereses y te deja libre de deuda antes.
+                        </p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Ideal para el showcase porque comunica claramente el valor del simulador.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </MockShell>
+              </ShowcasePanel>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+              <ShowcasePanel
+                eyebrow="Recurrentes"
+                title="Obligaciones fijas que aparecen antes del problema"
+                description="La sección de recurrentes completa el barrido: plantillas activas, compromiso mensual y próximos cargos."
+                icon={Repeat2}
+              >
+                <MockShell title="Recurrentes">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <MockMetric label="Plantillas activas" value="9" context="rutinas vivas" />
+                    <MockMetric label="Salidas / mes" value="$2.9M" context="compromiso fijo" />
+                    <MockMetric label="Entradas / mes" value="$6.5M" context="ingreso recurrente" />
+                  </div>
+                  <div className="mt-3 space-y-3 rounded-[1.2rem] border border-white/6 bg-black/14 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Próximos 14 días</p>
+                        <p className="text-xs text-muted-foreground">
+                          La línea de tiempo operativa del mes
+                        </p>
+                      </div>
+                      <CalendarRange className="size-4 text-z-sage-light" />
+                    </div>
+                    {showcaseRecurringItems.map((item) => (
+                      <div
+                        key={item.label}
+                        className="flex items-center justify-between rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2.5"
+                      >
+                        <div>
+                          <p className="text-sm font-medium">{item.label}</p>
+                          <p className="text-xs text-muted-foreground">{item.date}</p>
+                        </div>
+                        <p className={`text-sm font-semibold ${item.toneClassName}`}>
+                          {item.amount}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </MockShell>
+              </ShowcasePanel>
+
+              <ShowcasePanel
+                eyebrow="Quick capture"
+                title="Captura rápida que sí parece parte del producto"
+                description="Un mock mobile con voz y texto para registrar movimientos sin romper el flujo. Esto puede vivir tal cual dentro del landing."
+                icon={Mic}
+              >
+                <div className="grid gap-4 lg:grid-cols-[0.7fr_0.3fr] lg:items-start">
+                  <MockShell title="Captura rápida" mobile>
+                    <div className="rounded-[1.5rem] border border-white/6 bg-z-surface-2/80 p-4">
+                      <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/6 bg-black/14 px-3 py-1.5 text-xs text-muted-foreground">
+                        <Wallet className="size-3.5 text-z-sage-light" />
+                        Cuenta principal
+                      </div>
+
+                      <div className="space-y-3">
+                        {showcaseQuickCaptureMessages.map((message) => (
+                          <div
+                            key={message.text}
+                            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                                message.role === "user"
+                                  ? "rounded-br-md bg-z-brass/14 text-z-white"
+                                  : "rounded-bl-md bg-white/[0.05] text-z-white/84"
+                              }`}
+                            >
+                              {message.text}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 rounded-[1.15rem] border border-white/6 bg-black/16 p-4">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Resumen detectado</span>
+                          <span>COP</span>
+                        </div>
+                        <p className="mt-2 text-2xl font-semibold text-z-debt">$15.000</p>
+                        <p className="text-sm text-z-white/84">Café · Ayer · Gasto</p>
+                        <Button className="mt-4 w-full rounded-full bg-primary text-primary-foreground">
+                          <Check className="size-4" />
+                          Registrar movimiento
+                        </Button>
+                      </div>
+
+                      <div className="mt-4 flex items-center gap-2 rounded-full border border-white/6 bg-black/16 px-3 py-2">
+                        <Mic className="size-4 text-z-brass" />
+                        <span className="flex-1 text-sm text-muted-foreground">
+                          Ej: gasté 15 mil en café
+                        </span>
+                        <span className="flex size-8 items-center justify-center rounded-full bg-z-brass text-z-ink">
+                          <Send className="size-4" />
+                        </span>
+                      </div>
+                    </div>
+                  </MockShell>
+
+                  <div className="grid gap-4">
+                    <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
+                      <div className="flex items-center gap-2">
+                        <Inbox className="size-4 text-z-sage-light" />
+                        <p className="text-sm font-medium">También cabe en Telegram</p>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        La misma lógica de captura puede mostrarse luego como integración ligera.
+                      </p>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
+                      <div className="flex items-center gap-2">
+                        <Bot className="size-4 text-z-sage-light" />
+                        <p className="text-sm font-medium">Y como MCP / asistente</p>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        Útil para conectar el showcase con el ángulo de productividad personal.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </ShowcasePanel>
             </div>
           </div>
         </section>
