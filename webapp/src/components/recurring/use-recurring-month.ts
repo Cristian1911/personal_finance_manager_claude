@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   addMonths,
   endOfMonth,
@@ -55,6 +56,7 @@ export function useRecurringMonth(
   templates: RecurringTemplateWithRelations[],
   accounts: Account[]
 ) {
+  const router = useRouter();
   /* ---- month cursor ---- */
   const [monthCursor, setMonthCursor] = useState(() => new Date());
   const monthStart = startOfMonth(monthCursor);
@@ -263,11 +265,12 @@ export function useRecurringMonth(
           : "Pago recurrente registrado";
 
         toast.success(msg);
+        router.refresh();
       } else if (duplicates > 0) {
         toast.info("Este pago ya estaba registrado anteriormente.");
       }
     },
-    [todayStr, updateCheckedItems]
+    [todayStr, updateCheckedItems, router]
   );
 
   /* ---- skip payment (already paid manually) ---- */

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Eye, EyeOff, Trash2, GripVertical, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -477,11 +478,13 @@ function NewZoneTile({ onCreated }: { onCreated: () => void }) {
 // ─── CategoryZoneManager (main) ──────────────────────────────────────────────
 
 export function CategoryZoneManager({ categories }: CategoryZoneManagerProps) {
+  const router = useRouter();
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
 
   const handleSaved = useCallback(() => {
     setEditingZoneId(null);
-  }, []);
+    router.refresh();
+  }, [router]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingZoneId(null);

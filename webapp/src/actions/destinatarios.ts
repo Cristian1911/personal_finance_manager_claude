@@ -67,7 +67,7 @@ export async function testDestinatarioPattern(
     query = query.ilike("raw_description", `%${pattern}%`);
   }
 
-  const { data, error, count } = await query
+  const { data, error } = await query
     .order("transaction_date", { ascending: false })
     .limit(5);
 
@@ -391,12 +391,27 @@ export async function getDestinatarioRules(): Promise<
 
 function parsePatternsList(raw: FormDataEntryValue | null): string[] {
   if (!raw || typeof raw !== "string" || !raw.trim()) return [];
+
+  let patterns: string[] = [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [raw];
+    patterns = Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [raw];
   } catch {
-    return raw.split(",").map((p) => p.trim()).filter(Boolean);
+    patterns = raw.split(",");
   }
+
+  const seen = new Set<string>();
+  return patterns
+    .map((pattern) => pattern.trim())
+    .filter((pattern) => {
+      if (!pattern) return false;
+      const key = pattern.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }
 
 // ─── createDestinatario ───────────────────────────────────────────────────────
@@ -459,21 +474,35 @@ export async function createDestinatario(
   let linkedCount = 0;
   const shouldLink = formData.get("link_matching_transactions") === "true";
   if (shouldLink && patterns.length > 0) {
-    const { data: unmatchedTxs } = await supabase
+    const lowerPatterns = patterns.map((pattern) => pattern.toLowerCase());
+    const { data: unmatchedTxs, error: unmatchedTxsError } = await supabase
       .from("transactions")
       .select("id, raw_description, category_id")
       .eq("user_id", user.id)
       .is("destinatario_id", null)
       .not("raw_description", "is", null)
+      .eq("is_excluded", false)
+      .is("reconciled_into_transaction_id", null)
       .limit(2000);
 
-    if (unmatchedTxs && unmatchedTxs.length > 0) {
+    if (unmatchedTxsError) {
+      console.error(
+        "Error fetching unmatched transactions for destinatario linking:",
+        unmatchedTxsError
+      );
+    } else if (unmatchedTxs && unmatchedTxs.length > 0) {
       const matchingIds: string[] = [];
       const uncategorizedIds: string[] = [];
 
       for (const tx of unmatchedTxs) {
-        const cleaned = cleanDescription(tx.raw_description ?? "");
-        if (patterns.some((p) => cleaned.includes(p.toLowerCase()))) {
+        const cleaned = cleanDescription(tx.raw_description ?? "").toLowerCase();
+        const raw = (tx.raw_description ?? "").toLowerCase();
+
+        if (
+          lowerPatterns.some(
+            (pattern) => cleaned.includes(pattern) || raw.includes(pattern)
+          )
+        ) {
           matchingIds.push(tx.id);
           if (!tx.category_id) uncategorizedIds.push(tx.id);
         }
@@ -910,7 +939,7 @@ export async function findUnlinkedMatches(
 
   const matches: UnlinkedMatch[] = [];
   for (const tx of txs) {
-    const cleaned = cleanDescription(tx.raw_description ?? "");
+    const cleaned = cleanDescription(tx.raw_description ?? "").toLowerCase();
     const raw = (tx.raw_description ?? "").toLowerCase();
 
     const isMatch = rules.some((rule) => {
@@ -971,7 +1000,7 @@ export async function bulkLinkToDestinatario(
     .update({
       destinatario_id: destinatarioId,
       merchant_name: dest.name,
-    })
+    }, { count: "exact" })
     .eq("user_id", user.id)
     .in("id", transactionIds);
 
@@ -980,15 +1009,22 @@ export async function bulkLinkToDestinatario(
   // If destinatario has default category, apply to uncategorized transactions
   let categorized = 0;
   if (dest.default_category_id) {
-    const { count } = await supabase
+    const { error: categorizeError, count } = await supabase
       .from("transactions")
       .update({
         category_id: dest.default_category_id,
         categorization_source: "USER_LEARNED",
-      })
+      }, { count: "exact" })
       .eq("user_id", user.id)
       .in("id", transactionIds)
       .is("category_id", null);
+
+    if (categorizeError) {
+      console.error(
+        "Error applying default category while linking destinatario:",
+        categorizeError
+      );
+    }
 
     categorized = count ?? 0;
   }

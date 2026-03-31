@@ -274,6 +274,36 @@ export async function categorizeTransaction(
 }
 
 /**
+ * Remove the category from a transaction (undo categorization).
+ */
+export async function uncategorizeTransaction(
+  txId: string
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({
+      category_id: null,
+      categorization_source: null as unknown as undefined,
+      categorization_confidence: null,
+    })
+    .eq("user_id", user.id)
+    .eq("id", txId);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("categorize", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("attention", "zeta");
+  return { success: true, data: undefined };
+}
+
+/**
  * Confirm an auto-categorized transaction, marking it as user-reviewed.
  * Keeps the existing category but changes categorization_source to USER_OVERRIDE.
  */
