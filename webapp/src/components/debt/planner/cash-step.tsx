@@ -6,6 +6,7 @@ import type { CurrencyCode } from "@zeta/shared";
 import type { PlannerAction } from "../scenario-planner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -158,11 +159,10 @@ export function CashStep({ accounts, cashEntries, currency = "COP", dispatch }: 
               {/* Date */}
               <div className="space-y-1.5">
                 <Label htmlFor="cash-date">Fecha de pago</Label>
-                <Input
-                  id="cash-date"
-                  type="date"
+                <DatePicker
                   value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  onChange={(v) => setForm((f) => ({ ...f, date: v ?? getNextMonthDate() }))}
+                  placeholder="Fecha de pago"
                 />
               </div>
             </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -90,11 +91,11 @@ export function RecurringConfirmInline({
             <label className="text-xs font-medium text-muted-foreground">
               Fecha de pago
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-              className="border-input bg-background h-8 w-full rounded-md border px-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              onChange={(v) => setPaymentDate(v ?? format(new Date(), "yyyy-MM-dd"))}
+              placeholder="Fecha de pago"
+              className="h-8 w-full"
             />
           </div>
 

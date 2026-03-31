@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -66,6 +67,9 @@ export function RecurringForm({
   );
   const [startDate, setStartDate] = useState<string>(
     template?.start_date ?? defaultStartDate
+  );
+  const [endDate, setEndDate] = useState<string | null>(
+    template?.end_date ?? null
   );
   const [categoryId, setCategoryId] = useState<string | null>(
     template?.category_id ?? null
@@ -279,23 +283,21 @@ export function RecurringForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="start_date">Fecha de inicio</Label>
-          <Input
-            id="start_date"
-            name="start_date"
-            type="date"
+          <DatePicker
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            required
+            onChange={(v) => setStartDate(v ?? defaultStartDate)}
+            name="start_date"
+            placeholder="Fecha de inicio"
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="end_date">Fecha fin (opcional)</Label>
-          <Input
-            id="end_date"
+          <DatePicker
+            value={endDate}
+            onChange={setEndDate}
             name="end_date"
-            type="date"
-            defaultValue={template?.end_date ?? ""}
+            placeholder="Sin fecha fin"
           />
         </div>
       </div>

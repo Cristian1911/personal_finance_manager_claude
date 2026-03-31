@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
 import { createReminder } from "@/actions/reminders";
@@ -14,12 +15,14 @@ interface ReminderQuickAddProps {
 export function ReminderQuickAdd({ showExtras = false }: ReminderQuickAddProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
+  const [dueDate, setDueDate] = useState<string | null>(null);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
       const result = await createReminder(formData);
       if (result.success) {
         formRef.current?.reset();
+        setDueDate(null);
       } else {
         toast.error(result.error);
       }
@@ -47,11 +50,13 @@ export function ReminderQuickAdd({ showExtras = false }: ReminderQuickAddProps) 
             className="h-9 w-28 bg-card border-white/6 text-sm"
             disabled={isPending}
           />
-          <Input
+          <DatePicker
+            value={dueDate}
+            onChange={setDueDate}
             name="due_date"
-            type="date"
-            className="h-9 w-36 bg-card border-white/6 text-sm"
+            placeholder="Fecha límite"
             disabled={isPending}
+            className="w-36"
           />
         </>
       )}
