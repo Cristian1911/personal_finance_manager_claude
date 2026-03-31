@@ -18,7 +18,7 @@ async function getAttentionSnapshotCached(
   const supabase = createAdminClient();
 
   // Run queries in parallel
-  const [uncategorizedRes, destinatarioRes] = await Promise.all([
+  const [uncategorizedRes, destinatarioRes, overdueRemindersRes] = await Promise.all([
     // Signal 1: Uncategorized transactions
     supabase
       .from("transactions")
@@ -37,6 +37,14 @@ async function getAttentionSnapshotCached(
       .is("destinatario_id", null)
       .not("raw_description", "is", null)
       .eq("is_excluded", false),
+
+    // Signal: Overdue reminders
+    supabase
+      .from("financial_reminders")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_completed", false)
+      .lt("due_date", new Date().toISOString().split("T")[0]),
   ]);
 
   const signals: AttentionSignal[] = [];
@@ -72,6 +80,21 @@ async function getAttentionSnapshotCached(
           : `${suggestionCount} destinatarios sugeridos`,
       priority: "suggestion",
       actionHref: "/destinatarios",
+    });
+  }
+
+  // Signal: Overdue reminders
+  const overdueRemindersCount = overdueRemindersRes.count ?? 0;
+  if (overdueRemindersCount > 0) {
+    signals.push({
+      page: "pendientes",
+      key: "overdue_reminders",
+      count: overdueRemindersCount,
+      label: overdueRemindersCount === 1
+        ? "1 pendiente vencido"
+        : `${overdueRemindersCount} pendientes vencidos`,
+      priority: "action",
+      actionHref: "/pendientes",
     });
   }
 

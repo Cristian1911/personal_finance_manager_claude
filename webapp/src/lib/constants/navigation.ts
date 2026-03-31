@@ -11,6 +11,7 @@ import {
   Settings,
   BarChart3,
   Tag,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 
@@ -58,6 +59,7 @@ export const WORKSPACE_NAV: NavItem[] = [
   { title: "Deudas", href: "/deudas", icon: Landmark },
   { title: "Recurrentes", href: "/recurrentes", icon: Repeat2, attentionPage: "recurrentes" },
   { title: "Etiquetas", href: "/etiquetas", icon: Tag },
+  { title: "Pendientes", href: "/pendientes", icon: ListChecks, attentionPage: "pendientes" },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [
