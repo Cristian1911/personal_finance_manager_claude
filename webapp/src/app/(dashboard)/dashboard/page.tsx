@@ -44,6 +44,8 @@ import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
 import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
+import { AttentionCard } from "@/components/ui/attention-card";
+import { getAttentionSnapshot } from "@/actions/attention";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import { getBurnRate } from "@/actions/burn-rate";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
@@ -281,11 +283,12 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
     getDebtFreeCountdown(currency),
+    getAttentionSnapshot(),
   ]);
 
   // Map data for mobile dashboard (tier 1 props only)
@@ -333,29 +336,6 @@ export default async function DashboardPage({
     ? "Actividad de los últimos meses"
     : "Sin transacciones registradas";
 
-  const desktopAttention = heroData.pendingObligations.length > 0
-    ? {
-        eyebrow: "Atención hoy",
-        title: `${heroData.pendingObligations.length} ${heroData.pendingObligations.length === 1 ? "frente abierto" : "frentes abiertos"} que pueden mover tu margen`,
-        body: `Hay ${heroData.pendingObligations.length} ${heroData.pendingObligations.length === 1 ? "pago pendiente" : "pagos pendientes"} por ${formatCurrency(heroData.totalPending, currency)}. Revísalos antes de comprometer más gasto este mes.`,
-        href: "/recurrentes",
-        cta: "Revisar pagos",
-      }
-    : heroData.freshness !== "fresh"
-      ? {
-          eyebrow: "Mantener al día",
-          title: "Tu base necesita una revisión corta antes de decidir",
-          body: "Actualiza saldos o importa un extracto para que el resto del dashboard vuelva a representar tu margen real.",
-          href: "#quick-update-values",
-          cta: "Actualizar valores",
-        }
-      : {
-          eyebrow: "Siguiente paso",
-          title: "Tu foto está estable y lista para decidir",
-          body: "Usa este momento para revisar movimientos recientes, ajustar presupuesto o cerrar tareas operativas desde Más.",
-          href: "/transactions",
-          cta: "Ver movimientos",
-        };
 
   return (
     <>
@@ -428,35 +408,11 @@ export default async function DashboardPage({
               data={heroData}
               allocationData={allocationData}
               debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
+              sidePanel={<AttentionCard signals={attentionSnapshot.signals} />}
             />
 
             {/* ── Action strip — balanced columns below hero ── */}
-            <div className="grid gap-4 xl:grid-cols-3">
-              <Card className="border-white/6 bg-z-surface-2/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                <CardHeader className="space-y-2 pb-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-                    {desktopAttention.eyebrow}
-                  </p>
-                  <CardTitle className="text-lg leading-tight">
-                    {desktopAttention.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {desktopAttention.body}
-                  </p>
-                  <Button
-                    asChild
-                    className="w-full justify-between bg-z-brass text-z-ink hover:bg-z-brass/90"
-                  >
-                    <Link href={desktopAttention.href}>
-                      {desktopAttention.cta}
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-
+            <div className="grid gap-4 xl:grid-cols-2">
               <WidgetSlot widgetId="upcoming-payments">
                 <UpcomingPayments
                   obligations={heroData.pendingObligations}
