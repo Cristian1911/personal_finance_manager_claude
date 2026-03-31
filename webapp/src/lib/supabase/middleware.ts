@@ -54,7 +54,9 @@ export async function updateSession(request: NextRequest) {
     "/auth",
   ];
   const pathname = request.nextUrl.pathname;
-  const isPublic = publicPaths.some((p) => pathname.startsWith(p));
+  const isPublic =
+    pathname === "/" ||
+    publicPaths.some((p) => pathname.startsWith(p));
   const isProtected = !isPublic;
 
   if (!user && isProtected) {
