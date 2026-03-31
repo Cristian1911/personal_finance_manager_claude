@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { isNavItemActive, type NavItem } from "@/lib/constants/navigation";
+import type { AttentionSnapshot } from "@/types/attention";
 
 interface NavItemLinkProps {
   item: NavItem;
   variant: "primary" | "secondary";
   pathname: string;
-  uncategorizedCount?: number;
+  attentionSnapshot?: AttentionSnapshot;
   onNavigate?: () => void;
 }
 
@@ -16,15 +17,41 @@ export function formatBadgeCount(count: number): string {
   return count > 99 ? "99+" : String(count);
 }
 
+/** Map a workspace nav href to the attention perPage key */
+function hrefToPageKey(href: string): string | null {
+  if (href === "/transactions") return "transactions";
+  if (href === "/destinatarios") return "destinatarios";
+  if (href === "/recurrentes") return "recurrentes";
+  if (href === "/categories" || href === "/presupuesto" || href === "/categorizar")
+    return "transactions"; // uncategorized signals live under transactions page
+  return null;
+}
+
 export function NavItemLink({
   item,
   variant,
   pathname,
-  uncategorizedCount = 0,
+  attentionSnapshot,
   onNavigate,
 }: NavItemLinkProps) {
   const isActive = isNavItemActive(pathname, item);
-  const showBadge = item.badge === "uncategorized" && uncategorizedCount > 0;
+
+  // Badge logic: primary "attention" badge or workspace per-page badge
+  let badgeCount = 0;
+  let badgeStyle: "brass" | "muted" = "muted";
+
+  if (item.badge === "attention" && attentionSnapshot) {
+    badgeCount = attentionSnapshot.totalAction;
+    badgeStyle = "brass";
+  } else if (variant === "secondary" && attentionSnapshot) {
+    const pageKey = hrefToPageKey(item.href);
+    if (pageKey) {
+      badgeCount = attentionSnapshot.perPage[pageKey] ?? 0;
+      badgeStyle = "muted";
+    }
+  }
+
+  const showBadge = badgeCount > 0;
 
   return (
     <Link
@@ -47,12 +74,14 @@ export function NavItemLink({
         <span
           className={cn(
             "inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold",
-            isActive && variant === "primary"
-              ? "bg-z-brass text-z-white"
-              : "bg-primary/15 text-primary"
+            badgeStyle === "brass"
+              ? isActive && variant === "primary"
+                ? "bg-z-brass text-z-white"
+                : "bg-z-brass/20 text-z-brass"
+              : "bg-muted text-muted-foreground"
           )}
         >
-          {formatBadgeCount(uncategorizedCount)}
+          {formatBadgeCount(badgeCount)}
         </span>
       )}
     </Link>

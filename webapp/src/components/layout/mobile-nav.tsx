@@ -12,12 +12,13 @@ import { NavItemLink } from "./nav-item-link";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu, Wallet } from "lucide-react";
+import type { AttentionSnapshot } from "@/types/attention";
 
 interface MobileNavProps {
-  uncategorizedCount?: number;
+  attentionSnapshot?: AttentionSnapshot;
 }
 
-export function MobileNav({ uncategorizedCount = 0 }: MobileNavProps) {
+export function MobileNav({ attentionSnapshot }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -28,7 +29,7 @@ export function MobileNav({ uncategorizedCount = 0 }: MobileNavProps) {
         item={item}
         variant={variant}
         pathname={pathname}
-        uncategorizedCount={uncategorizedCount}
+        attentionSnapshot={attentionSnapshot}
         onNavigate={() => setOpen(false)}
       />
     );
@@ -49,7 +50,6 @@ export function MobileNav({ uncategorizedCount = 0 }: MobileNavProps) {
           </div>
           <div className="min-w-0">
             <p className="truncate text-lg font-semibold">Zeta</p>
-            <p className="truncate text-xs text-muted-foreground">Estado y siguiente paso</p>
           </div>
         </div>
 

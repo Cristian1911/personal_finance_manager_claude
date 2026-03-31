@@ -10,7 +10,6 @@ import {
   Contact,
   Settings,
   BarChart3,
-  Menu,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,8 +17,8 @@ export type NavItem = {
   title: string;
   href: string;
   icon: LucideIcon;
-  /** If true, the sidebar will show an uncategorized count badge */
-  badge?: "uncategorized";
+  /** Badge type: "attention" shows the attention snapshot count */
+  badge?: "attention";
   /** Additional href prefixes that should also activate this nav item */
   matchHrefs?: string[];
 };
@@ -38,19 +37,10 @@ export const PRIMARY_NAV: NavItem[] = [
     ],
   },
   {
-    title: "Más",
+    title: "Bandeja",
     href: "/gestionar",
-    icon: Menu,
-    badge: "uncategorized",
-    matchHrefs: [
-      "/categories",
-      "/categorizar",
-      "/destinatarios",
-      "/import",
-      "/accounts",
-      "/settings",
-      "/presupuesto",
-    ],
+    icon: Inbox,
+    badge: "attention",
   },
 ];
 

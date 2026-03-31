@@ -9,12 +9,13 @@ import {
 } from "@/lib/constants/navigation";
 import { NavItemLink } from "./nav-item-link";
 import { Wallet } from "lucide-react";
+import type { AttentionSnapshot } from "@/types/attention";
 
 interface SidebarProps {
-  uncategorizedCount?: number;
+  attentionSnapshot?: AttentionSnapshot;
 }
 
-export function Sidebar({ uncategorizedCount = 0 }: SidebarProps) {
+export function Sidebar({ attentionSnapshot }: SidebarProps) {
   const pathname = usePathname();
 
   function renderNavItem(item: NavItem, variant: "primary" | "secondary") {
@@ -24,7 +25,7 @@ export function Sidebar({ uncategorizedCount = 0 }: SidebarProps) {
         item={item}
         variant={variant}
         pathname={pathname}
-        uncategorizedCount={uncategorizedCount}
+        attentionSnapshot={attentionSnapshot}
       />
     );
   }
@@ -37,7 +38,6 @@ export function Sidebar({ uncategorizedCount = 0 }: SidebarProps) {
         </div>
         <div className="min-w-0">
           <p className="truncate text-lg font-semibold">Zeta</p>
-          <p className="truncate text-xs text-muted-foreground">Estado y siguiente paso</p>
         </div>
       </div>
 

@@ -6,12 +6,13 @@ import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { PRIMARY_NAV, isNavItemActive, type NavItem } from "@/lib/constants/navigation";
 import { formatBadgeCount } from "@/components/layout/nav-item-link";
+import type { AttentionSnapshot } from "@/types/attention";
 
 interface BottomTabBarProps {
-  uncategorizedCount?: number;
+  attentionSnapshot?: AttentionSnapshot;
 }
 
-export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
+export function BottomTabBar({ attentionSnapshot }: BottomTabBarProps) {
   const pathname = usePathname();
   const keyboardInset = useKeyboardInset();
   const keyboardOpen = keyboardInset > 0;
@@ -20,7 +21,8 @@ export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
 
   function renderTab(tab: NavItem) {
     const isActive = isNavItemActive(pathname, tab);
-    const showBadge = tab.badge === "uncategorized" && uncategorizedCount > 0;
+    const badgeCount = tab.badge === "attention" ? (attentionSnapshot?.totalAction ?? 0) : 0;
+    const showBadge = badgeCount > 0;
 
     return (
       <Link
@@ -42,10 +44,10 @@ export function BottomTabBar({ uncategorizedCount = 0 }: BottomTabBarProps) {
                 "absolute -top-1.5 -right-2.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-semibold",
                 isActive
                   ? "bg-z-brass text-z-white"
-                  : "bg-primary/15 text-primary"
+                  : "bg-z-brass/20 text-z-brass"
               )}
             >
-              {formatBadgeCount(uncategorizedCount)}
+              {formatBadgeCount(badgeCount)}
             </span>
           )}
         </span>
