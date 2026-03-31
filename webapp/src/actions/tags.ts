@@ -42,6 +42,26 @@ export const getTagsForEntity = cache(
     const { supabase, user } = await getAuthenticatedClient();
     if (!user) return [];
 
+    // Ownership check — verify entity belongs to calling user
+    if (entityType === "transaction") {
+      const { data: tx } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("id", entityId)
+        .eq("user_id", user.id)
+        .single();
+      if (!tx) return [];
+    } else if (entityType === "destinatario") {
+      const { data: dest } = await supabase
+        .from("destinatarios")
+        .select("id")
+        .eq("id", entityId)
+        .eq("user_id", user.id)
+        .single();
+      if (!dest) return [];
+    }
+    // categories can be system-owned — skip ownership check
+
     const tableName = `${entityType}_tags` as const;
     const idColumn = `${entityType}_id` as const;
 
@@ -192,6 +212,41 @@ export async function createTag(
   return { success: true, data: { id: data.id } };
 }
 
+export async function updateTag(
+  id: string,
+  formData: FormData
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const parsed = tagSchema.safeParse({
+    name: formData.get("name"),
+    group_id: formData.get("group_id") || null,
+  });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const slug = generateSlug(parsed.data.name);
+
+  const { error } = await supabase
+    .from("tags")
+    .update({ name: parsed.data.name, slug })
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .eq("is_system", false);
+
+  if (error) {
+    if (error.code === "23505") {
+      return { success: false, error: "Ya existe una etiqueta con ese nombre" };
+    }
+    return { success: false, error: error.message };
+  }
+
+  revalidateTag("tags", "zeta");
+  return { success: true, data: null };
+}
+
 export async function deleteTag(id: string): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
@@ -211,6 +266,23 @@ export async function deleteTag(id: string): Promise<ActionResult<null>> {
 
 // ── Entity Tag Mutations ──────────────────────────────────
 
+async function verifyEntityOwnership(
+  supabase: Awaited<ReturnType<typeof getAuthenticatedClient>>["supabase"],
+  entityType: TaggableEntity,
+  entityId: string,
+  userId: string
+): Promise<boolean> {
+  if (entityType === "category") return true; // categories can be system-owned
+  const table = entityType === "transaction" ? "transactions" : "destinatarios";
+  const { data } = await supabase
+    .from(table)
+    .select("id")
+    .eq("id", entityId)
+    .eq("user_id", userId)
+    .single();
+  return !!data;
+}
+
 export async function addTagToEntity(
   tagId: string,
   entityType: TaggableEntity,
@@ -218,6 +290,10 @@ export async function addTagToEntity(
 ): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  if (!(await verifyEntityOwnership(supabase, entityType, entityId, user.id))) {
+    return { success: false, error: "No autorizado" };
+  }
 
   const tableName = `${entityType}_tags` as const;
   const idColumn = `${entityType}_id` as const;
@@ -243,6 +319,10 @@ export async function removeTagFromEntity(
 ): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  if (!(await verifyEntityOwnership(supabase, entityType, entityId, user.id))) {
+    return { success: false, error: "No autorizado" };
+  }
 
   const tableName = `${entityType}_tags` as const;
   const idColumn = `${entityType}_id` as const;

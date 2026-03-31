@@ -11,7 +11,10 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { getOccurrencesBetween } from "@zeta/shared";
-import { recordRecurringOccurrencePayment } from "@/actions/recurring-templates";
+import {
+  getPaidOccurrenceKeys,
+  recordRecurringOccurrencePayment,
+} from "@/actions/recurring-templates";
 import { toast } from "sonner";
 import type {
   Account,
@@ -76,11 +79,13 @@ export function useRecurringMonth(
     []
   );
 
-  /* ---- checked items (localStorage) ---- */
+  /* ---- checked items (localStorage + DB hydration) ---- */
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Load from localStorage on mount and when month changes
   useEffect(() => {
+    setIsHydrated(false);
     try {
       const raw = window.localStorage.getItem(storageKey);
       setCheckedItems(raw ? (JSON.parse(raw) as Record<string, boolean>) : {});
@@ -154,6 +159,35 @@ export function useRecurringMonth(
       return a.merchant.localeCompare(b.merchant);
     });
   }, [templates, accounts, monthStart, monthEnd]);
+
+  /* ---- DB hydration: seed checked state from actual transactions ---- */
+  useEffect(() => {
+    const keys = occurrences.map((o) => o.key);
+    if (keys.length === 0) {
+      setIsHydrated(true);
+      return;
+    }
+
+    getPaidOccurrenceKeys(keys)
+      .then((paidKeys) => {
+        if (paidKeys.length > 0) {
+          setCheckedItems((prev) => {
+            const merged = { ...prev };
+            for (const key of paidKeys) merged[key] = true;
+            try {
+              window.localStorage.setItem(storageKey, JSON.stringify(merged));
+            } catch { /* quota exceeded */ }
+            return merged;
+          });
+        }
+        setIsHydrated(true);
+      })
+      .catch(() => {
+        // If server call fails, fall back to localStorage-only
+        setIsHydrated(true);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when occurrences or month changes
+  }, [occurrences, storageKey]);
 
   /* ---- pending / completed splits ---- */
   const pending = useMemo(
@@ -310,6 +344,7 @@ export function useRecurringMonth(
 
     // Checked state
     checkedItems,
+    isHydrated,
 
     // Actions
     confirmPayment,

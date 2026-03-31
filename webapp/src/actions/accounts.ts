@@ -455,9 +455,11 @@ export async function registerPayment(
   const merchantName = isDebt
     ? `Pago - ${account.name}`
     : `Ingreso - ${account.name}`;
-  const rawDescription = sourceAccountName
-    ? `Pago manual registrado desde ${sourceAccountName} (${now})`
-    : `Pago manual registrado (${now})`;
+  const rawDescription = isDebt
+    ? (sourceAccountName
+        ? `Pago manual registrado desde ${sourceAccountName} (${now})`
+        : `Pago manual registrado (${now})`)
+    : `Ingreso manual registrado (${now})`;
 
   const idempotencyKey = await computeIdempotencyKey({
     provider: "MANUAL",
@@ -506,9 +508,12 @@ export async function registerPayment(
     if (account.credit_limit != null) {
       updateData.available_balance = account.credit_limit - newBalance;
     }
-    await supabase.from("accounts").update(updateData).eq("id", accountId).eq("user_id", user.id);
+    const { error: balanceError } = await supabase.from("accounts").update(updateData).eq("id", accountId).eq("user_id", user.id);
+    if (balanceError) {
+      return { success: false, error: "Pago registrado pero el saldo no se actualizó. Revisa manualmente." };
+    }
   } else {
-    await supabase
+    const { error: balanceError } = await supabase
       .from("accounts")
       .update({
         current_balance: account.current_balance + input.amount,
@@ -516,26 +521,35 @@ export async function registerPayment(
       })
       .eq("id", accountId)
       .eq("user_id", user.id);
+    if (balanceError) {
+      return { success: false, error: "Ingreso registrado pero el saldo no se actualizó. Revisa manualmente." };
+    }
   }
 
   // If source account specified, reduce its balance
   if (input.sourceAccountId) {
     const { data: sourceAccount } = await supabase
       .from("accounts")
-      .select("id, current_balance")
+      .select("id, current_balance, account_type")
       .eq("id", input.sourceAccountId)
       .eq("user_id", user.id)
       .single();
 
     if (sourceAccount) {
-      await supabase
+      const isDebtSource = sourceAccount.account_type === "CREDIT_CARD" || sourceAccount.account_type === "LOAN";
+      const { error: sourceError } = await supabase
         .from("accounts")
         .update({
-          current_balance: sourceAccount.current_balance - input.amount,
+          current_balance: isDebtSource
+            ? sourceAccount.current_balance + input.amount
+            : sourceAccount.current_balance - input.amount,
           updated_at: now,
         })
         .eq("id", input.sourceAccountId)
         .eq("user_id", user.id);
+      if (sourceError) {
+        return { success: false, error: "Pago registrado pero el saldo de la cuenta origen no se actualizó. Revisa manualmente." };
+      }
     }
   }
 

@@ -250,6 +250,7 @@ async function getCategoriesWithBudgetDataCached(
     supabase
       .from("transactions")
       .select("amount, category_id")
+      .eq("user_id", userId)
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
       .eq("currency_code", baseCurrency)
@@ -261,6 +262,7 @@ async function getCategoriesWithBudgetDataCached(
     supabase
       .from("transactions")
       .select("amount, category_id, transaction_date")
+      .eq("user_id", userId)
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
       .eq("currency_code", baseCurrency)

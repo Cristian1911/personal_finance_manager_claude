@@ -70,22 +70,32 @@ export function RecurringTimelineView({
 
         {/* Timeline + completed */}
         <div className="space-y-6">
-          <PaymentTimeline
-            pendingByDate={hook.pendingByDate}
-            getDateStatus={hook.getDateStatus}
-            onConfirm={hook.confirmPayment}
-            onSkip={hook.skipPayment}
-            busyItems={hook.busyItems}
-            selectedDate={selectedDate}
-            sourceAccounts={accounts
-              .filter(
-                (a) =>
-                  a.account_type === "CHECKING" ||
-                  a.account_type === "SAVINGS"
-              )
-              .map((a) => ({ id: a.id, name: a.name }))}
-          />
-          <RecurringCompletedSection completed={hook.completed} />
+          {!hook.isHydrated ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-sm text-muted-foreground animate-pulse">
+                Verificando estado de pagos...
+              </p>
+            </div>
+          ) : (
+            <>
+              <PaymentTimeline
+                pendingByDate={hook.pendingByDate}
+                getDateStatus={hook.getDateStatus}
+                onConfirm={hook.confirmPayment}
+                onSkip={hook.skipPayment}
+                busyItems={hook.busyItems}
+                selectedDate={selectedDate}
+                sourceAccounts={accounts
+                  .filter(
+                    (a) =>
+                      a.account_type === "CHECKING" ||
+                      a.account_type === "SAVINGS"
+                  )
+                  .map((a) => ({ id: a.id, name: a.name }))}
+              />
+              <RecurringCompletedSection completed={hook.completed} />
+            </>
+          )}
         </div>
       </div>
     </div>
