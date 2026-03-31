@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState, useTransition } from "react";
+import { useActionState, useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -8,6 +8,9 @@ import {
   Plus,
   X,
   ArrowRight,
+  Search,
+  Loader2,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -44,12 +47,16 @@ import {
   addDestinatarioRule,
   removeDestinatarioRule,
   testDestinatarioPattern,
+  findUnlinkedMatches,
+  bulkLinkToDestinatario,
 } from "@/actions/destinatarios";
 import type {
   DestinatarioWithRules,
   TransactionPreview,
   PatternTestResult,
+  UnlinkedMatch,
 } from "@/actions/destinatarios";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TagPicker } from "@/components/tags/tag-picker";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -110,6 +117,7 @@ export function DestinatarioDetail({
 
         <RulesSection
           destinatarioId={destinatario.id}
+          destinatarioName={destinatario.name}
           rules={destinatario.rules}
         />
       </div>
@@ -265,14 +273,23 @@ function EditForm({
 
 function RulesSection({
   destinatarioId,
+  destinatarioName,
   rules,
 }: {
   destinatarioId: string;
+  destinatarioName: string;
   rules: DestinatarioRuleRow[];
 }) {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [testResult, setTestResult] = useState<PatternTestResult | null>(null);
   const [testing, setTesting] = useState(false);
+
+  // Find & link state
+  const [unlinkedMatches, setUnlinkedMatches] = useState<UnlinkedMatch[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+  const [linking, startLinkTransition] = useTransition();
 
   const boundAddRule = addDestinatarioRule.bind(null, destinatarioId);
 
@@ -306,13 +323,89 @@ function RulesSection({
     setTesting(false);
   }
 
+  async function handleSearchUnlinked() {
+    setSearching(true);
+    setUnlinkedMatches(null);
+    setSelectedTxIds(new Set());
+    const result = await findUnlinkedMatches(destinatarioId);
+    if (result.success) {
+      setUnlinkedMatches(result.data);
+      // Pre-select all
+      setSelectedTxIds(new Set(result.data.map((m) => m.id)));
+    } else {
+      toast.error(result.error);
+    }
+    setSearching(false);
+  }
+
+  const toggleTx = useCallback((id: string) => {
+    setSelectedTxIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  function handleToggleAll() {
+    if (!unlinkedMatches) return;
+    if (selectedTxIds.size === unlinkedMatches.length) {
+      setSelectedTxIds(new Set());
+    } else {
+      setSelectedTxIds(new Set(unlinkedMatches.map((m) => m.id)));
+    }
+  }
+
+  function handleLinkSelected() {
+    if (selectedTxIds.size === 0) return;
+    startLinkTransition(async () => {
+      const result = await bulkLinkToDestinatario(
+        destinatarioId,
+        Array.from(selectedTxIds)
+      );
+      if (result.success) {
+        const { linked, categorized } = result.data;
+        let msg = `${linked} ${linked === 1 ? "transacción vinculada" : "transacciones vinculadas"}`;
+        if (categorized > 0) {
+          msg += ` · ${categorized} categorizada${categorized !== 1 ? "s" : ""}`;
+        }
+        toast.success(msg);
+        setUnlinkedMatches(null);
+        setSelectedTxIds(new Set());
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Reglas de coincidencia</CardTitle>
-        <CardDescription>
-          Patrones que asocian transacciones a este destinatario
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Reglas de coincidencia</CardTitle>
+            <CardDescription>
+              Patrones que asocian transacciones a este destinatario
+            </CardDescription>
+          </div>
+          {rules.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleSearchUnlinked}
+              disabled={searching}
+            >
+              {searching ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Search className="size-3.5" />
+              )}
+              Buscar transacciones
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Existing rules */}
@@ -326,6 +419,96 @@ function RulesSection({
             {rules.map((rule) => (
               <RuleItem key={rule.id} rule={rule} />
             ))}
+          </div>
+        )}
+
+        {/* Find & link unmatched transactions */}
+        {unlinkedMatches !== null && (
+          <div className="border-t pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">
+                Transacciones sin vincular
+                {unlinkedMatches.length > 0 && (
+                  <span className="ml-1.5 text-muted-foreground font-normal">
+                    ({unlinkedMatches.length} encontrada{unlinkedMatches.length !== 1 ? "s" : ""})
+                  </span>
+                )}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => { setUnlinkedMatches(null); setSelectedTxIds(new Set()); }}
+              >
+                Cerrar
+              </Button>
+            </div>
+
+            {unlinkedMatches.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">
+                No se encontraron transacciones sin vincular que coincidan con las reglas de &quot;{destinatarioName}&quot;.
+              </p>
+            ) : (
+              <>
+                {/* Select all + action bar */}
+                <div className="flex items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={selectedTxIds.size === unlinkedMatches.length}
+                      onCheckedChange={handleToggleAll}
+                    />
+                    {selectedTxIds.size === unlinkedMatches.length
+                      ? "Deseleccionar todas"
+                      : "Seleccionar todas"}
+                  </label>
+                  <Button
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs bg-z-brass text-z-ink hover:bg-z-brass/90"
+                    onClick={handleLinkSelected}
+                    disabled={linking || selectedTxIds.size === 0}
+                  >
+                    {linking ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Link2 className="size-3" />
+                    )}
+                    Vincular {selectedTxIds.size}
+                  </Button>
+                </div>
+
+                {/* Transaction list */}
+                <div className="max-h-[320px] overflow-y-auto space-y-1 rounded-lg border p-2">
+                  {unlinkedMatches.map((tx) => (
+                    <label
+                      key={tx.id}
+                      className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm cursor-pointer hover:bg-accent/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={selectedTxIds.has(tx.id)}
+                        onCheckedChange={() => toggleTx(tx.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-xs">
+                          {tx.clean_description ?? tx.raw_description}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatDate(tx.transaction_date)} · {tx.account_name}
+                          {!tx.category_id && (
+                            <span className="ml-1 text-z-alert">· Sin categoría</span>
+                          )}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 text-xs font-mono tabular-nums ${
+                        tx.direction === "OUTFLOW" ? "" : "text-z-income"
+                      }`}>
+                        {tx.direction === "OUTFLOW" ? "-" : "+"}
+                        {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 

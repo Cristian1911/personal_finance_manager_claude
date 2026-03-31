@@ -1,11 +1,13 @@
 import type { Profile } from "@/types/domain";
-import { UserMenu } from "@/components/layout/user-menu";
+import type { AttentionSnapshot } from "@/types/attention";
+import { QuickViewMenu } from "@/components/layout/quick-view-menu";
 
 interface MobileTopbarProps {
   profile: Profile;
+  attentionSnapshot: AttentionSnapshot;
 }
 
-export function MobileTopbar({ profile }: MobileTopbarProps) {
+export function MobileTopbar({ profile, attentionSnapshot }: MobileTopbarProps) {
   const firstName = profile.full_name?.split(" ")[0];
   const greeting = firstName ? `Hola, ${firstName}` : "Hola";
 
@@ -14,7 +16,7 @@ export function MobileTopbar({ profile }: MobileTopbarProps) {
       <span className="text-sm font-medium text-muted-foreground">
         {greeting}
       </span>
-      <UserMenu profile={profile} />
+      <QuickViewMenu profile={profile} attentionSnapshot={attentionSnapshot} />
     </header>
   );
 }

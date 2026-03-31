@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Check, ChevronsUpDown, Search, X, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ import {
 } from "@/lib/utils/zone-colors";
 import { findSuggestion, type CategorySuggestion } from "@/lib/utils/category-suggestion";
 import { CategoryIcon } from "./category-icon";
-import { InlineCategoryForm } from "./inline-category-form";
+import { InlineCategoryForm, type CreatedCategoryInfo } from "./inline-category-form";
 import { ZoneTile } from "./zone-tile";
 import type {
   CategoryWithChildren,
@@ -118,16 +118,72 @@ export function CategoryZonePicker({
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null,
   );
+  // Track locally-created categories so they appear instantly before server re-renders
+  const [locallyCreated, setLocallyCreated] = useState<CreatedCategoryInfo[]>([]);
+
+  const handleCategoryCreated = useCallback(
+    (cat: CreatedCategoryInfo) => {
+      setLocallyCreated((prev) => {
+        if (prev.some((c) => c.id === cat.id)) return prev;
+        return [...prev, cat];
+      });
+    },
+    [],
+  );
 
   const variant = variantProp ?? (isDesktop ? "dialog" : "drawer");
+
+  // Merge locally-created categories into the prop list
+  const mergedCategories = useMemo(() => {
+    if (locallyCreated.length === 0) return categories;
+    // Only add categories whose IDs are not already in the prop
+    const existingIds = new Set<string>();
+    for (const zone of categories) {
+      existingIds.add(zone.id);
+      for (const child of zone.children) existingIds.add(child.id);
+    }
+    const newOnes = locallyCreated.filter((c) => !existingIds.has(c.id));
+    if (newOnes.length === 0) return categories;
+
+    const now = new Date().toISOString();
+    return categories.map((zone) => {
+      const newChildren = newOnes.filter((c) => c.parent_id === zone.id);
+      if (newChildren.length === 0) return zone;
+      return {
+        ...zone,
+        children: [
+          ...zone.children,
+          ...newChildren.map((c): CategoryWithChildren => ({
+            id: c.id,
+            name: c.name,
+            name_es: c.name_es,
+            icon: c.icon,
+            color: c.color,
+            children: [],
+            slug: c.name.toLowerCase().replace(/\s+/g, "-"),
+            direction: zone.direction,
+            parent_id: zone.id,
+            is_essential: false,
+            is_system: false,
+            is_active: true,
+            user_id: null,
+            created_at: now,
+            updated_at: now,
+            display_order: zone.children.length,
+            expense_type: null,
+          })),
+        ],
+      };
+    });
+  }, [categories, locallyCreated]);
 
   // Filter zones by direction
   const filtered = useMemo(
     () =>
       direction
-        ? categories.filter((c) => !c.direction || c.direction === direction)
-        : categories,
-    [categories, direction],
+        ? mergedCategories.filter((c) => !c.direction || c.direction === direction)
+        : mergedCategories,
+    [mergedCategories, direction],
   );
 
   // Currently selected leaf
@@ -226,6 +282,7 @@ export function CategoryZonePicker({
       categories={filtered}
       value={value}
       onSelect={handleSelect}
+      onCategoryCreated={handleCategoryCreated}
       suggestion={suggestion}
       direction={direction}
     />
@@ -307,12 +364,14 @@ function PickerBody({
   categories,
   value,
   onSelect,
+  onCategoryCreated,
   suggestion,
   direction,
 }: {
   categories: CategoryWithChildren[];
   value: string | null;
   onSelect: (id: string | null) => void;
+  onCategoryCreated: (cat: CreatedCategoryInfo) => void;
   suggestion: CategorySuggestion | null;
   direction?: TransactionDirection;
 }) {
@@ -547,6 +606,7 @@ function PickerBody({
                             expandedZoneId={expandedInRow.id}
                             value={value}
                             onSelect={onSelect}
+                            onCategoryCreated={onCategoryCreated}
                             direction={direction}
                           />
                         </div>
@@ -594,9 +654,10 @@ function PickerBody({
               <div className="pt-1">
                 <InlineCategoryForm
                   direction={direction}
-                  onCreated={(id) => {
+                  onCreated={(cat) => {
                     setShowInlineCreate(false);
-                    onSelect(id);
+                    onCategoryCreated(cat);
+                    onSelect(cat.id);
                   }}
                   initialName={search}
                 />
@@ -627,12 +688,14 @@ function ExpandedSubcategories({
   expandedZoneId,
   value,
   onSelect,
+  onCategoryCreated,
   direction,
 }: {
   zones: CategoryWithChildren[];
   expandedZoneId: string;
   value: string | null;
   onSelect: (id: string | null) => void;
+  onCategoryCreated: (cat: CreatedCategoryInfo) => void;
   direction?: TransactionDirection;
 }) {
   const zone = zones.find((z) => z.id === expandedZoneId);
@@ -670,7 +733,10 @@ function ExpandedSubcategories({
           direction={direction}
           parentColor={zone.color}
           parentIcon={zone.icon}
-          onCreated={(id) => onSelect(id)}
+          onCreated={(cat) => {
+            onCategoryCreated(cat);
+            onSelect(cat.id);
+          }}
           placeholder={`Nueva en ${zone.name_es ?? zone.name}...`}
         />
       </div>

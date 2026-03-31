@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition, useCallback, useEffect, useRef } from "react";
-import { Inbox, Sparkles, CheckCheck, PartyPopper, ShieldCheck } from "lucide-react";
+import { Inbox, Sparkles, CheckCheck, PartyPopper, ShieldCheck, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InboxTransactionRow } from "./inbox-transaction-row";
 import { AutoReviewRow } from "./auto-review-row";
@@ -39,6 +39,12 @@ export function CategoryInbox({
   const [autoTransactions, setAutoTransactions] = useState(autoCategorizedTransactions);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+
+  // "Apply to similar" offer after single categorization
+  const [similarOffer, setSimilarOffer] = useState<{
+    categoryId: string;
+    remainingIds: string[];
+  } | null>(null);
 
   // Compute suggestions for uncategorized transactions
   const suggestions = useMemo(() => {
@@ -177,26 +183,38 @@ export function CategoryInbox({
     return groups;
   }, [autoTransactions]);
 
+  // Ref to avoid stale closures — patternGroups changes with transactions
+  const patternGroupsRef = useRef(patternGroups);
+  patternGroupsRef.current = patternGroups;
+
   const handleCategorize = useCallback(
-    (txId: string, categoryId: string) => {
+    (tx: TransactionWithRelations, categoryId: string) => {
+      const txPattern = extractPattern(tx.merchant_name, tx.clean_description, tx.raw_description);
+      const similarIds = txPattern ? (patternGroupsRef.current.get(txPattern) ?? []) : [];
+      const remainingIds = similarIds.filter((id) => id !== tx.id);
+
       // Optimistic: remove from list immediately
-      setTransactions((prev) => prev.filter((t) => t.id !== txId));
+      setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
       setSelected((prev) => {
         const next = new Set(prev);
-        next.delete(txId);
+        next.delete(tx.id);
         return next;
       });
 
+      if (remainingIds.length >= 1) {
+        setSimilarOffer({ categoryId, remainingIds });
+      }
+
       startTransition(async () => {
-        const result = await categorizeTransaction(txId, categoryId);
+        const result = await categorizeTransaction(tx.id, categoryId);
         if (!result.success) {
-          // Revert on error — re-add the transaction
           setTransactions((prev) => {
-            const tx = initialTransactions.find((t) => t.id === txId);
-            return tx ? [...prev, tx].sort(
+            const original = initialTransactions.find((t) => t.id === tx.id);
+            return original ? [...prev, original].sort(
               (a, b) => b.transaction_date.localeCompare(a.transaction_date)
             ) : prev;
           });
+          setSimilarOffer(null);
           void trackClientEvent({
             event_name: "transaction_categorized",
             flow: "categorize",
@@ -219,6 +237,44 @@ export function CategoryInbox({
     },
     [initialTransactions]
   );
+
+  const handleApplySimilar = useCallback(() => {
+    if (!similarOffer) return;
+    const { categoryId, remainingIds } = similarOffer;
+    const items = remainingIds.map((txId) => ({ txId, categoryId }));
+    const idsSet = new Set(remainingIds);
+
+    // Optimistic: remove similar from list
+    setTransactions((prev) => prev.filter((t) => !idsSet.has(t.id)));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of remainingIds) next.delete(id);
+      return next;
+    });
+    setSimilarOffer(null);
+
+    startTransition(async () => {
+      const result = await bulkCategorize(items);
+      if (!result.success) {
+        setTransactions(initialTransactions.filter(
+          (t) => !t.category_id || idsSet.has(t.id)
+        ));
+      } else {
+        void trackClientEvent({
+          event_name: "bulk_categorize_applied",
+          flow: "categorize",
+          step: "similar_offer",
+          entry_point: "cta",
+          success: true,
+          metadata: { count: items.length, source: "similar_offer" },
+        });
+      }
+    });
+  }, [similarOffer, initialTransactions]);
+
+  const handleDismissSimilar = useCallback(() => {
+    setSimilarOffer(null);
+  }, []);
 
   const handleAcceptAllSuggestions = useCallback(() => {
     const items = Array.from(suggestions.entries()).map(
@@ -541,6 +597,43 @@ export function CategoryInbox({
                 </div>
               </div>
 
+              {/* "Apply to similar" offer banner */}
+              {similarOffer && similarOffer.remainingIds.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-z-brass/30 bg-z-brass/10 px-4 py-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="h-4 w-4 text-z-brass" />
+                    <span>
+                      Hay{" "}
+                      <strong>{similarOffer.remainingIds.length}</strong>{" "}
+                      {similarOffer.remainingIds.length === 1
+                        ? "transacción similar"
+                        : "transacciones similares"}.
+                      ¿Aplicar la misma categoría?
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      onClick={handleDismissSimilar}
+                      disabled={isPending}
+                    >
+                      No, gracias
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs bg-z-brass text-z-ink hover:bg-z-brass/90"
+                      onClick={handleApplySimilar}
+                      disabled={isPending}
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      Aplicar a {similarOffer.remainingIds.length}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Transaction list grouped by date */}
               <div className="space-y-6">
                 {Array.from(groupedByDate.entries()).map(([dateKey, txs]) => (
@@ -561,7 +654,7 @@ export function CategoryInbox({
                           isSelected={selected.has(tx.id)}
                           onToggleSelect={() => toggleSelect(tx.id)}
                           onCategorize={(categoryId) =>
-                            handleCategorize(tx.id, categoryId)
+                            handleCategorize(tx, categoryId)
                           }
                           isPending={isPending}
                         />

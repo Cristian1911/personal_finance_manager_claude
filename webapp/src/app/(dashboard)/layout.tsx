@@ -59,7 +59,7 @@ export default async function DashboardLayout({
           <Topbar profile={profile} attentionSnapshot={attentionSnapshot} />
         </div>
         {/* Mobile topbar */}
-        <MobileTopbar profile={profile} />
+        <MobileTopbar profile={profile} attentionSnapshot={attentionSnapshot} />
 
         <KeyboardInsetProvider>
           <main className="flex-1 overflow-x-hidden p-4 lg:p-6 pb-20 lg:pb-6">
