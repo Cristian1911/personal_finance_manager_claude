@@ -1,19 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Lightbulb, ArrowDownLeft, ArrowUpRight, Pencil } from "lucide-react";
+import { Check, Lightbulb, ArrowDownLeft, ArrowUpRight, Pencil, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { TagPicker } from "@/components/tags/tag-picker";
 import { formatCurrency } from "@/lib/utils/currency";
 import { getCategoryName } from "@zeta/shared";
-import type { TransactionWithRelations, CategoryWithChildren, CurrencyCode } from "@/types/domain";
+import type { TransactionWithRelations, CategoryWithChildren, CurrencyCode, TagGroupWithTags } from "@/types/domain";
 import type { CategorizationResult } from "@zeta/shared";
 
 interface InboxTransactionRowProps {
   transaction: TransactionWithRelations;
   suggestion: CategorizationResult | null;
   categories: CategoryWithChildren[];
+  tagGroups?: TagGroupWithTags[];
   similarCount?: number;
   isSelected: boolean;
   onToggleSelect: () => void;
@@ -25,6 +27,7 @@ export function InboxTransactionRow({
   transaction: tx,
   suggestion,
   categories,
+  tagGroups = [],
   similarCount = 0,
   isSelected,
   onToggleSelect,
@@ -33,6 +36,7 @@ export function InboxTransactionRow({
 }: InboxTransactionRowProps) {
   const [manualValue, setManualValue] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [showTags, setShowTags] = useState(false);
   const description =
     tx.merchant_name ?? tx.clean_description ?? tx.raw_description ?? "Sin descripción";
   const isOutflow = tx.direction === "OUTFLOW";
@@ -123,6 +127,17 @@ export function InboxTransactionRow({
                 <Pencil className="h-3 w-3" />
                 Cambiar
               </Button>
+              {tagGroups.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1 text-muted-foreground"
+                  onClick={() => setShowTags((v) => !v)}
+                >
+                  <Tag className="h-3 w-3" />
+                  Etiquetar
+                </Button>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -147,9 +162,30 @@ export function InboxTransactionRow({
                   Cancelar
                 </Button>
               )}
+              {tagGroups.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1 text-muted-foreground"
+                  onClick={() => setShowTags((v) => !v)}
+                >
+                  <Tag className="h-3 w-3" />
+                  Etiquetar
+                </Button>
+              )}
             </div>
           )}
         </div>
+
+        {/* Inline tag picker */}
+        {showTags && tagGroups.length > 0 && (
+          <TagPicker
+            entityType="transaction"
+            entityId={tx.id}
+            currentTags={[]}
+            allTagGroups={tagGroups}
+          />
+        )}
       </div>
     </div>
   );

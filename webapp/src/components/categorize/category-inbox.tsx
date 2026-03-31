@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/date";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { cn } from "@/lib/utils";
-import type { TransactionWithRelations, CategoryWithChildren } from "@/types/domain";
+import type { TransactionWithRelations, CategoryWithChildren, TagGroupWithTags } from "@/types/domain";
 import type { UserRule, CategorizationResult } from "@zeta/shared";
 
 type ActiveTab = "uncategorized" | "auto-review";
@@ -28,6 +28,7 @@ interface CategoryInboxProps {
   autoCategorizedTransactions?: TransactionWithRelations[];
   categories: CategoryWithChildren[];
   userRules: UserRule[];
+  tagGroups?: TagGroupWithTags[];
 }
 
 function sortTransactionsByDate(
@@ -43,6 +44,7 @@ export function CategoryInbox({
   autoCategorizedTransactions = [],
   categories,
   userRules,
+  tagGroups = [],
 }: CategoryInboxProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("uncategorized");
   const [transactions, setTransactions] = useState(initialTransactions);
@@ -683,6 +685,7 @@ export function CategoryInbox({
                           transaction={tx}
                           suggestion={suggestions.get(tx.id) ?? null}
                           categories={categories}
+                          tagGroups={tagGroups}
                           similarCount={txIdToSimilarCount.get(tx.id) ?? 0}
                           isSelected={selected.has(tx.id)}
                           onToggleSelect={() => toggleSelect(tx.id)}
