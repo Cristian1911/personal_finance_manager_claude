@@ -38,6 +38,7 @@ async function verifyResendSignature(request: NextRequest, body: string): Promis
   const secret = process.env.RESEND_WEBHOOK_SECRET;
 
   if (!secret) {
+    if (process.env.NODE_ENV === "production") return false;
     console.warn("[email-ingest] RESEND_WEBHOOK_SECRET not set — skipping signature verification (dev mode)");
     return true;
   }
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
   const { id: emailIngestId, user_id: userId, account_id: accountId, auto_import: autoImport } = ingestAddress;
 
   // 5. Validate sender
-  if (from.toLowerCase() !== ALLOWED_SENDER) {
+  if (!from.toLowerCase().includes(ALLOWED_SENDER)) {
     await insertLog({
       userId,
       emailIngestId,

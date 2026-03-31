@@ -527,16 +527,19 @@ export async function registerPayment(
   if (input.sourceAccountId) {
     const { data: sourceAccount } = await supabase
       .from("accounts")
-      .select("id, current_balance")
+      .select("id, current_balance, account_type")
       .eq("id", input.sourceAccountId)
       .eq("user_id", user.id)
       .single();
 
     if (sourceAccount) {
+      const isDebtSource = sourceAccount.account_type === "CREDIT_CARD" || sourceAccount.account_type === "LOAN";
       const { error: sourceError } = await supabase
         .from("accounts")
         .update({
-          current_balance: sourceAccount.current_balance - input.amount,
+          current_balance: isDebtSource
+            ? sourceAccount.current_balance + input.amount
+            : sourceAccount.current_balance - input.amount,
           updated_at: now,
         })
         .eq("id", input.sourceAccountId)

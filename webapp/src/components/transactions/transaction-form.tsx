@@ -64,11 +64,15 @@ export function TransactionForm({
       if (result.success) {
         // Tag the transaction if tags were selected during creation
         if (!transaction && selectedTagIds.length > 0) {
-          await Promise.all(
-            selectedTagIds.map((tagId) =>
-              addTagToEntity(tagId, "transaction", result.data.id)
-            )
-          );
+          try {
+            await Promise.all(
+              selectedTagIds.map((tagId) =>
+                addTagToEntity(tagId, "transaction", result.data.id)
+              )
+            );
+          } catch (e) {
+            console.error("Failed to tag transaction:", e);
+          }
         }
         router.refresh();
         onSuccess?.();
