@@ -69,6 +69,7 @@ export default async function DestinatariosPage() {
 
       <div className="hidden lg:grid gap-4 lg:grid-cols-2">
         <SummaryCard
+          label="Resumen"
           metrics={[
             { label: "Total", value: destinatarios.length, context: `${activeDestinatarios} activos` },
             { label: "Con reglas", value: withRules, context: "listos para automatizar" },

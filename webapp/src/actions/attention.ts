@@ -4,7 +4,7 @@ import "server-only";
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { AttentionSignal, AttentionSnapshot } from "@/types/attention";
+import type { AttentionSignal, AttentionSnapshot, AttentionPage } from "@/types/attention";
 
 // ─── Cached inner function ────────────────────────────────────────────────────
 
@@ -92,7 +92,7 @@ async function getAttentionSnapshotCached(
     .filter((s) => s.priority === "suggestion")
     .reduce((sum, s) => sum + s.count, 0);
 
-  const perPage: Record<string, number> = {};
+  const perPage: Partial<Record<AttentionPage, number>> = {};
   for (const signal of signals) {
     perPage[signal.page] = (perPage[signal.page] ?? 0) + signal.count;
   }

@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { getAccounts } from "@/actions/accounts";
+import { getAttentionSnapshot } from "@/actions/attention";
 import { getPreferredCurrency } from "@/actions/profile";
 import { AccountCard } from "@/components/accounts/account-card";
 import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
@@ -17,9 +18,10 @@ import type { CurrencyCode } from "@/types/domain";
 
 export default async function AccountsPage() {
   await connection();
-  const [result, currency] = await Promise.all([
+  const [result, currency, attentionSnapshot] = await Promise.all([
     getAccounts(),
     getPreferredCurrency(),
+    getAttentionSnapshot(),
   ]);
   const accounts = result.success ? result.data : [];
   const debtAccounts = accounts.filter(
@@ -91,13 +93,14 @@ export default async function AccountsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SummaryCard
+          label="Base financiera"
           metrics={[
             { label: "Patrimonio neto", value: formatCurrency(totalBalance, currency), context: `en ${currency}` },
             { label: "Cuentas activas", value: accounts.length, context: `${liquidAccounts.length} liquidez · ${debtAccounts.length} deuda` },
             { label: "Presión de deuda", value: debtPressureCount, context: "con saldo pendiente" },
           ]}
         />
-        <AttentionCard signals={[]} />
+        <AttentionCard signals={attentionSnapshot.signals} />
       </div>
 
       {secondaryCurrencies.size > 0 && (

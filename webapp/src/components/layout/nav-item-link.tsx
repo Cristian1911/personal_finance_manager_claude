@@ -17,16 +17,6 @@ export function formatBadgeCount(count: number): string {
   return count > 99 ? "99+" : String(count);
 }
 
-/** Map a workspace nav href to the attention perPage key */
-function hrefToPageKey(href: string): string | null {
-  if (href === "/transactions") return "transactions";
-  if (href === "/destinatarios") return "destinatarios";
-  if (href === "/recurrentes") return "recurrentes";
-  if (href === "/categories" || href === "/presupuesto" || href === "/categorizar")
-    return "transactions"; // uncategorized signals live under transactions page
-  return null;
-}
-
 export function NavItemLink({
   item,
   variant,
@@ -43,12 +33,9 @@ export function NavItemLink({
   if (item.badge === "attention" && attentionSnapshot) {
     badgeCount = attentionSnapshot.totalAction;
     badgeStyle = "brass";
-  } else if (variant === "secondary" && attentionSnapshot) {
-    const pageKey = hrefToPageKey(item.href);
-    if (pageKey) {
-      badgeCount = attentionSnapshot.perPage[pageKey] ?? 0;
-      badgeStyle = "muted";
-    }
+  } else if (variant === "secondary" && attentionSnapshot && item.attentionPage) {
+    badgeCount = attentionSnapshot.perPage[item.attentionPage] ?? 0;
+    badgeStyle = "muted";
   }
 
   const showBadge = badgeCount > 0;

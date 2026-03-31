@@ -13,6 +13,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import type { AttentionPage } from "@/types/attention";
+
 export type NavItem = {
   title: string;
   href: string;
@@ -21,6 +23,8 @@ export type NavItem = {
   badge?: "attention";
   /** Additional href prefixes that should also activate this nav item */
   matchHrefs?: string[];
+  /** Maps this nav item to an attention page key for badge counts */
+  attentionPage?: AttentionPage;
 };
 
 export const PRIMARY_NAV: NavItem[] = [
@@ -45,13 +49,13 @@ export const PRIMARY_NAV: NavItem[] = [
 ];
 
 export const WORKSPACE_NAV: NavItem[] = [
-  { title: "Categorizar", href: "/categorizar", icon: Inbox },
-  { title: "Destinatarios", href: "/destinatarios", icon: Contact },
+  { title: "Categorizar", href: "/categorizar", icon: Inbox, attentionPage: "transactions" },
+  { title: "Destinatarios", href: "/destinatarios", icon: Contact, attentionPage: "destinatarios" },
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
-  { title: "Presupuesto", href: "/presupuesto", icon: PiggyBank },
+  { title: "Presupuesto", href: "/presupuesto", icon: PiggyBank, attentionPage: "categories" },
   { title: "Deudas", href: "/deudas", icon: Landmark },
-  { title: "Recurrentes", href: "/recurrentes", icon: Repeat2 },
+  { title: "Recurrentes", href: "/recurrentes", icon: Repeat2, attentionPage: "recurrentes" },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [

@@ -1,7 +1,9 @@
 export type AttentionPriority = "action" | "suggestion";
 
+export type AttentionPage = "transactions" | "categories" | "destinatarios" | "recurrentes";
+
 export type AttentionSignal = {
-  page: string;
+  page: AttentionPage;
   key: string;
   count: number;
   label: string;
@@ -13,5 +15,5 @@ export type AttentionSnapshot = {
   signals: AttentionSignal[];
   totalAction: number;
   totalSuggestion: number;
-  perPage: Record<string, number>;
+  perPage: Partial<Record<AttentionPage, number>>;
 };

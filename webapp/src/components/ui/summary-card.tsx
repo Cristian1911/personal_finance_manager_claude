@@ -8,11 +8,12 @@ interface SummaryMetric {
 }
 
 interface SummaryCardProps {
+  label?: string;
   metrics: [SummaryMetric, SummaryMetric, SummaryMetric];
   className?: string;
 }
 
-export function SummaryCard({ metrics, className }: SummaryCardProps) {
+export function SummaryCard({ label = "Resumen del período", metrics, className }: SummaryCardProps) {
   return (
     <div
       className={cn(
@@ -21,7 +22,7 @@ export function SummaryCard({ metrics, className }: SummaryCardProps) {
       )}
     >
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-olive-deep">
-        Resumen del período
+        {label}
       </p>
       <div className="mt-3 grid grid-cols-3 gap-3">
         {metrics.map((m) => (

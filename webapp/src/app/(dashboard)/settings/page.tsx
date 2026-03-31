@@ -63,6 +63,7 @@ export default async function SettingsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SummaryCard
+          label="Perfil"
           metrics={[
             { label: "Perfil activo", value: profile.full_name || "—", context: profile.email },
             { label: "Correo", value: profile.email },
