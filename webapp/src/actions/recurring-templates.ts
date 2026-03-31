@@ -826,6 +826,7 @@ export async function recordRecurringOccurrencePayment(input: {
   revalidateTag("categorize", "zeta");
   revalidateTag("debt", "zeta");
   revalidateTag("attention", "zeta");
+  revalidateTag("impact", "zeta");
 
   return {
     success: true,

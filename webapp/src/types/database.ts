@@ -713,6 +713,42 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_reminders: {
+        Row: {
+          amount: number | null
+          completed_at: string | null
+          created_at: string
+          currency_code: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          completed_at?: string | null
+          created_at?: string
+          currency_code?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          completed_at?: string | null
+          created_at?: string
+          currency_code?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_email_transactions: {
         Row: {
           created_at: string

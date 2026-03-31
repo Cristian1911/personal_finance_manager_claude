@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition, useCallback, useEffect, useRef } from "react";
-import { Inbox, Sparkles, CheckCheck, PartyPopper, ShieldCheck, Users } from "lucide-react";
+import { Inbox, Sparkles, CheckCheck, PartyPopper, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InboxTransactionRow } from "./inbox-transaction-row";
 import { AutoReviewRow } from "./auto-review-row";
@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/date";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { cn } from "@/lib/utils";
-import type { TransactionWithRelations, CategoryWithChildren } from "@/types/domain";
+import type { TransactionWithRelations, CategoryWithChildren, TagGroupWithTags } from "@/types/domain";
 import type { UserRule, CategorizationResult } from "@zeta/shared";
 
 type ActiveTab = "uncategorized" | "auto-review";
@@ -28,6 +28,7 @@ interface CategoryInboxProps {
   autoCategorizedTransactions?: TransactionWithRelations[];
   categories: CategoryWithChildren[];
   userRules: UserRule[];
+  tagGroups?: TagGroupWithTags[];
 }
 
 function sortTransactionsByDate(
@@ -43,18 +44,13 @@ export function CategoryInbox({
   autoCategorizedTransactions = [],
   categories,
   userRules,
+  tagGroups = [],
 }: CategoryInboxProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("uncategorized");
   const [transactions, setTransactions] = useState(initialTransactions);
   const [autoTransactions, setAutoTransactions] = useState(autoCategorizedTransactions);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
-
-  // "Apply to similar" offer after single categorization
-  const [similarOffer, setSimilarOffer] = useState<{
-    categoryId: string;
-    remainingIds: string[];
-  } | null>(null);
 
   // Compute suggestions for uncategorized transactions
   const suggestions = useMemo(() => {
@@ -119,15 +115,23 @@ export function CategoryInbox({
     return groups;
   }, [transactions]);
 
-  const txIdToSimilarCount = useMemo(() => {
-    const map = new Map<string, number>();
+  const txIdToSimilarTxs = useMemo(() => {
+    const txMap = new Map(transactions.map((t) => [t.id, t]));
+    const result = new Map<string, TransactionWithRelations[]>();
     for (const ids of patternGroups.values()) {
+      if (ids.length < 2) continue;
       for (const id of ids) {
-        map.set(id, ids.length);
+        result.set(
+          id,
+          ids
+            .filter((otherId) => otherId !== id)
+            .map((otherId) => txMap.get(otherId))
+            .filter((t): t is TransactionWithRelations => !!t)
+        );
       }
     }
-    return map;
-  }, [patternGroups]);
+    return result;
+  }, [patternGroups, transactions]);
 
   const groupedSuggestionItems = useMemo(() => {
     const planned = new Map<string, string>();
@@ -214,98 +218,69 @@ export function CategoryInbox({
   );
 
   const handleCategorize = useCallback(
-    (tx: TransactionWithRelations, categoryId: string) => {
-      const txPattern = extractPattern(tx.merchant_name, tx.clean_description, tx.raw_description);
-      const similarIds = txPattern ? (patternGroups.get(txPattern) ?? []) : [];
-      const remainingIds = similarIds.filter((id) => id !== tx.id);
+    (tx: TransactionWithRelations, categoryId: string, includeSimilarIds?: string[]) => {
+      const allIds = [tx.id, ...(includeSimilarIds ?? [])];
+      const allIdsSet = new Set(allIds);
 
-      // Optimistic: remove from list immediately
-      setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+      // Optimistic: remove from list
+      setTransactions((prev) => prev.filter((t) => !allIdsSet.has(t.id)));
       setSelected((prev) => {
         const next = new Set(prev);
-        next.delete(tx.id);
+        for (const id of allIds) next.delete(id);
         return next;
       });
 
-      if (remainingIds.length >= 1) {
-        setSimilarOffer({ categoryId, remainingIds });
-      }
+      const isBatch = allIds.length > 1;
 
       startTransition(async () => {
-        const result = await categorizeTransaction(tx.id, categoryId);
-        if (!result.success) {
-          restoreTransactionsByIds([tx.id]);
-          setSimilarOffer(null);
-          void trackClientEvent({
-            event_name: "transaction_categorized",
-            flow: "categorize",
-            step: "single",
-            entry_point: "cta",
-            success: false,
-            error_code: "categorize_failed",
-          });
+        if (isBatch) {
+          const items = allIds.map((txId) => ({ txId, categoryId }));
+          const result = await bulkCategorize(items);
+          if (!result.success) {
+            restoreTransactionsByIds(allIds);
+          } else {
+            toast("Categorizadas", {
+              description: `${allIds.length} transacciones`,
+            });
+            void trackClientEvent({
+              event_name: "bulk_categorize_applied",
+              flow: "categorize",
+              step: "confirm_with_similar",
+              entry_point: "cta",
+              success: true,
+              metadata: { count: allIds.length, source: "confirmation_panel" },
+            });
+          }
         } else {
-          const desc = tx.merchant_name ?? tx.clean_description ?? "Transacción";
-          toast("Categorizada", {
-            description: desc,
-            action: {
-              label: "Deshacer",
-              onClick: () => {
-                restoreTransactionsByIds([tx.id]);
-                // Undo on server
-                void uncategorizeTransaction(tx.id);
+          const result = await categorizeTransaction(tx.id, categoryId);
+          if (!result.success) {
+            restoreTransactionsByIds([tx.id]);
+          } else {
+            const desc = tx.merchant_name ?? tx.clean_description ?? "Transacción";
+            toast("Categorizada", {
+              description: desc,
+              action: {
+                label: "Deshacer",
+                onClick: () => {
+                  restoreTransactionsByIds([tx.id]);
+                  void uncategorizeTransaction(tx.id);
+                },
               },
-            },
-          });
-          void trackClientEvent({
-            event_name: "transaction_categorized",
-            flow: "categorize",
-            step: "single",
-            entry_point: "cta",
-            success: true,
-            metadata: { category_id: categoryId },
-          });
+            });
+            void trackClientEvent({
+              event_name: "transaction_categorized",
+              flow: "categorize",
+              step: "single",
+              entry_point: "cta",
+              success: true,
+              metadata: { category_id: categoryId },
+            });
+          }
         }
       });
     },
-    [patternGroups, restoreTransactionsByIds]
+    [restoreTransactionsByIds]
   );
-
-  const handleApplySimilar = useCallback(() => {
-    if (!similarOffer) return;
-    const { categoryId, remainingIds } = similarOffer;
-    const items = remainingIds.map((txId) => ({ txId, categoryId }));
-    const idsSet = new Set(remainingIds);
-
-    // Optimistic: remove similar from list
-    setTransactions((prev) => prev.filter((t) => !idsSet.has(t.id)));
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const id of remainingIds) next.delete(id);
-      return next;
-    });
-    setSimilarOffer(null);
-
-    startTransition(async () => {
-      const result = await bulkCategorize(items);
-      if (!result.success) {
-        restoreTransactionsByIds(remainingIds);
-      } else {
-        void trackClientEvent({
-          event_name: "bulk_categorize_applied",
-          flow: "categorize",
-          step: "similar_offer",
-          entry_point: "cta",
-          success: true,
-          metadata: { count: items.length, source: "similar_offer" },
-        });
-      }
-    });
-  }, [restoreTransactionsByIds, similarOffer]);
-
-  const handleDismissSimilar = useCallback(() => {
-    setSimilarOffer(null);
-  }, []);
 
   const handleAcceptAllSuggestions = useCallback(() => {
     const items = Array.from(suggestions.entries()).map(
@@ -630,43 +605,6 @@ export function CategoryInbox({
                 </div>
               </div>
 
-              {/* "Apply to similar" offer banner */}
-              {similarOffer && similarOffer.remainingIds.length > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-z-brass/30 bg-z-brass/10 px-4 py-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4 text-z-brass" />
-                    <span>
-                      Hay{" "}
-                      <strong>{similarOffer.remainingIds.length}</strong>{" "}
-                      {similarOffer.remainingIds.length === 1
-                        ? "transacción similar"
-                        : "transacciones similares"}.
-                      ¿Aplicar la misma categoría?
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs"
-                      onClick={handleDismissSimilar}
-                      disabled={isPending}
-                    >
-                      No, gracias
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-7 gap-1.5 text-xs bg-z-brass text-z-ink hover:bg-z-brass/90"
-                      onClick={handleApplySimilar}
-                      disabled={isPending}
-                    >
-                      <CheckCheck className="h-3.5 w-3.5" />
-                      Aplicar a {similarOffer.remainingIds.length}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {/* Transaction list grouped by date */}
               <div className="space-y-6">
                 {Array.from(groupedByDate.entries()).map(([dateKey, txs]) => (
@@ -683,11 +621,12 @@ export function CategoryInbox({
                           transaction={tx}
                           suggestion={suggestions.get(tx.id) ?? null}
                           categories={categories}
-                          similarCount={txIdToSimilarCount.get(tx.id) ?? 0}
+                          tagGroups={tagGroups}
+                          similarTransactions={txIdToSimilarTxs.get(tx.id) ?? []}
                           isSelected={selected.has(tx.id)}
                           onToggleSelect={() => toggleSelect(tx.id)}
-                          onCategorize={(categoryId) =>
-                            handleCategorize(tx, categoryId)
+                          onCategorize={(categoryId, includeSimilarIds) =>
+                            handleCategorize(tx, categoryId, includeSimilarIds)
                           }
                           isPending={isPending}
                         />

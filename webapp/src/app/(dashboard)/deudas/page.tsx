@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
+import { getRecentImpactEvents } from "@/actions/impact-events";
+import { AccountImpactTimeline } from "@/components/impact/account-impact-timeline";
 import { getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
@@ -155,7 +157,10 @@ export default async function DeudasPage({
 }) {
   await connection();
   const { month } = await searchParams;
-  const currency = await getPreferredCurrency();
+  const [currency, impactEvents] = await Promise.all([
+    getPreferredCurrency(),
+    getRecentImpactEvents(20),
+  ]);
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -200,6 +205,8 @@ export default async function DeudasPage({
       >
         <DebtOverviewSection currency={currency} month={month} />
       </Suspense>
+
+      <AccountImpactTimeline events={impactEvents} />
     </div>
   );
 }

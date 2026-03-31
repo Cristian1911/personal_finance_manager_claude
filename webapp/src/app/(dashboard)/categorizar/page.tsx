@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import dynamic from "next/dynamic";
 import { getUncategorizedTransactions, getUnreviewedAutoTransactions, getUserCategoryRules } from "@/actions/categorize";
 import { getCategories } from "@/actions/categories";
+import { getTagGroups } from "@/actions/tags";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,14 +16,16 @@ const CategoryInbox = dynamic(
 
 export default async function CategorizarPage() {
   await connection();
-  const [transactions, unreviewedAutoTransactions, categoriesResult, userRules] = await Promise.all([
+  const [transactions, unreviewedAutoTransactions, categoriesResult, userRules, tagGroupsResult] = await Promise.all([
     getUncategorizedTransactions(),
     getUnreviewedAutoTransactions(),
     getCategories(),
     getUserCategoryRules(),
+    getTagGroups(),
   ]);
 
   const categories = categoriesResult.success ? categoriesResult.data : [];
+  const tagGroups = tagGroupsResult.success ? tagGroupsResult.data : [];
   const uncategorizedCount = transactions.length;
   const autoReviewCount = unreviewedAutoTransactions.length;
   const suggestedRulesCount = userRules.length;
@@ -194,6 +197,7 @@ export default async function CategorizarPage() {
         autoCategorizedTransactions={unreviewedAutoTransactions}
         categories={categories}
         userRules={userRules}
+        tagGroups={tagGroups}
       />
     </div>
   );
