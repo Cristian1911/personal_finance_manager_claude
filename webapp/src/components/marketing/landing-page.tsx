@@ -781,8 +781,8 @@ export function MarketingLandingPage() {
         <section id="showcase" className="mx-auto max-w-7xl px-6 py-20">
           <SectionHeading
             eyebrow="Showcase"
-            title="Un barrido real del producto, construido como HTML y listo para vivir dentro del landing."
-            description="En lugar de prometer funciones con tarjetas genéricas, esta sección muestra mocks hechos con la misma gramática visual de Zeta: dashboard, importación, cuentas, destinatarios, planificación, recurrentes y captura rápida."
+            title="Explora la experiencia real de Zeta"
+            description="Zeta no es solo una promesa. Aquí puedes ver cómo se siente usar el dashboard, importar extractos, gestionar tus cuentas y planificar tu futuro financiero con nuestra interfaz real."
           />
 
           <div className="mt-12 space-y-6">
@@ -1164,9 +1164,6 @@ export function MarketingLandingPage() {
                         <p className="text-sm font-medium text-z-income">
                           El plan “Avalancha” ahorra más intereses y te deja libre de deuda antes.
                         </p>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Ideal para el showcase porque comunica claramente el valor del simulador.
-                        </p>
                       </div>
                     </div>
                   </div>
@@ -1178,7 +1175,7 @@ export function MarketingLandingPage() {
               <ShowcasePanel
                 eyebrow="Recurrentes"
                 title="Obligaciones fijas que aparecen antes del problema"
-                description="La sección de recurrentes completa el barrido: plantillas activas, compromiso mensual y próximos cargos."
+                description="Visualiza tus plantillas activas, compromiso mensual y próximos cargos en una sola vista."
                 icon={Repeat2}
               >
                 <MockShell title="Recurrentes">
@@ -1218,7 +1215,7 @@ export function MarketingLandingPage() {
               <ShowcasePanel
                 eyebrow="Quick capture"
                 title="Captura rápida que sí parece parte del producto"
-                description="Un mock mobile con voz y texto para registrar movimientos sin romper el flujo. Esto puede vivir tal cual dentro del landing."
+                description="Registra movimientos por voz o texto sin romper tu flujo. Una interfaz rápida y natural diseñada para capturar la realidad de tu gasto al instante."
                 icon={Mic}
               >
                 <div className="grid gap-4 lg:grid-cols-[0.7fr_0.3fr] lg:items-start">
@@ -1277,19 +1274,19 @@ export function MarketingLandingPage() {
                     <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
                       <div className="flex items-center gap-2">
                         <Inbox className="size-4 text-z-sage-light" />
-                        <p className="text-sm font-medium">También cabe en Telegram</p>
+                        <p className="text-sm font-medium">Integración con Telegram</p>
                       </div>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        La misma lógica de captura puede mostrarse luego como integración ligera.
+                        Registra gastos desde cualquier lugar con nuestra integración oficial de mensajería.
                       </p>
                     </div>
                     <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
                       <div className="flex items-center gap-2">
                         <Bot className="size-4 text-z-sage-light" />
-                        <p className="text-sm font-medium">Y como MCP / asistente</p>
+                        <p className="text-sm font-medium">Asistente inteligente</p>
                       </div>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Útil para conectar el showcase con el ángulo de productividad personal.
+                        Conecta Zeta con tus herramientas de productividad favoritas mediante nuestro asistente MCP.
                       </p>
                     </div>
                   </div>
