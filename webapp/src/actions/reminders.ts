@@ -39,20 +39,21 @@ export const getReminders = cache(
     }
 
     // No filter — return all, pending first
-    const { data: pending } = await supabase
-      .from("financial_reminders")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("is_completed", false)
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: false });
-
-    const { data: completed } = await supabase
-      .from("financial_reminders")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("is_completed", true)
-      .order("completed_at", { ascending: false });
+    const [{ data: pending }, { data: completed }] = await Promise.all([
+      supabase
+        .from("financial_reminders")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_completed", false)
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("financial_reminders")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_completed", true)
+        .order("completed_at", { ascending: false }),
+    ]);
 
     return [...(pending ?? []), ...(completed ?? [])];
   }

@@ -117,7 +117,11 @@ export const getRecentImpactEvents = cache(async (limit = 3): Promise<ImpactEven
   }
   const accountIds = accounts.map((a) => a.id);
 
-  // 2. Get snapshots for debt accounts, ordered by period_to ascending
+  // 2. Get recent snapshots for debt accounts (last 6 months), ordered by period_to ascending
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const cutoff = sixMonthsAgo.toISOString().split("T")[0];
+
   const { data: snapshots } = await supabase
     .from("statement_snapshots")
     .select(
@@ -125,6 +129,7 @@ export const getRecentImpactEvents = cache(async (limit = 3): Promise<ImpactEven
     )
     .eq("user_id", user.id)
     .in("account_id", accountIds)
+    .gte("period_to", cutoff)
     .order("period_to", { ascending: true });
 
   if (!snapshots || snapshots.length < 2) return [];
