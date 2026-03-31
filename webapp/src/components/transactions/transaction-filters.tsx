@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -147,16 +148,16 @@ export function TransactionFilters({ accounts, tags = [] }: { accounts: Account[
 
             {!activeMonth && (
               <>
-                <Input
-                  type="date"
-                  defaultValue={searchParams.get("dateFrom") ?? ""}
-                  onChange={(e) => updateFilter("dateFrom", e.target.value)}
+                <DatePicker
+                  value={searchParams.get("dateFrom") || null}
+                  onChange={(v) => updateFilter("dateFrom", v ?? "")}
+                  placeholder="Desde"
                   className={dateWidth}
                 />
-                <Input
-                  type="date"
-                  defaultValue={searchParams.get("dateTo") ?? ""}
-                  onChange={(e) => updateFilter("dateTo", e.target.value)}
+                <DatePicker
+                  value={searchParams.get("dateTo") || null}
+                  onChange={(v) => updateFilter("dateTo", v ?? "")}
+                  placeholder="Hasta"
                   className={dateWidth}
                 />
               </>

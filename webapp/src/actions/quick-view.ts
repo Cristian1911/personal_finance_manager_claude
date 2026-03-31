@@ -2,9 +2,10 @@
 
 import { getDashboardHeroData, getDailySpending } from "@/actions/charts";
 import { getBudgetSummary } from "@/actions/budgets";
+import { getReminders } from "@/actions/reminders";
 import { toISODateString } from "@/lib/utils/date";
 import type { PendingObligation } from "@/actions/charts";
-import type { CurrencyCode } from "@/types/domain";
+import type { CurrencyCode, FinancialReminder } from "@/types/domain";
 
 export interface QuickViewData {
   /** Liquid balance minus pending obligations */
@@ -21,15 +22,18 @@ export interface QuickViewData {
   budgetProgress: number;
   /** Next 5 upcoming obligations sorted by due date */
   upcomingObligations: PendingObligation[];
+  /** Pending financial reminders (up to 5) */
+  pendingReminders: FinancialReminder[];
   /** Currency code */
   currency: CurrencyCode;
 }
 
 export async function getQuickViewData(): Promise<QuickViewData> {
-  const [hero, dailySpending, budgetSummary] = await Promise.all([
+  const [hero, dailySpending, budgetSummary, pendingReminders] = await Promise.all([
     getDashboardHeroData(),
     getDailySpending(),
     getBudgetSummary(),
+    getReminders("pending"),
   ]);
 
   const now = new Date();
@@ -56,6 +60,7 @@ export async function getQuickViewData(): Promise<QuickViewData> {
     remainingBudget,
     budgetProgress: budgetSummary.progress,
     upcomingObligations: upcoming,
+    pendingReminders: pendingReminders.slice(0, 5),
     currency: hero.currency as CurrencyCode,
   };
 }

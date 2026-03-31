@@ -18,6 +18,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { AmountInput } from "@/components/ui/amount-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -440,12 +441,11 @@ export function MobileTransactionForm({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="mobile-recurring_start_date">Fecha de inicio</Label>
-                      <Input
-                        id="mobile-recurring_start_date"
-                        type="date"
+                      <Label>Fecha de inicio</Label>
+                      <DatePicker
                         value={recurringStartDate}
-                        onChange={(event) => setRecurringStartDate(event.target.value)}
+                        onChange={(v) => setRecurringStartDate(v ?? "")}
+                        placeholder="Fecha de inicio"
                       />
                     </div>
                   </div>

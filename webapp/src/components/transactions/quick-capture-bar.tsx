@@ -8,6 +8,7 @@ import { createQuickCaptureTransaction } from "@/actions/transactions";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -261,18 +262,16 @@ export function QuickCaptureBar({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="transaction_date">Fecha</Label>
-                  <Input
-                    id="transaction_date"
-                    name="transaction_date"
-                    type="date"
+                  <Label>Fecha</Label>
+                  <DatePicker
                     value={preview.transaction_date}
-                    onChange={(event) =>
+                    onChange={(v) =>
                       setPreview((prev) =>
-                        prev ? { ...prev, transaction_date: event.target.value } : prev
+                        prev ? { ...prev, transaction_date: v ?? "" } : prev
                       )
                     }
-                    required
+                    name="transaction_date"
+                    placeholder="Fecha"
                   />
                 </div>
               </div>
