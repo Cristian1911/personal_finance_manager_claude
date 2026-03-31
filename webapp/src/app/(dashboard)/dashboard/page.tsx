@@ -60,6 +60,8 @@ import { getDebtFreeCountdown } from "@/actions/debt-countdown";
 import { FlujoSection } from "@/components/dashboard/flujo-section";
 import { PlanTeaserCard } from "@/components/dashboard/plan-teaser-card";
 import { ActividadHeatmap } from "@/components/dashboard/actividad-heatmap";
+import { getReminders } from "@/actions/reminders";
+import { PendientesWidget } from "@/components/reminders/pendientes-widget";
 import {
   AccountsSkeleton,
   HeatmapSkeleton,
@@ -285,14 +287,17 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
     getDebtFreeCountdown(currency),
     getAttentionSnapshot(),
     getRecentImpactEvents(3),
+    getReminders("pending"),
   ]);
+
+  const dashboardReminders = pendingReminders.slice(0, 5);
 
   // Map data for mobile dashboard (tier 1 props only)
   const mobileHeroData = {
@@ -431,6 +436,7 @@ export default async function DashboardPage({
             {/* ── Impact + Pendientes ── */}
             <div className="grid gap-4 xl:grid-cols-2">
               <RecentImpactsWidget events={impactEvents} />
+              <PendientesWidget reminders={dashboardReminders} />
             </div>
 
             {/* ── 2. Health Score — tier 1, primary tier (no section wrapper) ── */}
