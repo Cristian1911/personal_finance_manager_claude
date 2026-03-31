@@ -143,6 +143,7 @@ jobs:
 
       - name: Retag PR image as latest
         id: retag
+        continue-on-error: true
         if: needs.changes.outputs.merge_sha != ''
         run: |
           SHA_TAG="${{ env.REGISTRY }}/${{ env.REPO }}:webapp-sha-${{ needs.changes.outputs.merge_sha }}"
@@ -208,6 +209,7 @@ jobs:
 
       - name: Retag PR image as latest
         id: retag
+        continue-on-error: true
         if: needs.changes.outputs.merge_sha != ''
         run: |
           SHA_TAG="${{ env.REGISTRY }}/${{ env.REPO }}:parser-sha-${{ needs.changes.outputs.merge_sha }}"
