@@ -88,7 +88,7 @@ export default async function CategoriesPage({
           ]}
         />
         <AttentionCard
-          signals={attentionSnapshot.signals.filter((s) => s.page === "categories")}
+          signals={attentionSnapshot.signals.filter((s) => s.page === "categories" || s.page === "transactions")}
         />
       </div>
 

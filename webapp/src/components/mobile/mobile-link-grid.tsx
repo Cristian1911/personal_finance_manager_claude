@@ -6,6 +6,7 @@ import {
   PiggyBank,
   Repeat2,
   Settings,
+  Tag,
   Tags,
   Wallet,
   type LucideIcon,
@@ -19,6 +20,7 @@ const LINKS: { href: string; icon: LucideIcon; label: string }[] = [
   { href: "/presupuesto", icon: PiggyBank, label: "Presupuesto" },
   { href: "/deudas", icon: Landmark, label: "Deudas" },
   { href: "/recurrentes", icon: Repeat2, label: "Recurrentes" },
+  { href: "/etiquetas", icon: Tag, label: "Etiquetas" },
   { href: "/settings", icon: Settings, label: "Ajustes" },
 ];
 

@@ -10,6 +10,7 @@ import {
   Contact,
   Settings,
   BarChart3,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,6 +57,7 @@ export const WORKSPACE_NAV: NavItem[] = [
   { title: "Presupuesto", href: "/presupuesto", icon: PiggyBank, attentionPage: "categories" },
   { title: "Deudas", href: "/deudas", icon: Landmark },
   { title: "Recurrentes", href: "/recurrentes", icon: Repeat2, attentionPage: "recurrentes" },
+  { title: "Etiquetas", href: "/etiquetas", icon: Tag },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [

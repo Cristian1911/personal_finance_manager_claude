@@ -20,7 +20,9 @@ export default async function BandejaPage() {
           subtitle={
             snapshot.totalAction > 0
               ? `${snapshot.totalAction} pendientes`
-              : "Todo al día"
+              : snapshot.totalSuggestion > 0
+                ? `${snapshot.totalSuggestion} sugerencias`
+                : "Todo al día"
           }
         />
         <AttentionHub signals={snapshot.signals} />
