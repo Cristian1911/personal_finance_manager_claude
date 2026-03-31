@@ -15,6 +15,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -209,14 +210,12 @@ export function TransactionForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="transaction_date">Fecha</Label>
-          <Input
-            id="transaction_date"
-            name="transaction_date"
-            type="date"
+          <Label>Fecha</Label>
+          <DatePicker
             value={transactionDate}
-            onChange={(event) => setTransactionDate(event.target.value)}
-            required
+            onChange={(v) => setTransactionDate(v ?? "")}
+            name="transaction_date"
+            placeholder="Fecha"
           />
         </div>
       </div>
@@ -435,12 +434,11 @@ export function TransactionForm({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="recurring_start_date">Fecha de inicio</Label>
-                      <Input
-                        id="recurring_start_date"
-                        type="date"
+                      <Label>Fecha de inicio</Label>
+                      <DatePicker
                         value={recurringStartDate}
-                        onChange={(event) => setRecurringStartDate(event.target.value)}
+                        onChange={(v) => setRecurringStartDate(v ?? "")}
+                        placeholder="Fecha de inicio"
                       />
                     </div>
                   </div>
