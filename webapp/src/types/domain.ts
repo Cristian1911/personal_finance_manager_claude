@@ -87,3 +87,25 @@ export type TagWithGroup = Tag & { group: TagGroup | null };
 export type TagGroupWithTags = TagGroup & { tags: Tag[] };
 
 export type TaggableEntity = "category" | "destinatario" | "transaction";
+
+// Impact Events — track positive financial movements across debt accounts
+export interface ImpactEventMetrics {
+  utilizationBefore?: number;
+  utilizationAfter?: number;
+  monthlyInterestBefore?: number;
+  monthlyInterestAfter?: number;
+  monthsToFreedomBefore?: number;
+  monthsToFreedomAfter?: number;
+  availableCreditBefore?: number;
+  availableCreditAfter?: number;
+}
+
+export interface ImpactEvent {
+  accountId: string;
+  accountName: string;
+  accountType: string;
+  date: string;
+  amountPaid: number;
+  currencyCode: string;
+  metrics: ImpactEventMetrics;
+}
