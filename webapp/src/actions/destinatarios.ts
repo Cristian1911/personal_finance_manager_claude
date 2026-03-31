@@ -387,12 +387,26 @@ export async function getDestinatarioRules(): Promise<
   }
 }
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+function parsePatternsList(raw: FormDataEntryValue | null): string[] {
+  if (!raw || typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [raw];
+  } catch {
+    return raw.split(",").map((p) => p.trim()).filter(Boolean);
+  }
+}
+
 // ─── createDestinatario ───────────────────────────────────────────────────────
 
+export type CreateDestinatarioResult = Destinatario & { linked_count?: number };
+
 export async function createDestinatario(
-  _prevState: ActionResult<Destinatario>,
+  _prevState: ActionResult<CreateDestinatarioResult>,
   formData: FormData
-): Promise<ActionResult<Destinatario>> {
+): Promise<ActionResult<CreateDestinatarioResult>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
@@ -418,44 +432,88 @@ export async function createDestinatario(
 
   if (error) return { success: false, error: error.message };
 
-  // If patterns are provided, insert rules
+  // Parse patterns once — reused for rules insertion and transaction linking
   const patternsRaw = formData.get("patterns");
-  if (patternsRaw && typeof patternsRaw === "string" && patternsRaw.trim()) {
-    let patterns: string[];
+  const patterns = parsePatternsList(patternsRaw);
 
-    // Try JSON array first, fall back to comma-separated
-    try {
-      const jsonParsed = JSON.parse(patternsRaw);
-      patterns = Array.isArray(jsonParsed) ? jsonParsed : [patternsRaw];
-    } catch {
-      /* JSON parse failed, fall back to comma split */
-      patterns = patternsRaw.split(",").map((p) => p.trim()).filter(Boolean);
+  if (patterns.length > 0) {
+    const rules = patterns.map((pattern, i) => ({
+      user_id: user.id,
+      destinatario_id: data.id,
+      pattern,
+      match_type: "contains" as const,
+      priority: (i + 1) * 100,
+    }));
+
+    const { error: rulesError } = await supabase
+      .from("destinatario_rules")
+      .insert(rules);
+    if (rulesError) {
+      revalidateTag("destinatarios", "zeta");
+      revalidateTag("attention", "zeta");
+      return { success: true, data: { ...data, linked_count: 0 } };
     }
+  }
 
-    if (patterns.length > 0) {
-      const rules = patterns.map((pattern, i) => ({
-        user_id: user.id,
-        destinatario_id: data.id,
-        pattern,
-        match_type: "contains" as const,
-        priority: (i + 1) * 100,
-      }));
+  // Link matching transactions if requested (from suggestions flow)
+  let linkedCount = 0;
+  const shouldLink = formData.get("link_matching_transactions") === "true";
+  if (shouldLink && patterns.length > 0) {
+    const { data: unmatchedTxs } = await supabase
+      .from("transactions")
+      .select("id, raw_description, category_id")
+      .eq("user_id", user.id)
+      .is("destinatario_id", null)
+      .not("raw_description", "is", null)
+      .limit(2000);
 
-      const { error: rulesError } = await supabase
-        .from("destinatario_rules")
-        .insert(rules);
-      if (rulesError) {
-        // Destinatario was created but rules failed — return partial success with warning
-        revalidateTag("destinatarios", "zeta");
-        revalidateTag("attention", "zeta");
-        return { success: true, data };
+    if (unmatchedTxs && unmatchedTxs.length > 0) {
+      const matchingIds: string[] = [];
+      const uncategorizedIds: string[] = [];
+
+      for (const tx of unmatchedTxs) {
+        const cleaned = cleanDescription(tx.raw_description ?? "");
+        if (patterns.some((p) => cleaned.includes(p.toLowerCase()))) {
+          matchingIds.push(tx.id);
+          if (!tx.category_id) uncategorizedIds.push(tx.id);
+        }
+      }
+
+      if (matchingIds.length > 0) {
+        await supabase
+          .from("transactions")
+          .update({
+            destinatario_id: data.id,
+            merchant_name: data.name,
+          })
+          .eq("user_id", user.id)
+          .in("id", matchingIds);
+
+        if (parsed.data.default_category_id && uncategorizedIds.length > 0) {
+          await supabase
+            .from("transactions")
+            .update({
+              category_id: parsed.data.default_category_id,
+              categorization_source: "USER_LEARNED",
+            })
+            .eq("user_id", user.id)
+            .in("id", uncategorizedIds);
+        }
+
+        linkedCount = matchingIds.length;
       }
     }
+
+    revalidateTag("categorize", "zeta");
+    revalidateTag("dashboard:charts", "zeta");
+    revalidateTag("dashboard:budgets", "zeta");
+    revalidateTag("dashboard:cashflow", "zeta");
+    revalidateTag("dashboard:hero", "zeta");
   }
 
   revalidateTag("destinatarios", "zeta");
   revalidateTag("attention", "zeta");
-  return { success: true, data };
+  return { success: true, data: { ...data, linked_count: linkedCount } };
 }
 
 // ─── updateDestinatario ───────────────────────────────────────────────────────
@@ -779,4 +837,168 @@ export async function getDestinatarioTransactions(
   }));
 
   return { success: true, data: result };
+}
+
+// ─── getRulesForDestinatario ──────────────────────────────────────────────────
+
+export async function getRulesForDestinatario(
+  destinatarioId: string
+): Promise<ActionResult<DestinatarioRuleRow[]>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data, error } = await supabase
+    .from("destinatario_rules")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("destinatario_id", destinatarioId)
+    .order("priority", { ascending: true });
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: data ?? [] };
+}
+
+// ─── findUnlinkedMatches ──────────────────────────────────────────────────────
+
+export type UnlinkedMatch = {
+  id: string;
+  transaction_date: string;
+  raw_description: string;
+  clean_description: string | null;
+  amount: number;
+  direction: Database["public"]["Enums"]["transaction_direction"];
+  currency_code: Database["public"]["Enums"]["currency_code"];
+  category_id: string | null;
+  account_name: string;
+};
+
+/**
+ * Find unmatched transactions that match a destinatario's rules.
+ * Uses the same cleanDescription matching as the suggestion flow.
+ */
+export async function findUnlinkedMatches(
+  destinatarioId: string
+): Promise<ActionResult<UnlinkedMatch[]>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: rules } = await supabase
+    .from("destinatario_rules")
+    .select("pattern, match_type")
+    .eq("user_id", user.id)
+    .eq("destinatario_id", destinatarioId);
+
+  if (!rules || rules.length === 0) {
+    return { success: true, data: [] };
+  }
+
+  const { data: txs, error } = await supabase
+    .from("transactions")
+    .select(
+      "id, transaction_date, raw_description, clean_description, amount, direction, currency_code, category_id, accounts!inner(name)"
+    )
+    .eq("user_id", user.id)
+    .is("destinatario_id", null)
+    .not("raw_description", "is", null)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .order("transaction_date", { ascending: false })
+    .limit(2000);
+
+  if (error) return { success: false, error: error.message };
+  if (!txs || txs.length === 0) return { success: true, data: [] };
+
+  const matches: UnlinkedMatch[] = [];
+  for (const tx of txs) {
+    const cleaned = cleanDescription(tx.raw_description ?? "");
+    const raw = (tx.raw_description ?? "").toLowerCase();
+
+    const isMatch = rules.some((rule) => {
+      const pattern = rule.pattern.toLowerCase();
+      if (rule.match_type === "exact") {
+        return cleaned === pattern || raw === pattern;
+      }
+      return cleaned.includes(pattern) || raw.includes(pattern);
+    });
+
+    if (isMatch) {
+      matches.push({
+        id: tx.id,
+        transaction_date: tx.transaction_date,
+        raw_description: tx.raw_description!,
+        clean_description: tx.clean_description,
+        amount: tx.amount,
+        direction: tx.direction,
+        currency_code: tx.currency_code,
+        category_id: tx.category_id,
+        account_name: (tx.accounts as { name: string }).name,
+      });
+    }
+  }
+
+  return { success: true, data: matches };
+}
+
+// ─── bulkLinkToDestinatario ───────────────────────────────────────────────────
+
+/**
+ * Link multiple transactions to a destinatario, optionally applying category.
+ */
+export async function bulkLinkToDestinatario(
+  destinatarioId: string,
+  transactionIds: string[]
+): Promise<ActionResult<{ linked: number; categorized: number }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (transactionIds.length === 0) {
+    return { success: true, data: { linked: 0, categorized: 0 } };
+  }
+
+  // Fetch destinatario for name and default category
+  const { data: dest } = await supabase
+    .from("destinatarios")
+    .select("name, default_category_id")
+    .eq("user_id", user.id)
+    .eq("id", destinatarioId)
+    .single();
+
+  if (!dest) return { success: false, error: "Destinatario no encontrado" };
+
+  // Link all selected transactions
+  const { error: linkError, count: linkedCount } = await supabase
+    .from("transactions")
+    .update({
+      destinatario_id: destinatarioId,
+      merchant_name: dest.name,
+    })
+    .eq("user_id", user.id)
+    .in("id", transactionIds);
+
+  if (linkError) return { success: false, error: linkError.message };
+
+  // If destinatario has default category, apply to uncategorized transactions
+  let categorized = 0;
+  if (dest.default_category_id) {
+    const { count } = await supabase
+      .from("transactions")
+      .update({
+        category_id: dest.default_category_id,
+        categorization_source: "USER_LEARNED",
+      })
+      .eq("user_id", user.id)
+      .in("id", transactionIds)
+      .is("category_id", null);
+
+    categorized = count ?? 0;
+  }
+
+  revalidateTag("categorize", "zeta");
+  revalidateTag("destinatarios", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("attention", "zeta");
+  return { success: true, data: { linked: linkedCount ?? transactionIds.length, categorized } };
 }

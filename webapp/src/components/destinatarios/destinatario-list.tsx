@@ -10,13 +10,14 @@ import {
   Contact,
   ChevronDown,
   Pencil,
+  Search as SearchIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CreateDestinatarioDialog } from "./create-destinatario-dialog";
 import { MergeDialog } from "./merge-dialog";
 import { TagChip } from "@/components/tags/tag-chip";
 import { getTagsForEntity } from "@/actions/tags";
-import { patchDestinatario } from "@/actions/destinatarios";
+import { patchDestinatario, getRulesForDestinatario } from "@/actions/destinatarios";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -108,6 +109,10 @@ export function DestinatarioList({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tagsCache, setTagsCache] = useState<Record<string, Tag[]>>({});
   const [tagsLoading, setTagsLoading] = useState<Set<string>>(new Set());
+  const [rulesCache, setRulesCache] = useState<
+    Record<string, { pattern: string; match_type: string }[]>
+  >({});
+  const [rulesLoading, setRulesLoading] = useState<Set<string>>(new Set());
 
   // ── Derived: category pills ──────────────────────────────────────────────
 
@@ -198,8 +203,10 @@ export function DestinatarioList({
       const nextId = expandedId === id ? null : id;
       setExpandedId(nextId);
 
+      if (!nextId) return;
+
       // Lazy-load tags if not already cached
-      if (nextId && !tagsCache[nextId] && !tagsLoading.has(nextId)) {
+      if (!tagsCache[nextId] && !tagsLoading.has(nextId)) {
         setTagsLoading((prev) => new Set(prev).add(nextId));
         getTagsForEntity("destinatario", nextId).then((tags) => {
           setTagsCache((prev) => ({ ...prev, [nextId]: tags }));
@@ -210,8 +217,26 @@ export function DestinatarioList({
           });
         });
       }
+
+      // Lazy-load rules if not already cached
+      if (!rulesCache[nextId] && !rulesLoading.has(nextId)) {
+        setRulesLoading((prev) => new Set(prev).add(nextId));
+        getRulesForDestinatario(nextId).then((result) => {
+          if (result.success) {
+            setRulesCache((prev) => ({
+              ...prev,
+              [nextId]: result.data.map((r) => ({ pattern: r.pattern, match_type: r.match_type })),
+            }));
+          }
+          setRulesLoading((prev) => {
+            const next = new Set(prev);
+            next.delete(nextId);
+            return next;
+          });
+        });
+      }
     },
-    [expandedId, tagsCache, tagsLoading],
+    [expandedId, tagsCache, tagsLoading, rulesCache, rulesLoading],
   );
 
   // ── Inline actions ───────────────────────────────────────────────────────
@@ -395,6 +420,8 @@ export function DestinatarioList({
               null;
             const tags = tagsCache[d.id];
             const isLoadingTags = tagsLoading.has(d.id);
+            const rules = rulesCache[d.id];
+            const isLoadingRules = rulesLoading.has(d.id);
 
             return (
               <div
@@ -495,6 +522,36 @@ export function DestinatarioList({
                 {/* Expanded section */}
                 {isExpanded && (
                   <div className="border-t border-white/6 px-4 pb-4 pt-3 space-y-3">
+                    {/* Rules */}
+                    <div>
+                      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                        Reglas
+                      </p>
+                      {isLoadingRules ? (
+                        <span className="text-xs text-muted-foreground">
+                          Cargando...
+                        </span>
+                      ) : rules && rules.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {rules.map((rule, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center gap-1 rounded-md border border-white/8 bg-white/5 px-2 py-0.5 text-xs font-mono"
+                            >
+                              {rule.pattern}
+                              <span className="text-[10px] text-muted-foreground font-sans">
+                                {rule.match_type === "exact" ? "exacto" : "contiene"}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Sin reglas
+                        </span>
+                      )}
+                    </div>
+
                     {/* Tags */}
                     <div className="flex flex-wrap items-center gap-1.5">
                       {isLoadingTags ? (
@@ -525,6 +582,20 @@ export function DestinatarioList({
                           Editar
                         </Link>
                       </Button>
+
+                      {rules && rules.length > 0 && (
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-white/8 bg-black/10 text-z-sage-light"
+                        >
+                          <Link href={`/destinatarios/${d.id}`}>
+                            <SearchIcon className="size-3.5 mr-1.5" />
+                            Buscar transacciones
+                          </Link>
+                        </Button>
+                      )}
 
                       {/* Inline category picker */}
                       <CategoryZonePicker

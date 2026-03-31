@@ -9,12 +9,21 @@ import { toast } from "sonner";
 import { generateSlug } from "@/lib/utils/string";
 import type { TransactionDirection } from "@/types/domain";
 
+export interface CreatedCategoryInfo {
+  id: string;
+  name: string;
+  name_es: string | null;
+  icon: string;
+  color: string;
+  parent_id: string | null;
+}
+
 interface InlineCategoryFormProps {
   parentId?: string | null;
   direction?: TransactionDirection | null;
   parentColor?: string;
   parentIcon?: string;
-  onCreated?: (categoryId: string) => void;
+  onCreated?: (category: CreatedCategoryInfo) => void;
   initialName?: string;
   placeholder?: string;
 }
@@ -53,7 +62,14 @@ export function InlineCategoryForm({
       if (result.success) {
         setName("");
         toast.success(`Categoría "${trimmed}" creada`);
-        onCreated?.(result.data.id);
+        onCreated?.({
+          id: result.data.id,
+          name: result.data.name,
+          name_es: result.data.name_es,
+          icon: result.data.icon,
+          color: result.data.color ?? parentColor ?? "#6b7280",
+          parent_id: result.data.parent_id,
+        });
       } else {
         toast.error(result.error ?? "Error al crear categoría");
       }

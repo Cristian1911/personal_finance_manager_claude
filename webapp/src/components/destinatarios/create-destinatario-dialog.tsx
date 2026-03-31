@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { createDestinatario } from "@/actions/destinatarios";
+import { createDestinatario, type CreateDestinatarioResult } from "@/actions/destinatarios";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,7 +38,7 @@ export function CreateDestinatarioDialog({
   const [open, setOpen] = useState(false);
   const [categoryId, setCategoryId] = useState("none");
   const [isActive, setIsActive] = useState(true);
-  const [state, formAction, pending] = useActionState<ActionResult<Destinatario>, FormData>(
+  const [state, formAction, pending] = useActionState<ActionResult<CreateDestinatarioResult>, FormData>(
     createDestinatario,
     { success: false, error: "" }
   );

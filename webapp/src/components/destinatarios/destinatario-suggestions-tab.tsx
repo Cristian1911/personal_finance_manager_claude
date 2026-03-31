@@ -2,8 +2,9 @@
 
 import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Loader2, Plus } from "lucide-react";
+import { ChevronRight, Link2, Loader2, Plus } from "lucide-react";
 import { createDestinatario } from "@/actions/destinatarios";
+import { toast } from "sonner";
 import type { DestinatarioSuggestionResult } from "@/actions/destinatarios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +94,7 @@ export function DestinatarioSuggestionsTab({
       formData.set("name", formName.trim());
       if (formCategory) formData.set("default_category_id", formCategory);
       formData.set("patterns", JSON.stringify([pattern.toLowerCase()]));
+      formData.set("link_matching_transactions", "true");
 
       const result = await createDestinatario(
         { success: false, error: "" },
@@ -103,6 +105,14 @@ export function DestinatarioSuggestionsTab({
         setCreatedPatterns((prev) => new Set(prev).add(pattern));
         setEditingPattern(null);
         setFormError(null);
+        const linkedCount = result.data.linked_count ?? 0;
+        if (linkedCount > 0) {
+          toast.success(
+            `Destinatario creado y ${linkedCount} ${linkedCount === 1 ? "transacción vinculada" : "transacciones vinculadas"}`
+          );
+        } else {
+          toast.success("Destinatario creado");
+        }
         router.refresh();
       } else {
         setFormError(result.error);
