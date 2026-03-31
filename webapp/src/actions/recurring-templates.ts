@@ -265,6 +265,7 @@ export async function createRecurringTemplate(
 
   revalidateTag("recurring", "zeta");
   revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data };
 }
 
@@ -334,6 +335,7 @@ export async function updateRecurringTemplate(
 
   revalidateTag("recurring", "zeta");
   revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data };
 }
 
@@ -354,6 +356,7 @@ export async function deleteRecurringTemplate(
 
   revalidateTag("recurring", "zeta");
   revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -375,6 +378,7 @@ export async function toggleRecurringTemplate(
 
   revalidateTag("recurring", "zeta");
   revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -821,6 +825,7 @@ export async function recordRecurringOccurrencePayment(input: {
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("categorize", "zeta");
   revalidateTag("debt", "zeta");
+  revalidateTag("attention", "zeta");
 
   return {
     success: true,

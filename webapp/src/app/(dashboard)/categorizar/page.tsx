@@ -47,7 +47,7 @@ export default async function CategorizarPage() {
           title: "La bandeja está limpia y las reglas ya sostienen el flujo",
           body: "Cuando vuelva a aparecer ruido aquí, será la señal correcta para ajustar reglas o destinatarios, no para revisar toda la app.",
           href: "/gestionar",
-          cta: "Volver a Más",
+          cta: "Volver a Bandeja",
         };
 
   return (

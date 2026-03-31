@@ -269,6 +269,7 @@ export async function categorizeTransaction(
   revalidateTag("dashboard:cashflow", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -295,6 +296,7 @@ export async function confirmAutoCategory(
   revalidateTag("dashboard:budgets", "zeta");
   revalidateTag("dashboard:cashflow", "zeta");
   revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -321,6 +323,7 @@ export async function bulkConfirmAutoCategory(
   revalidateTag("dashboard:budgets", "zeta");
   revalidateTag("dashboard:cashflow", "zeta");
   revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: { confirmed: count ?? transactionIds.length } };
 }
 
@@ -389,6 +392,7 @@ export async function bulkCategorize(
   revalidateTag("dashboard:cashflow", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: { categorized } };
 }
 
@@ -476,6 +480,7 @@ export async function assignDestinatario(
   revalidateTag("dashboard:cashflow", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -504,5 +509,6 @@ export async function removeDestinatarioFromTransaction(
   revalidateTag("dashboard:cashflow", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }

@@ -174,6 +174,7 @@ function revalidateFinancialViews() {
   revalidateTag("categorize", "zeta");
   revalidateTag("debt", "zeta");
   revalidateTag("budgets", "zeta");
+  revalidateTag("attention", "zeta");
 }
 
 function getRecurringScheduleFields(

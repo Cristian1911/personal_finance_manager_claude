@@ -476,6 +476,7 @@ export async function createCategory(
   revalidateTag("budgets", "zeta");
   revalidateTag("dashboard:charts", "zeta");
   revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data };
 }
 
@@ -516,6 +517,7 @@ export async function updateCategory(
   revalidateTag("budgets", "zeta");
   revalidateTag("dashboard:charts", "zeta");
   revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data };
 }
 
@@ -536,6 +538,7 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
   revalidateTag("budgets", "zeta");
   revalidateTag("dashboard:charts", "zeta");
   revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -594,6 +597,7 @@ export async function updateCategoryExpenseType(
   revalidateTag("budgets", "zeta");
   revalidateTag("dashboard:charts", "zeta");
   revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -630,6 +634,7 @@ export async function reassignAndDeleteCategory(
   revalidateTag("budgets", "zeta");
   revalidateTag("dashboard:charts", "zeta");
   revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -652,6 +657,7 @@ export async function toggleCategoryActive(
   revalidateTag("budgets", "zeta");
   revalidateTag("dashboard:charts", "zeta");
   revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 

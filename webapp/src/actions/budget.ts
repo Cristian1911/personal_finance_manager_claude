@@ -36,6 +36,7 @@ export async function setBudgetMode(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: null };
 }
 
@@ -64,6 +65,7 @@ export async function upsertBudgetForCategory(
 
   revalidateTag("budgets", "zeta");
   revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: null };
 }
 
@@ -94,6 +96,7 @@ export async function bulkUpsertBudgets(
 
   revalidateTag("budgets", "zeta");
   revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: null };
 }
 

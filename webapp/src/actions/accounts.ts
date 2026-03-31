@@ -173,6 +173,7 @@ export async function createAccount(
   revalidateTag("dashboard:accounts", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: result };
 }
 
@@ -207,6 +208,7 @@ export async function updateAccount(
   revalidateTag("dashboard:accounts", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: result };
 }
 
@@ -223,6 +225,7 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
   revalidateTag("dashboard:accounts", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 

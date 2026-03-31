@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { isNavItemActive, type NavItem } from "@/lib/constants/navigation";
+import type { AttentionSnapshot } from "@/types/attention";
 
 interface NavItemLinkProps {
   item: NavItem;
   variant: "primary" | "secondary";
   pathname: string;
-  uncategorizedCount?: number;
+  attentionSnapshot?: AttentionSnapshot;
   onNavigate?: () => void;
 }
 
@@ -20,11 +21,24 @@ export function NavItemLink({
   item,
   variant,
   pathname,
-  uncategorizedCount = 0,
+  attentionSnapshot,
   onNavigate,
 }: NavItemLinkProps) {
   const isActive = isNavItemActive(pathname, item);
-  const showBadge = item.badge === "uncategorized" && uncategorizedCount > 0;
+
+  // Badge logic: primary "attention" badge or workspace per-page badge
+  let badgeCount = 0;
+  let badgeStyle: "brass" | "muted" = "muted";
+
+  if (item.badge === "attention" && attentionSnapshot) {
+    badgeCount = attentionSnapshot.totalAction;
+    badgeStyle = "brass";
+  } else if (variant === "secondary" && attentionSnapshot && item.attentionPage) {
+    badgeCount = attentionSnapshot.perPage[item.attentionPage] ?? 0;
+    badgeStyle = "muted";
+  }
+
+  const showBadge = badgeCount > 0;
 
   return (
     <Link
@@ -47,12 +61,14 @@ export function NavItemLink({
         <span
           className={cn(
             "inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold",
-            isActive && variant === "primary"
-              ? "bg-z-brass text-z-white"
-              : "bg-primary/15 text-primary"
+            badgeStyle === "brass"
+              ? isActive && variant === "primary"
+                ? "bg-z-brass text-z-white"
+                : "bg-z-brass/20 text-z-brass"
+              : "bg-muted text-muted-foreground"
           )}
         >
-          {formatBadgeCount(uncategorizedCount)}
+          {formatBadgeCount(badgeCount)}
         </span>
       )}
     </Link>
