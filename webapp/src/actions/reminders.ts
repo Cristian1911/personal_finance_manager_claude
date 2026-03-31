@@ -58,22 +58,6 @@ export const getReminders = cache(
   }
 );
 
-export const getOverdueCount = cache(async (): Promise<number> => {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return 0;
-
-  const today = new Date().toISOString().split("T")[0];
-
-  const { count } = await supabase
-    .from("financial_reminders")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("is_completed", false)
-    .lt("due_date", today);
-
-  return count ?? 0;
-});
-
 // ── Mutations ─────────────────────────────────────────────
 
 export async function createReminder(

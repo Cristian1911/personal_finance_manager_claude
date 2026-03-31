@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { toggleReminder, deleteReminder } from "@/actions/reminders";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate } from "@/lib/utils/date";
+import { formatDate, toISODateString } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
-import type { FinancialReminder } from "@/types/domain";
-import type { CurrencyCode } from "@/types/domain";
+import type { FinancialReminder, CurrencyCode } from "@/types/domain";
 
 interface ReminderItemProps {
   reminder: FinancialReminder;
@@ -18,7 +17,7 @@ interface ReminderItemProps {
 
 function isOverdue(reminder: FinancialReminder): boolean {
   if (!reminder.due_date || reminder.is_completed) return false;
-  const today = new Date().toISOString().split("T")[0];
+  const today = toISODateString(new Date());
   return reminder.due_date < today;
 }
 

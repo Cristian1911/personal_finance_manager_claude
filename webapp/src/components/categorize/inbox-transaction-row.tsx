@@ -17,6 +17,19 @@ import { TagPicker } from "@/components/tags/tag-picker";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { getCategoryName } from "@zeta/shared";
+
+function findCategoryName(
+  categories: CategoryWithChildren[],
+  id: string
+): string {
+  for (const cat of categories) {
+    if (cat.id === id) return cat.name_es ?? cat.name;
+    for (const child of cat.children) {
+      if (child.id === id) return child.name_es ?? child.name;
+    }
+  }
+  return getCategoryName(id);
+}
 import type {
   TransactionWithRelations,
   CategoryWithChildren,
@@ -77,11 +90,11 @@ export function InboxTransactionRow({
   function handleCancelConfirm() {
     setPendingCategory(null);
     setManualValue(null);
+    setShowPicker(false);
   }
 
-  // Find category display info
   const pendingCategoryName = pendingCategory
-    ? getCategoryName(pendingCategory)
+    ? findCategoryName(categories, pendingCategory)
     : null;
 
   // Confirmation panel state

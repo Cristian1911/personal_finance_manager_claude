@@ -99,12 +99,13 @@ function buildMetrics(
 
 export const getRecentImpactEvents = cache(async (limit = 3): Promise<ImpactEvent[]> => {
   const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return [];
 
   // 1. Get debt accounts
   const { data: accounts } = await supabase
     .from("accounts")
     .select("id, name, account_type, currency_code")
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .in("account_type", ["CREDIT_CARD", "LOAN"])
     .eq("is_active", true);
 
@@ -116,13 +117,13 @@ export const getRecentImpactEvents = cache(async (limit = 3): Promise<ImpactEven
   }
   const accountIds = accounts.map((a) => a.id);
 
-  // 2. Get all snapshots for debt accounts, ordered by period_to ascending
+  // 2. Get snapshots for debt accounts, ordered by period_to ascending
   const { data: snapshots } = await supabase
     .from("statement_snapshots")
     .select(
       "account_id, period_to, remaining_balance, final_balance, credit_limit, available_credit, interest_rate, currency_code"
     )
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .in("account_id", accountIds)
     .order("period_to", { ascending: true });
 
@@ -163,7 +164,7 @@ export const getRecentImpactEvents = cache(async (limit = 3): Promise<ImpactEven
         accountId,
         accountName: account.name,
         accountType: account.account_type,
-        date: curr.period_to ?? curr.period_to ?? "",
+        date: curr.period_to ?? "",
         amountPaid,
         currencyCode: (curr.currency_code ?? account.currency_code) as string,
         metrics,

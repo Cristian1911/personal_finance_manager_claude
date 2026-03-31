@@ -4,6 +4,7 @@ import "server-only";
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { toISODateString } from "@/lib/utils/date";
 import type { AttentionSignal, AttentionSnapshot, AttentionPage } from "@/types/attention";
 
 // ─── Cached inner function ────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ async function getAttentionSnapshotCached(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("is_completed", false)
-      .lt("due_date", new Date().toISOString().split("T")[0]),
+      .lt("due_date", toISODateString(new Date())),
   ]);
 
   const signals: AttentionSignal[] = [];

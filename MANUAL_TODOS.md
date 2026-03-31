@@ -1,0 +1,9 @@
+- [x] En la lista de transacciones por categorizar, cuando hay una sugerencia de categoría, solo me permite aceptarla. No me deja modificar o rechazar.
+- [x] Las listas de cosas que se pueden crear en línea (como categorías o tags o reglas de destinatarios) deben poderse actualizar en tiempo real al momento de crear uno nuevo.
+- [ ] Al categorizar, seleccionar la categoría inmediatamente cierra la ventana y aplica la selección. No me gusta porque no me da tiempo de reaccionar ni tengo opción de deshacer el cambio. (Nota: ya existe un toast con "Deshacer", pero no hay paso de confirmación)
+- [x] Desde la categorización debería poder ver cuáles son las similares. O tener algo más de opciones aparte de seleccionar categoría.
+- [x] Los pagos próximos no deben limitarse al mes actual, pero tampoco ver 30 días en el futuro. (Resuelto: ventana de 14 días)
+- [x] Los states de los valores se tardan en actualizar. Cuando registré el pago de una transacción recurrente, volví al dashboard y tuve que actualizar la página para ver el valor disponible restante.
+- [x] Cuando importo listas de transacciones a una regla de destinatario, algunas transacciones son particulares. Debería poder tener acceso al sistema de tags en más partes. (Resuelto: tags integrados en flujo de categorización)
+- [ ] Debemos expandir alguna zona de insights inteligentes con la app para saber cómo se han movido los dineros de las diferentes cuentas a través de los meses. Por ejemplo, debería mostrarme cuál es el impacto real en comparación después de haber hecho un abono a una deuda o haber liquidado un crédito.
+- [ ] Otra cosa que debemos planear es como una lista de pendientes o recordatorios económicos. No es suscripción, no es recurrente, pero es algo que debo hacer y la app me debe ayudar a recordar (Pagarle a Cami, pagar el JRE, Pagar el SOAT antes del viernes, etc).
