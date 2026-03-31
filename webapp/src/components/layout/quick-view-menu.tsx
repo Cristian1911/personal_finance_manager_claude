@@ -5,15 +5,17 @@ import Link from "next/link";
 import {
   LogOut,
   Settings,
-  TrendingDown,
   Wallet,
   AlertTriangle,
   CalendarClock,
+  ListChecks,
   Loader2,
   ArrowRight,
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { getQuickViewData, type QuickViewData } from "@/actions/quick-view";
+import { toggleReminder } from "@/actions/reminders";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -240,6 +242,11 @@ function QuickViewContent({
                 </div>
               </div>
             )}
+
+            {/* Pending reminders */}
+            {data.pendingReminders.length > 0 && (
+              <QuickReminders reminders={data.pendingReminders} onClose={onClose} />
+            )}
           </>
         ) : null}
       </div>
@@ -311,6 +318,77 @@ function QuickViewContent({
           <LogOut className="h-3.5 w-3.5" />
           Salir
         </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// QuickReminders
+// ---------------------------------------------------------------------------
+
+function QuickReminders({
+  reminders,
+  onClose,
+}: {
+  reminders: QuickViewData["pendingReminders"];
+  onClose: () => void;
+}) {
+  const [items, setItems] = useState(reminders);
+  const [, startTransition] = useTransition();
+
+  const today = new Date().toISOString().split("T")[0];
+
+  function handleToggle(id: string) {
+    setItems((prev) => prev.filter((r) => r.id !== id));
+    startTransition(async () => {
+      await toggleReminder(id);
+    });
+  }
+
+  return (
+    <div className="border-t pt-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <ListChecks className="h-3 w-3" />
+          Pendientes
+        </div>
+        <Link
+          href="/pendientes"
+          onClick={onClose}
+          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
+        >
+          Ver todos
+          <ArrowRight className="h-2.5 w-2.5" />
+        </Link>
+      </div>
+      <div className="space-y-1">
+        {items.map((r) => {
+          const isOverdue = r.due_date && r.due_date < today;
+          return (
+            <div
+              key={r.id}
+              className="flex items-center gap-2 text-xs group"
+            >
+              <Checkbox
+                className="h-3.5 w-3.5"
+                checked={false}
+                onCheckedChange={() => handleToggle(r.id)}
+              />
+              <span className="truncate flex-1">{r.title}</span>
+              {r.due_date && (
+                <span
+                  className={cn(
+                    "shrink-0 text-[11px]",
+                    isOverdue ? "text-z-debt" : "text-muted-foreground"
+                  )}
+                >
+                  {formatDate(r.due_date, "dd MMM")}
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
