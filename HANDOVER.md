@@ -1,72 +1,111 @@
-# HANDOVER
+# HANDOVER — Session 2026-03-28/29
 
 ## 1. Session Summary
 
-This session implemented two new PDF parsers (Nu Colombia credit card, Lulo Bank loan), completed the full frontend import flow for loan statements, added a database migration for loan-specific snapshot columns, and wired loan metadata through the entire import pipeline (summary card, auto-match, account creation defaults, snapshot storage, account updates, diff tracking, statement history timeline). All changes compile successfully but are **uncommitted**.
+Massive feature session: built the entire AI capture pipeline from research to implementation. Started with mobile keyboard UX fixes (FAB/tab bar hide on keyboard), rewrote the category picker for mobile, restructured the dashboard layout, then built voice capture (Web Speech API + Gemini Flash AI parsing), a universal `/api/capture` endpoint with capture token auth, a Telegram bot with deep-link account linking, and a full MCP server package that exposes Zeta's financial data to any AI assistant (Claude Desktop, etc.).
 
 ## 2. Changes Made
 
-### New PDF Parsers (Python)
+### Mobile Keyboard UX
+- **`webapp/src/hooks/use-keyboard-inset.tsx`** (created) — Context provider + hook wrapping `visualViewport` API. Single listener shared across all consumers.
+- **`webapp/src/components/mobile/fab-menu.tsx`** (modified) — FAB hides when keyboard open. Added `data-testid`. Added "Captura por voz" action.
+- **`webapp/src/components/mobile/bottom-tab-bar.tsx`** (modified) — Returns `null` when keyboard open.
+- **`webapp/src/components/categorize/bulk-action-bar.tsx`** (modified) — Repositions above keyboard, added safe-area inset, `aria-label` on clear button, `bottom-20` to clear tab bar.
+- **`webapp/src/components/mobile/mobile-transaction-form.tsx`** (modified) — Uses shared `useKeyboardInset` hook instead of inline logic.
+- **`webapp/src/app/(dashboard)/layout.tsx`** (modified) — Wrapped mobile section with `KeyboardInsetProvider`.
+- **`webapp/e2e/mobile-keyboard.spec.ts`** (created) — Playwright tests mocking `visualViewport` for keyboard simulation.
 
-- **`services/pdf_parser/parsers/nu_credit_card.py`** — Replaced stub with full implementation. Parses Nu Colombia credit card statements: card info, credit metadata, summary, and transactions from tabular layout. Colombian number format via `parse_co_number()`.
-- **`services/pdf_parser/parsers/lulo_loan.py`** — Created. Lulo Bank loan parser: extracts loan metadata (number, balance, rate, payment due) and past payment history as OUTFLOW transactions.
-- **`services/pdf_parser/parsers/lulo_savings.py`** — Deleted. Replaced by `lulo_loan.py` since the actual PDF is a loan, not savings.
-- **`services/pdf_parser/parsers/__init__.py`** — Updated imports (`lulo_savings` → `lulo_loan`), added `"NU FINANCIERA"` detection keyword.
+### Category Picker Rewrite
+- **`webapp/src/components/categorize/category-picker-dialog.tsx`** (rewritten) — Was 94vh full-screen two-panel Dialog. Now: Drawer on mobile with searchable Command list, compact Dialog on desktop.
 
-### Database Migration
+### Dashboard Layout
+- **`webapp/src/app/(dashboard)/dashboard/page.tsx`** (modified) — Hero full-width. Below: 3-column grid with Attention + Upcoming Payments + Quick Updates as peers.
 
-- **`supabase/migrations/20260218002245_add_loan_columns_to_snapshots.sql`** — Created. Adds `remaining_balance`, `initial_amount`, `installments_in_default`, `loan_number` columns to `statement_snapshots`. **Already pushed to remote.**
-- **`webapp/src/types/database.ts`** — Regenerated from Supabase to include new columns.
+### Voice Capture (Phase 1)
+- **`webapp/src/hooks/use-voice-capture.ts`** (created) — Web Speech API wrapper with `es-CO` locale.
+- **`webapp/src/types/speech-recognition.d.ts`** (created) — TypeScript declarations for Web Speech API.
+- **`webapp/src/components/mobile/voice-capture-sheet.tsx`** (created) — Chat-style conversational UI with mic + text input, missing field prompts, summary card, confirm flow.
+- **`webapp/src/components/mobile/mobile-sheet-provider.tsx`** (modified) — Wired `VoiceCaptureSheet` for "voice" FAB action.
 
-### Frontend: Loan Import Flow
+### AI Transaction Parsing
+- **`webapp/src/actions/voice-capture.ts`** (created) — Server action: regex first, Gemini 2.0 Flash fallback with JSON schema enforcement.
+- **Env var needed:** `GEMINI_API_KEY` (free tier)
 
-- **`webapp/src/lib/validators/import.ts`** — Added `loanMetadataSchema` Zod schema and `loanMetadata` field to `statementMetaSchema`.
-- **`webapp/src/components/import/statement-summary-card.tsx`** — Added `loan: "Préstamo"` label and loan metadata display section (loan number, balance, rate, payment due, installments in default).
-- **`webapp/src/components/import/import-wizard.tsx`** — Added loan auto-match logic: matches on `account_number` last 4 + `account_type === "LOAN"`.
-- **`webapp/src/components/import/create-account-dialog.tsx`** — Added loan branch in `deriveDefaults()`: sets LOAN type, pre-fills balance, loan_amount, interest_rate, payment_day.
-- **`webapp/src/components/import/step-confirm.tsx`** — Added `loanMetadata` to `buildStatementMeta()` payload.
-- **`webapp/src/actions/import-transactions.ts`** — Snapshot row includes loan columns. Currency balance entry handles loan metadata. Account scalar updates (current_balance, interest_rate, payment_day) work for loans.
-- **`webapp/src/lib/utils/snapshot-diff.ts`** — Added tracked fields: `remaining_balance` ("Saldo capital"), `initial_amount` ("Monto inicial"), `installments_in_default` ("Cuotas en mora").
-- **`webapp/src/components/accounts/statement-history-timeline.tsx`** — Added MetricRow for "Saldo capital" and inline display for "Cuotas en mora" with color coding.
+### Capture Token System (Phase 2)
+- **`supabase/migrations/20260329050657_create_capture_tokens.sql`** (created + pushed) — Table with RLS, indexes, default account FK.
+- **`webapp/src/actions/capture-tokens.ts`** (created) — CRUD actions + `createTelegramLink()` deep link generator.
+
+### Universal Capture Endpoint (Phase 2)
+- **`webapp/src/app/api/_shared/capture-auth.ts`** (created) — Shared `authenticateCaptureToken()` helper.
+- **`webapp/src/app/api/capture/route.ts`** (created) — `POST /api/capture` with text parsing, auto-categorization, idempotency.
+
+### Telegram Bot (Phase 3)
+- **`webapp/src/lib/telegram.ts`** (created) — API helpers.
+- **`webapp/src/app/api/webhooks/telegram/route.ts`** (created) — Webhook with deep-link auto-linking, text → transaction flow.
+- **`webapp/src/app/api/webhooks/telegram/setup/route.ts`** (created) — One-time webhook registration.
+- **Env vars needed:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`
+
+### MCP Server (Phase 6) — UNCOMMITTED
+- **`webapp/src/app/api/mcp/summary/route.ts`** (created) — Financial summary endpoint.
+- **`webapp/src/app/api/mcp/accounts/route.ts`** (created) — Account list endpoint.
+- **`webapp/src/app/api/mcp/transactions/route.ts`** (created) — Filtered transactions with pagination.
+- **`webapp/src/app/api/mcp/budgets/route.ts`** (created) — Budget status per category.
+- **`webapp/src/app/api/mcp/debts/route.ts`** (created) — Debt overview endpoint.
+- **`packages/mcp-server/`** (created) — Full MCP server package with 6 tools using `@modelcontextprotocol/sdk`.
+
+### Planning
+- **`.planning/quick/260328-ai-capture-pipeline/PLAN.md`** (created) — Full 6-phase architecture with research sources.
 
 ## 3. Key Decisions
 
-- **Lulo stub renamed** `lulo_savings.py` → `lulo_loan.py` — actual PDF is "Extracto Crédito de Consumo". User approved.
-- **Lulo payment history imported as transactions** — each past payment becomes an OUTFLOW transaction. User chose this over metadata-only.
-- **New DB columns for loans** — `remaining_balance`, `initial_amount`, `installments_in_default`, `loan_number` are loan-specific. User approved adding columns vs reusing credit card columns.
-- **Shared snapshot columns reused** — `interest_rate`, `total_payment_due`, `minimum_payment`, `payment_due_date` already existed and are populated from loan metadata via `??` fallback chain.
-- **Nu parser handles multi-line table reconstruction** — PDF extraction splits table rows across multiple lines; parser rebuilds them.
-- **Number format varies by bank** — Bancolombia savings/loans use US format (1,234.56), Bancolombia credit cards + Nu + Lulo use Colombian (1.234,56).
+- **Web Speech API over Whisper** — Free, instant, no server cost. Falls back to text on Firefox.
+- **Gemini 2.0 Flash over Claude Haiku** — $0/month free tier. User explicitly chose this. `responseMimeType: "application/json"` enforces valid JSON.
+- **Regex-first, AI-fallback** — `parseQuickCaptureText()` handles structured input instantly. Gemini only when regex confidence < 0.8.
+- **Capture tokens over Supabase JWTs** — Scoped, revocable, `zeta_` prefixed. Used for Telegram, MCP, any future integration.
+- **Chat-style voice capture** — User rejected form-based preview. Wants conversational flow that asks for missing fields one at a time.
+- **Deep link for Telegram** — User rejected copy-paste token flow. Now: one click in Settings → Telegram opens → auto-linked.
+- **Dashboard hero full-width** — User rejected removing the attention card. Wanted layout restructure, not content removal.
+- **MCP as separate package** — Runs locally on user's machine, calls Zeta API via capture token.
+- **`overflow-y-auto` rule saved to memory** — Never use `overflow-hidden` on scrollable areas inside Dialog/Drawer/Popover.
 
 ## 4. Current State
 
-- **Build**: `pnpm build` passes with 0 errors
-- **Git branch**: `main`, ahead of origin by 1 commit (`ccae682` — BC loan parser from prior session)
-- **Uncommitted changes**: 12 modified/deleted + 2 new files (all this session's work)
-- **DB migration**: Already pushed to remote Supabase
-- **Parsers**: Tested standalone during development by pdf-parser-creator agents, not tested via running service + curl
+- **Build:** Webapp `pnpm build` passes. MCP server `pnpm build` passes.
+- **Branch:** `codex/redesign-management-surfaces`
+- **Uncommitted:**
+  - `packages/mcp-server/` (entire package)
+  - `webapp/src/app/api/mcp/*` (5 route files)
+  - `pnpm-lock.yaml`
+- **Migration:** `capture_tokens` already pushed to production Supabase.
+- **Turbopack cache:** If build fails on files that look correct, `rm -rf webapp/.next && pnpm build`.
 
 ## 5. Open Issues & Gotchas
 
-- **Parsers not tested via running service** — Should run `cd services/pdf_parser && uv run python main.py` and test both new PDFs with `curl -F file=@... http://localhost:8000/parse`.
-- **Lulo Bank detection is broad** — `__init__.py:37` checks for `"LULO"` in uppercase text. If Lulo Bank issues savings statements in the future, detection needs sub-type routing.
-- **`StatementSnapshot` type in `statement-snapshots.ts`** — The action's return type may not include the new loan columns (`remaining_balance`, `installments_in_default`). The timeline component references `snap.remaining_balance` and `snap.installments_in_default` — verify the action's select query and type export include them.
-- **`installments_in_default` display** — Uses inline rendering in timeline, not `MetricRow`, because `MetricRow` always formats with `formatCurrency()`. If more non-currency metrics are needed, consider a formatter prop on `MetricRow`.
-- **BC loan parser uses US number format** while Lulo loan parser uses Colombian format — be aware of inconsistency when adding future loan parsers.
+- **No Settings UI for token management** — Server actions exist but no frontend. Needs `/settings/integraciones` or similar.
+- **Telegram webhook not registered** — After deploy: `GET /api/webhooks/telegram/setup?secret=BOT_TOKEN_ID`
+- **Env vars not in production config** — `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `GEMINI_API_KEY` are in `.env.local` only. Need to add to `docker-compose.prod.yml`.
+- **No balance adjustment in `/api/capture`** — Inserts transaction but doesn't call `adjustBalancesForTransactionChanges()`. Balance updates on next page load.
+- **`capture_method` enum missing `CAPTURE_API`** — Routes use `TEXT_QUICK_CAPTURE` as workaround. Consider adding `CAPTURE_API` and `TELEGRAM` via migration.
+- **MCP `get_budget_status`** — Uses raw query, not `get503020Allocation()`. 50/30/20 split not exposed via MCP.
+- **Telegram `/undo` not implemented** — Users will want it.
+- **`CategoryPickerDialog` was replaced with `CategoryZonePicker`** by user between sessions. Several files reference the new component.
 
 ## 6. Suggested Next Steps
 
-1. **Test parsers end-to-end**: `curl -F file=@bank_pdf_examples/nu_bank/nu_credit_card.pdf http://localhost:8000/parse` and same for Lulo loan.
-2. **Verify `StatementSnapshot` type** in `webapp/src/actions/statement-snapshots.ts` includes new loan columns. Update select query if needed.
-3. **Commit all changes** — stage everything and create a commit.
-4. **Manual UI test** — Upload Nu credit card and Lulo loan PDFs through import wizard. Verify metadata display, auto-match, account defaults, transaction import, snapshot diffs.
-5. **Check statement history timeline** — Import a loan statement, check account detail page for remaining_balance and installments_in_default rendering.
-6. **Push to remote** — `git push`.
+1. **Commit MCP server + routes** — All uncommitted files are ready.
+2. ~~Build Settings UI for Integrations~~ — DONE. `IntegrationsCard` added to Settings page with Telegram deep-link, MCP description, and token CRUD.
+3. **Add balance adjustment to `/api/capture`** — Import and call `adjustBalancesForTransactionChanges()` after insert.
+4. **Add env vars to production** — `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `GEMINI_API_KEY`.
+5. **Register Telegram webhook** — Call setup endpoint once after deploy.
+6. **Phase 4: Receipt OCR** — Architecture in plan doc. Extends PDF parser service.
+7. **Phase 5: WhatsApp** — Start Meta Business verification now (1-2 weeks). Implementation is 2 days after.
 
 ## 7. Context for Claude
 
-- **PDF samples**: `bank_pdf_examples/nu_bank/nu_credit_card.pdf` and `bank_pdf_examples/lulo_bank/lulo_bank_loan.pdf`.
-- **Parser utils**: `services/pdf_parser/parsers/utils.py` has `parse_co_number()`, `parse_us_number()`, `SPANISH_MONTHS`, `resolve_year()`.
-- **Plan file**: `.claude/plans/curious-painting-pixel.md` contains the approved implementation plan.
-- **DB migration already applied**: `20260218002245` pushed to remote. Don't re-run `supabase db push` unless there are new migrations.
-- **Prior commit** `ccae682` added the Bancolombia loan parser — that parser was created in a session before this one.
+- **`parseQuickCaptureText()`** — `packages/shared/src/utils/quick-capture.ts`. Regex parser for Colombian Spanish.
+- **`parseVoiceCapture()`** — `webapp/src/actions/voice-capture.ts`. Server action: regex → Gemini Flash fallback. Needs `GEMINI_API_KEY`.
+- **Capture tokens** — Format: `zeta_` + 48 hex chars. Auth via `Bearer` header. Helper: `webapp/src/app/api/_shared/capture-auth.ts`.
+- **MCP server** — `packages/mcp-server/`. Separate TS package. `@modelcontextprotocol/sdk` v1.27. Builds to `dist/`.
+- **Telegram deep linking** — `createTelegramLink(accountId)` → `{ deepLink: "https://t.me/Bot?start=zeta_token" }`. Bot auto-links on `/start`.
+- **Plan doc** — `.planning/quick/260328-ai-capture-pipeline/PLAN.md` has full 6-phase architecture with research sources from `/last30days`.
+- **Scrollable containers rule** — Saved to memory. Always `overflow-y-auto` inside Dialog/Drawer/Popover.

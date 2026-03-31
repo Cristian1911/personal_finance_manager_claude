@@ -8,6 +8,9 @@ export type Category = Tables<"categories">;
 export type Budget = Tables<"budgets">;
 
 export type RecurringTemplate = Tables<"recurring_transaction_templates">;
+export type EmailIngestAddress = Tables<"email_ingest_addresses">;
+export type PendingEmailTransaction = Tables<"pending_email_transactions">;
+export type EmailIngestLog = Tables<"email_ingest_logs">;
 
 // Enum types
 export type TransactionDirection = Enums<"transaction_direction">;

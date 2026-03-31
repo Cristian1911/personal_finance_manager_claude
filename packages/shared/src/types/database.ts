@@ -772,12 +772,14 @@ export type Database = {
         | "PLAID"
         | "CSV_IMPORT"
         | "OCR"
+        | "EMAIL"
       transaction_capture_method:
         | "MANUAL_FORM"
         | "TEXT_QUICK_CAPTURE"
         | "PDF_IMPORT"
         | "OCR_BATCH"
         | "OCR_SINGLE"
+        | "EMAIL_IMPORT"
       recurrence_frequency:
         | "WEEKLY"
         | "BIWEEKLY"
@@ -938,6 +940,7 @@ export const Constants = {
         "PLAID",
         "CSV_IMPORT",
         "OCR",
+        "EMAIL",
       ],
       recurrence_frequency: [
         "WEEKLY",
