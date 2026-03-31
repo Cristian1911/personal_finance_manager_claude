@@ -15,6 +15,12 @@ export function AttentionHub({ signals }: AttentionHubProps) {
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
         <CheckCircle2 className="size-10 text-z-olive-deep" />
         <p className="text-base font-medium text-muted-foreground">Al día</p>
+        <Link
+          href="/dashboard"
+          className="text-sm text-z-brass hover:text-z-brass/80"
+        >
+          Ir al dashboard &rarr;
+        </Link>
       </div>
     );
   }

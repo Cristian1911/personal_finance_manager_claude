@@ -53,10 +53,12 @@ export function AttentionCard({ signals, className }: AttentionCardProps) {
           ))}
         </div>
       ) : (
-        <div className="mt-3 flex items-center gap-2">
+        <Link href="/dashboard" className="mt-3 flex items-center gap-2 group">
           <CheckCircle2 className="size-4 text-z-olive-deep" />
-          <span className="text-sm font-medium text-z-olive-deep">Al día</span>
-        </div>
+          <span className="text-sm font-medium text-z-olive-deep group-hover:text-z-olive-deep/80">
+            Al día
+          </span>
+        </Link>
       )}
     </div>
   );
