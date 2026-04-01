@@ -203,7 +203,7 @@ export function PendingEmailTransactions({
                     </div>
 
                     <Select
-                      value={hasAccount ? account.id : ""}
+                      value={hasAccount ? account.id : undefined}
                       onValueChange={(v) => handleAccountChange(tx.id, v)}
                     >
                       <SelectTrigger
