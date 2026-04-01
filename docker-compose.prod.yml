@@ -17,6 +17,7 @@ services:
       - PDF_PARSER_URL=http://pdf-parser:8000
       - PDF_PARSER_API_KEY=${PDF_PARSER_API_KEY}
       - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+      - RESEND_WEBHOOK_SECRET=${RESEND_WEBHOOK_SECRET}
     depends_on:
       pdf-parser:
         condition: service_healthy
