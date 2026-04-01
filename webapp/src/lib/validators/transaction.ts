@@ -74,6 +74,16 @@ export const transactionFiltersSchema = z.object({
     (val) => val === "true" || val === true,
     z.boolean().default(false)
   ),
+  source: z
+    .enum([
+      "MANUAL_FORM",
+      "TEXT_QUICK_CAPTURE",
+      "PDF_IMPORT",
+      "OCR_BATCH",
+      "OCR_SINGLE",
+      "EMAIL_IMPORT",
+    ])
+    .optional(),
 });
 
 export type TransactionFilters = z.infer<typeof transactionFiltersSchema>;

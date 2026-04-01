@@ -484,6 +484,7 @@ export async function getTransactions(
     }
     if (params.amountMin !== undefined) query = query.gte("amount", params.amountMin);
     if (params.amountMax !== undefined) query = query.lte("amount", params.amountMax);
+    if (params.source) query = query.eq("capture_method", params.source);
     if (!params.showExcluded) query = query.eq("is_excluded", false);
     if (taggedTransactionIds) query = query.in("id", taggedTransactionIds);
 

@@ -50,6 +50,7 @@ export function TransactionFilters({ accounts, tags = [] }: { accounts: Account[
     searchParams.get("accountId") ||
     searchParams.get("tagId") ||
     searchParams.get("direction") ||
+    searchParams.get("source") ||
     searchParams.get("dateFrom") ||
     searchParams.get("dateTo") ||
     searchParams.get("amountMin") ||
@@ -62,6 +63,7 @@ export function TransactionFilters({ accounts, tags = [] }: { accounts: Account[
     searchParams.get("accountId"),
     searchParams.get("tagId"),
     searchParams.get("direction"),
+    searchParams.get("source"),
     searchParams.get("dateFrom"),
     searchParams.get("dateTo"),
     searchParams.get("amountMin"),
@@ -124,6 +126,22 @@ export function TransactionFilters({ accounts, tags = [] }: { accounts: Account[
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="OUTFLOW">Gastos</SelectItem>
                 <SelectItem value="INFLOW">Ingresos</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              defaultValue={searchParams.get("source") ?? "all"}
+              onValueChange={(v) => updateFilter("source", v)}
+            >
+              <SelectTrigger className={inputWidth}>
+                <SelectValue placeholder="Todos los orígenes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los orígenes</SelectItem>
+                <SelectItem value="MANUAL_FORM">Manual</SelectItem>
+                <SelectItem value="TEXT_QUICK_CAPTURE">Captura rápida</SelectItem>
+                <SelectItem value="PDF_IMPORT">Importación PDF</SelectItem>
+                <SelectItem value="EMAIL_IMPORT">Correo electrónico</SelectItem>
               </SelectContent>
             </Select>
 
