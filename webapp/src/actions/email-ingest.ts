@@ -161,6 +161,22 @@ export async function deactivateIngestAddress(): Promise<ActionResult<null>> {
   return { success: true, data: null };
 }
 
+export async function clearGmailVerification(): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("email_ingest_addresses")
+    .update({ gmail_verification_url: null, gmail_verification_at: null })
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("email-ingest", "zeta");
+  return { success: true, data: null };
+}
+
 export async function approveEmailTransaction(
   pendingId: string
 ): Promise<ActionResult<null>> {

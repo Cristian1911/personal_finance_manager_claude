@@ -15,12 +15,16 @@ const RATE_LIMIT_PER_DAY = 100;
 type ResendEmailPayload = {
   type: string;
   data: {
+    email_id: string;
     from: string;
     to: string[];
     subject: string;
-    text: string;
-    html: string;
   };
+};
+
+type ResendEmailContent = {
+  text: string | null;
+  html: string | null;
 };
 
 type LogStatus =
@@ -97,6 +101,41 @@ async function checkRateLimit(userId: string): Promise<boolean> {
   return (count ?? 0) < RATE_LIMIT_PER_DAY;
 }
 
+// ── Fetch email content from Resend API ─────────────────────────────────────
+
+async function fetchEmailContent(emailId: string): Promise<ResendEmailContent | null> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("[email-ingest] RESEND_API_KEY not set — cannot fetch email content");
+    return null;
+  }
+
+  const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+
+  if (!res.ok) {
+    console.error(`[email-ingest] Resend API error: ${res.status} ${res.statusText}`);
+    return null;
+  }
+
+  const data = await res.json();
+  return { text: data.text ?? null, html: data.html ?? null };
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#\d+;/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // ── Log helper ───────────────────────────────────────────────────────────────
 
 async function insertLog(params: {
@@ -143,8 +182,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const { from, to, text: emailText } = payload.data;
-  const rawBodyPreview = emailText?.slice(0, 500) ?? null;
+  const { from, to, email_id: emailId } = payload.data;
+
+  // Webhook payload has metadata only — fetch full email content from Resend API
+  const emailContent = await fetchEmailContent(emailId);
+  const emailText = emailContent?.text ?? null;
+  const emailHtml = emailContent?.html ?? null;
+  // Prefer plain text; fall back to stripped HTML
+  const emailBody = emailText || (emailHtml ? stripHtml(emailHtml) : "");
+  const rawBodyPreview = emailBody?.slice(0, 500) ?? null;
 
   // 3. Extract address key from recipient (e.g. "u_abc123@domain.com" → "u_abc123")
   const recipientEmail = to?.[0] ?? "";
@@ -186,8 +232,37 @@ export async function POST(request: NextRequest) {
 
   const { id: emailIngestId, user_id: userId, account_id: accountId, auto_import: autoImport, allowed_sender: allowedSender } = ingestAddress;
 
-  // 5. Validate sender — accept bank notifications or the user's personal forwarding email
+  // 5. Detect Gmail forwarding verification emails
   const fromLower = from.toLowerCase();
+  if (fromLower.includes("forwarding-noreply@google.com")) {
+    const emailContent = emailBody || emailHtml || "";
+    const verifyMatch = emailContent.match(
+      /https:\/\/mail\.google\.com\/mail\/vf-[^\s"<>]+/
+    );
+    if (verifyMatch) {
+      await admin
+        .from("email_ingest_addresses")
+        .update({
+          gmail_verification_url: verifyMatch[0],
+          gmail_verification_at: new Date().toISOString(),
+        })
+        .eq("id", emailIngestId)
+        .eq("user_id", userId);
+    }
+    await insertLog({
+      userId,
+      emailIngestId,
+      fromAddress: from,
+      status: "queued",
+      rawBody: rawBodyPreview,
+      errorMessage: verifyMatch
+        ? "Gmail verification URL captured"
+        : "Gmail verification email received but no URL found",
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  // 6. Validate sender — accept bank notifications or the user's personal forwarding email
   const isBankSender = fromLower.includes(ALLOWED_SENDER);
   const isAllowedSender = allowedSender && fromLower.includes(allowedSender.toLowerCase());
   if (!isBankSender && !isAllowedSender) {
@@ -202,7 +277,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // 6. Rate limit: max 100 emails/day/user
+  // 7. Rate limit: max 100 emails/day/user
   const withinLimit = await checkRateLimit(userId);
   if (!withinLimit) {
     await insertLog({
@@ -217,7 +292,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 7. Parse email body
-  const parsed = parseBancolombiaEmail(emailText ?? "");
+  const parsed = parseBancolombiaEmail(emailBody);
 
   if (!parsed) {
     await insertLog({
@@ -230,6 +305,14 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ ok: true });
   }
+
+  // Clear Gmail verification URL now that real emails are flowing
+  await admin
+    .from("email_ingest_addresses")
+    .update({ gmail_verification_url: null, gmail_verification_at: null })
+    .eq("id", emailIngestId)
+    .eq("user_id", userId)
+    .not("gmail_verification_url", "is", null);
 
   // 8. Compute idempotency key
   const idempotencyKey = await computeIdempotencyKey({
@@ -312,7 +395,7 @@ export async function POST(request: NextRequest) {
     email_ingest_id: emailIngestId,
     idempotency_key: idempotencyKey,
     parsed_data: parsed as unknown as Json,
-    raw_body: emailText ?? "",
+    raw_body: emailBody,
     status: "pending",
     suggested_account_id: accountId ?? null,
   });

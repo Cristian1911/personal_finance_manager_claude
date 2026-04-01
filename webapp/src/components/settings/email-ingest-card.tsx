@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Mail, Copy, Check, PowerOff, Loader2 } from "lucide-react";
+import { Mail, Copy, Check, PowerOff, Loader2, ExternalLink, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   generateIngestAddress,
   updateIngestSettings,
   deactivateIngestAddress,
+  clearGmailVerification,
 } from "@/actions/email-ingest";
 import { cn } from "@/lib/utils";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
@@ -155,6 +156,55 @@ export function EmailIngestCard({ accounts, initialAddress }: EmailIngestCardPro
                 </Button>
               </div>
             </div>
+
+            {/* Gmail verification banner */}
+            {address.gmail_verification_url && (
+              <div className="rounded-lg border border-z-brass/30 bg-z-brass/5 px-3 py-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="size-4 text-z-brass mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-z-brass">
+                      Verificación de Gmail pendiente
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Gmail necesita que confirmes el reenvío. Haz clic en el enlace para activar
+                      el reenvío automático de correos a Zeta.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <a
+                    href={address.gmail_verification_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(BRASS_BUTTON_CLASS, "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium")}
+                  >
+                    <ExternalLink className="size-3.5" />
+                    Confirmar reenvío
+                  </a>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs text-muted-foreground"
+                    disabled={isPending}
+                    onClick={() => {
+                      startTransition(async () => {
+                        const result = await clearGmailVerification();
+                        if (result.success) {
+                          setAddress((prev) =>
+                            prev
+                              ? { ...prev, gmail_verification_url: null, gmail_verification_at: null }
+                              : prev
+                          );
+                        }
+                      });
+                    }}
+                  >
+                    Ya lo confirmé
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Instrucciones */}
             <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2.5 text-xs leading-5 text-muted-foreground">

@@ -603,6 +603,8 @@ export type Database = {
           allowed_sender: string | null
           auto_import: boolean
           created_at: string
+          gmail_verification_at: string | null
+          gmail_verification_url: string | null
           id: string
           is_active: boolean
           user_id: string
@@ -613,6 +615,8 @@ export type Database = {
           allowed_sender?: string | null
           auto_import?: boolean
           created_at?: string
+          gmail_verification_at?: string | null
+          gmail_verification_url?: string | null
           id?: string
           is_active?: boolean
           user_id: string
@@ -623,6 +627,8 @@ export type Database = {
           allowed_sender?: string | null
           auto_import?: boolean
           created_at?: string
+          gmail_verification_at?: string | null
+          gmail_verification_url?: string | null
           id?: string
           is_active?: boolean
           user_id?: string
