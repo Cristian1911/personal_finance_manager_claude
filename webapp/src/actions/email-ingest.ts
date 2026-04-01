@@ -6,7 +6,7 @@ import { autoCategorize } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import type { ActionResult } from "@/types/actions";
-import type { EmailIngestAddress, EmailIngestLog, PendingEmailTransaction } from "@/types/domain";
+import type { EmailIngestAddress, EmailIngestLog, PendingEmailTransaction, UnrecognizedEmail } from "@/types/domain";
 
 // Shape of the parsed_data JSONB column in pending_email_transactions
 interface ParsedEmailTransaction {
@@ -85,6 +85,40 @@ export async function getEmailIngestLogs(): Promise<ActionResult<EmailIngestLog[
 
   if (error) return { success: false, error: error.message };
   return { success: true, data: (data ?? []) as EmailIngestLog[] };
+}
+
+export async function getUnrecognizedEmails(): Promise<
+  ActionResult<UnrecognizedEmail[]>
+> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data, error } = await supabase
+    .from("unrecognized_emails")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: (data ?? []) as UnrecognizedEmail[] };
+}
+
+export async function dismissUnrecognizedEmail(
+  id: string
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("unrecognized_emails")
+    .update({ status: "dismissed" })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: null };
 }
 
 // ─── Mutation actions ─────────────────────────────────────────────────────────

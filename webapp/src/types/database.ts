@@ -1429,6 +1429,57 @@ export type Database = {
           },
         ]
       }
+      unrecognized_emails: {
+        Row: {
+          created_at: string
+          email_ingest_id: string | null
+          from_address: string
+          html_body: string | null
+          id: string
+          status: string
+          subject: string | null
+          text_body: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_ingest_id?: string | null
+          from_address: string
+          html_body?: string | null
+          id?: string
+          status?: string
+          subject?: string | null
+          text_body?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_ingest_id?: string | null
+          from_address?: string
+          html_body?: string | null
+          id?: string
+          status?: string
+          subject?: string | null
+          text_body?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unrecognized_emails_email_ingest_id_fkey"
+            columns: ["email_ingest_id"]
+            isOneToOne: false
+            referencedRelation: "email_ingest_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unrecognized_emails_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

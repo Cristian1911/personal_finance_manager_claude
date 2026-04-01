@@ -11,6 +11,7 @@ export type RecurringTemplate = Tables<"recurring_transaction_templates">;
 export type EmailIngestAddress = Tables<"email_ingest_addresses">;
 export type PendingEmailTransaction = Tables<"pending_email_transactions">;
 export type EmailIngestLog = Tables<"email_ingest_logs">;
+export type UnrecognizedEmail = Tables<"unrecognized_emails">;
 export type FinancialReminder = Tables<"financial_reminders">;
 
 // Enum types

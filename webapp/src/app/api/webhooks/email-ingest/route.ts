@@ -295,6 +295,17 @@ export async function POST(request: NextRequest) {
   const parsed = parseBancolombiaEmail(emailBody);
 
   if (!parsed) {
+    // Store full email for parser improvement review
+    await admin.from("unrecognized_emails").insert({
+      user_id: userId,
+      email_ingest_id: emailIngestId,
+      from_address: from,
+      subject: payload.data.subject ?? null,
+      text_body: emailText,
+      html_body: emailHtml,
+      status: "pending",
+    });
+
     await insertLog({
       userId,
       emailIngestId,
