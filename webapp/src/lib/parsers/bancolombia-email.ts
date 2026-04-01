@@ -269,14 +269,17 @@ export function parseBancolombiaEmail(
     return null;
   }
 
+  // Collapse newlines into spaces — email clients often wrap long lines
+  const normalized = body.replace(/\n+/g, " ").replace(/\s+/g, " ");
+
   for (const pattern of PATTERNS) {
-    const match = body.match(pattern.regex);
+    const match = normalized.match(pattern.regex);
     if (match) {
       const parsed = pattern.extract(match);
       if (parsed) {
         // Extract raw_line: everything after "Bancolombia: " up to the first sentence end
-        const rawLineMatch = body.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|¿Dudas|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|$)/);
-        const raw_line = rawLineMatch ? rawLineMatch[1].trim() : body;
+        const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|¿Dudas|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|$)/);
+        const raw_line = rawLineMatch ? rawLineMatch[1].trim() : normalized;
         return { ...parsed, raw_line };
       }
     }
