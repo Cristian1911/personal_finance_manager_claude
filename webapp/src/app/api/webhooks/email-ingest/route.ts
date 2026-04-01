@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
   // 4. Look up email_ingest_addresses by address_key + is_active = true
   const { data: ingestAddress } = await admin
     .from("email_ingest_addresses")
-    .select("id, user_id, account_id, auto_import")
+    .select("id, user_id, account_id, auto_import, allowed_sender")
     .eq("address_key", addressKey)
     .eq("is_active", true)
     .single();
@@ -184,10 +184,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const { id: emailIngestId, user_id: userId, account_id: accountId, auto_import: autoImport } = ingestAddress;
+  const { id: emailIngestId, user_id: userId, account_id: accountId, auto_import: autoImport, allowed_sender: allowedSender } = ingestAddress;
 
-  // 5. Validate sender
-  if (!from.toLowerCase().includes(ALLOWED_SENDER)) {
+  // 5. Validate sender — accept bank notifications or the user's personal forwarding email
+  const fromLower = from.toLowerCase();
+  const isBankSender = fromLower.includes(ALLOWED_SENDER);
+  const isAllowedSender = allowedSender && fromLower.includes(allowedSender.toLowerCase());
+  if (!isBankSender && !isAllowedSender) {
     await insertLog({
       userId,
       emailIngestId,

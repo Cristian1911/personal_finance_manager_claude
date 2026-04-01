@@ -122,6 +122,7 @@ export async function generateIngestAddress(): Promise<ActionResult<EmailIngestA
 export async function updateIngestSettings(params: {
   accountId: string | null;
   autoImport: boolean;
+  allowedSender?: string | null;
 }): Promise<ActionResult<EmailIngestAddress>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
@@ -131,6 +132,7 @@ export async function updateIngestSettings(params: {
     .update({
       account_id: params.accountId,
       auto_import: params.autoImport,
+      ...(params.allowedSender !== undefined && { allowed_sender: params.allowedSender || null }),
     })
     .eq("user_id", user.id)
     .eq("is_active", true)

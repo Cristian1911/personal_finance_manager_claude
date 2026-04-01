@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Mail, Copy, Check, PowerOff, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -188,6 +189,33 @@ export function EmailIngestCard({ accounts, initialAddress }: EmailIngestCardPro
               </Select>
               <p className="text-xs text-muted-foreground">
                 Las transacciones se asignarán a esta cuenta si no se detecta otra automáticamente.
+              </p>
+            </div>
+
+            {/* Allowed sender for forwarding */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Correo de reenvío (opcional)</Label>
+              <Input
+                type="email"
+                placeholder="tucorreo@gmail.com"
+                defaultValue={address.allowed_sender ?? ""}
+                className="h-9 text-sm"
+                disabled={isPending}
+                onBlur={(e) => {
+                  const value = e.target.value.trim();
+                  if (value === (address.allowed_sender ?? "")) return;
+                  startTransition(async () => {
+                    const result = await updateIngestSettings({
+                      accountId: address.account_id ?? null,
+                      autoImport: address.auto_import ?? false,
+                      allowedSender: value || null,
+                    });
+                    if (result.success) setAddress(result.data);
+                  });
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Si reenvías los correos de tu banco desde tu correo personal, ingresa esa dirección aquí para que Zeta los acepte.
               </p>
             </div>
 

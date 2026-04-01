@@ -600,6 +600,7 @@ export type Database = {
         Row: {
           account_id: string | null
           address_key: string
+          allowed_sender: string | null
           auto_import: boolean
           created_at: string
           id: string
@@ -609,6 +610,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           address_key: string
+          allowed_sender?: string | null
           auto_import?: boolean
           created_at?: string
           id?: string
@@ -618,6 +620,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           address_key?: string
+          allowed_sender?: string | null
           auto_import?: boolean
           created_at?: string
           id?: string
