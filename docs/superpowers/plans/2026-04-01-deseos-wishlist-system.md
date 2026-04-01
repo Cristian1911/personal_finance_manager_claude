@@ -97,11 +97,8 @@ CREATE INDEX idx_wishlist_items_user_active
   ON wishlist_items (user_id, created_at DESC)
   WHERE status = 'wishlist';
 
--- Auto-update updated_at
-CREATE TRIGGER trigger_wishlist_items_updated_at
-  BEFORE UPDATE ON wishlist_items
-  FOR EACH ROW
-  EXECUTE FUNCTION moddatetime(updated_at);
+-- No moddatetime trigger — updated_at is set explicitly in server actions
+-- (consistent with financial_reminders pattern, avoids extension schema issues)
 
 -- Wishlist reflections: post-purchase feedback
 CREATE TABLE wishlist_reflections (
@@ -111,8 +108,12 @@ CREATE TABLE wishlist_reflections (
   worth_it boolean NOT NULL,
   rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
   note text,
+  reflection_stage text NOT NULL CHECK (reflection_stage IN ('14_day', '60_day')),
   days_since_purchase integer NOT NULL,
-  reflected_at timestamptz NOT NULL DEFAULT now()
+  reflected_at timestamptz NOT NULL DEFAULT now(),
+
+  -- Idempotency: one reflection per stage per item
+  UNIQUE (wishlist_item_id, reflection_stage)
 );
 
 ALTER TABLE wishlist_reflections ENABLE ROW LEVEL SECURITY;
@@ -125,8 +126,6 @@ CREATE POLICY "Users manage own reflections"
 CREATE INDEX idx_wishlist_reflections_item
   ON wishlist_reflections (wishlist_item_id);
 ```
-
-Note: The `moddatetime` extension is already enabled in the Supabase project. If it's not, use the same approach as the `financial_reminders` migration (no trigger, update manually in server actions).
 
 - [ ] **Step 2: Push the migration**
 
@@ -199,6 +198,7 @@ export const enrichWishlistItemSchema = z.object({
 // Post-purchase reflection
 export const reflectionSchema = z.object({
   wishlist_item_id: uuidStr("ID inválido"),
+  reflection_stage: z.enum(["14_day", "60_day"]),
   worth_it: z.boolean(),
   rating: z.coerce.number().int().min(1).max(5),
   note: z.string().max(500).optional(),
@@ -338,6 +338,7 @@ export async function enrichWishlistItem(
       ...fields,
       enriched: true,
       enriched_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
     .eq("id", id)
     .eq("user_id", user.id);
@@ -379,6 +380,7 @@ export async function markWishlistItemBought(
       status: "bought",
       bought_at: new Date().toISOString(),
       transaction_id: transactionId ?? null,
+      updated_at: new Date().toISOString(),
     })
     .eq("id", id)
     .eq("user_id", user.id)
@@ -405,12 +407,14 @@ git commit -m "feat(deseos): add CRUD server actions for wishlist items"
 
 ---
 
-## Task 4: Server Actions — Scoring
+## Task 4: Server Actions — Scoring (Fail-Closed, Shared Snapshot)
 
 **Files:**
 - Modify: `webapp/src/actions/wishlist.ts`
 
-This task adds the scoring logic that re-uses `analyzePurchaseDecision()` from `@zeta/shared`. The data assembly follows the exact pattern from `webapp/src/actions/purchase-decision.ts`.
+**Design:** The expensive part of scoring is fetching the financial context (accounts, transactions, budgets, upcoming payments). This is the same for every item. We extract it into a `FinancialSnapshot` that's fetched once and reused. Scores are computed on read (page load), not cached stale. The cache fields (`last_score`, `last_verdict`) are updated as a side effect but never trusted as the source of truth for display.
+
+**Fail-closed:** If any dependency read fails, the item shows "No se pudo evaluar" instead of a stale/wrong score.
 
 - [ ] **Step 1: Add scoring imports and helpers**
 
@@ -423,6 +427,7 @@ import {
   computeDebtBalance,
   estimateMonthlyInterest,
   extractDebtAccounts,
+  type PurchaseDecisionResult,
   type PurchaseUrgency,
   type PurchaseFundingType,
 } from "@zeta/shared";
@@ -432,50 +437,57 @@ import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import type { Account } from "@/types/domain";
 ```
 
-- [ ] **Step 2: Add the scoreWishlistItem action**
+- [ ] **Step 2: Add the shared financial snapshot and scoring functions**
 
 Append to `webapp/src/actions/wishlist.ts`:
 
 ```typescript
 // ── Scoring ───────────────────────────────────────────────
 
+/** Shared financial context — fetched once, reused across all items */
+type FinancialSnapshot = {
+  accounts: Account[];
+  liquidCashAvailable: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  upcomingCommittedPayments: number;
+  daysToNearestPayment: number | null;
+  debtUtilizationPct: number | null;
+  monthlyDebtInterestCost: number;
+  activeDebtAccounts: ReturnType<typeof extractDebtAccounts>;
+  /** Per-category budget data. Key = category_id */
+  categoryBudgets: Map<string, { target: number; spent: number }>;
+};
+
 function getSelectedAccountAvailable(account: Account): number {
   if (account.account_type === "CREDIT_CARD") {
-    if (account.available_balance != null) {
+    if (account.available_balance != null)
       return Math.max(account.available_balance, 0);
-    }
-    if (account.credit_limit != null) {
+    if (account.credit_limit != null)
       return Math.max(account.credit_limit - computeDebtBalance(account), 0);
-    }
     return 0;
   }
   return Math.max(account.current_balance, 0);
 }
 
-export async function scoreWishlistItem(
-  id: string
-): Promise<ActionResult<{ score: number; verdict: string }>> {
+const ACCOUNT_TYPE_MAP: Record<string, "CREDIT_CARD" | "SAVINGS" | "INVESTMENT" | "CHECKING" | "OTHER"> = {
+  CREDIT_CARD: "CREDIT_CARD",
+  SAVINGS: "SAVINGS",
+  INVESTMENT: "INVESTMENT",
+  CHECKING: "CHECKING",
+};
+
+/**
+ * Fetch the financial snapshot once. Returns null if any critical query fails.
+ * Fail-closed: incomplete data → no score, not a wrong score.
+ */
+export async function getFinancialSnapshot(): Promise<FinancialSnapshot | null> {
   const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
-
-  // Fetch the item
-  const { data: item, error: itemError } = await supabase
-    .from("wishlist_items")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (itemError || !item)
-    return { success: false, error: "Deseo no encontrado" };
-
-  if (!item.enriched)
-    return { success: false, error: "Completa la información del deseo primero" };
+  if (!user) return null;
 
   const targetMonth = parseMonth(undefined);
 
-  // Fetch financial context in parallel (same pattern as purchase-decision.ts)
-  const [accountsRes, monthTxRes, categoryBudgetRes, categorySpentRes, upcomingPayments, upcomingRecurrences] =
+  const [accountsRes, monthTxRes, upcomingPayments, upcomingRecurrences] =
     await Promise.all([
       supabase
         .from("accounts")
@@ -490,36 +502,15 @@ export async function scoreWishlistItem(
         .gte("transaction_date", monthStartStr(targetMonth))
         .lte("transaction_date", monthEndStr(targetMonth))
         .is("reconciled_into_transaction_id", null),
-      item.category_id
-        ? supabase
-            .from("budgets")
-            .select("amount")
-            .eq("category_id", item.category_id)
-            .eq("period", "monthly")
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
-      item.category_id
-        ? supabase
-            .from("transactions")
-            .select("amount")
-            .eq("direction", "OUTFLOW")
-            .eq("is_excluded", false)
-            .eq("category_id", item.category_id)
-            .gte("transaction_date", monthStartStr(targetMonth))
-            .lte("transaction_date", monthEndStr(targetMonth))
-            .is("reconciled_into_transaction_id", null)
-        : Promise.resolve({ data: null, error: null }),
       getUpcomingPayments(),
       getUpcomingRecurrences(30),
     ]);
 
-  const accounts = (accountsRes.data ?? []) as Account[];
-  const selectedAccount = item.account_id
-    ? accounts.find((a) => a.id === item.account_id)
-    : accounts.find((a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN");
+  // Fail-closed: if accounts or transactions query failed, abort
+  if (accountsRes.error || monthTxRes.error) return null;
 
-  if (!selectedAccount)
-    return { success: false, error: "No se encontró una cuenta válida para evaluar" };
+  const accounts = (accountsRes.data ?? []) as Account[];
+  if (accounts.length === 0) return null;
 
   const debtAccounts = extractDebtAccounts(accounts);
   const totalCreditLimit = debtAccounts
@@ -528,23 +519,13 @@ export async function scoreWishlistItem(
   const totalCreditDebt = debtAccounts
     .filter((a) => a.type === "CREDIT_CARD")
     .reduce((sum, a) => sum + a.balance, 0);
-  const monthlyDebtInterestCost = debtAccounts.reduce(
-    (sum, a) => sum + estimateMonthlyInterest(a.balance, a.interestRate),
-    0
-  );
 
-  const monthTransactions = (monthTxRes.data ?? []) as { amount: number; direction: "INFLOW" | "OUTFLOW"; account_id: string }[];
+  const monthTransactions = (monthTxRes.data ?? []) as {
+    amount: number;
+    direction: "INFLOW" | "OUTFLOW";
+    account_id: string;
+  }[];
   const debtAccountIds = new Set(debtAccounts.map((a) => a.id));
-  const monthlyIncome = monthTransactions
-    .filter((tx) => tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id))
-    .reduce((sum, tx) => sum + tx.amount, 0);
-  const monthlyExpenses = monthTransactions
-    .filter((tx) => tx.direction === "OUTFLOW")
-    .reduce((sum, tx) => sum + tx.amount, 0);
-
-  const liquidCashAvailable = accounts
-    .filter((a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN")
-    .reduce((sum, a) => sum + Math.max(a.current_balance, 0), 0);
 
   const recurringCommitments = upcomingRecurrences
     .filter(
@@ -554,13 +535,10 @@ export async function scoreWishlistItem(
         r.template.account.account_type !== "LOAN"
     )
     .reduce((sum, r) => sum + r.template.amount, 0);
-
   const statementCommitments = upcomingPayments.reduce(
     (sum, p) => sum + p.total_payment_due,
     0
   );
-
-  const upcomingCommittedPayments = recurringCommitments + statementCommitments;
 
   const paymentDates = [
     ...upcomingPayments.map((p) => p.payment_due_date),
@@ -568,95 +546,229 @@ export async function scoreWishlistItem(
   ];
   const now = new Date();
   const daysToNearest = paymentDates
-    .map((d) => Math.ceil((new Date(d).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+    .map((d) =>
+      Math.ceil((new Date(d).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    )
     .filter((d) => d >= 0);
-  const daysToNearestPayment = daysToNearest.length > 0 ? Math.min(...daysToNearest) : null;
 
-  const budgetTarget = categoryBudgetRes.data?.amount ?? null;
-  const budgetSpent = ((categorySpentRes.data ?? []) as { amount: number }[]).reduce(
-    (sum, tx) => sum + tx.amount,
-    0
-  );
-  const budgetRemaining = budgetTarget == null ? null : Number(budgetTarget) - budgetSpent;
-
-  const accountTypeMap: Record<string, "CREDIT_CARD" | "SAVINGS" | "INVESTMENT" | "CHECKING" | "OTHER"> = {
-    CREDIT_CARD: "CREDIT_CARD",
-    SAVINGS: "SAVINGS",
-    INVESTMENT: "INVESTMENT",
-    CHECKING: "CHECKING",
+  return {
+    accounts,
+    liquidCashAvailable: accounts
+      .filter((a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN")
+      .reduce((sum, a) => sum + Math.max(a.current_balance, 0), 0),
+    monthlyIncome: monthTransactions
+      .filter((tx) => tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id))
+      .reduce((sum, tx) => sum + tx.amount, 0),
+    monthlyExpenses: monthTransactions
+      .filter((tx) => tx.direction === "OUTFLOW")
+      .reduce((sum, tx) => sum + tx.amount, 0),
+    upcomingCommittedPayments: recurringCommitments + statementCommitments,
+    daysToNearestPayment: daysToNearest.length > 0 ? Math.min(...daysToNearest) : null,
+    debtUtilizationPct:
+      totalCreditLimit > 0 ? calcUtilization(totalCreditDebt, totalCreditLimit) : null,
+    monthlyDebtInterestCost: debtAccounts.reduce(
+      (sum, a) => sum + estimateMonthlyInterest(a.balance, a.interestRate),
+      0
+    ),
+    activeDebtAccounts: debtAccounts.filter((a) => a.balance > 0),
+    categoryBudgets: new Map(), // Populated per-item below
   };
+}
+
+/** Score a single item against a pre-fetched financial snapshot. Returns null on failure. */
+export async function scoreItemWithSnapshot(
+  item: WishlistItem,
+  snapshot: FinancialSnapshot
+): Promise<{ score: number; verdict: string } | null> {
+  if (!item.enriched) return null;
+
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return null;
+
+  const selectedAccount = item.account_id
+    ? snapshot.accounts.find((a) => a.id === item.account_id)
+    : snapshot.accounts.find(
+        (a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN"
+      );
+
+  if (!selectedAccount) return null;
+
+  // Per-item: category budget lookup (the only item-specific query)
+  let budgetRemaining: number | null = null;
+  if (item.category_id) {
+    const targetMonth = parseMonth(undefined);
+    const [budgetRes, spentRes] = await Promise.all([
+      supabase
+        .from("budgets")
+        .select("amount")
+        .eq("category_id", item.category_id)
+        .eq("period", "monthly")
+        .maybeSingle(),
+      supabase
+        .from("transactions")
+        .select("amount")
+        .eq("direction", "OUTFLOW")
+        .eq("is_excluded", false)
+        .eq("category_id", item.category_id)
+        .gte("transaction_date", monthStartStr(targetMonth))
+        .lte("transaction_date", monthEndStr(targetMonth))
+        .is("reconciled_into_transaction_id", null),
+    ]);
+
+    // Fail-closed on category budget queries too
+    if (budgetRes.error || spentRes.error) return null;
+
+    const budgetTarget = budgetRes.data?.amount ?? null;
+    const budgetSpent = ((spentRes.data ?? []) as { amount: number }[]).reduce(
+      (sum, tx) => sum + tx.amount,
+      0
+    );
+    budgetRemaining = budgetTarget == null ? null : Number(budgetTarget) - budgetSpent;
+  }
 
   const result = analyzePurchaseDecision({
     amount: Number(item.amount),
     urgency: (item.urgency ?? "IMPULSE") as PurchaseUrgency,
     fundingType: (item.funding_type ?? "ONE_TIME") as PurchaseFundingType,
     installments: item.installments ?? null,
-    liquidCashAvailable,
+    liquidCashAvailable: snapshot.liquidCashAvailable,
     selectedAccountAvailable: getSelectedAccountAvailable(selectedAccount),
-    selectedAccountType: accountTypeMap[selectedAccount.account_type] ?? "OTHER",
+    selectedAccountType: ACCOUNT_TYPE_MAP[selectedAccount.account_type] ?? "OTHER",
     selectedAccountCreditLimit: selectedAccount.credit_limit,
     selectedAccountCurrentDebt:
       selectedAccount.account_type === "CREDIT_CARD"
         ? computeDebtBalance(selectedAccount)
         : null,
-    monthlyIncome,
-    monthlyExpenses,
-    upcomingCommittedPayments,
-    daysToNearestPayment,
+    monthlyIncome: snapshot.monthlyIncome,
+    monthlyExpenses: snapshot.monthlyExpenses,
+    upcomingCommittedPayments: snapshot.upcomingCommittedPayments,
+    daysToNearestPayment: snapshot.daysToNearestPayment,
     budgetRemaining,
-    debtUtilizationPct:
-      totalCreditLimit > 0 ? calcUtilization(totalCreditDebt, totalCreditLimit) : null,
-    monthlyDebtInterestCost,
-    activeDebtAccounts: debtAccounts.filter((a) => a.balance > 0),
+    debtUtilizationPct: snapshot.debtUtilizationPct,
+    monthlyDebtInterestCost: snapshot.monthlyDebtInterestCost,
+    activeDebtAccounts: snapshot.activeDebtAccounts,
   });
 
+  // Persist score as side effect (best-effort, don't fail the read on write error)
   const previousScore = item.last_score;
   const newlyReady = previousScore != null && previousScore < 55 && result.score >= 55;
 
-  // Update the item with cached score
-  await supabase
+  const { error: updateError } = await supabase
     .from("wishlist_items")
     .update({
       last_score: result.score,
       last_verdict: result.verdict,
       last_scored_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       ...(newlyReady && !item.ready_at ? { ready_at: new Date().toISOString() } : {}),
     })
-    .eq("id", id)
+    .eq("id", item.id)
     .eq("user_id", user.id);
 
-  revalidateTag("wishlist", "zeta");
+  if (updateError) {
+    console.error("Failed to persist wishlist score:", updateError.message);
+    // Still return the computed score — display is correct even if cache update failed
+  }
 
-  return { success: true, data: { score: result.score, verdict: result.verdict } };
+  return { score: result.score, verdict: result.verdict };
 }
 
-export async function rescoreAllWishlistItems(): Promise<
-  ActionResult<{ scored: number; transitions: string[] }>
-> {
+/**
+ * Score all enriched wishlist items on read.
+ * Returns items with fresh scores attached. Used by the Deseos page and dashboard.
+ */
+export type ScoredWishlistItem = WishlistItem & {
+  freshScore: number | null;
+  freshVerdict: string | null;
+  scoreError: boolean;
+};
+
+export async function getWishlistItemsWithFreshScores(): Promise<ScoredWishlistItem[]> {
   const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  if (!user) return [];
 
   const { data: items } = await supabase
     .from("wishlist_items")
-    .select("id")
+    .select("*")
     .eq("user_id", user.id)
-    .eq("status", "wishlist")
-    .eq("enriched", true);
+    .order("status", { ascending: true })
+    .order("last_score", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
 
-  if (!items || items.length === 0)
-    return { success: true, data: { scored: 0, transitions: [] } };
+  if (!items || items.length === 0) return [];
 
-  const transitions: string[] = [];
-  let scored = 0;
+  // Only score active enriched items
+  const enrichedActive = items.filter((i) => i.status === "wishlist" && i.enriched);
 
-  for (const item of items) {
-    const result = await scoreWishlistItem(item.id);
-    if (result.success) {
-      scored++;
-    }
+  if (enrichedActive.length === 0) {
+    return items.map((i) => ({
+      ...i,
+      freshScore: i.last_score,
+      freshVerdict: i.last_verdict,
+      scoreError: false,
+    }));
   }
 
-  return { success: true, data: { scored, transitions } };
+  // Fetch snapshot once for all items
+  const snapshot = await getFinancialSnapshot();
+
+  if (!snapshot) {
+    // Snapshot failed — mark all items as score-error, show stale data
+    return items.map((i) => ({
+      ...i,
+      freshScore: i.last_score,
+      freshVerdict: i.last_verdict,
+      scoreError: i.enriched && i.status === "wishlist",
+    }));
+  }
+
+  // Score each enriched item against the shared snapshot
+  const scoreResults = new Map<string, { score: number; verdict: string } | null>();
+  for (const item of enrichedActive) {
+    const result = await scoreItemWithSnapshot(item, snapshot);
+    scoreResults.set(item.id, result);
+  }
+
+  revalidateTag("wishlist", "zeta");
+
+  return items.map((item) => {
+    const fresh = scoreResults.get(item.id);
+    return {
+      ...item,
+      freshScore: fresh?.score ?? item.last_score,
+      freshVerdict: fresh?.verdict ?? item.last_verdict,
+      scoreError: item.enriched && item.status === "wishlist" && fresh === null,
+    };
+  });
+}
+
+/** Score a single item (used by the enrichment flow's auto-score). */
+export async function scoreWishlistItem(
+  id: string
+): Promise<ActionResult<{ score: number; verdict: string }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: item, error: itemError } = await supabase
+    .from("wishlist_items")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (itemError || !item) return { success: false, error: "Deseo no encontrado" };
+  if (!item.enriched) return { success: false, error: "Completa la información primero" };
+
+  const snapshot = await getFinancialSnapshot();
+  if (!snapshot)
+    return { success: false, error: "No se pudo obtener tu contexto financiero. Intenta más tarde." };
+
+  const result = await scoreItemWithSnapshot(item, snapshot);
+  if (!result)
+    return { success: false, error: "No se pudo evaluar este deseo. Verifica la cuenta seleccionada." };
+
+  revalidateTag("wishlist", "zeta");
+  return { success: true, data: result };
 }
 ```
 
@@ -669,7 +781,7 @@ Expected: Build passes.
 
 ```bash
 git add webapp/src/actions/wishlist.ts
-git commit -m "feat(deseos): add purchase decision scoring for wishlist items"
+git commit -m "feat(deseos): add fail-closed scoring with shared financial snapshot"
 ```
 
 ---
@@ -698,38 +810,58 @@ export async function submitReflection(
   if (!parsed.success)
     return { success: false, error: parsed.error.issues[0].message };
 
-  // Get the item to compute days_since_purchase
-  const { data: item } = await supabase
+  // Get the item to compute days_since_purchase and validate state
+  const { data: item, error: itemError } = await supabase
     .from("wishlist_items")
     .select("bought_at, status")
     .eq("id", parsed.data.wishlist_item_id)
     .eq("user_id", user.id)
     .single();
 
-  if (!item || !item.bought_at)
+  if (itemError || !item || !item.bought_at)
     return { success: false, error: "Este deseo no ha sido marcado como comprado" };
+
+  if (item.status !== "bought" && item.status !== "reflected")
+    return { success: false, error: "Este deseo no está en un estado válido para reflexionar" };
 
   const daysSincePurchase = Math.floor(
     (Date.now() - new Date(item.bought_at).getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  const { error } = await supabase.from("wishlist_reflections").insert({
+  // Idempotent insert: UNIQUE (wishlist_item_id, reflection_stage) handles retries
+  const { error: insertError } = await supabase.from("wishlist_reflections").insert({
     user_id: user.id,
     wishlist_item_id: parsed.data.wishlist_item_id,
+    reflection_stage: parsed.data.reflection_stage,
     worth_it: parsed.data.worth_it,
     rating: parsed.data.rating,
     note: parsed.data.note ?? null,
     days_since_purchase: daysSincePurchase,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (insertError) {
+    // 23505 = unique violation → already reflected for this stage (idempotent)
+    if (insertError.code === "23505") {
+      return { success: true, data: null };
+    }
+    return { success: false, error: insertError.message };
+  }
 
-  // Update item status to reflected
-  await supabase
+  // Update item status — only if this advances the state
+  const { error: updateError } = await supabase
     .from("wishlist_items")
-    .update({ status: "reflected" })
+    .update({
+      status: "reflected",
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", parsed.data.wishlist_item_id)
     .eq("user_id", user.id);
+
+  if (updateError) {
+    // Reflection was saved but status update failed — log and report
+    console.error("Reflection saved but status update failed:", updateError.message);
+    return { success: false, error: "Tu reflexión se guardó pero hubo un error actualizando el estado. Intenta de nuevo." };
+  }
 
   revalidateTag("wishlist", "zeta");
   return { success: true, data: null };
@@ -1012,7 +1144,7 @@ Create `webapp/src/app/(dashboard)/deseos/page.tsx`:
 ```tsx
 import { connection } from "next/server";
 import {
-  getWishlistItems,
+  getWishlistItemsWithFreshScores,
   getActiveNudges,
   getWishlistInsights,
   getPendingReflections,
@@ -1026,7 +1158,7 @@ export default async function DeseosPage() {
 
   const [items, nudges, insights, pendingReflections, accountsResult, currency] =
     await Promise.all([
-      getWishlistItems(),
+      getWishlistItemsWithFreshScores(),
       getActiveNudges(),
       getWishlistInsights(),
       getPendingReflections(),
@@ -1078,14 +1210,14 @@ import { DeseosNudgeBanner } from "./deseos-nudge-banner";
 import { DeseosInsights } from "./deseos-insights";
 import { DeseosReflectionCard } from "./deseos-reflection-card";
 import { DeseosBoughtSection } from "./deseos-bought-section";
-import type { WishlistItem, Account, CurrencyCode } from "@/types/domain";
-import type { WishlistNudge, WishlistInsight } from "@/actions/wishlist";
+import type { Account, CurrencyCode } from "@/types/domain";
+import type { WishlistNudge, WishlistInsight, ScoredWishlistItem } from "@/actions/wishlist";
 
 interface DeseosListProps {
-  items: WishlistItem[];
+  items: ScoredWishlistItem[];
   nudges: WishlistNudge[];
   insights: WishlistInsight[];
-  pendingReflections: WishlistItem[];
+  pendingReflections: ScoredWishlistItem[];
   accounts: Account[];
   currency: CurrencyCode;
 }
@@ -1107,7 +1239,7 @@ export function DeseosList({
   const sortedActive = [...activeItems].sort((a, b) => {
     if (!a.enriched && b.enriched) return 1;
     if (a.enriched && !b.enriched) return -1;
-    return (b.last_score ?? -1) - (a.last_score ?? -1);
+    return (b.freshScore ?? -1) - (a.freshScore ?? -1);
   });
 
   return (
@@ -1161,7 +1293,8 @@ import { Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { deleteWishlistItem, markWishlistItemBought, scoreWishlistItem } from "@/actions/wishlist";
 import { DeseosEnrichDrawer } from "./deseos-enrich-drawer";
-import type { WishlistItem, Account, CurrencyCode } from "@/types/domain";
+import type { Account, CurrencyCode } from "@/types/domain";
+import type { ScoredWishlistItem } from "@/actions/wishlist";
 
 function getScoreColor(score: number | null): { dot: string; text: string; bg: string; border: string } {
   if (score == null) return { dot: "bg-muted-foreground/40", text: "text-muted-foreground", bg: "bg-muted/20", border: "border-white/6" };
@@ -1201,7 +1334,7 @@ const desireTypeLabels: Record<string, string> = {
 };
 
 interface DeseosItemProps {
-  item: WishlistItem;
+  item: ScoredWishlistItem;
   accounts: Account[];
   currency: CurrencyCode;
 }
@@ -1209,7 +1342,8 @@ interface DeseosItemProps {
 export function DeseosItem({ item, accounts, currency }: DeseosItemProps) {
   const [isPending, startTransition] = useTransition();
   const [enrichOpen, setEnrichOpen] = useState(false);
-  const colors = getScoreColor(item.enriched ? item.last_score : null);
+  const score = item.freshScore;
+  const colors = getScoreColor(item.enriched ? score : null);
 
   function handleDelete() {
     startTransition(async () => {
@@ -1228,10 +1362,6 @@ export function DeseosItem({ item, accounts, currency }: DeseosItemProps) {
       await scoreWishlistItem(item.id);
     });
   }
-
-  const staleScore =
-    item.last_scored_at &&
-    Date.now() - new Date(item.last_scored_at).getTime() > 24 * 60 * 60 * 1000;
 
   return (
     <>
@@ -1256,10 +1386,16 @@ export function DeseosItem({ item, accounts, currency }: DeseosItemProps) {
             <p className="text-xs text-muted-foreground">
               {formatCurrency(Number(item.amount), item.currency_code as CurrencyCode)} ·{" "}
               {getDesireAge(item.created_at)}
-              {item.enriched && item.last_score != null && (
+              {item.enriched && score != null && (
                 <>
                   {" · "}
-                  <span className={colors.text}>{getVerdictText(item.last_score)}</span>
+                  <span className={colors.text}>{getVerdictText(score)}</span>
+                </>
+              )}
+              {item.scoreError && (
+                <>
+                  {" · "}
+                  <span className="text-muted-foreground">No se pudo evaluar</span>
                 </>
               )}
             </p>
@@ -1275,7 +1411,7 @@ export function DeseosItem({ item, accounts, currency }: DeseosItemProps) {
                 Completar
               </button>
             )}
-            {item.enriched && item.last_score != null && item.last_score >= 55 && (
+            {item.enriched && score != null && score >= 55 && (
               <button
                 onClick={handleBuy}
                 disabled={isPending}
@@ -1284,18 +1420,18 @@ export function DeseosItem({ item, accounts, currency }: DeseosItemProps) {
                 Comprado
               </button>
             )}
-            {item.enriched && (staleScore || item.last_score == null) && (
+            {item.scoreError && (
               <button
                 onClick={handleScore}
                 disabled={isPending}
                 className="rounded-md bg-z-surface-3 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
-                Evaluar
+                Reintentar
               </button>
             )}
-            {item.enriched && item.last_score != null && (
+            {item.enriched && score != null && (
               <span className={`text-xs font-semibold ${colors.text}`}>
-                {item.last_score}
+                {score}
               </span>
             )}
             <button
@@ -1737,10 +1873,11 @@ import { useState, useTransition } from "react";
 import { Star } from "lucide-react";
 import { submitReflection } from "@/actions/wishlist";
 import { formatCurrency } from "@/lib/utils/currency";
-import type { WishlistItem, CurrencyCode } from "@/types/domain";
+import type { CurrencyCode } from "@/types/domain";
+import type { ScoredWishlistItem } from "@/actions/wishlist";
 
 interface DeseosReflectionCardProps {
-  item: WishlistItem;
+  item: ScoredWishlistItem;
 }
 
 export function DeseosReflectionCard({ item }: DeseosReflectionCardProps) {
@@ -1763,11 +1900,15 @@ export function DeseosReflectionCard({ item }: DeseosReflectionCardProps) {
       ? `${daysSinceBuy} días`
       : `${Math.floor(daysSinceBuy / 7)} semanas`;
 
+  // Determine which stage this reflection is for
+  const stage = item.status === "reflected" ? "60_day" : "14_day";
+
   function handleSubmit() {
     if (worthIt === null || rating === 0) return;
     startTransition(async () => {
       const result = await submitReflection({
         wishlist_item_id: item.id,
+        reflection_stage: stage,
         worth_it: worthIt,
         rating,
         note: note || undefined,
@@ -2370,7 +2511,6 @@ git commit -m "fix(deseos): address smoke test issues"
 
 These items from the spec are intentionally deferred to keep v1 scope manageable:
 
-- **Debt milestone nudge** — Requires hooking into the import flow (`importTransactions` action) to detect when a debt account hits zero or 50%. Add a call to `rescoreAllWishlistItems()` after import and compute the nudge by comparing `getRecentImpactEvents()` with wishlist items.
+- **Debt milestone nudge** — Requires hooking into the import flow (`importTransactions` action) to detect when a debt account hits zero or 50%. Compare `getRecentImpactEvents()` with wishlist items.
 - **Budget surplus nudge** — Requires computing month-end budget surplus from `get503020Allocation()` and comparing against cheapest wishlist item. Best added as a check in `getActiveNudges()` with the allocation data passed in.
-- **Rescore on financial events** — Currently items are re-scored on page load when stale. A background re-score after imports (call `rescoreAllWishlistItems()` from `importTransactions`) would provide fresher data.
 - **Transaction search for linking** — The `markWishlistItemBought` action accepts a `transactionId` but the UI doesn't yet search for matching transactions. Add a transaction search by amount ± 10% and date range ± 7 days.
