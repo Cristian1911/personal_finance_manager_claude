@@ -265,6 +265,9 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
+          # Sync compose file to VPS
+          scp -i ~/.ssh/deploy_key docker-compose.prod.yml "root@${VPS_HOST}:/docker/personal-finance-manager/docker-compose.yml"
+
           # Deploy: down (remove orphans) → pull → up
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "root@${VPS_HOST}" bash -s <<'DEPLOY_SCRIPT'
             set -euo pipefail
