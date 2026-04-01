@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
+import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { autoCategorize } from "@zeta/shared";
 import type { Json } from "@/types/database";
@@ -230,7 +231,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const { id: emailIngestId, user_id: userId, account_id: accountId, auto_import: autoImport, allowed_sender: allowedSender } = ingestAddress;
+  const {
+    id: emailIngestId,
+    user_id: userId,
+    account_id: defaultAccountId,
+    auto_import: autoImport,
+    allowed_sender: allowedSender,
+  } = ingestAddress;
 
   // 5. Detect Gmail forwarding verification emails
   const fromLower = from.toLowerCase();
@@ -333,23 +340,34 @@ export async function POST(request: NextRequest) {
     rawDescription: parsed.raw_line,
   });
 
-  // 9. Auto-import or queue
-  if (autoImport && accountId) {
-    // Get account currency
-    const { data: account } = await admin
-      .from("accounts")
-      .select("currency_code")
-      .eq("id", accountId)
-      .eq("user_id", userId)
-      .single();
+  let suggestedAccountId = defaultAccountId ?? null;
 
-    const currencyCode = account?.currency_code ?? parsed.currency;
+  const { data: candidateAccounts, error: accountLookupError } = await admin
+    .from("accounts")
+    .select("id, mask, debit_card_mask, account_type, currency_code")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+
+  if (!accountLookupError && candidateAccounts) {
+    suggestedAccountId = resolveSuggestedEmailAccountId({
+      accounts: candidateAccounts,
+      parsed,
+      defaultAccountId,
+    });
+  } else if (accountLookupError) {
+    console.warn("[email-ingest] account matching fallback:", accountLookupError.message);
+  }
+
+  // 9. Auto-import or queue
+  if (autoImport && suggestedAccountId) {
+    const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
+    const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
     const categoryResult = parsed.merchant ? autoCategorize(parsed.merchant) : null;
     const categoryId = categoryResult?.category_id ?? null;
 
     const { error: insertError } = await admin.from("transactions").insert({
       user_id: userId,
-      account_id: accountId,
+      account_id: suggestedAccountId,
       amount: parsed.amount,
       currency_code: currencyCode,
       direction: parsed.direction,
@@ -408,7 +426,7 @@ export async function POST(request: NextRequest) {
     parsed_data: parsed as unknown as Json,
     raw_body: emailBody,
     status: "pending",
-    suggested_account_id: accountId ?? null,
+    suggested_account_id: suggestedAccountId,
   });
 
   if (queueError) {

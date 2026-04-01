@@ -4,22 +4,11 @@ import { revalidateTag } from "next/cache";
 import { nanoid } from "nanoid";
 import { autoCategorize } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import type { ParsedEmailTransaction } from "@/lib/parsers/bancolombia-email";
+import { accountMaskSuffixMatches } from "@/lib/utils/account-mask";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import type { ActionResult } from "@/types/actions";
 import type { EmailIngestAddress, EmailIngestLog, PendingEmailTransaction, UnrecognizedEmail } from "@/types/domain";
-
-// Shape of the parsed_data JSONB column in pending_email_transactions
-interface ParsedEmailTransaction {
-  direction: "OUTFLOW" | "INFLOW";
-  amount: number;
-  merchant: string | null;
-  destination: string | null;
-  card_last4: string;
-  transaction_date: string;
-  transaction_time: string;
-  raw_line: string;
-  pattern_type: string;
-}
 
 // ─── Read actions ────────────────────────────────────────────────────────────
 
@@ -250,13 +239,33 @@ export async function approveEmailTransaction(
   // Get the account's currency
   const { data: account, error: accountError } = await supabase
     .from("accounts")
-    .select("currency_code")
+    .select("currency_code, account_type, debit_card_mask")
     .eq("id", accountId)
     .eq("user_id", user.id)
     .single();
 
   if (accountError) return { success: false, error: accountError.message };
   if (!account) return { success: false, error: "Cuenta no encontrada" };
+
+  if (
+    parsed.card_type === "T.Deb" &&
+    parsed.card_last4 &&
+    (account.account_type === "SAVINGS" || account.account_type === "CHECKING") &&
+    !accountMaskSuffixMatches(account.debit_card_mask, parsed.card_last4)
+  ) {
+    const { error: learnMappingError } = await supabase
+      .from("accounts")
+      .update({ debit_card_mask: parsed.card_last4 })
+      .eq("id", accountId)
+      .eq("user_id", user.id);
+
+    if (learnMappingError) {
+      console.error(
+        "[email-ingest] failed to learn debit card mapping:",
+        learnMappingError.message
+      );
+    }
+  }
 
   // Auto-categorize based on merchant name
   const merchantName = parsed.merchant ?? parsed.destination ?? null;

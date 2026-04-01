@@ -19,6 +19,7 @@ import { StepConfirm } from "./step-confirm";
 import { ReconciliationStep } from "./reconciliation-step";
 import { StepResults } from "./step-results";
 import { trackClientEvent } from "@/lib/utils/analytics";
+import { accountMaskSuffixMatches, normalizeAccountMaskSuffix } from "@/lib/utils/account-mask";
 import { cn } from "@/lib/utils";
 
 type Step = "upload" | "review" | "destinatarios" | "confirm" | "reconcile" | "results";
@@ -93,17 +94,17 @@ export function ImportWizard({
         matched = accts.find(
           (a) =>
             a.account_type === "CREDIT_CARD" &&
-            a.mask === stmt.card_last_four
+            accountMaskSuffixMatches(a.mask, stmt.card_last_four)
         );
       } else if (stmt.statement_type === "savings" && stmt.account_number) {
-        const last4 = stmt.account_number.slice(-4);
+        const last4 = normalizeAccountMaskSuffix(stmt.account_number);
         matched = accts.find(
-          (a) => a.account_type === "SAVINGS" && a.mask === last4
+          (a) => a.account_type === "SAVINGS" && accountMaskSuffixMatches(a.mask, last4)
         );
       } else if (stmt.statement_type === "loan" && stmt.account_number) {
-        const last4 = stmt.account_number.slice(-4);
+        const last4 = normalizeAccountMaskSuffix(stmt.account_number);
         matched = accts.find(
-          (a) => a.account_type === "LOAN" && a.mask === last4
+          (a) => a.account_type === "LOAN" && accountMaskSuffixMatches(a.mask, last4)
         );
       }
 

@@ -1,4 +1,4 @@
-import { Wallet } from "lucide-react";
+import { BrandIcon } from "@/components/app/brand-icon";
 
 export default function AuthLayout({
   children,
@@ -10,7 +10,10 @@ export default function AuthLayout({
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
           <div className="flex items-center gap-2">
-            <Wallet className="h-8 w-8 text-primary" />
+            <BrandIcon
+              className="h-9 w-9 rounded-2xl shadow-[0_10px_24px_rgba(0,0,0,0.16)]"
+              priority
+            />
             <h1 className="text-2xl font-bold tracking-tight">
               Zeta
             </h1>

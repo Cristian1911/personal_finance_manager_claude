@@ -26,6 +26,7 @@ export type Database = {
           currency_code: Database["public"]["Enums"]["currency_code"]
           current_balance: number
           cutoff_day: number | null
+          debit_card_mask: string | null
           display_order: number
           expected_return_rate: number | null
           icon: string | null
@@ -60,6 +61,7 @@ export type Database = {
           currency_code?: Database["public"]["Enums"]["currency_code"]
           current_balance?: number
           cutoff_day?: number | null
+          debit_card_mask?: string | null
           display_order?: number
           expected_return_rate?: number | null
           icon?: string | null
@@ -94,6 +96,7 @@ export type Database = {
           currency_code?: Database["public"]["Enums"]["currency_code"]
           current_balance?: number
           cutoff_day?: number | null
+          debit_card_mask?: string | null
           display_order?: number
           expected_return_rate?: number | null
           icon?: string | null

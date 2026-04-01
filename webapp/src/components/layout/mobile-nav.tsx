@@ -8,10 +8,11 @@ import {
   WORKSPACE_NAV,
   type NavItem,
 } from "@/lib/constants/navigation";
+import { BrandIcon } from "@/components/app/brand-icon";
 import { NavItemLink } from "./nav-item-link";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Wallet } from "lucide-react";
+import { Menu } from "lucide-react";
 import type { AttentionSnapshot } from "@/types/attention";
 
 interface MobileNavProps {
@@ -45,9 +46,10 @@ export function MobileNav({ attentionSnapshot }: MobileNavProps) {
       </SheetTrigger>
       <SheetContent side="left" className="w-72 border-sidebar-border/80 bg-sidebar p-0">
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border/80 px-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-z-olive-deep ring-1 ring-inset ring-z-brass/35">
-            <Wallet className="h-5 w-5 text-z-sage-light" />
-          </div>
+          <BrandIcon
+            className="h-10 w-10 rounded-2xl ring-1 ring-inset ring-z-brass/35 shadow-[0_12px_28px_rgba(0,0,0,0.24)]"
+            priority
+          />
           <div className="min-w-0">
             <p className="truncate text-lg font-semibold">Zeta</p>
           </div>

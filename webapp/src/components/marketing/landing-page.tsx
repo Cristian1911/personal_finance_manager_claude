@@ -31,6 +31,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { BrandIcon } from "@/components/app/brand-icon";
 import {
   Card,
   CardContent,
@@ -521,9 +522,10 @@ export function MarketingLandingPage() {
       <header className="relative border-b border-white/6 bg-background/70 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 shadow-lg shadow-black/15">
-              <Wallet className="size-5 text-z-sage-light" />
-            </div>
+            <BrandIcon
+              className="size-10 rounded-2xl border border-white/10 shadow-lg shadow-black/15"
+              priority
+            />
             <div>
               <p className="text-sm font-semibold tracking-[0.18em] text-z-sage-light uppercase">
                 Zeta
@@ -1540,7 +1542,10 @@ export function MarketingLandingPage() {
 
       <footer className="relative border-t border-white/6 bg-black/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>Zeta. Finanzas personales con claridad diaria.</p>
+          <div className="flex items-center gap-3">
+            <BrandIcon className="size-8 rounded-2xl border border-white/10" />
+            <p>Zeta. Finanzas personales con claridad diaria.</p>
+          </div>
           <div className="flex flex-wrap items-center gap-4">
             <Link href="/login" className="transition-colors hover:text-foreground">
               Entrar

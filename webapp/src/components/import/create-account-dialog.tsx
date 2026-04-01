@@ -10,11 +10,12 @@ import { SpecializedAccountForm } from "@/components/accounts/specialized-accoun
 import type { Account } from "@/types/domain";
 import type { AccountFormDefaults } from "@/types/account-form";
 import type { ParsedStatement } from "@/types/import";
+import { normalizeAccountMaskSuffix } from "@/lib/utils/account-mask";
 
 
 function deriveDefaults(stmt: ParsedStatement): AccountFormDefaults {
   const bank = stmt.bank.charAt(0).toUpperCase() + stmt.bank.slice(1);
-  const mask = stmt.card_last_four ?? stmt.account_number?.slice(-4);
+  const mask = stmt.card_last_four ?? normalizeAccountMaskSuffix(stmt.account_number);
 
   let name: string;
   let accountType: string;

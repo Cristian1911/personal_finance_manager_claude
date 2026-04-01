@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 import type { ParsedStatement } from "@/types/import";
+import { normalizeAccountMaskSuffix } from "@/lib/utils/account-mask";
 
 const STATEMENT_TYPE_LABELS: Record<string, string> = {
   savings: "Ahorros",
@@ -48,7 +49,7 @@ export function StatementSummaryCard({
         )}
         {statement.account_number && (
           <p className="text-xs text-muted-foreground">
-            Cuenta: ****{statement.account_number.slice(-4)}
+            Cuenta: ****{normalizeAccountMaskSuffix(statement.account_number)}
           </p>
         )}
         {statement.card_last_four && (

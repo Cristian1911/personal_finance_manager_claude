@@ -7,8 +7,8 @@ import {
   WORKSPACE_NAV,
   type NavItem,
 } from "@/lib/constants/navigation";
+import { BrandIcon } from "@/components/app/brand-icon";
 import { NavItemLink } from "./nav-item-link";
-import { Wallet } from "lucide-react";
 import type { AttentionSnapshot } from "@/types/attention";
 
 interface SidebarProps {
@@ -33,9 +33,10 @@ export function Sidebar({ attentionSnapshot }: SidebarProps) {
   return (
     <aside className="sticky top-0 hidden h-screen border-r border-sidebar-border/80 bg-sidebar lg:flex lg:w-72 lg:flex-col">
       <div className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border/80 px-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-z-olive-deep ring-1 ring-inset ring-z-brass/35">
-          <Wallet className="h-5 w-5 text-z-sage-light" />
-        </div>
+        <BrandIcon
+          className="h-10 w-10 rounded-2xl ring-1 ring-inset ring-z-brass/35 shadow-[0_12px_28px_rgba(0,0,0,0.24)]"
+          priority
+        />
         <div className="min-w-0">
           <p className="truncate text-lg font-semibold">Zeta</p>
         </div>
