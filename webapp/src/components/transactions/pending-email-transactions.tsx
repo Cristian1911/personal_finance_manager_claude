@@ -1,199 +1,257 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Check, X, CheckCheck, Loader2, Mail } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Check,
+  X,
+  Loader2,
+  Mail,
+  CreditCard,
+  Wallet,
+  QrCode,
+  Building,
+  Banknote,
+  AlertTriangle,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   approveEmailTransaction,
   dismissEmailTransaction,
-  bulkApproveEmailTransactions,
 } from "@/actions/email-ingest";
 import { formatDate } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
-import type { PendingEmailTransaction } from "@/types/domain";
+import type { ParsedEmailTransaction } from "@/lib/parsers/bancolombia-email";
+import type { Account, PendingEmailTransaction } from "@/types/domain";
 
-interface ParsedData {
-  direction: string;
-  amount: number;
-  merchant: string | null;
-  destination: string | null;
-  transaction_date: string;
-  pattern_type: string;
-}
+const PATTERN_LABELS: Record<string, { label: string; icon: typeof Mail }> = {
+  retiro: { label: "Retiro ATM", icon: Banknote },
+  compra_debito: { label: "Compra débito", icon: CreditCard },
+  compra_credito: { label: "Compra crédito", icon: CreditCard },
+  transferencia: { label: "Transferencia", icon: ArrowUpRight },
+  qr_transferencia: { label: "Transferencia QR", icon: QrCode },
+  qr_pago: { label: "Pago QR", icon: QrCode },
+  pago_pse: { label: "Pago PSE", icon: Building },
+  bre_b: { label: "Bre-B", icon: Wallet },
+  nomina: { label: "Nómina", icon: Banknote },
+};
 
 interface PendingEmailTransactionsProps {
   transactions: PendingEmailTransaction[];
+  accounts: Account[];
 }
 
 export function PendingEmailTransactions({
   transactions: initialTransactions,
+  accounts,
 }: PendingEmailTransactionsProps) {
   const [transactions, setTransactions] = useState(initialTransactions);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [isPending, startTransition] = useTransition();
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
+  const [, startTransition] = useTransition();
+
+  const accountMap = useMemo(
+    () => new Map(accounts.map((a) => [a.id, a])),
+    [accounts]
+  );
+
+  const accountOptions = useMemo(
+    () =>
+      accounts.map((acc) => (
+        <SelectItem key={acc.id} value={acc.id}>
+          {acc.name} ({acc.currency_code})
+        </SelectItem>
+      )),
+    [accounts]
+  );
 
   if (transactions.length === 0) return null;
 
-  function toggleSelect(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  function resolveAccount(tx: PendingEmailTransaction): Account | null {
+    const id = accountOverrides[tx.id] ?? tx.suggested_account_id;
+    return id ? accountMap.get(id) ?? null : null;
   }
 
-  function toggleSelectAll() {
-    if (selected.size === transactions.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(transactions.map((t) => t.id)));
-    }
+  function handleAccountChange(txId: string, accountId: string) {
+    setAccountOverrides((prev) => ({ ...prev, [txId]: accountId }));
   }
 
-  function removeFromState(ids: string[]) {
-    setTransactions((prev) => prev.filter((t) => !ids.includes(t.id)));
-    setSelected((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => next.delete(id));
+  function removeOverride(id: string) {
+    setAccountOverrides((prev) => {
+      const next = { ...prev };
+      delete next[id];
       return next;
     });
   }
 
   function handleApprove(pendingId: string) {
+    const override = accountOverrides[pendingId];
+    setLoadingId(pendingId);
     startTransition(async () => {
-      await approveEmailTransaction(pendingId);
-      removeFromState([pendingId]);
+      const result = await approveEmailTransaction(pendingId, override);
+      setLoadingId(null);
+      if (result.success) {
+        setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
+        removeOverride(pendingId);
+        toast.success("Transacción importada");
+      } else {
+        toast.error(result.error);
+      }
     });
   }
 
   function handleDismiss(pendingId: string) {
+    setLoadingId(pendingId);
     startTransition(async () => {
-      await dismissEmailTransaction(pendingId);
-      removeFromState([pendingId]);
-    });
-  }
-
-  function handleBulkApprove() {
-    const ids = Array.from(selected);
-    startTransition(async () => {
-      await bulkApproveEmailTransactions(ids);
-      removeFromState(ids);
+      const result = await dismissEmailTransaction(pendingId);
+      setLoadingId(null);
+      if (result.success) {
+        setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
+        removeOverride(pendingId);
+      } else {
+        toast.error(result.error);
+      }
     });
   }
 
   return (
     <Card className="border-white/6 bg-z-surface-2/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Mail className="size-4 text-z-sage-dark" />
-            <CardTitle className="text-base">Pendientes por correo</CardTitle>
-            <span className="rounded-full bg-z-brass/20 px-2 py-0.5 text-xs font-semibold text-z-brass">
-              {transactions.length}
-            </span>
-          </div>
-          {selected.size > 0 && (
-            <Button
-              size="sm"
-              className={BRASS_BUTTON_CLASS}
-              onClick={handleBulkApprove}
-              disabled={isPending}
-            >
-              {isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <CheckCheck className="size-4" />
-              )}
-              Aprobar {selected.size} {selected.size === 1 ? "seleccionada" : "seleccionadas"}
-            </Button>
-          )}
+        <div className="flex items-center gap-2">
+          <Mail className="size-4 text-z-sage-dark" />
+          <CardTitle className="text-base">Pendientes por correo</CardTitle>
+          <span className="rounded-full bg-z-brass/20 px-2 py-0.5 text-xs font-semibold text-z-brass">
+            {transactions.length}
+          </span>
         </div>
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y divide-white/6">
-          {/* Select all row */}
-          <div className="flex items-center gap-3 px-6 py-2">
-            <Checkbox
-              checked={
-                selected.size === transactions.length
-                  ? true
-                  : selected.size > 0
-                    ? "indeterminate"
-                    : false
-              }
-              onCheckedChange={toggleSelectAll}
-              aria-label="Seleccionar todas"
-            />
-            <span className="text-xs text-muted-foreground">Seleccionar todas</span>
-          </div>
-
           {transactions.map((tx) => {
-            const parsed = tx.parsed_data as unknown as ParsedData;
+            const parsed = tx.parsed_data as unknown as ParsedEmailTransaction;
             const merchant =
               parsed.merchant ?? parsed.destination ?? "Transacción";
             const isInflow = parsed.direction === "INFLOW";
+            const isLoading = loadingId === tx.id;
+            const pattern = PATTERN_LABELS[parsed.pattern_type];
+            const PatternIcon = pattern?.icon ?? Mail;
+            const account = resolveAccount(tx);
+            const hasAccount = !!account;
 
             return (
               <div
                 key={tx.id}
-                className="flex items-center gap-3 px-6 py-3 hover:bg-white/2 transition-colors"
+                className="px-6 py-4 transition-colors hover:bg-white/2"
               >
-                <Checkbox
-                  checked={selected.has(tx.id)}
-                  onCheckedChange={() => toggleSelect(tx.id)}
-                  aria-label={`Seleccionar ${merchant}`}
-                />
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
+                      isInflow
+                        ? "bg-z-income/10 text-z-income"
+                        : "bg-white/5 text-muted-foreground"
+                    }`}
+                  >
+                    {isInflow ? (
+                      <ArrowDownLeft className="size-4" />
+                    ) : (
+                      <ArrowUpRight className="size-4" />
+                    )}
+                  </div>
 
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{merchant}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(parsed.transaction_date)}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{merchant}</p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                      <span>{formatDate(parsed.transaction_date)}</span>
+                      <span>·</span>
+                      <span>{parsed.transaction_time}</span>
+                      {parsed.card_last4 && (
+                        <>
+                          <span>·</span>
+                          <span>
+                            {parsed.card_type === "Cta" ? "Cuenta" : parsed.card_type} *{parsed.card_last4}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <p
+                    className={`shrink-0 text-sm font-semibold tabular-nums ${
+                      isInflow ? "text-z-income" : ""
+                    }`}
+                  >
+                    {isInflow ? "+" : ""}
+                    {formatCurrency(parsed.amount, "COP")}
                   </p>
                 </div>
 
-                <p
-                  className={
-                    isInflow
-                      ? "text-sm font-semibold text-z-income"
-                      : "text-sm font-semibold"
-                  }
-                >
-                  {isInflow ? "+" : ""}
-                  {formatCurrency(parsed.amount, "COP")}
-                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 rounded-full border border-white/6 bg-white/3 px-2.5 py-1 text-xs text-muted-foreground">
+                      <PatternIcon className="size-3" />
+                      <span>{pattern?.label ?? parsed.pattern_type}</span>
+                    </div>
 
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="size-8 text-z-income hover:bg-z-income/10 hover:text-z-income"
-                    onClick={() => handleApprove(tx.id)}
-                    disabled={isPending}
-                    aria-label="Aprobar"
-                  >
-                    {isPending ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Check className="size-4" />
-                    )}
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => handleDismiss(tx.id)}
-                    disabled={isPending}
-                    aria-label="Descartar"
-                  >
-                    <X className="size-4" />
-                  </Button>
+                    <Select
+                      value={hasAccount ? account.id : ""}
+                      onValueChange={(v) => handleAccountChange(tx.id, v)}
+                    >
+                      <SelectTrigger
+                        className={`h-7 w-auto gap-1.5 rounded-full px-2.5 text-xs ${
+                          hasAccount
+                            ? "border-white/6 bg-white/3 text-muted-foreground"
+                            : "border-amber-400/30 bg-amber-400/5 text-amber-400"
+                        }`}
+                      >
+                        {hasAccount ? (
+                          <SelectValue />
+                        ) : (
+                          <>
+                            <AlertTriangle className="size-3" />
+                            <span>Sin cuenta</span>
+                          </>
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>{accountOptions}</SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDismiss(tx.id)}
+                      disabled={isLoading}
+                    >
+                      <X className="size-3.5" />
+                      Descartar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-7 gap-1.5 bg-z-income/15 text-xs font-medium text-z-income hover:bg-z-income/25"
+                      onClick={() => handleApprove(tx.id)}
+                      disabled={isLoading || !hasAccount}
+                      title={!hasAccount ? "Selecciona una cuenta primero" : undefined}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Check className="size-3.5" />
+                      )}
+                      Importar
+                    </Button>
+                  </div>
                 </div>
               </div>
             );

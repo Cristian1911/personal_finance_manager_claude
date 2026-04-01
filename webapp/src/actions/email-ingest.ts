@@ -212,7 +212,8 @@ export async function clearGmailVerification(): Promise<ActionResult<null>> {
 }
 
 export async function approveEmailTransaction(
-  pendingId: string
+  pendingId: string,
+  overrideAccountId?: string
 ): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
@@ -230,9 +231,8 @@ export async function approveEmailTransaction(
 
   const parsed = pending.parsed_data as unknown as ParsedEmailTransaction;
 
-  // Determine the target account: use suggested_account_id, falling back to the
-  // ingest address's bound account
-  let accountId = pending.suggested_account_id;
+  // Determine the target account: explicit override > suggested > ingest address default
+  let accountId = overrideAccountId ?? pending.suggested_account_id;
   if (!accountId) {
     const { data: ingestAddress } = await supabase
       .from("email_ingest_addresses")

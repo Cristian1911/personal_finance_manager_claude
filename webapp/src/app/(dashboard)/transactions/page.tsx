@@ -138,7 +138,7 @@ export default async function TransactionsPage({
           </div>
         </div>
 
-        <PendingEmailTransactions transactions={pendingTransactions} />
+        <PendingEmailTransactions transactions={pendingTransactions} accounts={accounts} />
 
         <MobileMovimientos
           transactions={transactionsResult.data}
@@ -197,7 +197,7 @@ export default async function TransactionsPage({
           defaultMonth={defaultMonth}
         />
 
-        <PendingEmailTransactions transactions={pendingTransactions} />
+        <PendingEmailTransactions transactions={pendingTransactions} accounts={accounts} />
 
         <TransactionTable transactions={transactionsResult.data} categories={categories} />
 
