@@ -1480,6 +1480,159 @@ export type Database = {
           },
         ]
       }
+      wishlist_items: {
+        Row: {
+          account_id: string | null
+          amount: number
+          bought_at: string | null
+          category_id: string | null
+          created_at: string
+          currency_code: string
+          desire_type: string | null
+          enriched: boolean
+          enriched_at: string | null
+          funding_type: string | null
+          id: string
+          image_url: string | null
+          installments: number | null
+          last_nudge_dismissed_at: string | null
+          last_score: number | null
+          last_scored_at: string | null
+          last_verdict: string | null
+          name: string
+          ready_at: string | null
+          status: string
+          transaction_id: string | null
+          updated_at: string
+          urgency: string | null
+          url: string | null
+          user_id: string
+          why: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          bought_at?: string | null
+          category_id?: string | null
+          created_at?: string
+          currency_code?: string
+          desire_type?: string | null
+          enriched?: boolean
+          enriched_at?: string | null
+          funding_type?: string | null
+          id?: string
+          image_url?: string | null
+          installments?: number | null
+          last_nudge_dismissed_at?: string | null
+          last_score?: number | null
+          last_scored_at?: string | null
+          last_verdict?: string | null
+          name: string
+          ready_at?: string | null
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          urgency?: string | null
+          url?: string | null
+          user_id: string
+          why?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          bought_at?: string | null
+          category_id?: string | null
+          created_at?: string
+          currency_code?: string
+          desire_type?: string | null
+          enriched?: boolean
+          enriched_at?: string | null
+          funding_type?: string | null
+          id?: string
+          image_url?: string | null
+          installments?: number | null
+          last_nudge_dismissed_at?: string | null
+          last_score?: number | null
+          last_scored_at?: string | null
+          last_verdict?: string | null
+          name?: string
+          ready_at?: string | null
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          urgency?: string | null
+          url?: string | null
+          user_id?: string
+          why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_items_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wishlist_reflections: {
+        Row: {
+          days_since_purchase: number
+          id: string
+          note: string | null
+          rating: number
+          reflected_at: string
+          reflection_stage: string
+          user_id: string
+          wishlist_item_id: string
+          worth_it: boolean
+        }
+        Insert: {
+          days_since_purchase: number
+          id?: string
+          note?: string | null
+          rating: number
+          reflected_at?: string
+          reflection_stage: string
+          user_id: string
+          wishlist_item_id: string
+          worth_it: boolean
+        }
+        Update: {
+          days_since_purchase?: number
+          id?: string
+          note?: string | null
+          rating?: number
+          reflected_at?: string
+          reflection_stage?: string
+          user_id?: string
+          wishlist_item_id?: string
+          worth_it?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_reflections_wishlist_item_id_fkey"
+            columns: ["wishlist_item_id"]
+            isOneToOne: false
+            referencedRelation: "wishlist_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

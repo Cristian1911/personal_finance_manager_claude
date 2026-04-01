@@ -13,6 +13,8 @@ export type PendingEmailTransaction = Tables<"pending_email_transactions">;
 export type EmailIngestLog = Tables<"email_ingest_logs">;
 export type UnrecognizedEmail = Tables<"unrecognized_emails">;
 export type FinancialReminder = Tables<"financial_reminders">;
+export type WishlistItem = Tables<"wishlist_items">;
+export type WishlistReflection = Tables<"wishlist_reflections">;
 
 // Enum types
 export type TransactionDirection = Enums<"transaction_direction">;
