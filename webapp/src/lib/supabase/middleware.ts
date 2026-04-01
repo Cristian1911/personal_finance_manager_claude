@@ -52,6 +52,7 @@ export async function updateSession(request: NextRequest) {
     "/forgot-password",
     "/onboarding",
     "/auth",
+    "/api/webhooks",
   ];
   const pathname = request.nextUrl.pathname;
   const isPublic =
