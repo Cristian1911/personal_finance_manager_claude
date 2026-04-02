@@ -46,6 +46,20 @@ User reviews in UI → approves → reuses importTransactions() logic
 
 **Key difference from text email flow:** Text emails produce 1 transaction → auto-import or queue individually. PDF statements produce N transactions + metadata → always queue for review (too complex for auto-import).
 
+### Why not process PDFs inline in the webhook?
+
+PDF parsing can take up to 120 seconds (OCR, complex tables). Resend expects a webhook response within a few seconds. If the handler blocks on parsing, Resend will retry the webhook, causing duplicate processing.
+
+**Recommended: Fire-and-forget pattern.**
+1. Webhook receives email, detects PDF attachment
+2. Stores PDF binary in Supabase Storage (`email-pdfs` bucket)
+3. Inserts `pending_email_statements` row with `status: 'pending'`
+4. Fire-and-forget `fetch()` to an internal processing route (`/api/internal/process-pdf-statement`)
+5. Returns 200 to Resend immediately (~1-2 seconds)
+6. Internal route downloads PDF from storage, sends to parser, updates row with results
+
+If the fire-and-forget fails (parser down, timeout), the user can retry from the UI — the PDF is safely stored.
+
 ---
 
 ## 3. Resend API: How Attachments Work
@@ -80,71 +94,96 @@ type ResendEmailDetail = {
 
 ## 4. Database Schema Changes
 
-### 4a. New table: `email_pdf_statements`
+### 4a. New table: `pending_email_statements`
 
-Stores parsed PDF statements received via email, pending user review.
+Stores PDF statements received via email through their full lifecycle: receipt → parsing → review → import.
 
 ```sql
-CREATE TABLE email_pdf_statements (
+CREATE TABLE pending_email_statements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  email_ingest_id UUID REFERENCES email_ingest_addresses(id) ON DELETE SET NULL,
-
-  -- Parsed data from pdf-parser service
-  parsed_statements JSONB NOT NULL,         -- Full ParsedStatement[] array
-  statement_count INTEGER NOT NULL DEFAULT 1,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  email_ingest_id UUID NOT NULL REFERENCES email_ingest_addresses(id) ON DELETE CASCADE,
 
   -- Email metadata
   from_address TEXT NOT NULL,
-  email_subject TEXT,
-  filename TEXT,                            -- Original PDF filename
-  received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  subject TEXT,
+  original_filename TEXT,              -- attachment filename from email
 
-  -- Account matching (best guess from card_last_four / account_number)
-  suggested_account_mappings JSONB,         -- [{statementIndex, accountId, autoMatched}]
+  -- Storage (PDF binary stored in Supabase Storage, not in DB)
+  storage_path TEXT NOT NULL,          -- path in 'email-pdfs' bucket
+  file_size_bytes INTEGER,
 
-  -- Processing state
+  -- Parser state machine
   status TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'imported', 'dismissed', 'parse_failed')),
+    CHECK (status IN (
+      'pending',              -- PDF stored, not yet parsed
+      'parsing',              -- parser invoked, awaiting result
+      'parsed',               -- parser succeeded, ready for user review
+      'needs_password',       -- parser returned password-required error
+      'parse_failed',         -- parser returned unrecoverable error
+      'unsupported_format',   -- parser doesn't recognize the bank format
+      'imported',             -- user completed import
+      'dismissed'             -- user dismissed
+    )),
   error_message TEXT,
+
+  -- Parser result (stored as JSONB for the review UI)
+  parsed_data JSONB,                   -- ParseResponse.statements[] array
+
+  -- Idempotency: SHA-256 of raw PDF content prevents re-processing
+  idempotency_hash TEXT NOT NULL,
+
+  -- Timestamps
+  parsed_at TIMESTAMPTZ,
   imported_at TIMESTAMPTZ,
-
-  -- Idempotency: prevent re-processing same statement
-  content_hash TEXT NOT NULL,               -- SHA-256 of PDF content
-  UNIQUE(user_id, content_hash),
-
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- RLS
-ALTER TABLE email_pdf_statements ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view their own email PDF statements"
-  ON email_pdf_statements FOR SELECT
-  USING ((SELECT auth.uid()) = user_id);
-CREATE POLICY "Users can update their own email PDF statements"
-  ON email_pdf_statements FOR UPDATE
-  USING ((SELECT auth.uid()) = user_id);
+ALTER TABLE pending_email_statements ENABLE ROW LEVEL SECURITY;
 
--- Index for listing pending statements
-CREATE INDEX idx_email_pdf_statements_user_status
-  ON email_pdf_statements(user_id, status)
-  WHERE status = 'pending';
+CREATE POLICY "Users can manage their own pending statements"
+  ON pending_email_statements
+  FOR ALL
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
+
+-- Dedup: same PDF content for same user (excluding dismissed)
+CREATE UNIQUE INDEX idx_pending_email_stmt_idempotency
+  ON pending_email_statements (user_id, idempotency_hash)
+  WHERE status NOT IN ('dismissed');
+
+-- Fast lookup for pending statements list
+CREATE INDEX idx_pending_email_stmt_user_status
+  ON pending_email_statements (user_id, status)
+  WHERE status IN ('pending', 'parsed', 'needs_password');
 ```
 
-### 4b. Extend `email_ingest_addresses`
+### 4b. Supabase Storage bucket: `email-pdfs`
+
+Private bucket for temporary PDF storage. PDFs are deleted after import/dismiss or after 30-day TTL.
+
+```sql
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('email-pdfs', 'email-pdfs', false, 15728640); -- 15MB limit
+
+CREATE POLICY "Users can access their own email PDFs"
+  ON storage.objects
+  FOR ALL
+  USING (bucket_id = 'email-pdfs' AND (storage.foldername(name))[1] = auth.uid()::text)
+  WITH CHECK (bucket_id = 'email-pdfs' AND (storage.foldername(name))[1] = auth.uid()::text);
+```
+
+### 4c. Extend `email_ingest_addresses`
 
 ```sql
 ALTER TABLE email_ingest_addresses
   ADD COLUMN pdf_import_enabled BOOLEAN NOT NULL DEFAULT false;
 ```
 
-### 4c. Extend `email_ingest_logs`
+### 4d. Extend `email_ingest_logs` status enum
 
 ```sql
--- Add a new log status value for PDF processing
--- Current CHECK: ('parsed','imported','queued','duplicate','parse_failed','sender_rejected','rate_limited')
--- Add: 'pdf_queued', 'pdf_parse_failed'
 ALTER TABLE email_ingest_logs
   DROP CONSTRAINT IF EXISTS email_ingest_logs_status_check;
 ALTER TABLE email_ingest_logs
@@ -152,8 +191,15 @@ ALTER TABLE email_ingest_logs
   CHECK (status IN (
     'parsed', 'imported', 'queued', 'duplicate',
     'parse_failed', 'sender_rejected', 'rate_limited',
-    'pdf_queued', 'pdf_parse_failed'
+    'pdf_queued', 'pdf_parse_failed', 'pdf_imported'
   ));
+```
+
+### 4e. New capture method enum value
+
+```sql
+-- Add EMAIL_PDF_IMPORT to distinguish from manual PDF uploads and text email imports
+ALTER TYPE transaction_capture_method ADD VALUE IF NOT EXISTS 'EMAIL_PDF_IMPORT';
 ```
 
 ---
@@ -414,11 +460,14 @@ Banks that send statement PDFs use different sender addresses than alert emails.
 ### New files
 | File | Purpose |
 |------|---------|
-| `webapp/src/lib/email-ingest/pdf-handler.ts` | PDF extraction from email attachments, parser service call |
-| `webapp/src/actions/email-pdf-ingest.ts` | Server actions for `email_pdf_statements` CRUD |
+| `webapp/src/lib/email-ingest/pdf-handler.ts` | PDF extraction from email attachments, storage upload, hash computation |
+| `webapp/src/app/api/internal/process-pdf-statement/route.ts` | Internal route: downloads PDF from storage, sends to parser, updates row |
+| `webapp/src/actions/email-pdf-ingest.ts` | Server actions: list/retry/dismiss/mark-imported for `pending_email_statements` |
 | `webapp/src/app/(dashboard)/importar/email-pdf/page.tsx` | Pending PDF statements list page |
-| `webapp/src/components/import/email-pdf-review.tsx` | Review/approve wizard for email PDF statements |
-| `supabase/migrations/YYYYMMDD_email_pdf_statements.sql` | Schema migration |
+| `webapp/src/components/import/email-pdf-review.tsx` | Review/approve wizard (reuses wizard steps, skips upload) |
+| `webapp/src/components/email-ingest/pending-statements-list.tsx` | Statement cards with status badges and actions |
+| `webapp/src/components/email-ingest/password-dialog.tsx` | Password input for encrypted PDFs |
+| `supabase/migrations/YYYYMMDD_email_pdf_statements.sql` | Schema migration (table + storage bucket + enum) |
 
 ### Modified files
 | File | Change |
@@ -453,7 +502,31 @@ Banks that send statement PDFs use different sender addresses than alert emails.
 
 ---
 
-## 8. What This Does NOT Cover (Future Scope)
+## 8. Security Considerations
+
+1. **Internal API authentication:** The `/api/internal/process-pdf-statement` route must validate a shared secret (`INTERNAL_API_KEY` env var) to prevent external callers from triggering PDF processing. Add this to Docker/CI env config.
+
+2. **PDF storage access:** The Supabase Storage bucket is private with RLS. PDFs stored under `{user_id}/` prefix. Webhook handler uses admin client for writes; internal route uses admin client for reads.
+
+3. **Password handling:** Do NOT persist passwords in the database. The `retryPdfParsing(id, password)` action should accept the password as a parameter and pass it directly to the parser without storing it.
+
+4. **File validation:** Before storing, validate content starts with `%PDF` magic bytes (matching parser's existing check). Reject non-PDF content even if filename says `.pdf`.
+
+5. **Storage cleanup:** Delete PDFs from storage after import/dismiss, or via a 30-day TTL policy.
+
+---
+
+## 9. Open Questions
+
+1. **Mixed emails:** When a Bancolombia email has both a text transaction alert AND a PDF attachment — process both independently? The text parser produces 1 transaction, the PDF parser produces many. The dedup system handles overlap at import time. **Recommendation:** If `pdf_import_enabled`, process only the PDF (more complete data). Otherwise, process text only (current behavior).
+
+2. **Auto-import for PDFs?** Unlike single-transaction emails, PDF statements have dozens of transactions and statement-level metadata. Auto-importing without review risks inserting garbage if parsing fails subtly. **Recommendation:** Always queue PDF statements for review, regardless of `auto_import` setting.
+
+3. **Notifications:** Should the user get a notification when a PDF statement is parsed and ready? Would improve time-to-import but adds complexity. **Defer to v2.**
+
+---
+
+## 10. What This Does NOT Cover (Future Scope)
 
 - **Auto-import for PDFs** — Always requires user review (too many transactions + metadata to auto-import safely)
 - **ZIP extraction** — Some banks send PDFs inside ZIPs (Davivienda). Needs `unzipper` or similar
