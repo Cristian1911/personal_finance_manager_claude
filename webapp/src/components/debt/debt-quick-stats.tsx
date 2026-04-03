@@ -82,6 +82,52 @@ function PopoverList({
   );
 }
 
+function UtilizationPopoverList({
+  items,
+  currency,
+}: {
+  items: { accountName: string; utilization: number; used: number; limit: number }[];
+  currency: CurrencyCode;
+}) {
+  function getColor(pct: number) {
+    if (pct <= 30) return "var(--z-income)";
+    if (pct <= 70) return "var(--z-alert)";
+    return "var(--z-debt)";
+  }
+
+  return (
+    <div className="space-y-3 min-w-[240px]">
+      {items.map((item, i) => (
+        <div key={i} className="space-y-1.5 px-1">
+          <div className="flex justify-between items-baseline">
+            <p className={`text-sm truncate ${i === 0 ? "font-semibold" : "font-medium text-muted-foreground"}`}>
+              {item.accountName}
+            </p>
+            <p
+              className={`text-sm shrink-0 ml-3 ${i === 0 ? "font-bold" : "font-medium"}`}
+              style={{ color: getColor(item.utilization) }}
+            >
+              {item.utilization.toFixed(0)}%
+            </p>
+          </div>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${Math.min(item.utilization, 100)}%`,
+                backgroundColor: getColor(item.utilization),
+              }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground/70">
+            {formatCurrency(item.used, currency)} / {formatCurrency(item.limit, currency)}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProgressPopoverList({
   items,
   currency,
@@ -237,12 +283,9 @@ export function DebtQuickStats({
             <StatTile
               label="Uso de tarjetas"
               popoverContent={
-                <PopoverList
-                  items={stats.creditCards.utilization.map((e) => ({
-                    label: e.accountName,
-                    value: `${e.utilization.toFixed(0)}%`,
-                    detail: `${formatCurrency(e.used, currency)} / ${formatCurrency(e.limit, currency)}`,
-                  }))}
+                <UtilizationPopoverList
+                  items={stats.creditCards.utilization}
+                  currency={currency}
                 />
               }
             >
