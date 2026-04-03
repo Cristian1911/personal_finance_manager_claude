@@ -123,7 +123,7 @@ export async function generateIngestAddress(): Promise<ActionResult<EmailIngestA
     .eq("user_id", user.id)
     .eq("is_active", true);
 
-  const addressKey = `u_${nanoid(8)}`;
+  const addressKey = `u_${nanoid(8)}`.toLowerCase();
 
   const { data, error } = await supabase
     .from("email_ingest_addresses")

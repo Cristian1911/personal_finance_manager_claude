@@ -194,6 +194,8 @@ export async function POST(request: NextRequest) {
   const rawBodyPreview = emailBody?.slice(0, 500) ?? null;
 
   // 3. Extract address key from recipient (e.g. "u_abc123@domain.com" → "u_abc123")
+  //    Resend lowercases the `to` on direct inbound emails, so normalize here
+  //    and use case-insensitive lookup below.
   const recipientEmail = to?.[0] ?? "";
   const addressKey = recipientEmail.split("@")[0] ?? "";
 
@@ -212,10 +214,12 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
 
   // 4. Look up email_ingest_addresses by address_key + is_active = true
+  //    Use case-insensitive match: Resend may lowercase the recipient address
+  //    on direct inbound delivery while the stored key retains mixed case.
   const { data: ingestAddress } = await admin
     .from("email_ingest_addresses")
     .select("id, user_id, account_id, auto_import, allowed_sender")
-    .eq("address_key", addressKey)
+    .filter("address_key", "ilike", addressKey.replace(/%/g, "\\%").replace(/_/g, "\\_"))
     .eq("is_active", true)
     .single();
 
