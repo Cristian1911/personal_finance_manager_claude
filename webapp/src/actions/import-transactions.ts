@@ -171,8 +171,10 @@ async function syncCreditCardRecurringTemplate(params: {
 }): Promise<void> {
   const cc = params.meta.creditCardMetadata;
   if (!cc?.payment_due_date) return;
-  const paymentDue = cc.minimum_payment ?? cc.total_payment_due;
-  if (paymentDue == null || !Number.isFinite(paymentDue) || paymentDue <= 0) {
+  // Only sync recurring when minimum_payment is explicitly present.
+  // total_payment_due is the full balance — it changes monthly and
+  // would mislead the budget/recurring view.
+  if (cc.minimum_payment == null || !Number.isFinite(cc.minimum_payment) || cc.minimum_payment <= 0) {
     return;
   }
   if (
@@ -194,7 +196,7 @@ async function syncCreditCardRecurringTemplate(params: {
     params.existingTemplate?.merchant_name?.trim() ||
     buildDebtPaymentMerchantName(accountName);
   const description = params.existingTemplate?.description?.trim() || null;
-  const amount = Math.round(paymentDue * 100) / 100;
+  const amount = Math.round(cc.minimum_payment * 100) / 100;
 
   try {
     if (params.existingTemplate) {

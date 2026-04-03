@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestUser } from "@/app/api/_shared/auth";
+import { createClient } from "@/lib/supabase/server";
+import { parseStatementFilename, matchAccountByLast4 } from "@/lib/email-ingest/statement-filename";
 
 const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
 const PARSER_API_KEY = process.env.PDF_PARSER_API_KEY ?? "";
@@ -7,7 +9,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const FETCH_TIMEOUT_MS = 120_000; // 120 seconds (PDF parsing can be slow)
 
 export async function POST(request: NextRequest) {
-  if (!(await getRequestUser(request))) {
+  const user = await getRequestUser(request);
+  if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
@@ -28,7 +31,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const password = formData.get("password") as string | null;
+  let password = formData.get("password") as string | null;
+
+  // Auto-fill password from account if filename matches
+  if (!password) {
+    const filenameInfo = parseStatementFilename(file.name);
+    if (filenameInfo) {
+      const supabase = await createClient();
+      const { data: accounts } = await supabase
+        .from("accounts")
+        .select("id, mask, pdf_password")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+
+      if (accounts) {
+        const match = matchAccountByLast4(accounts, filenameInfo.last4);
+        if (match?.pdfPassword) {
+          password = match.pdfPassword;
+        }
+      }
+    }
+  }
 
   const proxyForm = new FormData();
   proxyForm.append("file", file);
