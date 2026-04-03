@@ -57,19 +57,62 @@ function PopoverList({
   items: { label: string; value: string; detail?: string }[];
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-0.5">
       {items.map((item, i) => (
-        <div key={i}>
-          {i > 0 && <div className="border-t border-border mb-2" />}
-          <div className="flex justify-between items-center gap-4">
-            <div>
-              <p className="text-sm font-medium">{item.label}</p>
-              {item.detail && (
-                <p className="text-xs text-muted-foreground">{item.detail}</p>
-              )}
-            </div>
-            <p className="text-sm font-semibold shrink-0">{item.value}</p>
+        <div
+          key={i}
+          className={`flex justify-between items-center gap-4 rounded-md px-2.5 py-2 ${
+            i === 0 ? "bg-muted/50" : ""
+          }`}
+        >
+          <div className="min-w-0">
+            <p className={`text-sm truncate ${i === 0 ? "font-semibold" : "font-medium text-muted-foreground"}`}>
+              {item.label}
+            </p>
+            {item.detail && (
+              <p className="text-xs text-muted-foreground/70">{item.detail}</p>
+            )}
           </div>
+          <p className={`text-sm shrink-0 ${i === 0 ? "font-bold" : "font-medium text-muted-foreground"}`}>
+            {item.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProgressPopoverList({
+  items,
+  currency,
+}: {
+  items: { accountName: string; percentage: number; paid: number; original: number }[];
+  currency: CurrencyCode;
+}) {
+  return (
+    <div className="space-y-3 min-w-[240px]">
+      <p className="text-[11px] text-muted-foreground uppercase tracking-wider px-1">
+        Estimado
+      </p>
+      {items.map((item, i) => (
+        <div key={i} className="space-y-1.5 px-1">
+          <div className="flex justify-between items-baseline">
+            <p className={`text-sm truncate ${i === 0 ? "font-semibold" : "font-medium text-muted-foreground"}`}>
+              {item.accountName}
+            </p>
+            <p className={`text-sm shrink-0 ml-3 ${i === 0 ? "font-bold text-z-income" : "font-medium"}`}>
+              {item.percentage.toFixed(0)}%
+            </p>
+          </div>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-z-income rounded-full transition-all"
+              style={{ width: `${Math.min(item.percentage, 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground/70">
+            {formatCurrency(item.paid, currency)} de {formatCurrency(item.original, currency)}
+          </p>
         </div>
       ))}
     </div>
@@ -327,18 +370,10 @@ export function DebtQuickStats({
               <StatTile
                 label="Progreso"
                 popoverContent={
-                  <>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Estimado
-                    </p>
-                    <PopoverList
-                      items={stats.loans.progressList.map((e) => ({
-                        label: e.accountName,
-                        value: `${e.percentage.toFixed(0)}%`,
-                        detail: `${formatCurrency(e.paid, currency)} de ${formatCurrency(e.original, currency)}`,
-                      }))}
-                    />
-                  </>
+                  <ProgressPopoverList
+                    items={stats.loans.progressList}
+                    currency={currency}
+                  />
                 }
               >
                 <div className="flex items-baseline gap-1.5 mb-2">
