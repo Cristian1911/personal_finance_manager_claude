@@ -161,19 +161,31 @@ export function useRecurringMonth(
   }, [templates, accounts, monthStart, monthEnd]);
 
   /* ---- DB hydration: seed checked state from actual transactions ---- */
+  const occurrenceKeysStr = useMemo(
+    () => occurrences.map((o) => o.key).join(","),
+    [occurrences],
+  );
+
   useEffect(() => {
-    const keys = occurrences.map((o) => o.key);
-    if (keys.length === 0) {
+    if (!occurrenceKeysStr) {
       setIsHydrated(true);
       return;
     }
 
+    const keys = occurrenceKeysStr.split(",");
+    let cancelled = false;
+
     getPaidOccurrenceKeys(keys)
       .then((paidKeys) => {
+        if (cancelled) return;
         if (paidKeys.length > 0) {
           setCheckedItems((prev) => {
             const merged = { ...prev };
-            for (const key of paidKeys) merged[key] = true;
+            let changed = false;
+            for (const key of paidKeys) {
+              if (!merged[key]) { merged[key] = true; changed = true; }
+            }
+            if (!changed) return prev;
             try {
               window.localStorage.setItem(storageKey, JSON.stringify(merged));
             } catch { /* quota exceeded */ }
@@ -183,11 +195,11 @@ export function useRecurringMonth(
         setIsHydrated(true);
       })
       .catch(() => {
-        // If server call fails, fall back to localStorage-only
-        setIsHydrated(true);
+        if (!cancelled) setIsHydrated(true);
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when occurrences or month changes
-  }, [occurrences, storageKey]);
+
+    return () => { cancelled = true; };
+  }, [occurrenceKeysStr, storageKey]);
 
   /* ---- pending / completed splits ---- */
   const pending = useMemo(
