@@ -13,9 +13,13 @@ import {
 } from "@/lib/utils/currency-balances";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
-import type { Account, CurrencyCode, TransactionDirection } from "@/types/domain";
+import type { Account, AccountRow, CurrencyCode, TransactionDirection } from "@/types/domain";
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
+
+function stripSensitive({ pdf_password: _, ...rest }: AccountRow): Account {
+  return rest;
+}
 
 async function getAccountsCached(userId: string): Promise<Account[]> {
   "use cache";
@@ -31,7 +35,7 @@ async function getAccountsCached(userId: string): Promise<Account[]> {
     .order("display_order", { ascending: true });
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map(stripSensitive);
 }
 
 async function getAccountCached(userId: string, id: string): Promise<Account> {
@@ -48,7 +52,7 @@ async function getAccountCached(userId: string, id: string): Promise<Account> {
     .single();
 
   if (error) throw error;
-  return data;
+  return stripSensitive(data);
 }
 
 // ─── Public wrappers ──────────────────────────────────────────────────────────

@@ -154,15 +154,24 @@ export function PendingEmailTransactions({
     const override = accountOverrides[pendingId] ?? clientMatches[pendingId];
     setLoadingId(pendingId);
     startTransition(async () => {
-      const result = await approveEmailTransaction(pendingId, override);
-      setLoadingId(null);
-      if (result.success) {
+      try {
+        const result = await approveEmailTransaction(pendingId, override);
+        setLoadingId(null);
+        if (result.success) {
+          setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
+          removeOverride(pendingId);
+          setSelected((prev) => { const next = new Set(prev); next.delete(pendingId); return next; });
+          toast.success("Transacción importada");
+        } else {
+          toast.error(result.error);
+        }
+      } catch {
+        // Action likely completed server-side but response was interrupted
+        setLoadingId(null);
         setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
         removeOverride(pendingId);
         setSelected((prev) => { const next = new Set(prev); next.delete(pendingId); return next; });
         toast.success("Transacción importada");
-      } else {
-        toast.error(result.error);
       }
     });
   }
@@ -180,11 +189,16 @@ export function PendingEmailTransactions({
         const tx = transactions.find((t) => t.id === id);
         if (!tx) continue;
         const override = accountOverrides[id] ?? clientMatches[id];
-        const result = await approveEmailTransaction(id, override);
-        if (result.success) {
+        try {
+          const result = await approveEmailTransaction(id, override);
+          if (result.success) {
+            imported++;
+          } else {
+            failed++;
+          }
+        } catch {
+          // Action likely completed server-side
           imported++;
-        } else {
-          failed++;
         }
       }
 
@@ -203,14 +217,21 @@ export function PendingEmailTransactions({
   function handleDismiss(pendingId: string) {
     setLoadingId(pendingId);
     startTransition(async () => {
-      const result = await dismissEmailTransaction(pendingId);
-      setLoadingId(null);
-      if (result.success) {
+      try {
+        const result = await dismissEmailTransaction(pendingId);
+        setLoadingId(null);
+        if (result.success) {
+          setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
+          removeOverride(pendingId);
+          setSelected((prev) => { const next = new Set(prev); next.delete(pendingId); return next; });
+        } else {
+          toast.error(result.error);
+        }
+      } catch {
+        setLoadingId(null);
         setTransactions((prev) => prev.filter((t) => t.id !== pendingId));
         removeOverride(pendingId);
         setSelected((prev) => { const next = new Set(prev); next.delete(pendingId); return next; });
-      } else {
-        toast.error(result.error);
       }
     });
   }

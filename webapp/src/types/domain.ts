@@ -2,7 +2,9 @@ import type { Tables, Enums } from "./database";
 
 // Row types from the database
 export type Profile = Tables<"profiles">;
-export type Account = Tables<"accounts">;
+export type AccountRow = Tables<"accounts">;
+/** Account without sensitive fields — safe for client serialization */
+export type Account = Omit<AccountRow, "pdf_password">;
 export type Transaction = Tables<"transactions">;
 export type Category = Tables<"categories">;
 export type Budget = Tables<"budgets">;
@@ -13,6 +15,7 @@ export type PendingEmailTransaction = Tables<"pending_email_transactions">;
 export type EmailIngestLog = Tables<"email_ingest_logs">;
 export type UnrecognizedEmail = Tables<"unrecognized_emails">;
 export type FinancialReminder = Tables<"financial_reminders">;
+export type PendingEmailStatement = Tables<"pending_email_statements">;
 export type WishlistItem = Tables<"wishlist_items">;
 export type WishlistReflection = Tables<"wishlist_reflections">;
 

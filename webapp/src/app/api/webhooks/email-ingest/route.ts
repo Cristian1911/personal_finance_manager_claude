@@ -1,14 +1,29 @@
+import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
+import {
+  computePdfHash,
+  filterPdfAttachments,
+  isPdfEncrypted,
+  parsePdfBuffer,
+  type ResendAttachment,
+} from "@/lib/email-ingest/pdf-handler";
+import {
+  parseStatementFilename,
+  matchAccountByLast4,
+} from "@/lib/email-ingest/statement-filename";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { autoCategorize } from "@zeta/shared";
 import type { Json } from "@/types/database";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const ALLOWED_SENDER = "alertasynotificaciones@an.notificacionesbancolombia.com";
+const ALLOWED_SENDERS = [
+  "alertasynotificaciones@an.notificacionesbancolombia.com",
+  "extractosbancolombia@extractos.documentosbancolombia.com",
+];
 const RATE_LIMIT_PER_DAY = 100;
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -26,6 +41,7 @@ type ResendEmailPayload = {
 type ResendEmailContent = {
   text: string | null;
   html: string | null;
+  attachments: ResendAttachment[];
 };
 
 type LogStatus =
@@ -35,7 +51,10 @@ type LogStatus =
   | "duplicate"
   | "parse_failed"
   | "sender_rejected"
-  | "rate_limited";
+  | "rate_limited"
+  | "pdf_queued"
+  | "pdf_parse_failed"
+  | "pdf_imported";
 
 // ── Signature verification ───────────────────────────────────────────────────
 
@@ -121,7 +140,13 @@ async function fetchEmailContent(emailId: string): Promise<ResendEmailContent | 
   }
 
   const data = await res.json();
-  return { text: data.text ?? null, html: data.html ?? null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const attachments: ResendAttachment[] = (data.attachments ?? []).map((a: any) => ({
+    filename: a.filename ?? "attachment.pdf",
+    content_type: a.content_type ?? a.contentType ?? "",
+    content: a.content ?? "",
+  }));
+  return { text: data.text ?? null, html: data.html ?? null, attachments };
 }
 
 function stripHtml(html: string): string {
@@ -218,7 +243,7 @@ export async function POST(request: NextRequest) {
   //    on direct inbound delivery while the stored key retains mixed case.
   const { data: ingestAddress } = await admin
     .from("email_ingest_addresses")
-    .select("id, user_id, account_id, auto_import, allowed_sender")
+    .select("id, user_id, account_id, auto_import, allowed_sender, pdf_import_enabled")
     .filter("address_key", "ilike", addressKey.replace(/%/g, "\\%").replace(/_/g, "\\_"))
     .eq("is_active", true)
     .single();
@@ -241,6 +266,7 @@ export async function POST(request: NextRequest) {
     account_id: defaultAccountId,
     auto_import: autoImport,
     allowed_sender: allowedSender,
+    pdf_import_enabled: pdfImportEnabled,
   } = ingestAddress;
 
   // 5. Detect Gmail forwarding verification emails
@@ -274,7 +300,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 6. Validate sender — accept bank notifications or the user's personal forwarding email
-  const isBankSender = fromLower.includes(ALLOWED_SENDER);
+  const isBankSender = ALLOWED_SENDERS.some((s) => fromLower.includes(s));
   const isAllowedSender = allowedSender && fromLower.includes(allowedSender.toLowerCase());
   if (!isBankSender && !isAllowedSender) {
     await insertLog({
@@ -302,7 +328,210 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // 7. Parse email body
+  // 7. Check for PDF attachments
+  const pdfAttachments = filterPdfAttachments(emailContent?.attachments ?? []);
+
+  const insertedPdfRows: Array<{ id: string; buffer: ArrayBuffer; filename: string }> = [];
+  let pdfProcessed = false;
+
+  if (pdfAttachments.length > 0 && pdfImportEnabled) {
+    pdfProcessed = true;
+    // Store pending rows immediately, parse async via after()
+    for (const attachment of pdfAttachments) {
+      const filename = attachment.filename || "attachment.pdf";
+      // Decode once — reuse buffer for hash, storage, and after() closure
+      const bytes = Buffer.from(attachment.content, "base64");
+      const contentHash = await computePdfHash(bytes.buffer);
+
+      // Check idempotency: skip if we already have this PDF
+      const { data: existing } = await admin
+        .from("pending_email_statements")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("idempotency_hash", contentHash)
+        .not("status", "in", "(dismissed)")
+        .maybeSingle();
+
+      if (existing) {
+        await insertLog({
+          userId,
+          emailIngestId,
+          fromAddress: from,
+          status: "duplicate",
+          rawBody: rawBodyPreview,
+          errorMessage: `Duplicate PDF: ${filename}`,
+        });
+        continue;
+      }
+
+      // Store PDF in Supabase Storage
+      const timestamp = Date.now();
+      const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const storagePath = `${userId}/${timestamp}-${safeName}`;
+
+      const { error: uploadError } = await admin.storage
+        .from("email-pdfs")
+        .upload(storagePath, bytes.buffer, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        await insertLog({
+          userId,
+          emailIngestId,
+          fromAddress: from,
+          status: "pdf_parse_failed",
+          rawBody: rawBodyPreview,
+          errorMessage: `Storage upload failed: ${uploadError.message}`,
+        });
+        continue;
+      }
+
+      // Insert pending row with status 'pending'
+      const { data: inserted, error: insertError } = await admin
+        .from("pending_email_statements")
+        .insert({
+          user_id: userId,
+          email_ingest_id: emailIngestId,
+          from_address: from,
+          subject: payload.data.subject ?? null,
+          original_filename: filename,
+          storage_path: storagePath,
+          file_size_bytes: bytes.byteLength,
+          status: "pending",
+          idempotency_hash: contentHash,
+        })
+        .select("id")
+        .single();
+
+      if (insertError) {
+        // Clean up orphaned storage on insert failure
+        await admin.storage.from("email-pdfs").remove([storagePath]);
+        if (insertError.code === "23505") {
+          await insertLog({
+            userId,
+            emailIngestId,
+            fromAddress: from,
+            status: "duplicate",
+            rawBody: rawBodyPreview,
+            errorMessage: `Duplicate PDF statement: ${filename}`,
+          });
+        } else {
+          await insertLog({
+            userId,
+            emailIngestId,
+            fromAddress: from,
+            status: "pdf_parse_failed",
+            rawBody: rawBodyPreview,
+            errorMessage: `Insert error: ${insertError.message}`,
+          });
+        }
+        continue;
+      }
+
+      insertedPdfRows.push({ id: inserted.id, buffer: bytes.buffer, filename });
+
+      await insertLog({
+        userId,
+        emailIngestId,
+        fromAddress: from,
+        status: "pdf_queued",
+        rawBody: rawBodyPreview,
+        errorMessage: null,
+      });
+    }
+
+    // Parse PDFs asynchronously after responding to Resend.
+    // Buffers are captured in the closure — no re-download needed.
+    const rowsToProcess = [...insertedPdfRows];
+    if (rowsToProcess.length > 0) {
+      after(async () => {
+        const adminAsync = createAdminClient();
+
+        // Fetch user accounts for filename → password matching
+        const { data: userAccounts } = await adminAsync
+          .from("accounts")
+          .select("id, mask, pdf_password")
+          .eq("user_id", userId)
+          .eq("is_active", true);
+
+        await Promise.all(
+          rowsToProcess.map(async (row) => {
+            try {
+              // Match filename → account → password
+              const filenameInfo = parseStatementFilename(row.filename);
+              const accountMatch = filenameInfo && userAccounts
+                ? matchAccountByLast4(
+                    userAccounts as Array<{ id: string; mask: string | null; pdf_password: string | null }>,
+                    filenameInfo.last4,
+                  )
+                : null;
+
+              const password = accountMatch?.pdfPassword ?? undefined;
+
+              // Fast encryption check — skip parser round-trip if encrypted without password
+              if (isPdfEncrypted(row.buffer) && !password) {
+                await adminAsync
+                  .from("pending_email_statements")
+                  .update({
+                    status: "needs_password",
+                    error_message: "PDF protegido con contraseña",
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", row.id)
+                  .eq("user_id", userId);
+                return;
+              }
+
+              const parseResult = await parsePdfBuffer({
+                buffer: row.buffer,
+                filename: row.filename,
+                password,
+              });
+
+              if (parseResult.success) {
+                await adminAsync
+                  .from("pending_email_statements")
+                  .update({
+                    status: "parsed",
+                    parsed_data: parseResult.statements as unknown as Json,
+                    parsed_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", row.id)
+                  .eq("user_id", userId);
+              } else {
+                await adminAsync
+                  .from("pending_email_statements")
+                  .update({
+                    status: parseResult.needsPassword ? "needs_password" : "parse_failed",
+                    error_message: parseResult.error,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", row.id)
+                  .eq("user_id", userId);
+              }
+            } catch {
+              await adminAsync
+                .from("pending_email_statements")
+                .update({ status: "parse_failed", error_message: "Error inesperado al procesar", updated_at: new Date().toISOString() })
+                .eq("id", row.id)
+                .eq("user_id", userId);
+            }
+          }),
+        );
+      });
+    }
+
+    // Skip text parsing if PDFs came from a statement sender (no text alerts in those emails)
+  }
+
+  if (pdfProcessed && !emailBody.trim()) {
+    return NextResponse.json({ ok: true });
+  }
+
+  // 8. Parse email body
   const parsed = parseBancolombiaEmail(emailBody);
 
   if (!parsed) {

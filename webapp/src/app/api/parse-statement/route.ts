@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestUser } from "@/app/api/_shared/auth";
+import { createClient } from "@/lib/supabase/server";
+import { isPdfEncrypted } from "@/lib/email-ingest/pdf-handler";
+import { parseStatementFilename, matchAccountByLast4 } from "@/lib/email-ingest/statement-filename";
 
 const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
 const PARSER_API_KEY = process.env.PDF_PARSER_API_KEY ?? "";
@@ -7,7 +10,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const FETCH_TIMEOUT_MS = 120_000; // 120 seconds (PDF parsing can be slow)
 
 export async function POST(request: NextRequest) {
-  if (!(await getRequestUser(request))) {
+  const user = await getRequestUser(request);
+  if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
@@ -28,10 +32,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const password = formData.get("password") as string | null;
+  let password = formData.get("password") as string | null;
+  const userProvidedPassword = !!password;
+
+  // Parse filename once — used for auto-fill and password save
+  const filenameInfo = parseStatementFilename(file.name);
+
+  // Fetch accounts once — reused for both password auto-fill and save
+  let matchedAccounts: Array<{ id: string; mask: string | null; pdf_password: string | null }> | null = null;
+  if (filenameInfo) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("accounts")
+      .select("id, mask, pdf_password")
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+    matchedAccounts = data;
+
+    if (!password && matchedAccounts) {
+      const match = matchAccountByLast4(matchedAccounts, filenameInfo.last4);
+      if (match?.pdfPassword) {
+        password = match.pdfPassword;
+      }
+    }
+  }
+
+  // Quick encryption check — fail fast instead of waiting for the parser
+  const fileBuffer = await file.arrayBuffer();
+  if (isPdfEncrypted(fileBuffer) && !password) {
+    return NextResponse.json(
+      {
+        error: "El PDF está protegido con contraseña. Ingresa la contraseña para procesarlo.",
+        errorType: "password_required",
+      },
+      { status: 422 }
+    );
+  }
 
   const proxyForm = new FormData();
-  proxyForm.append("file", file);
+  proxyForm.append("file", new Blob([fileBuffer], { type: "application/pdf" }), file.name);
   if (password) {
     proxyForm.append("password", password);
   }
@@ -88,6 +127,24 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+
+    // Save password on matched account for future auto-parsing
+    if (userProvidedPassword && password && filenameInfo && matchedAccounts) {
+      try {
+        const match = matchAccountByLast4(matchedAccounts, filenameInfo.last4);
+        if (match) {
+          const supabase = await createClient();
+          await supabase
+            .from("accounts")
+            .update({ pdf_password: password })
+            .eq("id", match.accountId)
+            .eq("user_id", user.id);
+        }
+      } catch {
+        // Non-fatal — password save failure shouldn't block the parse result
+      }
+    }
+
     return NextResponse.json(data);
   } catch {
     return NextResponse.json(

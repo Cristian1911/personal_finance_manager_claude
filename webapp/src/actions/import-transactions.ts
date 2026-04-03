@@ -171,7 +171,15 @@ async function syncCreditCardRecurringTemplate(params: {
 }): Promise<void> {
   const cc = params.meta.creditCardMetadata;
   if (!cc?.payment_due_date) return;
-  if (cc.total_payment_due == null || !Number.isFinite(cc.total_payment_due) || cc.total_payment_due <= 0) {
+  // Only sync recurring when minimum_payment is explicitly present.
+  // total_payment_due is the full balance — it changes monthly and
+  // would mislead the budget/recurring view.
+  if (cc.minimum_payment == null || !Number.isFinite(cc.minimum_payment) || cc.minimum_payment <= 0) {
+    const accountName = params.account?.name ?? "tarjeta";
+    params.details.push(
+      `⚠️ ${accountName} (${params.meta.currency}): no se detectó pago mínimo en el extracto — el pago recurrente no fue actualizado.` +
+      (cc.total_payment_due != null ? ` El total a pagar es ${cc.total_payment_due.toLocaleString("es-CO")}, pero no se usa como recurrente porque cambia cada mes.` : "")
+    );
     return;
   }
   if (
@@ -193,7 +201,7 @@ async function syncCreditCardRecurringTemplate(params: {
     params.existingTemplate?.merchant_name?.trim() ||
     buildDebtPaymentMerchantName(accountName);
   const description = params.existingTemplate?.description?.trim() || null;
-  const amount = Math.round(cc.total_payment_due * 100) / 100;
+  const amount = Math.round(cc.minimum_payment * 100) / 100;
 
   try {
     if (params.existingTemplate) {
@@ -453,15 +461,25 @@ async function processStatementMeta(params: {
       "tasa de mora"
     );
 
-    const { data: prevSnapshot } = await supabase
+    // Fetch the most recent snapshot BEFORE this statement's period.
+    // Uses period_to to find the chronologically preceding statement,
+    // so re-imports and out-of-order historic imports both work correctly.
+    let prevSnapshotQuery = supabase
       .from("statement_snapshots")
       .select("*")
       .eq("user_id", userId)
       .eq("account_id", meta.accountId)
       .eq("currency_code", meta.currency)
       .order("period_to", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+
+    if (meta.periodTo) {
+      prevSnapshotQuery = prevSnapshotQuery.lt("period_to", meta.periodTo);
+    } else if (meta.periodFrom) {
+      prevSnapshotQuery = prevSnapshotQuery.lt("period_from", meta.periodFrom);
+    }
+
+    const { data: prevSnapshot } = await prevSnapshotQuery.maybeSingle();
 
     const snapshotRow = {
       user_id: userId,

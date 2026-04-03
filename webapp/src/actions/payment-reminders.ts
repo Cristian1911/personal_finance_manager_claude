@@ -13,6 +13,7 @@ export interface UpcomingPayment {
     currency_code: string;
     payment_due_date: string;
     total_payment_due: number;
+    minimum_payment: number | null;
 }
 
 // ─── Cached inner function ────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ async function getUpcomingPaymentsCached(
       account_id,
       payment_due_date,
       total_payment_due,
+      minimum_payment,
       currency_code,
       created_at,
       accounts!inner (
@@ -71,6 +73,7 @@ async function getUpcomingPaymentsCached(
         currency_code: s.currency_code,
         payment_due_date: s.payment_due_date!,
         total_payment_due: s.total_payment_due || 0,
+        minimum_payment: s.minimum_payment ?? null,
       });
     }
   }

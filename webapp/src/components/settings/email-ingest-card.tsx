@@ -91,6 +91,20 @@ export function EmailIngestCard({ accounts, initialAddress }: EmailIngestCardPro
     });
   }
 
+  function handlePdfImportToggle(checked: boolean) {
+    if (!address) return;
+    startTransition(async () => {
+      const result = await updateIngestSettings({
+        accountId: address.account_id ?? null,
+        autoImport: address.auto_import ?? false,
+        pdfImportEnabled: checked,
+      });
+      if (result.success) {
+        setAddress(result.data);
+      }
+    });
+  }
+
   return (
     <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <CardHeader>
@@ -280,6 +294,21 @@ export function EmailIngestCard({ accounts, initialAddress }: EmailIngestCardPro
               <Switch
                 checked={address.auto_import ?? false}
                 onCheckedChange={handleAutoImportToggle}
+                disabled={isPending}
+              />
+            </div>
+
+            {/* PDF import toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2.5">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Importar extractos PDF adjuntos</p>
+                <p className="text-xs text-muted-foreground">
+                  Cuando un correo llega con un PDF adjunto de extracto bancario, se procesará automáticamente.
+                </p>
+              </div>
+              <Switch
+                checked={address.pdf_import_enabled ?? false}
+                onCheckedChange={handlePdfImportToggle}
                 disabled={isPending}
               />
             </div>

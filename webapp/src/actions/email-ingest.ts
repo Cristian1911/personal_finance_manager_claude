@@ -146,6 +146,7 @@ export async function updateIngestSettings(params: {
   accountId: string | null;
   autoImport: boolean;
   allowedSender?: string | null;
+  pdfImportEnabled?: boolean;
 }): Promise<ActionResult<EmailIngestAddress>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
@@ -156,6 +157,7 @@ export async function updateIngestSettings(params: {
       account_id: params.accountId,
       auto_import: params.autoImport,
       ...(params.allowedSender !== undefined && { allowed_sender: params.allowedSender || null }),
+      ...(params.pdfImportEnabled !== undefined && { pdf_import_enabled: params.pdfImportEnabled }),
     })
     .eq("user_id", user.id)
     .eq("is_active", true)

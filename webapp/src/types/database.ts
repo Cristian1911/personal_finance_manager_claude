@@ -44,6 +44,7 @@ export type Database = {
           monthly_payment: number | null
           name: string
           payment_day: number | null
+          pdf_password: string | null
           provider: Database["public"]["Enums"]["data_provider"]
           provider_account_id: string | null
           show_in_dashboard: boolean
@@ -79,6 +80,7 @@ export type Database = {
           monthly_payment?: number | null
           name: string
           payment_day?: number | null
+          pdf_password?: string | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_account_id?: string | null
           show_in_dashboard?: boolean
@@ -114,6 +116,7 @@ export type Database = {
           monthly_payment?: number | null
           name?: string
           payment_day?: number | null
+          pdf_password?: string | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_account_id?: string | null
           show_in_dashboard?: boolean
@@ -610,6 +613,7 @@ export type Database = {
           gmail_verification_url: string | null
           id: string
           is_active: boolean
+          pdf_import_enabled: boolean
           user_id: string
         }
         Insert: {
@@ -622,6 +626,7 @@ export type Database = {
           gmail_verification_url?: string | null
           id?: string
           is_active?: boolean
+          pdf_import_enabled?: boolean
           user_id: string
         }
         Update: {
@@ -634,6 +639,7 @@ export type Database = {
           gmail_verification_url?: string | null
           id?: string
           is_active?: boolean
+          pdf_import_enabled?: boolean
           user_id?: string
         }
         Relationships: [
@@ -760,6 +766,78 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      pending_email_statements: {
+        Row: {
+          created_at: string
+          email_ingest_id: string
+          error_message: string | null
+          file_size_bytes: number | null
+          from_address: string
+          id: string
+          idempotency_hash: string
+          imported_at: string | null
+          original_filename: string | null
+          parsed_at: string | null
+          parsed_data: Json | null
+          status: string
+          storage_path: string
+          subject: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_ingest_id: string
+          error_message?: string | null
+          file_size_bytes?: number | null
+          from_address: string
+          id?: string
+          idempotency_hash: string
+          imported_at?: string | null
+          original_filename?: string | null
+          parsed_at?: string | null
+          parsed_data?: Json | null
+          status?: string
+          storage_path: string
+          subject?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_ingest_id?: string
+          error_message?: string | null
+          file_size_bytes?: number | null
+          from_address?: string
+          id?: string
+          idempotency_hash?: string
+          imported_at?: string | null
+          original_filename?: string | null
+          parsed_at?: string | null
+          parsed_data?: Json | null
+          status?: string
+          storage_path?: string
+          subject?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_email_statements_email_ingest_id_fkey"
+            columns: ["email_ingest_id"]
+            isOneToOne: false
+            referencedRelation: "email_ingest_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_email_statements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pending_email_transactions: {
         Row: {
@@ -1689,6 +1767,7 @@ export type Database = {
         | "OCR_BATCH"
         | "OCR_SINGLE"
         | "EMAIL_IMPORT"
+        | "EMAIL_PDF_IMPORT"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
     }
@@ -1859,6 +1938,7 @@ export const Constants = {
         "OCR_BATCH",
         "OCR_SINGLE",
         "EMAIL_IMPORT",
+        "EMAIL_PDF_IMPORT",
       ],
       transaction_direction: ["INFLOW", "OUTFLOW"],
       transaction_status: ["PENDING", "POSTED", "CANCELLED"],
