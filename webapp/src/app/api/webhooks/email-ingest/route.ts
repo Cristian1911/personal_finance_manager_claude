@@ -8,13 +8,20 @@ import {
   processEmailPdfAttachment,
   type ResendAttachment,
 } from "@/lib/email-ingest/pdf-handler";
+import {
+  parseStatementFilename,
+  matchAccountByLast4,
+} from "@/lib/email-ingest/statement-filename";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { autoCategorize } from "@zeta/shared";
 import type { Json } from "@/types/database";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const ALLOWED_SENDER = "alertasynotificaciones@an.notificacionesbancolombia.com";
+const ALLOWED_SENDERS = [
+  "alertasynotificaciones@an.notificacionesbancolombia.com",
+  "extractosbancolombia@extractos.documentosbancolombia.com",
+];
 const RATE_LIMIT_PER_DAY = 100;
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -291,7 +298,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 6. Validate sender — accept bank notifications or the user's personal forwarding email
-  const isBankSender = fromLower.includes(ALLOWED_SENDER);
+  const isBankSender = ALLOWED_SENDERS.some((s) => fromLower.includes(s));
   const isAllowedSender = allowedSender && fromLower.includes(allowedSender.toLowerCase());
   if (!isBankSender && !isAllowedSender) {
     await insertLog({
@@ -433,10 +440,30 @@ export async function POST(request: NextRequest) {
     // Parse PDFs asynchronously after responding to Resend
     after(async () => {
       const adminAsync = createAdminClient();
+
+      // Fetch user's accounts once for filename → account matching
+      const { data: userAccounts } = await adminAsync
+        .from("accounts")
+        .select("id, mask, pdf_password")
+        .eq("user_id", userId)
+        .eq("is_active", true);
+
       for (const attachment of pdfAttachments) {
+        // Parse filename for account matching + password
+        const filenameInfo = parseStatementFilename(attachment.filename ?? "");
+        const accountMatch = filenameInfo && userAccounts
+          ? matchAccountByLast4(
+              userAccounts as Array<{ id: string; mask: string | null; pdf_password: string | null }>,
+              filenameInfo.last4,
+            )
+          : null;
+
+        const password = accountMatch?.pdfPassword ?? undefined;
+
         const result = await processEmailPdfAttachment({
           attachment,
           userId,
+          password,
         });
 
         // Find the pending row by content hash

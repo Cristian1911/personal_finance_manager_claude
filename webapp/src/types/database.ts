@@ -44,6 +44,7 @@ export type Database = {
           monthly_payment: number | null
           name: string
           payment_day: number | null
+          pdf_password: string | null
           provider: Database["public"]["Enums"]["data_provider"]
           provider_account_id: string | null
           show_in_dashboard: boolean
@@ -79,6 +80,7 @@ export type Database = {
           monthly_payment?: number | null
           name: string
           payment_day?: number | null
+          pdf_password?: string | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_account_id?: string | null
           show_in_dashboard?: boolean
@@ -114,6 +116,7 @@ export type Database = {
           monthly_payment?: number | null
           name?: string
           payment_day?: number | null
+          pdf_password?: string | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_account_id?: string | null
           show_in_dashboard?: boolean

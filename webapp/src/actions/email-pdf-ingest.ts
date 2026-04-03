@@ -3,6 +3,7 @@
 import { revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { parsePdfBuffer } from "@/lib/email-ingest/pdf-handler";
+import { parseStatementFilename, matchAccountByLast4 } from "@/lib/email-ingest/statement-filename";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/types/actions";
 import type { Json } from "@/types/database";
@@ -154,6 +155,27 @@ export async function retryPdfParsing(
       })
       .eq("id", id)
       .eq("user_id", user.id);
+
+    // Save password on matched account for future auto-parsing
+    const filenameInfo = parseStatementFilename(row.original_filename ?? "");
+    if (filenameInfo) {
+      const { data: accounts } = await supabase
+        .from("accounts")
+        .select("id, mask, pdf_password")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+
+      if (accounts) {
+        const match = matchAccountByLast4(accounts, filenameInfo.last4);
+        if (match && !match.pdfPassword) {
+          await supabase
+            .from("accounts")
+            .update({ pdf_password: password })
+            .eq("id", match.accountId)
+            .eq("user_id", user.id);
+        }
+      }
+    }
   } else {
     await supabase
       .from("pending_email_statements")

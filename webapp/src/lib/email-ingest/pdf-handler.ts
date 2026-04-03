@@ -143,8 +143,9 @@ export async function parsePdfBuffer(params: {
 export async function processEmailPdfAttachment(params: {
   attachment: ResendAttachment;
   userId: string;
+  password?: string;
 }): Promise<PdfExtractionResult> {
-  const { attachment, userId } = params;
+  const { attachment, userId, password } = params;
   const filename = attachment.filename || "attachment.pdf";
 
   // Decode base64 to buffer
@@ -184,7 +185,7 @@ export async function processEmailPdfAttachment(params: {
   }
 
   // Parse with the PDF parser service
-  const parseResult = await parsePdfBuffer({ buffer, filename });
+  const parseResult = await parsePdfBuffer({ buffer, filename, password });
   if (!parseResult.success) {
     return {
       filename,
