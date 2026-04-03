@@ -743,21 +743,20 @@ export async function getDashboardHeroData(
   const statementPayments = await getUpcomingPayments();
   const statementObligations: PendingObligation[] = statementPayments
     .filter((p) => p.currency_code === baseCurrency)
+    // For credit cards, only show if minimum_payment exists (total_payment_due is the full balance, not an obligation)
+    .filter((p) => p.account_type !== "CREDIT_CARD" || p.minimum_payment != null)
     .map((p) => ({
       id: p.id,
       name: p.account_name,
-      // For credit cards, show minimum_payment (actual obligation) instead of total balance
-      amount: p.account_type === "CREDIT_CARD" && p.minimum_payment != null
-        ? p.minimum_payment
-        : p.total_payment_due,
+      amount: p.account_type === "CREDIT_CARD" ? p.minimum_payment! : p.total_payment_due,
       currency_code: p.currency_code,
       due_date: p.payment_due_date,
       source: "statement" as const,
     }));
   const creditCardStatementPending = statementPayments
     .filter((p) => p.currency_code === baseCurrency)
-    .filter((p) => p.account_type === "CREDIT_CARD")
-    .reduce((sum, p) => sum + (p.minimum_payment ?? p.total_payment_due), 0);
+    .filter((p) => p.account_type === "CREDIT_CARD" && p.minimum_payment != null)
+    .reduce((sum, p) => sum + p.minimum_payment!, 0);
   const nonCardStatementPending = statementPayments
     .filter((p) => p.currency_code === baseCurrency)
     .filter((p) => p.account_type !== "CREDIT_CARD")
