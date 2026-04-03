@@ -171,7 +171,8 @@ async function syncCreditCardRecurringTemplate(params: {
 }): Promise<void> {
   const cc = params.meta.creditCardMetadata;
   if (!cc?.payment_due_date) return;
-  if (cc.total_payment_due == null || !Number.isFinite(cc.total_payment_due) || cc.total_payment_due <= 0) {
+  const paymentDue = cc.minimum_payment ?? cc.total_payment_due;
+  if (paymentDue == null || !Number.isFinite(paymentDue) || paymentDue <= 0) {
     return;
   }
   if (
@@ -193,7 +194,7 @@ async function syncCreditCardRecurringTemplate(params: {
     params.existingTemplate?.merchant_name?.trim() ||
     buildDebtPaymentMerchantName(accountName);
   const description = params.existingTemplate?.description?.trim() || null;
-  const amount = Math.round(cc.total_payment_due * 100) / 100;
+  const amount = Math.round(paymentDue * 100) / 100;
 
   try {
     if (params.existingTemplate) {
