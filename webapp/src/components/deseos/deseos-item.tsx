@@ -43,7 +43,7 @@ function verdictText(verdict: string | null): string | null {
       return "Puedes, con precaucion";
     case "WAIT":
       return "Mejor esperar";
-    case "DONT_BUY":
+    case "NOT_RECOMMENDED":
       return "No es buen momento";
     default:
       return null;
@@ -58,7 +58,7 @@ function verdictTextColor(verdict: string | null): string {
       return "text-green-400";
     case "WAIT":
       return "text-yellow-400";
-    case "DONT_BUY":
+    case "NOT_RECOMMENDED":
       return "text-red-400";
     default:
       return "text-muted-foreground";

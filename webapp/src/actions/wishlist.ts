@@ -114,9 +114,10 @@ export async function getWishlistItemsForDashboard(): Promise<{
     .from("wishlist_items")
     .select("*")
     .eq("user_id", user.id)
-    .eq("status", "active")
+    .eq("status", "wishlist")
     .order("last_score", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(10);
 
   if (error) {
     console.error("Error fetching dashboard wishlist items:", error);
@@ -396,11 +397,12 @@ export async function getFinancialSnapshot(): Promise<FinancialSnapshot | null> 
  */
 async function scoreItemWithSnapshot(
   item: WishlistItem,
-  snapshot: FinancialSnapshot
+  snapshot: FinancialSnapshot,
+  supabase: Awaited<ReturnType<typeof getAuthenticatedClient>>["supabase"],
+  userId: string
 ): Promise<PurchaseDecisionResult | null> {
   if (!item.enriched || !item.urgency || !item.funding_type) return null;
 
-  // Determine the account to score against
   const selectedAccount = item.account_id
     ? snapshot.accounts.find((a) => a.id === item.account_id)
     : snapshot.accounts.find(
@@ -413,35 +415,32 @@ async function scoreItemWithSnapshot(
   let budgetRemaining: number | null = null;
   if (item.category_id) {
     try {
-      const { supabase, user } = await getAuthenticatedClient();
-      if (user) {
-        const targetMonth = parseMonth(null);
-        const [budgetRes, spentRes] = await Promise.all([
-          supabase
-            .from("budgets")
-            .select("amount")
-            .eq("category_id", item.category_id)
-            .eq("period", "monthly")
-            .maybeSingle(),
-          supabase
-            .from("transactions")
-            .select("amount")
-            .eq("direction", "OUTFLOW")
-            .eq("is_excluded", false)
-            .eq("category_id", item.category_id)
-            .gte("transaction_date", monthStartStr(targetMonth))
-            .lte("transaction_date", monthEndStr(targetMonth))
-            .is("reconciled_into_transaction_id", null),
-        ]);
+      const targetMonth = parseMonth();
+      const [budgetRes, spentRes] = await Promise.all([
+        supabase
+          .from("budgets")
+          .select("amount")
+          .eq("category_id", item.category_id)
+          .eq("period", "monthly")
+          .maybeSingle(),
+        supabase
+          .from("transactions")
+          .select("amount")
+          .eq("direction", "OUTFLOW")
+          .eq("is_excluded", false)
+          .eq("category_id", item.category_id)
+          .gte("transaction_date", monthStartStr(targetMonth))
+          .lte("transaction_date", monthEndStr(targetMonth))
+          .is("reconciled_into_transaction_id", null),
+      ]);
 
-        const budgetTarget = budgetRes.data?.amount ?? null;
-        if (budgetTarget != null) {
-          const budgetSpent = ((spentRes.data ?? []) as BudgetTxRow[]).reduce(
-            (sum, tx) => sum + tx.amount,
-            0
-          );
-          budgetRemaining = Number(budgetTarget) - budgetSpent;
-        }
+      const budgetTarget = budgetRes.data?.amount ?? null;
+      if (budgetTarget != null) {
+        const budgetSpent = ((spentRes.data ?? []) as BudgetTxRow[]).reduce(
+          (sum, tx) => sum + tx.amount,
+          0
+        );
+        budgetRemaining = Number(budgetTarget) - budgetSpent;
       }
     } catch {
       // Budget lookup failure is non-fatal
@@ -476,31 +475,27 @@ async function scoreItemWithSnapshot(
 
   // Best-effort: persist score
   try {
-    const { supabase, user } = await getAuthenticatedClient();
-    if (user) {
-      const wasGreen =
-        item.last_verdict === "BUY" || item.last_verdict === "BUY_WITH_CAUTION";
-      const isGreen =
-        result.verdict === "BUY" || result.verdict === "BUY_WITH_CAUTION";
+    const wasGreen =
+      item.last_verdict === "BUY" || item.last_verdict === "BUY_WITH_CAUTION";
+    const isGreen =
+      result.verdict === "BUY" || result.verdict === "BUY_WITH_CAUTION";
 
-      const updatePayload: Record<string, unknown> = {
-        last_score: result.score,
-        last_verdict: result.verdict,
-        last_scored_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+    const updatePayload: Record<string, unknown> = {
+      last_score: result.score,
+      last_verdict: result.verdict,
+      last_scored_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
 
-      // Set ready_at on first green transition
-      if (isGreen && !wasGreen && !item.ready_at) {
-        updatePayload.ready_at = new Date().toISOString();
-      }
-
-      await supabase
-        .from("wishlist_items")
-        .update(updatePayload)
-        .eq("id", item.id)
-        .eq("user_id", user.id);
+    if (isGreen && !wasGreen && !item.ready_at) {
+      updatePayload.ready_at = new Date().toISOString();
     }
+
+    await supabase
+      .from("wishlist_items")
+      .update(updatePayload)
+      .eq("id", item.id)
+      .eq("user_id", userId);
   } catch {
     // Score persistence failure is non-fatal
   }
@@ -544,8 +539,8 @@ export async function getWishlistItemsWithFreshScores(): Promise<
 
   const scored: ScoredWishlistItem[] = await Promise.all(
     items.map(async (item) => {
-      // Only score enriched active items
-      if (item.status !== "active" || !item.enriched || !snapshot) {
+      // Only score enriched wishlist items
+      if (item.status !== "wishlist" || !item.enriched || !snapshot) {
         return {
           ...item,
           freshScore: item.last_score,
@@ -555,7 +550,7 @@ export async function getWishlistItemsWithFreshScores(): Promise<
       }
 
       try {
-        const result = await scoreItemWithSnapshot(item, snapshot);
+        const result = await scoreItemWithSnapshot(item, snapshot, supabase, user.id);
         if (!result) {
           return {
             ...item,
@@ -623,7 +618,7 @@ export async function scoreWishlistItem(
     };
   }
 
-  const result = await scoreItemWithSnapshot(wishlistItem, snapshot);
+  const result = await scoreItemWithSnapshot(wishlistItem, snapshot, supabase, user.id);
   if (!result) {
     return { success: false, error: "No se pudo puntuar este deseo" };
   }
@@ -773,7 +768,8 @@ export async function getWishlistInsights(): Promise<WishlistInsight[]> {
     .select("*, wishlist_reflections(*)")
     .eq("user_id", user.id)
     .in("status", ["reflected", "archived"])
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(100);
 
   if (error) {
     console.error("Error fetching wishlist insights:", error);
@@ -892,7 +888,7 @@ export async function getActiveNudges(): Promise<WishlistNudge[]> {
     .from("wishlist_items")
     .select("*")
     .eq("user_id", user.id)
-    .eq("status", "active")
+    .eq("status", "wishlist")
     .eq("enriched", true)
     .order("last_score", { ascending: false, nullsFirst: false });
 
@@ -994,31 +990,24 @@ export async function getPendingReflections(): Promise<WishlistItem[]> {
   const now = Date.now();
   const DAY_MS = 1000 * 60 * 60 * 24;
 
-  // Fetch bought items (for 14-day reflection)
-  const { data: boughtItems, error: boughtError } = await supabase
-    .from("wishlist_items")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("status", "bought")
-    .order("bought_at", { ascending: true });
+  // Fetch bought + reflected items in parallel
+  const [{ data: boughtItems, error: boughtError }, { data: reflectedItems, error: reflectedError }] =
+    await Promise.all([
+      supabase
+        .from("wishlist_items")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "bought")
+        .order("bought_at", { ascending: true }),
+      supabase
+        .from("wishlist_items")
+        .select("*, wishlist_reflections(id)")
+        .eq("user_id", user.id)
+        .eq("status", "reflected")
+        .order("bought_at", { ascending: true }),
+    ]);
 
-  if (boughtError) {
-    console.error("Error fetching bought items:", boughtError);
-    return [];
-  }
-
-  // Fetch reflected items with reflection count (for 60-day follow-up)
-  const { data: reflectedItems, error: reflectedError } = await supabase
-    .from("wishlist_items")
-    .select("*, wishlist_reflections(id)")
-    .eq("user_id", user.id)
-    .eq("status", "reflected")
-    .order("bought_at", { ascending: true });
-
-  if (reflectedError) {
-    console.error("Error fetching reflected items:", reflectedError);
-    return [];
-  }
+  if (boughtError || reflectedError) return [];
 
   const pending: WishlistItem[] = [];
 

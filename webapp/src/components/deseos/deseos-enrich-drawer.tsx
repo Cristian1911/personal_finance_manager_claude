@@ -39,7 +39,7 @@ export function DeseosEnrichDrawer({
   const [accountId, setAccountId] = useState<string>(item.account_id ?? "");
   const [why, setWhy] = useState<string>(item.why ?? "");
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
