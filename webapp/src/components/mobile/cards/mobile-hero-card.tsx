@@ -74,7 +74,7 @@ export function MobileHeroCard({
       {/* Hero number — tappable for math */}
       <button
         type="button"
-        className="w-full text-left"
+        className="w-full text-center"
         onClick={() => toggle("math")}
         aria-expanded={expanded === "math"}
       >
