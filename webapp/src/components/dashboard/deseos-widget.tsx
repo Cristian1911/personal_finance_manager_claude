@@ -24,10 +24,9 @@ interface DeseosWidgetProps {
   totalCount: number;
   readyCount: number;
   nudge: WishlistNudge | null;
-  currency: CurrencyCode;
 }
 
-export function DeseosWidget({ items, totalCount, readyCount, nudge, currency }: DeseosWidgetProps) {
+export function DeseosWidget({ items, totalCount, readyCount, nudge }: DeseosWidgetProps) {
   const topItem = items[0];
   const secondItem = items[1];
 

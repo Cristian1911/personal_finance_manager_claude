@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BadgeAlert, CalendarClock, PiggyBank, Sparkles } from "lucide-react";
+import { ArrowRight, BadgeAlert, CalendarClock, Heart, PiggyBank, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
@@ -15,6 +15,7 @@ interface PlanDecisionRailProps {
   debt: PlanDebtSummary;
   recurring: PlanRecurringSummary;
   scenarios: PlanScenarioSummary;
+  desires: { totalCount: number; readyCount: number };
   currency: CurrencyCode;
 }
 
@@ -38,6 +39,12 @@ const modules = [
     icon: BadgeAlert,
   },
   {
+    key: "desires",
+    title: "Deseos",
+    href: "/deseos",
+    icon: Heart,
+  },
+  {
     key: "scenarios",
     title: "Escenarios",
     href: "/deudas/planificador",
@@ -50,6 +57,7 @@ export function PlanDecisionRail({
   debt,
   recurring,
   scenarios,
+  desires,
   currency,
 }: PlanDecisionRailProps) {
   const content = {
@@ -84,6 +92,18 @@ export function PlanDecisionRail({
         debt.highestInterestAccountName
           ? `Mayor presión: ${debt.highestInterestAccountName}`
           : "No hay una cuenta dominando la estrategia",
+    },
+    desires: {
+      value:
+        desires.readyCount > 0
+          ? `${desires.readyCount} listos para comprar`
+          : desires.totalCount > 0
+            ? `${desires.totalCount} en la lista`
+            : "Sin deseos aún",
+      detail:
+        desires.readyCount > 0
+          ? "Tienes items que tus finanzas permiten"
+          : "Agrega lo que quieras comprar para evaluarlo",
     },
     scenarios: {
       value: scenarios.count > 0 ? `${scenarios.count} guardados` : "Sin escenarios",

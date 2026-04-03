@@ -63,6 +63,8 @@ import { PlanTeaserCard } from "@/components/dashboard/plan-teaser-card";
 import { ActividadHeatmap } from "@/components/dashboard/actividad-heatmap";
 import { getReminders } from "@/actions/reminders";
 import { PendientesWidget } from "@/components/reminders/pendientes-widget";
+import { getWishlistItemsForDashboard, getActiveNudges as getWishlistNudges } from "@/actions/wishlist";
+import { DeseosWidget } from "@/components/dashboard/deseos-widget";
 import {
   AccountsSkeleton,
   HeatmapSkeleton,
@@ -288,7 +290,7 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
@@ -296,6 +298,8 @@ export default async function DashboardPage({
     getAttentionSnapshot(),
     getRecentImpactEvents(3),
     getReminders("pending"),
+    getWishlistItemsForDashboard(),
+    getWishlistNudges(),
   ]);
 
   const dashboardReminders = pendingReminders.slice(0, 5);
@@ -439,6 +443,14 @@ export default async function DashboardPage({
               <RecentImpactsWidget events={impactEvents} />
               <PendientesWidget reminders={dashboardReminders} />
             </div>
+
+            {/* ── Deseos ── */}
+            <DeseosWidget
+              items={wishlistDashboard.items}
+              totalCount={wishlistDashboard.totalCount}
+              readyCount={wishlistDashboard.readyCount}
+              nudge={wishlistNudges[0] ?? null}
+            />
 
             {/* ── 2. Health Score — tier 1, primary tier (no section wrapper) ── */}
             <WidgetSlot widgetId="health-score">
