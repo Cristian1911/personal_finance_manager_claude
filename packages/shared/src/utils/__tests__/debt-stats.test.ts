@@ -14,7 +14,7 @@ const cc2 = makeAccount({
 });
 const loan1 = makeAccount({
   id: "loan1", name: "Bancolombia", type: "LOAN",
-  balance: 6_200_000, creditLimit: 18_000_000, interestRate: 18,
+  balance: 6_200_000, creditLimit: null, loanAmount: 18_000_000, interestRate: 18,
   monthlyPayment: 650_000, paymentDay: 5,
 });
 
@@ -30,9 +30,12 @@ describe("computeDebtStats", () => {
     expect(stats.highestPayment.amount).toBe(890_000);
   });
 
-  it("finds highest rate account", () => {
-    expect(stats.highestRate.accountName).toBe("Falabella");
-    expect(stats.highestRate.rate).toBe(42.5);
+  it("finds most expensive debt by monthly cost, not just rate", () => {
+    // Falabella: 5M at 42.5% EA → highest monthly interest cost
+    expect(stats.mostExpensive).not.toBeNull();
+    expect(stats.mostExpensive!.accountName).toBe("Falabella");
+    expect(stats.mostExpensive!.monthlyCost).toBeGreaterThan(0);
+    expect(stats.mostExpensive!.rate).toBe(42.5);
   });
 
   it("finds next upcoming payment", () => {
@@ -71,21 +74,31 @@ describe("computeDebtStats", () => {
     expect(stats.allByPayment[0].amount).toBeGreaterThanOrEqual(
       stats.allByPayment[1].amount
     );
-    expect(stats.allByRate).toHaveLength(3);
-    expect(stats.allByRate[0].rate).toBeGreaterThanOrEqual(
-      stats.allByRate[1].rate
+    expect(stats.allByCost).toHaveLength(3);
+    expect(stats.allByCost[0].interest).toBeGreaterThanOrEqual(
+      stats.allByCost[1].interest
     );
   });
 });
 
 describe("computeDebtStats edge cases", () => {
-  it("returns null for loans progress when creditLimit is null", () => {
+  it("returns null for loans progress when both loanAmount and creditLimit are null", () => {
     const loan = makeAccount({
-      type: "LOAN", balance: 5_000_000, creditLimit: null,
+      type: "LOAN", balance: 5_000_000, creditLimit: null, loanAmount: null,
       monthlyPayment: 500_000,
     });
     const stats = computeDebtStats([loan]);
     expect(stats.loans.progress).toBeNull();
+  });
+
+  it("uses loanAmount for progress when available", () => {
+    const loan = makeAccount({
+      type: "LOAN", balance: 3_000_000, creditLimit: null,
+      loanAmount: 10_000_000, monthlyPayment: 500_000,
+    });
+    const stats = computeDebtStats([loan]);
+    expect(stats.loans.progress).not.toBeNull();
+    expect(stats.loans.progress!.percentage).toBeCloseTo(70, 0);
   });
 
   it("returns null for loan remaining months when monthlyPayment is null", () => {

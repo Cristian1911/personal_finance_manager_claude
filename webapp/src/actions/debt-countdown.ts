@@ -77,6 +77,7 @@ export const getDebtFreeCountdown = cache(
         color: account.color ?? null,
         institutionName: account.institution_name ?? null,
         currencyBreakdown: null,
+        loanAmount: account.loan_amount ?? null,
       });
     }
 

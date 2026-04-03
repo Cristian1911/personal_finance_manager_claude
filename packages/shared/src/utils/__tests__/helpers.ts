@@ -15,6 +15,7 @@ export function makeAccount(overrides: Partial<DebtAccount> = {}): DebtAccount {
     color: null,
     institutionName: null,
     currencyBreakdown: null,
+    loanAmount: null,
     ...overrides,
   };
 }

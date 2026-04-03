@@ -119,27 +119,27 @@ export function DebtQuickStats({
             </StatTile>
           )}
 
-          {/* Deuda más cara */}
-          {stats.highestRate.rate > 0 && (
+          {/* Deuda más cara — by actual monthly cost, not just rate */}
+          {stats.mostExpensive && (
             <StatTile
               label="Deuda más cara"
               popoverContent={
                 <PopoverList
-                  items={stats.allByRate.map((e) => ({
+                  items={stats.allByCost.map((e) => ({
                     label: e.accountName,
-                    value: `${e.rate.toFixed(1)}% EA`,
+                    value: formatCurrency(e.interest, currency),
                   }))}
                 />
               }
             >
-              <p className="text-xl font-bold">
-                {stats.highestRate.rate.toFixed(1)}%{" "}
-                <span className="text-xs font-normal text-muted-foreground">
-                  EA
+              <p className="text-xl font-bold text-z-expense">
+                {formatCurrency(stats.mostExpensive.monthlyCost, currency)}
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  /mes
                 </span>
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {stats.highestRate.accountName}
+                {stats.mostExpensive.accountName} · {stats.mostExpensive.rate.toFixed(1)}% EA
               </p>
             </StatTile>
           )}

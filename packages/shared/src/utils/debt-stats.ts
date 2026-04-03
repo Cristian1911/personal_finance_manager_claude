@@ -57,7 +57,7 @@ export interface DebtStats {
   totalMonthlyPayment: number;
 
   highestPayment: { accountName: string; amount: number };
-  highestRate: { accountName: string; rate: number };
+  mostExpensive: { accountName: string; monthlyCost: number; rate: number } | null;
   nextPayment: UpcomingPaymentEntry | null;
 
   creditCards: {
@@ -80,7 +80,7 @@ export interface DebtStats {
   };
 
   allByPayment: AccountPaymentEntry[];
-  allByRate: AccountRateEntry[];
+  allByCost: AccountInterestEntry[];
   upcomingPayments: UpcomingPaymentEntry[];
 }
 
@@ -106,19 +106,26 @@ export function computeDebtStats(accounts: DebtAccount[]): DebtStats {
     ? { accountName: allByPayment[0].accountName, amount: allByPayment[0].amount }
     : { accountName: "", amount: 0 };
 
-  // Per-account rates (descending)
-  const allByRate: AccountRateEntry[] = active
+  // Per-account monthly interest cost (descending) — "most expensive" = highest actual cost
+  const allByCost: AccountInterestEntry[] = active
     .filter((a) => a.interestRate != null && a.interestRate > 0)
     .map((a) => ({
       accountId: a.id,
       accountName: a.name,
-      rate: a.interestRate!,
+      interest: estimateMonthlyInterest(a.balance, a.interestRate),
     }))
-    .sort((a, b) => b.rate - a.rate);
+    .sort((a, b) => b.interest - a.interest);
 
-  const highestRate = allByRate.length > 0
-    ? { accountName: allByRate[0].accountName, rate: allByRate[0].rate }
-    : { accountName: "", rate: 0 };
+  const mostExpensiveAccount = allByCost.length > 0
+    ? active.find((a) => a.id === allByCost[0].accountId)
+    : null;
+  const mostExpensive = mostExpensiveAccount
+    ? {
+        accountName: allByCost[0].accountName,
+        monthlyCost: allByCost[0].interest,
+        rate: mostExpensiveAccount.interestRate!,
+      }
+    : null;
 
   // Upcoming payments
   const upcomingPayments: UpcomingPaymentEntry[] = active
@@ -137,10 +144,12 @@ export function computeDebtStats(accounts: DebtAccount[]): DebtStats {
   const ccPayments: AccountPaymentEntry[] = creditCards.map((a) => ({
     accountId: a.id, accountName: a.name, amount: getMinPayment(a),
   }));
-  const ccInterests: AccountInterestEntry[] = creditCards.map((a) => ({
-    accountId: a.id, accountName: a.name,
-    interest: estimateMonthlyInterest(a.balance, a.interestRate),
-  }));
+  const ccInterests: AccountInterestEntry[] = creditCards
+    .map((a) => ({
+      accountId: a.id, accountName: a.name,
+      interest: estimateMonthlyInterest(a.balance, a.interestRate),
+    }))
+    .sort((a, b) => b.interest - a.interest);
   const ccUtilization: AccountUtilizationEntry[] = creditCards
     .filter((a) => a.creditLimit && a.creditLimit > 0)
     .map((a) => ({
@@ -160,16 +169,24 @@ export function computeDebtStats(accounts: DebtAccount[]): DebtStats {
     .map((a) => ({
       accountId: a.id, accountName: a.name,
       months: Math.ceil(a.balance / a.monthlyPayment!),
-    }));
+    }))
+    .sort((a, b) => a.months - b.months);
 
   const loanProgressList: AccountProgressEntry[] = loans
-    .filter((a) => a.creditLimit && a.creditLimit > 0)
-    .map((a) => ({
-      accountId: a.id, accountName: a.name,
-      percentage: (1 - a.balance / a.creditLimit!) * 100,
-      paid: a.creditLimit! - a.balance,
-      original: a.creditLimit!,
-    }));
+    .filter((a) => {
+      const original = a.loanAmount ?? a.creditLimit;
+      return original != null && original > 0;
+    })
+    .map((a) => {
+      const original = (a.loanAmount ?? a.creditLimit)!;
+      return {
+        accountId: a.id, accountName: a.name,
+        percentage: Math.max((1 - a.balance / original) * 100, 0),
+        paid: Math.max(original - a.balance, 0),
+        original,
+      };
+    })
+    .sort((a, b) => b.percentage - a.percentage);
 
   const loanRemainingHeadline = loanRemainingList.length > 0
     ? { months: loanRemainingList[0].months, accountName: loanRemainingList[0].accountName }
@@ -181,7 +198,7 @@ export function computeDebtStats(accounts: DebtAccount[]): DebtStats {
   return {
     totalMonthlyPayment,
     highestPayment,
-    highestRate,
+    mostExpensive,
     nextPayment,
     creditCards: {
       count: creditCards.length,
@@ -201,7 +218,7 @@ export function computeDebtStats(accounts: DebtAccount[]): DebtStats {
       progressList: loanProgressList,
     },
     allByPayment,
-    allByRate,
+    allByCost,
     upcomingPayments,
   };
 }
