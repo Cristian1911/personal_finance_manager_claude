@@ -6,28 +6,8 @@ import { parsePdfBuffer } from "@/lib/email-ingest/pdf-handler";
 import { parseStatementFilename, matchAccountByLast4 } from "@/lib/email-ingest/statement-filename";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/types/actions";
+import type { PendingEmailStatement } from "@/types/domain";
 import type { Json } from "@/types/database";
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-export type PendingEmailStatement = {
-  id: string;
-  user_id: string;
-  email_ingest_id: string;
-  from_address: string;
-  subject: string | null;
-  original_filename: string | null;
-  storage_path: string;
-  file_size_bytes: number | null;
-  status: string;
-  error_message: string | null;
-  parsed_data: unknown;
-  idempotency_hash: string;
-  parsed_at: string | null;
-  imported_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
 
 // ── Read actions ─────────────────────────────────────────────────────────────
 
@@ -71,19 +51,13 @@ export async function dismissEmailPdfStatement(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Get storage path before dismissing
-  const { data: row } = await supabase
-    .from("pending_email_statements")
-    .select("storage_path")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
-
-  const { error } = await supabase
+  const { data: row, error } = await supabase
     .from("pending_email_statements")
     .update({ status: "dismissed", updated_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("storage_path")
+    .single();
 
   if (error) return { success: false, error: error.message };
 
@@ -204,7 +178,7 @@ export async function markEmailPdfStatementImported(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const { error } = await supabase
+  const { data: row, error } = await supabase
     .from("pending_email_statements")
     .update({
       status: "imported",
@@ -212,18 +186,14 @@ export async function markEmailPdfStatementImported(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("storage_path")
+    .single();
 
   if (error) return { success: false, error: error.message };
 
   // Clean up stored PDF
   const admin = createAdminClient();
-  const { data: row } = await supabase
-    .from("pending_email_statements")
-    .select("storage_path")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
 
   if (row?.storage_path) {
     await admin.storage.from("email-pdfs").remove([row.storage_path]);

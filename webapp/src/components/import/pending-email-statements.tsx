@@ -19,8 +19,8 @@ import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import {
   dismissEmailPdfStatement,
   retryPdfParsing,
-  type PendingEmailStatement,
 } from "@/actions/email-pdf-ingest";
+import type { PendingEmailStatement } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
 // ── Status helpers ───────────────────────────────────────────────────────────

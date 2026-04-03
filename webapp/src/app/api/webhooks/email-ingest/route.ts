@@ -5,7 +5,7 @@ import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import {
   filterPdfAttachments,
-  processEmailPdfAttachment,
+  parsePdfBuffer,
   type ResendAttachment,
 } from "@/lib/email-ingest/pdf-handler";
 import {
@@ -437,67 +437,82 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Parse PDFs asynchronously after responding to Resend
+    // Parse PDFs asynchronously after responding to Resend.
+    // PDFs are already stored — just download, match account/password, and parse.
     after(async () => {
       const adminAsync = createAdminClient();
 
-      // Fetch user's accounts once for filename → account matching
-      const { data: userAccounts } = await adminAsync
-        .from("accounts")
-        .select("id, mask, pdf_password")
-        .eq("user_id", userId)
-        .eq("is_active", true);
-
-      for (const attachment of pdfAttachments) {
-        // Parse filename for account matching + password
-        const filenameInfo = parseStatementFilename(attachment.filename ?? "");
-        const accountMatch = filenameInfo && userAccounts
-          ? matchAccountByLast4(
-              userAccounts as Array<{ id: string; mask: string | null; pdf_password: string | null }>,
-              filenameInfo.last4,
-            )
-          : null;
-
-        const password = accountMatch?.pdfPassword ?? undefined;
-
-        const result = await processEmailPdfAttachment({
-          attachment,
-          userId,
-          password,
-        });
-
-        // Find the pending row by content hash
-        const { data: pendingRow } = await adminAsync
+      // Fetch pending rows just inserted + user accounts for password matching
+      const [{ data: pendingRows }, { data: userAccounts }] = await Promise.all([
+        adminAsync
           .from("pending_email_statements")
-          .select("id")
+          .select("id, storage_path, original_filename")
           .eq("user_id", userId)
-          .eq("idempotency_hash", result.contentHash)
           .eq("status", "pending")
-          .maybeSingle();
+          .order("created_at", { ascending: false })
+          .limit(pdfAttachments.length),
+        adminAsync
+          .from("accounts")
+          .select("id, mask, pdf_password")
+          .eq("user_id", userId)
+          .eq("is_active", true),
+      ]);
 
-        if (!pendingRow) continue;
+      if (!pendingRows?.length) return;
 
-        if (result.parsed) {
-          await adminAsync
-            .from("pending_email_statements")
-            .update({
-              status: "parsed",
-              parsed_data: result.statements as unknown as Json,
-              parsed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", pendingRow.id);
-        } else {
-          await adminAsync
-            .from("pending_email_statements")
-            .update({
-              status: result.needsPassword ? "needs_password" : "parse_failed",
-              error_message: result.error,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", pendingRow.id);
-        }
-      }
+      await Promise.all(
+        pendingRows.map(async (row) => {
+          // Download PDF from storage
+          const { data: fileData } = await adminAsync.storage
+            .from("email-pdfs")
+            .download(row.storage_path);
+
+          if (!fileData) {
+            await adminAsync
+              .from("pending_email_statements")
+              .update({ status: "parse_failed", error_message: "No se pudo descargar el PDF", updated_at: new Date().toISOString() })
+              .eq("id", row.id);
+            return;
+          }
+
+          // Match filename → account → password
+          const filenameInfo = parseStatementFilename(row.original_filename ?? "");
+          const accountMatch = filenameInfo && userAccounts
+            ? matchAccountByLast4(
+                userAccounts as Array<{ id: string; mask: string | null; pdf_password: string | null }>,
+                filenameInfo.last4,
+              )
+            : null;
+
+          const buffer = await fileData.arrayBuffer();
+          const parseResult = await parsePdfBuffer({
+            buffer,
+            filename: row.original_filename ?? "statement.pdf",
+            password: accountMatch?.pdfPassword ?? undefined,
+          });
+
+          if (parseResult.success) {
+            await adminAsync
+              .from("pending_email_statements")
+              .update({
+                status: "parsed",
+                parsed_data: parseResult.statements as unknown as Json,
+                parsed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", row.id);
+          } else {
+            await adminAsync
+              .from("pending_email_statements")
+              .update({
+                status: parseResult.needsPassword ? "needs_password" : "parse_failed",
+                error_message: parseResult.error,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", row.id);
+          }
+        }),
+      );
     });
 
     // Don't return yet — still process text body below for text alerts
