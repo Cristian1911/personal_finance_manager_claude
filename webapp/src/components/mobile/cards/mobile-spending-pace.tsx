@@ -146,9 +146,11 @@ function RunwayChart({
   const plotH = H - PAD.top - PAD.bottom;
 
   // Normalize data points to current month
+  // Parse day directly from ISO string to avoid timezone shifts
+  const parseDay = (date: string) => parseInt(date.split("-")[2], 10);
+
   const monthPoints = dataPoints.filter((dp) => {
-    const day = new Date(dp.date).getDate();
-    return day <= dayOfMonth;
+    return parseDay(dp.date) <= dayOfMonth;
   });
 
   if (monthPoints.length < 2) {
@@ -163,7 +165,7 @@ function RunwayChart({
   const maxBalance = Math.max(...monthPoints.map((p) => p.balance));
   const scaleX = (day: number) => PAD.left + (day / daysInMonth) * plotW;
   const scaleY = (val: number) =>
-    PAD.top + plotH - (val / (maxBalance * 1.1)) * plotH;
+    PAD.top + plotH - (val / ((maxBalance || 1) * 1.1)) * plotH;
 
   // Ideal line: from day 1 max balance to day 30 zero
   const idealStart = { x: scaleX(1), y: scaleY(maxBalance) };
@@ -172,7 +174,7 @@ function RunwayChart({
   // Actual spending path
   const actualPath = monthPoints
     .map((p, i) => {
-      const day = new Date(p.date).getDate();
+      const day = parseDay(p.date);
       const x = scaleX(day);
       const y = scaleY(p.balance);
       return `${i === 0 ? "M" : "L"}${x},${y}`;
@@ -181,7 +183,7 @@ function RunwayChart({
 
   // Current position
   const lastPoint = monthPoints[monthPoints.length - 1];
-  const lastDay = new Date(lastPoint.date).getDate();
+  const lastDay = parseDay(lastPoint.date);
   const cx = scaleX(lastDay);
   const cy = scaleY(lastPoint.balance);
 
@@ -229,13 +231,13 @@ function RunwayChart({
         )}
 
         {/* X-axis labels */}
-        <text x={PAD.left} y={H - 2} fill="#555" fontSize="7" fontFamily="system-ui">
+        <text x={PAD.left} y={H - 2} fill="#555" fontSize="10" fontFamily="system-ui">
           Día 1
         </text>
-        <text x={scaleX(dayOfMonth)} y={H - 2} fill="#888" fontSize="7" fontFamily="system-ui" textAnchor="middle">
+        <text x={scaleX(dayOfMonth)} y={H - 2} fill="#888" fontSize="10" fontFamily="system-ui" textAnchor="middle">
           Hoy ({dayOfMonth})
         </text>
-        <text x={W - PAD.right} y={H - 2} fill="#555" fontSize="7" fontFamily="system-ui" textAnchor="end">
+        <text x={W - PAD.right} y={H - 2} fill="#555" fontSize="10" fontFamily="system-ui" textAnchor="end">
           {daysInMonth}
         </text>
       </svg>

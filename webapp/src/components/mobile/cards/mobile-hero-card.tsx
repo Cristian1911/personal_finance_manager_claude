@@ -258,7 +258,7 @@ function ChipButton({
       )}
       aria-expanded={active}
     >
-      <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       <span className={cn("text-[13px] font-semibold", active ? "text-z-brass" : "text-z-sage-light")}>
