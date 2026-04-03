@@ -44,6 +44,10 @@ import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
 import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
+import { MobileDashboardV2 } from "@/components/mobile/mobile-dashboard-v2";
+import { MobileSpendingPace } from "@/components/mobile/cards/mobile-spending-pace";
+import { getBudgetSummary } from "@/actions/budgets";
+import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { AttentionCard } from "@/components/ui/attention-card";
 import { getAttentionSnapshot } from "@/actions/attention";
@@ -147,6 +151,11 @@ async function AccountsSection({
 async function MobileBurnRateSection({ currency }: { currency: CurrencyCode }) {
   const burnRateData = await getBurnRate(currency);
   return burnRateData ? <BurnRateCard data={burnRateData} /> : <BurnRateCardEmpty />;
+}
+
+async function MobileSpendingPaceSection({ currency }: { currency: CurrencyCode }) {
+  const burnRateData = await getBurnRate(currency);
+  return burnRateData ? <MobileSpendingPace data={burnRateData} /> : null;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -290,7 +299,7 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, categoryBudgetResult] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
@@ -300,6 +309,8 @@ export default async function DashboardPage({
     getReminders("pending"),
     getWishlistItemsForDashboard(),
     getWishlistNudges(),
+    getBudgetSummary(month),
+    getCategoriesWithBudgetData(month, currency),
   ]);
 
   const dashboardReminders = pendingReminders.slice(0, 5);
@@ -330,6 +341,66 @@ export default async function DashboardPage({
     category_name: tx.categories?.name_es ?? tx.categories?.name ?? undefined,
   }));
 
+  // ── Data for MobileDashboardV2 ──────────────────────────────────────────────
+
+  const mobileLiquidAccounts = allAccounts
+    .filter((a) => a.account_type === "CHECKING" || a.account_type === "SAVINGS")
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      currentBalance: a.current_balance ?? 0,
+      currencyCode: a.currency_code,
+    }));
+
+  const mobileFixedExpenses = heroData.pendingObligations.map((o) => ({
+    id: o.id,
+    name: o.name,
+    amount: o.amount,
+    currencyCode: o.currency_code,
+  }));
+
+  const firstPayment = heroData.pendingObligations[0];
+  const mobileNextPayment = firstPayment
+    ? {
+        name: firstPayment.name,
+        amount: firstPayment.amount,
+        dueDate: firstPayment.due_date,
+        currencyCode: firstPayment.currency_code,
+      }
+    : null;
+
+  const today = new Date();
+  const daysToNextPayment = firstPayment
+    ? Math.ceil(
+        (new Date(firstPayment.due_date).getTime() - today.getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : null;
+
+  // Total spent this month (for the math breakdown)
+  // available = total - fixed - spent → spent = total - fixed - available
+  const mobileTotalSpent = heroData.totalLiquid - heroData.totalPending - heroData.availableToSpend;
+
+  // Top 3 budget categories by % used
+  const categoryBudgetData =
+    categoryBudgetResult.success ? categoryBudgetResult.data : [];
+  const mobileTopCategories = categoryBudgetData
+    .filter((c) => c.budget && c.budget > 0 && c.direction === "OUTFLOW")
+    .sort((a, b) => b.percentUsed - a.percentUsed)
+    .slice(0, 3)
+    .map((c) => ({
+      name: c.name_es ?? c.name,
+      percentUsed: c.percentUsed,
+    }));
+
+  const mobileUpcomingPaymentsV2 = heroData.pendingObligations.slice(0, 5).map((o) => ({
+    id: o.id,
+    name: o.name,
+    dueDate: o.due_date,
+    amount: o.amount,
+    currencyCode: o.currency_code,
+  }));
+
   const quickUpdateAccounts: QuickValueUpdateAccount[] = allAccounts.map((account) => ({
     id: account.id,
     name: account.name,
@@ -354,42 +425,38 @@ export default async function DashboardPage({
     <>
       {/* Mobile dashboard */}
       <div className="lg:hidden">
-        <div className="space-y-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-                Inicio
-              </p>
-              <div>
-                <h1 className="text-2xl font-semibold">Tu estado financiero de hoy</h1>
-                <p className="text-sm text-muted-foreground">
-                  Claridad para decidir sin perderte entre métricas
-                </p>
-              </div>
-            </div>
-            <div className="rounded-full border border-white/6 bg-z-surface-2 px-3 py-1 text-xs text-muted-foreground">
-              {monthLabel}
-            </div>
-          </div>
-          {/* Tier 1: hero + health (renders immediately) */}
-          <MobileDashboard
-            heroData={mobileHeroData}
-            upcomingPayments={mobileUpcomingPayments}
+        <div className="space-y-3">
+          <MobileDashboardV2
+            attentionSignals={attentionSnapshot.signals}
+            hero={{
+              availableToSpend: heroData.availableToSpend,
+              totalBalance: heroData.totalLiquid,
+              pendingFixed: heroData.totalPending,
+              totalSpent: mobileTotalSpent,
+              currency: currency as CurrencyCode,
+              daysToNextPayment,
+              liquidAccounts: mobileLiquidAccounts,
+              fixedExpenses: mobileFixedExpenses,
+              nextPayment: mobileNextPayment,
+            }}
+            upcomingPayments={mobileUpcomingPaymentsV2}
             recentTransactions={mobileRecentTx}
-            quickUpdateAccounts={quickUpdateAccounts}
-            healthMetersData={healthMetersData}
+            budget={
+              budgetSummary.totalTarget > 0
+                ? {
+                    totalTarget: budgetSummary.totalTarget,
+                    totalSpent: budgetSummary.totalSpent,
+                    progress: budgetSummary.progress,
+                    currency: currency as CurrencyCode,
+                    topCategories: mobileTopCategories,
+                  }
+                : null
+            }
           />
-          {/* Tier 2: burn rate, allocation, debt (streams in) */}
+          {/* Tier 2: spending pace (streams in) */}
           <Suspense fallback={<MobileBurnRateSkeleton />}>
-            <MobileBurnRateSection currency={currency} />
+            <MobileSpendingPaceSection currency={currency} />
           </Suspense>
-          <PlanTeaserCard
-            allocationData={allocationData}
-            debtCountdownData={debtCountdownData}
-            currency={currency}
-            monthLabel={monthLabel}
-            variant="mobile"
-          />
         </div>
       </div>
 
