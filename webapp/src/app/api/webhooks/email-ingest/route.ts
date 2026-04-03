@@ -5,6 +5,7 @@ import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import {
   filterPdfAttachments,
+  isPdfEncrypted,
   parsePdfBuffer,
   type ResendAttachment,
 } from "@/lib/email-ingest/pdf-handler";
@@ -485,10 +486,25 @@ export async function POST(request: NextRequest) {
             : null;
 
           const buffer = await fileData.arrayBuffer();
+          const password = accountMatch?.pdfPassword ?? undefined;
+
+          // Fast encryption check — skip parser round-trip if encrypted without password
+          if (isPdfEncrypted(buffer) && !password) {
+            await adminAsync
+              .from("pending_email_statements")
+              .update({
+                status: "needs_password",
+                error_message: "PDF protegido con contraseña",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", row.id);
+            return;
+          }
+
           const parseResult = await parsePdfBuffer({
             buffer,
             filename: row.original_filename ?? "statement.pdf",
-            password: accountMatch?.pdfPassword ?? undefined,
+            password,
           });
 
           if (parseResult.success) {

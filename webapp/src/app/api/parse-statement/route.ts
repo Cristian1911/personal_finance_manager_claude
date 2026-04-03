@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestUser } from "@/app/api/_shared/auth";
 import { createClient } from "@/lib/supabase/server";
+import { isPdfEncrypted } from "@/lib/email-ingest/pdf-handler";
 import { parseStatementFilename, matchAccountByLast4 } from "@/lib/email-ingest/statement-filename";
 
 const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
@@ -53,8 +54,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Quick encryption check — fail fast instead of waiting for the parser
+  const fileBuffer = await file.arrayBuffer();
+  if (isPdfEncrypted(fileBuffer) && !password) {
+    return NextResponse.json(
+      {
+        error: "El PDF está protegido con contraseña. Ingresa la contraseña para procesarlo.",
+        errorType: "password_required",
+      },
+      { status: 422 }
+    );
+  }
+
   const proxyForm = new FormData();
-  proxyForm.append("file", file);
+  proxyForm.append("file", new Blob([fileBuffer], { type: "application/pdf" }), file.name);
   if (password) {
     proxyForm.append("password", password);
   }

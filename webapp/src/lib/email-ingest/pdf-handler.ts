@@ -57,6 +57,26 @@ function isPdfContent(buffer: ArrayBuffer): boolean {
   return header[0] === 0x25 && header[1] === 0x50 && header[2] === 0x44 && header[3] === 0x46;
 }
 
+/**
+ * Detect if a PDF is encrypted by scanning for /Encrypt in the trailer.
+ * Checks the last 4KB of the file (where the xref/trailer typically lives)
+ * plus the first 2KB (some linearized PDFs put it early).
+ */
+export function isPdfEncrypted(buffer: ArrayBuffer): boolean {
+  const bytes = new Uint8Array(buffer);
+  const needle = "/Encrypt";
+
+  // Check last 4KB (trailer area)
+  const tailStart = Math.max(0, bytes.length - 4096);
+  const tail = new TextDecoder("latin1").decode(bytes.slice(tailStart));
+  if (tail.includes(needle)) return true;
+
+  // Check first 2KB (linearized PDFs)
+  const headEnd = Math.min(bytes.length, 2048);
+  const head = new TextDecoder("latin1").decode(bytes.slice(0, headEnd));
+  return head.includes(needle);
+}
+
 // ── Core functions ───────────────────────────────────────────────────────────
 
 /** Store a PDF in Supabase Storage under the user's folder */
