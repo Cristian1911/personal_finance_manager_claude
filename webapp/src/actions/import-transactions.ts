@@ -461,15 +461,25 @@ async function processStatementMeta(params: {
       "tasa de mora"
     );
 
-    const { data: prevSnapshot } = await supabase
+    // Fetch the most recent snapshot BEFORE this statement's period.
+    // Uses period_to to find the chronologically preceding statement,
+    // so re-imports and out-of-order historic imports both work correctly.
+    let prevSnapshotQuery = supabase
       .from("statement_snapshots")
       .select("*")
       .eq("user_id", userId)
       .eq("account_id", meta.accountId)
       .eq("currency_code", meta.currency)
       .order("period_to", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+
+    if (meta.periodTo) {
+      prevSnapshotQuery = prevSnapshotQuery.lt("period_to", meta.periodTo);
+    } else if (meta.periodFrom) {
+      prevSnapshotQuery = prevSnapshotQuery.lt("period_from", meta.periodFrom);
+    }
+
+    const { data: prevSnapshot } = await prevSnapshotQuery.maybeSingle();
 
     const snapshotRow = {
       user_id: userId,
