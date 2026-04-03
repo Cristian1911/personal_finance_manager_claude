@@ -206,8 +206,8 @@ export function StepResults({
               Información extraída del encabezado del extracto bancario.
             </p>
           </div>
-          {result.accountUpdates.map((update) => (
-            <Card key={update.accountId}>
+          {result.accountUpdates.map((update, idx) => (
+            <Card key={`${update.accountId}-${idx}`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   {update.accountName}

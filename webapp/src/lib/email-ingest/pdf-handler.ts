@@ -111,7 +111,7 @@ export async function parsePdfBuffer(params: {
   | { success: false; error: string; needsPassword?: boolean }
 > {
   if (!PARSER_API_KEY) {
-    return { success: false, error: "PDF parser service not configured" };
+    return { success: false, error: "Servicio de análisis de PDF no configurado" };
   }
 
   const formData = new FormData();
