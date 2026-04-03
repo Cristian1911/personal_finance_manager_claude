@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { ChevronRight } from "lucide-react";
 import type { BurnRateResponse } from "@/actions/burn-rate";
-import type { CurrencyCode } from "@/types/domain";
 import { ExpandableCard } from "./expandable-card";
 
 interface MobileSpendingPaceProps {
@@ -18,7 +17,7 @@ export function MobileSpendingPace({ data }: MobileSpendingPaceProps) {
   const [expanded, setExpanded] = useState(false);
 
   const { discretionary, currency } = data;
-  const { runwayDays, dailyAverage, dataPoints, trend } = discretionary;
+  const { runwayDays, dailyAverage, dataPoints } = discretionary;
   const dayOfMonth = new Date().getDate();
   const daysInMonth = new Date(
     new Date().getFullYear(),
