@@ -33,23 +33,22 @@ export async function POST(request: NextRequest) {
   }
 
   let password = formData.get("password") as string | null;
+  const userProvidedPassword = !!password;
 
   // Auto-fill password from account if filename matches
-  if (!password) {
-    const filenameInfo = parseStatementFilename(file.name);
-    if (filenameInfo) {
-      const supabase = await createClient();
-      const { data: accounts } = await supabase
-        .from("accounts")
-        .select("id, mask, pdf_password")
-        .eq("user_id", user.id)
-        .eq("is_active", true);
+  const filenameInfo = parseStatementFilename(file.name);
+  if (!password && filenameInfo) {
+    const supabase = await createClient();
+    const { data: accounts } = await supabase
+      .from("accounts")
+      .select("id, mask, pdf_password")
+      .eq("user_id", user.id)
+      .eq("is_active", true);
 
-      if (accounts) {
-        const match = matchAccountByLast4(accounts, filenameInfo.last4);
-        if (match?.pdfPassword) {
-          password = match.pdfPassword;
-        }
+    if (accounts) {
+      const match = matchAccountByLast4(accounts, filenameInfo.last4);
+      if (match?.pdfPassword) {
+        password = match.pdfPassword;
       }
     }
   }
@@ -124,6 +123,32 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+
+    // Save password on matched account for future auto-parsing
+    if (userProvidedPassword && password && filenameInfo) {
+      try {
+        const supabase = await createClient();
+        const { data: accounts } = await supabase
+          .from("accounts")
+          .select("id, mask, pdf_password")
+          .eq("user_id", user.id)
+          .eq("is_active", true);
+
+        if (accounts) {
+          const match = matchAccountByLast4(accounts, filenameInfo.last4);
+          if (match) {
+            await supabase
+              .from("accounts")
+              .update({ pdf_password: password })
+              .eq("id", match.accountId)
+              .eq("user_id", user.id);
+          }
+        }
+      } catch {
+        // Non-fatal — password save failure shouldn't block the parse result
+      }
+    }
+
     return NextResponse.json(data);
   } catch {
     return NextResponse.json(

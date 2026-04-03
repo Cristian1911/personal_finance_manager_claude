@@ -141,7 +141,7 @@ export async function retryPdfParsing(
 
       if (accounts) {
         const match = matchAccountByLast4(accounts, filenameInfo.last4);
-        if (match && !match.pdfPassword) {
+        if (match) {
           await supabase
             .from("accounts")
             .update({ pdf_password: password })
