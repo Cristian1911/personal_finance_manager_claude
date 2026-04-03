@@ -5,15 +5,8 @@ import { ArrowRight } from "lucide-react";
 import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { DebtHeroCard } from "@/components/debt/debt-hero-card";
-import dynamic from "next/dynamic";
-
-const UtilizationGauge = dynamic(
-  () => import("@/components/debt/utilization-gauge").then((m) => ({ default: m.UtilizationGauge })),
-  { loading: () => <div className="h-[200px] w-full rounded-xl bg-muted animate-pulse" /> }
-);
-import { InterestCostCard } from "@/components/debt/interest-cost-card";
 import { DebtAccountCard } from "@/components/debt/debt-account-card";
-import { DebtInsights } from "@/components/debt/debt-insights";
+import { DebtQuickStats } from "@/components/debt/debt-quick-stats";
 import { SalaryBar } from "@/components/debt/salary-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
@@ -24,12 +17,12 @@ import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getRecentImpactEvents } from "@/actions/impact-events";
 import { AccountImpactTimeline } from "@/components/impact/account-impact-timeline";
-import { getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
+import { getCurrentSalaryBreakdown, getMinPayment, computeDebtStats } from "@zeta/shared";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
 import {
   DebtOverviewSkeleton,
-  DebtInsightsSkeleton,
+  DebtQuickStatsSkeleton,
   SalaryBarSkeleton,
   DebtAccountsSkeleton,
 } from "@/components/debt/debt-skeletons";
@@ -88,22 +81,17 @@ async function DebtOverviewSection({
         })
       : null;
 
+  const stats = computeDebtStats(overview.accounts);
+
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <DebtHeroCard
-          totalDebt={overview.totalDebt}
-          secondaryCurrencies={secondaryCurrencies}
-        />
-        {overview.totalCreditLimit > 0 && (
-          <UtilizationGauge
-            utilization={overview.overallUtilization}
-            totalUsed={totalCreditUsed}
-            totalLimit={overview.totalCreditLimit}
-          />
-        )}
-        <InterestCostCard monthlyInterest={overview.monthlyInterestEstimate} />
-      </div>
+      <DebtHeroCard
+        totalDebt={overview.totalDebt}
+        totalMonthlyPayment={stats.totalMonthlyPayment}
+        monthlyInterest={overview.monthlyInterestEstimate}
+        secondaryCurrencies={secondaryCurrencies}
+        currency={currency}
+      />
 
       {exchangeRate && secondaryCurrencies.length > 0 && (
         <ExchangeRateNudge
@@ -115,7 +103,13 @@ async function DebtOverviewSection({
         />
       )}
 
-      <DebtInsights insights={overview.insights} />
+      <DebtQuickStats
+        stats={stats}
+        currency={currency}
+        overallUtilization={overview.overallUtilization}
+        totalCreditUsed={totalCreditUsed}
+        totalCreditLimit={overview.totalCreditLimit}
+      />
 
       {salaryBreakdown && incomeEstimate && (
         <SalaryBar breakdown={salaryBreakdown} currency={currency} />
@@ -197,7 +191,7 @@ export default async function DeudasPage({
         fallback={
           <div className="space-y-6">
             <DebtOverviewSkeleton />
-            <DebtInsightsSkeleton />
+            <DebtQuickStatsSkeleton />
             <SalaryBarSkeleton />
             <DebtAccountsSkeleton />
           </div>
