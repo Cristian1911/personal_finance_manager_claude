@@ -97,8 +97,6 @@ export function PendingEmailTransactions({
     return matches;
   }, [initialTransactions, accounts]);
 
-  if (transactions.length === 0) return null;
-
   function resolveAccount(tx: PendingEmailTransaction): Account | null {
     const id = accountOverrides[tx.id] ?? tx.suggested_account_id ?? clientMatches[tx.id];
     return id ? accountMap.get(id) ?? null : null;
@@ -132,6 +130,8 @@ export function PendingEmailTransactions({
     () => [...selected].filter((id) => importableIds.has(id)),
     [selected, importableIds]
   );
+
+  if (transactions.length === 0) return null;
 
   function toggleSelected(id: string) {
     setSelected((prev) => {
