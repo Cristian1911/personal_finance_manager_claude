@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { ChevronRight, CircleAlert, Inbox, Bell } from "lucide-react";
+import { ChevronRight, CircleAlert, Inbox, Bell, X } from "lucide-react";
 import type { AttentionSignal } from "@/types/attention";
 import { ExpandableCard } from "./expandable-card";
 
 interface MobileAlertCardProps {
   signals: AttentionSignal[];
 }
+
+const STORAGE_KEY = "zeta:dismissed-alert";
+const DISMISS_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const SIGNAL_CONFIG: Record<string, { icon: typeof CircleAlert; label: string }> = {
   uncategorized: { icon: Inbox, label: "transacciones sin categoría" },
@@ -26,11 +29,48 @@ function getTopSignal(signals: AttentionSignal[]): AttentionSignal | null {
   return sorted[0] ?? null;
 }
 
+function isDismissed(signal: AttentionSignal): boolean {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const dismissed = JSON.parse(raw) as { key: string; count: number; at: number };
+    // Show again if signal changed (different type or count changed) or timeout expired
+    if (dismissed.key !== signal.key || dismissed.count !== signal.count) return false;
+    return Date.now() - dismissed.at < DISMISS_DURATION_MS;
+  } catch {
+    return false;
+  }
+}
+
+function dismissSignal(signal: AttentionSignal) {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ key: signal.key, count: signal.count, at: Date.now() })
+    );
+  } catch {
+    // localStorage unavailable — dismiss only for this render via state
+  }
+}
+
 export function MobileAlertCard({ signals }: MobileAlertCardProps) {
   const [expanded, setExpanded] = useState(false);
   const signal = useMemo(() => getTopSignal(signals), [signals]);
+  const [hidden, setHidden] = useState(() => (signal ? isDismissed(signal) : false));
 
-  if (!signal) return null;
+  const handleDismiss = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (signal) {
+        dismissSignal(signal);
+        setHidden(true);
+        setExpanded(false);
+      }
+    },
+    [signal]
+  );
+
+  if (!signal || hidden) return null;
 
   const config = SIGNAL_CONFIG[signal.key];
   const Icon = config?.icon ?? CircleAlert;
@@ -62,13 +102,14 @@ export function MobileAlertCard({ signals }: MobileAlertCardProps) {
               {signal.count} {signal.count === 1 ? "pendiente" : "pendientes"}
             </p>
           </div>
-          <ChevronRight
-            className={cn(
-              "h-4 w-4 transition-transform duration-200",
-              expanded && "rotate-90",
-              isAction ? "text-z-debt/50" : "text-z-brass/50"
-            )}
-          />
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+            aria-label="Descartar alerta"
+          >
+            <X className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
         </div>
       }
       detail={
