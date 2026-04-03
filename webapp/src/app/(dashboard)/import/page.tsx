@@ -4,7 +4,9 @@ import { ArrowRight, Files, ShieldCheck, Sparkles } from "lucide-react";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarioRules } from "@/actions/destinatarios";
+import { getPendingEmailStatements } from "@/actions/email-pdf-ingest";
 import { ImportWizard } from "@/components/import/import-wizard";
+import { PendingEmailStatements } from "@/components/import/pending-email-statements";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { Button } from "@/components/ui/button";
 import { PageHero, HeroPill, HeroAccentPill } from "@/components/ui/page-hero";
@@ -13,14 +15,16 @@ import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 
 export default async function ImportPage() {
   await connection();
-  const [accountResult, categoryResult, rulesResult] = await Promise.all([
+  const [accountResult, categoryResult, rulesResult, pendingStatementsResult] = await Promise.all([
     getAccounts(),
     getCategories(),
     getDestinatarioRules(),
+    getPendingEmailStatements(),
   ]);
   const accounts = accountResult.success ? accountResult.data : [];
   const categories = categoryResult.success ? categoryResult.data : [];
   const destinatarioRules = rulesResult.success ? rulesResult.data : [];
+  const pendingStatements = pendingStatementsResult.success ? pendingStatementsResult.data : [];
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -103,6 +107,8 @@ export default async function ImportPage() {
           </div>
         </div>
       </PageHero>
+
+      <PendingEmailStatements statements={pendingStatements} />
 
       <ImportWizard
         accounts={accounts}
