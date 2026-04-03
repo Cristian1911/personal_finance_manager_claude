@@ -36,9 +36,10 @@ export function parseStatementFilename(
   };
 }
 
+import { accountMaskSuffixMatches } from "@/lib/utils/account-mask";
+
 /**
  * Match a statement's last4 to an account via the mask field.
- * The mask stores the last digits of the card/account number.
  */
 export function matchAccountByLast4(
   accounts: Array<{
@@ -49,7 +50,7 @@ export function matchAccountByLast4(
   last4: string,
 ): { accountId: string; pdfPassword: string | null } | null {
   for (const account of accounts) {
-    if (account.mask?.endsWith(last4)) {
+    if (accountMaskSuffixMatches(account.mask, last4)) {
       return { accountId: account.id, pdfPassword: account.pdf_password };
     }
   }

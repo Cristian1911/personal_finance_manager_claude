@@ -21,6 +21,7 @@ import {
   retryPdfParsing,
 } from "@/actions/email-pdf-ingest";
 import type { PendingEmailStatement } from "@/types/domain";
+import { formatRelativeDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
 
 // ── Status helpers ───────────────────────────────────────────────────────────
@@ -64,19 +65,6 @@ function formatFileSize(bytes: number | null): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatRelativeDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "hace un momento";
-  if (diffMins < 60) return `hace ${diffMins} min`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `hace ${diffHours}h`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `hace ${diffDays}d`;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
