@@ -1,7 +1,13 @@
+import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
+import {
+  filterPdfAttachments,
+  processEmailPdfAttachment,
+  type ResendAttachment,
+} from "@/lib/email-ingest/pdf-handler";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { autoCategorize } from "@zeta/shared";
 import type { Json } from "@/types/database";
@@ -26,6 +32,7 @@ type ResendEmailPayload = {
 type ResendEmailContent = {
   text: string | null;
   html: string | null;
+  attachments: ResendAttachment[];
 };
 
 type LogStatus =
@@ -35,7 +42,10 @@ type LogStatus =
   | "duplicate"
   | "parse_failed"
   | "sender_rejected"
-  | "rate_limited";
+  | "rate_limited"
+  | "pdf_queued"
+  | "pdf_parse_failed"
+  | "pdf_imported";
 
 // ── Signature verification ───────────────────────────────────────────────────
 
@@ -121,7 +131,13 @@ async function fetchEmailContent(emailId: string): Promise<ResendEmailContent | 
   }
 
   const data = await res.json();
-  return { text: data.text ?? null, html: data.html ?? null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const attachments: ResendAttachment[] = (data.attachments ?? []).map((a: any) => ({
+    filename: a.filename ?? "attachment.pdf",
+    content_type: a.content_type ?? a.contentType ?? "",
+    content: a.content ?? "",
+  }));
+  return { text: data.text ?? null, html: data.html ?? null, attachments };
 }
 
 function stripHtml(html: string): string {
@@ -218,7 +234,7 @@ export async function POST(request: NextRequest) {
   //    on direct inbound delivery while the stored key retains mixed case.
   const { data: ingestAddress } = await admin
     .from("email_ingest_addresses")
-    .select("id, user_id, account_id, auto_import, allowed_sender")
+    .select("id, user_id, account_id, auto_import, allowed_sender, pdf_import_enabled")
     .filter("address_key", "ilike", addressKey.replace(/%/g, "\\%").replace(/_/g, "\\_"))
     .eq("is_active", true)
     .single();
@@ -241,6 +257,7 @@ export async function POST(request: NextRequest) {
     account_id: defaultAccountId,
     auto_import: autoImport,
     allowed_sender: allowedSender,
+    pdf_import_enabled: pdfImportEnabled,
   } = ingestAddress;
 
   // 5. Detect Gmail forwarding verification emails
@@ -302,7 +319,164 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // 7. Parse email body
+  // 7. Check for PDF attachments
+  const pdfAttachments = filterPdfAttachments(emailContent?.attachments ?? []);
+
+  if (pdfAttachments.length > 0 && pdfImportEnabled) {
+    // Store pending rows immediately, parse async via after()
+    for (const attachment of pdfAttachments) {
+      const filename = attachment.filename || "attachment.pdf";
+      // Quick decode + hash for idempotency check before heavy work
+      const binaryString = atob(attachment.content);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const hashBuffer = await crypto.subtle.digest("SHA-256", bytes.buffer);
+      const contentHash = Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+
+      // Check idempotency: skip if we already have this PDF
+      const { data: existing } = await admin
+        .from("pending_email_statements")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("idempotency_hash", contentHash)
+        .not("status", "in", '("dismissed")')
+        .maybeSingle();
+
+      if (existing) {
+        await insertLog({
+          userId,
+          emailIngestId,
+          fromAddress: from,
+          status: "duplicate",
+          rawBody: rawBodyPreview,
+          errorMessage: `Duplicate PDF: ${filename}`,
+        });
+        continue;
+      }
+
+      // Store PDF in Supabase Storage
+      const timestamp = Date.now();
+      const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const storagePath = `${userId}/${timestamp}-${safeName}`;
+
+      const { error: uploadError } = await admin.storage
+        .from("email-pdfs")
+        .upload(storagePath, bytes.buffer, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        await insertLog({
+          userId,
+          emailIngestId,
+          fromAddress: from,
+          status: "pdf_parse_failed",
+          rawBody: rawBodyPreview,
+          errorMessage: `Storage upload failed: ${uploadError.message}`,
+        });
+        continue;
+      }
+
+      // Insert pending row with status 'pending'
+      const { error: insertError } = await admin
+        .from("pending_email_statements")
+        .insert({
+          user_id: userId,
+          email_ingest_id: emailIngestId,
+          from_address: from,
+          subject: payload.data.subject ?? null,
+          original_filename: filename,
+          storage_path: storagePath,
+          file_size_bytes: bytes.byteLength,
+          status: "pending",
+          idempotency_hash: contentHash,
+        });
+
+      if (insertError) {
+        if (insertError.code === "23505") {
+          await insertLog({
+            userId,
+            emailIngestId,
+            fromAddress: from,
+            status: "duplicate",
+            rawBody: rawBodyPreview,
+            errorMessage: `Duplicate PDF statement: ${filename}`,
+          });
+        } else {
+          await insertLog({
+            userId,
+            emailIngestId,
+            fromAddress: from,
+            status: "pdf_parse_failed",
+            rawBody: rawBodyPreview,
+            errorMessage: `Insert error: ${insertError.message}`,
+          });
+        }
+        continue;
+      }
+
+      await insertLog({
+        userId,
+        emailIngestId,
+        fromAddress: from,
+        status: "pdf_queued",
+        rawBody: rawBodyPreview,
+        errorMessage: null,
+      });
+    }
+
+    // Parse PDFs asynchronously after responding to Resend
+    after(async () => {
+      const adminAsync = createAdminClient();
+      for (const attachment of pdfAttachments) {
+        const result = await processEmailPdfAttachment({
+          attachment,
+          userId,
+        });
+
+        // Find the pending row by content hash
+        const { data: pendingRow } = await adminAsync
+          .from("pending_email_statements")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("idempotency_hash", result.contentHash)
+          .eq("status", "pending")
+          .maybeSingle();
+
+        if (!pendingRow) continue;
+
+        if (result.parsed) {
+          await adminAsync
+            .from("pending_email_statements")
+            .update({
+              status: "parsed",
+              parsed_data: result.statements as unknown as Json,
+              parsed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", pendingRow.id);
+        } else {
+          await adminAsync
+            .from("pending_email_statements")
+            .update({
+              status: result.needsPassword ? "needs_password" : "parse_failed",
+              error_message: result.error,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", pendingRow.id);
+        }
+      }
+    });
+
+    // Don't return yet — still process text body below for text alerts
+  }
+
+  // 8. Parse email body
   const parsed = parseBancolombiaEmail(emailBody);
 
   if (!parsed) {
