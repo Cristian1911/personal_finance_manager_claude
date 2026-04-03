@@ -1,0 +1,369 @@
+"use client";
+
+import { Card } from "@/components/ui/card";
+import { CreditCard, HandCoins, Layers } from "lucide-react";
+import { formatCurrency } from "@/lib/utils/currency";
+import { StatTile } from "./stat-tile";
+import type { DebtStats } from "@zeta/shared";
+import type { CurrencyCode } from "@/types/domain";
+
+interface DebtQuickStatsProps {
+  stats: DebtStats;
+  currency: CurrencyCode;
+  overallUtilization: number;
+  totalCreditUsed: number;
+  totalCreditLimit: number;
+}
+
+function UtilizationRing({ percentage }: { percentage: number }) {
+  const r = 20;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - percentage / 100);
+
+  const color = percentage <= 30
+    ? "var(--z-income)"
+    : percentage <= 70
+      ? "var(--z-alert)"
+      : "var(--z-debt)";
+
+  return (
+    <div className="relative w-12 h-12 mx-auto mb-1">
+      <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90">
+        <circle
+          cx="24" cy="24" r={r}
+          fill="none" stroke="hsl(var(--muted))" strokeWidth="4"
+        />
+        <circle
+          cx="24" cy="24" r={r}
+          fill="none" stroke={color} strokeWidth="4"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+        />
+      </svg>
+      <div
+        className="absolute inset-0 flex items-center justify-center text-sm font-bold"
+        style={{ color }}
+      >
+        {percentage.toFixed(0)}%
+      </div>
+    </div>
+  );
+}
+
+function PopoverList({
+  items,
+}: {
+  items: { label: string; value: string; detail?: string }[];
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((item, i) => (
+        <div key={i}>
+          {i > 0 && <div className="border-t border-border mb-2" />}
+          <div className="flex justify-between items-center gap-4">
+            <div>
+              <p className="text-sm font-medium">{item.label}</p>
+              {item.detail && (
+                <p className="text-xs text-muted-foreground">{item.detail}</p>
+              )}
+            </div>
+            <p className="text-sm font-semibold shrink-0">{item.value}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function DebtQuickStats({
+  stats,
+  currency,
+  overallUtilization,
+  totalCreditUsed,
+  totalCreditLimit,
+}: DebtQuickStatsProps) {
+  const hasCreditCards = stats.creditCards.count > 0;
+  const hasLoans = stats.loans.count > 0;
+
+  return (
+    <Card className="rounded-2xl p-4">
+      {/* ── General Row ── */}
+      <div className="mb-4">
+        <div className="flex items-center gap-1.5 mb-2 px-1">
+          <Layers className="h-3 w-3 text-muted-foreground" />
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
+            General
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {/* Mayor cuota */}
+          {stats.highestPayment.amount > 0 && (
+            <StatTile
+              label="Mayor cuota"
+              popoverContent={
+                <PopoverList
+                  items={stats.allByPayment.map((e) => ({
+                    label: e.accountName,
+                    value: formatCurrency(e.amount, currency),
+                  }))}
+                />
+              }
+            >
+              <p className="text-xl font-bold">
+                {formatCurrency(stats.highestPayment.amount, currency)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.highestPayment.accountName}
+              </p>
+            </StatTile>
+          )}
+
+          {/* Deuda más cara */}
+          {stats.highestRate.rate > 0 && (
+            <StatTile
+              label="Deuda más cara"
+              popoverContent={
+                <PopoverList
+                  items={stats.allByRate.map((e) => ({
+                    label: e.accountName,
+                    value: `${e.rate.toFixed(1)}% EA`,
+                  }))}
+                />
+              }
+            >
+              <p className="text-xl font-bold">
+                {stats.highestRate.rate.toFixed(1)}%{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  EA
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.highestRate.accountName}
+              </p>
+            </StatTile>
+          )}
+
+          {/* Próximo pago */}
+          {stats.nextPayment && (
+            <StatTile
+              label="Próximo pago"
+              popoverContent={
+                <PopoverList
+                  items={stats.upcomingPayments.slice(0, 3).map((e) => ({
+                    label: e.accountName,
+                    value: e.daysUntil === 0
+                      ? "Hoy"
+                      : `${e.daysUntil} día${e.daysUntil === 1 ? "" : "s"}`,
+                    detail: `Día ${e.paymentDay} del mes`,
+                  }))}
+                />
+              }
+            >
+              <p className="text-xl font-bold">
+                {stats.nextPayment.daysUntil}{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {stats.nextPayment.daysUntil === 1 ? "día" : "días"}
+                </span>
+              </p>
+              <p
+                className={`text-xs mt-1 ${
+                  stats.nextPayment.daysUntil <= 5
+                    ? "text-z-alert"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {stats.nextPayment.accountName}
+              </p>
+            </StatTile>
+          )}
+        </div>
+      </div>
+
+      {/* ── Tarjetas Row ── */}
+      {hasCreditCards && (
+        <div className="mb-4">
+          <div className="flex items-center gap-1.5 mb-2 px-1">
+            <CreditCard className="h-3 w-3 text-[#8b5cf6]" />
+            <p className="text-[11px] text-[#8b5cf6] uppercase tracking-wider">
+              Tarjetas de crédito
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {/* Uso de tarjetas */}
+            <StatTile
+              label="Uso de tarjetas"
+              popoverContent={
+                <PopoverList
+                  items={stats.creditCards.utilization.map((e) => ({
+                    label: e.accountName,
+                    value: `${e.utilization.toFixed(0)}%`,
+                    detail: `${formatCurrency(e.used, currency)} / ${formatCurrency(e.limit, currency)}`,
+                  }))}
+                />
+              }
+            >
+              <div className="text-center">
+                <UtilizationRing percentage={overallUtilization} />
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrency(totalCreditUsed, currency)} /{" "}
+                  {formatCurrency(totalCreditLimit, currency)}
+                </p>
+              </div>
+            </StatTile>
+
+            {/* Tarjetas / mes */}
+            <StatTile
+              label="Tarjetas / mes"
+              popoverContent={
+                <PopoverList
+                  items={stats.creditCards.payments.map((e) => ({
+                    label: e.accountName,
+                    value: formatCurrency(e.amount, currency),
+                  }))}
+                />
+              }
+            >
+              <p className="text-xl font-bold">
+                {formatCurrency(stats.creditCards.monthlyPayment, currency)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.creditCards.count} tarjeta
+                {stats.creditCards.count !== 1 ? "s" : ""}
+              </p>
+            </StatTile>
+
+            {/* Intereses TC / mes */}
+            <StatTile
+              label="Intereses TC / mes"
+              popoverContent={
+                <PopoverList
+                  items={stats.creditCards.interests.map((e) => ({
+                    label: e.accountName,
+                    value: formatCurrency(e.interest, currency),
+                  }))}
+                />
+              }
+            >
+              <p className="text-xl font-bold text-z-expense">
+                {formatCurrency(stats.creditCards.monthlyInterest, currency)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                de {stats.creditCards.count} tarjeta
+                {stats.creditCards.count !== 1 ? "s" : ""}
+              </p>
+            </StatTile>
+          </div>
+        </div>
+      )}
+
+      {/* ── Préstamos Row ── */}
+      {hasLoans && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-2 px-1">
+            <HandCoins className="h-3 w-3 text-[#3b82f6]" />
+            <p className="text-[11px] text-[#3b82f6] uppercase tracking-wider">
+              Préstamos
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {/* Préstamos / mes */}
+            <StatTile
+              label="Préstamos / mes"
+              popoverContent={
+                <PopoverList
+                  items={stats.loans.payments.map((e) => ({
+                    label: e.accountName,
+                    value: formatCurrency(e.amount, currency),
+                  }))}
+                />
+              }
+            >
+              <p className="text-xl font-bold">
+                {formatCurrency(stats.loans.monthlyPayment, currency)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.loans.count} préstamo
+                {stats.loans.count !== 1 ? "s" : ""}
+              </p>
+            </StatTile>
+
+            {/* Plazo restante */}
+            {stats.loans.remainingMonths ? (
+              <StatTile
+                label="Plazo restante"
+                popoverContent={
+                  <>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Estimado
+                    </p>
+                    <PopoverList
+                      items={stats.loans.remainingList.map((e) => ({
+                        label: e.accountName,
+                        value: `${e.months} meses`,
+                      }))}
+                    />
+                  </>
+                }
+              >
+                <p className="text-xl font-bold">
+                  {stats.loans.remainingMonths.months}{" "}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    meses
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stats.loans.remainingMonths.accountName}
+                </p>
+              </StatTile>
+            ) : (
+              <StatTile label="Plazo restante">
+                <p className="text-sm text-muted-foreground">Sin datos</p>
+              </StatTile>
+            )}
+
+            {/* Progreso */}
+            {stats.loans.progress ? (
+              <StatTile
+                label="Progreso"
+                popoverContent={
+                  <>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Estimado
+                    </p>
+                    <PopoverList
+                      items={stats.loans.progressList.map((e) => ({
+                        label: e.accountName,
+                        value: `${e.percentage.toFixed(0)}%`,
+                        detail: `${formatCurrency(e.paid, currency)} de ${formatCurrency(e.original, currency)}`,
+                      }))}
+                    />
+                  </>
+                }
+              >
+                <div className="flex items-baseline gap-1.5 mb-2">
+                  <p className="text-xl font-bold text-z-income">
+                    {stats.loans.progress.percentage.toFixed(0)}%
+                  </p>
+                  <span className="text-xs text-muted-foreground">pagado</span>
+                </div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-z-income rounded-full"
+                    style={{
+                      width: `${Math.min(stats.loans.progress.percentage, 100)}%`,
+                    }}
+                  />
+                </div>
+              </StatTile>
+            ) : (
+              <StatTile label="Progreso">
+                <p className="text-sm text-muted-foreground">Sin datos</p>
+              </StatTile>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
