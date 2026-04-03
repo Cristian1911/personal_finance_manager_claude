@@ -2,7 +2,9 @@ import type { Tables, Enums } from "./database";
 
 // Row types from the database
 export type Profile = Tables<"profiles">;
-export type Account = Tables<"accounts">;
+export type AccountRow = Tables<"accounts">;
+/** Account without sensitive fields — safe for client serialization */
+export type Account = Omit<AccountRow, "pdf_password">;
 export type Transaction = Tables<"transactions">;
 export type Category = Tables<"categories">;
 export type Budget = Tables<"budgets">;
