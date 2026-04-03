@@ -312,14 +312,14 @@ export default async function DashboardPage({
       id: a.id,
       name: a.name,
       currentBalance: a.current_balance ?? 0,
-      currencyCode: a.currency_code,
+      currencyCode: a.currency_code as CurrencyCode,
     }));
 
   const mobileFixedExpenses = heroData.pendingObligations.map((o) => ({
     id: o.id,
     name: o.name,
     amount: o.amount,
-    currencyCode: o.currency_code,
+    currencyCode: o.currency_code as CurrencyCode,
   }));
 
   const firstPayment = heroData.pendingObligations[0];
@@ -328,7 +328,7 @@ export default async function DashboardPage({
         name: firstPayment.name,
         amount: firstPayment.amount,
         dueDate: firstPayment.due_date,
-        currencyCode: firstPayment.currency_code,
+        currencyCode: firstPayment.currency_code as CurrencyCode,
       }
     : null;
 

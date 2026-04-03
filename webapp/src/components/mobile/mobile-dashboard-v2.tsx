@@ -1,4 +1,3 @@
-// webapp/src/components/mobile/mobile-dashboard-v2.tsx
 "use client";
 
 import type { AttentionSignal } from "@/types/attention";

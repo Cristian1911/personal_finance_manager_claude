@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatDate } from "@/lib/utils/date";
 import { ChevronRight } from "lucide-react";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -13,21 +14,21 @@ interface HeroAccount {
   id: string;
   name: string;
   currentBalance: number;
-  currencyCode: string;
+  currencyCode: CurrencyCode;
 }
 
 interface FixedExpense {
   id: string;
   name: string;
   amount: number;
-  currencyCode: string;
+  currencyCode: CurrencyCode;
 }
 
 interface NextPayment {
   name: string;
   amount: number;
   dueDate: string;
-  currencyCode: string;
+  currencyCode: CurrencyCode;
 }
 
 export interface MobileHeroCardProps {
@@ -66,7 +67,6 @@ export function MobileHeroCard({
     setExpanded((prev) => (prev === section ? null : section));
   }
 
-  const code = currency;
   const isNegative = availableToSpend < 0;
 
   return (
@@ -87,7 +87,7 @@ export function MobileHeroCard({
             isNegative ? "text-z-debt" : "text-z-sage-lightest"
           )}
         >
-          {formatCurrency(availableToSpend, code)}
+          {formatCurrency(availableToSpend, currency)}
         </p>
         <p className={cn("mt-1 text-xs", isNegative ? "text-z-debt/70" : "text-z-sage-dark")}>
           {getCapacityMessage(availableToSpend)}
@@ -113,19 +113,19 @@ export function MobileHeroCard({
               <div className="space-y-1">
                 <div className="flex justify-between text-z-sage-light">
                   <span>Saldo total</span>
-                  <span>{formatCurrency(totalBalance, code)}</span>
+                  <span>{formatCurrency(totalBalance, currency)}</span>
                 </div>
                 <div className="flex justify-between text-z-expense">
                   <span>− Gastos fijos</span>
-                  <span>{formatCurrency(pendingFixed, code)}</span>
+                  <span>{formatCurrency(pendingFixed, currency)}</span>
                 </div>
                 <div className="flex justify-between text-z-expense">
                   <span>− Ya gastado</span>
-                  <span>{formatCurrency(totalSpent, code)}</span>
+                  <span>{formatCurrency(totalSpent, currency)}</span>
                 </div>
                 <div className="flex justify-between border-t border-white/10 pt-1.5 font-semibold text-z-sage-lightest">
                   <span>= Disponible</span>
-                  <span>{formatCurrency(availableToSpend, code)}</span>
+                  <span>{formatCurrency(availableToSpend, currency)}</span>
                 </div>
               </div>
             </div>
@@ -137,13 +137,13 @@ export function MobileHeroCard({
       <div className="mt-3 flex gap-2">
         <ChipButton
           label="Saldo"
-          value={formatCurrency(totalBalance, code)}
+          value={formatCurrency(totalBalance, currency)}
           active={expanded === "saldo"}
           onClick={() => toggle("saldo")}
         />
         <ChipButton
           label="Fijos"
-          value={formatCurrency(pendingFixed, code)}
+          value={formatCurrency(pendingFixed, currency)}
           active={expanded === "fijos"}
           onClick={() => toggle("fijos")}
         />
@@ -166,7 +166,7 @@ export function MobileHeroCard({
               <div key={acc.id} className="flex justify-between text-xs text-z-sage-light">
                 <span className="truncate mr-2">{acc.name}</span>
                 <span className="shrink-0">
-                  {formatCurrency(acc.currentBalance, acc.currencyCode as CurrencyCode)}
+                  {formatCurrency(acc.currentBalance, acc.currencyCode)}
                 </span>
               </div>
             ))}
@@ -194,14 +194,14 @@ export function MobileHeroCard({
                 <div key={exp.id} className="flex justify-between text-xs text-z-sage-light">
                   <span className="truncate mr-2">{exp.name}</span>
                   <span className="shrink-0">
-                    {formatCurrency(exp.amount, exp.currencyCode as CurrencyCode)}
+                    {formatCurrency(exp.amount, exp.currencyCode)}
                   </span>
                 </div>
               ))}
             </div>
             <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1.5 text-xs font-semibold text-z-sage-lightest">
               <span>Total fijos</span>
-              <span>{formatCurrency(pendingFixed, code)}</span>
+              <span>{formatCurrency(pendingFixed, currency)}</span>
             </div>
           </>
         ) : (
@@ -222,11 +222,11 @@ export function MobileHeroCard({
             </div>
             <div className="flex justify-between">
               <span>Monto</span>
-              <span>{formatCurrency(nextPayment.amount, nextPayment.currencyCode as CurrencyCode)}</span>
+              <span>{formatCurrency(nextPayment.amount, nextPayment.currencyCode)}</span>
             </div>
             <div className="flex justify-between">
               <span>Fecha</span>
-              <span>{nextPayment.dueDate}</span>
+              <span>{formatDate(nextPayment.dueDate, "dd MMM yyyy")}</span>
             </div>
           </div>
         ) : (

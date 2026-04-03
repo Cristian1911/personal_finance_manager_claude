@@ -1,4 +1,3 @@
-// webapp/src/components/mobile/cards/mobile-spending-pace.tsx
 "use client";
 
 import { useState } from "react";
@@ -18,12 +17,9 @@ export function MobileSpendingPace({ data }: MobileSpendingPaceProps) {
 
   const { discretionary, currency } = data;
   const { runwayDays, dailyAverage, dataPoints } = discretionary;
-  const dayOfMonth = new Date().getDate();
-  const daysInMonth = new Date(
-    new Date().getFullYear(),
-    new Date().getMonth() + 1,
-    0
-  ).getDate();
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const progress = Math.min((dayOfMonth / daysInMonth) * 100, 100);
 
   // Color based on runway vs remaining days

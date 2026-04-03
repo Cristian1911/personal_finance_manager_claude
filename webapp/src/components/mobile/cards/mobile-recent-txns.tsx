@@ -1,4 +1,3 @@
-// webapp/src/components/mobile/cards/mobile-recent-txns.tsx
 "use client";
 
 import Link from "next/link";

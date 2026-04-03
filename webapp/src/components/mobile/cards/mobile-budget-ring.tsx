@@ -1,4 +1,3 @@
-// webapp/src/components/mobile/cards/mobile-budget-ring.tsx
 "use client";
 
 import { useState } from "react";

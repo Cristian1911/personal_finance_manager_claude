@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, ChevronRight, CircleAlert, Inbox, Bell } from "lucide-react";
+import { ChevronRight, CircleAlert, Inbox, Bell } from "lucide-react";
 import type { AttentionSignal } from "@/types/attention";
 import { ExpandableCard } from "./expandable-card";
 
@@ -11,7 +11,7 @@ interface MobileAlertCardProps {
   signals: AttentionSignal[];
 }
 
-const SIGNAL_CONFIG: Record<string, { icon: typeof AlertTriangle; label: string }> = {
+const SIGNAL_CONFIG: Record<string, { icon: typeof CircleAlert; label: string }> = {
   uncategorized: { icon: Inbox, label: "transacciones sin categoría" },
   destinatario_suggestions: { icon: Inbox, label: "comercios por asignar" },
   overdue_reminders: { icon: Bell, label: "recordatorios vencidos" },
@@ -28,7 +28,7 @@ function getTopSignal(signals: AttentionSignal[]): AttentionSignal | null {
 
 export function MobileAlertCard({ signals }: MobileAlertCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const signal = getTopSignal(signals);
+  const signal = useMemo(() => getTopSignal(signals), [signals]);
 
   if (!signal) return null;
 
@@ -74,7 +74,7 @@ export function MobileAlertCard({ signals }: MobileAlertCardProps) {
       detail={
         <div className="px-4 pb-3 pt-0">
           <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
-            {signal.priority === "action"
+            {isAction
               ? "Esto necesita tu atención para mantener tus finanzas al día."
               : "Una sugerencia para mejorar la organización de tus datos."}
           </p>
