@@ -12,6 +12,7 @@ import {
   BarChart3,
   Tag,
   ListChecks,
+  Heart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ export const PRIMARY_NAV: NavItem[] = [
       "/deudas",
       "/deudas/planificador",
       "/recurrentes",
+      "/deseos",
     ],
   },
   {
@@ -60,6 +62,7 @@ export const WORKSPACE_NAV: NavItem[] = [
   { title: "Recurrentes", href: "/recurrentes", icon: Repeat2, attentionPage: "recurrentes" },
   { title: "Etiquetas", href: "/etiquetas", icon: Tag },
   { title: "Pendientes", href: "/pendientes", icon: ListChecks, attentionPage: "pendientes" },
+  { title: "Deseos", href: "/deseos", icon: Heart },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [

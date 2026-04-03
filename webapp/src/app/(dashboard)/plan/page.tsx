@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { CalendarRange } from "lucide-react";
 import { getPlanPageData } from "@/actions/plan";
 import { getCategoriesByRhythm } from "@/actions/categories";
+import { getWishlistItemsForDashboard } from "@/actions/wishlist";
 import { MonthSelector } from "@/components/month-selector";
 import { PlanBudgetSection } from "@/components/plan/plan-budget-section";
 import { PlanBudgetToggle } from "@/components/plan/plan-budget-toggle";
@@ -22,7 +23,10 @@ export default async function PlanPage({
   const params = await searchParams;
   const month = params.month;
   const monthLabel = formatMonthLabel(parseMonth(month));
-  const planData = await getPlanPageData(month);
+  const [planData, wishlistSummary] = await Promise.all([
+    getPlanPageData(month),
+    getWishlistItemsForDashboard(),
+  ]);
   const rhythmResult = await getCategoriesByRhythm(month, planData.currency);
   const rhythmData = rhythmResult.success ? rhythmResult.data : [];
 
@@ -78,6 +82,7 @@ export default async function PlanPage({
           debt={planData.debt}
           recurring={planData.recurring}
           scenarios={planData.scenarios}
+          desires={{ totalCount: wishlistSummary.totalCount, readyCount: wishlistSummary.readyCount }}
           currency={planData.currency}
         />
       </div>
