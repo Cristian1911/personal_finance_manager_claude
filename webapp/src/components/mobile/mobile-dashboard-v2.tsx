@@ -2,14 +2,12 @@
 "use client";
 
 import type { AttentionSignal } from "@/types/attention";
-import type { BurnRateResponse } from "@/actions/burn-rate";
 import type { CurrencyCode } from "@/types/domain";
 import { MobileAlertCard } from "./cards/mobile-alert-card";
 import {
   MobileHeroCard,
   type MobileHeroCardProps,
 } from "./cards/mobile-hero-card";
-import { MobileSpendingPace } from "./cards/mobile-spending-pace";
 import { MobileBudgetRing } from "./cards/mobile-budget-ring";
 import { MobileUpcomingPayments } from "./cards/mobile-upcoming-payments";
 import { MobileRecentTxns } from "./cards/mobile-recent-txns";

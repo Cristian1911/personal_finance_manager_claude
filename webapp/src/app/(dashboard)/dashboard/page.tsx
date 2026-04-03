@@ -15,7 +15,7 @@ import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
-  CalendarClock,
+
   FileUp,
   Landmark,
   Sparkles,
@@ -29,7 +29,7 @@ import {
   getDashboardHeroData,
   getAccountsWithSparklineData,
 } from "@/actions/charts";
-import dynamic from "next/dynamic";
+
 import { getAccounts } from "@/actions/accounts";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
@@ -43,7 +43,6 @@ import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
-import { MobileDashboard } from "@/components/mobile/mobile-dashboard";
 import { MobileDashboardV2 } from "@/components/mobile/mobile-dashboard-v2";
 import { MobileSpendingPace } from "@/components/mobile/cards/mobile-spending-pace";
 import { getBudgetSummary } from "@/actions/budgets";
@@ -75,21 +74,6 @@ import {
   MobileBurnRateSkeleton,
 } from "@/components/dashboard/dashboard-skeletons";
 import type { HealthMetersData } from "@/actions/health-meters";
-import type { AllocationData } from "@/actions/allocation";
-import type { DebtCountdownData } from "@/actions/debt-countdown";
-
-// ── Dynamic imports — used by mobile burn rate section ───────────────────────
-
-const BurnRateCard = dynamic(
-  () => import("@/components/dashboard/burn-rate-card").then((m) => ({ default: m.BurnRateCard })),
-  { loading: () => <div className="h-40 w-full rounded-xl bg-muted animate-pulse" /> }
-);
-
-const BurnRateCardEmpty = dynamic(
-  () => import("@/components/dashboard/burn-rate-card").then((m) => ({ default: m.BurnRateCardEmpty })),
-  { loading: () => <div className="h-40 w-full rounded-xl bg-muted animate-pulse" /> }
-);
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type DashboardTransactionRow = {
@@ -147,11 +131,6 @@ async function AccountsSection({
 // ──────────────────────────────────────────────────────────────────────────────
 // Tier 2 async Server Components — mobile
 // ──────────────────────────────────────────────────────────────────────────────
-
-async function MobileBurnRateSection({ currency }: { currency: CurrencyCode }) {
-  const burnRateData = await getBurnRate(currency);
-  return burnRateData ? <BurnRateCard data={burnRateData} /> : <BurnRateCardEmpty />;
-}
 
 async function MobileSpendingPaceSection({ currency }: { currency: CurrencyCode }) {
   const burnRateData = await getBurnRate(currency);
@@ -314,22 +293,6 @@ export default async function DashboardPage({
   ]);
 
   const dashboardReminders = pendingReminders.slice(0, 5);
-
-  // Map data for mobile dashboard (tier 1 props only)
-  const mobileHeroData = {
-    availableToSpend: heroData.availableToSpend,
-    totalBalance: heroData.totalLiquid,
-    pendingFixed: heroData.totalPending,
-    currency: heroData.currency,
-  };
-
-  const mobileUpcomingPayments = heroData.pendingObligations.slice(0, 5).map((o) => ({
-    id: o.id,
-    name: o.name,
-    dueDate: o.due_date,
-    amount: o.amount,
-    currencyCode: o.currency_code,
-  }));
 
   const mobileRecentTx = recentTx.map((tx) => ({
     id: tx.id,
