@@ -175,6 +175,11 @@ async function syncCreditCardRecurringTemplate(params: {
   // total_payment_due is the full balance — it changes monthly and
   // would mislead the budget/recurring view.
   if (cc.minimum_payment == null || !Number.isFinite(cc.minimum_payment) || cc.minimum_payment <= 0) {
+    const accountName = params.account?.name ?? "tarjeta";
+    params.details.push(
+      `⚠️ ${accountName} (${params.meta.currency}): no se detectó pago mínimo en el extracto — el pago recurrente no fue actualizado.` +
+      (cc.total_payment_due != null ? ` El total a pagar es ${cc.total_payment_due.toLocaleString("es-CO")}, pero no se usa como recurrente porque cambia cada mes.` : "")
+    );
     return;
   }
   if (
