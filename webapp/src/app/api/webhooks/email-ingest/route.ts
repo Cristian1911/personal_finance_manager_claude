@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import {
+  computePdfHash,
   filterPdfAttachments,
   isPdfEncrypted,
   parsePdfBuffer,
@@ -330,7 +331,7 @@ export async function POST(request: NextRequest) {
   // 7. Check for PDF attachments
   const pdfAttachments = filterPdfAttachments(emailContent?.attachments ?? []);
 
-  const insertedPdfRowIds: string[] = [];
+  const insertedPdfRows: Array<{ id: string; buffer: ArrayBuffer; filename: string }> = [];
   let pdfProcessed = false;
 
   if (pdfAttachments.length > 0 && pdfImportEnabled) {
@@ -338,16 +339,9 @@ export async function POST(request: NextRequest) {
     // Store pending rows immediately, parse async via after()
     for (const attachment of pdfAttachments) {
       const filename = attachment.filename || "attachment.pdf";
-      // Quick decode + hash for idempotency check before heavy work
-      const binaryString = atob(attachment.content);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const hashBuffer = await crypto.subtle.digest("SHA-256", bytes.buffer);
-      const contentHash = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+      // Decode once — reuse buffer for hash, storage, and after() closure
+      const bytes = Buffer.from(attachment.content, "base64");
+      const contentHash = await computePdfHash(bytes.buffer);
 
       // Check idempotency: skip if we already have this PDF
       const { data: existing } = await admin
@@ -436,7 +430,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      insertedPdfRowIds.push(inserted.id);
+      insertedPdfRows.push({ id: inserted.id, buffer: bytes.buffer, filename });
 
       await insertLog({
         userId,
@@ -449,47 +443,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse PDFs asynchronously after responding to Resend.
-    // PDFs are already stored — just download, match account/password, and parse.
-    const rowIdsToProcess = [...insertedPdfRowIds];
-    if (rowIdsToProcess.length > 0) {
+    // Buffers are captured in the closure — no re-download needed.
+    const rowsToProcess = [...insertedPdfRows];
+    if (rowsToProcess.length > 0) {
       after(async () => {
         const adminAsync = createAdminClient();
 
-        // Fetch the exact rows we inserted + user accounts for password matching
-        const [{ data: pendingRows }, { data: userAccounts }] = await Promise.all([
-          adminAsync
-            .from("pending_email_statements")
-            .select("id, storage_path, original_filename")
-            .eq("user_id", userId)
-            .in("id", rowIdsToProcess),
-          adminAsync
-            .from("accounts")
-            .select("id, mask, pdf_password")
-            .eq("user_id", userId)
-            .eq("is_active", true),
-        ]);
-
-        if (!pendingRows?.length) return;
+        // Fetch user accounts for filename → password matching
+        const { data: userAccounts } = await adminAsync
+          .from("accounts")
+          .select("id, mask, pdf_password")
+          .eq("user_id", userId)
+          .eq("is_active", true);
 
         await Promise.all(
-          pendingRows.map(async (row) => {
+          rowsToProcess.map(async (row) => {
             try {
-              // Download PDF from storage
-              const { data: fileData } = await adminAsync.storage
-                .from("email-pdfs")
-                .download(row.storage_path);
-
-              if (!fileData) {
-                await adminAsync
-                  .from("pending_email_statements")
-                  .update({ status: "parse_failed", error_message: "No se pudo descargar el PDF", updated_at: new Date().toISOString() })
-                  .eq("id", row.id)
-                  .eq("user_id", userId);
-                return;
-              }
-
               // Match filename → account → password
-              const filenameInfo = parseStatementFilename(row.original_filename ?? "");
+              const filenameInfo = parseStatementFilename(row.filename);
               const accountMatch = filenameInfo && userAccounts
                 ? matchAccountByLast4(
                     userAccounts as Array<{ id: string; mask: string | null; pdf_password: string | null }>,
@@ -497,11 +468,10 @@ export async function POST(request: NextRequest) {
                   )
                 : null;
 
-              const buffer = await fileData.arrayBuffer();
               const password = accountMatch?.pdfPassword ?? undefined;
 
               // Fast encryption check — skip parser round-trip if encrypted without password
-              if (isPdfEncrypted(buffer) && !password) {
+              if (isPdfEncrypted(row.buffer) && !password) {
                 await adminAsync
                   .from("pending_email_statements")
                   .update({
@@ -515,8 +485,8 @@ export async function POST(request: NextRequest) {
               }
 
               const parseResult = await parsePdfBuffer({
-                buffer,
-                filename: row.original_filename ?? "statement.pdf",
+                buffer: row.buffer,
+                filename: row.filename,
                 password,
               });
 
@@ -543,7 +513,6 @@ export async function POST(request: NextRequest) {
                   .eq("user_id", userId);
               }
             } catch {
-              // Parsing failure shouldn't leave rows stuck in "pending" forever
               await adminAsync
                 .from("pending_email_statements")
                 .update({ status: "parse_failed", error_message: "Error inesperado al procesar", updated_at: new Date().toISOString() })

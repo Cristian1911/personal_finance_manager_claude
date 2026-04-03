@@ -35,18 +35,22 @@ export async function POST(request: NextRequest) {
   let password = formData.get("password") as string | null;
   const userProvidedPassword = !!password;
 
-  // Auto-fill password from account if filename matches
+  // Parse filename once — used for auto-fill and password save
   const filenameInfo = parseStatementFilename(file.name);
-  if (!password && filenameInfo) {
+
+  // Fetch accounts once — reused for both password auto-fill and save
+  let matchedAccounts: Array<{ id: string; mask: string | null; pdf_password: string | null }> | null = null;
+  if (filenameInfo) {
     const supabase = await createClient();
-    const { data: accounts } = await supabase
+    const { data } = await supabase
       .from("accounts")
       .select("id, mask, pdf_password")
       .eq("user_id", user.id)
       .eq("is_active", true);
+    matchedAccounts = data;
 
-    if (accounts) {
-      const match = matchAccountByLast4(accounts, filenameInfo.last4);
+    if (!password && matchedAccounts) {
+      const match = matchAccountByLast4(matchedAccounts, filenameInfo.last4);
       if (match?.pdfPassword) {
         password = match.pdfPassword;
       }
@@ -125,24 +129,16 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
 
     // Save password on matched account for future auto-parsing
-    if (userProvidedPassword && password && filenameInfo) {
+    if (userProvidedPassword && password && filenameInfo && matchedAccounts) {
       try {
-        const supabase = await createClient();
-        const { data: accounts } = await supabase
-          .from("accounts")
-          .select("id, mask, pdf_password")
-          .eq("user_id", user.id)
-          .eq("is_active", true);
-
-        if (accounts) {
-          const match = matchAccountByLast4(accounts, filenameInfo.last4);
-          if (match) {
-            await supabase
-              .from("accounts")
-              .update({ pdf_password: password })
-              .eq("id", match.accountId)
-              .eq("user_id", user.id);
-          }
+        const match = matchAccountByLast4(matchedAccounts, filenameInfo.last4);
+        if (match) {
+          const supabase = await createClient();
+          await supabase
+            .from("accounts")
+            .update({ pdf_password: password })
+            .eq("id", match.accountId)
+            .eq("user_id", user.id);
         }
       } catch {
         // Non-fatal — password save failure shouldn't block the parse result

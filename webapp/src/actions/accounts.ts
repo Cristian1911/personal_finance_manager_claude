@@ -13,12 +13,12 @@ import {
 } from "@/lib/utils/currency-balances";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
-import type { Account, CurrencyCode, TransactionDirection } from "@/types/domain";
+import type { Account, AccountRow, CurrencyCode, TransactionDirection } from "@/types/domain";
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
-function stripSensitive({ pdf_password: _, ...rest }: Record<string, unknown>): Account {
-  return rest as Account;
+function stripSensitive({ pdf_password: _, ...rest }: AccountRow): Account {
+  return rest;
 }
 
 async function getAccountsCached(userId: string): Promise<Account[]> {

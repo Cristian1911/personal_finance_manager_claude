@@ -746,7 +746,10 @@ export async function getDashboardHeroData(
     .map((p) => ({
       id: p.id,
       name: p.account_name,
-      amount: p.total_payment_due,
+      // For credit cards, show minimum_payment (actual obligation) instead of total balance
+      amount: p.account_type === "CREDIT_CARD" && p.minimum_payment != null
+        ? p.minimum_payment
+        : p.total_payment_due,
       currency_code: p.currency_code,
       due_date: p.payment_due_date,
       source: "statement" as const,
@@ -754,7 +757,7 @@ export async function getDashboardHeroData(
   const creditCardStatementPending = statementPayments
     .filter((p) => p.currency_code === baseCurrency)
     .filter((p) => p.account_type === "CREDIT_CARD")
-    .reduce((sum, p) => sum + p.total_payment_due, 0);
+    .reduce((sum, p) => sum + (p.minimum_payment ?? p.total_payment_due), 0);
   const nonCardStatementPending = statementPayments
     .filter((p) => p.currency_code === baseCurrency)
     .filter((p) => p.account_type !== "CREDIT_CARD")

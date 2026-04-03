@@ -1,5 +1,3 @@
-import { createAdminClient } from "@/lib/supabase/admin";
-
 const PARSER_URL = process.env.PDF_PARSER_URL || "http://localhost:8000";
 const PARSER_API_KEY = process.env.PDF_PARSER_API_KEY ?? "";
 const PARSE_TIMEOUT_MS = 120_000;
@@ -11,25 +9,6 @@ export type ResendAttachment = {
   content_type: string;
   content: string; // base64-encoded
 };
-
-export type PdfExtractionResult =
-  | {
-      filename: string;
-      contentHash: string;
-      storagePath: string;
-      fileSizeBytes: number;
-      parsed: true;
-      statements: unknown[]; // ParsedStatement[] from parser
-    }
-  | {
-      filename: string;
-      contentHash: string;
-      storagePath: string;
-      fileSizeBytes: number;
-      parsed: false;
-      error: string;
-      needsPassword?: boolean;
-    };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,29 +56,6 @@ export function isPdfEncrypted(buffer: ArrayBuffer): boolean {
   return head.includes(needle);
 }
 
-// ── Core functions ───────────────────────────────────────────────────────────
-
-/** Store a PDF in Supabase Storage under the user's folder */
-export async function storePdf(params: {
-  userId: string;
-  filename: string;
-  buffer: ArrayBuffer;
-}): Promise<{ storagePath: string } | { error: string }> {
-  const admin = createAdminClient();
-  const timestamp = Date.now();
-  const safeName = params.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const storagePath = `${params.userId}/${timestamp}-${safeName}`;
-
-  const { error } = await admin.storage
-    .from("email-pdfs")
-    .upload(storagePath, params.buffer, {
-      contentType: "application/pdf",
-      upsert: false,
-    });
-
-  if (error) return { error: error.message };
-  return { storagePath };
-}
 
 /** Send a PDF buffer to the parser service and return parsed statements */
 export async function parsePdfBuffer(params: {
@@ -156,74 +112,3 @@ export async function parsePdfBuffer(params: {
   }
 }
 
-/**
- * Process a single PDF attachment: validate, hash, store, parse.
- * Returns the result for inserting into pending_email_statements.
- */
-export async function processEmailPdfAttachment(params: {
-  attachment: ResendAttachment;
-  userId: string;
-  password?: string;
-}): Promise<PdfExtractionResult> {
-  const { attachment, userId, password } = params;
-  const filename = attachment.filename || "attachment.pdf";
-
-  // Decode base64 to buffer
-  const binaryString = atob(attachment.content);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  const buffer = bytes.buffer;
-
-  // Validate PDF magic bytes
-  if (!isPdfContent(buffer)) {
-    return {
-      filename,
-      contentHash: "",
-      storagePath: "",
-      fileSizeBytes: buffer.byteLength,
-      parsed: false,
-      error: "El archivo no es un PDF válido",
-    };
-  }
-
-  // Compute content hash for idempotency
-  const contentHash = await computePdfHash(buffer);
-
-  // Store in Supabase Storage
-  const storeResult = await storePdf({ userId, filename, buffer });
-  if ("error" in storeResult) {
-    return {
-      filename,
-      contentHash,
-      storagePath: "",
-      fileSizeBytes: buffer.byteLength,
-      parsed: false,
-      error: `Error almacenando PDF: ${storeResult.error}`,
-    };
-  }
-
-  // Parse with the PDF parser service
-  const parseResult = await parsePdfBuffer({ buffer, filename, password });
-  if (!parseResult.success) {
-    return {
-      filename,
-      contentHash,
-      storagePath: storeResult.storagePath,
-      fileSizeBytes: buffer.byteLength,
-      parsed: false,
-      error: parseResult.error,
-      needsPassword: parseResult.needsPassword,
-    };
-  }
-
-  return {
-    filename,
-    contentHash,
-    storagePath: storeResult.storagePath,
-    fileSizeBytes: buffer.byteLength,
-    parsed: true,
-    statements: parseResult.statements,
-  };
-}
