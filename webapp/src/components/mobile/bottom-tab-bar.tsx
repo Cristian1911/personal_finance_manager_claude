@@ -43,7 +43,7 @@ export function BottomTabBar({ attentionSnapshot }: BottomTabBarProps) {
               className={cn(
                 "absolute -top-1.5 -right-2.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-semibold",
                 isActive
-                  ? "bg-z-brass text-z-white"
+                  ? "bg-z-brass text-z-ink"
                   : "bg-z-brass/20 text-z-brass"
               )}
             >

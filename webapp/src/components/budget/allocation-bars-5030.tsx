@@ -9,8 +9,8 @@ interface AllocationBars5030Props {
 export function AllocationBars5030({ data }: AllocationBars5030Props) {
   if (!data) {
     return (
-      <div className="rounded-xl bg-z-surface-2 border border-z-border p-4">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+      <div className="rounded-xl bg-z-surface-2 border border-white/6 p-4">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em] mb-3">
           Distribución 50/30/20
         </p>
         <p className="text-sm text-muted-foreground">
@@ -42,8 +42,8 @@ export function AllocationBars5030({ data }: AllocationBars5030Props) {
   ];
 
   return (
-    <div className="rounded-xl bg-z-surface-2 border border-z-border p-4">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+    <div className="rounded-xl bg-z-surface-2 border border-white/6 p-4">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em] mb-3">
         Distribucion 50/30/20
       </p>
 
@@ -67,7 +67,7 @@ export function AllocationBars5030({ data }: AllocationBars5030Props) {
             </span>
           </div>
 
-          <div className="relative h-5 bg-z-surface-3 rounded-md overflow-hidden">
+          <div className="relative h-4 bg-z-surface-3 rounded-md overflow-hidden">
             <div
               className="h-full rounded-md"
               style={{

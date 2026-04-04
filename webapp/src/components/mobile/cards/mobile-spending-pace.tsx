@@ -34,7 +34,7 @@ export function SpendingPaceTile({
         "flex w-full flex-col items-center rounded-xl border bg-[#111] p-2.5 text-center transition-colors",
         active
           ? (isCritical ? "border-z-debt/25" : isWarning ? "border-z-brass/25" : "border-z-sage-light/25")
-          : "border-white/4"
+          : "border-white/6"
       )}
       aria-expanded={active}
     >
@@ -44,7 +44,7 @@ export function SpendingPaceTile({
       )}>
         {Math.round(runwayDays)}d
       </span>
-      <div className="mx-auto mt-1.5 h-[3px] w-3/4 overflow-hidden rounded-full bg-white/5">
+      <div className="mx-auto mt-1.5 h-2 w-3/4 overflow-hidden rounded-full bg-white/5">
         <div
           className={cn(
             "h-full rounded-full",
@@ -58,7 +58,7 @@ export function SpendingPaceTile({
         />
       </div>
       <span className={cn(
-        "mt-1 text-[7px] font-semibold uppercase tracking-[0.1em]",
+        "mt-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
         active ? (isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light") : "text-muted-foreground"
       )}>
         Ritmo
@@ -168,11 +168,11 @@ function RunwayChart({
           <line key={pct} x1={PAD.left} y1={scaleY(maxBalance * pct)} x2={W - PAD.right} y2={scaleY(maxBalance * pct)} stroke="#222" strokeWidth="0.5" />
         ))}
         <line x1={scaleX(1)} y1={scaleY(maxBalance)} x2={scaleX(daysInMonth)} y2={scaleY(0)} stroke="#2a3a22" strokeWidth="1.5" strokeDasharray="4,3" />
-        <path d={actualPath} fill="none" stroke="#d4a853" strokeWidth="2" strokeLinejoin="round" />
-        <circle cx={cx} cy={cy} r="3.5" fill="#d4a853" />
-        <circle cx={cx} cy={cy} r="5.5" fill="#d4a853" fillOpacity="0.15" />
+        <path d={actualPath} fill="none" stroke="var(--z-brass)" strokeWidth="2" strokeLinejoin="round" />
+        <circle cx={cx} cy={cy} r="3.5" fill="var(--z-brass)" />
+        <circle cx={cx} cy={cy} r="5.5" fill="var(--z-brass)" fillOpacity="0.15" />
         {runwayDays < daysInMonth - dayOfMonth && (
-          <path d={`M${cx},${cy} L${scaleX(projectedEndDay)},${scaleY(0)}`} fill="none" stroke="#c44" strokeWidth="1.5" strokeDasharray="3,2" />
+          <path d={`M${cx},${cy} L${scaleX(projectedEndDay)},${scaleY(0)}`} fill="none" stroke="var(--z-debt)" strokeWidth="1.5" strokeDasharray="3,2" />
         )}
         <text x={PAD.left} y={H - 2} fill="#555" fontSize="9" fontFamily="system-ui">Día 1</text>
         <text x={scaleX(dayOfMonth)} y={H - 2} fill="#888" fontSize="9" fontFamily="system-ui" textAnchor="middle">Hoy</text>

@@ -56,7 +56,7 @@ export function PlanHero({
 
         <div className="space-y-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-z-sage-dark">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
               Margen actual
             </p>
             <p className={cn("mt-2 text-4xl font-bold tracking-tight md:text-5xl", summary.availableToSpend < 0 ? "text-z-debt" : "text-z-sage-light")}>

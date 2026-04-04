@@ -402,7 +402,7 @@ function StylePreview({ mode }: { mode: BudgetMode }) {
               <span>{item.label}</span>
               <span>{item.w}</span>
             </div>
-            <div className="h-1.5 rounded-full bg-muted/50">
+            <div className="h-2 rounded-full bg-muted/50">
               <div
                 className={cn("h-full rounded-full", item.color)}
                 style={{ width: item.w }}
@@ -433,7 +433,7 @@ function StylePreview({ mode }: { mode: BudgetMode }) {
             <span>{item.label}</span>
             <span>{item.w}</span>
           </div>
-          <div className="h-1.5 rounded-full bg-muted/50">
+          <div className="h-2 rounded-full bg-muted/50">
             <div
               className={cn("h-full rounded-full", item.color)}
               style={{ width: item.w }}

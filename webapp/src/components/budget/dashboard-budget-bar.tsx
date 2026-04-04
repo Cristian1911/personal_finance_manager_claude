@@ -23,7 +23,7 @@ export function DashboardBudgetBar({ data, monthLabel }: DashboardBudgetBarProps
         ) : (
           <>
             {/* Stacked bar */}
-            <div className="h-3 rounded-full bg-muted overflow-hidden flex">
+            <div className="h-2 rounded-full bg-muted overflow-hidden flex">
               {data.map((c) => (
                 <div
                   key={c.categoryId ?? c.name}

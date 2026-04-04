@@ -104,7 +104,7 @@ export function PlanBudgetSection({
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-white/8 p-4 text-sm text-muted-foreground">
+          <div className="rounded-2xl border border-dashed border-white/6 p-4 text-sm text-muted-foreground">
             Aún no hay suficiente base para calcular la distribución 50/30/20 de este mes.
           </div>
         )}

@@ -294,7 +294,7 @@ export function BudgetPageClient({
                 </div>
 
                 {/* Progress bar */}
-                <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div className="mt-3 h-2 w-full rounded-full bg-muted overflow-hidden">
                   <div
                     className={cn("h-full rounded-full transition-all", barColor)}
                     style={{ width: `${Math.min(ratio * 100, 100)}%` }}
@@ -360,7 +360,7 @@ export function BudgetPageClient({
                   {/* Subcategories with spending */}
                   {cat.children.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         Subcategorías
                       </p>
                       {cat.children.map((child) => {
@@ -494,7 +494,7 @@ function StickyAssignmentBar({
     <div className="sticky top-0 z-10 bg-z-bg pb-2">
       <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
         <div className="flex items-center gap-3">
-          <div className="h-3 flex-1 rounded-full bg-z-surface-3">
+          <div className="h-2 flex-1 rounded-full bg-z-surface-3">
             <div
               className={cn("h-full rounded-full transition-all", barColor)}
               style={{ width: `${Math.min(ratio * 100, 100)}%` }}
@@ -611,7 +611,7 @@ function AllocationReference({ data }: { data: AllocationData }) {
             </span>
           </div>
 
-          <div className="relative h-5 rounded-md bg-z-surface-3 overflow-hidden">
+          <div className="relative h-4 rounded-md bg-z-surface-3 overflow-hidden">
             <div
               className="h-full rounded-md"
               style={{

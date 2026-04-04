@@ -71,7 +71,7 @@ export function MobileHeroCard({
   const isNegative = availableToSpend < 0;
 
   return (
-    <div className="rounded-[18px] border border-white/6 bg-[linear-gradient(160deg,#1a2518,#0d1117)] p-3.5">
+    <div className="rounded-2xl border border-white/6 bg-[linear-gradient(160deg,#1a2518,#0d1117)] p-3.5">
       {/* Hero number — tappable for math */}
       <button
         type="button"
@@ -79,7 +79,7 @@ export function MobileHeroCard({
         onClick={() => toggle("math")}
         aria-expanded={expanded === "math"}
       >
-        <p className="text-[8px] font-semibold uppercase tracking-[0.2em] text-z-sage-dark">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
           Disponible
         </p>
         <p
@@ -95,7 +95,7 @@ export function MobileHeroCard({
       {/* Math expansion */}
       <CollapsePanel visible={expanded === "math"}>
         <div className="rounded-xl bg-black/20 p-3 text-xs">
-          <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Cómo se calcula
           </p>
           <div className="space-y-1">
@@ -150,7 +150,7 @@ export function MobileHeroCard({
       {/* Saldo expansion */}
       <CollapsePanel visible={expanded === "saldo"}>
         <div className="rounded-xl bg-black/20 p-3">
-          <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-z-brass">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
             Saldo por cuenta
           </p>
           {liquidAccounts.length > 0 ? (
@@ -171,7 +171,7 @@ export function MobileHeroCard({
       {/* Fijos expansion */}
       <CollapsePanel visible={expanded === "fijos"}>
         <div className="rounded-xl bg-black/20 p-3">
-          <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-z-brass">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
             Gastos fijos del período
           </p>
           {fixedExpenses.length > 0 ? (
@@ -198,7 +198,7 @@ export function MobileHeroCard({
       {/* Próximo expansion */}
       <CollapsePanel visible={expanded === "proximo"}>
         <div className="rounded-xl bg-black/20 p-3">
-          <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-z-brass">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
             Próximo pago
           </p>
           {nextPayment ? (
@@ -248,7 +248,7 @@ function ChipButton({
       )}
       aria-expanded={active}
     >
-      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </span>
       <span className={cn("text-[13px] font-semibold", active ? "text-z-brass" : "text-z-sage-light")}>
