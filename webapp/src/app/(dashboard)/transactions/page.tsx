@@ -122,7 +122,7 @@ export default async function TransactionsPage({
 
           <div className="flex items-center justify-between rounded-xl border border-white/6 bg-black/10 px-4 py-3 text-sm">
             <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Vista actual</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Vista actual</p>
               <p className="font-medium">
                 {transactionsResult.count} movimientos {scopeLabel}
               </p>

@@ -71,7 +71,7 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
             </button>
 
             {/* Section 1: Acciones rápidas */}
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Acciones rápidas
             </p>
             <div className="grid grid-cols-3 gap-3">
@@ -101,7 +101,7 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
             {/* Section 2: En esta página */}
             {contextActions && contextActions.length > 0 && (
               <>
-                <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   En esta página
                 </p>
                 <div className="space-y-1">

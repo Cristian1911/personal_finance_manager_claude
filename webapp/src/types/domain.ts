@@ -40,6 +40,7 @@ export type CategoryWithBudget = CategoryWithChildren & {
 };
 
 export type ExpenseType = "fixed" | "variable";
+export type BudgetMode = "per_category" | "zero_based";
 
 export type CategoryBudgetData = {
   id: string;
@@ -58,6 +59,8 @@ export type CategoryBudgetData = {
   percentUsed: number;
   average3m: number;
   children: CategoryWithChildren[];
+  /** Spending per child category: childId → amount spent this month */
+  childrenSpent: Record<string, number>;
 };
 
 // Transaction with joined relations

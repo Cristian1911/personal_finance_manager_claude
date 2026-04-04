@@ -41,14 +41,14 @@ export function BudgetSummaryBar({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">{monthLabel}</p>
-          <p className="text-lg font-semibold">
+          <p className="text-lg font-semibold tabular-nums">
             {formatCurrency(totalSpent)} / {formatCurrency(totalBudget)}
           </p>
         </div>
         <div className="text-right">
           <p
             className={cn(
-              "text-lg font-semibold",
+              "text-lg font-semibold tabular-nums",
               overallPercent > 100
                 ? "text-z-debt"
                 : overallPercent > 80
@@ -97,7 +97,7 @@ export function BudgetSummaryBar({
       )}
 
       {/* Stacked horizontal progress bar */}
-      <div className="h-3 w-full rounded-full bg-muted overflow-hidden flex">
+      <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex">
         {totalBudget > 0 &&
           budgetedCategories.map((cat) => {
             const segmentWidth = ((cat.budget ?? 0) / totalBudget) * 100;

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowRight, Inbox, ShieldCheck, Tags } from "lucide-react";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 
 const CategoryInbox = dynamic(
   () => import("@/components/categorize/category-inbox").then((m) => ({ default: m.CategoryInbox })),
@@ -81,19 +82,19 @@ export default async function CategorizarPage() {
             <p className="text-sm leading-6 text-muted-foreground">{actionCard.body}</p>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-xl border border-white/6 bg-black/10 px-3 py-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Inbox</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Inbox</p>
                 <p className="mt-1 text-lg font-semibold">{uncategorizedCount}</p>
               </div>
               <div className="rounded-xl border border-white/6 bg-black/10 px-3 py-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Auto</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Auto</p>
                 <p className="mt-1 text-lg font-semibold">{autoReviewCount}</p>
               </div>
               <div className="rounded-xl border border-white/6 bg-black/10 px-3 py-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Reglas</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Reglas</p>
                 <p className="mt-1 text-lg font-semibold">{suggestedRulesCount}</p>
               </div>
             </div>
-            <Button asChild className="w-full bg-z-brass text-z-ink hover:bg-z-brass/90">
+            <Button asChild className={`w-full ${BRASS_BUTTON_CLASS}`}>
               <Link href={actionCard.href}>
                 {actionCard.cta}
                 <ArrowRight className="size-4" />
@@ -118,11 +119,11 @@ export default async function CategorizarPage() {
             <Button
               asChild
               variant="outline"
-              className="border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5 hover:text-z-sage-light"
+              className={GHOST_BUTTON_CLASS}
             >
               <Link href="/destinatarios">Ver destinatarios</Link>
             </Button>
-            <Button asChild className="bg-z-brass text-z-ink hover:bg-z-brass/90">
+            <Button asChild className={BRASS_BUTTON_CLASS}>
               <Link href={actionCard.href}>
                 {actionCard.cta}
                 <ArrowRight className="size-4" />
@@ -146,7 +147,7 @@ export default async function CategorizarPage() {
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/6 bg-black/10 p-4">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   <Inbox className="size-4 text-z-alert" />
                   Sin categoría
                 </div>
@@ -154,7 +155,7 @@ export default async function CategorizarPage() {
                 <p className="mt-1 text-xs text-muted-foreground">movimientos pendientes</p>
               </div>
               <div className="rounded-2xl border border-white/6 bg-black/10 p-4">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   <ShieldCheck className="size-4 text-z-brass" />
                   Auto-review
                 </div>
@@ -162,7 +163,7 @@ export default async function CategorizarPage() {
                 <p className="mt-1 text-xs text-muted-foreground">sugerencias por validar</p>
               </div>
               <div className="rounded-2xl border border-white/6 bg-black/10 p-4">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   <Tags className="size-4 text-z-sage-dark" />
                   Reglas activas
                 </div>
@@ -182,7 +183,7 @@ export default async function CategorizarPage() {
             <CardContent className="space-y-4">
               <p className="text-sm leading-6 text-muted-foreground">{actionCard.body}</p>
               <div className="rounded-2xl border border-white/6 bg-black/10 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Qué cuida esta bandeja</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Qué cuida esta bandeja</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Si limpias esta cola, el presupuesto deja de subestimar ruido, Plan deja de reaccionar tarde y las reglas automáticas aprenden con menos fricción.
                 </p>

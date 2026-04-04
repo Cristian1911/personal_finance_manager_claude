@@ -19,8 +19,8 @@ interface FlowNodeProps {
 
 function FlowNode({ label, amount, currency, valueClassName = "", nodeClassName = "" }: FlowNodeProps) {
   return (
-    <div className={cn("bg-z-surface-2 border border-z-border rounded-[10px] px-3 py-2", nodeClassName)}>
-      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{label}</p>
+    <div className={cn("bg-z-surface-2 border border-white/6 rounded-[10px] px-3 py-2", nodeClassName)}>
+      <p className="text-[9px] text-muted-foreground uppercase tracking-[0.18em]">{label}</p>
       <p className={cn("text-[16px] font-extrabold", valueClassName)}>
         {formatCurrency(amount, currency)}
       </p>
@@ -41,7 +41,7 @@ export function CashFlowHeroStrip({
   return (
     <div className="space-y-2">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Flujo del mes
         </p>
         <p className="text-xs text-muted-foreground">

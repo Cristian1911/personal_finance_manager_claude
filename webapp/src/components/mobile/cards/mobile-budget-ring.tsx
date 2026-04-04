@@ -33,13 +33,13 @@ export function BudgetTile({
       onClick={onClick}
       className={cn(
         "flex w-full flex-col items-center rounded-xl border bg-[#111] p-2.5 text-center transition-colors",
-        active ? "border-z-sage-light/25" : "border-white/4"
+        active ? "border-z-sage-light/25" : "border-white/6"
       )}
       aria-expanded={active}
     >
       <ProgressRing progress={progress} />
       <span className={cn(
-        "mt-1 text-[7px] font-semibold uppercase tracking-[0.1em]",
+        "mt-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
         active ? "text-z-sage-light" : "text-muted-foreground"
       )}>
         Presupuesto
@@ -62,7 +62,7 @@ export function BudgetDetail({ topCategories }: { topCategories: TopCategory[] }
                 <span>{cat.name}</span>
                 <span>{Math.round(cat.percentUsed)}%</span>
               </div>
-              <div className="mt-1 h-[2px] overflow-hidden rounded-full bg-white/5">
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/5">
                 <div
                   className={cn(
                     "h-full rounded-full",

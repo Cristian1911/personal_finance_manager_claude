@@ -12,17 +12,22 @@ import {
   updateEstimatedIncome,
   bulkUpsertBudgets,
 } from "@/actions/budget";
-import { Loader2, CheckCircle2, ListChecks, Target } from "lucide-react";
-import type { CategoryBudgetData, CurrencyCode } from "@/types/domain";
-
-// ── Types ───────────────────────────────────────────────────
-
-type BudgetMode = "per_category" | "zero_based";
+import {
+  Loader2,
+  CheckCircle2,
+  Feather,
+  Gauge,
+  AlertTriangle,
+} from "lucide-react";
+import type { AllocationData } from "@/actions/allocation";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import type { BudgetMode, CategoryBudgetData, CurrencyCode } from "@/types/domain";
 
 interface BudgetWizardProps {
   categories: CategoryBudgetData[];
   estimatedIncome: number;
   currency: CurrencyCode;
+  allocationData?: AllocationData | null;
   onComplete?: () => void;
 }
 
@@ -32,6 +37,7 @@ export function BudgetWizard({
   categories,
   estimatedIncome,
   currency,
+  allocationData,
   onComplete,
 }: BudgetWizardProps) {
   const router = useRouter();
@@ -53,7 +59,6 @@ export function BudgetWizard({
       (c) => c.slug === "ahorro-e-inversion"
     );
 
-    // Remove savings from variable if they ended up there
     const variableMinusSavings = variable.filter(
       (c) => c.slug !== "ahorro-e-inversion"
     );
@@ -64,7 +69,6 @@ export function BudgetWizard({
 
     const allocs: Record<string, number> = {};
 
-    // Distribute proportionally within each group
     const distributeEvenly = (
       cats: CategoryBudgetData[],
       total: number
@@ -80,7 +84,6 @@ export function BudgetWizard({
     distributeEvenly(variableMinusSavings, variableTotal);
     distributeEvenly(savings, savingsTotal);
 
-    // Categories not in any group get 0
     outflowParents.forEach((c) => {
       if (!(c.id in allocs)) {
         allocs[c.id] = 0;
@@ -91,6 +94,7 @@ export function BudgetWizard({
   }
 
   function handleGoToStep3() {
+    if (!selectedMode) return;
     initAllocations();
     setStep(3);
   }
@@ -141,27 +145,30 @@ export function BudgetWizard({
         </span>
       </div>
 
-      {/* Step 1: Choose mode */}
+      {/* Step 1: Income */}
       {step === 1 && (
-        <StepChooseMode
-          selectedMode={selectedMode}
-          onSelect={setSelectedMode}
+        <StepIncome
+          income={income}
+          currency={currency}
+          onIncomeChange={setIncome}
           onContinue={() => setStep(2)}
         />
       )}
 
-      {/* Step 2: Confirm income */}
+      {/* Step 2: Style + Preview */}
       {step === 2 && (
-        <StepConfirmIncome
+        <StepStylePreview
+          selectedMode={selectedMode}
+          onSelect={setSelectedMode}
           income={income}
           currency={currency}
-          onIncomeChange={setIncome}
+          allocationData={allocationData ?? null}
           onContinue={handleGoToStep3}
           onBack={() => setStep(1)}
         />
       )}
 
-      {/* Step 3: Initial allocation */}
+      {/* Step 3: Allocation */}
       {step === 3 && (
         <StepAllocation
           mode={selectedMode!}
@@ -183,125 +190,18 @@ export function BudgetWizard({
   );
 }
 
-// ── Step 1: Choose Mode ─────────────────────────────────────
+// ── Step 1: Income ──────────────────────────────────────────
 
-function StepChooseMode({
-  selectedMode,
-  onSelect,
-  onContinue,
-}: {
-  selectedMode: BudgetMode | null;
-  onSelect: (mode: BudgetMode) => void;
-  onContinue: () => void;
-}) {
-  return (
-    <div className="space-y-6">
-      <div className="space-y-2 text-center">
-        <h2 className="text-xl font-semibold">Elige tu estilo</h2>
-        <p className="text-sm text-muted-foreground">
-          No hay respuesta incorrecta. Puedes cambiarlo después.
-        </p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <ModeCard
-          title="Por categoría"
-          description="Pon límites a lo que más importa. Flexible, sin presión de cuadrar todo."
-          badge="Recomendado para empezar"
-          icon={<ListChecks className="size-5" />}
-          selected={selectedMode === "per_category"}
-          onSelect={() => onSelect("per_category")}
-        />
-        <ModeCard
-          title="Base cero"
-          description="Cada peso de tu ingreso tiene un trabajo asignado. Más control, más intención."
-          badge="Estilo YNAB"
-          icon={<Target className="size-5" />}
-          selected={selectedMode === "zero_based"}
-          onSelect={() => onSelect("zero_based")}
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <Button
-          onClick={onContinue}
-          disabled={!selectedMode}
-          className="bg-z-brass text-z-ink hover:bg-z-brass/90"
-        >
-          Continuar
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function ModeCard({
-  title,
-  description,
-  badge,
-  icon,
-  selected,
-  onSelect,
-}: {
-  title: string;
-  description: string;
-  badge: string;
-  icon: React.ReactNode;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "relative rounded-2xl border border-white/6 bg-card p-6 text-left transition-all",
-        "hover:border-z-brass/30",
-        selected && "ring-2 ring-z-brass border-z-brass/40"
-      )}
-    >
-      <div className="space-y-3">
-        <div
-          className={cn(
-            "flex size-10 items-center justify-center rounded-xl",
-            selected
-              ? "bg-z-brass/20 text-z-brass"
-              : "bg-muted text-muted-foreground"
-          )}
-        >
-          {icon}
-        </div>
-        <div className="space-y-1">
-          <h3 className="font-semibold">{title}</h3>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-        <span className="inline-block rounded-full bg-z-brass/10 px-2.5 py-0.5 text-xs font-medium text-z-brass">
-          {badge}
-        </span>
-      </div>
-      {selected && (
-        <div className="absolute top-3 right-3 text-z-brass">
-          <CheckCircle2 className="size-5" />
-        </div>
-      )}
-    </button>
-  );
-}
-
-// ── Step 2: Confirm Income ──────────────────────────────────
-
-function StepConfirmIncome({
+function StepIncome({
   income,
   currency,
   onIncomeChange,
   onContinue,
-  onBack,
 }: {
   income: number;
   currency: CurrencyCode;
   onIncomeChange: (v: number) => void;
   onContinue: () => void;
-  onBack: () => void;
 }) {
   return (
     <div className="space-y-6">
@@ -331,18 +231,339 @@ function StepConfirmIncome({
         )}
       </div>
 
+      <div className="flex justify-end">
+        <Button
+          onClick={onContinue}
+          disabled={income <= 0}
+          className={BRASS_BUTTON_CLASS}
+        >
+          Continuar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 2: Style + Preview ─────────────────────────────────
+
+function StepStylePreview({
+  selectedMode,
+  onSelect,
+  income,
+  currency,
+  allocationData,
+  onContinue,
+  onBack,
+}: {
+  selectedMode: BudgetMode | null;
+  onSelect: (mode: BudgetMode) => void;
+  income: number;
+  currency: CurrencyCode;
+  allocationData: AllocationData | null;
+  onContinue: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2 text-center">
+        <h2 className="text-xl font-semibold">
+          ¿Qué tan estricto quieres ser?
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          No hay respuesta incorrecta. Puedes cambiarlo después.
+        </p>
+      </div>
+
+      {/* Style cards */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <StyleCard
+          mode="per_category"
+          title="Flexible"
+          description="Pon límites a lo que más importa. Sin presión de cuadrar cada peso."
+          badge="Recomendado para empezar"
+          icon={<Feather className="size-5" />}
+          selected={selectedMode === "per_category"}
+          onSelect={() => onSelect("per_category")}
+        />
+        <StyleCard
+          mode="zero_based"
+          title="Estricto"
+          description="Cada peso tiene un trabajo asignado. Más control, más intención."
+          badge="Máximo control"
+          icon={<Gauge className="size-5" />}
+          selected={selectedMode === "zero_based"}
+          onSelect={() => onSelect("zero_based")}
+        />
+      </div>
+
+      {/* 50/30/20 Reference */}
+      {income > 0 && (
+        <ReferenceBreakdown
+          income={income}
+          currency={currency}
+          allocationData={allocationData}
+        />
+      )}
+
       <div className="flex justify-between">
         <Button variant="outline" onClick={onBack}>
           Atrás
         </Button>
         <Button
           onClick={onContinue}
-          disabled={income <= 0}
-          className="bg-z-brass text-z-ink hover:bg-z-brass/90"
+          disabled={!selectedMode}
+          className={BRASS_BUTTON_CLASS}
         >
           Continuar
         </Button>
       </div>
+    </div>
+  );
+}
+
+// ── Style Card ──────────────────────────────────────────────
+
+function StyleCard({
+  mode,
+  title,
+  description,
+  badge,
+  icon,
+  selected,
+  onSelect,
+}: {
+  mode: BudgetMode;
+  title: string;
+  description: string;
+  badge: string;
+  icon: React.ReactNode;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "relative rounded-2xl border border-white/6 bg-card p-5 text-left transition-all",
+        "hover:border-z-brass/30",
+        selected && "ring-2 ring-z-brass border-z-brass/40"
+      )}
+    >
+      <div className="space-y-3">
+        <div
+          className={cn(
+            "flex size-10 items-center justify-center rounded-xl",
+            selected
+              ? "bg-z-brass/20 text-z-brass"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
+          {icon}
+        </div>
+        <div className="space-y-1">
+          <h3 className="font-semibold">{title}</h3>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+
+        {/* Mini preview of what the budget page looks like */}
+        <StylePreview mode={mode} />
+
+        <span className="inline-block rounded-full bg-z-brass/10 px-2.5 py-0.5 text-xs font-medium text-z-brass">
+          {badge}
+        </span>
+      </div>
+      {selected && (
+        <div className="absolute top-3 right-3 text-z-brass">
+          <CheckCircle2 className="size-5" />
+        </div>
+      )}
+    </button>
+  );
+}
+
+// ── Style Preview (mini mockup) ─────────────────────────────
+
+function StylePreview({ mode }: { mode: BudgetMode }) {
+  if (mode === "per_category") {
+    // Flexible: simple bars with no remaining tracker
+    return (
+      <div className="space-y-1.5 rounded-lg border border-white/6 bg-z-surface-2 p-3">
+        <div className="text-[10px] font-medium text-muted-foreground">
+          Vista previa
+        </div>
+        {[
+          { label: "Hogar", w: "65%", color: "bg-z-sage-dark/60" },
+          { label: "Comida", w: "40%", color: "bg-z-sage-dark/60" },
+          { label: "Transporte", w: "80%", color: "bg-z-expense/60" },
+        ].map((item) => (
+          <div key={item.label} className="space-y-0.5">
+            <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+              <span>{item.label}</span>
+              <span>{item.w}</span>
+            </div>
+            <div className="h-2 rounded-full bg-muted/50">
+              <div
+                className={cn("h-full rounded-full", item.color)}
+                style={{ width: item.w }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Strict: bars plus a "remaining" tracker
+  return (
+    <div className="space-y-1.5 rounded-lg border border-white/6 bg-z-surface-2 p-3">
+      <div className="text-[10px] font-medium text-muted-foreground">
+        Vista previa
+      </div>
+      <div className="flex items-center justify-between rounded bg-z-income/10 px-1.5 py-0.5 text-[9px] font-medium text-z-income">
+        <span>Disponible</span>
+        <span>$120k</span>
+      </div>
+      {[
+        { label: "Hogar", w: "55%", color: "bg-z-sage-dark/60" },
+        { label: "Comida", w: "35%", color: "bg-z-sage-dark/60" },
+      ].map((item) => (
+        <div key={item.label} className="space-y-0.5">
+          <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+            <span>{item.label}</span>
+            <span>{item.w}</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted/50">
+            <div
+              className={cn("h-full rounded-full", item.color)}
+              style={{ width: item.w }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── 50/30/20 Reference Breakdown ────────────────────────────
+
+function ReferenceBreakdown({
+  income,
+  currency,
+  allocationData,
+}: {
+  income: number;
+  currency: CurrencyCode;
+  allocationData: AllocationData | null;
+}) {
+  const segments: {
+    label: string;
+    targetPct: number;
+    targetAmount: number;
+    actualPct: number | null;
+    color: string;
+  }[] = [
+    {
+      label: "Necesidades",
+      targetPct: 50,
+      targetAmount: income * 0.5,
+      actualPct: allocationData?.needs.percent ?? null,
+      color: "bg-z-sage-dark",
+    },
+    {
+      label: "Deseos",
+      targetPct: 30,
+      targetAmount: income * 0.3,
+      actualPct: allocationData?.wants.percent ?? null,
+      color: "bg-z-brass",
+    },
+    {
+      label: "Ahorro",
+      targetPct: 20,
+      targetAmount: income * 0.2,
+      actualPct: allocationData?.savings.percent ?? null,
+      color: "bg-z-income",
+    },
+  ];
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-white/6 bg-card p-4">
+      <div className="space-y-1">
+        <h4 className="text-sm font-semibold">Referencia 50/30/20</h4>
+        <p className="text-xs text-muted-foreground">
+          Distribución ideal para tu ingreso de{" "}
+          {formatCurrency(income, currency)}
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {segments.map((seg) => {
+          const barWidth = Math.min(seg.targetPct, 100);
+          const actualWidth =
+            seg.actualPct !== null ? Math.min(Math.max(seg.actualPct, 0), 100) : null;
+
+          return (
+            <div key={seg.label} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium">{seg.label}</span>
+                <span className="text-muted-foreground">
+                  {seg.targetPct}% ={" "}
+                  {formatCurrency(seg.targetAmount, currency)}
+                </span>
+              </div>
+
+              {/* Target bar */}
+              <div className="relative h-2 rounded-full bg-muted/50">
+                <div
+                  className={cn("h-full rounded-full opacity-40", seg.color)}
+                  style={{ width: `${barWidth}%` }}
+                />
+                {/* Actual overlay */}
+                {actualWidth !== null && (
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 rounded-full",
+                      seg.color
+                    )}
+                    style={{ width: `${actualWidth}%` }}
+                  />
+                )}
+              </div>
+
+              {/* Actual vs target label */}
+              {seg.actualPct !== null && (
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <span>
+                    Tu gasto actual: {Math.round(seg.actualPct)}%
+                  </span>
+                  {seg.actualPct > seg.targetPct && (
+                    <span className="text-z-expense">
+                      (+{Math.round(seg.actualPct - seg.targetPct)}%)
+                    </span>
+                  )}
+                  {seg.actualPct <= seg.targetPct && (
+                    <span className="text-z-income">
+                      ({Math.round(seg.actualPct - seg.targetPct)}%)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Untagged categories warning */}
+      {allocationData && allocationData.untaggedCategories > 0 && (
+        <div className="flex items-start gap-2 rounded-lg bg-z-expense/10 px-3 py-2">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-z-expense" />
+          <p className="text-[11px] text-z-expense">
+            {allocationData.untaggedCategories} categoría
+            {allocationData.untaggedCategories > 1 ? "s" : ""} sin tipo
+            asignado (fijo/variable). Asígnalas para mejorar la distribución.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -402,7 +623,7 @@ function StepAllocation({
       {mode === "zero_based" && (
         <div
           className={cn(
-            "sticky top-0 z-10 flex items-center justify-between rounded-xl border bg-card px-4 py-3",
+            "sticky top-0 z-10 flex items-center justify-between rounded-xl border border-white/6 bg-card px-4 py-3",
             remaining === 0 && "border-z-income/30",
             remaining < 0 && "border-z-debt/30"
           )}
@@ -480,7 +701,7 @@ function StepAllocation({
         <Button
           onClick={onFinalize}
           disabled={isPending}
-          className="bg-z-brass text-z-ink hover:bg-z-brass/90"
+          className={BRASS_BUTTON_CLASS}
         >
           {isPending ? (
             <>

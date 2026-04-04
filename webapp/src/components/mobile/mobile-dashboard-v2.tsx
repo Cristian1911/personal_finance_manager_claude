@@ -117,11 +117,11 @@ export function MobileDashboardV2({
 
       {/* Section divider */}
       <div className="flex items-center gap-2 py-0.5">
-        <div className="h-px flex-1 bg-white/4" />
-        <span className="text-[7px] font-semibold uppercase tracking-[0.2em] text-[#3a3a3a]">
+        <div className="h-px flex-1 bg-white/6" />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Actividad
         </span>
-        <div className="h-px flex-1 bg-white/4" />
+        <div className="h-px flex-1 bg-white/6" />
       </div>
 
       {/* ④ Upcoming payments */}

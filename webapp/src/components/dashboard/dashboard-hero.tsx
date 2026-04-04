@@ -84,7 +84,7 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-z-sage-dark">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
               Disponible para gastar en {data.currency}
             </p>
             <p className={`text-4xl font-bold tracking-tight md:text-5xl ${availableToSpend < 0 ? "text-z-debt" : "text-z-sage-light"}`}>
@@ -113,7 +113,7 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
             <Button
               asChild
               variant="outline"
-              className="border-white/8 bg-black/10 text-z-sage-light shadow-none hover:bg-white/5 hover:text-z-sage-light"
+              className="border-white/6 bg-black/10 text-z-sage-light shadow-none hover:bg-white/5 hover:text-z-sage-light"
             >
               <Link href={secondaryAction.href}>
                 <SecondaryActionIcon className="size-4" />

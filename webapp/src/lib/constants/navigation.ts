@@ -38,6 +38,7 @@ export const PRIMARY_NAV: NavItem[] = [
     href: "/plan",
     icon: PiggyBank,
     matchHrefs: [
+      "/presupuesto",
       "/deudas",
       "/deudas/planificador",
       "/recurrentes",
@@ -54,10 +55,10 @@ export const PRIMARY_NAV: NavItem[] = [
 
 export const WORKSPACE_NAV: NavItem[] = [
   { title: "Categorizar", href: "/categorizar", icon: Inbox, attentionPage: "transactions" },
+  { title: "Presupuesto", href: "/presupuesto", icon: PiggyBank, attentionPage: "categories" },
   { title: "Destinatarios", href: "/destinatarios", icon: Contact, attentionPage: "destinatarios" },
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
-  { title: "Presupuesto", href: "/presupuesto", icon: PiggyBank, attentionPage: "categories" },
   { title: "Deudas", href: "/deudas", icon: Landmark },
   { title: "Recurrentes", href: "/recurrentes", icon: Repeat2, attentionPage: "recurrentes" },
   { title: "Etiquetas", href: "/etiquetas", icon: Tag },

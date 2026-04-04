@@ -52,9 +52,9 @@ export function MobileUpcomingPayments({ payments }: { payments: Payment[] }) {
   if (visible.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-white/4 bg-[#111] px-3 py-2">
+    <div className="rounded-xl border border-white/6 bg-[#111] px-3 py-2">
       <div className="mb-1 flex items-center justify-between">
-        <p className="text-[7px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Pagos
         </p>
         {payments.length > 3 && (

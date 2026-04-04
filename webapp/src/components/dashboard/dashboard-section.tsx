@@ -54,7 +54,7 @@ export function DashboardSection({
                 !isOpen && "-rotate-90"
               )}
             />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
               {title}
             </span>
           </button>

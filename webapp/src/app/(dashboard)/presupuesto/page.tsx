@@ -2,10 +2,11 @@ import { connection } from "next/server";
 import { getBudgetMode } from "@/actions/budget";
 import { getEstimatedIncome } from "@/actions/income";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
+import { get503020Allocation } from "@/actions/allocation";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { BudgetWizard } from "@/components/budget/budget-wizard";
 import { BudgetPageClient } from "@/components/budget/budget-page-client";
-import { parseMonth, formatMonthLabel } from "@/lib/utils/date";
+import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 
 export default async function PresupuestoPage({
@@ -23,15 +24,19 @@ export default async function PresupuestoPage({
     : { data: null };
   const currency = (profile?.preferred_currency ?? "COP") as CurrencyCode;
 
-  const [modeResult, incomeEstimate, categoriesResult] = await Promise.all([
+  const [modeResult, incomeEstimate, categoriesResult, allocationData] = await Promise.all([
     getBudgetMode(),
     getEstimatedIncome(currency, month),
     getCategoriesWithBudgetData(month, currency),
+    get503020Allocation(month, currency),
   ]);
 
   const budgetMode = modeResult.success ? modeResult.data : null;
   const income = incomeEstimate?.monthlyAverage ?? 0;
   const categories = categoriesResult.success ? categoriesResult.data : [];
+
+  const target = parseMonth(month);
+  const daysRemaining = getDaysRemainingInMonth(target);
 
   if (!budgetMode) {
     return (
@@ -49,6 +54,7 @@ export default async function PresupuestoPage({
           categories={categories}
           estimatedIncome={income}
           currency={currency}
+          allocationData={allocationData}
         />
       </div>
     );
@@ -60,7 +66,9 @@ export default async function PresupuestoPage({
       categories={categories}
       income={income}
       currency={currency}
-      monthLabel={formatMonthLabel(parseMonth(month))}
+      monthLabel={formatMonthLabel(target)}
+      allocationData={allocationData}
+      daysRemaining={daysRemaining}
     />
   );
 }
