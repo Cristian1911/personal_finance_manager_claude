@@ -15,13 +15,9 @@ interface InspectInfo {
 
 export function DevOverlay() {
   const [activeAction, setActiveAction] = useState<DevAction>(null);
-  const [selectedComponent, setSelectedComponent] = useState<InspectInfo | null>(null);
-
   function handleSelectComponent(info: InspectInfo) {
-    setSelectedComponent(info);
     setActiveAction(null);
-    // Context menu handles "storybook" and "copy" inline.
-    // "annotate" comes here — Task 5 wires it to open the canvas.
+    // Task 5 wires this to open the annotation canvas
     console.log("[UI Pal] Selected for annotation:", info.componentName, info.filePath);
   }
 
