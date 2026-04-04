@@ -1,9 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
-import { createDestinatario, type CreateDestinatarioResult } from "@/actions/destinatarios";
+import { Plus, Search, Loader2 } from "lucide-react";
+import {
+  createDestinatario,
+  testDestinatarioPattern,
+  type CreateDestinatarioResult,
+  type PatternTestResult,
+} from "@/actions/destinatarios";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,18 +19,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { formatCurrency } from "@/lib/utils/currency";
 import type { ActionResult } from "@/types/actions";
 import type { CategoryWithChildren } from "@/types/domain";
-import type { Database } from "@/types/database";
-
-type Destinatario = Database["public"]["Tables"]["destinatarios"]["Row"];
 
 export function CreateDestinatarioDialog({
   categories,
@@ -36,35 +33,34 @@ export function CreateDestinatarioDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [categoryId, setCategoryId] = useState("none");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(true);
+  const [patterns, setPatterns] = useState("");
+  const [testResult, setTestResult] = useState<PatternTestResult | null>(null);
+  const [isTesting, startTestTransition] = useTransition();
   const [state, formAction, pending] = useActionState<ActionResult<CreateDestinatarioResult>, FormData>(
     createDestinatario,
     { success: false, error: "" }
-  );
-
-  const categoryOptions = useMemo(
-    () =>
-      categories.flatMap((category) => [
-        {
-          id: category.id,
-          label: category.name_es ?? category.name,
-        },
-        ...category.children.map((child) => ({
-          id: child.id,
-          label: `${category.name_es ?? category.name} / ${child.name_es ?? child.name}`,
-        })),
-      ]),
-    [categories]
   );
 
   useEffect(() => {
     if (!state.success) return;
     router.refresh();
     setOpen(false);
-    setCategoryId("none");
+    setCategoryId(null);
     setIsActive(true);
+    setPatterns("");
+    setTestResult(null);
   }, [router, state.success]);
+
+  function handleTestPatterns() {
+    const firstPattern = patterns.split(",")[0]?.trim();
+    if (!firstPattern) return;
+    startTestTransition(async () => {
+      const result = await testDestinatarioPattern(firstPattern, "contains");
+      if (result.success) setTestResult(result.data);
+    });
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -99,37 +95,71 @@ export function CreateDestinatarioDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dest-category">Categoría por defecto</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger id="dest-category">
-                <SelectValue placeholder="Sin categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin categoría</SelectItem>
-                {categoryOptions.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input
-              type="hidden"
+            <Label>Categoría por defecto</Label>
+            <CategoryZonePicker
+              categories={categories}
+              value={categoryId}
+              onValueChange={setCategoryId}
+              direction="OUTFLOW"
               name="default_category_id"
-              value={categoryId === "none" ? "" : categoryId}
+              placeholder="Sin categoría"
+              triggerClassName="w-full"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="dest-patterns">Patrones</Label>
-            <Input
-              id="dest-patterns"
-              name="patterns"
-              placeholder="Ej: nequi pago, rappi, spotify"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="dest-patterns"
+                name="patterns"
+                placeholder="Ej: nequi pago, rappi, spotify"
+                value={patterns}
+                onChange={(e) => {
+                  setPatterns(e.target.value);
+                  setTestResult(null);
+                }}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleTestPatterns}
+                disabled={!patterns.trim() || isTesting}
+                title="Probar patrón"
+              >
+                {isTesting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Search className="size-4" />
+                )}
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Separa varios patrones con comas para crear reglas iniciales de asociación.
             </p>
+            {testResult && (
+              <div className="rounded-lg border border-z-border-strong bg-z-surface-2 p-3 space-y-2">
+                <p className="text-xs font-medium">
+                  {testResult.matchCount === 0
+                    ? "Sin coincidencias en transacciones sin asignar"
+                    : `${testResult.matchCount} transaccion${testResult.matchCount === 1 ? "" : "es"} coinciden`}
+                </p>
+                {testResult.samples.length > 0 && (
+                  <ul className="space-y-1">
+                    {testResult.samples.map((s) => (
+                      <li key={s.id} className="text-xs text-muted-foreground flex justify-between gap-2">
+                        <span className="truncate">{s.rawDescription}</span>
+                        <span className="shrink-0 tabular-nums">
+                          {formatCurrency(s.amount, "COP")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
