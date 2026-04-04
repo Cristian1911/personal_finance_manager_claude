@@ -572,7 +572,7 @@ function SummaryCard({
   negative?: boolean;
 }) {
   return (
-    <div className={cn(PANEL_INSET_CLASS, "rounded-2xl bg-black/15 p-4 lg:p-5")}>
+    <div className={cn(PANEL_INSET_CLASS, "bg-black/15 p-4 lg:p-5")}>
       <SectionEyebrow>{label}</SectionEyebrow>
       <p
         className={cn(

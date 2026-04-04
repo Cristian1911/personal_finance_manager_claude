@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { ChevronRight } from "lucide-react";
 import {
+  HERO_CARD_GRADIENT_CLASS,
   PANEL_INSET_CLASS,
   PANEL_SURFACE_SUBTLE_CLASS,
 } from "@/lib/constants/styles";
@@ -78,7 +79,8 @@ export function MobileHeroCard({
     <div
       className={cn(
         PANEL_SURFACE_SUBTLE_CLASS,
-        "bg-[radial-gradient(circle_at_top_left,rgba(63,70,50,0.22),transparent_42%),linear-gradient(180deg,rgba(27,30,27,0.96),rgba(18,20,18,0.98))] p-3.5"
+        HERO_CARD_GRADIENT_CLASS,
+        "p-3.5"
       )}
     >
       {/* Hero number — tappable for math */}

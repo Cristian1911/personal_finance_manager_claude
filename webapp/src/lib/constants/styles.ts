@@ -20,9 +20,13 @@ export const PANEL_SURFACE_CLASS =
 export const PANEL_SURFACE_SUBTLE_CLASS =
   "rounded-2xl border border-white/6 bg-z-surface-2/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 
+/** Hero card gradient for mobile dashboard cards */
+export const HERO_CARD_GRADIENT_CLASS =
+  "bg-[radial-gradient(circle_at_top_left,rgba(63,70,50,0.22),transparent_42%),linear-gradient(180deg,rgba(27,30,27,0.96),rgba(18,20,18,0.98))]";
+
 /** Compact inset surface for tiles, pills, and mobile secondary cards */
-export const PANEL_INSET_CLASS = "rounded-xl border border-white/6 bg-black/10";
+export const PANEL_INSET_CLASS = "rounded-2xl border border-white/6 bg-black/10";
 
 /** Compact inset surface with a softer hover state for interactive tiles */
 export const PANEL_INSET_INTERACTIVE_CLASS =
-  "rounded-xl border border-white/6 bg-black/10 transition-colors hover:bg-white/[0.03]";
+  "rounded-2xl border border-white/6 bg-black/10 transition-colors hover:bg-white/[0.03]";

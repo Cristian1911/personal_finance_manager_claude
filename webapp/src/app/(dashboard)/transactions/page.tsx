@@ -113,19 +113,19 @@ export default async function TransactionsPage({
           }
         >
           <div className="grid grid-cols-3 gap-2">
-            <div className={`${PANEL_INSET_CLASS} rounded-2xl p-3`}>
+            <div className={`${PANEL_INSET_CLASS} p-3`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Vista</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight">{transactionsResult.count}</p>
               <p className="mt-1 text-[11px] text-muted-foreground">{scopeLabel}</p>
             </div>
-            <div className={`${PANEL_INSET_CLASS} rounded-2xl p-3`}>
+            <div className={`${PANEL_INSET_CLASS} p-3`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ingresos</p>
               <p className="mt-2 text-lg font-semibold tracking-tight text-z-income">
                 {formatCurrency(inflowVisible, summaryCurrency)}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">en la vista</p>
             </div>
-            <div className={`${PANEL_INSET_CLASS} rounded-2xl p-3`}>
+            <div className={`${PANEL_INSET_CLASS} p-3`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gastos</p>
               <p className="mt-2 text-lg font-semibold tracking-tight text-z-alert">
                 {formatCurrency(outflowVisible, summaryCurrency)}
@@ -167,26 +167,26 @@ export default async function TransactionsPage({
           }
         >
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
-            <div className={`${PANEL_INSET_CLASS} rounded-2xl p-4`}>
+            <div className={`${PANEL_INSET_CLASS} p-4`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Vista</p>
               <p className="mt-2 text-3xl font-semibold tracking-tight">{transactionsResult.count}</p>
               <p className="mt-1 text-xs text-muted-foreground">{scopeLabel}</p>
             </div>
-            <div className={`${PANEL_INSET_CLASS} rounded-2xl p-4`}>
+            <div className={`${PANEL_INSET_CLASS} p-4`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ingresos</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-z-income">
                 {formatCurrency(inflowVisible, summaryCurrency)}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">en la vista</p>
             </div>
-            <div className={`${PANEL_INSET_CLASS} rounded-2xl p-4`}>
+            <div className={`${PANEL_INSET_CLASS} p-4`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gastos</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-z-alert">
                 {formatCurrency(outflowVisible, summaryCurrency)}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">en la vista</p>
             </div>
-            <div className={`${PANEL_INSET_CLASS} rounded-2xl p-4`}>
+            <div className={`${PANEL_INSET_CLASS} p-4`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sin categoría</p>
               <p className="mt-2 text-3xl font-semibold tracking-tight">
                 {uncategorizedVisible}

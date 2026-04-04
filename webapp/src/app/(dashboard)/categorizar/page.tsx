@@ -145,7 +145,7 @@ export default async function CategorizarPage() {
               </p>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
-              <div className={`${PANEL_INSET_CLASS} rounded-2xl p-4`}>
+              <div className={`${PANEL_INSET_CLASS} p-4`}>
                 <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   <Inbox className="size-4 text-z-alert" />
                   Sin categoría
@@ -153,7 +153,7 @@ export default async function CategorizarPage() {
                 <p className="mt-2 text-2xl font-semibold">{uncategorizedCount}</p>
                 <p className="mt-1 text-xs text-muted-foreground">movimientos pendientes</p>
               </div>
-              <div className={`${PANEL_INSET_CLASS} rounded-2xl p-4`}>
+              <div className={`${PANEL_INSET_CLASS} p-4`}>
                 <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   <ShieldCheck className="size-4 text-z-brass" />
                   Auto-review
@@ -161,7 +161,7 @@ export default async function CategorizarPage() {
                 <p className="mt-2 text-2xl font-semibold">{autoReviewCount}</p>
                 <p className="mt-1 text-xs text-muted-foreground">sugerencias por validar</p>
               </div>
-              <div className={`${PANEL_INSET_CLASS} rounded-2xl p-4`}>
+              <div className={`${PANEL_INSET_CLASS} p-4`}>
                 <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   <Tags className="size-4 text-z-sage-dark" />
                   Reglas activas
@@ -179,7 +179,7 @@ export default async function CategorizarPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm leading-6 text-muted-foreground">{actionCard.body}</p>
-              <div className={`${PANEL_INSET_CLASS} rounded-2xl p-4`}>
+              <div className={`${PANEL_INSET_CLASS} p-4`}>
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Qué cuida esta bandeja</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Si limpias esta cola, el presupuesto deja de subestimar ruido, Plan deja de reaccionar tarde y las reglas automáticas aprenden con menos fricción.
