@@ -1,0 +1,204 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]: Hola, Cristian
+      - button "CG 405" [ref=e6]:
+        - generic [ref=e8]: CG
+        - generic [ref=e9]: "405"
+    - main [ref=e10]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - button "405 405 transacciones sin categoría Descartar alerta" [ref=e16]:
+            - text: 405 405 transacciones sin categoría
+            - button "Descartar alerta" [ref=e18] [cursor=pointer]:
+              - img [ref=e19]
+          - generic [ref=e22]:
+            - paragraph [ref=e23]: Organízalas para que tu presupuesto sea más preciso.
+            - generic [ref=e24]:
+              - link "Categorizar ›" [ref=e25] [cursor=pointer]:
+                - /url: /categorizar
+              - button "Ocultar" [ref=e26]
+        - generic [ref=e27]:
+          - button "Disponible -$ 625.469" [ref=e28]:
+            - paragraph [ref=e29]: Disponible
+            - paragraph [ref=e30]: "-$ 625.469"
+          - generic [ref=e32]:
+            - paragraph [ref=e33]: Cómo se calcula
+            - generic [ref=e34]:
+              - generic [ref=e35]:
+                - generic [ref=e36]: Saldo total
+                - generic [ref=e37]: $ 245.000
+              - generic [ref=e38]:
+                - generic [ref=e39]: − Gastos fijos
+                - generic [ref=e40]: $ 870.469
+              - generic [ref=e41]:
+                - generic [ref=e42]: − Ya gastado
+                - generic [ref=e43]: $ 0
+              - generic [ref=e44]:
+                - generic [ref=e45]: = Disponible
+                - generic [ref=e46]: "-$ 625.469"
+            - link "Ver cuentas" [ref=e47] [cursor=pointer]:
+              - /url: /accounts
+              - text: Ver cuentas
+              - img [ref=e48]
+          - generic [ref=e50]:
+            - button "Saldo $245k" [ref=e51]:
+              - generic [ref=e52]: Saldo
+              - generic [ref=e53]: $245k
+            - button "Fijos $870k" [ref=e54]:
+              - generic [ref=e55]: Fijos
+              - generic [ref=e56]: $870k
+            - button "Prox. 2d" [ref=e57]:
+              - generic [ref=e58]: Prox.
+              - generic [ref=e59]: 2d
+          - generic [ref=e61]:
+            - paragraph [ref=e62]: Saldo por cuenta
+            - generic [ref=e64]:
+              - generic [ref=e65]: Bancolombia Ahorros ****4398
+              - generic [ref=e66]: $ 245.000
+          - generic [ref=e68]:
+            - paragraph [ref=e69]: Gastos fijos del período
+            - generic [ref=e70]:
+              - generic [ref=e71]:
+                - generic [ref=e72]: Bancolombia VISA ****7022
+                - generic [ref=e73]: $ 362.654
+              - generic [ref=e74]:
+                - generic [ref=e75]: Bancolombia AMEX ****5747
+                - generic [ref=e76]: $ 507.815
+            - generic [ref=e77]:
+              - generic [ref=e78]: Total fijos
+              - generic [ref=e79]: $ 870.469
+          - generic [ref=e81]:
+            - paragraph [ref=e82]: Próximo pago
+            - generic [ref=e83]:
+              - generic [ref=e84]:
+                - generic [ref=e85]: Nombre
+                - generic [ref=e86]: Bancolombia VISA ****7022
+              - generic [ref=e87]:
+                - generic [ref=e88]: Monto
+                - generic [ref=e89]: $ 362.654
+              - generic [ref=e90]:
+                - generic [ref=e91]: Fecha
+                - generic [ref=e92]: 06 abr 2026
+        - generic [ref=e93]:
+          - link "Ritmo No llegas al cierre 0d $ 655.750/día al ritmo actual Ver análisis" [ref=e94] [cursor=pointer]:
+            - /url: /dashboard#burn-rate
+            - generic [ref=e95]:
+              - generic [ref=e96]:
+                - generic [ref=e97]: Ritmo
+                - generic [ref=e98]: No llegas al cierre
+              - generic [ref=e99]:
+                - generic [ref=e100]: 0d
+                - paragraph [ref=e101]: $ 655.750/día al ritmo actual
+            - generic [ref=e102]:
+              - generic [ref=e103]: Ver análisis
+              - img [ref=e104]
+          - link "Presupuesto Con margen 5% 5% Compras lidera el gasto 5% usado" [ref=e106] [cursor=pointer]:
+            - /url: /plan
+            - generic [ref=e107]:
+              - generic [ref=e108]:
+                - generic [ref=e109]: Presupuesto
+                - generic [ref=e110]: Con margen
+              - generic [ref=e111]:
+                - generic [ref=e112]:
+                  - img [ref=e113]
+                  - generic [ref=e117]: 5%
+                - generic [ref=e118]:
+                  - paragraph [ref=e119]: 5%
+                  - paragraph [ref=e120]: Compras lidera el gasto
+            - generic [ref=e121]:
+              - generic [ref=e122]: 5% usado
+              - img [ref=e123]
+        - generic [ref=e127]: Actividad
+        - generic [ref=e129]:
+          - paragraph [ref=e131]: Pagos
+          - generic [ref=e132]:
+            - generic [ref=e133]:
+              - button "VISA 7022 $ 362.654 6 abr" [ref=e134]:
+                - generic [ref=e137]: VISA 7022
+                - generic [ref=e138]:
+                  - generic [ref=e139]: $ 362.654
+                  - generic [ref=e140]: 6 abr
+              - generic [ref=e141]:
+                - generic [ref=e142]:
+                  - generic [ref=e143]:
+                    - generic [ref=e144]: Monto
+                    - generic [ref=e145]: $ 362.654
+                  - generic [ref=e146]:
+                    - generic [ref=e147]: Fecha
+                    - generic [ref=e148]: 06 abr 2026
+                - link "Ver detalles" [ref=e149] [cursor=pointer]:
+                  - /url: /recurrentes
+                  - text: Ver detalles
+                  - img [ref=e150]
+            - generic [ref=e152]:
+              - button "AMEX 5747 $ 507.815 16 abr" [ref=e153]:
+                - generic [ref=e156]: AMEX 5747
+                - generic [ref=e157]:
+                  - generic [ref=e158]: $ 507.815
+                  - generic [ref=e159]: 16 abr
+              - generic [ref=e160]:
+                - generic [ref=e161]:
+                  - generic [ref=e162]:
+                    - generic [ref=e163]: Monto
+                    - generic [ref=e164]: $ 507.815
+                  - generic [ref=e165]:
+                    - generic [ref=e166]: Fecha
+                    - generic [ref=e167]: 16 abr 2026
+                - link "Ver detalles" [ref=e168] [cursor=pointer]:
+                  - /url: /recurrentes
+                  - text: Ver detalles
+                  - img [ref=e169]
+        - generic [ref=e171]:
+          - generic [ref=e172]:
+            - paragraph [ref=e173]: Recientes
+            - link "Todos ›" [ref=e174] [cursor=pointer]:
+              - /url: /transactions
+          - generic [ref=e175]:
+            - link "0042980136 -$ 18.500" [ref=e176] [cursor=pointer]:
+              - /url: /transactions/568dc623-8dac-4f04-ab03-87e5173a4523
+              - generic [ref=e177]: "0042980136"
+              - generic [ref=e178]: "-$ 18.500"
+            - link "Qr El Cerrito -$ 10.900" [ref=e179] [cursor=pointer]:
+              - /url: /transactions/57f3fb74-01a3-48dd-8efe-a73b3d76aee7
+              - generic [ref=e180]: Qr El Cerrito
+              - generic [ref=e181]: "-$ 10.900"
+            - link "0090385532 -$ 10.000" [ref=e182] [cursor=pointer]:
+              - /url: /transactions/349e81c1-3024-47b8-95bc-7e1daab04a14
+              - generic [ref=e183]: "0090385532"
+              - generic [ref=e184]: "-$ 10.000"
+      - button "Abrir menu de acciones" [ref=e185]:
+        - img [ref=e186]
+    - navigation [ref=e187]:
+      - generic [ref=e188]:
+        - link "Inicio" [ref=e189] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e191]
+          - generic [ref=e196]: Inicio
+        - link "Movimientos" [ref=e197] [cursor=pointer]:
+          - /url: /transactions
+          - img [ref=e199]
+          - generic [ref=e202]: Movimientos
+        - link "Plan" [ref=e204] [cursor=pointer]:
+          - /url: /plan
+          - img [ref=e206]
+          - generic [ref=e209]: Plan
+        - link "99+ Bandeja" [ref=e210] [cursor=pointer]:
+          - /url: /gestionar
+          - generic [ref=e211]:
+            - img [ref=e212]
+            - generic [ref=e215]: 99+
+          - generic [ref=e216]: Bandeja
+  - region "Notifications alt+T"
+  - generic [ref=e221] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e222]:
+      - img [ref=e223]
+    - generic [ref=e226]:
+      - button "Open issues overlay" [ref=e227]:
+        - generic [ref=e228]:
+          - generic [ref=e229]: "0"
+          - generic [ref=e230]: "1"
+        - generic [ref=e231]: Issue
+      - button "Collapse issues badge" [ref=e232]:
+        - img [ref=e233]
+  - alert [ref=e235]

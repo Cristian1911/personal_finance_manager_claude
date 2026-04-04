@@ -60,7 +60,7 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="flex size-[34px] items-center justify-center rounded-full bg-z-brass text-z-ink shadow-[0_0_12px_rgba(var(--z-brass-rgb),0.35)] transition-transform active:scale-95"
+              className="flex size-[34px] items-center justify-center rounded-full bg-z-brass text-z-ink shadow-[0_0_12px_rgba(184,148,79,0.35)] transition-transform active:scale-95"
               aria-label="Registrar movimiento"
             >
               <Plus className="size-4 stroke-[2.5]" />

@@ -1,6 +1,5 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { CalendarRange } from "lucide-react";
 import { getPlanPageData } from "@/actions/plan";
 import { getCategoriesByRhythm } from "@/actions/categories";
 import { getWishlistItemsForDashboard } from "@/actions/wishlist";
@@ -121,7 +120,7 @@ export default async function PlanPage({
         </Suspense>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_24rem]">
+      <div className="hidden lg:grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_24rem]">
         <PlanHero
           summary={planData.heroSummary}
           currency={planData.currency}
@@ -138,7 +137,7 @@ export default async function PlanPage({
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <div className="hidden lg:grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <PlanBudgetToggle
           domainView={<PlanBudgetSection budget={planData.budget} currency={planData.currency} />}
           rhythmGroups={rhythmData}
@@ -151,7 +150,9 @@ export default async function PlanPage({
         </div>
       </div>
 
-      <PlanScenarioPreview scenarios={planData.scenarios} />
+      <div className="hidden lg:block">
+        <PlanScenarioPreview scenarios={planData.scenarios} />
+      </div>
     </div>
   );
 }

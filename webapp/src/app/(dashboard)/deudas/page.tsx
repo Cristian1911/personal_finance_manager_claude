@@ -221,43 +221,45 @@ export default async function DeudasPage({
         </div>
       </div>
 
-      <PageHeaderRow
-        title="Deudas"
-        subtitle={`Lectura en ${currency}`}
-        actions={
-          <>
-            <Button asChild className={BRASS_BUTTON_CLASS}>
-              <Link href="/deudas/planificador">
-                Planificador de pagos
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className={GHOST_BUTTON_CLASS}>
-              <Link href="/plan">Volver a Plan</Link>
-            </Button>
-            <div className="hidden lg:block">
+      <div className="hidden lg:block">
+        <PageHeaderRow
+          title="Deudas"
+          subtitle={`Lectura en ${currency}`}
+          actions={
+            <>
+              <Button asChild className={BRASS_BUTTON_CLASS}>
+                <Link href="/deudas/planificador">
+                  Planificador de pagos
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className={GHOST_BUTTON_CLASS}>
+                <Link href="/plan">Volver a Plan</Link>
+              </Button>
               <Suspense>
                 <MonthSelector />
               </Suspense>
+            </>
+          }
+        />
+      </div>
+
+      <div className="hidden lg:block space-y-6">
+        <Suspense
+          fallback={
+            <div className="space-y-6">
+              <DebtOverviewSkeleton />
+              <DebtQuickStatsSkeleton />
+              <SalaryBarSkeleton />
+              <DebtAccountsSkeleton />
             </div>
-          </>
-        }
-      />
+          }
+        >
+          <DebtOverviewSection currency={currency} month={month} />
+        </Suspense>
 
-      <Suspense
-        fallback={
-          <div className="space-y-6">
-            <DebtOverviewSkeleton />
-            <DebtQuickStatsSkeleton />
-            <SalaryBarSkeleton />
-            <DebtAccountsSkeleton />
-          </div>
-        }
-      >
-        <DebtOverviewSection currency={currency} month={month} />
-      </Suspense>
-
-      <AccountImpactTimeline events={impactEvents} />
+        <AccountImpactTimeline events={impactEvents} />
+      </div>
     </div>
   );
 }

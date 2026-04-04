@@ -1,0 +1,80 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - main [ref=e4]:
+      - generic [ref=e7]:
+        - generic [ref=e9]:
+          - generic [ref=e10]:
+            - paragraph [ref=e11]: Plan
+            - paragraph [ref=e12]: abril 2026
+          - generic [ref=e14]:
+            - button "Mes anterior" [ref=e15]:
+              - img
+            - button "abril 2026" [ref=e16]
+            - button "Mes siguiente" [disabled]:
+              - img
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - generic [ref=e20]:
+              - generic [ref=e21]:
+                - paragraph [ref=e22]: GASTADO ESTE MES
+                - paragraph [ref=e23]: 12%
+              - generic [ref=e24]:
+                - paragraph [ref=e25]: $ 388.165
+                - paragraph [ref=e26]: de $ 3.250.000
+            - generic [ref=e29]:
+              - paragraph [ref=e30]: $ 110.071/día · 26d restantes
+              - generic [ref=e31]: Holgado
+          - link "Presupuesto 2 categorías sobre el límite ›" [ref=e32] [cursor=pointer]:
+            - /url: /presupuesto
+            - img [ref=e34]
+            - generic [ref=e39]:
+              - paragraph [ref=e40]: Presupuesto
+              - paragraph [ref=e41]: 2 categorías sobre el límite
+            - generic [ref=e42]: ›
+          - link "Pagos Bancolombia VISA ****7022 en 2d ›" [ref=e43] [cursor=pointer]:
+            - /url: /recurrentes
+            - img [ref=e45]
+            - generic [ref=e47]:
+              - paragraph [ref=e48]: Pagos
+              - paragraph [ref=e49]: Bancolombia VISA ****7022 en 2d
+            - generic [ref=e50]: ›
+          - generic [ref=e52]:
+            - paragraph [ref=e53]: DISTRIBUCION
+            - generic [ref=e54]: Por categoría
+    - navigation [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - link "Inicio" [ref=e59] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e60]
+            - text: Inicio
+          - link "Movim." [ref=e65] [cursor=pointer]:
+            - /url: /transactions
+            - img [ref=e66]
+            - text: Movim.
+        - button "Registrar movimiento" [ref=e70]:
+          - img [ref=e71]
+        - generic [ref=e72]:
+          - link "Plan" [ref=e73] [cursor=pointer]:
+            - /url: /plan
+            - img [ref=e74]
+            - text: Plan
+          - link "Deudas" [ref=e77] [cursor=pointer]:
+            - /url: /deudas
+            - img [ref=e78]
+            - text: Deudas
+  - region "Notifications alt+T"
+  - generic [ref=e84] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e85]:
+      - img [ref=e86]
+    - generic [ref=e89]:
+      - button "Open issues overlay" [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]: "1"
+          - generic [ref=e93]: "2"
+        - generic [ref=e94]:
+          - text: Issue
+          - generic [ref=e95]: s
+      - button "Collapse issues badge" [ref=e96]:
+        - img [ref=e97]
+  - alert [ref=e99]

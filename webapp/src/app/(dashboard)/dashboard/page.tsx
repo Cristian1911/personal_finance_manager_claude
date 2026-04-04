@@ -44,6 +44,7 @@ import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
 import { DashboardFocus } from "@/components/mobile/v2/dashboard-focus";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
@@ -146,8 +147,8 @@ export default async function DashboardPage({
 
   if (!user) return null;
 
-  // Fetch currency + transactions + cached accounts + dashboard config in parallel
-  const [preferredCurrency, { data: recentTransactions }, allAccountsResult, dashboardConfigData] =
+  // Fetch currency + transactions + cached accounts + dashboard config + profile in parallel
+  const [preferredCurrency, { data: recentTransactions }, allAccountsResult, dashboardConfigData, { data: profile }] =
     await Promise.all([
       getPreferredCurrency(),
       supabase
@@ -160,6 +161,7 @@ export default async function DashboardPage({
         .is("reconciled_into_transaction_id", null),
       getAccounts(),
       getDashboardConfigWithPurpose(),
+      supabase.from("profiles").select("full_name, email").eq("id", user.id).single(),
     ]);
 
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
@@ -345,6 +347,7 @@ export default async function DashboardPage({
     <>
       {/* Mobile dashboard — v2 Focus mode */}
       <div className="lg:hidden">
+        <MobileHeader variant="dashboard" name={profile?.full_name} email={profile?.email} />
         <DashboardFocus
           healthScore={mobileHealthScore}
           availableToSpend={heroData.availableToSpend}

@@ -8,7 +8,6 @@ import { Topbar } from "@/components/layout/topbar";
 import { getAttentionSnapshot } from "@/actions/attention";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
@@ -60,13 +59,6 @@ export default async function DashboardLayout({
         <div className="hidden lg:block">
           <Topbar profile={profile} attentionSnapshot={attentionSnapshot} />
         </div>
-        {/* Mobile header — v2 */}
-        <MobileHeader
-          variant="dashboard"
-          name={profile.full_name}
-          email={profile.email}
-        />
-
         <KeyboardInsetProvider>
           <main className="flex-1 overflow-x-hidden p-4 lg:p-6 pb-20 lg:pb-6">
             <Suspense>

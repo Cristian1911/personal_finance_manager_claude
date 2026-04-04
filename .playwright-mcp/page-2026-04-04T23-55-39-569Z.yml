@@ -1,0 +1,86 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - main [ref=e4]:
+      - generic [ref=e7]:
+        - generic [ref=e9]:
+          - generic [ref=e10]:
+            - paragraph [ref=e11]: Deudas
+            - paragraph [ref=e12]: Lectura en COP
+          - generic [ref=e14]:
+            - button "Mes anterior" [ref=e15]:
+              - img
+            - button "abril 2026" [ref=e16]
+            - button "Mes siguiente" [disabled]:
+              - img
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - generic [ref=e20]:
+              - generic [ref=e21]:
+                - paragraph [ref=e22]: CUOTA MENSUAL
+                - paragraph [ref=e23]: $ 2.362.153
+              - generic [ref=e24]:
+                - paragraph [ref=e25]: $ 760.999
+                - paragraph [ref=e26]: intereses
+            - generic [ref=e30]:
+              - paragraph [ref=e31]: Capital $ 1.601.154
+              - paragraph [ref=e32]: Intereses $ 760.999
+          - generic [ref=e33]:
+            - generic [ref=e34]:
+              - paragraph [ref=e35]: USO DEL CUPO
+              - paragraph [ref=e36]: 94%
+            - generic [ref=e39]:
+              - paragraph [ref=e40]: Usado $ 25.811.698
+              - paragraph [ref=e41]: Cupo $ 27.350.000
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - paragraph [ref=e44]: INTERESES TARJETAS / MES
+              - paragraph [ref=e45]: $ 492.069
+              - paragraph [ref=e46]: de $ 760.999 total
+            - paragraph [ref=e47]: 65%
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - paragraph [ref=e51]: MAS CERCA DE LIQUIDAR
+              - paragraph [ref=e52]: Bancolombia Joven ****2365
+            - generic [ref=e53]:
+              - paragraph [ref=e54]: 8m
+              - paragraph [ref=e55]: $ 4.917.435 restante
+          - link "Ver todas las deudas 8 cuentas activas ›" [ref=e58] [cursor=pointer]:
+            - /url: /deudas/detalle
+            - img [ref=e60]
+            - generic [ref=e65]:
+              - paragraph [ref=e66]: Ver todas las deudas
+              - paragraph [ref=e67]: 8 cuentas activas
+            - generic [ref=e68]: ›
+          - link "Simular escenarios Planifica tu estrategia de pago ›" [ref=e69] [cursor=pointer]:
+            - /url: /deudas/planificador
+            - img [ref=e71]
+            - generic [ref=e73]:
+              - paragraph [ref=e74]: Simular escenarios
+              - paragraph [ref=e75]: Planifica tu estrategia de pago
+            - generic [ref=e76]: ›
+    - navigation [ref=e77]:
+      - generic [ref=e78]:
+        - generic [ref=e79]:
+          - link "Inicio" [ref=e80] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e81]
+            - text: Inicio
+          - link "Movim." [ref=e86] [cursor=pointer]:
+            - /url: /transactions
+            - img [ref=e87]
+            - text: Movim.
+        - button "Registrar movimiento" [ref=e91]:
+          - img [ref=e92]
+        - generic [ref=e93]:
+          - link "Plan" [ref=e94] [cursor=pointer]:
+            - /url: /plan
+            - img [ref=e95]
+            - text: Plan
+          - link "Deudas" [ref=e98] [cursor=pointer]:
+            - /url: /deudas
+            - img [ref=e99]
+            - text: Deudas
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e106] [cursor=pointer]:
+    - img [ref=e107]
+  - alert [ref=e110]

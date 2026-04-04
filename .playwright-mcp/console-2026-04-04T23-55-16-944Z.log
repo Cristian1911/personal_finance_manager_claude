@@ -1,0 +1,8 @@
+[     183ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/aaee4_next_dist_33ccf24d._.js:2297
+[    1087ms] [LOG] [Fast Refresh] done in 1005ms @ http://localhost:3000/_next/static/chunks/aaee4_next_dist_33ccf24d._.js:2297
+[    1482ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/aaee4_next_dist_33ccf24d._.js:2297
+[    1495ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/aaee4_next_dist_33ccf24d._.js:2297
+[    1640ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/aaee4_next_dist_33ccf24d._.js:2297
+[    1680ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3000/_next/static/chunks/aaee4_next_dist_33ccf24d._.js:2297
+[    4679ms] [ERROR] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. a0000001-0000-0000-0000-000000000007 @ http://localhost:3000/_next/static/chunks/aaee4_next_dist_33ccf24d._.js:3127
+[    4679ms] [ERROR] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. b0000001-0001-4000-8000-000000000002 @ http://localhost:3000/_next/static/chunks/aaee4_next_dist_33ccf24d._.js:3127
