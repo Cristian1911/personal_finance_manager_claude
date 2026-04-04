@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { ActionResult } from "@/types/actions";
-import type { CategoryWithChildren } from "@/types/domain";
+import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
 export function CreateDestinatarioDialog({
   categories,
@@ -63,7 +63,14 @@ export function CreateDestinatarioDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => {
+      setOpen(next);
+      if (!next) {
+        setCategoryId(null);
+        setPatterns("");
+        setTestResult(null);
+      }
+    }}>
       <DialogTrigger asChild>
         {trigger ?? (
           <Button>
@@ -100,7 +107,7 @@ export function CreateDestinatarioDialog({
               categories={categories}
               value={categoryId}
               onValueChange={setCategoryId}
-              direction="OUTFLOW"
+              variant="popover"
               name="default_category_id"
               placeholder="Sin categoría"
               triggerClassName="w-full"
@@ -117,7 +124,7 @@ export function CreateDestinatarioDialog({
                 value={patterns}
                 onChange={(e) => {
                   setPatterns(e.target.value);
-                  setTestResult(null);
+                  if (testResult) setTestResult(null);
                 }}
                 className="flex-1"
               />
@@ -152,7 +159,7 @@ export function CreateDestinatarioDialog({
                       <li key={s.id} className="text-xs text-muted-foreground flex justify-between gap-2">
                         <span className="truncate">{s.rawDescription}</span>
                         <span className="shrink-0 tabular-nums">
-                          {formatCurrency(s.amount, "COP")}
+                          {formatCurrency(s.amount, s.currencyCode as CurrencyCode)}
                         </span>
                       </li>
                     ))}

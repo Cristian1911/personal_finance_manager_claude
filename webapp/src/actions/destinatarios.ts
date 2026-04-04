@@ -43,7 +43,7 @@ export type TransactionPreview = {
 
 export interface PatternTestResult {
   matchCount: number;
-  samples: { id: string; rawDescription: string; date: string; amount: number }[];
+  samples: { id: string; rawDescription: string; date: string; amount: number; currencyCode: string }[];
 }
 
 export async function testDestinatarioPattern(
@@ -56,7 +56,7 @@ export async function testDestinatarioPattern(
   // Use server-side filtering via ilike instead of fetching 1000 rows
   let query = supabase
     .from("transactions")
-    .select("id, raw_description, transaction_date, amount")
+    .select("id, raw_description, transaction_date, amount, currency_code")
     .eq("user_id", user.id)
     .is("destinatario_id", null)
     .not("raw_description", "is", null);
@@ -84,6 +84,7 @@ export async function testDestinatarioPattern(
         rawDescription: tx.raw_description!,
         date: tx.transaction_date,
         amount: tx.amount,
+        currencyCode: tx.currency_code,
       })),
     },
   };
