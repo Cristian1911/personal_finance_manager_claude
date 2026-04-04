@@ -1066,6 +1066,29 @@ export async function bulkLinkToDestinatario(
   return { success: true, data: { linked: linkedCount ?? transactionIds.length, categorized } };
 }
 
+// ─── Shared rule-matching helper for preview + apply ─────────────────────────
+
+type RuleRow = { pattern: string; match_type: string };
+
+function matchTransactionsAgainstRules<T extends { raw_description: string | null }>(
+  transactions: T[],
+  rules: RuleRow[]
+): T[] {
+  const lowerRules = rules.map((r) => ({
+    pattern: r.pattern.toLowerCase(),
+    matchType: r.match_type as "contains" | "exact",
+  }));
+
+  return transactions.filter((tx) => {
+    const cleaned = cleanDescription(tx.raw_description ?? "").toLowerCase();
+    const raw = (tx.raw_description ?? "").toLowerCase();
+    return lowerRules.some((rule) => {
+      if (rule.matchType === "exact") return cleaned === rule.pattern || raw === rule.pattern;
+      return cleaned.includes(rule.pattern) || raw.includes(rule.pattern);
+    });
+  });
+}
+
 // ─── previewDestinatarioRuleImpact ────────────────────────────────────────────
 
 export type RuleImpactPreview = {
@@ -1117,36 +1140,21 @@ export async function previewDestinatarioRuleImpact(
     return { success: true, data: { matchCount: 0, sampleTransactions: [] } };
   }
 
-  const sampleTransactions: RuleImpactPreview["sampleTransactions"] = [];
-  let matchCount = 0;
+  const matching = matchTransactionsAgainstRules(txs, rules);
 
-  for (const tx of txs) {
-    const cleaned = cleanDescription(tx.raw_description ?? "").toLowerCase();
-    const raw = (tx.raw_description ?? "").toLowerCase();
-
-    const isMatch = rules.some((rule) => {
-      const pattern = rule.pattern.toLowerCase();
-      if (rule.match_type === "exact") {
-        return cleaned === pattern || raw === pattern;
-      }
-      return cleaned.includes(pattern) || raw.includes(pattern);
-    });
-
-    if (isMatch) {
-      matchCount++;
-      if (sampleTransactions.length < 10) {
-        sampleTransactions.push({
-          id: tx.id,
-          clean_description: tx.clean_description ?? tx.raw_description ?? "",
-          transaction_date: tx.transaction_date,
-          amount: tx.amount,
-          currency_code: tx.currency_code,
-        });
-      }
-    }
-  }
-
-  return { success: true, data: { matchCount, sampleTransactions } };
+  return {
+    success: true,
+    data: {
+      matchCount: matching.length,
+      sampleTransactions: matching.slice(0, 10).map((tx) => ({
+        id: tx.id,
+        clean_description: tx.clean_description ?? tx.raw_description ?? "",
+        transaction_date: tx.transaction_date,
+        amount: tx.amount,
+        currency_code: tx.currency_code,
+      })),
+    },
+  };
 }
 
 // ─── applyDestinatarioRules ───────────────────────────────────────────────────
@@ -1202,26 +1210,9 @@ export async function applyDestinatarioRules(
     return { success: true, data: { linked: 0, categorized: 0 } };
   }
 
-  const matchingIds: string[] = [];
-  const uncategorizedIds: string[] = [];
-
-  for (const tx of txs) {
-    const cleaned = cleanDescription(tx.raw_description ?? "").toLowerCase();
-    const raw = (tx.raw_description ?? "").toLowerCase();
-
-    const isMatch = rules.some((rule) => {
-      const pattern = rule.pattern.toLowerCase();
-      if (rule.match_type === "exact") {
-        return cleaned === pattern || raw === pattern;
-      }
-      return cleaned.includes(pattern) || raw.includes(pattern);
-    });
-
-    if (isMatch) {
-      matchingIds.push(tx.id);
-      if (!tx.category_id) uncategorizedIds.push(tx.id);
-    }
-  }
+  const matching = matchTransactionsAgainstRules(txs, rules);
+  const matchingIds = matching.map((tx) => tx.id);
+  const uncategorizedIds = matching.filter((tx) => !tx.category_id).map((tx) => tx.id);
 
   if (matchingIds.length === 0) {
     return { success: true, data: { linked: 0, categorized: 0 } };

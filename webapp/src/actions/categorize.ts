@@ -561,23 +561,30 @@ export async function bulkApplyDestinatarioMatches(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
+  // Group by destinatario+category to batch updates instead of N+1
+  const groups = new Map<string, { destinatarioId: string; categoryId: string | null; txIds: string[] }>();
+  for (const m of matches) {
+    const key = `${m.destinatarioId}|${m.categoryId ?? ""}`;
+    const group = groups.get(key) ?? { destinatarioId: m.destinatarioId, categoryId: m.categoryId, txIds: [] };
+    group.txIds.push(m.transactionId);
+    groups.set(key, group);
+  }
+
   let applied = 0;
-  for (const match of matches) {
-    const updatePayload: Record<string, unknown> = {
-      destinatario_id: match.destinatarioId,
-    };
-    if (match.categoryId) {
-      updatePayload.category_id = match.categoryId;
-      updatePayload.categorization_source = "USER_LEARNED";
+  for (const group of groups.values()) {
+    const payload: Record<string, unknown> = { destinatario_id: group.destinatarioId };
+    if (group.categoryId) {
+      payload.category_id = group.categoryId;
+      payload.categorization_source = "USER_LEARNED";
     }
 
     const { error } = await supabase
       .from("transactions")
-      .update(updatePayload)
-      .eq("id", match.transactionId)
+      .update(payload)
+      .in("id", group.txIds)
       .eq("user_id", user.id);
 
-    if (!error) applied++;
+    if (!error) applied += group.txIds.length;
   }
 
   revalidateTag("categorize", "zeta");
