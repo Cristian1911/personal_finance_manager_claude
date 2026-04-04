@@ -187,6 +187,7 @@ async function getAllCategoriesForManagementCached(
     percentUsed: 0,
     average3m: 0,
     children: childrenByParent.get(cat.id) ?? [],
+    childrenSpent: {},
   }));
 
   return result;
@@ -340,6 +341,19 @@ async function getCategoriesWithBudgetDataCached(
     const avg3mTotal = avgTotalMap.get(cat.id) ?? 0;
     const committedRecurring = recurringMap.get(cat.id) ?? 0;
 
+    // Collect child spending and add to parent total
+    const children = childrenByParent.get(cat.id) ?? [];
+    const childrenSpent: Record<string, number> = {};
+    let childSpentTotal = 0;
+    for (const child of children) {
+      const childAmount = spentMap.get(child.id) ?? 0;
+      if (childAmount > 0) {
+        childrenSpent[child.id] = childAmount;
+        childSpentTotal += childAmount;
+      }
+    }
+    const totalSpent = spent + childSpentTotal;
+
     return {
       id: cat.id,
       name: cat.name,
@@ -352,11 +366,12 @@ async function getCategoriesWithBudgetDataCached(
       direction: cat.direction as TransactionDirection,
       expense_type: (cat.expense_type as "fixed" | "variable") ?? null,
       budget,
-      spent,
+      spent: totalSpent,
       committedRecurring,
-      percentUsed: budget && budget > 0 ? (spent / budget) * 100 : 0,
+      percentUsed: budget && budget > 0 ? (totalSpent / budget) * 100 : 0,
       average3m: avg3mTotal / 3,
-      children: childrenByParent.get(cat.id) ?? [],
+      children,
+      childrenSpent,
     };
   });
 

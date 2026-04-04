@@ -59,6 +59,8 @@ export type CategoryBudgetData = {
   percentUsed: number;
   average3m: number;
   children: CategoryWithChildren[];
+  /** Spending per child category: childId → amount spent this month */
+  childrenSpent: Record<string, number>;
 };
 
 // Transaction with joined relations

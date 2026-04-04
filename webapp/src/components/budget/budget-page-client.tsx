@@ -357,24 +357,77 @@ export function BudgetPageClient({
                     </div>
                   )}
 
-                  {/* Subcategories */}
+                  {/* Subcategories with spending */}
                   {cat.children.length > 0 && (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         Subcategorías
                       </p>
-                      {cat.children.map((child) => (
-                        <div
-                          key={child.id}
-                          className="flex items-center gap-2 text-xs text-muted-foreground pl-1"
-                        >
-                          <span
-                            className="inline-block size-2 rounded-full shrink-0"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                          {child.name_es ?? child.name}
-                        </div>
-                      ))}
+                      {cat.children.map((child) => {
+                        const childSpent = cat.childrenSpent[child.id] ?? 0;
+                        const childRatio = cat.spent > 0 ? childSpent / cat.spent : 0;
+
+                        return (
+                          <div key={child.id} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className="inline-block size-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: cat.color }}
+                                />
+                                <span className="truncate text-muted-foreground">
+                                  {child.name_es ?? child.name}
+                                </span>
+                              </div>
+                              <span className="shrink-0 tabular-nums font-medium">
+                                {childSpent > 0
+                                  ? formatCurrency(childSpent, currency)
+                                  : <span className="text-muted-foreground font-normal">—</span>}
+                              </span>
+                            </div>
+                            {childSpent > 0 && (
+                              <div className="h-1 rounded-full bg-muted/50 overflow-hidden ml-4">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{
+                                    width: `${Math.min(childRatio * 100, 100)}%`,
+                                    backgroundColor: cat.color,
+                                    opacity: 0.7,
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {/* Unassigned spending (directly on parent) */}
+                      {(() => {
+                        const childTotal = Object.values(cat.childrenSpent).reduce((s, v) => s + v, 0);
+                        const directSpent = cat.spent - childTotal;
+                        if (directSpent <= 0 || childTotal === 0) return null;
+                        const directRatio = cat.spent > 0 ? directSpent / cat.spent : 0;
+                        return (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="inline-block size-2 rounded-full shrink-0 bg-muted-foreground/40" />
+                                <span className="truncate text-muted-foreground italic">
+                                  Sin subcategoría
+                                </span>
+                              </div>
+                              <span className="shrink-0 tabular-nums font-medium">
+                                {formatCurrency(directSpent, currency)}
+                              </span>
+                            </div>
+                            <div className="h-1 rounded-full bg-muted/50 overflow-hidden ml-4">
+                              <div
+                                className="h-full rounded-full bg-muted-foreground/40"
+                                style={{ width: `${Math.min(directRatio * 100, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
