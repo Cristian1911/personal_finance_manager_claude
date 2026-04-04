@@ -5,6 +5,10 @@ export const BRASS_BUTTON_CLASS = "bg-z-brass text-z-ink hover:bg-z-brass/90";
 export const GHOST_BUTTON_CLASS =
   "border-white/8 bg-black/10 text-z-sage-light hover:bg-white/5 hover:text-z-sage-light";
 
+/** Obsidian & Brass design token: accent ghost button (brass tint) */
+export const BRASS_GHOST_BUTTON_CLASS =
+  "border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12";
+
 /** Shared page shell spacing */
 export const PAGE_STACK_CLASS = "space-y-6 lg:space-y-8";
 
