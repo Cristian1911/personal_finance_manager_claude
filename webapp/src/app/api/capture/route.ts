@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { authenticateCaptureToken } from "@/app/api/_shared/capture-auth";
 import { autoCategorize } from "@zeta/shared";
+import { matchTransactionToDestinatario } from "@/actions/destinatarios";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { parseVoiceCapture } from "@/actions/voice-capture";
 import { format } from "date-fns";
@@ -121,8 +122,24 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
     );
   }
 
-  // Auto-categorize
-  const categoryId = body.category_id ?? autoCategorize(merchant_name)?.category_id ?? null;
+  // Destinatario match → auto-categorize fallback
+  const matchText = merchant_name ?? capture_input_text ?? "";
+  const destMatch = await matchTransactionToDestinatario(auth.userId, matchText);
+
+  let categoryId = body.category_id ?? null;
+  let destinatarioId: string | null = null;
+  let categorizationSource: "USER_LEARNED" | "SYSTEM_DEFAULT" | undefined;
+
+  if (destMatch) {
+    destinatarioId = destMatch.destinatario_id;
+    categoryId = categoryId ?? destMatch.category_id;
+    categorizationSource = categoryId ? "USER_LEARNED" : undefined;
+  }
+
+  if (!categoryId) {
+    categoryId = autoCategorize(merchant_name)?.category_id ?? null;
+    if (categoryId) categorizationSource = "SYSTEM_DEFAULT";
+  }
 
   // Compute idempotency key
   const idempotencyKey = await computeIdempotencyKey({
@@ -146,12 +163,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
       clean_description: description,
       merchant_name,
       category_id: categoryId,
+      destinatario_id: destinatarioId,
       idempotency_key: idempotencyKey,
       provider: "MANUAL",
       capture_method: "TEXT_QUICK_CAPTURE",
       capture_input_text,
       is_subscription: false,
-      categorization_source: categoryId ? "SYSTEM_DEFAULT" : undefined,
+      categorization_source: categorizationSource,
     })
     .select("id, amount, direction, merchant_name, category_id, account_id, transaction_date")
     .single();
