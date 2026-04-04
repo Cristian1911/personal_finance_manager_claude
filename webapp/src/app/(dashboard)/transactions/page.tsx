@@ -14,8 +14,10 @@ import { TransactionFormDialog } from "@/components/transactions/transaction-for
 import { QuickCaptureBar } from "@/components/transactions/quick-capture-bar";
 import { Pagination } from "@/components/transactions/pagination";
 import { MonthSelector } from "@/components/month-selector";
-import { MobileMovimientos } from "@/components/mobile/mobile-movimientos";
-import { parseMonth, formatMonthParam, formatMonthLabel } from "@/lib/utils/date";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
+import { MovimientosMobile } from "@/components/mobile/v2/movimientos-mobile";
+import { parseMonth, formatMonthParam, formatMonthLabel, formatDate } from "@/lib/utils/date";
+import type { CurrencyCode } from "@/types/domain";
 import { formatCurrency } from "@/lib/utils/currency";
 import dynamic from "next/dynamic";
 import { PAGE_STACK_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
@@ -87,22 +89,14 @@ export default async function TransactionsPage({
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      {/* Mobile: compact header + controls + date-grouped feed */}
-      <div className="space-y-4 lg:hidden">
-        <PageHero
-          pills={
-            <>
-              <HeroPill>Movimientos</HeroPill>
-              {hasActiveFilters && (
-                <HeroAccentPill>{activeFilterCount} filtros activos</HeroAccentPill>
-              )}
-              <HeroPill>{monthLabel}</HeroPill>
-            </>
-          }
+      {/* Mobile: v2 header + date-grouped feed */}
+      <div className="space-y-0 lg:hidden">
+        <MobileHeader
+          variant="page"
           title="Movimientos"
-          description={description}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
+          subtitle={monthLabel}
+          action={
+            <div className="flex items-center gap-2">
               <Suspense>
                 <TransactionFilters accounts={accounts} tags={allTags} />
               </Suspense>
@@ -111,36 +105,28 @@ export default async function TransactionsPage({
               </Suspense>
             </div>
           }
-        >
-          <div className="grid grid-cols-3 gap-2">
-            <div className={`${PANEL_INSET_CLASS} p-3`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Vista</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight">{transactionsResult.count}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{scopeLabel}</p>
-            </div>
-            <div className={`${PANEL_INSET_CLASS} p-3`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ingresos</p>
-              <p className="mt-2 text-lg font-semibold tracking-tight text-z-income">
-                {formatCurrency(inflowVisible, summaryCurrency)}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">en la vista</p>
-            </div>
-            <div className={`${PANEL_INSET_CLASS} p-3`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gastos</p>
-              <p className="mt-2 text-lg font-semibold tracking-tight text-z-alert">
-                {formatCurrency(outflowVisible, summaryCurrency)}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">en la vista</p>
-            </div>
-          </div>
-        </PageHero>
-
-        <PendingEmailTransactions transactions={pendingTransactions} accounts={accounts} />
-
-        <MobileMovimientos
-          transactions={transactionsResult.data}
-          categories={categories}
         />
+
+        <div className="pt-3">
+          <PendingEmailTransactions transactions={pendingTransactions} accounts={accounts} />
+
+          <MovimientosMobile
+            transactions={transactionsResult.data.map((tx) => ({
+              id: tx.id,
+              description: tx.merchant_name || tx.clean_description || "Sin descripción",
+              amount: tx.amount,
+              date: formatDate(tx.transaction_date, "dd MMM"),
+              category_name: categories.find((c) => c.id === tx.category_id)?.name_es
+                ?? categories.find((c) => c.id === tx.category_id)?.name
+                ?? null,
+              is_income: tx.direction === "INFLOW",
+            }))}
+            totalExpenses={outflowVisible}
+            totalIncome={inflowVisible}
+            totalCount={transactionsResult.count}
+            currency={summaryCurrency as CurrencyCode}
+          />
+        </div>
       </div>
 
       {/* Desktop: action-first layout with two-card zone */}
