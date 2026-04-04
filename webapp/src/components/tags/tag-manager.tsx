@@ -7,6 +7,11 @@ import { createTagGroup, deleteTagGroup, createTag, deleteTag } from "@/actions/
 import { TagChip } from "./tag-chip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  GHOST_BUTTON_CLASS,
+  PANEL_INSET_CLASS,
+  PANEL_SURFACE_CLASS,
+} from "@/lib/constants/styles";
 import type { TagGroupWithTags } from "@/types/domain";
 
 interface TagManagerProps {
@@ -64,12 +69,12 @@ export function TagManager({ tagGroups }: TagManagerProps) {
   function renderGroup(group: TagGroupWithTags, editable: boolean) {
     const key = group.id;
     return (
-      <div key={group.id} className="rounded-xl border border-white/10 p-4">
+      <div key={group.id} className={`${PANEL_SURFACE_CLASS} p-4`}>
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold">{group.name}</h3>
             {group.is_system && (
-              <span className="rounded-full bg-white/5 px-2 py-0.5 text-[0.65rem] text-muted-foreground">
+              <span className="rounded-full border border-white/6 bg-black/10 px-2 py-0.5 text-[0.65rem] text-muted-foreground">
                 sistema
               </span>
             )}
@@ -108,7 +113,7 @@ export function TagManager({ tagGroups }: TagManagerProps) {
                 value={newTagInputs[key] ?? ""}
                 onChange={(e) => setNewTagInputs((prev) => ({ ...prev, [key]: e.target.value }))}
                 placeholder="+ agregar"
-                className="h-7 w-28 border-dashed text-xs"
+                className={`h-8 w-28 border-dashed text-xs ${PANEL_INSET_CLASS}`}
                 disabled={isPending}
               />
             </form>
@@ -127,16 +132,22 @@ export function TagManager({ tagGroups }: TagManagerProps) {
           e.preventDefault();
           handleCreateGroup();
         }}
-        className="flex gap-2"
+        className="flex flex-col gap-2 sm:flex-row"
       >
         <Input
           value={newGroupName}
           onChange={(e) => setNewGroupName(e.target.value)}
           placeholder="Nuevo grupo de etiquetas..."
-          className="flex-1"
+          className={`flex-1 ${PANEL_INSET_CLASS}`}
           disabled={isPending}
         />
-        <Button type="submit" variant="outline" size="sm" disabled={isPending || !newGroupName.trim()}>
+        <Button
+          type="submit"
+          variant="outline"
+          size="sm"
+          className={GHOST_BUTTON_CLASS}
+          disabled={isPending || !newGroupName.trim()}
+        >
           <Plus className="mr-1 size-4" />
           Crear grupo
         </Button>

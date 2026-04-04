@@ -6,6 +6,11 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { ChevronRight } from "lucide-react";
+import {
+  HERO_CARD_GRADIENT_CLASS,
+  PANEL_INSET_CLASS,
+  PANEL_SURFACE_SUBTLE_CLASS,
+} from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
 type ExpandedSection = "math" | "saldo" | "fijos" | "proximo" | null;
@@ -71,7 +76,13 @@ export function MobileHeroCard({
   const isNegative = availableToSpend < 0;
 
   return (
-    <div className="rounded-2xl border border-white/6 bg-[linear-gradient(160deg,#1a2518,#0d1117)] p-3.5">
+    <div
+      className={cn(
+        PANEL_SURFACE_SUBTLE_CLASS,
+        HERO_CARD_GRADIENT_CLASS,
+        "p-3.5"
+      )}
+    >
       {/* Hero number — tappable for math */}
       <button
         type="button"
@@ -85,7 +96,7 @@ export function MobileHeroCard({
         <p
           className={cn(
             "mt-0.5 text-[32px] font-extrabold leading-tight tracking-tight",
-            isNegative ? "text-z-debt" : "text-z-sage-lightest"
+            isNegative ? "text-z-debt" : "text-z-white"
           )}
         >
           {formatCurrency(availableToSpend, currency)}
@@ -94,7 +105,7 @@ export function MobileHeroCard({
 
       {/* Math expansion */}
       <CollapsePanel visible={expanded === "math"}>
-        <div className="rounded-xl bg-black/20 p-3 text-xs">
+        <div className={cn(PANEL_INSET_CLASS, "border-white/8 bg-black/20 p-3 text-xs")}>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Cómo se calcula
           </p>
@@ -111,7 +122,7 @@ export function MobileHeroCard({
               <span>− Ya gastado</span>
               <span>{formatCurrency(totalSpent, currency)}</span>
             </div>
-            <div className="flex justify-between border-t border-white/10 pt-1.5 font-semibold text-z-sage-lightest">
+            <div className="flex justify-between border-t border-white/10 pt-1.5 font-semibold text-z-white">
               <span>= Disponible</span>
               <span>{formatCurrency(availableToSpend, currency)}</span>
             </div>
@@ -149,7 +160,7 @@ export function MobileHeroCard({
 
       {/* Saldo expansion */}
       <CollapsePanel visible={expanded === "saldo"}>
-        <div className="rounded-xl bg-black/20 p-3">
+        <div className={cn(PANEL_INSET_CLASS, "border-white/8 bg-black/20 p-3")}>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
             Saldo por cuenta
           </p>
@@ -170,7 +181,7 @@ export function MobileHeroCard({
 
       {/* Fijos expansion */}
       <CollapsePanel visible={expanded === "fijos"}>
-        <div className="rounded-xl bg-black/20 p-3">
+        <div className={cn(PANEL_INSET_CLASS, "border-white/8 bg-black/20 p-3")}>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
             Gastos fijos del período
           </p>
@@ -184,7 +195,7 @@ export function MobileHeroCard({
                   </div>
                 ))}
               </div>
-              <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1.5 text-xs font-semibold text-z-sage-lightest">
+              <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1.5 text-xs font-semibold text-z-white">
                 <span>Total fijos</span>
                 <span>{formatCurrency(pendingFixed, currency)}</span>
               </div>
@@ -197,7 +208,7 @@ export function MobileHeroCard({
 
       {/* Próximo expansion */}
       <CollapsePanel visible={expanded === "proximo"}>
-        <div className="rounded-xl bg-black/20 p-3">
+        <div className={cn(PANEL_INSET_CLASS, "border-white/8 bg-black/20 p-3")}>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
             Próximo pago
           </p>

@@ -15,7 +15,8 @@ import { CategoryIcon } from "@/components/categories/category-icon";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { MonthSelector } from "@/components/month-selector";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { HeroAccentPill, HeroPill, PageHero } from "@/components/ui/page-hero";
 import {
   Popover,
   PopoverContent,
@@ -27,6 +28,13 @@ import {
   upsertBudgetForCategory,
 } from "@/actions/budget";
 import { cn } from "@/lib/utils";
+import {
+  GHOST_BUTTON_CLASS,
+  PAGE_STACK_CLASS,
+  PANEL_INSET_CLASS,
+  PANEL_SURFACE_CLASS,
+  PANEL_SURFACE_SUBTLE_CLASS,
+} from "@/lib/constants/styles";
 import { BudgetTreemap } from "./budget-treemap";
 import type { BudgetMode, CategoryBudgetData, CurrencyCode } from "@/types/domain";
 import type { AllocationData } from "@/actions/allocation";
@@ -125,66 +133,89 @@ export function BudgetPageClient({
   const otherStyleLabel = isStrict ? "Flexible" : "Estricto";
   const StyleIcon = isStrict ? Gauge : Feather;
   const thirdCardLabel = isStrict ? "Por asignar" : "Libre";
+  const heroDescription = remaining < 0
+    ? `Tu plan del mes quedó sobre-asignado por ${formatCurrency(Math.abs(remaining), currency)}. Ajusta antes de bajar al detalle.`
+    : isStrict
+      ? `Cada peso necesita destino. ${formatCurrency(remaining, currency)} siguen esperando una decisión para cerrar ${monthLabel}.`
+      : `Tu marco mensual ya está armado. Revisa qué categorías sostienen el plan y cuáles empiezan a desordenarlo.`;
 
   return (
-    <div className="space-y-6">
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Presupuesto
-          </p>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">
-              Tu plan mensual
-            </h1>
-            <Badge variant="secondary" className="gap-1.5 text-xs">
-              <StyleIcon className="size-3.5" />
-              {styleLabel}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {monthLabel} · {daysRemaining} días restantes
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Suspense>
-            <MonthSelector />
-          </Suspense>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" disabled={isPending}>
-                <Settings2 className="size-4 mr-2" />
-                Ajustes
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-64 space-y-3">
-              <div>
-                <p className="text-sm font-medium">Estilo</p>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Actualmente: {styleLabel}
-                </p>
+    <div className={PAGE_STACK_CLASS}>
+      <PageHero
+        variant={remaining < 0 ? "brass" : "sage"}
+        pills={
+          <>
+            <HeroPill>Presupuesto</HeroPill>
+            <HeroAccentPill>
+              <span className="inline-flex items-center gap-1.5">
+                <StyleIcon className="size-3.5" />
+                {styleLabel}
+              </span>
+            </HeroAccentPill>
+            <HeroPill>{monthLabel}</HeroPill>
+          </>
+        }
+        title="Tu plan mensual"
+        description={heroDescription}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            <Suspense>
+              <MonthSelector />
+            </Suspense>
+            <Popover>
+              <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full"
-                  onClick={handleModeSwitch}
                   disabled={isPending}
+                  className={GHOST_BUTTON_CLASS}
                 >
-                  Cambiar a {otherStyleLabel}
+                  <Settings2 className="size-4 mr-2" />
+                  Ajustes
                 </Button>
-              </div>
-              <IncomeEditor
-                currentIncome={income}
-                currency={currency}
-                onSave={handleIncomeUpdate}
-                isPending={isPending}
-              />
-            </PopoverContent>
-          </Popover>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Estilo</p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Actualmente: {styleLabel}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={handleModeSwitch}
+                    disabled={isPending}
+                  >
+                    Cambiar a {otherStyleLabel}
+                  </Button>
+                </div>
+                <IncomeEditor
+                  currentIncome={income}
+                  currency={currency}
+                  onSave={handleIncomeUpdate}
+                  isPending={isPending}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        }
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <SummaryCard label="Ingreso" value={income} currency={currency} />
+          <SummaryCard label="Asignado" value={assigned} currency={currency} />
+          <SummaryCard
+            label={thirdCardLabel}
+            value={remaining}
+            currency={currency}
+            negative={remaining < 0}
+          />
         </div>
-      </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="h-2 w-2 rounded-full bg-z-brass" />
+          <span>{daysRemaining} días restantes para cerrar {monthLabel}</span>
+        </div>
+      </PageHero>
 
       {/* ── Strict mode: Sticky remaining-to-assign bar ── */}
       {isStrict && (
@@ -195,18 +226,6 @@ export function BudgetPageClient({
           currency={currency}
         />
       )}
-
-      {/* ── Summary cards ── */}
-      <div className="grid grid-cols-3 gap-3">
-        <SummaryCard label="Ingreso" value={income} currency={currency} />
-        <SummaryCard label="Asignado" value={assigned} currency={currency} />
-        <SummaryCard
-          label={thirdCardLabel}
-          value={remaining}
-          currency={currency}
-          negative={remaining < 0}
-        />
-      </div>
 
       {/* ── 50/30/20 Allocation Reference ── */}
       {allocationData && (
@@ -257,10 +276,11 @@ export function BudgetPageClient({
             <div
               key={cat.id}
               className={cn(
-                "rounded-2xl border bg-card transition-colors",
+                PANEL_SURFACE_CLASS,
+                "transition-colors",
                 unbudgetedStrict
-                  ? "border-amber-500/20 bg-amber-500/[0.03]"
-                  : "border-white/6",
+                  ? "border-z-alert/25 bg-z-alert/[0.06]"
+                  : undefined,
               )}
               style={{ borderLeft: `4px solid ${cat.color}` }}
             >
@@ -500,8 +520,8 @@ function StickyAssignmentBar({
         : "bg-emerald-500";
 
   return (
-    <div className="sticky top-0 z-10 bg-z-bg pb-2">
-      <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+    <div className="sticky top-0 z-10 bg-background pb-2">
+      <div className={cn(PANEL_SURFACE_CLASS, "p-4")}>
         <div className="flex items-center gap-3">
           <div className="h-2 flex-1 rounded-full bg-z-surface-3">
             <div
@@ -552,14 +572,12 @@ function SummaryCard({
   negative?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-white/6 bg-black/10 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-        {label}
-      </p>
+    <div className={cn(PANEL_INSET_CLASS, "bg-black/15 p-4 lg:p-5")}>
+      <SectionEyebrow>{label}</SectionEyebrow>
       <p
         className={cn(
-          "mt-1 text-lg font-semibold tabular-nums",
-          negative && "text-red-500",
+          "mt-2 text-2xl font-semibold tracking-tight tabular-nums lg:text-[2rem]",
+          negative && "text-z-debt",
         )}
       >
         {formatCurrency(value, currency)}
@@ -593,10 +611,10 @@ function AllocationReference({ data }: { data: AllocationData }) {
   ];
 
   return (
-    <div className="rounded-xl border border-white/6 bg-z-surface-2 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">
+    <div className={cn(PANEL_SURFACE_SUBTLE_CLASS, "p-4")}>
+      <SectionEyebrow className="mb-3 text-muted-foreground">
         Distribución 50/30/20
-      </p>
+      </SectionEyebrow>
 
       {bars.map((bar) => (
         <div key={bar.label} className="mb-4 last:mb-0">

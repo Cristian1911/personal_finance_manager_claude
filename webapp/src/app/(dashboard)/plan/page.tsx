@@ -12,6 +12,8 @@ import { PlanDebtSection } from "@/components/plan/plan-debt-section";
 import { PlanHero } from "@/components/plan/plan-hero";
 import { PlanRecurringSection } from "@/components/plan/plan-recurring-section";
 import { PlanScenarioPreview } from "@/components/plan/plan-scenario-preview";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 
 export default async function PlanPage({
@@ -31,12 +33,10 @@ export default async function PlanPage({
   const rhythmData = rhythmResult.success ? rhythmResult.data : [];
 
   return (
-    <div className="space-y-6">
+    <div className={PAGE_STACK_CLASS}>
       <div className="space-y-3 lg:hidden">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Plan
-          </p>
+          <SectionEyebrow>Plan</SectionEyebrow>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Tu capa estratégica</h1>
             <p className="text-sm text-muted-foreground">
@@ -54,9 +54,7 @@ export default async function PlanPage({
 
       <div className="hidden lg:flex lg:items-center lg:justify-between lg:gap-4">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Plan
-          </p>
+          <SectionEyebrow>Plan</SectionEyebrow>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Tu capa estratégica</h1>
             <p className="text-muted-foreground">

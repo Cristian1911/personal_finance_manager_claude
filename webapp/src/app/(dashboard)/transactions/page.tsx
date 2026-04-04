@@ -5,10 +5,8 @@ import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getAllTags } from "@/actions/tags";
 import { getPendingEmailTransactions } from "@/actions/email-ingest";
-import { Button } from "@/components/ui/button";
-import { PageHeaderRow } from "@/components/ui/page-header-row";
-import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
+import { HeroAccentPill, HeroPill, PageHero } from "@/components/ui/page-hero";
 import { TransactionTable } from "@/components/transactions/transaction-table";
 import { PendingEmailTransactions } from "@/components/transactions/pending-email-transactions";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
@@ -19,31 +17,13 @@ import { MonthSelector } from "@/components/month-selector";
 import { MobileMovimientos } from "@/components/mobile/mobile-movimientos";
 import { parseMonth, formatMonthParam, formatMonthLabel } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
-import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ArrowRight, Tags } from "lucide-react";
+import { PAGE_STACK_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
 
 const PurchaseDecisionCard = dynamic(
   () => import("@/components/dashboard/purchase-decision-card").then((m) => ({ default: m.PurchaseDecisionCard })),
   { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" /> }
 );
-
-function buildFiltersHref(params: Record<string, string | undefined>, keepMonthOnly = false) {
-  const next = new URLSearchParams();
-  if (params.month) {
-    next.set("month", params.month);
-  }
-
-  if (!keepMonthOnly) {
-    for (const [key, value] of Object.entries(params)) {
-      if (!value || key === "month" || key === "page") continue;
-      next.set(key, value);
-    }
-  }
-
-  const query = next.toString();
-  return query ? `/transactions?${query}` : "/transactions";
-}
 
 export default async function TransactionsPage({
   searchParams,
@@ -101,33 +81,28 @@ export default async function TransactionsPage({
       : hasActiveFilters
         ? "en esta vista"
         : "visibles";
-  const clearHref = buildFiltersHref(params, true);
+  const description = hasActiveFilters
+    ? `Estás viendo ${transactionsResult.count} movimientos filtrados ${scopeLabel}. Úsalos para limpiar ruido y corregir criterio antes de que afecten presupuesto y plan.`
+    : `${monthLabel} en una sola vista: ingresos, gastos y excepciones para leer rápido qué pasó antes de bajar al detalle.`;
 
   return (
-    <div className="space-y-6">
+    <div className={PAGE_STACK_CLASS}>
       {/* Mobile: compact header + controls + date-grouped feed */}
-      <div className="lg:hidden">
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-                Movimientos
-              </p>
-              <h1 className="text-2xl font-semibold">Movimientos</h1>
-            </div>
-            <div className="rounded-full border border-white/6 bg-z-surface-2 px-3 py-1 text-xs text-muted-foreground">
-              {monthLabel}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl border border-white/6 bg-black/10 px-4 py-3 text-sm">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Vista actual</p>
-              <p className="font-medium">
-                {transactionsResult.count} movimientos {scopeLabel}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
+      <div className="space-y-4 lg:hidden">
+        <PageHero
+          pills={
+            <>
+              <HeroPill>Movimientos</HeroPill>
+              {hasActiveFilters && (
+                <HeroAccentPill>{activeFilterCount} filtros activos</HeroAccentPill>
+              )}
+              <HeroPill>{monthLabel}</HeroPill>
+            </>
+          }
+          title="Movimientos"
+          description={description}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
               <Suspense>
                 <TransactionFilters accounts={accounts} tags={allTags} />
               </Suspense>
@@ -135,8 +110,30 @@ export default async function TransactionsPage({
                 <MonthSelector />
               </Suspense>
             </div>
+          }
+        >
+          <div className="grid grid-cols-3 gap-2">
+            <div className={`${PANEL_INSET_CLASS} p-3`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Vista</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">{transactionsResult.count}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{scopeLabel}</p>
+            </div>
+            <div className={`${PANEL_INSET_CLASS} p-3`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ingresos</p>
+              <p className="mt-2 text-lg font-semibold tracking-tight text-z-income">
+                {formatCurrency(inflowVisible, summaryCurrency)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">en la vista</p>
+            </div>
+            <div className={`${PANEL_INSET_CLASS} p-3`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gastos</p>
+              <p className="mt-2 text-lg font-semibold tracking-tight text-z-alert">
+                {formatCurrency(outflowVisible, summaryCurrency)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">en la vista</p>
+            </div>
           </div>
-        </div>
+        </PageHero>
 
         <PendingEmailTransactions transactions={pendingTransactions} accounts={accounts} />
 
@@ -148,42 +145,73 @@ export default async function TransactionsPage({
 
       {/* Desktop: action-first layout with two-card zone */}
       <div className="hidden lg:block space-y-6">
-        <PageHeaderRow
-          title="Movimientos"
-          subtitle={`${monthLabel} · ${transactionsResult.count} ${scopeLabel}`}
-          actions={
+        <PageHero
+          pills={
             <>
+              <HeroPill>Movimientos</HeroPill>
+              {hasActiveFilters && (
+                <HeroAccentPill>{activeFilterCount} filtros activos</HeroAccentPill>
+              )}
+              <HeroPill>{monthLabel}</HeroPill>
+            </>
+          }
+          title="Movimientos"
+          description={description}
+          actions={
+            <div className="flex flex-wrap gap-3">
               <Suspense>
                 <MonthSelector />
               </Suspense>
               <TransactionFormDialog accounts={accounts} categories={categories} tags={allTags} />
-            </>
+            </div>
+          }
+        >
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+            <div className={`${PANEL_INSET_CLASS} p-4`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Vista</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight">{transactionsResult.count}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{scopeLabel}</p>
+            </div>
+            <div className={`${PANEL_INSET_CLASS} p-4`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ingresos</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-z-income">
+                {formatCurrency(inflowVisible, summaryCurrency)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">en la vista</p>
+            </div>
+            <div className={`${PANEL_INSET_CLASS} p-4`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gastos</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-z-alert">
+                {formatCurrency(outflowVisible, summaryCurrency)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">en la vista</p>
+            </div>
+            <div className={`${PANEL_INSET_CLASS} p-4`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sin categoría</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight">
+                {uncategorizedVisible}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {uncategorizedVisible > 0 ? "requieren criterio" : "todo limpio"}
+              </p>
+            </div>
+          </div>
+        </PageHero>
+
+        <AttentionCard
+          signals={
+            uncategorizedVisible > 0
+              ? [{
+                  page: "transactions",
+                  key: "uncategorized_visible",
+                  count: uncategorizedVisible,
+                  label: "sin categoría en pantalla",
+                  priority: "action" as const,
+                  actionHref: "/categorizar",
+                }]
+              : []
           }
         />
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <SummaryCard
-            metrics={[
-              { label: "Movimientos", value: transactionsResult.count, context: scopeLabel },
-              { label: "Ingresos", value: formatCurrency(inflowVisible, summaryCurrency), context: "en la vista" },
-              { label: "Gastos", value: formatCurrency(outflowVisible, summaryCurrency), context: "en la vista" },
-            ]}
-          />
-          <AttentionCard
-            signals={
-              uncategorizedVisible > 0
-                ? [{
-                    page: "transactions",
-                    key: "uncategorized_visible",
-                    count: uncategorizedVisible,
-                    label: "sin categoría en pantalla",
-                    priority: "action" as const,
-                    actionHref: "/categorizar",
-                  }]
-                : []
-            }
-          />
-        </div>
 
         <Suspense>
           <TransactionFilters accounts={accounts} tags={allTags} />

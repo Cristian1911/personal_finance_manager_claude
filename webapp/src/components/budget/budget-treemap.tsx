@@ -4,6 +4,10 @@ import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CategoryIcon } from "@/components/categories/category-icon";
+import {
+  PANEL_INSET_CLASS,
+  PANEL_SURFACE_SUBTLE_CLASS,
+} from "@/lib/constants/styles";
 import type { CategoryBudgetData, CurrencyCode } from "@/types/domain";
 
 interface BudgetTreemapProps {
@@ -52,7 +56,7 @@ export function BudgetTreemap({
   }
 
   return (
-    <div className="rounded-2xl border border-white/6 bg-[#111411] p-1.5 overflow-hidden">
+    <div className={cn(PANEL_SURFACE_SUBTLE_CLASS, "overflow-hidden p-1.5")}>
       <div className="flex flex-col gap-1.5">
         {/* Top row — large categories with subcategories */}
         {bigCats.length > 0 && (
@@ -91,7 +95,10 @@ export function BudgetTreemap({
             ))}
             {smallCats.length > 6 && (
               <div
-                className="flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/6 text-xs text-muted-foreground"
+                className={cn(
+                  PANEL_INSET_CLASS,
+                  "flex items-center justify-center bg-white/[0.03] text-xs text-muted-foreground"
+                )}
                 style={{ flex: smallCats.slice(6).reduce((s, c) => s + c._budget, 0) }}
               >
                 +{smallCats.length - 6}

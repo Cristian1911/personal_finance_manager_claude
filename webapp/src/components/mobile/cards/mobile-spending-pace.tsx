@@ -4,66 +4,77 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { ChevronRight } from "lucide-react";
+import {
+  PANEL_INSET_CLASS,
+} from "@/lib/constants/styles";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 
-// ─── Tile (compact, for the side-by-side row) ────────────────────────────────
+// ─── Tile (summary-first, without expanded state) ────────────────────────────
 
 export function SpendingPaceTile({
   data,
-  active,
-  onClick,
 }: {
   data: BurnRateResponse;
-  active: boolean;
-  onClick: () => void;
 }) {
   const { runwayDays } = data.discretionary;
   const now = new Date();
   const dayOfMonth = now.getDate();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const progress = Math.min((dayOfMonth / daysInMonth) * 100, 100);
   const daysRemaining = daysInMonth - dayOfMonth;
   const isCritical = runwayDays < daysRemaining * 0.5;
   const isWarning = runwayDays < daysRemaining;
+  const stateCopy = isCritical
+    ? "No llegas al cierre"
+    : isWarning
+      ? "Ajusta para cerrar"
+      : "Ritmo bajo control";
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex w-full flex-col items-center rounded-xl border bg-[#111] p-2.5 text-center transition-colors",
-        active
-          ? (isCritical ? "border-z-debt/25" : isWarning ? "border-z-brass/25" : "border-z-sage-light/25")
-          : "border-white/6"
-      )}
-      aria-expanded={active}
+    <Link
+      href="/dashboard#burn-rate"
+      className={`${PANEL_INSET_CLASS} flex h-full flex-col justify-between p-3`}
     >
-      <span className={cn(
-        "text-[22px] font-extrabold leading-none",
-        isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light"
-      )}>
-        {Math.round(runwayDays)}d
-      </span>
-      <div className="mx-auto mt-1.5 h-2 w-3/4 overflow-hidden rounded-full bg-white/5">
-        <div
-          className={cn(
-            "h-full rounded-full",
-            isCritical
-              ? "bg-gradient-to-r from-z-brass to-z-debt"
-              : isWarning
-                ? "bg-gradient-to-r from-z-sage-light to-z-brass"
-                : "bg-z-sage-light"
-          )}
-          style={{ width: `${progress}%` }}
-        />
+      <div className="space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Ritmo
+          </span>
+          <span
+            className={
+              isCritical
+                ? "text-[10px] font-medium text-z-debt"
+                : isWarning
+                  ? "text-[10px] font-medium text-z-brass"
+                  : "text-[10px] font-medium text-z-sage-light"
+            }
+          >
+            {stateCopy}
+          </span>
+        </div>
+
+        <div className="space-y-1">
+          <span
+            className={
+              isCritical
+                ? "text-[28px] font-extrabold leading-none text-z-debt"
+                : isWarning
+                  ? "text-[28px] font-extrabold leading-none text-z-brass"
+                  : "text-[28px] font-extrabold leading-none text-z-sage-light"
+            }
+          >
+            {Math.round(runwayDays)}d
+          </span>
+          <p className="text-[11px] leading-5 text-muted-foreground">
+            {formatCurrency(data.discretionary.dailyAverage, data.currency)}/día al ritmo actual
+          </p>
+        </div>
       </div>
-      <span className={cn(
-        "mt-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
-        active ? (isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light") : "text-muted-foreground"
-      )}>
-        Ritmo
-      </span>
-    </button>
+
+      <div className="mt-3 flex items-center justify-between text-[11px] font-semibold text-z-brass">
+        <span>Ver análisis</span>
+        <ChevronRight className="h-3 w-3" />
+      </div>
+    </Link>
   );
 }
 
@@ -80,7 +91,7 @@ export function SpendingPaceDetail({ data }: { data: BurnRateResponse }) {
   const isWarning = runwayDays < daysRemaining;
 
   return (
-    <div className="rounded-xl border border-white/6 bg-[#111] p-3">
+    <div className={cn(PANEL_INSET_CLASS, "p-3")}>
       <p className="mb-2 text-[10px] font-semibold text-z-brass">Proyección de gasto</p>
       <RunwayChart
         dataPoints={dataPoints}
@@ -141,7 +152,7 @@ function RunwayChart({
 
   if (monthPoints.length < 2) {
     return (
-      <div className="flex h-14 items-center justify-center rounded-lg bg-black/20 text-[11px] text-muted-foreground">
+      <div className="flex h-14 items-center justify-center rounded-lg border border-white/8 bg-black/20 text-[11px] text-muted-foreground">
         Datos insuficientes
       </div>
     );
@@ -162,21 +173,21 @@ function RunwayChart({
   const projectedEndDay = Math.min(lastDay + runwayDays, daysInMonth + 2);
 
   return (
-    <div className="rounded-lg bg-black/20 p-2">
+    <div className="rounded-lg border border-white/8 bg-black/20 p-2">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" aria-label="Proyección de gasto">
         {[0.25, 0.5, 0.75].map((pct) => (
-          <line key={pct} x1={PAD.left} y1={scaleY(maxBalance * pct)} x2={W - PAD.right} y2={scaleY(maxBalance * pct)} stroke="#222" strokeWidth="0.5" />
+          <line key={pct} x1={PAD.left} y1={scaleY(maxBalance * pct)} x2={W - PAD.right} y2={scaleY(maxBalance * pct)} stroke="var(--z-surface-3)" strokeWidth="0.5" />
         ))}
-        <line x1={scaleX(1)} y1={scaleY(maxBalance)} x2={scaleX(daysInMonth)} y2={scaleY(0)} stroke="#2a3a22" strokeWidth="1.5" strokeDasharray="4,3" />
+        <line x1={scaleX(1)} y1={scaleY(maxBalance)} x2={scaleX(daysInMonth)} y2={scaleY(0)} stroke="var(--z-olive-deep)" strokeWidth="1.5" strokeDasharray="4,3" />
         <path d={actualPath} fill="none" stroke="var(--z-brass)" strokeWidth="2" strokeLinejoin="round" />
         <circle cx={cx} cy={cy} r="3.5" fill="var(--z-brass)" />
         <circle cx={cx} cy={cy} r="5.5" fill="var(--z-brass)" fillOpacity="0.15" />
         {runwayDays < daysInMonth - dayOfMonth && (
           <path d={`M${cx},${cy} L${scaleX(projectedEndDay)},${scaleY(0)}`} fill="none" stroke="var(--z-debt)" strokeWidth="1.5" strokeDasharray="3,2" />
         )}
-        <text x={PAD.left} y={H - 2} fill="#555" fontSize="9" fontFamily="system-ui">Día 1</text>
-        <text x={scaleX(dayOfMonth)} y={H - 2} fill="#888" fontSize="9" fontFamily="system-ui" textAnchor="middle">Hoy</text>
-        <text x={W - PAD.right} y={H - 2} fill="#555" fontSize="9" fontFamily="system-ui" textAnchor="end">{daysInMonth}</text>
+        <text x={PAD.left} y={H - 2} fill="var(--z-sage-dark)" fontSize="9" fontFamily="system-ui">Día 1</text>
+        <text x={scaleX(dayOfMonth)} y={H - 2} fill="var(--z-sage-light)" fontSize="9" fontFamily="system-ui" textAnchor="middle">Hoy</text>
+        <text x={W - PAD.right} y={H - 2} fill="var(--z-sage-dark)" fontSize="9" fontFamily="system-ui" textAnchor="end">{daysInMonth}</text>
       </svg>
     </div>
   );

@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
+import {
+  PANEL_INSET_CLASS,
+} from "@/lib/constants/styles";
 
 export interface TopCategory {
   name: string;
@@ -20,31 +23,67 @@ export interface MobileBudgetTileProps {
 
 export function BudgetTile({
   progress,
-  active,
-  onClick,
+  totalTarget,
+  totalSpent,
+  topCategories,
 }: {
   progress: number;
-  active: boolean;
-  onClick: () => void;
+  totalTarget: number;
+  totalSpent: number;
+  topCategories: TopCategory[];
 }) {
+  const isOver = progress >= 100;
+  const isHigh = progress >= 80;
+  const stateCopy = isOver
+    ? "Sobre el límite"
+    : isHigh
+      ? "Último tramo"
+      : "Con margen";
+  const topCategory = topCategories[0]?.name;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex w-full flex-col items-center rounded-xl border bg-[#111] p-2.5 text-center transition-colors",
-        active ? "border-z-sage-light/25" : "border-white/6"
-      )}
-      aria-expanded={active}
+    <Link
+      href="/plan"
+      className={`${PANEL_INSET_CLASS} flex h-full flex-col justify-between p-3`}
     >
-      <ProgressRing progress={progress} />
-      <span className={cn(
-        "mt-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
-        active ? "text-z-sage-light" : "text-muted-foreground"
-      )}>
-        Presupuesto
-      </span>
-    </button>
+      <div className="space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Presupuesto
+          </span>
+          <span
+            className={
+              isOver
+                ? "text-[10px] font-medium text-z-debt"
+                : isHigh
+                  ? "text-[10px] font-medium text-z-brass"
+                  : "text-[10px] font-medium text-z-sage-light"
+            }
+          >
+            {stateCopy}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <ProgressRing progress={progress} />
+          <div className="min-w-0 flex-1 text-right">
+            <p className="text-[28px] font-extrabold leading-none text-z-white">
+              {Math.round(progress)}%
+            </p>
+            <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+              {topCategory ? `${topCategory} lidera el gasto` : "Sin categorías fuertes todavía"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between text-[11px] font-semibold text-z-sage-light">
+        <span>
+          {totalTarget > 0 ? `${Math.round((totalSpent / totalTarget) * 100)}% usado` : "Ver plan"}
+        </span>
+        <ChevronRight className="h-3 w-3" />
+      </div>
+    </Link>
   );
 }
 
@@ -52,7 +91,7 @@ export function BudgetTile({
 
 export function BudgetDetail({ topCategories }: { topCategories: TopCategory[] }) {
   return (
-    <div className="rounded-xl border border-white/6 bg-[#111] p-3">
+    <div className={cn(PANEL_INSET_CLASS, "p-3")}>
       <p className="mb-2 text-[10px] font-semibold text-z-sage-light">Categorías con más gasto</p>
       {topCategories.length > 0 ? (
         <div className="space-y-2">
@@ -79,7 +118,7 @@ export function BudgetDetail({ topCategories }: { topCategories: TopCategory[] }
       )}
       <Link
         href="/plan"
-        className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-white/8 bg-white/3 px-3 py-1.5 text-[11px] font-semibold text-z-sage-light transition-colors hover:bg-white/5"
+        className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-z-sage-light transition-colors hover:bg-white/5"
       >
         Ir a presupuesto <ChevronRight className="h-3 w-3" />
       </Link>
@@ -109,7 +148,7 @@ function ProgressRing({ progress, size = 38 }: { progress: number; size?: number
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className={cn("text-[9px] font-bold", isOver ? "text-z-debt" : "text-z-sage-lightest")}>
+        <span className={cn("text-[9px] font-bold", isOver ? "text-z-debt" : "text-z-white")}>
           {Math.round(progress)}%
         </span>
       </div>
