@@ -9,7 +9,7 @@ import {
   Suspense,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Settings2, Feather, Gauge, Check, Plus, AlertTriangle } from "lucide-react";
+import { Settings2, Feather, Gauge, Check, Plus, AlertTriangle, ChevronDown, Pencil, Repeat } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -73,6 +73,7 @@ export function BudgetPageClient({
     },
   );
 
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const assigned = useMemo(
@@ -225,7 +226,6 @@ export function BudgetPageClient({
                   ? "bg-yellow-500"
                   : "bg-emerald-500";
 
-          // Pacing context
           const pacingDelta = ratio - monthProgress;
           const pacingLabel =
             budget > 0 && pacingDelta > 0.15
@@ -238,86 +238,171 @@ export function BudgetPageClient({
               ? "text-amber-400"
               : "text-emerald-400";
 
-          // Strict mode: unbudgeted warning tint
-          const isUnbudgeted = budget === 0;
-          const unbudgetedStrict = isStrict && isUnbudgeted;
+          const unbudgetedStrict = isStrict && budget === 0;
           const noBudgetLabel = isStrict ? "Sin asignar" : "Sin presupuesto";
+          const isExpanded = expandedId === cat.id;
+          const isEditing = editingId === cat.id;
+          const flexible = budget > 0 ? Math.max(0, budget - cat.committedRecurring) : 0;
 
           return (
             <div
               key={cat.id}
-              role="button"
-              tabIndex={0}
               className={cn(
-                "cursor-pointer rounded-2xl border bg-card p-4 transition-colors hover:bg-white/[0.02]",
+                "rounded-2xl border bg-card transition-colors",
                 unbudgetedStrict
                   ? "border-amber-500/20 bg-amber-500/[0.03]"
                   : "border-white/6",
               )}
               style={{ borderLeft: `4px solid ${cat.color}` }}
-              onClick={() => setEditingId(cat.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setEditingId(cat.id);
-                }
-              }}
             >
-              {/* Header */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span
-                    className="flex size-7 shrink-0 items-center justify-center rounded-md"
-                    style={{
-                      backgroundColor: `${cat.color}20`,
-                      color: cat.color,
-                    }}
-                  >
-                    <CategoryIcon icon={cat.icon} className="size-4" />
-                  </span>
-                  <span className="truncate text-sm font-medium">
-                    {cat.name_es ?? cat.name}
-                  </span>
+              {/* Clickable header — expands/collapses */}
+              <div
+                role="button"
+                tabIndex={0}
+                className="cursor-pointer p-4 hover:bg-white/[0.02] transition-colors"
+                onClick={() => {
+                  setExpandedId(isExpanded ? null : cat.id);
+                  if (isEditing) setEditingId(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setExpandedId(isExpanded ? null : cat.id);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="flex size-7 shrink-0 items-center justify-center rounded-md"
+                      style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
+                    >
+                      <CategoryIcon icon={cat.icon} className="size-4" />
+                    </span>
+                    <span className="truncate text-sm font-medium">
+                      {cat.name_es ?? cat.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold tabular-nums">
+                      {budget > 0
+                        ? formatCurrency(budget, currency)
+                        : <span className={cn("text-xs font-normal", unbudgetedStrict ? "text-amber-400/80" : "text-muted-foreground")}>{noBudgetLabel}</span>}
+                    </span>
+                    <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
+                  </div>
                 </div>
 
-                <InlineBudgetEditor
-                  categoryId={cat.id}
-                  initialAmount={budget}
-                  currency={currency}
-                  isEditing={editingId === cat.id}
-                  onSave={handleSave}
-                />
-              </div>
+                {/* Progress bar */}
+                <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all", barColor)}
+                    style={{ width: `${Math.min(ratio * 100, 100)}%` }}
+                  />
+                </div>
 
-              {/* Progress bar */}
-              <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all",
-                    barColor,
-                  )}
-                  style={{ width: `${Math.min(ratio * 100, 100)}%` }}
-                />
-              </div>
-
-              {/* Footer */}
-              <div className="mt-1.5">
-                <p className="text-xs text-muted-foreground">
-                  {budget > 0 ? (
-                    <>
-                      {formatCurrency(cat.spent, currency)} gastado de{" "}
-                      {formatCurrency(budget, currency)}
-                    </>
-                  ) : (
-                    noBudgetLabel
-                  )}
-                </p>
-                {pacingLabel && (
-                  <p className={cn("text-[10px] font-medium mt-0.5", pacingColor)}>
-                    {pacingLabel}
+                {/* Summary line */}
+                <div className="mt-1.5 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {budget > 0 ? (
+                      <>
+                        {formatCurrency(cat.spent, currency)} gastado de{" "}
+                        {formatCurrency(budget, currency)}
+                      </>
+                    ) : (
+                      cat.spent > 0
+                        ? <>{formatCurrency(cat.spent, currency)} gastado</>
+                        : "Sin movimientos"
+                    )}
                   </p>
-                )}
+                  {pacingLabel && (
+                    <p className={cn("text-[10px] font-medium", pacingColor)}>
+                      {pacingLabel}
+                    </p>
+                  )}
+                </div>
               </div>
+
+              {/* Expanded detail */}
+              {isExpanded && (
+                <div className="border-t border-white/6 px-4 pb-4 pt-3 space-y-3">
+                  {/* Recurring breakdown */}
+                  {cat.committedRecurring > 0 && budget > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Repeat className="size-3.5 shrink-0" />
+                      <span>
+                        {formatCurrency(cat.committedRecurring, currency)} fijos
+                        {flexible > 0 && <> · {formatCurrency(flexible, currency)} flexible</>}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 3-month average */}
+                  {cat.average3m > 0 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Promedio 3 meses</span>
+                      <span className="font-medium tabular-nums">
+                        {formatCurrency(cat.average3m, currency)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Expense type */}
+                  {cat.expense_type && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Tipo</span>
+                      <span className="font-medium">
+                        {cat.expense_type === "fixed" ? "Fijo" : "Variable"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Subcategories */}
+                  {cat.children.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Subcategorías
+                      </p>
+                      {cat.children.map((child) => (
+                        <div
+                          key={child.id}
+                          className="flex items-center gap-2 text-xs text-muted-foreground pl-1"
+                        >
+                          <span
+                            className="inline-block size-2 rounded-full shrink-0"
+                            style={{ backgroundColor: cat.color }}
+                          />
+                          {child.name_es ?? child.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Budget edit action */}
+                  {isEditing ? (
+                    <InlineBudgetEditor
+                      categoryId={cat.id}
+                      initialAmount={budget}
+                      currency={currency}
+                      isEditing
+                      onSave={handleSave}
+                    />
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1.5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingId(cat.id);
+                      }}
+                    >
+                      <Pencil className="size-3.5" />
+                      {budget > 0 ? "Editar presupuesto" : "Asignar presupuesto"}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
