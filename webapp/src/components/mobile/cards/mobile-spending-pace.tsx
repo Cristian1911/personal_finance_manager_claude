@@ -1,17 +1,23 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { ChevronRight } from "lucide-react";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 
-export function MobileSpendingPaceTile({ data }: { data: BurnRateResponse }) {
-  const [expanded, setExpanded] = useState(false);
+// ─── Tile (compact, for the side-by-side row) ────────────────────────────────
 
-  const { discretionary, currency } = data;
-  const { runwayDays, dailyAverage, dataPoints } = discretionary;
+export function SpendingPaceTile({
+  data,
+  active,
+  onClick,
+}: {
+  data: BurnRateResponse;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const { runwayDays } = data.discretionary;
   const now = new Date();
   const dayOfMonth = now.getDate();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -21,90 +27,92 @@ export function MobileSpendingPaceTile({ data }: { data: BurnRateResponse }) {
   const isWarning = runwayDays < daysRemaining;
 
   return (
-    <div>
-      {/* Tile */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className={cn(
-          "flex w-full flex-col items-center rounded-xl border bg-[#111] p-2.5 text-center transition-colors",
-          expanded
-            ? (isCritical ? "border-z-debt/20" : isWarning ? "border-z-brass/20" : "border-z-sage-light/20")
-            : "border-white/4"
-        )}
-        aria-expanded={expanded}
-      >
-        <span className={cn(
-          "text-[22px] font-extrabold leading-none",
-          isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light"
-        )}>
-          {Math.round(runwayDays)}d
-        </span>
-        <div className="mx-auto mt-1.5 h-[3px] w-3/4 overflow-hidden rounded-full bg-white/5">
-          <div
-            className={cn(
-              "h-full rounded-full",
-              isCritical
-                ? "bg-gradient-to-r from-z-brass to-z-debt"
-                : isWarning
-                  ? "bg-gradient-to-r from-z-sage-light to-z-brass"
-                  : "bg-z-sage-light"
-            )}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <span className={cn(
-          "mt-1 text-[7px] font-semibold uppercase tracking-[0.1em]",
-          expanded ? (isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light") : "text-muted-foreground"
-        )}>
-          Ritmo
-        </span>
-      </button>
-
-      {/* Expanded detail */}
-      <div
-        className="grid transition-[grid-template-rows] duration-200 ease-out"
-        style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
-      >
-        <div className="overflow-hidden">
-          <div className={cn("mt-2 transition-opacity duration-150", expanded ? "opacity-100 delay-75" : "opacity-0")}>
-            <div className="rounded-xl border border-white/6 bg-[#111] p-3">
-              <p className="mb-2 text-[10px] font-semibold text-z-brass">Proyección de gasto</p>
-              <RunwayChart
-                dataPoints={dataPoints}
-                runwayDays={runwayDays}
-                dayOfMonth={dayOfMonth}
-                daysInMonth={daysInMonth}
-              />
-              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-                {isCritical ? (
-                  <>
-                    Reduce{" "}
-                    <span className="text-z-sage-light">
-                      {formatCurrency(dailyAverage - data.disponible / Math.max(daysRemaining, 1), currency)}/día
-                    </span>{" "}
-                    para llegar al {daysInMonth}.
-                  </>
-                ) : isWarning ? (
-                  <>
-                    Margen para{" "}
-                    <span className="font-semibold text-z-brass">{Math.round(runwayDays)} días</span>{" "}
-                    al ritmo actual.
-                  </>
-                ) : (
-                  <>Vas bien — llegas al día {daysInMonth} con margen.</>
-                )}
-              </p>
-              <Link
-                href="/dashboard#burn-rate"
-                className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-z-brass/20 bg-z-brass/8 px-3 py-1.5 text-[11px] font-semibold text-z-brass transition-colors hover:bg-z-brass/12"
-              >
-                Ver análisis <ChevronRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
-        </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full flex-col items-center rounded-xl border bg-[#111] p-2.5 text-center transition-colors",
+        active
+          ? (isCritical ? "border-z-debt/25" : isWarning ? "border-z-brass/25" : "border-z-sage-light/25")
+          : "border-white/4"
+      )}
+      aria-expanded={active}
+    >
+      <span className={cn(
+        "text-[22px] font-extrabold leading-none",
+        isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light"
+      )}>
+        {Math.round(runwayDays)}d
+      </span>
+      <div className="mx-auto mt-1.5 h-[3px] w-3/4 overflow-hidden rounded-full bg-white/5">
+        <div
+          className={cn(
+            "h-full rounded-full",
+            isCritical
+              ? "bg-gradient-to-r from-z-brass to-z-debt"
+              : isWarning
+                ? "bg-gradient-to-r from-z-sage-light to-z-brass"
+                : "bg-z-sage-light"
+          )}
+          style={{ width: `${progress}%` }}
+        />
       </div>
+      <span className={cn(
+        "mt-1 text-[7px] font-semibold uppercase tracking-[0.1em]",
+        active ? (isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light") : "text-muted-foreground"
+      )}>
+        Ritmo
+      </span>
+    </button>
+  );
+}
+
+// ─── Detail panel (full-width, rendered below tiles row) ─────────────────────
+
+export function SpendingPaceDetail({ data }: { data: BurnRateResponse }) {
+  const { discretionary, currency, disponible } = data;
+  const { runwayDays, dailyAverage, dataPoints } = discretionary;
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysRemaining = daysInMonth - dayOfMonth;
+  const isCritical = runwayDays < daysRemaining * 0.5;
+  const isWarning = runwayDays < daysRemaining;
+
+  return (
+    <div className="rounded-xl border border-white/6 bg-[#111] p-3">
+      <p className="mb-2 text-[10px] font-semibold text-z-brass">Proyección de gasto</p>
+      <RunwayChart
+        dataPoints={dataPoints}
+        runwayDays={runwayDays}
+        dayOfMonth={dayOfMonth}
+        daysInMonth={daysInMonth}
+      />
+      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+        {isCritical ? (
+          <>
+            Reduce{" "}
+            <span className="text-z-sage-light">
+              {formatCurrency(dailyAverage - disponible / Math.max(daysRemaining, 1), currency)}/día
+            </span>{" "}
+            para llegar al {daysInMonth}.
+          </>
+        ) : isWarning ? (
+          <>
+            Margen para{" "}
+            <span className="font-semibold text-z-brass">{Math.round(runwayDays)} días</span>{" "}
+            al ritmo actual.
+          </>
+        ) : (
+          <>Vas bien — llegas al día {daysInMonth} con margen.</>
+        )}
+      </p>
+      <Link
+        href="/dashboard#burn-rate"
+        className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-z-brass/20 bg-z-brass/8 px-3 py-1.5 text-[11px] font-semibold text-z-brass transition-colors hover:bg-z-brass/12"
+      >
+        Ver análisis <ChevronRight className="h-3 w-3" />
+      </Link>
     </div>
   );
 }
@@ -129,7 +137,6 @@ function RunwayChart({
   const plotH = H - PAD.top - PAD.bottom;
 
   const parseDay = (date: string) => parseInt(date.split("-")[2], 10);
-
   const monthPoints = dataPoints.filter((dp) => parseDay(dp.date) <= dayOfMonth);
 
   if (monthPoints.length < 2) {
@@ -142,17 +149,10 @@ function RunwayChart({
 
   const maxBalance = Math.max(...monthPoints.map((p) => p.balance));
   const scaleX = (day: number) => PAD.left + (day / daysInMonth) * plotW;
-  const scaleY = (val: number) =>
-    PAD.top + plotH - (val / ((maxBalance || 1) * 1.1)) * plotH;
-
-  const idealStart = { x: scaleX(1), y: scaleY(maxBalance) };
-  const idealEnd = { x: scaleX(daysInMonth), y: scaleY(0) };
+  const scaleY = (val: number) => PAD.top + plotH - (val / ((maxBalance || 1) * 1.1)) * plotH;
 
   const actualPath = monthPoints
-    .map((p, i) => {
-      const day = parseDay(p.date);
-      return `${i === 0 ? "M" : "L"}${scaleX(day)},${scaleY(p.balance)}`;
-    })
+    .map((p, i) => `${i === 0 ? "M" : "L"}${scaleX(parseDay(p.date))},${scaleY(p.balance)}`)
     .join(" ");
 
   const lastPoint = monthPoints[monthPoints.length - 1];
@@ -160,7 +160,6 @@ function RunwayChart({
   const cx = scaleX(lastDay);
   const cy = scaleY(lastPoint.balance);
   const projectedEndDay = Math.min(lastDay + runwayDays, daysInMonth + 2);
-  const projectedPath = `M${cx},${cy} L${scaleX(projectedEndDay)},${scaleY(0)}`;
 
   return (
     <div className="rounded-lg bg-black/20 p-2">
@@ -168,12 +167,12 @@ function RunwayChart({
         {[0.25, 0.5, 0.75].map((pct) => (
           <line key={pct} x1={PAD.left} y1={scaleY(maxBalance * pct)} x2={W - PAD.right} y2={scaleY(maxBalance * pct)} stroke="#222" strokeWidth="0.5" />
         ))}
-        <line x1={idealStart.x} y1={idealStart.y} x2={idealEnd.x} y2={idealEnd.y} stroke="#2a3a22" strokeWidth="1.5" strokeDasharray="4,3" />
+        <line x1={scaleX(1)} y1={scaleY(maxBalance)} x2={scaleX(daysInMonth)} y2={scaleY(0)} stroke="#2a3a22" strokeWidth="1.5" strokeDasharray="4,3" />
         <path d={actualPath} fill="none" stroke="#d4a853" strokeWidth="2" strokeLinejoin="round" />
         <circle cx={cx} cy={cy} r="3.5" fill="#d4a853" />
         <circle cx={cx} cy={cy} r="5.5" fill="#d4a853" fillOpacity="0.15" />
         {runwayDays < daysInMonth - dayOfMonth && (
-          <path d={projectedPath} fill="none" stroke="#c44" strokeWidth="1.5" strokeDasharray="3,2" />
+          <path d={`M${cx},${cy} L${scaleX(projectedEndDay)},${scaleY(0)}`} fill="none" stroke="#c44" strokeWidth="1.5" strokeDasharray="3,2" />
         )}
         <text x={PAD.left} y={H - 2} fill="#555" fontSize="9" fontFamily="system-ui">Día 1</text>
         <text x={scaleX(dayOfMonth)} y={H - 2} fill="#888" fontSize="9" fontFamily="system-ui" textAnchor="middle">Hoy</text>
