@@ -81,17 +81,19 @@ export function MobileAlertCard({ signals }: { signals: AttentionSignal[] }) {
           )}
         />
         {signal.count} {signal.label}
-        <button
-          type="button"
+        <span
+          role="button"
+          tabIndex={0}
           onClick={handleDismiss}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleDismiss(e as unknown as React.MouseEvent); }}
           className={cn(
-            "ml-1 opacity-40 transition-opacity hover:opacity-80",
+            "ml-1 cursor-pointer opacity-40 transition-opacity hover:opacity-80",
             isAction ? "text-z-debt" : "text-z-brass"
           )}
           aria-label="Descartar alerta"
         >
           <X className="h-3 w-3" />
-        </button>
+        </span>
       </button>
 
       {/* Expanded dropdown */}
