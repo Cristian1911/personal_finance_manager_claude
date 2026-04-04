@@ -124,41 +124,26 @@ export function MobileHeroCard({
         </div>
       </CollapsePanel>
 
-      {/* Proportion bar */}
-      <div className="mx-3 mt-2.5">
-        <div className="flex h-[3px] gap-[1px] overflow-hidden rounded-sm">
-          <button
-            type="button"
-            className="transition-opacity hover:opacity-80"
-            style={{ flex: Math.max(totalBalance, 1) }}
-            onClick={() => toggle("saldo")}
-            aria-label="Ver saldo por cuenta"
-          >
-            <div className={cn("h-full rounded-l-sm bg-z-sage-light", expanded === "saldo" && "ring-1 ring-z-sage-light ring-offset-1 ring-offset-[#0d1117]")} />
-          </button>
-          <button
-            type="button"
-            className="transition-opacity hover:opacity-80"
-            style={{ flex: Math.max(pendingFixed, 1) }}
-            onClick={() => toggle("fijos")}
-            aria-label="Ver gastos fijos"
-          >
-            <div className={cn("h-full rounded-r-sm bg-z-brass", expanded === "fijos" && "ring-1 ring-z-brass ring-offset-1 ring-offset-[#0d1117]")} />
-          </button>
-        </div>
-        <div className="mt-1.5 flex justify-between text-[9px] text-muted-foreground">
-          <button type="button" onClick={() => toggle("saldo")} className="flex items-center gap-1 hover:text-z-sage-light transition-colors">
-            <span className="inline-block h-1.5 w-1.5 rounded-[1px] bg-z-sage-light" />
-            Saldo {abbreviate(totalBalance)}
-          </button>
-          <button type="button" onClick={() => toggle("fijos")} className="flex items-center gap-1 hover:text-z-brass transition-colors">
-            <span className="inline-block h-1.5 w-1.5 rounded-[1px] bg-z-brass" />
-            Fijos {abbreviate(pendingFixed)}
-          </button>
-          <button type="button" onClick={() => toggle("proximo")} className="hover:text-z-sage-light transition-colors">
-            Prox. {daysToNextPayment != null ? `${daysToNextPayment}d` : "—"}
-          </button>
-        </div>
+      {/* Stat chips */}
+      <div className="mt-2.5 flex gap-1.5">
+        <ChipButton
+          label="Saldo"
+          value={abbreviate(totalBalance)}
+          active={expanded === "saldo"}
+          onClick={() => toggle("saldo")}
+        />
+        <ChipButton
+          label="Fijos"
+          value={abbreviate(pendingFixed)}
+          active={expanded === "fijos"}
+          onClick={() => toggle("fijos")}
+        />
+        <ChipButton
+          label="Prox."
+          value={daysToNextPayment != null ? `${daysToNextPayment}d` : "—"}
+          active={expanded === "proximo"}
+          onClick={() => toggle("proximo")}
+        />
       </div>
 
       {/* Saldo expansion */}
@@ -240,6 +225,37 @@ export function MobileHeroCard({
 }
 
 // ─── Shared collapse panel ───────────────────────────────────────────────────
+
+function ChipButton({
+  label,
+  value,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex flex-1 flex-col items-center rounded-xl bg-black/20 px-2 py-1.5 transition-colors",
+        active && "bg-z-brass/10 ring-1 ring-z-brass/30"
+      )}
+      aria-expanded={active}
+    >
+      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <span className={cn("text-[13px] font-semibold", active ? "text-z-brass" : "text-z-sage-light")}>
+        {value}
+      </span>
+    </button>
+  );
+}
 
 function CollapsePanel({ visible, children }: { visible: boolean; children: ReactNode }) {
   return (
