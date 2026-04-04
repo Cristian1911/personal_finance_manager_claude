@@ -473,6 +473,57 @@ export type Database = {
         }
         Relationships: []
       }
+      design_reviews: {
+        Row: {
+          annotation_path: string | null
+          component_hint: string | null
+          created_at: string
+          description: string | null
+          device_context: Json | null
+          excalidraw_path: string | null
+          id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          route: string | null
+          severity: string
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          annotation_path?: string | null
+          component_hint?: string | null
+          created_at?: string
+          description?: string | null
+          device_context?: Json | null
+          excalidraw_path?: string | null
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          route?: string | null
+          severity?: string
+          status?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          annotation_path?: string | null
+          component_hint?: string | null
+          created_at?: string
+          description?: string | null
+          device_context?: Json | null
+          excalidraw_path?: string | null
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          route?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       destinatario_rules: {
         Row: {
           created_at: string

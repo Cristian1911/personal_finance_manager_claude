@@ -17,6 +17,7 @@ import { IntegrationsCard } from "@/components/settings/integrations-card";
 import { EmailIngestCard } from "@/components/settings/email-ingest-card";
 import { UnrecognizedEmailsCard } from "@/components/settings/unrecognized-emails-card";
 import { BuildInfo } from "@/components/settings/build-info";
+import { ReviewModeToggle } from "@/components/settings/review-mode-toggle";
 import { getCaptureTokens } from "@/actions/capture-tokens";
 import { getEmailIngestAddress, getUnrecognizedEmails } from "@/actions/email-ingest";
 import type { Account } from "@/types/domain";
@@ -137,6 +138,15 @@ export default async function SettingsPage() {
       </Card>
 
       <BuildInfo />
+
+      <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+        <CardHeader>
+          <CardTitle className="text-base">Herramientas de Desarrollo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReviewModeToggle />
+        </CardContent>
+      </Card>
     </div>
   );
 }

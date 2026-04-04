@@ -13,6 +13,9 @@ import { BottomTabBar } from "@/components/mobile/bottom-tab-bar";
 import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
+import { DevOverlay } from "@/components/dev/dev-overlay";
+
+const IS_DEV = process.env.NODE_ENV === "development";
 
 export default async function DashboardLayout({
   children,
@@ -76,6 +79,7 @@ export default async function DashboardLayout({
           <BottomTabBar attentionSnapshot={attentionSnapshot} />
         </KeyboardInsetProvider>
       </div>
+      {IS_DEV && <DevOverlay />}
     </div>
   );
 }

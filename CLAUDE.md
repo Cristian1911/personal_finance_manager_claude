@@ -6,6 +6,7 @@
 - `cd services/pdf_parser && uv run python main.py` — start PDF parser on :8000
 - Living context docs: `python3 .claude/skills/codebase-context/scripts/build_context.py`
 - If Turbopack panics during dev: kill the server, `rm -rf .next`, restart `pnpm dev`
+- **Lockfile sync**: Always run `pnpm install` from the **repo root** (not from `webapp/`) after adding or changing dependencies. The root `pnpm-lock.yaml` is what CI uses with `--frozen-lockfile`.
 
 ## Project Structure
 - `webapp/` — Next.js 15 (App Router) + TypeScript + Tailwind v4 + shadcn/ui
