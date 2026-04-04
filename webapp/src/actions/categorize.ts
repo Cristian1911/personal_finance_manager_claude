@@ -3,7 +3,8 @@
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { extractPattern } from "@zeta/shared";
+import { extractPattern, matchDestinatario, prepareDestinatarioRules } from "@zeta/shared";
+import { getDestinatarioRulesCached } from "./destinatarios";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithRelations } from "@/types/domain";
 import type { UserRule } from "@zeta/shared";
@@ -512,6 +513,88 @@ export async function assignDestinatario(
   revalidateTag("destinatarios", "zeta");
   revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
+}
+
+/**
+ * Return a map of transaction ID → destinatario match for all uncategorized
+ * transactions. Used to surface the "Aplicar todos" banner in the inbox.
+ */
+export async function getDestinatarioSuggestionsForInbox(): Promise<
+  Record<string, { destinatario_id: string; destinatario_name: string; category_id: string | null }>
+> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return {};
+
+  const [transactions, rules] = await Promise.all([
+    getUncategorizedTransactionsCached(user.id),
+    getDestinatarioRulesCached(user.id),
+  ]);
+
+  if (rules.length === 0 || transactions.length === 0) return {};
+
+  const prepared = prepareDestinatarioRules(rules);
+  const suggestions: Record<string, { destinatario_id: string; destinatario_name: string; category_id: string | null }> = {};
+
+  for (const tx of transactions) {
+    const text = tx.merchant_name ?? tx.clean_description ?? tx.raw_description ?? "";
+    if (!text) continue;
+
+    const match = matchDestinatario(text, prepared);
+    if (match) {
+      suggestions[tx.id] = {
+        destinatario_id: match.destinatario_id,
+        destinatario_name: match.destinatario_name,
+        category_id: match.category_id ?? null,
+      };
+    }
+  }
+
+  return suggestions;
+}
+
+/**
+ * Bulk-assign destinatario (and optionally category) to a list of transactions.
+ */
+export async function bulkApplyDestinatarioMatches(
+  matches: Array<{ transactionId: string; destinatarioId: string; categoryId: string | null }>
+): Promise<ActionResult<{ applied: number }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Group by destinatario+category to batch updates instead of N+1
+  const groups = new Map<string, { destinatarioId: string; categoryId: string | null; txIds: string[] }>();
+  for (const m of matches) {
+    const key = `${m.destinatarioId}|${m.categoryId ?? ""}`;
+    const group = groups.get(key) ?? { destinatarioId: m.destinatarioId, categoryId: m.categoryId, txIds: [] };
+    group.txIds.push(m.transactionId);
+    groups.set(key, group);
+  }
+
+  let applied = 0;
+  for (const group of groups.values()) {
+    const payload: Record<string, unknown> = { destinatario_id: group.destinatarioId };
+    if (group.categoryId) {
+      payload.category_id = group.categoryId;
+      payload.categorization_source = "USER_LEARNED";
+    }
+
+    const { error } = await supabase
+      .from("transactions")
+      .update(payload)
+      .in("id", group.txIds)
+      .eq("user_id", user.id);
+
+    if (!error) applied += group.txIds.length;
+  }
+
+  revalidateTag("categorize", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("attention", "zeta");
+
+  return { success: true, data: { applied } };
 }
 
 /**

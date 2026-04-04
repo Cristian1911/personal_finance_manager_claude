@@ -13,7 +13,9 @@ import {
   bulkCategorize,
   confirmAutoCategory,
   bulkConfirmAutoCategory,
+  bulkApplyDestinatarioMatches,
 } from "@/actions/categorize";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/date";
 import { trackClientEvent } from "@/lib/utils/analytics";
@@ -29,6 +31,11 @@ interface CategoryInboxProps {
   categories: CategoryWithChildren[];
   userRules: UserRule[];
   tagGroups?: TagGroupWithTags[];
+  destinatarioSuggestions?: Record<string, {
+    destinatario_id: string;
+    destinatario_name: string;
+    category_id: string | null;
+  }>;
 }
 
 function sortTransactionsByDate(
@@ -45,6 +52,7 @@ export function CategoryInbox({
   categories,
   userRules,
   tagGroups = [],
+  destinatarioSuggestions = {},
 }: CategoryInboxProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("uncategorized");
   const [transactions, setTransactions] = useState(initialTransactions);
@@ -70,6 +78,12 @@ export function CategoryInbox({
   }, [transactions, userRules]);
 
   const suggestedCount = suggestions.size;
+
+  const activeDestSuggestionCount = useMemo(
+    () => transactions.filter((tx) => destinatarioSuggestions[tx.id]).length,
+    [transactions, destinatarioSuggestions]
+  );
+
   const didTrackSeenRef = useRef(false);
 
   useEffect(() => {
@@ -605,6 +619,43 @@ export function CategoryInbox({
                 </div>
               </div>
 
+              {/* Destinatario suggestions banner */}
+              {activeTab === "uncategorized" && activeDestSuggestionCount > 0 && (
+                <div className="flex items-center justify-between rounded-xl border border-z-brass/20 bg-z-brass/5 px-4 py-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Sparkles className="size-4 text-z-brass" />
+                    <span className="text-z-sage-light">
+                      <strong className="text-z-brass">{activeDestSuggestionCount}</strong>{" "}
+                      transacciones coinciden con un destinatario existente
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    className={BRASS_BUTTON_CLASS}
+                    disabled={isPending}
+                    onClick={() => {
+                      startTransition(async () => {
+                        const matches = transactions
+                          .filter((tx) => destinatarioSuggestions[tx.id])
+                          .map((tx) => ({
+                            transactionId: tx.id,
+                            destinatarioId: destinatarioSuggestions[tx.id].destinatario_id,
+                            categoryId: destinatarioSuggestions[tx.id].category_id,
+                          }));
+                        const result = await bulkApplyDestinatarioMatches(matches);
+                        if (result.success) {
+                          toast.success(`${result.data.applied} transacciones vinculadas`);
+                          const matchedIds = new Set(matches.map((m) => m.transactionId));
+                          setTransactions((prev) => prev.filter((tx) => !matchedIds.has(tx.id)));
+                        }
+                      });
+                    }}
+                  >
+                    Aplicar todos
+                  </Button>
+                </div>
+              )}
+
               {/* Transaction list grouped by date */}
               <div className="space-y-6">
                 {Array.from(groupedByDate.entries()).map(([dateKey, txs]) => (
@@ -629,6 +680,7 @@ export function CategoryInbox({
                             handleCategorize(tx, categoryId, includeSimilarIds)
                           }
                           isPending={isPending}
+                          destinatarioSuggestion={destinatarioSuggestions[tx.id] ?? null}
                         />
                       ))}
                     </div>

@@ -9,7 +9,12 @@ import {
 } from "@/lib/validators/destinatario";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
-import { cleanDescription, type DestinatarioRule } from "@zeta/shared";
+import {
+  cleanDescription,
+  matchDestinatario,
+  prepareDestinatarioRules,
+  type DestinatarioRule,
+} from "@zeta/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,7 +154,7 @@ async function getDestinatarioCached(
   };
 }
 
-async function getDestinatarioRulesCached(
+export async function getDestinatarioRulesCached(
   userId: string
 ): Promise<DestinatarioRule[]> {
   "use cache";
@@ -185,6 +190,27 @@ async function getDestinatarioRulesCached(
   }
 
   return rules;
+}
+
+/**
+ * Shared pipeline: fetch user's destinatario rules, match text against them.
+ * Used by all transaction creation flows before falling back to autoCategorize().
+ */
+export async function matchTransactionToDestinatario(
+  userId: string,
+  text: string
+): Promise<{ destinatario_id: string; category_id: string | null } | null> {
+  const rules = await getDestinatarioRulesCached(userId);
+  if (rules.length === 0) return null;
+
+  const prepared = prepareDestinatarioRules(rules);
+  const match = matchDestinatario(text, prepared);
+  if (!match) return null;
+
+  return {
+    destinatario_id: match.destinatario_id,
+    category_id: match.category_id ?? null,
+  };
 }
 
 async function getUnmatchedDescriptionsCached(
@@ -1038,4 +1064,198 @@ export async function bulkLinkToDestinatario(
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("attention", "zeta");
   return { success: true, data: { linked: linkedCount ?? transactionIds.length, categorized } };
+}
+
+// ─── Shared rule-matching helper for preview + apply ─────────────────────────
+
+type RuleRow = { pattern: string; match_type: string };
+
+function matchTransactionsAgainstRules<T extends { raw_description: string | null }>(
+  transactions: T[],
+  rules: RuleRow[]
+): T[] {
+  const lowerRules = rules.map((r) => ({
+    pattern: r.pattern.toLowerCase(),
+    matchType: r.match_type as "contains" | "exact",
+  }));
+
+  return transactions.filter((tx) => {
+    const cleaned = cleanDescription(tx.raw_description ?? "").toLowerCase();
+    const raw = (tx.raw_description ?? "").toLowerCase();
+    return lowerRules.some((rule) => {
+      if (rule.matchType === "exact") return cleaned === rule.pattern || raw === rule.pattern;
+      return cleaned.includes(rule.pattern) || raw.includes(rule.pattern);
+    });
+  });
+}
+
+// ─── previewDestinatarioRuleImpact ────────────────────────────────────────────
+
+export type RuleImpactPreview = {
+  matchCount: number;
+  sampleTransactions: Array<{
+    id: string;
+    clean_description: string;
+    transaction_date: string;
+    amount: number;
+    currency_code: string;
+  }>;
+};
+
+/**
+ * Preview how many unmatched transactions would be linked by a destinatario's rules.
+ * Returns match count and first 10 sample transactions.
+ */
+export async function previewDestinatarioRuleImpact(
+  destinatarioId: string
+): Promise<ActionResult<RuleImpactPreview>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Fetch rules for this destinatario
+  const { data: rules, error: rulesError } = await supabase
+    .from("destinatario_rules")
+    .select("pattern, match_type")
+    .eq("user_id", user.id)
+    .eq("destinatario_id", destinatarioId);
+
+  if (rulesError) return { success: false, error: rulesError.message };
+  if (!rules || rules.length === 0) {
+    return { success: true, data: { matchCount: 0, sampleTransactions: [] } };
+  }
+
+  // Fetch unmatched transactions
+  const { data: txs, error: txsError } = await supabase
+    .from("transactions")
+    .select("id, raw_description, clean_description, transaction_date, amount, currency_code")
+    .eq("user_id", user.id)
+    .is("destinatario_id", null)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .not("raw_description", "is", null)
+    .limit(2000);
+
+  if (txsError) return { success: false, error: txsError.message };
+  if (!txs || txs.length === 0) {
+    return { success: true, data: { matchCount: 0, sampleTransactions: [] } };
+  }
+
+  const matching = matchTransactionsAgainstRules(txs, rules);
+
+  return {
+    success: true,
+    data: {
+      matchCount: matching.length,
+      sampleTransactions: matching.slice(0, 10).map((tx) => ({
+        id: tx.id,
+        clean_description: tx.clean_description ?? tx.raw_description ?? "",
+        transaction_date: tx.transaction_date,
+        amount: tx.amount,
+        currency_code: tx.currency_code,
+      })),
+    },
+  };
+}
+
+// ─── applyDestinatarioRules ───────────────────────────────────────────────────
+
+/**
+ * Apply a destinatario's rules to all unmatched transactions in bulk.
+ * Sets destinatario_id + merchant_name on all matches, and applies default
+ * category (as USER_LEARNED) to any previously uncategorized matches.
+ */
+export async function applyDestinatarioRules(
+  destinatarioId: string
+): Promise<ActionResult<{ linked: number; categorized: number }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Fetch destinatario name + default_category_id
+  const { data: dest, error: destError } = await supabase
+    .from("destinatarios")
+    .select("name, default_category_id")
+    .eq("user_id", user.id)
+    .eq("id", destinatarioId)
+    .single();
+
+  if (destError || !dest) {
+    return { success: false, error: "Destinatario no encontrado" };
+  }
+
+  // Fetch rules
+  const { data: rules, error: rulesError } = await supabase
+    .from("destinatario_rules")
+    .select("pattern, match_type")
+    .eq("user_id", user.id)
+    .eq("destinatario_id", destinatarioId);
+
+  if (rulesError) return { success: false, error: rulesError.message };
+  if (!rules || rules.length === 0) {
+    return { success: true, data: { linked: 0, categorized: 0 } };
+  }
+
+  // Fetch unmatched transactions
+  const { data: txs, error: txsError } = await supabase
+    .from("transactions")
+    .select("id, raw_description, category_id")
+    .eq("user_id", user.id)
+    .is("destinatario_id", null)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .not("raw_description", "is", null)
+    .limit(2000);
+
+  if (txsError) return { success: false, error: txsError.message };
+  if (!txs || txs.length === 0) {
+    return { success: true, data: { linked: 0, categorized: 0 } };
+  }
+
+  const matching = matchTransactionsAgainstRules(txs, rules);
+  const matchingIds = matching.map((tx) => tx.id);
+  const uncategorizedIds = matching.filter((tx) => !tx.category_id).map((tx) => tx.id);
+
+  if (matchingIds.length === 0) {
+    return { success: true, data: { linked: 0, categorized: 0 } };
+  }
+
+  // Bulk update: set destinatario_id + merchant_name
+  const { error: linkError } = await supabase
+    .from("transactions")
+    .update({
+      destinatario_id: destinatarioId,
+      merchant_name: dest.name,
+    })
+    .eq("user_id", user.id)
+    .in("id", matchingIds);
+
+  if (linkError) return { success: false, error: linkError.message };
+
+  // Apply default category to uncategorized matches if available
+  let categorized = 0;
+  if (dest.default_category_id && uncategorizedIds.length > 0) {
+    const { error: catError, count } = await supabase
+      .from("transactions")
+      .update({
+        category_id: dest.default_category_id,
+        categorization_source: "USER_LEARNED",
+      }, { count: "exact" })
+      .eq("user_id", user.id)
+      .in("id", uncategorizedIds);
+
+    if (catError) {
+      console.error("Error applying default category in applyDestinatarioRules:", catError);
+    } else {
+      categorized = count ?? 0;
+    }
+  }
+
+  revalidateTag("categorize", "zeta");
+  revalidateTag("destinatarios", "zeta");
+  revalidateTag("dashboard:charts", "zeta");
+  revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("attention", "zeta");
+
+  return { success: true, data: { linked: matchingIds.length, categorized } };
 }

@@ -3,7 +3,7 @@
 import { revalidateTag } from "next/cache";
 import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createDestinatario } from "@/actions/destinatarios";
+import { createDestinatario, matchTransactionToDestinatario } from "@/actions/destinatarios";
 import { createRecurringTemplate } from "@/actions/recurring-templates";
 import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
@@ -624,13 +624,26 @@ export async function createQuickCaptureTransaction(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const suggestion =
-    parsed.data.category_id ?? autoCategorize(parsed.data.merchant_name)?.category_id ?? null;
+  const matchText = parsed.data.merchant_name ?? parsed.data.raw_description ?? "";
+  const destMatch = await matchTransactionToDestinatario(user.id, matchText);
+
+  let categoryId = parsed.data.category_id ?? null;
+  let destinatarioId: string | null = null;
+
+  if (destMatch) {
+    destinatarioId = destMatch.destinatario_id;
+    categoryId = categoryId ?? destMatch.category_id;
+  }
+
+  if (!categoryId) {
+    categoryId = autoCategorize(parsed.data.merchant_name)?.category_id ?? null;
+  }
 
   return persistTransaction(supabase, {
     userId: user.id,
     ...parsed.data,
-    category_id: suggestion,
+    category_id: categoryId,
+    destinatario_id: destinatarioId,
     capture_method: "TEXT_QUICK_CAPTURE",
   });
 }

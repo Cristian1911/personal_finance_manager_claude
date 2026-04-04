@@ -16,6 +16,7 @@ import {
 } from "@/lib/email-ingest/statement-filename";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { autoCategorize } from "@zeta/shared";
+import { matchTransactionToDestinatario } from "@/actions/destinatarios";
 import type { Json } from "@/types/database";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -595,8 +596,23 @@ export async function POST(request: NextRequest) {
   if (autoImport && suggestedAccountId) {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
     const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
-    const categoryResult = parsed.merchant ? autoCategorize(parsed.merchant) : null;
-    const categoryId = categoryResult?.category_id ?? null;
+    const matchText = parsed.merchant ?? parsed.destination ?? parsed.raw_line ?? "";
+    const destMatch = await matchTransactionToDestinatario(userId, matchText);
+
+    let categoryId: string | null = null;
+    let destinatarioId: string | null = null;
+    let categorizationSource: "USER_LEARNED" | "SYSTEM_DEFAULT" | undefined;
+
+    if (destMatch) {
+      destinatarioId = destMatch.destinatario_id;
+      categoryId = destMatch.category_id;
+      categorizationSource = categoryId ? "USER_LEARNED" : undefined;
+    }
+
+    if (!categoryId && parsed.merchant) {
+      categoryId = autoCategorize(parsed.merchant)?.category_id ?? null;
+      if (categoryId) categorizationSource = "SYSTEM_DEFAULT";
+    }
 
     const { error: insertError } = await admin.from("transactions").insert({
       user_id: userId,
@@ -609,11 +625,12 @@ export async function POST(request: NextRequest) {
       clean_description: parsed.merchant ?? parsed.destination ?? parsed.raw_line,
       merchant_name: parsed.merchant,
       category_id: categoryId,
+      destinatario_id: destinatarioId,
       idempotency_key: idempotencyKey,
       provider: "EMAIL",
       capture_method: "EMAIL_IMPORT",
       is_subscription: false,
-      categorization_source: categoryId ? "SYSTEM_DEFAULT" : undefined,
+      categorization_source: categorizationSource,
       status: "POSTED",
     });
 

@@ -2,12 +2,8 @@
 
 import { revalidateTag } from "next/cache";
 import { nanoid } from "nanoid";
-import {
-  autoCategorize,
-  matchDestinatario,
-  prepareDestinatarioRules,
-  type DestinatarioRule,
-} from "@zeta/shared";
+import { autoCategorize } from "@zeta/shared";
+import { matchTransactionToDestinatario } from "./destinatarios";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import type { ParsedEmailTransaction } from "@/lib/parsers/bancolombia-email";
 import { accountMaskSuffixMatches } from "@/lib/utils/account-mask";
@@ -274,53 +270,22 @@ export async function approveEmailTransaction(
     }
   }
 
-  // Match against user's destinatario rules first, then fall back to auto-categorize
   const merchantName = parsed.merchant ?? parsed.destination ?? null;
   const rawDescription = parsed.raw_line;
   const matchText = merchantName ?? rawDescription;
+
+  const destMatch = await matchTransactionToDestinatario(user.id, matchText);
 
   let destinatarioId: string | null = null;
   let categoryId: string | null = null;
   let categorizationSource: "SYSTEM_DEFAULT" | "USER_LEARNED" | undefined;
 
-  // Fetch destinatario rules and try to match
-  const { data: ruleRows } = await supabase
-    .from("destinatario_rules")
-    .select(
-      "destinatario_id, match_type, pattern, priority, destinatarios!inner(name, default_category_id, is_active)"
-    )
-    .eq("user_id", user.id)
-    .order("priority", { ascending: true });
-
-  if (ruleRows && ruleRows.length > 0) {
-    const rules: DestinatarioRule[] = [];
-    for (const row of ruleRows) {
-      const dest = row.destinatarios as unknown as {
-        name: string;
-        default_category_id: string | null;
-        is_active: boolean;
-      };
-      if (!dest?.is_active) continue;
-      rules.push({
-        destinatario_id: row.destinatario_id,
-        destinatario_name: dest.name,
-        default_category_id: dest.default_category_id,
-        match_type: row.match_type as "contains" | "exact",
-        pattern: row.pattern,
-        priority: row.priority,
-      });
-    }
-
-    const prepared = prepareDestinatarioRules(rules);
-    const match = matchDestinatario(matchText, prepared);
-    if (match) {
-      destinatarioId = match.destinatario_id;
-      categoryId = match.category_id ?? null;
-      categorizationSource = categoryId ? "USER_LEARNED" : undefined;
-    }
+  if (destMatch) {
+    destinatarioId = destMatch.destinatario_id;
+    categoryId = destMatch.category_id;
+    categorizationSource = categoryId ? "USER_LEARNED" : undefined;
   }
 
-  // Fall back to rule-based auto-categorize if no destinatario match
   if (!categoryId && merchantName) {
     const categoryResult = autoCategorize(merchantName);
     categoryId = categoryResult?.category_id ?? null;
