@@ -40,6 +40,7 @@ export type CategoryWithBudget = CategoryWithChildren & {
 };
 
 export type ExpenseType = "fixed" | "variable";
+export type BudgetMode = "per_category" | "zero_based";
 
 export type CategoryBudgetData = {
   id: string;

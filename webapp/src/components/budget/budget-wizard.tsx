@@ -20,11 +20,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { AllocationData } from "@/actions/allocation";
-import type { CategoryBudgetData, CurrencyCode } from "@/types/domain";
-
-// ── Types ───────────────────────────────────────────────────
-
-type BudgetMode = "per_category" | "zero_based";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import type { BudgetMode, CategoryBudgetData, CurrencyCode } from "@/types/domain";
 
 interface BudgetWizardProps {
   categories: CategoryBudgetData[];
@@ -97,6 +94,7 @@ export function BudgetWizard({
   }
 
   function handleGoToStep3() {
+    if (!selectedMode) return;
     initAllocations();
     setStep(3);
   }
@@ -237,7 +235,7 @@ function StepIncome({
         <Button
           onClick={onContinue}
           disabled={income <= 0}
-          className="bg-z-brass text-z-ink hover:bg-z-brass/90"
+          className={BRASS_BUTTON_CLASS}
         >
           Continuar
         </Button>
@@ -314,7 +312,7 @@ function StepStylePreview({
         <Button
           onClick={onContinue}
           disabled={!selectedMode}
-          className="bg-z-brass text-z-ink hover:bg-z-brass/90"
+          className={BRASS_BUTTON_CLASS}
         >
           Continuar
         </Button>
@@ -703,7 +701,7 @@ function StepAllocation({
         <Button
           onClick={onFinalize}
           disabled={isPending}
-          className="bg-z-brass text-z-ink hover:bg-z-brass/90"
+          className={BRASS_BUTTON_CLASS}
         >
           {isPending ? (
             <>

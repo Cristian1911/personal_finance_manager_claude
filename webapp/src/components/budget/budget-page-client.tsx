@@ -27,12 +27,8 @@ import {
   upsertBudgetForCategory,
 } from "@/actions/budget";
 import { cn } from "@/lib/utils";
-import type { CategoryBudgetData, CurrencyCode } from "@/types/domain";
+import type { BudgetMode, CategoryBudgetData, CurrencyCode } from "@/types/domain";
 import type { AllocationData } from "@/actions/allocation";
-
-// ── Types ────────────────────────────────────────────────────
-
-type BudgetMode = "per_category" | "zero_based";
 
 interface BudgetPageClientProps {
   mode: BudgetMode;
@@ -230,8 +226,7 @@ export function BudgetPageClient({
                   : "bg-emerald-500";
 
           // Pacing context
-          const budgetProgress = budget > 0 ? cat.spent / budget : 0;
-          const pacingDelta = budgetProgress - monthProgress;
+          const pacingDelta = ratio - monthProgress;
           const pacingLabel =
             budget > 0 && pacingDelta > 0.15
               ? "vas por encima del ritmo"
@@ -531,7 +526,8 @@ function InlineBudgetEditor({
       input?.focus();
       input?.select();
     }
-  }, [isEditing, initialAmount]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initialAmount is captured at open time
+  }, [isEditing]);
 
   function commit() {
     const num = parseFloat(draft) || 0;
