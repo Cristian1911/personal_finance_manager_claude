@@ -8,9 +8,8 @@ import { Topbar } from "@/components/layout/topbar";
 import { getAttentionSnapshot } from "@/actions/attention";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
-import { MobileTopbar } from "@/components/mobile/mobile-topbar";
-import { BottomTabBar } from "@/components/mobile/bottom-tab-bar";
-import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
+import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
 import { DevOverlay } from "@/components/dev/dev-overlay";
@@ -61,22 +60,24 @@ export default async function DashboardLayout({
         <div className="hidden lg:block">
           <Topbar profile={profile} attentionSnapshot={attentionSnapshot} />
         </div>
-        {/* Mobile topbar */}
-        <MobileTopbar profile={profile} attentionSnapshot={attentionSnapshot} />
+        {/* Mobile header — v2 */}
+        <MobileHeader
+          variant="dashboard"
+          name={profile.full_name}
+          email={profile.email}
+        />
 
         <KeyboardInsetProvider>
           <main className="flex-1 overflow-x-hidden p-4 lg:p-6 pb-20 lg:pb-6">
-            <MobileSheetProvider accounts={accounts} categories={categories}>
-              <Suspense>
-                <PageTransition>
-                  {children}
-                </PageTransition>
-              </Suspense>
-            </MobileSheetProvider>
+            <Suspense>
+              <PageTransition>
+                {children}
+              </PageTransition>
+            </Suspense>
           </main>
 
-          {/* Mobile bottom navigation */}
-          <BottomTabBar attentionSnapshot={attentionSnapshot} />
+          {/* Mobile bottom navigation — v2 tab bar with center "+" */}
+          <MobileTabBar accounts={accounts} categories={categories} />
         </KeyboardInsetProvider>
       </div>
       {IS_DEV && <DevOverlay />}
