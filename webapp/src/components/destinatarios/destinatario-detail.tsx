@@ -49,6 +49,8 @@ import {
   testDestinatarioPattern,
   findUnlinkedMatches,
   bulkLinkToDestinatario,
+  previewDestinatarioRuleImpact,
+  applyDestinatarioRules,
 } from "@/actions/destinatarios";
 import type {
   DestinatarioWithRules,
@@ -162,8 +164,29 @@ function EditForm({
         formData.set("default_category_id", "");
       }
       const result = await boundUpdate(prevState, formData);
-      if (result.success) toast.success("Destinatario actualizado");
-      else toast.error(result.error);
+      if (result.success) {
+        toast.success("Destinatario actualizado");
+        // Check if any unmatched transactions would be affected by existing rules
+        const preview = await previewDestinatarioRuleImpact(destinatario.id);
+        if (preview.success && preview.data.matchCount > 0) {
+          const confirmed = window.confirm(
+            `Esta regla aplica a ${preview.data.matchCount} transacciones sin destinatario. ¿Vincular automáticamente?`
+          );
+          if (confirmed) {
+            const applyResult = await applyDestinatarioRules(destinatario.id);
+            if (applyResult.success) {
+              const { linked, categorized } = applyResult.data;
+              toast.success(
+                `${linked} transacciones vinculadas${categorized > 0 ? `, ${categorized} categorizadas` : ""}`
+              );
+            } else {
+              toast.error(applyResult.error);
+            }
+          }
+        }
+      } else {
+        toast.error(result.error);
+      }
       return result;
     },
     { success: false, error: "" }
