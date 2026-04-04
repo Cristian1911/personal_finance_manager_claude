@@ -5,6 +5,7 @@ import html2canvas from "html2canvas";
 import { DevFAB } from "./dev-fab";
 import { InspectOverlay } from "./inspect-overlay";
 import { AnnotateCanvas } from "./annotate-canvas";
+import { ReviewSaveDialog } from "./review-save-dialog";
 
 type DevAction = "inspect" | "annotate" | "sketch" | null;
 
@@ -18,6 +19,11 @@ export function DevOverlay() {
   const [activeAction, setActiveAction] = useState<DevAction>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [componentHint, setComponentHint] = useState<string | undefined>();
+  const [pendingSave, setPendingSave] = useState<{
+    excalidrawJson: string;
+    pngBlob: Blob;
+    componentHint: string | null;
+  } | null>(null);
 
   const captureScreenshot = useCallback(async () => {
     const overlay = document.getElementById("dev-overlay-root");
@@ -57,14 +63,7 @@ export function DevOverlay() {
     pngBlob: Blob;
     componentHint: string | null;
   }) {
-    // Task 6 will implement the save-to-Supabase flow here
-    console.log("[UI Pal] Annotation saved:", {
-      jsonLength: data.excalidrawJson.length,
-      pngSize: data.pngBlob.size,
-      component: data.componentHint,
-    });
-    setActiveAction(null);
-    setScreenshot(null);
+    setPendingSave(data);
   }
 
   const showCanvas = activeAction === "annotate" || activeAction === "sketch";
@@ -89,6 +88,19 @@ export function DevOverlay() {
             setActiveAction(null);
             setScreenshot(null);
           }}
+        />
+      )}
+      {pendingSave && (
+        <ReviewSaveDialog
+          excalidrawJson={pendingSave.excalidrawJson}
+          pngBlob={pendingSave.pngBlob}
+          componentHint={pendingSave.componentHint}
+          onSaved={() => {
+            setPendingSave(null);
+            setActiveAction(null);
+            setScreenshot(null);
+          }}
+          onCancel={() => setPendingSave(null)}
         />
       )}
     </div>
