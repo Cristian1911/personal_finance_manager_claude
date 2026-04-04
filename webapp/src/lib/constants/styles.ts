@@ -34,3 +34,22 @@ export const PANEL_INSET_CLASS = "rounded-2xl border border-white/6 bg-black/10"
 /** Compact inset surface with a softer hover state for interactive tiles */
 export const PANEL_INSET_INTERACTIVE_CLASS =
   "rounded-2xl border border-white/6 bg-black/10 transition-colors hover:bg-white/[0.03]";
+
+/** Mobile v2 card: inset container with figure/ground contrast */
+export const MOBILE_CARD_CLASS =
+  "rounded-[14px] border border-white/5 bg-[#161816] p-3";
+
+/** Mobile v2 tight card: no padding, overflow hidden, for list containers */
+export const MOBILE_CARD_TIGHT_CLASS =
+  "rounded-[14px] border border-white/5 bg-[#161816] overflow-hidden";
+
+/** Mobile v2 page background */
+export const MOBILE_BG_CLASS = "bg-[#0e100e]";
+
+/** Mobile v2 eyebrow label */
+export const MOBILE_EYEBROW_CLASS =
+  "text-[8px] font-semibold uppercase tracking-[0.18em] text-[#6b7a5e]";
+
+/** Mobile v2 action button (brass ghost) */
+export const MOBILE_ACTION_BUTTON_CLASS =
+  "text-[10px] font-semibold text-z-brass bg-z-brass/10 border border-z-brass/15 px-2.5 py-1 rounded-lg";
