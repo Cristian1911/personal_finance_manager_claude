@@ -1,27 +1,26 @@
 "use client";
 
 import type { AttentionSignal } from "@/types/attention";
+import type { BurnRateResponse } from "@/actions/burn-rate";
 import type { CurrencyCode } from "@/types/domain";
 import { MobileAlertCard } from "./cards/mobile-alert-card";
-import {
-  MobileHeroCard,
-  type MobileHeroCardProps,
-} from "./cards/mobile-hero-card";
-import { MobileBudgetRing } from "./cards/mobile-budget-ring";
+import { MobileHeroCard, type MobileHeroCardProps } from "./cards/mobile-hero-card";
+import { MobileSpendingPaceTile } from "./cards/mobile-spending-pace";
+import { MobileBudgetTile, type TopCategory } from "./cards/mobile-budget-ring";
 import { MobileUpcomingPayments } from "./cards/mobile-upcoming-payments";
 import { MobileRecentTxns } from "./cards/mobile-recent-txns";
 
-interface TopCategory {
-  name: string;
-  percentUsed: number;
-}
-
 export interface MobileDashboardV2Props {
-  // Alert
   attentionSignals: AttentionSignal[];
-  // Hero
   hero: MobileHeroCardProps;
-  // Upcoming payments
+  burnRateData: BurnRateResponse | null;
+  budget: {
+    totalTarget: number;
+    totalSpent: number;
+    progress: number;
+    currency: CurrencyCode;
+    topCategories: TopCategory[];
+  } | null;
   upcomingPayments: Array<{
     id: string;
     name: string;
@@ -31,7 +30,6 @@ export interface MobileDashboardV2Props {
     accountName?: string;
     frequency?: string;
   }>;
-  // Recent transactions
   recentTransactions: Array<{
     id: string;
     description: string;
@@ -39,49 +37,61 @@ export interface MobileDashboardV2Props {
     currency_code: string;
     direction: "INFLOW" | "OUTFLOW";
   }>;
-  // Budget
-  budget: {
-    totalTarget: number;
-    totalSpent: number;
-    progress: number;
-    currency: CurrencyCode;
-    topCategories: TopCategory[];
-  } | null;
 }
 
 export function MobileDashboardV2({
   attentionSignals,
   hero,
+  burnRateData,
+  budget,
   upcomingPayments,
   recentTransactions,
-  budget,
 }: MobileDashboardV2Props) {
+  const hasPace = !!burnRateData;
+  const hasBudget = !!budget && budget.totalTarget > 0;
+
   return (
-    <div className="space-y-3">
-      {/* ① Alert — conditional, hidden when empty */}
+    <div className="space-y-2">
+      {/* ① Alert pill */}
       <MobileAlertCard signals={attentionSignals} />
 
-      {/* ② Hero — disponible para gastar */}
+      {/* ② Hero */}
       <MobileHeroCard {...hero} />
 
-      {/* ③ Spending pace — injected via Suspense slot from page.tsx */}
-      {/* (not rendered here — see page.tsx integration) */}
-
-      {/* ④ Budget ring */}
-      {budget && (
-        <MobileBudgetRing
-          totalTarget={budget.totalTarget}
-          totalSpent={budget.totalSpent}
-          progress={budget.progress}
-          currency={budget.currency}
-          topCategories={budget.topCategories}
-        />
+      {/* ③ Insight tiles — side by side */}
+      {(hasPace || hasBudget) && (
+        <div className="flex gap-1.5">
+          {hasPace && (
+            <div className="flex-1">
+              <MobileSpendingPaceTile data={burnRateData} />
+            </div>
+          )}
+          {hasBudget && (
+            <div className="flex-1">
+              <MobileBudgetTile
+                totalTarget={budget.totalTarget}
+                totalSpent={budget.totalSpent}
+                progress={budget.progress}
+                topCategories={budget.topCategories}
+              />
+            </div>
+          )}
+        </div>
       )}
 
-      {/* ⑤ Upcoming payments */}
+      {/* Section divider */}
+      <div className="flex items-center gap-2 py-0.5">
+        <div className="h-px flex-1 bg-white/4" />
+        <span className="text-[7px] font-semibold uppercase tracking-[0.2em] text-[#3a3a3a]">
+          Actividad
+        </span>
+        <div className="h-px flex-1 bg-white/4" />
+      </div>
+
+      {/* ④ Upcoming payments */}
       <MobileUpcomingPayments payments={upcomingPayments} />
 
-      {/* ⑥ Recent transactions — below the fold */}
+      {/* ⑤ Recent transactions */}
       <MobileRecentTxns transactions={recentTransactions} />
     </div>
   );
