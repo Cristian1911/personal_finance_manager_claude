@@ -43,7 +43,7 @@ import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
-import { MobileDashboardV2 } from "@/components/mobile/mobile-dashboard-v2";
+import { DashboardFocus } from "@/components/mobile/v2/dashboard-focus";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
@@ -268,7 +268,7 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, categoryBudgetResult, burnRateData] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, _categoryBudgetResult, _burnRateData] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
@@ -285,75 +285,41 @@ export default async function DashboardPage({
 
   const dashboardReminders = pendingReminders.slice(0, 5);
 
-  const mobileRecentTx = recentTx.map((tx) => ({
-    id: tx.id,
-    description: tx.merchant_name || tx.clean_description || "Sin descripción",
-    amount: tx.amount,
-    currency_code: tx.currency_code ?? "COP",
-    direction: tx.direction,
-    date: tx.transaction_date ?? "",
-    category_name: tx.categories?.name_es ?? tx.categories?.name ?? undefined,
-  }));
+  // ── Data for DashboardFocus (mobile v2) ─────────────────────────────────────
 
-  // ── Data for MobileDashboardV2 ──────────────────────────────────────────────
+  const LEVEL_SCORE: Record<string, number> = {
+    excelente: 100,
+    solido: 80,
+    atento: 60,
+    alto: 35,
+    critico: 10,
+  };
+  const meterScores = healthMetersData.meters
+    .filter((m) => m.hasData)
+    .map((m) => LEVEL_SCORE[m.level] ?? 50);
+  const mobileHealthScore =
+    meterScores.length > 0
+      ? Math.round(meterScores.reduce((a, b) => a + b, 0) / meterScores.length)
+      : 0;
 
-  const mobileLiquidAccounts = allAccounts
-    .filter((a) => a.account_type === "CHECKING" || a.account_type === "SAVINGS")
-    .map((a) => ({
-      id: a.id,
-      name: a.name,
-      currentBalance: a.current_balance ?? 0,
-      currencyCode: a.currency_code as CurrencyCode,
-    }));
+  const mobileBudgetPercent =
+    budgetSummary.totalTarget > 0
+      ? Math.round((budgetSummary.totalSpent / budgetSummary.totalTarget) * 100)
+      : 0;
 
-  const mobileFixedExpenses = heroData.pendingObligations.map((o) => ({
-    id: o.id,
-    name: o.name,
-    amount: o.amount,
-    currencyCode: o.currency_code as CurrencyCode,
-  }));
+  const mobilePendingCount = attentionSnapshot.totalAction ?? 0;
 
-  const firstPayment = heroData.pendingObligations[0];
-  const mobileNextPayment = firstPayment
+  const mobileDebtFreeMonths = debtCountdownData?.monthsToFree ?? null;
+
+  const mobileLastTx = recentTx[0]
     ? {
-        name: firstPayment.name,
-        amount: firstPayment.amount,
-        dueDate: firstPayment.due_date,
-        currencyCode: firstPayment.currency_code as CurrencyCode,
+        description:
+          recentTx[0].merchant_name ||
+          recentTx[0].clean_description ||
+          "Sin descripción",
+        amount: recentTx[0].amount,
       }
     : null;
-
-  const today = new Date();
-  const daysToNextPayment = firstPayment
-    ? Math.ceil(
-        (new Date(firstPayment.due_date).getTime() - today.getTime()) /
-          (1000 * 60 * 60 * 24)
-      )
-    : null;
-
-  // Total spent this month (for the math breakdown)
-  // available = total - fixed - spent → spent = total - fixed - available
-  const mobileTotalSpent = heroData.totalLiquid - heroData.totalPending - heroData.availableToSpend;
-
-  // Top 3 budget categories by % used
-  const categoryBudgetData =
-    categoryBudgetResult.success ? categoryBudgetResult.data : [];
-  const mobileTopCategories = categoryBudgetData
-    .filter((c) => c.budget && c.budget > 0 && c.direction === "OUTFLOW")
-    .sort((a, b) => b.percentUsed - a.percentUsed)
-    .slice(0, 3)
-    .map((c) => ({
-      name: c.name_es ?? c.name,
-      percentUsed: c.percentUsed,
-    }));
-
-  const mobileUpcomingPaymentsV2 = heroData.pendingObligations.slice(0, 5).map((o) => ({
-    id: o.id,
-    name: o.name,
-    dueDate: o.due_date,
-    amount: o.amount,
-    currencyCode: o.currency_code,
-  }));
 
   const quickUpdateAccounts: QuickValueUpdateAccount[] = allAccounts.map((account) => ({
     id: account.id,
@@ -377,38 +343,17 @@ export default async function DashboardPage({
 
   return (
     <>
-      {/* Mobile dashboard */}
+      {/* Mobile dashboard — v2 Focus mode */}
       <div className="lg:hidden">
-        <div className="space-y-3">
-          <MobileDashboardV2
-            attentionSignals={attentionSnapshot.signals}
-            hero={{
-              availableToSpend: heroData.availableToSpend,
-              totalBalance: heroData.totalLiquid,
-              pendingFixed: heroData.totalPending,
-              totalSpent: mobileTotalSpent,
-              currency: currency as CurrencyCode,
-              daysToNextPayment,
-              liquidAccounts: mobileLiquidAccounts,
-              fixedExpenses: mobileFixedExpenses,
-              nextPayment: mobileNextPayment,
-            }}
-            burnRateData={burnRateData}
-            upcomingPayments={mobileUpcomingPaymentsV2}
-            recentTransactions={mobileRecentTx}
-            budget={
-              budgetSummary.totalTarget > 0
-                ? {
-                    totalTarget: budgetSummary.totalTarget,
-                    totalSpent: budgetSummary.totalSpent,
-                    progress: budgetSummary.progress,
-                    currency: currency as CurrencyCode,
-                    topCategories: mobileTopCategories,
-                  }
-                : null
-            }
-          />
-        </div>
+        <DashboardFocus
+          healthScore={mobileHealthScore}
+          availableToSpend={heroData.availableToSpend}
+          budgetPercent={mobileBudgetPercent}
+          pendingCount={mobilePendingCount}
+          debtFreeMonths={mobileDebtFreeMonths}
+          lastTransaction={mobileLastTx}
+          currency={currency as CurrencyCode}
+        />
       </div>
 
       {/* Desktop dashboard — section-based layout */}
