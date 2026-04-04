@@ -1,13 +1,25 @@
-import React from "react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 
-const Link = React.forwardRef<
-  HTMLAnchorElement,
-  React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }
->(({ href, children, ...props }, ref) => (
-  <a ref={ref} href={href} {...props}>
-    {children}
-  </a>
-));
-Link.displayName = "Link";
+interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
+  href: string | { pathname?: string; query?: Record<string, string> };
+  prefetch?: boolean;
+  replace?: boolean;
+  scroll?: boolean;
+  children?: ReactNode;
+}
 
-export default Link;
+export default function Link({
+  href,
+  children,
+  prefetch: _prefetch,
+  replace: _replace,
+  scroll: _scroll,
+  ...rest
+}: LinkProps) {
+  const resolvedHref = typeof href === "string" ? href : href.pathname ?? "#";
+  return (
+    <a href={resolvedHref} {...rest}>
+      {children}
+    </a>
+  );
+}
