@@ -48,6 +48,11 @@ interface InboxTransactionRowProps {
   onToggleSelect: () => void;
   onCategorize: (categoryId: string, includeSimilarIds?: string[]) => void;
   isPending: boolean;
+  destinatarioSuggestion?: {
+    destinatario_id: string;
+    destinatario_name: string;
+    category_id: string | null;
+  } | null;
 }
 
 export function InboxTransactionRow({
@@ -60,6 +65,7 @@ export function InboxTransactionRow({
   onToggleSelect,
   onCategorize,
   isPending,
+  destinatarioSuggestion = null,
 }: InboxTransactionRowProps) {
   const [manualValue, setManualValue] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -310,6 +316,11 @@ export function InboxTransactionRow({
 
         {/* Suggestion or manual pick */}
         <div className="flex items-center gap-2 flex-wrap">
+          {destinatarioSuggestion && (
+            <div className="flex items-center gap-1.5 rounded-full border border-z-brass/20 bg-z-brass/8 px-2.5 py-1 text-[11px] font-medium text-z-brass">
+              Destinatario: {destinatarioSuggestion.destinatario_name}
+            </div>
+          )}
           {suggestion && !showPicker ? (
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 text-xs text-z-alert">
