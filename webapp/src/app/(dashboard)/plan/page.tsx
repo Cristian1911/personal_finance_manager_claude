@@ -13,8 +13,10 @@ import { PlanHero } from "@/components/plan/plan-hero";
 import { PlanRecurringSection } from "@/components/plan/plan-recurring-section";
 import { PlanScenarioPreview } from "@/components/plan/plan-scenario-preview";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
+import { PlanHub } from "@/components/mobile/v2/plan-hub";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
-import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
+import { formatMonthLabel, parseMonth, getDaysRemainingInMonth } from "@/lib/utils/date";
 
 export default async function PlanPage({
   searchParams,
@@ -34,22 +36,73 @@ export default async function PlanPage({
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <div className="space-y-3 lg:hidden">
-        <div className="space-y-1">
-          <SectionEyebrow>Plan</SectionEyebrow>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Tu capa estratégica</h1>
-            <p className="text-sm text-muted-foreground">
-              Decide qué ajustar antes de bajar a detalle
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 rounded-full border border-white/6 bg-z-surface-2 px-3 py-2 text-sm text-muted-foreground">
-          <CalendarRange className="size-4 text-z-brass" />
-          <Suspense fallback={<span className="capitalize">{monthLabel}</span>}>
-            <MonthSelector />
-          </Suspense>
-        </div>
+      {/* Mobile: v2 Plan hub */}
+      <div className="lg:hidden">
+        <MobileHeader
+          variant="page"
+          title="Plan"
+          subtitle={monthLabel}
+          action={
+            <Suspense fallback={<span className="capitalize text-xs">{monthLabel}</span>}>
+              <MonthSelector />
+            </Suspense>
+          }
+        />
+
+        {(() => {
+          const target = parseMonth(month);
+          const daysRemaining = getDaysRemainingInMonth(target);
+          const totalBudgeted = planData.budget.totalBudgeted;
+          const totalSpent = planData.budget.totalSpent;
+          const budgetPercent =
+            totalBudgeted > 0
+              ? Math.round((totalSpent / totalBudgeted) * 100)
+              : 0;
+          const remaining = Math.max(0, totalBudgeted - totalSpent);
+          const dailyAvailable = daysRemaining > 0 ? remaining / daysRemaining : 0;
+
+          const firstUpcoming = planData.recurring.upcoming[0];
+          const nextPaymentName = firstUpcoming?.template.description ?? firstUpcoming?.template.account?.name ?? null;
+          const nextPaymentDays = firstUpcoming
+            ? Math.max(
+                0,
+                Math.ceil(
+                  (new Date(firstUpcoming.next_date).getTime() - Date.now()) /
+                    (1000 * 60 * 60 * 24)
+                )
+              )
+            : null;
+
+          const allocation = planData.budget.allocation;
+          const allocationStyle: "50_30_20" | "ynab" | "per_category" =
+            allocation ? "50_30_20" : "per_category";
+
+          const distribution = allocation
+            ? [
+                { label: "Necesidades", percent: allocation.needs.percent, color: "#4ade80" },
+                { label: "Gustos", percent: allocation.wants.percent, color: "#c4a94d" },
+                { label: "Ahorro", percent: allocation.savings.percent, color: "#60a5fa" },
+              ]
+            : [];
+
+          return (
+            <div className="pt-3">
+              <PlanHub
+                budgetPercent={budgetPercent}
+                spent={totalSpent}
+                total={totalBudgeted}
+                dailyAvailable={dailyAvailable}
+                daysRemaining={daysRemaining}
+                overBudgetCount={planData.budget.overLimitCount}
+                nextPaymentName={nextPaymentName}
+                nextPaymentDays={nextPaymentDays}
+                allocationStyle={allocationStyle}
+                distribution={distribution}
+                currency={planData.currency}
+              />
+            </div>
+          );
+        })()}
       </div>
 
       <div className="hidden lg:flex lg:items-center lg:justify-between lg:gap-4">
