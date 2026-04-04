@@ -9,7 +9,12 @@ import {
 } from "@/lib/validators/destinatario";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
-import { cleanDescription, type DestinatarioRule } from "@zeta/shared";
+import {
+  cleanDescription,
+  matchDestinatario,
+  prepareDestinatarioRules,
+  type DestinatarioRule,
+} from "@zeta/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,7 +154,7 @@ async function getDestinatarioCached(
   };
 }
 
-async function getDestinatarioRulesCached(
+export async function getDestinatarioRulesCached(
   userId: string
 ): Promise<DestinatarioRule[]> {
   "use cache";
@@ -185,6 +190,27 @@ async function getDestinatarioRulesCached(
   }
 
   return rules;
+}
+
+/**
+ * Shared pipeline: fetch user's destinatario rules, match text against them.
+ * Used by all transaction creation flows before falling back to autoCategorize().
+ */
+export async function matchTransactionToDestinatario(
+  userId: string,
+  text: string
+): Promise<{ destinatario_id: string; category_id: string | null } | null> {
+  const rules = await getDestinatarioRulesCached(userId);
+  if (rules.length === 0) return null;
+
+  const prepared = prepareDestinatarioRules(rules);
+  const match = matchDestinatario(text, prepared);
+  if (!match) return null;
+
+  return {
+    destinatario_id: match.destinatario_id,
+    category_id: match.category_id ?? null,
+  };
 }
 
 async function getUnmatchedDescriptionsCached(
