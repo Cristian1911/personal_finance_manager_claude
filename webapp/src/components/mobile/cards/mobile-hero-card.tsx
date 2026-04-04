@@ -43,11 +43,12 @@ export interface MobileHeroCardProps {
   nextPayment: NextPayment | null;
 }
 
-function getCapacityMessage(available: number): string {
-  if (available <= 0) return "Sin margen — revisa tus gastos";
-  if (available < 100_000) return "Compras pequeñas ✓";
-  if (available < 500_000) return "Margen moderado";
-  return "Buen margen este período";
+function abbreviate(amount: number, currency: CurrencyCode = "COP"): string {
+  const symbol = currency === "USD" ? "US$" : "$";
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000) return `${symbol}${(amount / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${symbol}${Math.round(amount / 1_000)}k`;
+  return `${symbol}${amount}`;
 }
 
 export function MobileHeroCard({
@@ -70,7 +71,7 @@ export function MobileHeroCard({
   const isNegative = availableToSpend < 0;
 
   return (
-    <div className="rounded-[18px] border border-white/6 bg-[linear-gradient(160deg,#1a2518,#0d1117)] p-4">
+    <div className="rounded-[18px] border border-white/6 bg-[linear-gradient(160deg,#1a2518,#0d1117)] p-3.5">
       {/* Hero number — tappable for math */}
       <button
         type="button"
@@ -78,72 +79,63 @@ export function MobileHeroCard({
         onClick={() => toggle("math")}
         aria-expanded={expanded === "math"}
       >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-          Disponible para gastar
+        <p className="text-[8px] font-semibold uppercase tracking-[0.2em] text-z-sage-dark">
+          Disponible
         </p>
         <p
           className={cn(
-            "mt-1 text-[30px] font-bold leading-tight tracking-tight",
+            "mt-0.5 text-[32px] font-extrabold leading-tight tracking-tight",
             isNegative ? "text-z-debt" : "text-z-sage-lightest"
           )}
         >
           {formatCurrency(availableToSpend, currency)}
         </p>
-        <p className={cn("mt-1 text-xs", isNegative ? "text-z-debt/70" : "text-z-sage-dark")}>
-          {getCapacityMessage(availableToSpend)}
-        </p>
       </button>
 
       {/* Math expansion */}
-      <div
-        className="grid transition-[grid-template-rows] duration-200 ease-out"
-        style={{ gridTemplateRows: expanded === "math" ? "1fr" : "0fr" }}
-      >
-        <div className="overflow-hidden">
-          <div
-            className={cn(
-              "pt-3 transition-opacity duration-150",
-              expanded === "math" ? "opacity-100 delay-75" : "opacity-0"
-            )}
-          >
-            <div className="rounded-xl bg-black/20 p-3 text-xs">
-              <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Cómo se calcula
-              </p>
-              <div className="space-y-1">
-                <div className="flex justify-between text-z-sage-light">
-                  <span>Saldo total</span>
-                  <span>{formatCurrency(totalBalance, currency)}</span>
-                </div>
-                <div className="flex justify-between text-z-expense">
-                  <span>− Gastos fijos</span>
-                  <span>{formatCurrency(pendingFixed, currency)}</span>
-                </div>
-                <div className="flex justify-between text-z-expense">
-                  <span>− Ya gastado</span>
-                  <span>{formatCurrency(totalSpent, currency)}</span>
-                </div>
-                <div className="flex justify-between border-t border-white/10 pt-1.5 font-semibold text-z-sage-lightest">
-                  <span>= Disponible</span>
-                  <span>{formatCurrency(availableToSpend, currency)}</span>
-                </div>
-              </div>
+      <CollapsePanel visible={expanded === "math"}>
+        <div className="rounded-xl bg-black/20 p-3 text-xs">
+          <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Cómo se calcula
+          </p>
+          <div className="space-y-1">
+            <div className="flex justify-between text-z-sage-light">
+              <span>Saldo total</span>
+              <span>{formatCurrency(totalBalance, currency)}</span>
+            </div>
+            <div className="flex justify-between text-z-expense">
+              <span>− Gastos fijos</span>
+              <span>{formatCurrency(pendingFixed, currency)}</span>
+            </div>
+            <div className="flex justify-between text-z-expense">
+              <span>− Ya gastado</span>
+              <span>{formatCurrency(totalSpent, currency)}</span>
+            </div>
+            <div className="flex justify-between border-t border-white/10 pt-1.5 font-semibold text-z-sage-lightest">
+              <span>= Disponible</span>
+              <span>{formatCurrency(availableToSpend, currency)}</span>
             </div>
           </div>
+          <Link
+            href="/accounts"
+            className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-white/8 bg-white/3 px-3 py-1.5 text-[11px] font-semibold text-z-sage-light transition-colors hover:bg-white/5"
+          >
+            Ver cuentas <ChevronRight className="h-3 w-3" />
+          </Link>
         </div>
-      </div>
+      </CollapsePanel>
 
       {/* Stat chips */}
-      <div className="mt-3 flex gap-2">
+      <div className="mt-2.5 flex gap-1.5">
         <ChipButton
           label="Saldo"
-          value={formatCurrency(totalBalance, currency)}
+          value={abbreviate(totalBalance, currency)}
           active={expanded === "saldo"}
           onClick={() => toggle("saldo")}
         />
         <ChipButton
           label="Fijos"
-          value={formatCurrency(pendingFixed, currency)}
+          value={abbreviate(pendingFixed, currency)}
           active={expanded === "fijos"}
           onClick={() => toggle("fijos")}
         />
@@ -156,86 +148,84 @@ export function MobileHeroCard({
       </div>
 
       {/* Saldo expansion */}
-      <ChipDetail visible={expanded === "saldo"}>
-        <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-z-brass">
-          Saldo por cuenta
-        </p>
-        {liquidAccounts.length > 0 ? (
-          <div className="space-y-1">
-            {liquidAccounts.map((acc) => (
-              <div key={acc.id} className="flex justify-between text-xs text-z-sage-light">
-                <span className="truncate mr-2">{acc.name}</span>
-                <span className="shrink-0">
-                  {formatCurrency(acc.currentBalance, acc.currencyCode)}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">Sin cuentas líquidas</p>
-        )}
-        <Link
-          href="/accounts"
-          className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-white/8 bg-white/3 px-3 py-1.5 text-[11px] font-semibold text-z-sage-light transition-colors hover:bg-white/5"
-        >
-          Ver cuentas <ChevronRight className="h-3 w-3" />
-        </Link>
-      </ChipDetail>
-
-      {/* Fijos expansion */}
-      <ChipDetail visible={expanded === "fijos"}>
-        <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-z-brass">
-          Gastos fijos del período
-        </p>
-        {fixedExpenses.length > 0 ? (
-          <>
+      <CollapsePanel visible={expanded === "saldo"}>
+        <div className="rounded-xl bg-black/20 p-3">
+          <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-z-brass">
+            Saldo por cuenta
+          </p>
+          {liquidAccounts.length > 0 ? (
             <div className="space-y-1">
-              {fixedExpenses.map((exp) => (
-                <div key={exp.id} className="flex justify-between text-xs text-z-sage-light">
-                  <span className="truncate mr-2">{exp.name}</span>
-                  <span className="shrink-0">
-                    {formatCurrency(exp.amount, exp.currencyCode)}
-                  </span>
+              {liquidAccounts.map((acc) => (
+                <div key={acc.id} className="flex justify-between text-xs text-z-sage-light">
+                  <span className="mr-2 truncate">{acc.name}</span>
+                  <span className="shrink-0">{formatCurrency(acc.currentBalance, acc.currencyCode)}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1.5 text-xs font-semibold text-z-sage-lightest">
-              <span>Total fijos</span>
-              <span>{formatCurrency(pendingFixed, currency)}</span>
-            </div>
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground">Sin gastos fijos registrados</p>
-        )}
-      </ChipDetail>
+          ) : (
+            <p className="text-xs text-muted-foreground">Sin cuentas líquidas</p>
+          )}
+        </div>
+      </CollapsePanel>
+
+      {/* Fijos expansion */}
+      <CollapsePanel visible={expanded === "fijos"}>
+        <div className="rounded-xl bg-black/20 p-3">
+          <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-z-brass">
+            Gastos fijos del período
+          </p>
+          {fixedExpenses.length > 0 ? (
+            <>
+              <div className="space-y-1">
+                {fixedExpenses.map((exp) => (
+                  <div key={exp.id} className="flex justify-between text-xs text-z-sage-light">
+                    <span className="mr-2 truncate">{exp.name}</span>
+                    <span className="shrink-0">{formatCurrency(exp.amount, exp.currencyCode)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1.5 flex justify-between border-t border-white/10 pt-1.5 text-xs font-semibold text-z-sage-lightest">
+                <span>Total fijos</span>
+                <span>{formatCurrency(pendingFixed, currency)}</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">Sin gastos fijos registrados</p>
+          )}
+        </div>
+      </CollapsePanel>
 
       {/* Próximo expansion */}
-      <ChipDetail visible={expanded === "proximo"}>
-        <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-z-brass">
-          Próximo pago
-        </p>
-        {nextPayment ? (
-          <div className="space-y-1 text-xs text-z-sage-light">
-            <div className="flex justify-between">
-              <span>Nombre</span>
-              <span>{nextPayment.name}</span>
+      <CollapsePanel visible={expanded === "proximo"}>
+        <div className="rounded-xl bg-black/20 p-3">
+          <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-z-brass">
+            Próximo pago
+          </p>
+          {nextPayment ? (
+            <div className="space-y-1 text-xs text-z-sage-light">
+              <div className="flex justify-between">
+                <span>Nombre</span>
+                <span>{nextPayment.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Monto</span>
+                <span>{formatCurrency(nextPayment.amount, nextPayment.currencyCode)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Fecha</span>
+                <span>{formatDate(nextPayment.dueDate, "dd MMM yyyy")}</span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span>Monto</span>
-              <span>{formatCurrency(nextPayment.amount, nextPayment.currencyCode)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Fecha</span>
-              <span>{formatDate(nextPayment.dueDate, "dd MMM yyyy")}</span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">Sin pagos próximos</p>
-        )}
-      </ChipDetail>
+          ) : (
+            <p className="text-xs text-muted-foreground">Sin pagos próximos</p>
+          )}
+        </div>
+      </CollapsePanel>
     </div>
   );
 }
+
+// ─── Shared collapse panel ───────────────────────────────────────────────────
 
 function ChipButton({
   label,
@@ -258,7 +248,7 @@ function ChipButton({
       )}
       aria-expanded={active}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       <span className={cn("text-[13px] font-semibold", active ? "text-z-brass" : "text-z-sage-light")}>
@@ -268,7 +258,7 @@ function ChipButton({
   );
 }
 
-function ChipDetail({ visible, children }: { visible: boolean; children: ReactNode }) {
+function CollapsePanel({ visible, children }: { visible: boolean; children: ReactNode }) {
   return (
     <div
       className="grid transition-[grid-template-rows] duration-200 ease-out"
@@ -277,7 +267,7 @@ function ChipDetail({ visible, children }: { visible: boolean; children: ReactNo
       <div className="overflow-hidden">
         <div
           className={cn(
-            "rounded-xl bg-black/20 p-3 mt-2 transition-opacity duration-150",
+            "mt-2 transition-opacity duration-150",
             visible ? "opacity-100 delay-75" : "opacity-0"
           )}
         >

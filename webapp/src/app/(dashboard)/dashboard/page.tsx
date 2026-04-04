@@ -44,7 +44,6 @@ import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
 import { MobileDashboardV2 } from "@/components/mobile/mobile-dashboard-v2";
-import { MobileSpendingPace } from "@/components/mobile/cards/mobile-spending-pace";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
@@ -71,7 +70,7 @@ import { DeseosWidget } from "@/components/dashboard/deseos-widget";
 import {
   AccountsSkeleton,
   HeatmapSkeleton,
-  MobileBurnRateSkeleton,
+
 } from "@/components/dashboard/dashboard-skeletons";
 import type { HealthMetersData } from "@/actions/health-meters";
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -126,15 +125,6 @@ async function AccountsSection({
       />
     </>
   );
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Tier 2 async Server Components — mobile
-// ──────────────────────────────────────────────────────────────────────────────
-
-async function MobileSpendingPaceSection({ currency }: { currency: CurrencyCode }) {
-  const burnRateData = await getBurnRate(currency);
-  return burnRateData ? <MobileSpendingPace data={burnRateData} /> : null;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -278,7 +268,7 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, categoryBudgetResult] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, categoryBudgetResult, burnRateData] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
@@ -290,6 +280,7 @@ export default async function DashboardPage({
     getWishlistNudges(),
     getBudgetSummary(month),
     getCategoriesWithBudgetData(month, currency),
+    getBurnRate(currency),
   ]);
 
   const dashboardReminders = pendingReminders.slice(0, 5);
@@ -402,6 +393,7 @@ export default async function DashboardPage({
               fixedExpenses: mobileFixedExpenses,
               nextPayment: mobileNextPayment,
             }}
+            burnRateData={burnRateData}
             upcomingPayments={mobileUpcomingPaymentsV2}
             recentTransactions={mobileRecentTx}
             budget={
@@ -416,10 +408,6 @@ export default async function DashboardPage({
                 : null
             }
           />
-          {/* Tier 2: spending pace (streams in) */}
-          <Suspense fallback={<MobileBurnRateSkeleton />}>
-            <MobileSpendingPaceSection currency={currency} />
-          </Suspense>
         </div>
       </div>
 

@@ -3,22 +3,11 @@
 import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { ChevronRight, CircleAlert, Inbox, Bell, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { AttentionSignal } from "@/types/attention";
-import { ExpandableCard } from "./expandable-card";
-
-interface MobileAlertCardProps {
-  signals: AttentionSignal[];
-}
 
 const STORAGE_KEY = "zeta:dismissed-alert";
-const DISMISS_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-const SIGNAL_CONFIG: Record<string, { icon: typeof CircleAlert; label: string }> = {
-  uncategorized: { icon: Inbox, label: "transacciones sin categoría" },
-  destinatario_suggestions: { icon: Inbox, label: "comercios por asignar" },
-  overdue_reminders: { icon: Bell, label: "recordatorios vencidos" },
-};
+const DISMISS_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function getTopSignal(signals: AttentionSignal[]): AttentionSignal | null {
   const sorted = [...signals].sort((a, b) => {
@@ -34,7 +23,6 @@ function isDismissed(signal: AttentionSignal): boolean {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
     const dismissed = JSON.parse(raw) as { key: string; count: number; at: number };
-    // Show again if signal changed (different type or count changed) or timeout expired
     if (dismissed.key !== signal.key || dismissed.count !== signal.count) return false;
     return Date.now() - dismissed.at < DISMISS_DURATION_MS;
   } catch {
@@ -48,15 +36,15 @@ function dismissSignal(signal: AttentionSignal) {
       STORAGE_KEY,
       JSON.stringify({ key: signal.key, count: signal.count, at: Date.now() })
     );
-  } catch {
-    // localStorage unavailable — dismiss only for this render via state
+  } catch (error) {
+    console.error("Failed to persist dismissed alert:", error);
   }
 }
 
-export function MobileAlertCard({ signals }: MobileAlertCardProps) {
-  const [expanded, setExpanded] = useState(false);
+export function MobileAlertCard({ signals }: { signals: AttentionSignal[] }) {
   const signal = useMemo(() => getTopSignal(signals), [signals]);
   const [hidden, setHidden] = useState(() => (signal ? isDismissed(signal) : false));
+  const [expanded, setExpanded] = useState(false);
 
   const handleDismiss = useCallback(
     (e: React.MouseEvent) => {
@@ -64,7 +52,6 @@ export function MobileAlertCard({ signals }: MobileAlertCardProps) {
       if (signal) {
         dismissSignal(signal);
         setHidden(true);
-        setExpanded(false);
       }
     },
     [signal]
@@ -72,67 +59,84 @@ export function MobileAlertCard({ signals }: MobileAlertCardProps) {
 
   if (!signal || hidden) return null;
 
-  const config = SIGNAL_CONFIG[signal.key];
-  const Icon = config?.icon ?? CircleAlert;
   const isAction = signal.priority === "action";
 
   return (
-    <ExpandableCard
-      expanded={expanded}
-      onToggle={() => setExpanded((v) => !v)}
-      className={cn(
-        "border-z-brass/20 bg-gradient-to-br from-[rgba(212,168,83,0.08)] to-transparent",
-        isAction && "border-z-debt/20 from-[rgba(204,68,68,0.08)]"
-      )}
-      compact={
-        <div className="flex items-center gap-3 px-4 py-3">
+    <div className="flex flex-col items-center gap-2">
+      {/* Pill */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[11px] font-semibold transition-colors",
+          isAction
+            ? "border-z-debt/20 bg-z-debt/8 text-z-debt"
+            : "border-z-brass/20 bg-z-brass/8 text-z-brass"
+        )}
+      >
+        <span
+          className={cn(
+            "h-[5px] w-[5px] rounded-full",
+            isAction ? "bg-z-debt" : "bg-z-brass"
+          )}
+        />
+        {signal.count} {signal.label}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className={cn(
+            "ml-1 opacity-40 transition-opacity hover:opacity-80",
+            isAction ? "text-z-debt" : "text-z-brass"
+          )}
+          aria-label="Descartar alerta"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </button>
+
+      {/* Expanded dropdown */}
+      <div
+        className="grid w-full transition-[grid-template-rows] duration-200 ease-out"
+        style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
           <div
             className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-              isAction ? "bg-z-debt/15" : "bg-z-brass/15"
-            )}
-          >
-            <Icon className={cn("h-3.5 w-3.5", isAction ? "text-z-debt" : "text-z-brass")} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className={cn("truncate text-xs font-semibold", isAction ? "text-z-debt" : "text-z-brass")}>
-              {signal.label}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {signal.count} {signal.count === 1 ? "pendiente" : "pendientes"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/10"
-            aria-label="Descartar alerta"
-          >
-            <X className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        </div>
-      }
-      detail={
-        <div className="px-4 pb-3 pt-0">
-          <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
-            {isAction
-              ? "Esto necesita tu atención para mantener tus finanzas al día."
-              : "Una sugerencia para mejorar la organización de tus datos."}
-          </p>
-          <Link
-            href={signal.actionHref}
-            className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-xs font-semibold transition-colors",
+              "rounded-xl border p-3 transition-opacity duration-150",
+              expanded ? "opacity-100 delay-75" : "opacity-0",
               isAction
-                ? "border-z-debt/25 bg-z-debt/10 text-z-debt hover:bg-z-debt/15"
-                : "border-z-brass/25 bg-z-brass/10 text-z-brass hover:bg-z-brass/15"
+                ? "border-z-debt/15 bg-z-debt/5"
+                : "border-z-brass/15 bg-z-brass/5"
             )}
           >
-            Ir a {signal.page === "transactions" ? "movimientos" : signal.page}
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+            <p className="mb-2.5 text-center text-xs text-muted-foreground">
+              {isAction
+                ? "Organízalas para que tu presupuesto sea más preciso."
+                : "Una sugerencia para mejorar la organización de tus datos."}
+            </p>
+            <div className="flex gap-2">
+              <Link
+                href={signal.actionHref}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition-colors",
+                  isAction
+                    ? "border-z-debt/20 bg-z-debt/10 text-z-debt hover:bg-z-debt/15"
+                    : "border-z-brass/20 bg-z-brass/10 text-z-brass hover:bg-z-brass/15"
+                )}
+              >
+                {signal.page === "transactions" ? "Categorizar" : "Resolver"} ›
+              </Link>
+              <button
+                type="button"
+                onClick={handleDismiss}
+                className="flex items-center justify-center rounded-lg border border-white/6 px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-white/5"
+              >
+                Ocultar
+              </button>
+            </div>
+          </div>
         </div>
-      }
-    />
+      </div>
+    </div>
   );
 }

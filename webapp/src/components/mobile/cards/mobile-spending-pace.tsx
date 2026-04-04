@@ -1,128 +1,119 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { ChevronRight } from "lucide-react";
 import type { BurnRateResponse } from "@/actions/burn-rate";
-import { ExpandableCard } from "./expandable-card";
 
-interface MobileSpendingPaceProps {
+// ─── Tile (compact, for the side-by-side row) ────────────────────────────────
+
+export function SpendingPaceTile({
+  data,
+  active,
+  onClick,
+}: {
   data: BurnRateResponse;
-}
-
-export function MobileSpendingPace({ data }: MobileSpendingPaceProps) {
-  const [expanded, setExpanded] = useState(false);
-
-  const { discretionary, currency } = data;
-  const { runwayDays, dailyAverage, dataPoints } = discretionary;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const { runwayDays } = data.discretionary;
   const now = new Date();
   const dayOfMonth = now.getDate();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const progress = Math.min((dayOfMonth / daysInMonth) * 100, 100);
-
-  // Color based on runway vs remaining days
   const daysRemaining = daysInMonth - dayOfMonth;
-  const isWarning = runwayDays < daysRemaining;
   const isCritical = runwayDays < daysRemaining * 0.5;
+  const isWarning = runwayDays < daysRemaining;
 
   return (
-    <ExpandableCard
-      expanded={expanded}
-      onToggle={() => setExpanded((v) => !v)}
-      compact={
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <span className={cn(
-              "text-xs font-semibold",
-              isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light"
-            )}>
-              Ritmo de gasto
-            </span>
-            <span className={cn(
-              "text-[11px] font-semibold",
-              isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light"
-            )}>
-              {Math.round(runwayDays)} días
-            </span>
-          </div>
-          <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-white/5">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-500",
-                isCritical
-                  ? "bg-gradient-to-r from-z-brass to-z-debt"
-                  : isWarning
-                    ? "bg-gradient-to-r from-z-sage-light to-z-brass"
-                    : "bg-z-sage-light"
-              )}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <div className="mt-1 flex justify-between">
-            <span className="text-[10px] text-muted-foreground">
-              Día {dayOfMonth} de {daysInMonth}
-            </span>
-            <span className="text-[10px] text-muted-foreground">
-              Toca para detalles ›
-            </span>
-          </div>
-        </div>
-      }
-      detail={
-        <div className="px-4 pb-3 pt-0">
-          <p className="mb-2 text-xs font-semibold text-z-brass">Proyección de gasto</p>
-          <RunwayChart
-            dataPoints={dataPoints}
-            runwayDays={runwayDays}
-            dayOfMonth={dayOfMonth}
-            daysInMonth={daysInMonth}
-          />
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-            {isCritical ? (
-              <>
-                Si sigues gastando así, te pasas el{" "}
-                <span className="font-semibold text-z-debt">
-                  día {Math.min(dayOfMonth + Math.round(runwayDays), daysInMonth)}
-                </span>
-                . Reduce{" "}
-                <span className="text-z-sage-light">
-                  {formatCurrency(
-                    dailyAverage - data.disponible / Math.max(daysRemaining, 1),
-                    currency
-                  )}
-                  /día
-                </span>{" "}
-                para llegar al {daysInMonth}.
-              </>
-            ) : isWarning ? (
-              <>
-                Tu ritmo está un poco alto. Tienes margen para{" "}
-                <span className="font-semibold text-z-brass">
-                  {Math.round(runwayDays)} días
-                </span>{" "}
-                al ritmo actual.
-              </>
-            ) : (
-              <>
-                Vas bien — tu ritmo permite llegar al{" "}
-                <span className="font-semibold text-z-sage-light">
-                  día {daysInMonth}
-                </span>{" "}
-                con margen.
-              </>
-            )}
-          </p>
-          <Link
-            href="/dashboard#burn-rate"
-            className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-z-brass/20 bg-z-brass/8 px-3 py-2 text-[11px] font-semibold text-z-brass transition-colors hover:bg-z-brass/12"
-          >
-            Ver análisis completo <ChevronRight className="h-3 w-3" />
-          </Link>
-        </div>
-      }
-    />
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full flex-col items-center rounded-xl border bg-[#111] p-2.5 text-center transition-colors",
+        active
+          ? (isCritical ? "border-z-debt/25" : isWarning ? "border-z-brass/25" : "border-z-sage-light/25")
+          : "border-white/4"
+      )}
+      aria-expanded={active}
+    >
+      <span className={cn(
+        "text-[22px] font-extrabold leading-none",
+        isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light"
+      )}>
+        {Math.round(runwayDays)}d
+      </span>
+      <div className="mx-auto mt-1.5 h-[3px] w-3/4 overflow-hidden rounded-full bg-white/5">
+        <div
+          className={cn(
+            "h-full rounded-full",
+            isCritical
+              ? "bg-gradient-to-r from-z-brass to-z-debt"
+              : isWarning
+                ? "bg-gradient-to-r from-z-sage-light to-z-brass"
+                : "bg-z-sage-light"
+          )}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <span className={cn(
+        "mt-1 text-[7px] font-semibold uppercase tracking-[0.1em]",
+        active ? (isCritical ? "text-z-debt" : isWarning ? "text-z-brass" : "text-z-sage-light") : "text-muted-foreground"
+      )}>
+        Ritmo
+      </span>
+    </button>
+  );
+}
+
+// ─── Detail panel (full-width, rendered below tiles row) ─────────────────────
+
+export function SpendingPaceDetail({ data }: { data: BurnRateResponse }) {
+  const { discretionary, currency, disponible } = data;
+  const { runwayDays, dailyAverage, dataPoints } = discretionary;
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysRemaining = daysInMonth - dayOfMonth;
+  const isCritical = runwayDays < daysRemaining * 0.5;
+  const isWarning = runwayDays < daysRemaining;
+
+  return (
+    <div className="rounded-xl border border-white/6 bg-[#111] p-3">
+      <p className="mb-2 text-[10px] font-semibold text-z-brass">Proyección de gasto</p>
+      <RunwayChart
+        dataPoints={dataPoints}
+        runwayDays={runwayDays}
+        dayOfMonth={dayOfMonth}
+        daysInMonth={daysInMonth}
+      />
+      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+        {isCritical ? (
+          <>
+            Reduce{" "}
+            <span className="text-z-sage-light">
+              {formatCurrency(dailyAverage - disponible / Math.max(daysRemaining, 1), currency)}/día
+            </span>{" "}
+            para llegar al {daysInMonth}.
+          </>
+        ) : isWarning ? (
+          <>
+            Margen para{" "}
+            <span className="font-semibold text-z-brass">{Math.round(runwayDays)} días</span>{" "}
+            al ritmo actual.
+          </>
+        ) : (
+          <>Vas bien — llegas al día {daysInMonth} con margen.</>
+        )}
+      </p>
+      <Link
+        href="/dashboard#burn-rate"
+        className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-z-brass/20 bg-z-brass/8 px-3 py-1.5 text-[11px] font-semibold text-z-brass transition-colors hover:bg-z-brass/12"
+      >
+        Ver análisis <ChevronRight className="h-3 w-3" />
+      </Link>
+    </div>
   );
 }
 
@@ -140,110 +131,53 @@ function RunwayChart({
   daysInMonth: number;
 }) {
   const W = 280;
-  const H = 90;
+  const H = 80;
   const PAD = { top: 8, right: 10, bottom: 18, left: 10 };
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
 
-  // Normalize data points to current month
-  // Parse day directly from ISO string to avoid timezone shifts
   const parseDay = (date: string) => parseInt(date.split("-")[2], 10);
-
-  const monthPoints = dataPoints.filter((dp) => {
-    return parseDay(dp.date) <= dayOfMonth;
-  });
+  const monthPoints = dataPoints.filter((dp) => parseDay(dp.date) <= dayOfMonth);
 
   if (monthPoints.length < 2) {
     return (
-      <div className="flex h-16 items-center justify-center rounded-lg bg-black/20 text-[11px] text-muted-foreground">
-        Datos insuficientes para la proyección
+      <div className="flex h-14 items-center justify-center rounded-lg bg-black/20 text-[11px] text-muted-foreground">
+        Datos insuficientes
       </div>
     );
   }
 
-  // Find max balance for Y scaling
   const maxBalance = Math.max(...monthPoints.map((p) => p.balance));
   const scaleX = (day: number) => PAD.left + (day / daysInMonth) * plotW;
-  const scaleY = (val: number) =>
-    PAD.top + plotH - (val / ((maxBalance || 1) * 1.1)) * plotH;
+  const scaleY = (val: number) => PAD.top + plotH - (val / ((maxBalance || 1) * 1.1)) * plotH;
 
-  // Ideal line: from day 1 max balance to day 30 zero
-  const idealStart = { x: scaleX(1), y: scaleY(maxBalance) };
-  const idealEnd = { x: scaleX(daysInMonth), y: scaleY(0) };
-
-  // Actual spending path
   const actualPath = monthPoints
-    .map((p, i) => {
-      const day = parseDay(p.date);
-      const x = scaleX(day);
-      const y = scaleY(p.balance);
-      return `${i === 0 ? "M" : "L"}${x},${y}`;
-    })
+    .map((p, i) => `${i === 0 ? "M" : "L"}${scaleX(parseDay(p.date))},${scaleY(p.balance)}`)
     .join(" ");
 
-  // Current position
   const lastPoint = monthPoints[monthPoints.length - 1];
   const lastDay = parseDay(lastPoint.date);
   const cx = scaleX(lastDay);
   const cy = scaleY(lastPoint.balance);
-
-  // Projected overshoot line
   const projectedEndDay = Math.min(lastDay + runwayDays, daysInMonth + 2);
-  const projectedPath = `M${cx},${cy} L${scaleX(projectedEndDay)},${scaleY(0)}`;
 
   return (
     <div className="rounded-lg bg-black/20 p-2">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" aria-label="Gráfico de proyección de gasto">
-        {/* Grid lines */}
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" aria-label="Proyección de gasto">
         {[0.25, 0.5, 0.75].map((pct) => (
-          <line
-            key={pct}
-            x1={PAD.left}
-            y1={scaleY(maxBalance * pct)}
-            x2={W - PAD.right}
-            y2={scaleY(maxBalance * pct)}
-            stroke="#222"
-            strokeWidth="0.5"
-          />
+          <line key={pct} x1={PAD.left} y1={scaleY(maxBalance * pct)} x2={W - PAD.right} y2={scaleY(maxBalance * pct)} stroke="#222" strokeWidth="0.5" />
         ))}
-
-        {/* Ideal line (dashed, sage) */}
-        <line
-          x1={idealStart.x}
-          y1={idealStart.y}
-          x2={idealEnd.x}
-          y2={idealEnd.y}
-          stroke="#2a3a22"
-          strokeWidth="1.5"
-          strokeDasharray="4,3"
-        />
-
-        {/* Actual spending path */}
+        <line x1={scaleX(1)} y1={scaleY(maxBalance)} x2={scaleX(daysInMonth)} y2={scaleY(0)} stroke="#2a3a22" strokeWidth="1.5" strokeDasharray="4,3" />
         <path d={actualPath} fill="none" stroke="#d4a853" strokeWidth="2" strokeLinejoin="round" />
-
-        {/* Current position dot */}
-        <circle cx={cx} cy={cy} r="4" fill="#d4a853" />
-        <circle cx={cx} cy={cy} r="6" fill="#d4a853" fillOpacity="0.2" />
-
-        {/* Projected overshoot (dashed red) */}
+        <circle cx={cx} cy={cy} r="3.5" fill="#d4a853" />
+        <circle cx={cx} cy={cy} r="5.5" fill="#d4a853" fillOpacity="0.15" />
         {runwayDays < daysInMonth - dayOfMonth && (
-          <path d={projectedPath} fill="none" stroke="#c44" strokeWidth="1.5" strokeDasharray="3,2" />
+          <path d={`M${cx},${cy} L${scaleX(projectedEndDay)},${scaleY(0)}`} fill="none" stroke="#c44" strokeWidth="1.5" strokeDasharray="3,2" />
         )}
-
-        {/* X-axis labels */}
-        <text x={PAD.left} y={H - 2} fill="#555" fontSize="10" fontFamily="system-ui">
-          Día 1
-        </text>
-        <text x={scaleX(dayOfMonth)} y={H - 2} fill="#888" fontSize="10" fontFamily="system-ui" textAnchor="middle">
-          Hoy ({dayOfMonth})
-        </text>
-        <text x={W - PAD.right} y={H - 2} fill="#555" fontSize="10" fontFamily="system-ui" textAnchor="end">
-          {daysInMonth}
-        </text>
+        <text x={PAD.left} y={H - 2} fill="#555" fontSize="9" fontFamily="system-ui">Día 1</text>
+        <text x={scaleX(dayOfMonth)} y={H - 2} fill="#888" fontSize="9" fontFamily="system-ui" textAnchor="middle">Hoy</text>
+        <text x={W - PAD.right} y={H - 2} fill="#555" fontSize="9" fontFamily="system-ui" textAnchor="end">{daysInMonth}</text>
       </svg>
-      <p className="mt-1 text-center text-[10px] text-muted-foreground">
-        Línea ideal vs gasto real
-      </p>
     </div>
   );
 }
