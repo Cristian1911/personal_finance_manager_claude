@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X, Save } from "lucide-react";
+import { SketchWorkspaceToolbar } from "./sketch-workspace";
 
 // Minimal imperative API surface we use — Excalidraw doesn't re-export
 // ExcalidrawImperativeAPI from its main index, so we define what we need.
@@ -106,6 +107,43 @@ export function AnnotateCanvas({
     [screenshotDataUrl]
   );
 
+  function handleImportImage(dataUrl: string) {
+    const api = excalidrawRef.current;
+    if (!api) return;
+    const img = new Image();
+    img.onload = () => {
+      const id = `imported-${Date.now()}`;
+      api.addFiles([{
+        id: id as never,
+        dataURL: dataUrl,
+        mimeType: "image/png" as never,
+        created: Date.now(),
+        lastRetrieved: Date.now(),
+      }] as never[]);
+      const elements = api.getSceneElements();
+      const rightEdge = elements.reduce((max: number, el: unknown) => {
+        const e = el as Record<string, unknown>;
+        return Math.max(max, ((e.x as number) ?? 0) + ((e.width as number) ?? 0));
+      }, 0);
+      api.updateScene({
+        elements: [
+          ...elements,
+          {
+            type: "image",
+            id: `${id}-element`,
+            fileId: id,
+            x: rightEdge + 40,
+            y: 0,
+            width: img.width / 2,
+            height: img.height / 2,
+            locked: false,
+          },
+        ] as never[],
+      });
+    };
+    img.src = dataUrl;
+  }
+
   async function handleSave() {
     const api = excalidrawRef.current;
     if (!api || !exportToBlob) return;
@@ -154,6 +192,11 @@ export function AnnotateCanvas({
             <span className="ml-2 text-z-brass">· {componentHint}</span>
           )}
         </span>
+        {!screenshotDataUrl && (
+          <div className="relative">
+            <SketchWorkspaceToolbar onImportImage={handleImportImage} />
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <button
             onClick={handleSave}
