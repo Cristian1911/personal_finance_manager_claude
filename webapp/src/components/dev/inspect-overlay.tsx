@@ -55,26 +55,30 @@ function findUserComponent(fiber: Record<string, unknown> | null): {
 export function InspectOverlay({ onSelectComponent, onClose }: InspectOverlayProps) {
   const [hovered, setHovered] = useState<InspectInfo | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number>(0);
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
-    const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-    if (!target || overlayRef.current?.contains(target)) {
-      setHovered(null);
-      return;
-    }
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+      if (!target || overlayRef.current?.contains(target)) {
+        setHovered(null);
+        return;
+      }
 
-    const fiber = getReactFiberFromElement(target);
-    const component = findUserComponent(fiber);
-    if (!component) {
-      setHovered(null);
-      return;
-    }
+      const fiber = getReactFiberFromElement(target);
+      const component = findUserComponent(fiber);
+      if (!component) {
+        setHovered(null);
+        return;
+      }
 
-    const rect = target.getBoundingClientRect();
-    setHovered({
-      componentName: component.name,
-      filePath: component.source,
-      rect,
+      const rect = target.getBoundingClientRect();
+      setHovered({
+        componentName: component.name,
+        filePath: component.source,
+        rect,
+      });
     });
   }, []);
 

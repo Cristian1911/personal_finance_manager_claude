@@ -54,24 +54,19 @@ export function ReviewSaveDialog({
         .slice(0, 40);
       const basePath = `${user.id}/${timestamp}-${slug}`;
 
-      // Upload PNG
-      const { error: pngError } = await supabase.storage
-        .from("design-reviews")
-        .upload(`${basePath}.png`, pngBlob, {
+      const jsonBlob = new Blob([excalidrawJson], { type: "application/json" });
+      const [pngResult, jsonResult] = await Promise.all([
+        supabase.storage.from("design-reviews").upload(`${basePath}.png`, pngBlob, {
           contentType: "image/png",
           upsert: false,
-        });
-      if (pngError) throw new Error(pngError.message);
-
-      // Upload Excalidraw JSON
-      const jsonBlob = new Blob([excalidrawJson], { type: "application/json" });
-      const { error: jsonError } = await supabase.storage
-        .from("design-reviews")
-        .upload(`${basePath}.excalidraw`, jsonBlob, {
+        }),
+        supabase.storage.from("design-reviews").upload(`${basePath}.excalidraw`, jsonBlob, {
           contentType: "application/json",
           upsert: false,
-        });
-      if (jsonError) throw new Error(jsonError.message);
+        }),
+      ]);
+      if (pngResult.error) throw new Error(pngResult.error.message);
+      if (jsonResult.error) throw new Error(jsonResult.error.message);
 
       // Insert review record
       const { error: insertError } = await supabase

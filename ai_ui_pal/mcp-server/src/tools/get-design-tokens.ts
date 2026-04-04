@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { z } from "zod";
+import { PROJECT_ROOT } from "../lib/paths.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = join(__dirname, "../../../..");
+// Cache file contents after first read — these are static docs
+let tokensCache: string | null = null;
+let designCache: string | null = null;
 
 export const getDesignTokensSchema = {
   section: z
@@ -24,11 +25,8 @@ export function getDesignTokensHandler(args: {
 
   if (section === "all" || section === "tokens") {
     try {
-      const tokens = readFileSync(
-        join(PROJECT_ROOT, "docs/design-system/TOKENS.md"),
-        "utf-8"
-      );
-      content.push({ type: "text", text: `# TOKENS.md\n\n${tokens}` });
+      tokensCache ??= readFileSync(join(PROJECT_ROOT, "docs/design-system/TOKENS.md"), "utf-8");
+      content.push({ type: "text", text: `# TOKENS.md\n\n${tokensCache}` });
     } catch {
       content.push({ type: "text", text: "TOKENS.md no encontrado" });
     }
@@ -36,11 +34,8 @@ export function getDesignTokensHandler(args: {
 
   if (section === "all" || section === "design") {
     try {
-      const design = readFileSync(
-        join(PROJECT_ROOT, "webapp/DESIGN.md"),
-        "utf-8"
-      );
-      content.push({ type: "text", text: `# DESIGN.md\n\n${design}` });
+      designCache ??= readFileSync(join(PROJECT_ROOT, "webapp/DESIGN.md"), "utf-8");
+      content.push({ type: "text", text: `# DESIGN.md\n\n${designCache}` });
     } catch {
       content.push({ type: "text", text: "DESIGN.md no encontrado" });
     }

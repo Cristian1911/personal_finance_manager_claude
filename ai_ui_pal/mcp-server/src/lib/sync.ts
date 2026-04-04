@@ -1,10 +1,7 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { supabase } from "./supabase.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ANNOTATIONS_DIR = join(__dirname, "../../annotations");
+import { ANNOTATIONS_DIR } from "./paths.js";
 
 interface ReviewRecord {
   id: string;
@@ -48,48 +45,38 @@ export async function syncReviews(
   if (error) throw new Error(error.message);
   if (!reviews || reviews.length === 0) return [];
 
-  const entries: IndexEntry[] = [];
-
-  for (const review of reviews as ReviewRecord[]) {
-    let pngLocal: string | null = null;
-    let jsonLocal: string | null = null;
-
-    if (review.annotation_path) {
-      const { data } = await supabase.storage
-        .from("design-reviews")
-        .download(review.annotation_path);
-      if (data) {
-        const filename = `${review.id}.png`;
-        const filepath = join(ANNOTATIONS_DIR, filename);
-        writeFileSync(filepath, Buffer.from(await data.arrayBuffer()));
-        pngLocal = `annotations/${filename}`;
-      }
-    }
-
-    if (review.excalidraw_path) {
-      const { data } = await supabase.storage
-        .from("design-reviews")
-        .download(review.excalidraw_path);
-      if (data) {
-        const filename = `${review.id}.excalidraw`;
-        const filepath = join(ANNOTATIONS_DIR, filename);
-        writeFileSync(filepath, Buffer.from(await data.arrayBuffer()));
-        jsonLocal = `annotations/${filename}`;
-      }
-    }
-
-    entries.push({
-      id: review.id,
-      title: review.title,
-      severity: review.severity,
-      status: review.status,
-      route: review.route,
-      component_hint: review.component_hint,
-      annotation_png: pngLocal,
-      excalidraw_json: jsonLocal,
-      created_at: review.created_at,
-    });
+  async function downloadIfMissing(remotePath: string, localFilename: string): Promise<string | null> {
+    const filepath = join(ANNOTATIONS_DIR, localFilename);
+    if (existsSync(filepath)) return `annotations/${localFilename}`;
+    const { data } = await supabase.storage.from("design-reviews").download(remotePath);
+    if (!data) return null;
+    writeFileSync(filepath, Buffer.from(await data.arrayBuffer()));
+    return `annotations/${localFilename}`;
   }
+
+  const entries: IndexEntry[] = await Promise.all(
+    (reviews as ReviewRecord[]).map(async (review) => {
+      const [pngLocal, jsonLocal] = await Promise.all([
+        review.annotation_path
+          ? downloadIfMissing(review.annotation_path, `${review.id}.png`)
+          : null,
+        review.excalidraw_path
+          ? downloadIfMissing(review.excalidraw_path, `${review.id}.excalidraw`)
+          : null,
+      ]);
+      return {
+        id: review.id,
+        title: review.title,
+        severity: review.severity,
+        status: review.status,
+        route: review.route,
+        component_hint: review.component_hint,
+        annotation_png: pngLocal,
+        excalidraw_json: jsonLocal,
+        created_at: review.created_at,
+      };
+    })
+  );
 
   const indexPath = join(ANNOTATIONS_DIR, "index.json");
   writeFileSync(indexPath, JSON.stringify({ reviews: entries }, null, 2));

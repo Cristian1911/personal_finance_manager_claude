@@ -33,22 +33,19 @@ export function AnnotateCanvas({
   onClose,
 }: AnnotateCanvasProps) {
   const excalidrawRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  const exportToBlobRef = useRef<((...args: unknown[]) => Promise<Blob>) | null>(null);
   const [Excalidraw, setExcalidraw] = useState<React.ComponentType<Record<string, unknown>> | null>(null);
-  const [exportToBlob, setExportToBlob] = useState<((...args: unknown[]) => Promise<Blob>) | null>(null);
 
-  // Dynamically import Excalidraw (heavy, dev-only)
   useEffect(() => {
     let cancelled = false;
     import("@excalidraw/excalidraw").then((mod) => {
       if (cancelled) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setExcalidraw(() => (mod as any).Excalidraw);
+      exportToBlobRef.current = (mod as any).exportToBlob;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setExportToBlob(() => (mod as any).exportToBlob);
+      setExcalidraw(() => (mod as any).Excalidraw);
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const handleExcalidrawMount = useCallback(
@@ -147,6 +144,7 @@ export function AnnotateCanvas({
 
   async function handleSave() {
     const api = excalidrawRef.current;
+    const exportToBlob = exportToBlobRef.current;
     if (!api || !exportToBlob) return;
 
     const elements = api.getSceneElements();

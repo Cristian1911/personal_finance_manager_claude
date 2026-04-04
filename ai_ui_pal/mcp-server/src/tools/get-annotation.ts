@@ -1,12 +1,9 @@
 import { readFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { z } from "zod";
 import type { TextContent, ImageContent } from "@modelcontextprotocol/sdk/types.js";
 import { supabase } from "../lib/supabase.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ANNOTATIONS_DIR = join(__dirname, "../../annotations");
+import { ANNOTATIONS_DIR } from "../lib/paths.js";
 
 export const getAnnotationSchema = {
   review_id: z.string().describe("UUID de la revisión de diseño"),
