@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "ui-pal": {
+      "command": "node",
+      "args": ["ai_ui_pal/mcp-server/dist/index.js"],
+      "env": {
+        "SUPABASE_URL": "${NEXT_PUBLIC_SUPABASE_URL}",
+        "SUPABASE_SECRET_KEY": "${SUPABASE_SECRET_KEY}"
+      }
+    }
+  }
+}
