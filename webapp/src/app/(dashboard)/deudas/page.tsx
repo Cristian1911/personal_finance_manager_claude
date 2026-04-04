@@ -9,7 +9,8 @@ import { DebtAccountCard } from "@/components/debt/debt-account-card";
 import { DebtQuickStats } from "@/components/debt/debt-quick-stats";
 import { SalaryBar } from "@/components/debt/salary-bar";
 import { MonthSelector } from "@/components/month-selector";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
+import { DeudasHub } from "@/components/mobile/v2/deudas-hub";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { Button } from "@/components/ui/button";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
@@ -17,7 +18,7 @@ import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getRecentImpactEvents } from "@/actions/impact-events";
 import { AccountImpactTimeline } from "@/components/impact/account-impact-timeline";
-import { getCurrentSalaryBreakdown, getMinPayment, computeDebtStats } from "@zeta/shared";
+import { getCurrentSalaryBreakdown, getMinPayment, computeDebtStats, estimateMonthlyInterest } from "@zeta/shared";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
 import {
@@ -151,18 +152,74 @@ export default async function DeudasPage({
 }) {
   await connection();
   const { month } = await searchParams;
-  const [currency, impactEvents] = await Promise.all([
+  const [currency, impactEvents, debtOverview] = await Promise.all([
     getPreferredCurrency(),
     getRecentImpactEvents(20),
+    getDebtOverview(),
   ]);
+
+  // ── Mobile DeudasHub data ───────────────────────────────────────────────────
+  const mobileDebtStats = computeDebtStats(debtOverview.accounts);
+  const creditCards = debtOverview.accounts.filter((a) => a.type === "CREDIT_CARD");
+  const cardUsedAmount = creditCards
+    .filter((a) => a.currency === currency)
+    .reduce((sum, a) => sum + a.balance, 0);
+  const cardTotalCupo = creditCards
+    .filter((a) => a.currency === currency)
+    .reduce((sum, a) => sum + (a.creditLimit ?? 0), 0);
+  const cardUsagePercent = cardTotalCupo > 0 ? Math.round((cardUsedAmount / cardTotalCupo) * 100) : 0;
+  const cardInterestMonthly = creditCards
+    .filter((a) => a.currency === currency)
+    .reduce((sum, a) => sum + estimateMonthlyInterest(a.balance, a.interestRate ?? 0), 0);
+  const totalInterestMonthly = debtOverview.monthlyInterestEstimate;
+
+  // Nearest payoff: find account closest to being paid off
+  const activeAccounts = debtOverview.accounts.filter((a) => a.balance > 0 && a.currency === currency);
+  const nearestPayoff = (() => {
+    if (activeAccounts.length === 0) return null;
+    let best: { name: string; remaining: number; months: number; progressPercent: number } | null = null;
+    for (const a of activeAccounts) {
+      const monthlyPay = a.monthlyPayment ?? 0;
+      if (monthlyPay <= 0) continue;
+      const months = Math.ceil(a.balance / monthlyPay);
+      const original = a.type === "CREDIT_CARD" ? (a.creditLimit ?? a.balance) : (a.loanAmount ?? a.balance);
+      const progress = original > 0 ? Math.round(((original - a.balance) / original) * 100) : 0;
+      if (!best || months < best.months) {
+        best = { name: a.name, remaining: a.balance, months, progressPercent: progress };
+      }
+    }
+    return best;
+  })();
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <MobilePageHeader title="Deudas" backHref="/plan">
-        <Suspense>
-          <MonthSelector />
-        </Suspense>
-      </MobilePageHeader>
+      {/* Mobile: v2 header + DeudasHub */}
+      <div className="lg:hidden">
+        <MobileHeader
+          variant="page"
+          title="Deudas"
+          subtitle={`Lectura en ${currency}`}
+          action={
+            <Suspense>
+              <MonthSelector />
+            </Suspense>
+          }
+        />
+        <div className="pt-3">
+          <DeudasHub
+            monthlyPayment={mobileDebtStats.totalMonthlyPayment}
+            monthlyInterest={totalInterestMonthly}
+            cardUsagePercent={cardUsagePercent}
+            cardUsedAmount={cardUsedAmount}
+            cardTotalCupo={cardTotalCupo}
+            cardInterestMonthly={cardInterestMonthly}
+            totalInterestMonthly={totalInterestMonthly}
+            nearestPayoff={nearestPayoff}
+            accountCount={activeAccounts.length}
+            currency={currency}
+          />
+        </div>
+      </div>
 
       <PageHeaderRow
         title="Deudas"
