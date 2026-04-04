@@ -1,6 +1,7 @@
 import type { Preview } from "@storybook/react";
 import { useEffect } from "react";
 import "../src/app/globals.css";
+import "./storybook.css";
 
 function ThemeDecorator(Story: React.ComponentType) {
   useEffect(() => {

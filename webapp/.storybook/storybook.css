@@ -1,0 +1,5 @@
+/* Reset browser default anchor color so Tailwind classes win */
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
