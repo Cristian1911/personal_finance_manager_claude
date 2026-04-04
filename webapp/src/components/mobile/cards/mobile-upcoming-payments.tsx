@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, toISODateString } from "@/lib/utils/date";
 import { ChevronRight } from "lucide-react";
+import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
 interface Payment {
@@ -52,7 +53,7 @@ export function MobileUpcomingPayments({ payments }: { payments: Payment[] }) {
   if (visible.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-white/6 bg-[#111] px-3 py-2">
+    <div className={cn(PANEL_INSET_CLASS, "px-3 py-2")}>
       <div className="mb-1 flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Pagos
@@ -81,7 +82,7 @@ export function MobileUpcomingPayments({ payments }: { payments: Payment[] }) {
                   <span className="truncate text-[10px] text-z-sage-light">{shortName(payment.name)}</span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  <span className="text-[10px] font-semibold text-z-sage-lightest">
+                  <span className="text-[10px] font-semibold text-z-white">
                     {formatCurrency(payment.amount, payment.currencyCode as CurrencyCode)}
                   </span>
                   <span className={cn(
@@ -99,7 +100,7 @@ export function MobileUpcomingPayments({ payments }: { payments: Payment[] }) {
                 style={{ gridTemplateRows: isExpanded ? "1fr" : "0fr" }}
               >
                 <div className="overflow-hidden">
-                  <div className={cn("rounded-lg bg-black/20 p-2.5 mb-1 transition-opacity duration-150", isExpanded ? "opacity-100 delay-75" : "opacity-0")}>
+                  <div className={cn("mb-1 rounded-lg border border-white/8 bg-black/20 p-2.5 transition-opacity duration-150", isExpanded ? "opacity-100 delay-75" : "opacity-0")}>
                     <div className="space-y-0.5 text-[10px] text-z-sage-light">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Monto</span>
@@ -112,7 +113,7 @@ export function MobileUpcomingPayments({ payments }: { payments: Payment[] }) {
                     </div>
                     <Link
                       href="/recurrentes"
-                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-white/8 bg-white/3 px-3 py-1 text-[10px] font-semibold text-z-sage-light transition-colors hover:bg-white/5"
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold text-z-sage-light transition-colors hover:bg-white/5"
                     >
                       Ver detalles <ChevronRight className="h-3 w-3" />
                     </Link>

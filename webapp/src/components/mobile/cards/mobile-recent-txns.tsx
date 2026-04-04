@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
 interface RecentTransaction {
@@ -19,7 +20,7 @@ export function MobileRecentTxns({ transactions }: { transactions: RecentTransac
   if (visible.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-white/6 bg-[#111] px-3 py-2">
+    <div className={cn(PANEL_INSET_CLASS, "px-3 py-2")}>
       <div className="mb-1 flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Recientes

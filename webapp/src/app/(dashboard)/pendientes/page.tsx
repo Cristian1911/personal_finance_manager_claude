@@ -2,6 +2,8 @@ import { connection } from "next/server";
 import { getReminders } from "@/actions/reminders";
 import { RemindersList } from "@/components/reminders/reminders-list";
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 
 export default async function PendientesPage() {
   await connection();
@@ -13,13 +15,11 @@ export default async function PendientesPage() {
   const recentCompleted = completed.slice(0, 10);
 
   return (
-    <div className="space-y-6">
+    <div className={PAGE_STACK_CLASS}>
       <MobilePageHeader title="Pendientes" backHref="/dashboard" />
 
       <div className="hidden lg:block space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-          Pendientes
-        </p>
+        <SectionEyebrow>Pendientes</SectionEyebrow>
         <h1 className="text-3xl font-semibold tracking-tight">
           Tu lista de pendientes financieros
         </h1>
@@ -29,9 +29,7 @@ export default async function PendientesPage() {
       </div>
 
       <div className="lg:hidden space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-          Pendientes
-        </p>
+        <SectionEyebrow>Pendientes</SectionEyebrow>
         <h1 className="text-2xl font-semibold">Tus pendientes financieros</h1>
         <p className="text-sm text-muted-foreground">
           Tareas puntuales que debes pagar o resolver.
