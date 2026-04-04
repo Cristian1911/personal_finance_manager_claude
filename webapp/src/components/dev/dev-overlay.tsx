@@ -1,9 +1,10 @@
-// webapp/src/components/dev/dev-overlay.tsx
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import html2canvas from "html2canvas";
 import { DevFAB } from "./dev-fab";
 import { InspectOverlay } from "./inspect-overlay";
+import { AnnotateCanvas } from "./annotate-canvas";
 
 type DevAction = "inspect" | "annotate" | "sketch" | null;
 
@@ -15,21 +16,81 @@ interface InspectInfo {
 
 export function DevOverlay() {
   const [activeAction, setActiveAction] = useState<DevAction>(null);
-  function handleSelectComponent(info: InspectInfo) {
-    setActiveAction(null);
-    // Task 5 wires this to open the annotation canvas
-    console.log("[UI Pal] Selected for annotation:", info.componentName, info.filePath);
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [componentHint, setComponentHint] = useState<string | undefined>();
+
+  const captureScreenshot = useCallback(async () => {
+    const overlay = document.getElementById("dev-overlay-root");
+    if (overlay) overlay.style.display = "none";
+
+    const canvas = await html2canvas(document.body, {
+      useCORS: true,
+      scale: window.devicePixelRatio,
+      backgroundColor: null,
+    });
+
+    if (overlay) overlay.style.display = "";
+    return canvas.toDataURL("image/png");
+  }, []);
+
+  async function handleAction(action: DevAction) {
+    if (action === "annotate") {
+      const dataUrl = await captureScreenshot();
+      setScreenshot(dataUrl);
+      setComponentHint(undefined);
+    } else if (action === "sketch") {
+      setScreenshot(null);
+      setComponentHint(undefined);
+    }
+    setActiveAction(action);
   }
 
+  async function handleSelectComponent(info: InspectInfo) {
+    const dataUrl = await captureScreenshot();
+    setScreenshot(dataUrl);
+    setComponentHint(info.componentName);
+    setActiveAction("annotate");
+  }
+
+  function handleAnnotationSave(data: {
+    excalidrawJson: string;
+    pngBlob: Blob;
+    componentHint: string | null;
+  }) {
+    // Task 6 will implement the save-to-Supabase flow here
+    console.log("[UI Pal] Annotation saved:", {
+      jsonLength: data.excalidrawJson.length,
+      pngSize: data.pngBlob.size,
+      component: data.componentHint,
+    });
+    setActiveAction(null);
+    setScreenshot(null);
+  }
+
+  const showCanvas = activeAction === "annotate" || activeAction === "sketch";
+
   return (
-    <>
-      <DevFAB onAction={setActiveAction} activeAction={activeAction} />
+    <div id="dev-overlay-root">
+      <DevFAB onAction={handleAction} activeAction={activeAction} />
+
       {activeAction === "inspect" && (
         <InspectOverlay
           onSelectComponent={handleSelectComponent}
           onClose={() => setActiveAction(null)}
         />
       )}
-    </>
+
+      {showCanvas && (
+        <AnnotateCanvas
+          screenshotDataUrl={screenshot}
+          componentHint={componentHint}
+          onSave={handleAnnotationSave}
+          onClose={() => {
+            setActiveAction(null);
+            setScreenshot(null);
+          }}
+        />
+      )}
+    </div>
   );
 }
