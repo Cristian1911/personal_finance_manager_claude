@@ -7,7 +7,7 @@ const meta: Meta<typeof AttentionCard> = {
   tags: ["autodocs"],
   decorators: [
     (Story) => (
-      <div className="w-80 p-4">
+      <div className="w-96 p-4">
         <Story />
       </div>
     ),
