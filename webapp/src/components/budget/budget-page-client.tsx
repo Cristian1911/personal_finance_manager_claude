@@ -27,6 +27,7 @@ import {
   upsertBudgetForCategory,
 } from "@/actions/budget";
 import { cn } from "@/lib/utils";
+import { BudgetTreemap } from "./budget-treemap";
 import type { BudgetMode, CategoryBudgetData, CurrencyCode } from "@/types/domain";
 import type { AllocationData } from "@/actions/allocation";
 
@@ -211,6 +212,14 @@ export function BudgetPageClient({
       {allocationData && (
         <AllocationReference data={allocationData} />
       )}
+
+      {/* ── Treemap overview ── */}
+      <BudgetTreemap
+        categories={categories}
+        budgetAmounts={budgetAmounts}
+        currency={currency}
+        onCategoryClick={(id) => setExpandedId(expandedId === id ? null : id)}
+      />
 
       {/* ── Category grid ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
