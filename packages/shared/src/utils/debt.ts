@@ -37,6 +37,7 @@ export interface DebtAccount {
   color: string | null;
   institutionName: string | null;
   currencyBreakdown: CurrencyDebt[] | null;
+  loanAmount: number | null;
 }
 
 export interface DebtByCurrency {
@@ -213,6 +214,7 @@ export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
         color: a.color,
         institutionName: a.institution_name,
         currencyBreakdown: breakdown.length > 1 ? breakdown : null,
+        loanAmount: a.loan_amount,
       });
     } else {
       // Single currency — use primary account fields (existing behavior)
@@ -231,6 +233,7 @@ export function extractDebtAccounts(accounts: Account[]): DebtAccount[] {
         color: a.color,
         institutionName: a.institution_name,
         currencyBreakdown: null,
+        loanAmount: a.loan_amount,
       });
     }
   }
