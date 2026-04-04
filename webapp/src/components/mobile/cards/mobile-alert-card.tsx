@@ -36,7 +36,9 @@ function dismissSignal(signal: AttentionSignal) {
       STORAGE_KEY,
       JSON.stringify({ key: signal.key, count: signal.count, at: Date.now() })
     );
-  } catch {}
+  } catch (error) {
+    console.error("Failed to persist dismissed alert:", error);
+  }
 }
 
 export function MobileAlertCard({ signals }: { signals: AttentionSignal[] }) {

@@ -104,7 +104,7 @@ function ProgressRing({ progress, size = 38 }: { progress: number; size?: number
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth} />
         <circle
           cx={size / 2} cy={size / 2} r={radius} fill="none"
-          stroke={isOver ? "#c44" : isHigh ? "#d4a853" : "#a8b5a0"}
+          stroke={isOver ? "var(--z-debt)" : isHigh ? "var(--z-brass)" : "var(--z-sage-light)"}
           strokeWidth={strokeWidth} strokeDasharray={strokeDasharray} strokeLinecap="round"
         />
       </svg>

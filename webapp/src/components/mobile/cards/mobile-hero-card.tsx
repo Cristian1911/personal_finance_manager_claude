@@ -43,11 +43,12 @@ export interface MobileHeroCardProps {
   nextPayment: NextPayment | null;
 }
 
-function abbreviate(amount: number): string {
+function abbreviate(amount: number, currency: CurrencyCode = "COP"): string {
+  const symbol = currency === "USD" ? "US$" : "$";
   const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `$${Math.round(amount / 1_000)}k`;
-  return `$${amount}`;
+  if (abs >= 1_000_000) return `${symbol}${(amount / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${symbol}${Math.round(amount / 1_000)}k`;
+  return `${symbol}${amount}`;
 }
 
 export function MobileHeroCard({
@@ -128,13 +129,13 @@ export function MobileHeroCard({
       <div className="mt-2.5 flex gap-1.5">
         <ChipButton
           label="Saldo"
-          value={abbreviate(totalBalance)}
+          value={abbreviate(totalBalance, currency)}
           active={expanded === "saldo"}
           onClick={() => toggle("saldo")}
         />
         <ChipButton
           label="Fijos"
-          value={abbreviate(pendingFixed)}
+          value={abbreviate(pendingFixed, currency)}
           active={expanded === "fijos"}
           onClick={() => toggle("fijos")}
         />

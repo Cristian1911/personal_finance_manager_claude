@@ -37,9 +37,10 @@ const URGENCY_DOT = {
 function shortName(name: string): string {
   const match = name.match(/(VISA|AMEX|Mastercard|MC)\s*\**(\d{4})$/i);
   if (match) return `${match[1].toUpperCase()} ${match[2]}`;
-  // Fallback: if name has "****", take last segment
+  // Fallback: only shorten long names (4+ words) or those with asterisks
   const parts = name.split(" ");
-  if (parts.length > 2) return parts.slice(-2).join(" ").replace(/\*+/g, "");
+  if (name.includes("*") && parts.length > 2) return parts.slice(-2).join(" ").replace(/\*+/g, "");
+  if (parts.length > 3) return parts.slice(-2).join(" ");
   return name;
 }
 
