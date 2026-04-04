@@ -121,10 +121,11 @@ export function AnnotateCanvas({
         lastRetrieved: Date.now(),
       }] as never[]);
       const elements = api.getSceneElements();
-      const rightEdge = elements.reduce((max: number, el: unknown) => {
+      let rightEdge = 0;
+      for (const el of elements) {
         const e = el as Record<string, unknown>;
-        return Math.max(max, ((e.x as number) ?? 0) + ((e.width as number) ?? 0));
-      }, 0);
+        rightEdge = Math.max(rightEdge, ((e.x as number) ?? 0) + ((e.width as number) ?? 0));
+      }
       api.updateScene({
         elements: [
           ...elements,
