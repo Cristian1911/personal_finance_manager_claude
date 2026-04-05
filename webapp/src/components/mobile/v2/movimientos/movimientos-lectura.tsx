@@ -26,33 +26,43 @@ interface WeekData {
 }
 
 function aggregateByWeek(transactions: Transaction[]): WeekData[] {
-  const weekMap = new Map<number, { income: number; expense: number }>();
+  if (transactions.length === 0) return [];
+
+  // Time-based: group into trailing weeks from today (not month-based)
+  const now = new Date();
+  const today = now.getTime();
+  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+
+  // 5 weeks back from today: W-4, W-3, W-2, W-1, Current
+  const weekBuckets: { income: number; expense: number }[] = Array.from(
+    { length: 5 },
+    () => ({ income: 0, expense: 0 })
+  );
 
   for (const tx of transactions) {
     if (tx.is_excluded) continue;
-    const day = parseInt(tx.transaction_date.split("-")[2], 10);
-    const week = Math.min(Math.ceil(day / 7), 5); // weeks 1-5
-    const entry = weekMap.get(week) ?? { income: 0, expense: 0 };
-    if (tx.direction === "INFLOW") {
-      entry.income += tx.amount;
-    } else {
-      entry.expense += tx.amount;
+    const txDate = new Date(tx.transaction_date).getTime();
+    const weeksAgo = Math.floor((today - txDate) / oneWeek);
+    const bucketIdx = 4 - Math.min(weeksAgo, 4); // 0=oldest, 4=current
+    if (bucketIdx >= 0) {
+      if (tx.direction === "INFLOW") {
+        weekBuckets[bucketIdx].income += tx.amount;
+      } else {
+        weekBuckets[bucketIdx].expense += tx.amount;
+      }
     }
-    weekMap.set(week, entry);
   }
 
-  const now = new Date();
-  const currentDay = now.getDate();
-  const currentWeek = Math.min(Math.ceil(currentDay / 7), 5);
-
+  // Only include weeks that have data or are between data points
+  const labels = ["S-4", "S-3", "S-2", "S-1", "Hoy"];
   const weeks: WeekData[] = [];
-  for (let w = 1; w <= Math.max(currentWeek, 1); w++) {
-    const data = weekMap.get(w) ?? { income: 0, expense: 0 };
-    weeks.push({
-      label: w === currentWeek ? "Hoy" : `S${w}`,
-      income: data.income,
-      expense: data.expense,
-    });
+  let foundData = false;
+  for (let i = 0; i < 5; i++) {
+    const b = weekBuckets[i];
+    if (b.income > 0 || b.expense > 0) foundData = true;
+    if (foundData) {
+      weeks.push({ label: labels[i], income: b.income, expense: b.expense });
+    }
   }
 
   return weeks;
@@ -94,10 +104,31 @@ function FlowChart({ weeks }: { weeks: WeekData[] }) {
   const step = weeks.length > 1 ? usableW / (weeks.length - 1) : 0;
   const todayX = padX + lastIdx * step;
 
-  if (weeks.length < 2) {
+  if (weeks.length === 0) {
     return (
       <div className="mt-3 flex h-16 items-center justify-center rounded-xl border border-white/6 bg-black/10 text-[11px] text-muted-foreground">
-        Datos insuficientes
+        Sin datos este mes
+      </div>
+    );
+  }
+
+  // For a single week, show bars instead of lines
+  if (weeks.length === 1) {
+    const w = weeks[0];
+    const max = Math.max(w.income, w.expense, 1);
+    return (
+      <div className="mt-3 space-y-2">
+        <div className="flex items-end gap-3 justify-center h-16">
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-8 rounded-t bg-z-income/80" style={{ height: `${Math.max((w.income / max) * 48, 4)}px` }} />
+            <span className="text-[8px] text-muted-foreground">Ingreso</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-8 rounded-t bg-z-brass/70" style={{ height: `${Math.max((w.expense / max) * 48, 4)}px` }} />
+            <span className="text-[8px] text-muted-foreground">Gasto</span>
+          </div>
+        </div>
+        <p className="text-center text-[9px] text-muted-foreground">{w.label}</p>
       </div>
     );
   }
