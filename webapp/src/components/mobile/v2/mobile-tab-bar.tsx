@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
@@ -14,8 +15,14 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { MobileTransactionForm } from "@/components/mobile/mobile-transaction-form";
 import type { Account, CategoryWithChildren } from "@/types/domain";
+
+const MobileTransactionForm = dynamic(
+  () => import("@/components/mobile/mobile-transaction-form").then((m) => ({
+    default: m.MobileTransactionForm,
+  })),
+  { ssr: false, loading: () => null }
+);
 
 interface MobileTabBarProps {
   accounts: Account[];

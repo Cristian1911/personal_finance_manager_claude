@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import html2canvas from "html2canvas";
 import { DevFAB } from "./dev-fab";
 import { InspectOverlay } from "./inspect-overlay";
 import { AnnotateCanvas } from "./annotate-canvas";
@@ -26,6 +25,7 @@ export function DevOverlay() {
   } | null>(null);
 
   const captureScreenshot = useCallback(async () => {
+    const { default: html2canvas } = await import("html2canvas");
     const overlay = document.getElementById("dev-overlay-root");
     if (overlay) overlay.style.display = "none";
 

@@ -37,14 +37,14 @@ export default async function CategoriesPage({
   // Normalize old tab parameter
   const activeTab = tab === "gestionar" ? "configurar" : (tab ?? "presupuesto");
 
-  const [currency, manageResult, uncategorized, categoryTreeResult, attentionSnapshot] = await Promise.all([
-    getPreferredCurrency(),
+  const currency = await getPreferredCurrency();
+  const [manageResult, uncategorized, categoryTreeResult, attentionSnapshot, result] = await Promise.all([
     getAllCategoriesForManagement(),
     getUncategorizedTransactions(),
     getCategories(),
     getAttentionSnapshot(),
+    getCategoriesWithBudgetData(month, currency),
   ]);
-  const result = await getCategoriesWithBudgetData(month, currency);
   const categories = result.success ? result.data : [];
   const outflowCategories = categories.filter((c) => c.direction === "OUTFLOW");
   const allCategories = manageResult.success ? manageResult.data : [];

@@ -1,5 +1,10 @@
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { WaterfallChart } from "@/components/charts/waterfall-chart";
+
+const WaterfallChart = dynamic(
+  () => import("@/components/charts/waterfall-chart").then((m) => ({ default: m.WaterfallChart })),
+  { loading: () => <div className="h-[320px] w-full rounded-md bg-muted animate-pulse" /> }
+);
 import { getMonthlyCashflow, getCategorySpending } from "@/actions/charts";
 import type { CurrencyCode } from "@/types/domain";
 

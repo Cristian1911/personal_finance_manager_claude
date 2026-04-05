@@ -487,26 +487,17 @@ async function getDashboardAccountsCached(userId: string): Promise<{
 
   const supabase = createAdminClient();
 
-  const [{ data: dashboardAccounts, error: dashboardError }, { data: allActiveAccounts, error: allError }] =
-    await Promise.all([
-      supabase
-        .from("accounts")
-        .select("id, name, account_type, current_balance, currency_code, updated_at")
-        .eq("user_id", userId)
-        .eq("is_active", true),
-      supabase
-        .from("accounts")
-        .select("currency_code")
-        .eq("user_id", userId)
-        .eq("is_active", true),
-    ]);
+  const { data: dashboardAccounts, error: dashboardError } = await supabase
+    .from("accounts")
+    .select("id, name, account_type, current_balance, currency_code, updated_at")
+    .eq("user_id", userId)
+    .eq("is_active", true);
 
   if (dashboardError) throw dashboardError;
-  if (allError) throw allError;
 
   return {
     dashboardAccounts: dashboardAccounts ?? [],
-    allActiveAccounts: allActiveAccounts ?? [],
+    allActiveAccounts: dashboardAccounts ?? [],
   };
 }
 

@@ -561,6 +561,5 @@ export async function registerPayment(
   revalidateTag("dashboard:accounts", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
-  revalidateTag("zeta", "zeta");
   return { success: true, data: null };
 }
