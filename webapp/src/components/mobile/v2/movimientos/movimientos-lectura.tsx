@@ -19,53 +19,48 @@ interface MovimientosLecturaProps {
 
 // ─── Aggregate transactions by week ──────────────────────────────────────────
 
-interface WeekData {
+interface DayData {
   label: string;
+  day: number;
   income: number;
   expense: number;
 }
 
-function aggregateByWeek(transactions: Transaction[]): WeekData[] {
+function aggregateByDay(transactions: Transaction[]): DayData[] {
   if (transactions.length === 0) return [];
 
-  // Time-based: group into trailing weeks from today (not month-based)
-  const now = new Date();
-  const today = now.getTime();
-  const oneWeek = 7 * 24 * 60 * 60 * 1000;
-
-  // 5 weeks back from today: W-4, W-3, W-2, W-1, Current
-  const weekBuckets: { income: number; expense: number }[] = Array.from(
-    { length: 5 },
-    () => ({ income: 0, expense: 0 })
-  );
+  // Aggregate per calendar day
+  const dayMap = new Map<string, { income: number; expense: number }>();
 
   for (const tx of transactions) {
     if (tx.is_excluded) continue;
-    const txDate = new Date(tx.transaction_date).getTime();
-    const weeksAgo = Math.floor((today - txDate) / oneWeek);
-    const bucketIdx = 4 - Math.min(weeksAgo, 4); // 0=oldest, 4=current
-    if (bucketIdx >= 0) {
-      if (tx.direction === "INFLOW") {
-        weekBuckets[bucketIdx].income += tx.amount;
-      } else {
-        weekBuckets[bucketIdx].expense += tx.amount;
-      }
+    const date = tx.transaction_date; // "YYYY-MM-DD"
+    const entry = dayMap.get(date) ?? { income: 0, expense: 0 };
+    if (tx.direction === "INFLOW") {
+      entry.income += tx.amount;
+    } else {
+      entry.expense += tx.amount;
     }
+    dayMap.set(date, entry);
   }
 
-  // Only include weeks that have data or are between data points
-  const labels = ["S-4", "S-3", "S-2", "S-1", "Hoy"];
-  const weeks: WeekData[] = [];
-  let foundData = false;
-  for (let i = 0; i < 5; i++) {
-    const b = weekBuckets[i];
-    if (b.income > 0 || b.expense > 0) foundData = true;
-    if (foundData) {
-      weeks.push({ label: labels[i], income: b.income, expense: b.expense });
-    }
-  }
+  // Sort by date, keep all days that have data
+  const sorted = Array.from(dayMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b));
 
-  return weeks;
+  const today = new Date().toISOString().split("T")[0];
+
+  return sorted.map(([date, vals]) => {
+    const dayNum = parseInt(date.split("-")[2], 10);
+    const monthNum = parseInt(date.split("-")[1], 10);
+    const isToday = date === today;
+    return {
+      label: isToday ? "Hoy" : `${dayNum}/${monthNum}`,
+      day: dayNum,
+      income: vals.income,
+      expense: vals.expense,
+    };
+  });
 }
 
 // ─── SVG chart ───────────────────────────────────────────────────────────────
@@ -90,24 +85,24 @@ function toPolyline(
     .join(" ");
 }
 
-function FlowChart({ weeks }: { weeks: WeekData[] }) {
+function FlowChart({ days }: { days: DayData[] }) {
   const W = 260;
   const H = 80;
 
-  const incomeVals = weeks.map((w) => w.income);
-  const expenseVals = weeks.map((w) => w.expense);
+  const incomeVals = days.map((d) => d.income);
+  const expenseVals = days.map((d) => d.expense);
   const maxVal = Math.max(...incomeVals, ...expenseVals, 1);
 
-  const lastIdx = weeks.length - 1;
+  const lastIdx = days.length - 1;
   const padX = 15;
   const usableW = W - padX * 2;
-  const step = weeks.length > 1 ? usableW / (weeks.length - 1) : 0;
+  const step = days.length > 1 ? usableW / (days.length - 1) : 0;
   const todayX = padX + lastIdx * step;
 
-  if (weeks.length === 0) {
+  if (days.length === 0) {
     return (
       <div className="mt-3 flex h-16 items-center justify-center rounded-xl border border-white/6 bg-black/10 text-[11px] text-muted-foreground">
-        Sin datos este mes
+        Sin datos
       </div>
     );
   }
@@ -169,21 +164,26 @@ function FlowChart({ weeks }: { weeks: WeekData[] }) {
         />
       </svg>
 
-      {/* Week labels */}
+      {/* Day labels — show first, last, and a few in between to avoid crowding */}
       <div className="flex justify-between px-1">
-        {weeks.map((w) => (
-          <span
-            key={w.label}
-            className={cn(
-              "text-[9px] font-medium uppercase tracking-wider",
-              w.label === "Hoy"
-                ? "font-semibold text-z-brass"
-                : "text-muted-foreground"
-            )}
-          >
-            {w.label}
-          </span>
-        ))}
+        {days.map((d, i) => {
+          // Show label for first, last, and every ~5th day
+          const showLabel = i === 0 || i === lastIdx || (days.length > 5 && i % Math.ceil(days.length / 4) === 0);
+          if (!showLabel) return <span key={d.label} />;
+          return (
+            <span
+              key={d.label}
+              className={cn(
+                "text-[8px] font-medium",
+                d.label === "Hoy"
+                  ? "font-semibold text-z-brass"
+                  : "text-muted-foreground"
+              )}
+            >
+              {d.label}
+            </span>
+          );
+        })}
       </div>
 
       {/* Legend */}
@@ -212,7 +212,7 @@ export function MovimientosLectura({
   expanded,
   onToggle,
 }: MovimientosLecturaProps) {
-  const weeks = useMemo(() => aggregateByWeek(transactions), [transactions]);
+  const days = useMemo(() => aggregateByDay(transactions), [transactions]);
 
   return (
     <MobileZone eyebrow="LECTURA">
@@ -264,7 +264,7 @@ export function MovimientosLectura({
         <div className="overflow-hidden">
           <div className={cn("mt-1.5 transition-opacity duration-150", expanded ? "opacity-100 delay-75" : "opacity-0")}>
             <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3")}>
-              <FlowChart weeks={weeks} />
+              <FlowChart days={days} />
             </div>
           </div>
         </div>
