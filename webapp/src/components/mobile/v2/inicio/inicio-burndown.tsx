@@ -61,9 +61,8 @@ function BurndownChart({
     const maxBalance = Math.max(totalBudget, ...filtered.map((p) => p.balance));
     return filtered.map((p) => {
       const day = new Date(p.date).getDate();
-      const x = chartLeft + (day / daysInMonth) * chartW;
-      const y =
-        chartTop + (1 - p.balance / (maxBalance || 1)) * chartH;
+      const x = Math.round((chartLeft + (day / daysInMonth) * chartW) * 100) / 100;
+      const y = Math.round((chartTop + (1 - p.balance / (maxBalance || 1)) * chartH) * 100) / 100;
       return { x, y, day };
     });
   }, [points, totalBudget, daysInMonth, chartLeft, chartW, chartTop, chartH]);

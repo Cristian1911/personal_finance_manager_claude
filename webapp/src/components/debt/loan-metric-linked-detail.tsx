@@ -45,9 +45,9 @@ export function LoanMetricLinkedDetail({
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
             Desglose por préstamo
           </p>
-          {stats.loans.payments.map((p) => (
+          {stats.loans.payments.map((p, i) => (
             <div
-              key={p.accountName}
+              key={`${p.accountName}-${i}`}
               className="flex items-center justify-between text-xs text-z-sage-light"
             >
               <span className="truncate mr-2">{p.accountName}</span>
@@ -73,9 +73,9 @@ export function LoanMetricLinkedDetail({
             Plazo restante estimado
           </p>
           {stats.loans.remainingList.length > 0 ? (
-            stats.loans.remainingList.map((r) => (
+            stats.loans.remainingList.map((r, i) => (
               <div
-                key={r.accountName}
+                key={`${r.accountName}-${i}`}
                 className="space-y-1"
               >
                 <div className="flex justify-between text-xs text-z-sage-light">

@@ -47,7 +47,7 @@ function Ring({
       <circle
         cx="29" cy="29" r={ringR} fill="none"
         stroke={color} strokeWidth="5"
-        strokeDasharray={`${(pct / 100) * ringCircumference} ${ringCircumference}`}
+        strokeDasharray={`${Math.round(((pct / 100) * ringCircumference) * 100) / 100} ${Math.round(ringCircumference * 100) / 100}`}
         strokeLinecap="round" transform="rotate(-90 29 29)"
       />
       <text x="29" y={sublabel ? "24" : "29"} fill={color} fontSize="13" fontWeight="700" textAnchor="middle" dominantBaseline="central">

@@ -26,13 +26,13 @@ The desktop view works because width creates natural hierarchy. On mobile, the s
 ### Color Hierarchy
 Each color earns its place. No color is used "by default" — it must match the semantic meaning.
 
-| Color | Hex | Role | Used for |
-|-------|-----|------|----------|
-| **Brass** | `#c4a94d` | Brand identity + interactive | Health ring, avatar border, active tab, "+" button, action buttons, hub entry icons, attention dot, card usage % |
-| **White** | `#e8e4dc` | Neutral facts | Dollar amounts, names, neutral metrics ($245k, $870k, 12 pendientes, 23m) |
-| **Green** | `#4ade80` | Confirmed positive | Budget on track (5%), income, payoff progress, "Holgado" chip |
-| **Red** | `#ef4444` | Real pain | Interest payments, over-budget categories, critical alerts |
-| **Sage** | `#8a9a7b` / `#6b7a5e` | Background text | Eyebrows, labels, subtitles, ZETA wordmark, secondary info |
+| Color | Token | Hex | Role | Used for |
+|-------|-------|-----|------|----------|
+| **Brass** | `z-brass` | `#937844` | Brand identity + interactive | Health ring, avatar border, active tab, "+" button, action buttons, hub entry icons, attention dot, card usage % |
+| **White** | `z-white` | `#F6F0E3` | Neutral facts | Dollar amounts, names, neutral metrics ($245k, $870k, 12 pendientes, 23m) |
+| **Green** | `z-income` | `#5CB88A` | Confirmed positive | Budget on track (5%), income, payoff progress, "Holgado" chip |
+| **Red** | `z-debt` | `#E05545` | Real pain | Interest payments, over-budget categories, critical alerts |
+| **Sage** | `z-sage` / `z-sage-dark` | `#768053` / `#938C7E` | Background text | Eyebrows, labels, subtitles, ZETA wordmark, secondary info |
 
 **Rules:**
 - Brass is NOT for financial data. If a number is good → green. Bad → red. Neutral → white.

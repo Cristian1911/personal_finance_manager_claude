@@ -31,7 +31,7 @@ function ArcRing({ percentage }: { percentage: number }) {
   const cx = 24;
   const cy = 24;
   const circumference = 2 * Math.PI * r;
-  const offset = circumference - (percentage / 100) * circumference;
+  const offset = Math.round((circumference - (percentage / 100) * circumference) * 100) / 100;
 
   return (
     <svg width={48} height={48} viewBox="0 0 48 48" className="shrink-0" aria-hidden>
@@ -85,8 +85,8 @@ function BurndownChart({
     const maxBal = Math.max(totalBudget, ...filtered.map((p) => p.balance));
     return filtered.map((p) => {
       const day = new Date(p.date).getDate();
-      const x = (day / daysInMonth) * W;
-      const y = T + (1 - p.balance / (maxBal || 1)) * H;
+      const x = Math.round(((day / daysInMonth) * W) * 100) / 100;
+      const y = Math.round((T + (1 - p.balance / (maxBal || 1)) * H) * 100) / 100;
       return { x, y, day };
     });
   }, [points, totalBudget, daysInMonth]);

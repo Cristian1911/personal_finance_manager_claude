@@ -1,9 +1,6 @@
-"use client";
-
 import { Suspense } from "react";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
-import { PlanBudgetHero } from "./plan-budget-hero";
+import { PlanHeroWrapper } from "./plan-hero-wrapper";
 import { PlanActionCta } from "./plan-action-cta";
 import { PlanFlowChart } from "./plan-flow-chart";
 import { PlanDistribution } from "./plan-distribution";
@@ -33,9 +30,6 @@ export function PlanRoot({
 }: PlanRootProps) {
   const isStable = planData.heroSummary.pressure === "stable";
 
-  /** Page-level accordion — one expanded section at a time */
-  const { activeZone, toggle } = useExpandableZone<string>();
-
   return (
     <div className="space-y-2">
       <MobileHeader
@@ -49,8 +43,8 @@ export function PlanRoot({
         }
       />
 
-      {/* Budget hero — expandable per-category */}
-      <PlanBudgetHero
+      {/* Budget hero — expandable per-category (client boundary isolated) */}
+      <PlanHeroWrapper
         totalSpent={planData.budget.totalSpent}
         totalBudgeted={planData.budget.totalBudgeted}
         pressure={planData.heroSummary.pressure}
@@ -58,8 +52,6 @@ export function PlanRoot({
         daysInMonth={daysInMonth}
         currency={currency}
         categories={categories}
-        expanded={activeZone === "hero"}
-        onToggle={() => toggle("hero")}
       />
 
       {/* Planificar CTA */}

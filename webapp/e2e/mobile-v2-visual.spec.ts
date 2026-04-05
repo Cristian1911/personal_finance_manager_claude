@@ -37,9 +37,10 @@ test.describe("Mobile v2 visual layout", () => {
     await expect(page.getByText("INGRESOS").first()).toBeVisible();
     await expect(page.getByText("GASTOS").first()).toBeVisible();
 
-    // Tools grid
-    await expect(page.getByText("HERRAMIENTAS").first()).toBeVisible();
-    await expect(page.getByText("Categorizar").first()).toBeVisible();
+    // Tools grid (scoped to mobile container to avoid matching desktop sidebar)
+    const mobileView = page.locator(".lg\\:hidden").first();
+    await expect(mobileView.getByText("HERRAMIENTAS").first()).toBeVisible();
+    await expect(mobileView.getByText("Categorizar").first()).toBeVisible();
 
     // Transaction feed (at least one transaction row)
     const txRows = page.locator("[aria-expanded]");

@@ -57,19 +57,21 @@
 // Add to webapp/src/lib/constants/styles.ts after PANEL_INSET_INTERACTIVE_CLASS
 
 /** Mobile v2 card: inset container with figure/ground contrast */
+// NOTE: Use design tokens (bg-z-surface, bg-z-ink, text-z-sage-dark) where available.
+// Hardcoded hex values below are for reference only — prefer token classes in code.
 export const MOBILE_CARD_CLASS =
-  "rounded-[14px] border border-white/5 bg-[#161816] p-3";
+  "rounded-[14px] border border-white/5 bg-z-surface p-3";
 
 /** Mobile v2 tight card: no padding, overflow hidden, for list containers */
 export const MOBILE_CARD_TIGHT_CLASS =
-  "rounded-[14px] border border-white/5 bg-[#161816] overflow-hidden";
+  "rounded-[14px] border border-white/5 bg-z-surface overflow-hidden";
 
 /** Mobile v2 page background — applied to phone screen container */
-export const MOBILE_BG_CLASS = "bg-[#0e100e]";
+export const MOBILE_BG_CLASS = "bg-z-ink";
 
 /** Mobile v2 eyebrow label */
 export const MOBILE_EYEBROW_CLASS =
-  "text-[8px] font-semibold uppercase tracking-[0.18em] text-[#6b7a5e]";
+  "text-[8px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark";
 
 /** Mobile v2 action button (brass ghost) */
 export const MOBILE_ACTION_BUTTON_CLASS =

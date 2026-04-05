@@ -60,8 +60,8 @@ export function DeudasLoansChips({
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-brass">
             Desglose por préstamo
           </p>
-          {stats.loans.payments.map((p) => (
-            <div key={p.accountName} className="flex justify-between text-xs text-z-sage-light">
+          {stats.loans.payments.map((p, i) => (
+            <div key={`${p.accountName}-${i}`} className="flex justify-between text-xs text-z-sage-light">
               <span className="truncate mr-2">{p.accountName}</span>
               <span className="shrink-0">{formatCurrency(p.amount, currency)}</span>
             </div>
@@ -76,13 +76,13 @@ export function DeudasLoansChips({
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-income">
             Progreso de préstamos
           </p>
-          {stats.loans.progressList.map((progress) => {
+          {stats.loans.progressList.map((progress, i) => {
             const pct = progress.percentage ?? 0;
             const remaining = stats.loans.remainingList.find(
               (r) => r.accountName === progress.accountName
             );
             return (
-              <div key={progress.accountName} className="space-y-1">
+              <div key={`${progress.accountName}-${i}`} className="space-y-1">
                 <p className="text-[11px] font-medium text-z-sage-light">
                   {progress.accountName}
                 </p>
