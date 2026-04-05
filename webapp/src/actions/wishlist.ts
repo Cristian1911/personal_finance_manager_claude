@@ -77,7 +77,6 @@ function getNearestDays(dates: string[]): number | null {
 
 function invalidateWishlist() {
   revalidateTag("wishlist", "zeta");
-  revalidateTag("zeta", "zeta");
 }
 
 // ─── Section 1: CRUD Queries & Mutations ─────────────────────────────────────

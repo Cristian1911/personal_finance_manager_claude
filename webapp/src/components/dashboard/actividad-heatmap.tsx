@@ -1,5 +1,10 @@
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SpendingHeatmap } from "@/components/charts/spending-heatmap";
+
+const SpendingHeatmap = dynamic(
+  () => import("@/components/charts/spending-heatmap").then((m) => ({ default: m.SpendingHeatmap })),
+  { loading: () => <div className="h-[200px] w-full rounded-md bg-muted animate-pulse" /> }
+);
 import { getSpendingHeatmap } from "@/actions/spending-heatmap";
 import type { CurrencyCode } from "@/types/domain";
 

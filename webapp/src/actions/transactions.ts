@@ -463,6 +463,7 @@ export async function getTransactions(
     let query = supabase
       .from("transactions")
       .select("*", { count: "exact" })
+      .eq("user_id", user.id)
       .order("transaction_date", { ascending: false })
       .order("created_at", { ascending: false })
       .range(from, to);

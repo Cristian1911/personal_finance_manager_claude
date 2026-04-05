@@ -5,7 +5,12 @@ import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getScenarios } from "@/actions/scenarios";
-import { ScenarioPlanner } from "@/components/debt/scenario-planner";
+import dynamic from "next/dynamic";
+
+const ScenarioPlanner = dynamic(
+  () => import("@/components/debt/scenario-planner").then((m) => ({ default: m.ScenarioPlanner })),
+  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" /> }
+);
 import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
 import { PageHero, HeroAccentPill } from "@/components/ui/page-hero";
 import { StatCard } from "@/components/ui/stat-card";

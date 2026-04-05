@@ -1,13 +1,21 @@
 import { connection } from "next/server";
+import dynamic from "next/dynamic";
 import { getBudgetMode } from "@/actions/budget";
 import { getEstimatedIncome } from "@/actions/income";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { get503020Allocation } from "@/actions/allocation";
-import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { BudgetWizard } from "@/components/budget/budget-wizard";
-import { BudgetPageClient } from "@/components/budget/budget-page-client";
+import { getPreferredCurrency } from "@/actions/profile";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
-import type { CurrencyCode } from "@/types/domain";
+
+const BudgetWizard = dynamic(
+  () => import("@/components/budget/budget-wizard").then((m) => ({ default: m.BudgetWizard })),
+  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" /> }
+);
+
+const BudgetPageClient = dynamic(
+  () => import("@/components/budget/budget-page-client").then((m) => ({ default: m.BudgetPageClient })),
+  { loading: () => <div className="h-96 rounded-xl bg-muted animate-pulse" /> }
+);
 
 export default async function PresupuestoPage({
   searchParams,
@@ -18,11 +26,7 @@ export default async function PresupuestoPage({
   const params = await searchParams;
   const month = params.month;
 
-  const { supabase, user } = await getAuthenticatedClient();
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("preferred_currency").eq("id", user.id).single()
-    : { data: null };
-  const currency = (profile?.preferred_currency ?? "COP") as CurrencyCode;
+  const currency = await getPreferredCurrency();
 
   const [modeResult, incomeEstimate, categoriesResult, allocationData] = await Promise.all([
     getBudgetMode(),

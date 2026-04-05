@@ -125,7 +125,6 @@ export async function createTagGroup(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("tags", "zeta");
-  revalidateTag("zeta", "zeta");
   return { success: true, data: { id: data.id } };
 }
 

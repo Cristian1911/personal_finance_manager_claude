@@ -9,14 +9,12 @@ import { PlanBudgetToggle } from "@/components/plan/plan-budget-toggle";
 import { PlanDecisionRail } from "@/components/plan/plan-decision-rail";
 import { PlanDebtSection } from "@/components/plan/plan-debt-section";
 import { PlanHero } from "@/components/plan/plan-hero";
-import { PlanFlowTimeline } from "@/components/plan/plan-flow-timeline";
 import { PlanRecurringSection } from "@/components/plan/plan-recurring-section";
 import { PlanScenarioPreview } from "@/components/plan/plan-scenario-preview";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { PlanRoot } from "@/components/mobile/v2/plan/plan-root";
-import { get503020Allocation } from "@/actions/allocation";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
+import { getPreferredCurrency } from "@/actions/profile";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 
@@ -29,15 +27,14 @@ export default async function PlanPage({
   const params = await searchParams;
   const month = params.month;
   const monthLabel = formatMonthLabel(parseMonth(month));
-  const [planData, wishlistSummary] = await Promise.all([
-    getPlanPageData(month),
+  const currency = await getPreferredCurrency();
+  const [planData, wishlistSummary, rhythmResult, categoryBudgetResult] = await Promise.all([
+    getPlanPageData(month, currency),
     getWishlistItemsForDashboard(),
+    getCategoriesByRhythm(month, currency),
+    getCategoriesWithBudgetData(month, currency),
   ]);
-  const [rhythmResult, allocationData, categoryBudgetResult] = await Promise.all([
-    getCategoriesByRhythm(month, planData.currency),
-    get503020Allocation(month, planData.currency),
-    getCategoriesWithBudgetData(month, planData.currency),
-  ]);
+  const allocationData = planData.budget.allocation;
   const rhythmData = rhythmResult.success ? rhythmResult.data : [];
   const categoryBudgetData = categoryBudgetResult.success ? categoryBudgetResult.data : [];
   const isStable = planData.heroSummary.pressure === "stable";

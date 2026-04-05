@@ -1,10 +1,11 @@
-import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUserSafely } from "@/lib/supabase/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { getProfile } from "@/actions/profile";
 import { getAttentionSnapshot } from "@/actions/attention";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
@@ -12,7 +13,10 @@ import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
 import { MobileShellProvider } from "@/components/mobile/v2/mobile-shell-provider";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
-import { DevOverlay } from "@/components/dev/dev-overlay";
+
+const DevOverlay = dynamic(
+  () => import("@/components/dev/dev-overlay").then((m) => ({ default: m.DevOverlay })),
+);
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -29,11 +33,14 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const [profileResult, attentionSnapshot, accountsResult, categoriesResult] = await Promise.all([
+    getProfile(),
+    getAttentionSnapshot(),
+    getAccounts(),
+    getCategories(),
+  ]);
+
+  const profile = profileResult.success ? profileResult.data : null;
 
   if (!profile) {
     redirect("/login");
@@ -42,12 +49,6 @@ export default async function DashboardLayout({
   if (!profile.onboarding_completed) {
     redirect("/onboarding");
   }
-
-  const [attentionSnapshot, accountsResult, categoriesResult] = await Promise.all([
-    getAttentionSnapshot(),
-    getAccounts(),
-    getCategories(),
-  ]);
 
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
@@ -78,11 +79,9 @@ export default async function DashboardLayout({
             }}
           >
             <main className="flex-1 overflow-x-hidden p-4 pb-20 lg:p-6 lg:pb-6">
-              <Suspense>
-                <PageTransition>
-                  {children}
-                </PageTransition>
-              </Suspense>
+              <PageTransition>
+                {children}
+              </PageTransition>
             </main>
 
             <MobileTabBar accounts={accounts} categories={categories} />
