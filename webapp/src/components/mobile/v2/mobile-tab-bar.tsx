@@ -33,7 +33,7 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
+        className="fixed bottom-0 left-0 right-0 z-[9999] lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex items-center border-t border-white/5 bg-[#0e100e]/95 backdrop-blur-md">
