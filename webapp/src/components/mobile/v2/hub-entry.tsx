@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PANEL_INSET_CLASS, PANEL_INSET_INTERACTIVE_CLASS } from "@/lib/constants/styles";
 
 interface HubEntryProps {
   href: string;
@@ -16,16 +17,19 @@ export function HubEntry({ href, icon: Icon, title, hint, className }: HubEntryP
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 rounded-[14px] border border-white/5 bg-[#161816] px-3.5 py-3 transition-colors active:bg-white/[0.03]",
+        `${PANEL_INSET_INTERACTIVE_CLASS} flex items-center gap-3 rounded-2xl px-3.5 py-3 active:bg-white/[0.03]`,
         className,
       )}
     >
-      {/* Icon container */}
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-z-brass/10">
+      <div
+        className={cn(
+          PANEL_INSET_CLASS,
+          "flex size-8 shrink-0 items-center justify-center rounded-xl bg-z-brass/10"
+        )}
+      >
         <Icon className="size-4 text-z-brass" />
       </div>
 
-      {/* Text */}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium leading-tight text-foreground">
           {title}
@@ -35,7 +39,6 @@ export function HubEntry({ href, icon: Icon, title, hint, className }: HubEntryP
         </p>
       </div>
 
-      {/* Arrow */}
       <span className="shrink-0 text-[16px] leading-none text-muted-foreground/50">
         ›
       </span>

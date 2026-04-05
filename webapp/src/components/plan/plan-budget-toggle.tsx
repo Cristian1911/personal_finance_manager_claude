@@ -22,8 +22,8 @@ export function PlanBudgetToggle({ domainView, rhythmGroups, currency }: PlanBud
           onClick={() => setViewMode("domain")}
           className={`rounded-full px-4 py-1 text-sm transition-colors ${
             viewMode === "domain"
-              ? "bg-indigo-500/20 font-semibold text-indigo-300"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-z-brass/12 font-semibold text-z-brass"
+              : "text-muted-foreground hover:text-z-sage-light"
           }`}
         >
           Dominio
@@ -33,8 +33,8 @@ export function PlanBudgetToggle({ domainView, rhythmGroups, currency }: PlanBud
           onClick={() => setViewMode("rhythm")}
           className={`rounded-full px-4 py-1 text-sm transition-colors ${
             viewMode === "rhythm"
-              ? "bg-indigo-500/20 font-semibold text-indigo-300"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-z-brass/12 font-semibold text-z-brass"
+              : "text-muted-foreground hover:text-z-sage-light"
           }`}
         >
           Ritmo

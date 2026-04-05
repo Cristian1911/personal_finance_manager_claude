@@ -10,17 +10,18 @@ import { DebtQuickStats } from "@/components/debt/debt-quick-stats";
 import { SalaryBar } from "@/components/debt/salary-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { DeudasHub } from "@/components/mobile/v2/deudas-hub";
+import { DeudasRoot } from "@/components/mobile/v2/deudas/deudas-root";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { Button } from "@/components/ui/button";
-import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getRecentImpactEvents } from "@/actions/impact-events";
 import { AccountImpactTimeline } from "@/components/impact/account-impact-timeline";
-import { getCurrentSalaryBreakdown, getMinPayment, computeDebtStats, estimateMonthlyInterest } from "@zeta/shared";
+import { computeDebtStats, getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
+import { formatCurrency } from "@/lib/utils/currency";
 import {
   DebtOverviewSkeleton,
   DebtQuickStatsSkeleton,
@@ -29,10 +30,65 @@ import {
 } from "@/components/debt/debt-skeletons";
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Tier 2 async Server Component — streams in all debt data with skeleton fallback
+// Mobile debt section — uses new DeudasRoot
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function DebtOverviewSection({
+async function MobileDebtSection({
+  currency,
+  month,
+}: {
+  currency: CurrencyCode;
+  month: string | undefined;
+}) {
+  const [overview, incomeEstimate] = await Promise.all([
+    getDebtOverview(currency),
+    getEstimatedIncome(currency, month),
+  ]);
+
+  if (overview.accounts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <p className="text-muted-foreground mb-2">
+          No tienes cuentas de deuda registradas.
+        </p>
+        <Link href="/accounts" className="text-primary hover:underline text-sm">
+          Agregar tarjeta de crédito o préstamo
+        </Link>
+      </div>
+    );
+  }
+
+  const salaryBreakdown =
+    incomeEstimate && incomeEstimate.monthlyAverage > 0
+      ? getCurrentSalaryBreakdown({
+          monthlyIncome: incomeEstimate.monthlyAverage,
+          debtPayments: overview.accounts
+            .filter((a) => a.balance > 0)
+            .map((a) => ({
+              accountId: a.id,
+              name: a.name,
+              amount: getMinPayment(a),
+            })),
+        })
+      : null;
+
+  const stats = computeDebtStats(overview.accounts);
+
+  return (
+    <DeudasRoot
+      stats={stats}
+      overview={overview}
+      salaryBreakdown={salaryBreakdown}
+      currency={currency}
+    />
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Desktop debt section (unchanged)
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function DesktopDebtSection({
   currency,
   month,
 }: {
@@ -65,7 +121,6 @@ async function DebtOverviewSection({
   const secondaryCurrencies = overview.debtByCurrency.filter(
     (d) => d.currency !== currency && d.totalDebt > 0
   );
-
   const exchangeRate = secondaryCurrencies.length > 0 ? exchangeRateResult : null;
 
   const salaryBreakdown =
@@ -142,7 +197,7 @@ async function DebtOverviewSection({
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Page — tier 1: headers instant, tier 2 streams in
+// Page
 // ──────────────────────────────────────────────────────────────────────────────
 
 export default async function DeudasPage({
@@ -152,76 +207,30 @@ export default async function DeudasPage({
 }) {
   await connection();
   const { month } = await searchParams;
-  const [currency, impactEvents, debtOverview] = await Promise.all([
+  const [currency, impactEvents] = await Promise.all([
     getPreferredCurrency(),
     getRecentImpactEvents(20),
-    getDebtOverview(),
   ]);
 
-  // ── Mobile DeudasHub data ───────────────────────────────────────────────────
-  const mobileDebtStats = computeDebtStats(debtOverview.accounts);
-  const creditCards = debtOverview.accounts.filter((a) => a.type === "CREDIT_CARD");
-  const cardUsedAmount = creditCards
-    .filter((a) => a.currency === currency)
-    .reduce((sum, a) => sum + a.balance, 0);
-  const cardTotalCupo = creditCards
-    .filter((a) => a.currency === currency)
-    .reduce((sum, a) => sum + (a.creditLimit ?? 0), 0);
-  const cardUsagePercent = cardTotalCupo > 0 ? Math.round((cardUsedAmount / cardTotalCupo) * 100) : 0;
-  const cardInterestMonthly = creditCards
-    .filter((a) => a.currency === currency)
-    .reduce((sum, a) => sum + estimateMonthlyInterest(a.balance, a.interestRate ?? 0), 0);
-  const totalInterestMonthly = debtOverview.monthlyInterestEstimate;
-
-  // Nearest payoff: find account closest to being paid off
-  const activeAccounts = debtOverview.accounts.filter((a) => a.balance > 0 && a.currency === currency);
-  const nearestPayoff = (() => {
-    if (activeAccounts.length === 0) return null;
-    let best: { name: string; remaining: number; months: number; progressPercent: number } | null = null;
-    for (const a of activeAccounts) {
-      const monthlyPay = a.monthlyPayment ?? 0;
-      if (monthlyPay <= 0) continue;
-      const months = Math.ceil(a.balance / monthlyPay);
-      const original = a.type === "CREDIT_CARD" ? (a.creditLimit ?? a.balance) : (a.loanAmount ?? a.balance);
-      const progress = original > 0 ? Math.round(((original - a.balance) / original) * 100) : 0;
-      if (!best || months < best.months) {
-        best = { name: a.name, remaining: a.balance, months, progressPercent: progress };
-      }
-    }
-    return best;
-  })();
-
   return (
-    <div className="space-y-6 lg:space-y-8">
-      {/* Mobile: v2 header + DeudasHub */}
+    <div className="space-y-3 lg:space-y-8">
+      {/* ── Mobile ── */}
       <div className="lg:hidden">
-        <MobileHeader
-          variant="page"
-          title="Deudas"
-          subtitle={`Lectura en ${currency}`}
-          action={
-            <Suspense>
-              <MonthSelector />
-            </Suspense>
+        <Suspense
+          fallback={
+            <div className="space-y-3">
+              <DebtOverviewSkeleton />
+              <DebtQuickStatsSkeleton />
+              <SalaryBarSkeleton />
+            </div>
           }
-        />
-        <div className="pt-3">
-          <DeudasHub
-            monthlyPayment={mobileDebtStats.totalMonthlyPayment}
-            monthlyInterest={totalInterestMonthly}
-            cardUsagePercent={cardUsagePercent}
-            cardUsedAmount={cardUsedAmount}
-            cardTotalCupo={cardTotalCupo}
-            cardInterestMonthly={cardInterestMonthly}
-            totalInterestMonthly={totalInterestMonthly}
-            nearestPayoff={nearestPayoff}
-            accountCount={activeAccounts.length}
-            currency={currency}
-          />
-        </div>
+        >
+          <MobileDebtSection currency={currency} month={month} />
+        </Suspense>
       </div>
 
-      <div className="hidden lg:block">
+      {/* ── Desktop ── */}
+      <div className="hidden lg:block space-y-6">
         <PageHeaderRow
           title="Deudas"
           subtitle={`Lectura en ${currency}`}
@@ -242,9 +251,7 @@ export default async function DeudasPage({
             </>
           }
         />
-      </div>
 
-      <div className="hidden lg:block space-y-6">
         <Suspense
           fallback={
             <div className="space-y-6">
@@ -255,10 +262,58 @@ export default async function DeudasPage({
             </div>
           }
         >
-          <DebtOverviewSection currency={currency} month={month} />
+          <DesktopDebtSection currency={currency} month={month} />
         </Suspense>
 
         <AccountImpactTimeline events={impactEvents} />
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Mobile utilization ring — smaller, inline variant
+// ──────────────────────────────────────────────────────────────────────────────
+
+function UtilizationRingMobile({
+  percentage,
+  color,
+}: {
+  percentage: number;
+  color: string;
+}) {
+  const r = 16;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - percentage / 100);
+
+  return (
+    <div className="relative shrink-0" style={{ width: 40, height: 40 }}>
+      <svg width="40" height="40" viewBox="0 0 40 40" className="-rotate-90">
+        <circle
+          cx="20"
+          cy="20"
+          r={r}
+          fill="none"
+          stroke="hsl(var(--muted))"
+          strokeWidth="3"
+        />
+        <circle
+          cx="20"
+          cy="20"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+        />
+      </svg>
+      <div
+        className="absolute inset-0 flex items-center justify-center text-[10px] font-bold"
+        style={{ color }}
+      >
+        {percentage.toFixed(0)}%
       </div>
     </div>
   );

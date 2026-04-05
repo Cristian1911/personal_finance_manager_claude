@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { MOBILE_BG_CLASS } from "@/lib/constants/styles";
 import { MobileAvatarMenu } from "./mobile-avatar-menu";
 
 // ─── Dashboard variant ────────────────────────────────────────────────────────
@@ -16,13 +18,18 @@ interface PageHeaderProps {
   title: string;
   subtitle?: string;
   action?: ReactNode;
+  /** When set, shows a static chip instead of the avatar menu */
+  chip?: string;
 }
 
 type MobileHeaderProps = DashboardHeaderProps | PageHeaderProps;
 
 export function MobileHeader(props: MobileHeaderProps) {
-  const base =
-    "sticky top-0 z-30 h-12 lg:hidden flex items-center border-b border-white/5 bg-[#0e100e]/95 backdrop-blur-md px-4";
+  const base = cn(
+    "sticky top-0 z-30 flex h-12 items-center border-b border-white/6 px-4 backdrop-blur-md lg:hidden",
+    MOBILE_BG_CLASS,
+    "supports-[backdrop-filter]:bg-background/90"
+  );
 
   if (props.variant === "dashboard") {
     return (
@@ -53,9 +60,18 @@ export function MobileHeader(props: MobileHeaderProps) {
           )}
         </div>
 
-        {props.action && (
-          <div className="shrink-0">{props.action}</div>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {props.action && (
+            <div className="shrink-0">{props.action}</div>
+          )}
+          {props.chip ? (
+            <span className="rounded-full border border-white/6 bg-black/10 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+              {props.chip}
+            </span>
+          ) : (
+            <MobileAvatarMenu />
+          )}
+        </div>
       </div>
     </header>
   );

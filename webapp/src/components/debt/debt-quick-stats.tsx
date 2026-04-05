@@ -273,8 +273,8 @@ export function DebtQuickStats({
       {hasCreditCards && (
         <div className="mb-4">
           <div className="flex items-center gap-1.5 mb-2 px-1">
-            <CreditCard className="h-3 w-3 text-[#8b5cf6]" />
-            <p className="text-[11px] text-[#8b5cf6] uppercase tracking-wider">
+            <CreditCard className="h-3 w-3 text-z-brass" />
+            <p className="text-[11px] text-z-brass uppercase tracking-wider">
               Tarjetas de crédito
             </p>
           </div>
@@ -347,8 +347,8 @@ export function DebtQuickStats({
       {hasLoans && (
         <div>
           <div className="flex items-center gap-1.5 mb-2 px-1">
-            <HandCoins className="h-3 w-3 text-[#3b82f6]" />
-            <p className="text-[11px] text-[#3b82f6] uppercase tracking-wider">
+            <HandCoins className="h-3 w-3 text-z-sage-light" />
+            <p className="text-[11px] text-z-sage-light uppercase tracking-wider">
               Préstamos
             </p>
           </div>

@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { MOBILE_TABS, isMobileTabActive } from "@/lib/constants/mobile-nav";
+import { MOBILE_BG_CLASS } from "@/lib/constants/styles";
 import {
   Drawer,
   DrawerContent,
@@ -37,8 +38,12 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
         className="fixed bottom-0 left-0 right-0 z-[9999] lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="flex items-center border-t border-white/5 bg-[#0e100e]/95 backdrop-blur-md">
-          {/* Left tabs */}
+        <div
+          className={cn(
+            "flex items-center border-t border-white/6 backdrop-blur-md supports-[backdrop-filter]:bg-background/92",
+            MOBILE_BG_CLASS
+          )}
+        >
           <div className="flex flex-1 items-center justify-around">
             {leftTabs.map((tab) => {
               const active = isMobileTabActive(pathname, tab);
@@ -48,7 +53,7 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
                   href={tab.href}
                   className={cn(
                     "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
-                    active ? "text-z-brass" : "text-[#4a4f4a]"
+                    active ? "text-z-brass" : "text-muted-foreground/70"
                   )}
                 >
                   <tab.icon className="size-[18px]" />
@@ -58,7 +63,6 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
             })}
           </div>
 
-          {/* Center "+" button */}
           <div className="flex shrink-0 items-center justify-center px-4 py-2">
             <button
               type="button"
@@ -70,7 +74,6 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
             </button>
           </div>
 
-          {/* Right tabs */}
           <div className="flex flex-1 items-center justify-around">
             {rightTabs.map((tab) => {
               const active = isMobileTabActive(pathname, tab);
@@ -80,7 +83,7 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
                   href={tab.href}
                   className={cn(
                     "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
-                    active ? "text-z-brass" : "text-[#4a4f4a]"
+                    active ? "text-z-brass" : "text-muted-foreground/70"
                   )}
                 >
                   <tab.icon className="size-[18px]" />

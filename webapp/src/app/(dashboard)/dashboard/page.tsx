@@ -43,7 +43,7 @@ import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
-import { DashboardFocus } from "@/components/mobile/v2/dashboard-focus";
+import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
@@ -147,8 +147,8 @@ export default async function DashboardPage({
 
   if (!user) return null;
 
-  // Fetch currency + transactions + cached accounts + dashboard config + profile in parallel
-  const [preferredCurrency, { data: recentTransactions }, allAccountsResult, dashboardConfigData, { data: profile }] =
+  // Fetch currency + transactions + cached accounts + dashboard config in parallel
+  const [preferredCurrency, { data: recentTransactions }, allAccountsResult, dashboardConfigData] =
     await Promise.all([
       getPreferredCurrency(),
       supabase
@@ -161,7 +161,6 @@ export default async function DashboardPage({
         .is("reconciled_into_transaction_id", null),
       getAccounts(),
       getDashboardConfigWithPurpose(),
-      supabase.from("profiles").select("full_name, email").eq("id", user.id).single(),
     ]);
 
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
@@ -270,7 +269,7 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, _categoryBudgetResult, _burnRateData] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, categoryBudgetResult, burnRateData] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
@@ -286,42 +285,71 @@ export default async function DashboardPage({
   ]);
 
   const dashboardReminders = pendingReminders.slice(0, 5);
+  const mobileRecentTx = recentTx.map((tx) => ({
+    id: tx.id,
+    description: tx.merchant_name || tx.clean_description || "Sin descripción",
+    amount: tx.amount,
+    currency_code: tx.currency_code ?? "COP",
+    direction: tx.direction,
+  }));
 
-  // ── Data for DashboardFocus (mobile v2) ─────────────────────────────────────
+  const mobileLiquidAccounts = allAccounts
+    .filter((account) => account.account_type === "CHECKING" || account.account_type === "SAVINGS")
+    .map((account) => ({
+      id: account.id,
+      name: account.name,
+      currentBalance: account.current_balance ?? 0,
+      currencyCode: account.currency_code as CurrencyCode,
+    }));
 
-  const LEVEL_SCORE: Record<string, number> = {
-    excelente: 100,
-    solido: 80,
-    atento: 60,
-    alto: 35,
-    critico: 10,
-  };
-  const meterScores = healthMetersData.meters
-    .filter((m) => m.hasData)
-    .map((m) => LEVEL_SCORE[m.level] ?? 50);
-  const mobileHealthScore =
-    meterScores.length > 0
-      ? Math.round(meterScores.reduce((a, b) => a + b, 0) / meterScores.length)
-      : 0;
+  const mobileFixedExpenses = heroData.pendingObligations.map((obligation) => ({
+    id: obligation.id,
+    name: obligation.name,
+    amount: obligation.amount,
+    currencyCode: obligation.currency_code as CurrencyCode,
+  }));
 
-  const mobileBudgetPercent =
-    budgetSummary.totalTarget > 0
-      ? Math.round((budgetSummary.totalSpent / budgetSummary.totalTarget) * 100)
-      : 0;
-
-  const mobilePendingCount = attentionSnapshot.totalAction ?? 0;
-
-  const mobileDebtFreeMonths = debtCountdownData?.monthsToFree ?? null;
-
-  const mobileLastTx = recentTx[0]
+  const firstPayment = heroData.pendingObligations[0];
+  const mobileNextPayment = firstPayment
     ? {
-        description:
-          recentTx[0].merchant_name ||
-          recentTx[0].clean_description ||
-          "Sin descripción",
-        amount: recentTx[0].amount,
+        name: firstPayment.name,
+        amount: firstPayment.amount,
+        dueDate: firstPayment.due_date,
+        currencyCode: firstPayment.currency_code as CurrencyCode,
       }
     : null;
+
+  const daysToNextPayment = firstPayment
+    ? Math.ceil(
+        (new Date(firstPayment.due_date).getTime() - Date.now()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : null;
+
+  const mobileTotalSpent =
+    heroData.totalLiquid - heroData.totalPending - heroData.availableToSpend;
+
+  const categoryBudgetData = categoryBudgetResult.success
+    ? categoryBudgetResult.data
+    : [];
+  const mobileTopCategories = categoryBudgetData
+    .filter((category) => category.budget && category.budget > 0 && category.direction === "OUTFLOW")
+    .sort((a, b) => b.percentUsed - a.percentUsed)
+    .slice(0, 3)
+    .map((category) => ({
+      name: category.name_es ?? category.name,
+      percentUsed: category.percentUsed,
+    }));
+
+  const mobileUpcomingPaymentsV2 = heroData.pendingObligations
+    .slice(0, 5)
+    .map((obligation) => ({
+      id: obligation.id,
+      name: obligation.name,
+      dueDate: obligation.due_date,
+      amount: obligation.amount,
+      currencyCode: obligation.currency_code,
+    }));
 
   const quickUpdateAccounts: QuickValueUpdateAccount[] = allAccounts.map((account) => ({
     id: account.id,
@@ -345,18 +373,44 @@ export default async function DashboardPage({
 
   return (
     <>
-      {/* Mobile dashboard — v2 Focus mode */}
       <div className="lg:hidden">
-        <MobileHeader variant="dashboard" name={profile?.full_name} email={profile?.email} />
-        <DashboardFocus
-          healthScore={mobileHealthScore}
-          availableToSpend={heroData.availableToSpend}
-          budgetPercent={mobileBudgetPercent}
-          pendingCount={mobilePendingCount}
-          debtFreeMonths={mobileDebtFreeMonths}
-          lastTransaction={mobileLastTx}
-          currency={currency as CurrencyCode}
-        />
+        <MobileHeader variant="dashboard" />
+          <InicioRoot
+            hero={{
+              availablePerDay: (() => {
+                const now = new Date();
+                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                const daysRemaining = Math.max(daysInMonth - now.getDate(), 1);
+                return heroData.availableToSpend / daysRemaining;
+              })(),
+              availableTotal: heroData.availableToSpend,
+              daysRemaining: (() => {
+                const now = new Date();
+                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                return Math.max(daysInMonth - now.getDate(), 1);
+              })(),
+              currency: currency as CurrencyCode,
+              breakdown: {
+                totalLiquid: heroData.totalLiquid,
+                fixedExpenses: heroData.totalPending,
+                alreadySpent: mobileTotalSpent,
+              },
+            }}
+            metrics={{
+              runwayDays: burnRateData?.discretionary.runwayDays ?? 0,
+              daysInMonth: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(),
+              dayOfMonth: new Date().getDate(),
+              nextIncomeName: null,
+              nextIncomeDays: null,
+              nextIncomeAmount: null,
+              currency: currency as CurrencyCode,
+            }}
+            signals={attentionSnapshot.signals}
+            burnRateData={burnRateData}
+            totalBudget={budgetSummary.totalTarget}
+            recentTransactions={mobileRecentTx}
+            currency={currency as CurrencyCode}
+          />
       </div>
 
       {/* Desktop dashboard — section-based layout */}

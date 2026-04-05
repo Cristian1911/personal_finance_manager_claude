@@ -7,7 +7,8 @@ import { MobileAlertCard } from "./cards/mobile-alert-card";
 import { MobileHeroCard, type MobileHeroCardProps } from "./cards/mobile-hero-card";
 import { SpendingPaceTile } from "./cards/mobile-spending-pace";
 import { BudgetTile, type TopCategory } from "./cards/mobile-budget-ring";
-import { MobileUpcomingPayments } from "./cards/mobile-upcoming-payments";
+import { BurndownExpandable } from "@/components/dashboard/burndown-expandable";
+import { InicioDiscoveryRail } from "@/components/dashboard/inicio-discovery-rail";
 import { MobileRecentTxns } from "./cards/mobile-recent-txns";
 
 export interface MobileDashboardV2Props {
@@ -44,51 +45,65 @@ export function MobileDashboardV2({
   hero,
   burnRateData,
   budget,
-  upcomingPayments,
   recentTransactions,
 }: MobileDashboardV2Props) {
   const hasPace = !!burnRateData;
   const hasBudget = !!budget && budget.totalTarget > 0;
+  const hasUrgentFocus =
+    attentionSignals.some((s) => s.priority === "action") ||
+    (!!burnRateData && burnRateData.discretionary.runwayDays < 10);
+
+  const hasCriticalCategories =
+    !!budget &&
+    budget.topCategories.some((c) => c.percentUsed >= 90);
 
   return (
     <div className="space-y-2">
-      {/* ① Alert pill */}
+      {/* 1. Focus alert — only when there are pending actions */}
       <MobileAlertCard signals={attentionSignals} />
 
-      {/* ② Hero */}
+      {/* 2. Hero — "Disponible para gastar" as primary question */}
       <MobileHeroCard {...hero} />
 
-      {/* ③ Insight tiles — summary first, no debt-style expanded state */}
+      {/* 3. Two metrics above fold — spending pace + budget */}
       {(hasPace || hasBudget) && (
         <div className="grid grid-cols-2 gap-1.5">
-            {hasPace && (
-              <SpendingPaceTile data={burnRateData} />
-            )}
-            {hasBudget && (
-              <BudgetTile
-                progress={budget.progress}
-                totalTarget={budget.totalTarget}
-                totalSpent={budget.totalSpent}
-                topCategories={budget.topCategories}
-              />
-            )}
+          {hasPace && <SpendingPaceTile data={burnRateData} />}
+          {hasBudget && (
+            <BudgetTile
+              progress={budget.progress}
+              totalTarget={budget.totalTarget}
+              totalSpent={budget.totalSpent}
+              topCategories={budget.topCategories}
+            />
+          )}
         </div>
       )}
 
-      {/* Section divider */}
-      <div className="flex items-center gap-2 py-0.5">
-        <div className="h-px flex-1 bg-white/6" />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Actividad
-        </span>
-        <div className="h-px flex-1 bg-white/6" />
-      </div>
+      {/* 4. Burndown — expandable chart with context-specific actions */}
+      {hasPace && (
+        <BurndownExpandable
+          data={burnRateData}
+          hasCriticalCategories={hasCriticalCategories}
+        />
+      )}
 
-      {/* ④ Upcoming payments */}
-      <MobileUpcomingPayments payments={upcomingPayments} />
+      {/* 5. Discovery rail — compressed when focus is urgent */}
+      <InicioDiscoveryRail compressed={hasUrgentFocus} />
 
-      {/* ⑤ Recent transactions */}
-      <MobileRecentTxns transactions={recentTransactions} />
+      {/* 6. Recent activity — preview only */}
+      {recentTransactions.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 py-0.5">
+            <div className="h-px flex-1 bg-white/6" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Actividad reciente
+            </span>
+            <div className="h-px flex-1 bg-white/6" />
+          </div>
+          <MobileRecentTxns transactions={recentTransactions} />
+        </>
+      )}
     </div>
   );
 }

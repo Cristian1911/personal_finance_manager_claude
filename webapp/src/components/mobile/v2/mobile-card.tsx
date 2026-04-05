@@ -17,7 +17,7 @@ export function MCardTight({ className, ...props }: CardProps) {
 export function MCardGrid({ children, className }: CardProps) {
   return (
     <MCardTight className={className}>
-      <div className="grid grid-cols-2 [&>*]:p-3 [&>*]:text-center [&>*:nth-child(odd)]:border-r [&>*:nth-child(-n+2)]:border-b [&>*]:border-white/4">
+      <div className="grid grid-cols-2 [&>*]:border-white/6 [&>*]:p-3 [&>*]:text-center [&>*:nth-child(-n+2)]:border-b [&>*:nth-child(odd)]:border-r">
         {children}
       </div>
     </MCardTight>
@@ -28,7 +28,7 @@ export function MListRow({ className, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-3.5 py-2.5 [&+&]:border-t [&+&]:border-white/4",
+        "flex items-center justify-between px-3.5 py-2.5 [&+&]:border-t [&+&]:border-white/6",
         className,
       )}
       {...props}
