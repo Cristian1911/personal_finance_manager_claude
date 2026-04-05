@@ -44,23 +44,37 @@ function aggregateByDay(transactions: Transaction[]): DayData[] {
     dayMap.set(date, entry);
   }
 
-  // Sort by date, keep all days that have data
-  const sorted = Array.from(dayMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b));
+  // Fill in ALL days between first and last transaction for smooth lines
+  const dates = Array.from(dayMap.keys()).sort();
+  if (dates.length === 0) return [];
 
-  const today = new Date().toISOString().split("T")[0];
+  const firstDate = new Date(dates[0]);
+  const lastDate = new Date(dates[dates.length - 1]);
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+  const endDate = lastDate > today ? lastDate : today;
 
-  return sorted.map(([date, vals]) => {
-    const dayNum = parseInt(date.split("-")[2], 10);
-    const monthNum = parseInt(date.split("-")[1], 10);
-    const isToday = date === today;
-    return {
+  const result: DayData[] = [];
+  const cursor = new Date(firstDate);
+
+  while (cursor <= endDate) {
+    const dateStr = cursor.toISOString().split("T")[0];
+    const vals = dayMap.get(dateStr) ?? { income: 0, expense: 0 };
+    const dayNum = cursor.getDate();
+    const monthNum = cursor.getMonth() + 1;
+    const isToday = dateStr === todayStr;
+
+    result.push({
       label: isToday ? "Hoy" : `${dayNum}/${monthNum}`,
       day: dayNum,
       income: vals.income,
       expense: vals.expense,
-    };
-  });
+    });
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return result;
 }
 
 // ─── SVG chart ───────────────────────────────────────────────────────────────
@@ -70,23 +84,30 @@ function toPolyline(
   maxVal: number,
   width: number,
   height: number,
+  padL = 42,
+  padR = 10,
   padY = 12
 ): string {
   if (values.length === 0) return "";
-  const padX = 15;
-  const usableW = width - padX * 2;
+  const usableW = width - padL - padR;
   const step = values.length > 1 ? usableW / (values.length - 1) : 0;
   return values
     .map((v, i) => {
-      const x = padX + i * step;
+      const x = padL + i * step;
       const y = padY + (1 - v / Math.max(maxVal, 1)) * (height - padY * 2);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
 }
 
+function compactAmount(amount: number): string {
+  if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
+  if (amount >= 1_000) return `$${(amount / 1_000).toFixed(0)}k`;
+  return `$${amount}`;
+}
+
 function FlowChart({ days }: { days: DayData[] }) {
-  const W = 260;
+  const W = 280;
   const H = 80;
 
   const incomeVals = days.map((d) => d.income);
@@ -94,10 +115,11 @@ function FlowChart({ days }: { days: DayData[] }) {
   const maxVal = Math.max(...incomeVals, ...expenseVals, 1);
 
   const lastIdx = days.length - 1;
-  const padX = 15;
-  const usableW = W - padX * 2;
+  const padL = 42; // space for Y-axis labels on left
+  const padR = 10;
+  const usableW = W - padL - padR;
   const step = days.length > 1 ? usableW / (days.length - 1) : 0;
-  const todayX = padX + lastIdx * step;
+  const todayX = padL + lastIdx * step;
 
   if (days.length === 0) {
     return (
@@ -162,6 +184,17 @@ function FlowChart({ days }: { days: DayData[] }) {
           strokeWidth="1"
           strokeDasharray="3 3"
         />
+
+        {/* Y-axis scale labels (left side) */}
+        <text x={padL - 4} y={14} textAnchor="end" className="fill-muted-foreground text-[7px]">
+          {compactAmount(maxVal)}
+        </text>
+        <text x={padL - 4} y={H / 2 + 2} textAnchor="end" className="fill-muted-foreground text-[7px]">
+          {compactAmount(maxVal / 2)}
+        </text>
+        <text x={padL - 4} y={H - 6} textAnchor="end" className="fill-muted-foreground text-[7px]">
+          $0
+        </text>
       </svg>
 
       {/* Day labels — show first, last, and a few in between to avoid crowding */}
