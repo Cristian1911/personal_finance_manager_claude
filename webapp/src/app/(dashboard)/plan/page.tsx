@@ -1,6 +1,5 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { CalendarRange } from "lucide-react";
 import { getPlanPageData } from "@/actions/plan";
 import { getCategoriesByRhythm } from "@/actions/categories";
 import { getWishlistItemsForDashboard } from "@/actions/wishlist";
@@ -10,9 +9,14 @@ import { PlanBudgetToggle } from "@/components/plan/plan-budget-toggle";
 import { PlanDecisionRail } from "@/components/plan/plan-decision-rail";
 import { PlanDebtSection } from "@/components/plan/plan-debt-section";
 import { PlanHero } from "@/components/plan/plan-hero";
+import { PlanFlowTimeline } from "@/components/plan/plan-flow-timeline";
 import { PlanRecurringSection } from "@/components/plan/plan-recurring-section";
 import { PlanScenarioPreview } from "@/components/plan/plan-scenario-preview";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
+import { PlanRoot } from "@/components/mobile/v2/plan/plan-root";
+import { get503020Allocation } from "@/actions/allocation";
+import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 
@@ -29,76 +33,81 @@ export default async function PlanPage({
     getPlanPageData(month),
     getWishlistItemsForDashboard(),
   ]);
-  const rhythmResult = await getCategoriesByRhythm(month, planData.currency);
+  const [rhythmResult, allocationData, categoryBudgetResult] = await Promise.all([
+    getCategoriesByRhythm(month, planData.currency),
+    get503020Allocation(month, planData.currency),
+    getCategoriesWithBudgetData(month, planData.currency),
+  ]);
   const rhythmData = rhythmResult.success ? rhythmResult.data : [];
+  const categoryBudgetData = categoryBudgetResult.success ? categoryBudgetResult.data : [];
+  const isStable = planData.heroSummary.pressure === "stable";
+  const now = new Date();
+  const planDayOfMonth = now.getDate();
+  const planDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <div className="space-y-3 lg:hidden">
-        <div className="space-y-1">
-          <SectionEyebrow>Plan</SectionEyebrow>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Tu capa estratégica</h1>
-            <p className="text-sm text-muted-foreground">
-              Decide qué ajustar antes de bajar a detalle
-            </p>
+      {/* ── Mobile ── */}
+      <div className="lg:hidden">
+        <PlanRoot
+          planData={planData}
+          allocationData={allocationData}
+          currency={planData.currency}
+          monthLabel={monthLabel}
+          dayOfMonth={planDayOfMonth}
+          daysInMonth={planDaysInMonth}
+          categories={categoryBudgetData}
+        />
+      </div>
+
+      {/* ── Desktop ── */}
+      <div className="hidden lg:block space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <SectionEyebrow>Plan</SectionEyebrow>
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">Tu capa estratégica</h1>
+              <p className="text-muted-foreground">
+                {monthLabel} · reúne presupuesto, deuda, obligaciones y escenarios en una sola decisión
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 rounded-full border border-white/6 bg-z-surface-2 px-3 py-2 text-sm text-muted-foreground">
-          <CalendarRange className="size-4 text-z-brass" />
-          <Suspense fallback={<span className="capitalize">{monthLabel}</span>}>
+          <Suspense fallback={<div className="h-9 w-40 rounded-md bg-muted animate-pulse" />}>
             <MonthSelector />
           </Suspense>
         </div>
-      </div>
 
-      <div className="hidden lg:flex lg:items-center lg:justify-between lg:gap-4">
-        <div className="space-y-1">
-          <SectionEyebrow>Plan</SectionEyebrow>
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Tu capa estratégica</h1>
-            <p className="text-muted-foreground">
-              {monthLabel} · reúne presupuesto, deuda, obligaciones y escenarios en una sola decisión
-            </p>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_24rem]">
+          <PlanHero
+            summary={planData.heroSummary}
+            currency={planData.currency}
+            monthLabel={monthLabel}
+            incomeEstimate={planData.incomeEstimate}
+          />
+          <PlanDecisionRail
+            budget={planData.budget}
+            debt={planData.debt}
+            recurring={planData.recurring}
+            scenarios={planData.scenarios}
+            desires={{ totalCount: wishlistSummary.totalCount, readyCount: wishlistSummary.readyCount }}
+            currency={planData.currency}
+          />
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+          <PlanBudgetToggle
+            domainView={<PlanBudgetSection budget={planData.budget} currency={planData.currency} />}
+            rhythmGroups={rhythmData}
+            currency={planData.currency}
+          />
+          <div className="space-y-6">
+            <PlanDebtSection debt={planData.debt} currency={planData.currency} />
+            <PlanRecurringSection recurring={planData.recurring} currency={planData.currency} />
           </div>
         </div>
 
-        <Suspense fallback={<div className="h-9 w-40 rounded-md bg-muted animate-pulse" />}>
-          <MonthSelector />
-        </Suspense>
+        <PlanScenarioPreview scenarios={planData.scenarios} />
       </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_24rem]">
-        <PlanHero
-          summary={planData.heroSummary}
-          currency={planData.currency}
-          monthLabel={monthLabel}
-          incomeEstimate={planData.incomeEstimate}
-        />
-        <PlanDecisionRail
-          budget={planData.budget}
-          debt={planData.debt}
-          recurring={planData.recurring}
-          scenarios={planData.scenarios}
-          desires={{ totalCount: wishlistSummary.totalCount, readyCount: wishlistSummary.readyCount }}
-          currency={planData.currency}
-        />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <PlanBudgetToggle
-          domainView={<PlanBudgetSection budget={planData.budget} currency={planData.currency} />}
-          rhythmGroups={rhythmData}
-          currency={planData.currency}
-        />
-
-        <div className="space-y-6">
-          <PlanDebtSection debt={planData.debt} currency={planData.currency} />
-          <PlanRecurringSection recurring={planData.recurring} currency={planData.currency} />
-        </div>
-      </div>
-
-      <PlanScenarioPreview scenarios={planData.scenarios} />
     </div>
   );
 }

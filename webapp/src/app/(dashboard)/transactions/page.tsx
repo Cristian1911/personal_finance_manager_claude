@@ -14,7 +14,7 @@ import { TransactionFormDialog } from "@/components/transactions/transaction-for
 import { QuickCaptureBar } from "@/components/transactions/quick-capture-bar";
 import { Pagination } from "@/components/transactions/pagination";
 import { MonthSelector } from "@/components/month-selector";
-import { MobileMovimientos } from "@/components/mobile/mobile-movimientos";
+import { MovimientosRoot } from "@/components/mobile/v2/movimientos/movimientos-root";
 import { parseMonth, formatMonthParam, formatMonthLabel } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
 import dynamic from "next/dynamic";
@@ -87,59 +87,18 @@ export default async function TransactionsPage({
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      {/* Mobile: compact header + controls + date-grouped feed */}
-      <div className="space-y-4 lg:hidden">
-        <PageHero
-          pills={
-            <>
-              <HeroPill>Movimientos</HeroPill>
-              {hasActiveFilters && (
-                <HeroAccentPill>{activeFilterCount} filtros activos</HeroAccentPill>
-              )}
-              <HeroPill>{monthLabel}</HeroPill>
-            </>
-          }
-          title="Movimientos"
-          description={description}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <Suspense>
-                <TransactionFilters accounts={accounts} tags={allTags} />
-              </Suspense>
-              <Suspense>
-                <MonthSelector />
-              </Suspense>
-            </div>
-          }
-        >
-          <div className="grid grid-cols-3 gap-2">
-            <div className={`${PANEL_INSET_CLASS} p-3`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Vista</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight">{transactionsResult.count}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{scopeLabel}</p>
-            </div>
-            <div className={`${PANEL_INSET_CLASS} p-3`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ingresos</p>
-              <p className="mt-2 text-lg font-semibold tracking-tight text-z-income">
-                {formatCurrency(inflowVisible, summaryCurrency)}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">en la vista</p>
-            </div>
-            <div className={`${PANEL_INSET_CLASS} p-3`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gastos</p>
-              <p className="mt-2 text-lg font-semibold tracking-tight text-z-alert">
-                {formatCurrency(outflowVisible, summaryCurrency)}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">en la vista</p>
-            </div>
-          </div>
-        </PageHero>
-
-        <PendingEmailTransactions transactions={pendingTransactions} accounts={accounts} />
-
-        <MobileMovimientos
+      <div className="lg:hidden">
+        <MovimientosRoot
           transactions={transactionsResult.data}
           categories={categories}
+          accounts={accounts}
+          tags={allTags}
+          count={transactionsResult.count}
+          totalInflow={inflowVisible}
+          totalOutflow={outflowVisible}
+          uncategorizedCount={uncategorizedVisible}
+          pendingEmailCount={pendingTransactions.length}
+          currency={summaryCurrency}
         />
       </div>
 

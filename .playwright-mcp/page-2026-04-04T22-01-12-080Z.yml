@@ -1,0 +1,34 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]: Hola, Cristian
+      - button "CG 405" [ref=e6]:
+        - generic [ref=e8]: CG
+        - generic [ref=e9]: "405"
+    - main [ref=e10]:
+      - button "Abrir menu de acciones" [ref=e22]:
+        - img [ref=e23]
+    - navigation [ref=e24]:
+      - generic [ref=e25]:
+        - link "Inicio" [ref=e26] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e28]
+          - generic [ref=e33]: Inicio
+        - link "Movimientos" [ref=e34] [cursor=pointer]:
+          - /url: /transactions
+          - img [ref=e36]
+          - generic [ref=e39]: Movimientos
+        - link "Plan" [ref=e41] [cursor=pointer]:
+          - /url: /plan
+          - img [ref=e43]
+          - generic [ref=e46]: Plan
+        - link "99+ Bandeja" [ref=e47] [cursor=pointer]:
+          - /url: /gestionar
+          - generic [ref=e48]:
+            - img [ref=e49]
+            - generic [ref=e52]: 99+
+          - generic [ref=e53]: Bandeja
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e59] [cursor=pointer]:
+    - img [ref=e60]
+  - alert [ref=e63]

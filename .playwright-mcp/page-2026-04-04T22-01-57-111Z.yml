@@ -1,0 +1,507 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]: Hola, Cristian
+      - button "CG 405" [ref=e6]:
+        - generic [ref=e8]: CG
+        - generic [ref=e9]: "405"
+    - main [ref=e10]:
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - button "Volver" [ref=e14]:
+            - img
+            - generic [ref=e15]: Volver
+          - heading "Deudas" [level=1] [ref=e16]
+          - generic [ref=e17]:
+            - button "Mes anterior" [ref=e18]:
+              - img
+            - button "abril 2026" [ref=e19]
+            - button "Mes siguiente" [disabled]:
+              - img
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - heading "Deudas" [level=1] [ref=e22]
+            - paragraph [ref=e23]: Lectura en COP
+          - generic [ref=e24]:
+            - link "Planificador de pagos" [ref=e25] [cursor=pointer]:
+              - /url: /deudas/planificador
+              - text: Planificador de pagos
+              - img
+            - link "Volver a Plan" [ref=e26] [cursor=pointer]:
+              - /url: /plan
+        - generic [ref=e28]:
+          - generic [ref=e30]:
+            - img [ref=e32]
+            - generic [ref=e34]:
+              - paragraph [ref=e35]: Deuda total
+              - paragraph [ref=e36]: $ 51.111.899
+              - paragraph [ref=e38]: + $217.00
+            - generic [ref=e39]:
+              - paragraph [ref=e40]: Pagas al mes
+              - paragraph [ref=e41]: $ 2.362.153
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - img [ref=e45]
+              - paragraph [ref=e47]: Intereses / mes
+            - paragraph [ref=e48]: $ 760.999
+            - paragraph [ref=e49]: Dinero que no reduce tu deuda
+        - generic [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - img [ref=e53]
+              - paragraph [ref=e57]: General
+            - generic [ref=e58]:
+              - button "Mayor cuota $ 693.872 Bancolombia Joven ****2365" [ref=e59] [cursor=pointer]:
+                - generic [ref=e60]:
+                  - generic [ref=e61]:
+                    - paragraph [ref=e62]: Mayor cuota
+                    - img [ref=e63]
+                  - paragraph [ref=e65]: $ 693.872
+                  - paragraph [ref=e66]: Bancolombia Joven ****2365
+              - button "Deuda más cara $ 242.208 solo en intereses / mes Bancolombia AMEX ****5747 · 25.5% EA" [ref=e67] [cursor=pointer]:
+                - generic [ref=e68]:
+                  - generic [ref=e69]:
+                    - paragraph [ref=e70]: Deuda más cara
+                    - img [ref=e71]
+                  - paragraph [ref=e73]: $ 242.208
+                  - paragraph [ref=e74]: solo en intereses / mes
+                  - paragraph [ref=e75]: Bancolombia AMEX ****5747 · 25.5% EA
+              - button "Próximo pago 2 días Bancolombia VISA ****7022" [ref=e76] [cursor=pointer]:
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - paragraph [ref=e79]: Próximo pago
+                    - img [ref=e80]
+                  - paragraph [ref=e82]: 2 días
+                  - paragraph [ref=e83]: Bancolombia VISA ****7022
+          - generic [ref=e84]:
+            - generic [ref=e85]:
+              - img [ref=e86]
+              - paragraph [ref=e88]: Tarjetas de crédito
+            - generic [ref=e89]:
+              - button "Uso de tarjetas 94% $ 25.811.698 / $ 27.350.000" [ref=e90] [cursor=pointer]:
+                - generic [ref=e91]:
+                  - generic [ref=e92]:
+                    - paragraph [ref=e93]: Uso de tarjetas
+                    - img [ref=e94]
+                  - generic [ref=e96]:
+                    - generic [ref=e97]:
+                      - img [ref=e98]
+                      - generic [ref=e101]: 94%
+                    - paragraph [ref=e102]: $ 25.811.698 / $ 27.350.000
+              - button "Tarjetas / mes $ 1.705.274 4 tarjetas" [ref=e103] [cursor=pointer]:
+                - generic [ref=e104]:
+                  - generic [ref=e105]:
+                    - paragraph [ref=e106]: Tarjetas / mes
+                    - img [ref=e107]
+                  - paragraph [ref=e109]: $ 1.705.274
+                  - paragraph [ref=e110]: 4 tarjetas
+              - button "Intereses TC / mes $ 492.069 de 4 tarjetas" [ref=e111] [cursor=pointer]:
+                - generic [ref=e112]:
+                  - generic [ref=e113]:
+                    - paragraph [ref=e114]: Intereses TC / mes
+                    - img [ref=e115]
+                  - paragraph [ref=e117]: $ 492.069
+                  - paragraph [ref=e118]: de 4 tarjetas
+          - generic [ref=e119]:
+            - generic [ref=e120]:
+              - img [ref=e121]
+              - paragraph [ref=e127]: Préstamos
+            - generic [ref=e128]:
+              - button "Préstamos / mes $ 656.878 4 préstamos" [ref=e129] [cursor=pointer]:
+                - generic [ref=e130]:
+                  - generic [ref=e131]:
+                    - paragraph [ref=e132]: Préstamos / mes
+                    - img [ref=e133]
+                  - paragraph [ref=e135]: $ 656.878
+                  - paragraph [ref=e136]: 4 préstamos
+              - button "Plazo restante 24 meses Lulo Préstamo ****1964" [ref=e137] [cursor=pointer]:
+                - generic [ref=e138]:
+                  - generic [ref=e139]:
+                    - paragraph [ref=e140]: Plazo restante
+                    - img [ref=e141]
+                  - paragraph [ref=e143]: 24 meses
+                  - paragraph [ref=e144]: Lulo Préstamo ****1964
+              - button "Progreso 81% pagado" [ref=e145] [cursor=pointer]:
+                - generic [ref=e146]:
+                  - generic [ref=e147]:
+                    - paragraph [ref=e148]: Progreso
+                    - img [ref=e149]
+                  - generic [ref=e151]:
+                    - paragraph [ref=e152]: 81%
+                    - generic [ref=e153]: pagado
+        - generic [ref=e156]:
+          - generic [ref=e158]:
+            - generic [ref=e159]: Tu salario hoy
+            - generic [ref=e160]:
+              - generic [ref=e161]: $ 6.500.000
+              - generic [ref=e162]: 64% libre
+          - generic [ref=e163]:
+            - generic [ref=e164]:
+              - button [ref=e165] [cursor=pointer]
+              - button [ref=e166] [cursor=pointer]
+              - button [ref=e167] [cursor=pointer]
+              - button [ref=e168] [cursor=pointer]
+              - button [ref=e169] [cursor=pointer]
+              - button [ref=e170] [cursor=pointer]
+              - button [ref=e171] [cursor=pointer]
+              - button [ref=e172] [cursor=pointer]
+              - button "Libre" [ref=e173] [cursor=pointer]:
+                - generic [ref=e174]: Libre
+            - generic [ref=e175]:
+              - button "Bancolombia VISA ****7022 $ 362.654" [ref=e176] [cursor=pointer]:
+                - generic [ref=e178]: Bancolombia VISA ****7022
+                - generic [ref=e179]: $ 362.654
+              - button "Bancolombia AMEX ****5747 $ 507.815" [ref=e180] [cursor=pointer]:
+                - generic [ref=e182]: Bancolombia AMEX ****5747
+                - generic [ref=e183]: $ 507.815
+              - button "Bancolombia Joven ****2365 $ 693.872" [ref=e184] [cursor=pointer]:
+                - generic [ref=e186]: Bancolombia Joven ****2365
+                - generic [ref=e187]: $ 693.872
+              - button "Bancolombia Préstamo ****2475 $ 159.477" [ref=e188] [cursor=pointer]:
+                - generic [ref=e190]: Bancolombia Préstamo ****2475
+                - generic [ref=e191]: $ 159.477
+              - button "Bancolombia Préstamo ****7507 $ 55.312" [ref=e192] [cursor=pointer]:
+                - generic [ref=e194]: Bancolombia Préstamo ****7507
+                - generic [ref=e195]: $ 55.312
+              - button "Bancolombia Préstamo ****8386 $ 102.817" [ref=e196] [cursor=pointer]:
+                - generic [ref=e198]: Bancolombia Préstamo ****8386
+                - generic [ref=e199]: $ 102.817
+              - button "Nu Tarjeta ****7437 $ 140.933" [ref=e200] [cursor=pointer]:
+                - generic [ref=e202]: Nu Tarjeta ****7437
+                - generic [ref=e203]: $ 140.933
+              - button "Lulo Préstamo ****1964 $ 339.272" [ref=e204] [cursor=pointer]:
+                - generic [ref=e206]: Lulo Préstamo ****1964
+                - generic [ref=e207]: $ 339.272
+              - button "Libre $ 4.137.847" [ref=e208] [cursor=pointer]:
+                - generic [ref=e210]: Libre
+                - generic [ref=e211]: $ 4.137.847
+            - generic [ref=e212]:
+              - paragraph [ref=e213]: ¿Quieres ver cómo crece lo libre mes a mes?
+              - link "Simular" [ref=e214] [cursor=pointer]:
+                - /url: /deudas/planificador
+                - text: Simular
+                - img
+        - generic [ref=e215]:
+          - heading "Tarjetas de crédito" [level=2] [ref=e216]
+          - generic [ref=e217]:
+            - generic [ref=e218]:
+              - generic [ref=e220]:
+                - generic [ref=e221]:
+                  - img [ref=e223]
+                  - generic [ref=e225]:
+                    - generic [ref=e226]: Bancolombia VISA ****7022
+                    - paragraph [ref=e227]: Bancolombia
+                - generic [ref=e228]: Tarjeta
+              - generic [ref=e229]:
+                - paragraph [ref=e231]: $ 5.400.000
+                - generic [ref=e232]:
+                  - generic [ref=e233]:
+                    - generic [ref=e234]: Utilización
+                    - generic [ref=e235]: 100%
+                  - progressbar [ref=e236]
+                  - paragraph [ref=e238]: "Cupo: $ 5.400.000"
+                - generic [ref=e239]:
+                  - generic [ref=e240]:
+                    - paragraph [ref=e241]: Tasa
+                    - paragraph [ref=e242]: 25.5% EA
+                  - generic [ref=e243]:
+                    - paragraph [ref=e244]: Interés/mes
+                    - paragraph [ref=e245]: $ 103.184
+                  - generic [ref=e246]:
+                    - paragraph [ref=e247]: Cuota
+                    - paragraph [ref=e248]: $ 362.654
+                  - generic [ref=e249]:
+                    - img [ref=e250]
+                    - generic [ref=e252]:
+                      - paragraph [ref=e253]: Próximo pago
+                      - paragraph [ref=e254]: 2 días
+            - generic [ref=e255]:
+              - generic [ref=e257]:
+                - generic [ref=e258]:
+                  - img [ref=e260]
+                  - generic [ref=e262]:
+                    - generic [ref=e263]: Bancolombia AMEX ****5747
+                    - paragraph [ref=e264]: Bancolombia
+                - generic [ref=e265]: Tarjeta
+              - generic [ref=e266]:
+                - generic [ref=e267]:
+                  - generic [ref=e268]:
+                    - paragraph [ref=e269]: $ 12.675.595
+                    - generic [ref=e270]: COP
+                  - generic [ref=e271]:
+                    - paragraph [ref=e272]: $154.00
+                    - generic [ref=e273]: USD
+                - generic [ref=e274]:
+                  - generic [ref=e275]:
+                    - generic [ref=e276]:
+                      - generic [ref=e277]: Uso COP
+                      - generic [ref=e278]: 98%
+                    - progressbar [ref=e279]
+                    - paragraph [ref=e281]: "Cupo: $ 13.000.000"
+                  - generic [ref=e282]:
+                    - generic [ref=e283]:
+                      - generic [ref=e284]: Uso USD
+                      - generic [ref=e285]: 0%
+                    - progressbar [ref=e286]
+                    - paragraph [ref=e288]: "Cupo: $13,000,000.00"
+                - generic [ref=e289]:
+                  - generic [ref=e290]:
+                    - paragraph [ref=e291]: Tasa
+                    - paragraph [ref=e292]: 25.5% EA
+                  - generic [ref=e293]:
+                    - paragraph [ref=e294]: Interés/mes
+                    - paragraph [ref=e295]: $ 242.208
+                  - generic [ref=e296]:
+                    - paragraph [ref=e297]: Cuota
+                    - paragraph [ref=e298]: $ 507.815
+                  - generic [ref=e299]:
+                    - img [ref=e300]
+                    - generic [ref=e302]:
+                      - paragraph [ref=e303]: Próximo pago
+                      - paragraph [ref=e304]: 12 días
+            - generic [ref=e305]:
+              - generic [ref=e307]:
+                - generic [ref=e308]:
+                  - img [ref=e310]
+                  - generic [ref=e312]:
+                    - generic [ref=e313]: Bancolombia Joven ****2365
+                    - paragraph [ref=e314]: Bancolombia
+                - generic [ref=e315]: Tarjeta
+              - generic [ref=e316]:
+                - generic [ref=e317]:
+                  - generic [ref=e318]:
+                    - paragraph [ref=e319]: $ 4.917.435
+                    - generic [ref=e320]: COP
+                  - generic [ref=e321]:
+                    - paragraph [ref=e322]: $63.00
+                    - generic [ref=e323]: USD
+                - generic [ref=e324]:
+                  - generic [ref=e325]:
+                    - generic [ref=e326]:
+                      - generic [ref=e327]: Uso COP
+                      - generic [ref=e328]: 98%
+                    - progressbar [ref=e329]
+                    - paragraph [ref=e331]: "Cupo: $ 5.000.000"
+                  - generic [ref=e332]:
+                    - generic [ref=e333]:
+                      - generic [ref=e334]: Uso USD
+                      - generic [ref=e335]: 0%
+                    - progressbar [ref=e336]
+                    - paragraph [ref=e338]: "Cupo: $5,000,000.00"
+                - generic [ref=e339]:
+                  - generic [ref=e340]:
+                    - paragraph [ref=e341]: Tasa
+                    - paragraph [ref=e342]: 25.5% EA
+                  - generic [ref=e343]:
+                    - paragraph [ref=e344]: Interés/mes
+                    - paragraph [ref=e345]: $ 93.963
+                  - generic [ref=e346]:
+                    - paragraph [ref=e347]: Cuota
+                    - paragraph [ref=e348]: $ 693.872
+                  - generic [ref=e349]:
+                    - img [ref=e350]
+                    - generic [ref=e352]:
+                      - paragraph [ref=e353]: Próximo pago
+                      - paragraph [ref=e354]: 12 días
+            - generic [ref=e355]:
+              - generic [ref=e357]:
+                - generic [ref=e358]:
+                  - img [ref=e360]
+                  - generic [ref=e362]:
+                    - generic [ref=e363]: Nu Tarjeta ****7437
+                    - paragraph [ref=e364]: Nu
+                - generic [ref=e365]: Tarjeta
+              - generic [ref=e366]:
+                - paragraph [ref=e368]: $ 2.818.668
+                - generic [ref=e369]:
+                  - generic [ref=e370]:
+                    - generic [ref=e371]: Utilización
+                    - generic [ref=e372]: 71%
+                  - progressbar [ref=e373]
+                  - paragraph [ref=e375]: "Cupo: $ 3.950.000"
+                - generic [ref=e376]:
+                  - generic [ref=e377]:
+                    - paragraph [ref=e378]: Tasa
+                    - paragraph [ref=e379]: 24.9% EA
+                  - generic [ref=e380]:
+                    - paragraph [ref=e381]: Interés/mes
+                    - paragraph [ref=e382]: $ 52.713
+                  - generic [ref=e383]:
+                    - img [ref=e384]
+                    - generic [ref=e386]:
+                      - paragraph [ref=e387]: Próximo pago
+                      - paragraph [ref=e388]: 28 días
+        - generic [ref=e389]:
+          - heading "Préstamos" [level=2] [ref=e390]
+          - generic [ref=e391]:
+            - generic [ref=e392]:
+              - generic [ref=e394]:
+                - generic [ref=e395]:
+                  - img [ref=e397]
+                  - generic [ref=e403]:
+                    - generic [ref=e404]: Bancolombia Préstamo ****1866
+                    - paragraph [ref=e405]: Bancolombia
+                - generic [ref=e406]: Préstamo
+              - generic [ref=e407]:
+                - paragraph [ref=e409]: $ 0
+                - generic [ref=e410]:
+                  - generic [ref=e411]:
+                    - paragraph [ref=e412]: Tasa
+                    - paragraph [ref=e413]: 22.74% EA
+                  - generic [ref=e414]:
+                    - paragraph [ref=e415]: Cuota
+                    - paragraph [ref=e416]: $ 1.238.710
+                  - generic [ref=e417]:
+                    - img [ref=e418]
+                    - generic [ref=e420]:
+                      - paragraph [ref=e421]: Próximo pago
+                      - paragraph [ref=e422]: 12 días
+            - generic [ref=e423]:
+              - generic [ref=e425]:
+                - generic [ref=e426]:
+                  - img [ref=e428]
+                  - generic [ref=e434]:
+                    - generic [ref=e435]: Bancolombia Préstamo ****2475
+                    - paragraph [ref=e436]: Bancolombia
+                - generic [ref=e437]: Préstamo
+              - generic [ref=e438]:
+                - paragraph [ref=e440]: $ 9.055.804
+                - generic [ref=e441]:
+                  - generic [ref=e442]:
+                    - paragraph [ref=e443]: Tasa
+                    - paragraph [ref=e444]: 9.16% EA
+                  - generic [ref=e445]:
+                    - paragraph [ref=e446]: Interés/mes
+                    - paragraph [ref=e447]: $ 66.383
+                  - generic [ref=e448]:
+                    - paragraph [ref=e449]: Cuota
+                    - paragraph [ref=e450]: $ 159.477
+                  - generic [ref=e451]:
+                    - img [ref=e452]
+                    - generic [ref=e454]:
+                      - paragraph [ref=e455]: Próximo pago
+                      - paragraph [ref=e456]: 22 días
+            - generic [ref=e457]:
+              - generic [ref=e459]:
+                - generic [ref=e460]:
+                  - img [ref=e462]
+                  - generic [ref=e468]:
+                    - generic [ref=e469]: Bancolombia Préstamo ****7507
+                    - paragraph [ref=e470]: Bancolombia
+                - generic [ref=e471]: Préstamo
+              - generic [ref=e472]:
+                - paragraph [ref=e474]: $ 5.094.631
+                - generic [ref=e475]:
+                  - generic [ref=e476]:
+                    - paragraph [ref=e477]: Tasa
+                    - paragraph [ref=e478]: 9% EA
+                  - generic [ref=e479]:
+                    - paragraph [ref=e480]: Interés/mes
+                    - paragraph [ref=e481]: $ 36.719
+                  - generic [ref=e482]:
+                    - paragraph [ref=e483]: Cuota
+                    - paragraph [ref=e484]: $ 55.312
+                  - generic [ref=e485]:
+                    - img [ref=e486]
+                    - generic [ref=e488]:
+                      - paragraph [ref=e489]: Próximo pago
+                      - paragraph [ref=e490]: 22 días
+            - generic [ref=e491]:
+              - generic [ref=e493]:
+                - generic [ref=e494]:
+                  - img [ref=e496]
+                  - generic [ref=e502]:
+                    - generic [ref=e503]: Bancolombia Préstamo ****8386
+                    - paragraph [ref=e504]: Bancolombia
+                - generic [ref=e505]: Préstamo
+              - generic [ref=e506]:
+                - paragraph [ref=e508]: $ 3.091.405
+                - generic [ref=e509]:
+                  - generic [ref=e510]:
+                    - paragraph [ref=e511]: Tasa
+                    - paragraph [ref=e512]: 9% EA
+                  - generic [ref=e513]:
+                    - paragraph [ref=e514]: Interés/mes
+                    - paragraph [ref=e515]: $ 22.281
+                  - generic [ref=e516]:
+                    - paragraph [ref=e517]: Cuota
+                    - paragraph [ref=e518]: $ 102.817
+                  - generic [ref=e519]:
+                    - img [ref=e520]
+                    - generic [ref=e522]:
+                      - paragraph [ref=e523]: Próximo pago
+                      - paragraph [ref=e524]: 22 días
+            - generic [ref=e525]:
+              - generic [ref=e527]:
+                - generic [ref=e528]:
+                  - img [ref=e530]
+                  - generic [ref=e536]:
+                    - generic [ref=e537]: Lulo Préstamo ****1964
+                    - paragraph [ref=e538]: Lulo
+                - generic [ref=e539]: Préstamo
+              - generic [ref=e540]:
+                - paragraph [ref=e542]: $ 8.058.360
+                - generic [ref=e543]:
+                  - generic [ref=e544]:
+                    - paragraph [ref=e545]: Tasa
+                    - paragraph [ref=e546]: 23.6% EA
+                  - generic [ref=e547]:
+                    - paragraph [ref=e548]: Interés/mes
+                    - paragraph [ref=e549]: $ 143.548
+                  - generic [ref=e550]:
+                    - paragraph [ref=e551]: Cuota
+                    - paragraph [ref=e552]: $ 339.272
+                  - generic [ref=e553]:
+                    - img [ref=e554]
+                    - generic [ref=e556]:
+                      - paragraph [ref=e557]: Próximo pago
+                      - paragraph [ref=e558]: 12 días
+        - generic [ref=e559]:
+          - heading "Historial de impacto" [level=3] [ref=e560]
+          - generic [ref=e561]:
+            - generic [ref=e562]:
+              - generic [ref=e563]:
+                - text: Buen movimiento
+                - generic [ref=e564]:
+                  - generic [ref=e565]: Bancolombia Préstamo ****1866
+                  - generic [ref=e566]: 20 feb 2026
+              - generic [ref=e567]: "-$ 459.359"
+              - generic [ref=e569]:
+                - img [ref=e570]
+                - generic [ref=e573]: "Interés mensual: -$ 7.911/mes"
+            - generic [ref=e574]:
+              - generic [ref=e575]:
+                - text: Buen movimiento
+                - generic [ref=e576]:
+                  - generic [ref=e577]: Bancolombia Préstamo ****2475
+                  - generic [ref=e578]: 17 feb 2026
+              - generic [ref=e579]: "-$ 316.146"
+              - generic [ref=e581]:
+                - img [ref=e582]
+                - generic [ref=e585]: "Interés mensual: -$ 2.318/mes"
+      - button "Abrir menu de acciones" [ref=e586]:
+        - img [ref=e587]
+    - navigation [ref=e588]:
+      - generic [ref=e589]:
+        - link "Inicio" [ref=e590] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e592]
+          - generic [ref=e597]: Inicio
+        - link "Movimientos" [ref=e598] [cursor=pointer]:
+          - /url: /transactions
+          - img [ref=e600]
+          - generic [ref=e603]: Movimientos
+        - link "Plan" [ref=e605] [cursor=pointer]:
+          - /url: /plan
+          - img [ref=e607]
+          - generic [ref=e610]: Plan
+        - link "99+ Bandeja" [ref=e611] [cursor=pointer]:
+          - /url: /gestionar
+          - generic [ref=e612]:
+            - img [ref=e613]
+            - generic [ref=e616]: 99+
+          - generic [ref=e617]: Bandeja
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e623] [cursor=pointer]:
+    - img [ref=e624]
+  - alert [ref=e627]

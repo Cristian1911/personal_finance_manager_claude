@@ -8,9 +8,8 @@ import { Topbar } from "@/components/layout/topbar";
 import { getAttentionSnapshot } from "@/actions/attention";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
-import { MobileTopbar } from "@/components/mobile/mobile-topbar";
-import { BottomTabBar } from "@/components/mobile/bottom-tab-bar";
-import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
+import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
+import { MobileShellProvider } from "@/components/mobile/v2/mobile-shell-provider";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
 import { DevOverlay } from "@/components/dev/dev-overlay";
@@ -52,6 +51,14 @@ export default async function DashboardLayout({
 
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
+  const attentionCount = attentionSnapshot.totalAction;
+  const attentionSummary =
+    attentionSnapshot.totalAction > 0
+      ? attentionSnapshot.signals.find((signal) => signal.priority === "action")?.label
+        ?? `${attentionSnapshot.totalAction} pendientes requieren atención`
+      : attentionSnapshot.totalSuggestion > 0
+        ? `${attentionSnapshot.totalSuggestion} sugerencia${attentionSnapshot.totalSuggestion === 1 ? "" : "s"} para revisar`
+        : "Todo en orden por ahora";
 
   return (
     <div className="flex min-h-screen">
@@ -61,22 +68,25 @@ export default async function DashboardLayout({
         <div className="hidden lg:block">
           <Topbar profile={profile} attentionSnapshot={attentionSnapshot} />
         </div>
-        {/* Mobile topbar */}
-        <MobileTopbar profile={profile} attentionSnapshot={attentionSnapshot} />
-
         <KeyboardInsetProvider>
-          <main className="flex-1 overflow-x-hidden p-4 lg:p-6 pb-20 lg:pb-6">
-            <MobileSheetProvider accounts={accounts} categories={categories}>
+          <MobileShellProvider
+            value={{
+              name: profile.full_name,
+              email: profile.email ?? user.email ?? null,
+              attentionCount,
+              attentionSummary,
+            }}
+          >
+            <main className="flex-1 overflow-x-hidden p-4 pb-20 lg:p-6 lg:pb-6">
               <Suspense>
                 <PageTransition>
                   {children}
                 </PageTransition>
               </Suspense>
-            </MobileSheetProvider>
-          </main>
+            </main>
 
-          {/* Mobile bottom navigation */}
-          <BottomTabBar attentionSnapshot={attentionSnapshot} />
+            <MobileTabBar accounts={accounts} categories={categories} />
+          </MobileShellProvider>
         </KeyboardInsetProvider>
       </div>
       {IS_DEV && <DevOverlay />}

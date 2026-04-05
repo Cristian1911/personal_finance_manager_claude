@@ -1,0 +1,177 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]: Hola, Cristian
+      - button "CG 405" [ref=e6]:
+        - generic [ref=e8]: CG
+        - generic [ref=e9]: "405"
+    - main [ref=e10]:
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - button "Volver" [ref=e14]:
+            - img
+            - generic [ref=e15]: Volver
+          - heading "Presupuesto" [level=1] [ref=e16]
+          - generic [ref=e17]:
+            - button "Mes anterior" [ref=e18]:
+              - img
+            - button "abril 2026" [ref=e19]
+            - button "Mes siguiente" [disabled]:
+              - img
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - heading "Presupuesto" [level=1] [ref=e22]
+            - paragraph [ref=e23]: abril 2026 · 26 días restantes
+          - generic [ref=e24]:
+            - link "Volver a Plan" [ref=e25] [cursor=pointer]:
+              - /url: /plan
+              - text: Volver a Plan
+              - img
+            - button "Planificar mes" [ref=e26]:
+              - img
+              - text: Planificar mes
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - heading "Con presupuesto" [level=3] [ref=e30]
+            - generic [ref=e31]:
+              - generic [ref=e34]:
+                - generic [ref=e35]:
+                  - img [ref=e37]
+                  - generic [ref=e40]: Hogar
+                - generic [ref=e42]: $ 39.400 / $ 162.500
+              - generic [ref=e47]:
+                - generic [ref=e48]:
+                  - img [ref=e50]
+                  - generic [ref=e54]: Transporte
+                - generic [ref=e56]: $ 0 / $ 162.500
+              - generic [ref=e60]:
+                - generic [ref=e61]:
+                  - img [ref=e63]
+                  - generic [ref=e66]: Salud
+                - generic [ref=e68]: $ 0 / $ 162.500
+              - generic [ref=e72]:
+                - generic [ref=e73]:
+                  - img [ref=e75]
+                  - generic [ref=e78]: Seguros
+                - generic [ref=e80]: $ 0 / $ 162.500
+              - generic [ref=e84]:
+                - generic [ref=e85]:
+                  - img [ref=e87]
+                  - generic [ref=e89]: Obligaciones
+                - generic [ref=e91]: $ 0 / $ 162.500
+              - generic [ref=e95]:
+                - generic [ref=e96]:
+                  - img [ref=e98]
+                  - generic [ref=e101]: Compras
+                - generic [ref=e102]:
+                  - img [ref=e103]
+                  - generic [ref=e105]: $ 180.865 / $ 162.500
+              - generic [ref=e110]:
+                - generic [ref=e111]:
+                  - img [ref=e113]
+                  - generic [ref=e116]: Ahorro e Inversión
+                - generic [ref=e118]: $ 0 / $ 1.300.000
+              - generic [ref=e122]:
+                - generic [ref=e123]:
+                  - img [ref=e125]
+                  - generic [ref=e128]: Educación
+                - generic [ref=e130]: $ 0 / $ 162.500
+              - generic [ref=e134]:
+                - generic [ref=e135]:
+                  - img [ref=e137]
+                  - generic [ref=e140]: Entretenimiento
+                - generic [ref=e142]: $ 0 / $ 162.500
+              - generic [ref=e146]:
+                - generic [ref=e147]:
+                  - img [ref=e149]
+                  - generic [ref=e152]: Cuidado Personal
+                - generic [ref=e154]: $ 0 / $ 162.500
+              - generic [ref=e158]:
+                - generic [ref=e159]:
+                  - img [ref=e161]
+                  - generic [ref=e164]: Estilo de vida
+                - generic [ref=e166]: $ 0 / $ 162.500
+              - generic [ref=e170]:
+                - generic [ref=e171]:
+                  - img [ref=e173]
+                  - generic [ref=e176]: Comer Fuera
+                - generic [ref=e177]:
+                  - img [ref=e178]
+                  - generic [ref=e180]: $ 167.900 / $ 162.500
+              - generic [ref=e185]:
+                - generic [ref=e186]:
+                  - img [ref=e188]
+                  - generic [ref=e191]: Otros Gastos
+                - generic [ref=e193]: $ 0 / $ 162.500
+          - generic [ref=e195]:
+            - button "10 transacciones sin categoría" [expanded] [ref=e196]:
+              - img [ref=e197]
+              - generic [ref=e199]: 10 sin categoría
+              - img [ref=e200]
+            - generic [ref=e202]:
+              - button "0090385532 -$ 10.000" [ref=e205] [cursor=pointer]:
+                - paragraph [ref=e207]: "0090385532"
+                - generic [ref=e208]: "-$ 10.000"
+                - img [ref=e209]
+              - button "0089349501 -$ 34.000" [ref=e213] [cursor=pointer]:
+                - paragraph [ref=e215]: "0089349501"
+                - generic [ref=e216]: "-$ 34.000"
+                - img [ref=e217]
+              - button "Ajuste manual de saldo -$ 780.622" [ref=e221] [cursor=pointer]:
+                - paragraph [ref=e223]: Ajuste manual de saldo
+                - generic [ref=e224]: "-$ 780.622"
+                - img [ref=e225]
+              - button "25594871769 -$ 75.900" [ref=e229] [cursor=pointer]:
+                - paragraph [ref=e231]: "25594871769"
+                - generic [ref=e232]: "-$ 75.900"
+                - img [ref=e233]
+              - button "10872809190 -$ 84.000" [ref=e237] [cursor=pointer]:
+                - paragraph [ref=e239]: "10872809190"
+                - generic [ref=e240]: "-$ 84.000"
+                - img [ref=e241]
+              - button "3196360227 -$ 680.000" [ref=e245] [cursor=pointer]:
+                - paragraph [ref=e247]: "3196360227"
+                - generic [ref=e248]: "-$ 680.000"
+                - img [ref=e249]
+              - button "Ajuste manual de saldo -$ 1.682.826" [ref=e253] [cursor=pointer]:
+                - paragraph [ref=e255]: Ajuste manual de saldo
+                - generic [ref=e256]: "-$ 1.682.826"
+                - img [ref=e257]
+              - button "Ajuste manual de saldo +$ 3.475.988" [ref=e261] [cursor=pointer]:
+                - paragraph [ref=e263]: Ajuste manual de saldo
+                - generic [ref=e264]: +$ 3.475.988
+                - img [ref=e265]
+              - button "10382409401 -$ 50.900" [ref=e269] [cursor=pointer]:
+                - paragraph [ref=e271]: "10382409401"
+                - generic [ref=e272]: "-$ 50.900"
+                - img [ref=e273]
+              - button "DUNKIN DONUTS -$ 22.000" [ref=e277] [cursor=pointer]:
+                - paragraph [ref=e279]: DUNKIN DONUTS
+                - generic [ref=e280]: "-$ 22.000"
+                - img [ref=e281]
+      - button "Abrir menu de acciones" [ref=e283]:
+        - img [ref=e284]
+    - navigation [ref=e285]:
+      - generic [ref=e286]:
+        - link "Inicio" [ref=e287] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e289]
+          - generic [ref=e294]: Inicio
+        - link "Movimientos" [ref=e295] [cursor=pointer]:
+          - /url: /transactions
+          - img [ref=e297]
+          - generic [ref=e300]: Movimientos
+        - link "Plan" [ref=e302] [cursor=pointer]:
+          - /url: /plan
+          - img [ref=e304]
+          - generic [ref=e307]: Plan
+        - link "99+ Bandeja" [ref=e308] [cursor=pointer]:
+          - /url: /gestionar
+          - generic [ref=e309]:
+            - img [ref=e310]
+            - generic [ref=e313]: 99+
+          - generic [ref=e314]: Bandeja
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e320] [cursor=pointer]:
+    - img [ref=e321]
+  - alert [ref=e324]

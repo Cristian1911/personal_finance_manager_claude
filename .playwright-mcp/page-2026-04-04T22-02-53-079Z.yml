@@ -1,0 +1,535 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img "Zeta" [ref=e6]
+        - paragraph [ref=e8]: Zeta
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - paragraph [ref=e11]: Principal
+          - navigation [ref=e12]:
+            - link "Inicio" [ref=e13] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e14]
+              - generic [ref=e19]: Inicio
+            - link "Movimientos" [ref=e20] [cursor=pointer]:
+              - /url: /transactions
+              - img [ref=e21]
+              - generic [ref=e24]: Movimientos
+            - link "Plan" [ref=e25] [cursor=pointer]:
+              - /url: /plan
+              - img [ref=e26]
+              - generic [ref=e29]: Plan
+            - link "Bandeja 99+" [ref=e30] [cursor=pointer]:
+              - /url: /gestionar
+              - img [ref=e31]
+              - generic [ref=e34]: Bandeja
+              - generic [ref=e35]: 99+
+        - generic [ref=e36]:
+          - paragraph [ref=e37]: Herramientas
+          - navigation [ref=e38]:
+            - link "Categorizar 99+" [ref=e39] [cursor=pointer]:
+              - /url: /categorizar
+              - img [ref=e40]
+              - generic [ref=e43]: Categorizar
+              - generic [ref=e44]: 99+
+            - link "Presupuesto" [ref=e45] [cursor=pointer]:
+              - /url: /presupuesto
+              - img [ref=e46]
+              - generic [ref=e49]: Presupuesto
+            - link "Destinatarios 99+" [ref=e50] [cursor=pointer]:
+              - /url: /destinatarios
+              - img [ref=e51]
+              - generic [ref=e55]: Destinatarios
+              - generic [ref=e56]: 99+
+            - link "Importar" [ref=e57] [cursor=pointer]:
+              - /url: /import
+              - img [ref=e58]
+              - generic [ref=e62]: Importar
+            - link "Cuentas" [ref=e63] [cursor=pointer]:
+              - /url: /accounts
+              - img [ref=e64]
+              - generic [ref=e67]: Cuentas
+            - link "Deudas" [ref=e68] [cursor=pointer]:
+              - /url: /deudas
+              - img [ref=e69]
+              - generic [ref=e71]: Deudas
+            - link "Recurrentes" [ref=e72] [cursor=pointer]:
+              - /url: /recurrentes
+              - img [ref=e73]
+              - generic [ref=e78]: Recurrentes
+            - link "Etiquetas" [ref=e79] [cursor=pointer]:
+              - /url: /etiquetas
+              - img [ref=e80]
+              - generic [ref=e83]: Etiquetas
+            - link "Pendientes" [ref=e84] [cursor=pointer]:
+              - /url: /pendientes
+              - img [ref=e85]
+              - generic [ref=e88]: Pendientes
+            - link "Deseos" [ref=e89] [cursor=pointer]:
+              - /url: /deseos
+              - img [ref=e90]
+              - generic [ref=e92]: Deseos
+      - generic [ref=e93]:
+        - paragraph [ref=e94]: Sistema
+        - navigation [ref=e95]:
+          - link "Ajustes" [ref=e96] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e97]
+            - generic [ref=e100]: Ajustes
+          - link "Analytics" [ref=e101] [cursor=pointer]:
+            - /url: /settings/analytics
+            - img [ref=e102]
+            - generic [ref=e104]: Analytics
+    - generic [ref=e105]:
+      - banner [ref=e107]:
+        - button "CG 405" [ref=e108]:
+          - generic [ref=e110]: CG
+          - generic [ref=e111]: "405"
+      - main [ref=e112]:
+        - generic [ref=e115]:
+          - generic [ref=e116]:
+            - generic [ref=e117]:
+              - paragraph [ref=e118]: Inicio
+              - heading "Tu estado financiero de hoy" [level=1] [ref=e119]
+              - paragraph [ref=e120]: abril 2026 · claridad para decidir sin perderte entre métricas
+            - generic [ref=e121]:
+              - button "Mes anterior" [ref=e122]:
+                - img
+              - button "abril 2026" [ref=e123]
+              - button "Mes siguiente" [disabled]:
+                - img
+          - generic [ref=e124]:
+            - generic [ref=e126]:
+              - generic [ref=e127]:
+                - generic [ref=e128]: Estado del mes
+                - generic [ref=e129]: Necesita actualización
+              - generic [ref=e130]:
+                - generic [ref=e131]:
+                  - paragraph [ref=e132]: Disponible para gastar en COP
+                  - paragraph [ref=e133]: "-$ 625.469"
+                  - paragraph [ref=e134]: Tienes 2 pagos por $ 870.469 que pueden mover tu margen antes de cerrar el mes.
+                - generic [ref=e135]:
+                  - link "Revisar pagos" [ref=e136] [cursor=pointer]:
+                    - /url: /recurrentes
+                    - img
+                    - text: Revisar pagos
+                  - link "Actualizar valores" [ref=e137] [cursor=pointer]:
+                    - /url: "#quick-update-values"
+                    - img
+                    - text: Actualizar valores
+              - generic [ref=e138]:
+                - generic [ref=e139]:
+                  - generic [ref=e140]:
+                    - paragraph [ref=e141]: Saldo total
+                    - paragraph [ref=e142]: $ 245.000
+                  - img [ref=e144]
+                - generic [ref=e147]:
+                  - generic [ref=e148]:
+                    - paragraph [ref=e149]: Fijos pendientes
+                    - paragraph [ref=e150]: $ 870.469
+                    - paragraph [ref=e151]: → 2 pagos
+                  - img [ref=e153]
+                - generic [ref=e156]:
+                  - generic [ref=e157]:
+                    - paragraph [ref=e158]: Libre
+                    - paragraph [ref=e159]: "-$ 625.469"
+                  - img [ref=e161]
+              - generic [ref=e164]:
+                - paragraph [ref=e166]: Importa tu extracto para ver tu estado
+                - paragraph [ref=e168]: "Libre de deudas: Mar 2028 (23 meses)"
+              - generic [ref=e171]: Desactualizado
+            - generic [ref=e172]:
+              - paragraph [ref=e173]: Necesita atención
+              - generic [ref=e174]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]:
+                    - generic [ref=e177]: "405"
+                    - generic [ref=e178]: 405 transacciones sin categoría
+                  - link "Resolver →" [ref=e179] [cursor=pointer]:
+                    - /url: /categorizar
+                - generic [ref=e180]:
+                  - generic [ref=e181]:
+                    - generic [ref=e182]: "162"
+                    - generic [ref=e183]: 162 destinatarios sugeridos
+                  - link "Resolver →" [ref=e184] [cursor=pointer]:
+                    - /url: /destinatarios
+          - generic [ref=e185]:
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - generic [ref=e188]:
+                  - img [ref=e189]
+                  - text: Próximos pagos
+                - link "Ver todos" [ref=e193] [cursor=pointer]:
+                  - /url: /recurrentes
+              - generic [ref=e194]:
+                - generic [ref=e195]:
+                  - paragraph [ref=e196]: Próximos 7 días
+                  - generic [ref=e198]:
+                    - generic [ref=e200]: Bancolombia VISA ****7022
+                    - generic [ref=e201]: $ 362.65406 abr 2026
+                - generic [ref=e202]:
+                  - paragraph [ref=e203]: Próximos días
+                  - generic [ref=e205]:
+                    - generic [ref=e207]: Bancolombia AMEX ****5747
+                    - generic [ref=e208]: $ 507.81516 abr 2026
+                - generic [ref=e209]:
+                  - generic [ref=e210]: Total pendiente
+                  - generic [ref=e211]: $ 870.469
+            - generic [ref=e212]:
+              - generic [ref=e213]:
+                - generic [ref=e214]: Actualizar valores
+                - paragraph [ref=e215]: Sobrescribe el saldo real y Zeta crea un ajuste temporal hasta que llegue tu próximo extracto.
+              - generic [ref=e216]:
+                - generic [ref=e218]:
+                  - generic [ref=e219]:
+                    - generic [ref=e220]:
+                      - img [ref=e221]
+                      - generic [ref=e223]: Cuenta principal
+                    - generic [ref=e224]:
+                      - paragraph [ref=e225]: Bancolombia Ahorros ****4398
+                      - paragraph [ref=e226]: $ 245.000
+                  - button "Sobrescribir saldo" [ref=e227]
+                - generic [ref=e228]:
+                  - generic [ref=e229]:
+                    - img [ref=e230]
+                    - generic [ref=e232]: Tarjetas
+                  - generic [ref=e233]:
+                    - generic [ref=e234]:
+                      - generic [ref=e235]:
+                        - paragraph [ref=e236]: Bancolombia VISA ****7022
+                        - paragraph [ref=e237]: $ 5.460.053 de deuda registrada
+                      - button "Actualizar" [ref=e238]
+                    - generic [ref=e239]:
+                      - generic [ref=e240]:
+                        - paragraph [ref=e241]: Bancolombia AMEX ****5747
+                        - paragraph [ref=e242]: $ 12.675.595 de deuda · $154.00 de deuda
+                      - button "Actualizar" [ref=e243]
+                    - generic [ref=e244]:
+                      - generic [ref=e245]:
+                        - paragraph [ref=e246]: Bancolombia Joven ****2365
+                        - paragraph [ref=e247]: $ 4.917.435 de deuda · $63.00 de deuda
+                      - button "Actualizar" [ref=e248]
+                    - generic [ref=e249]:
+                      - generic [ref=e250]:
+                        - paragraph [ref=e251]: Nu Tarjeta ****7437
+                        - paragraph [ref=e252]: $ 1.666.290 de deuda registrada
+                      - button "Actualizar" [ref=e253]
+          - generic [ref=e254]:
+            - generic [ref=e255]:
+              - generic [ref=e256]:
+                - img [ref=e257]
+                - generic [ref=e260]: Movimientos inteligentes
+              - generic [ref=e261]:
+                - generic [ref=e262]:
+                  - generic [ref=e263]:
+                    - generic [ref=e264]: Bancolombia Préstamo ****1866
+                    - generic [ref=e265]: 20 feb
+                  - generic [ref=e266]: "-$ 459.359"
+                  - generic [ref=e268]:
+                    - img [ref=e269]
+                    - generic [ref=e272]: "Interés mensual: -$ 7.911/mes"
+                - generic [ref=e273]:
+                  - generic [ref=e274]:
+                    - generic [ref=e275]: Bancolombia Préstamo ****2475
+                    - generic [ref=e276]: 17 feb
+                  - generic [ref=e277]: "-$ 316.146"
+                  - generic [ref=e279]:
+                    - img [ref=e280]
+                    - generic [ref=e283]: "Interés mensual: -$ 2.318/mes"
+            - generic [ref=e284]:
+              - generic [ref=e285]:
+                - generic [ref=e286]:
+                  - img [ref=e287]
+                  - generic [ref=e290]: Pendientes
+                - link "Ver todos" [ref=e291] [cursor=pointer]:
+                  - /url: /pendientes
+                  - text: Ver todos
+                  - img [ref=e292]
+              - generic [ref=e294]:
+                - generic [ref=e296]:
+                  - checkbox [ref=e297]
+                  - checkbox
+                  - paragraph [ref=e299]: El SOAT se vence el 5 de abril. Debo pagarlo el 6.
+                - generic [ref=e300]:
+                  - textbox "Nuevo recordatorio..." [ref=e301]
+                  - button [ref=e302]:
+                    - img
+          - generic [ref=e303]:
+            - generic [ref=e304]:
+              - generic [ref=e305]:
+                - img [ref=e306]
+                - generic [ref=e308]: Deseos
+              - link "Ver todos" [ref=e309] [cursor=pointer]:
+                - /url: /deseos
+                - text: Ver todos
+                - img [ref=e310]
+            - generic [ref=e312]:
+              - generic [ref=e314]: 2 items
+              - generic [ref=e318]:
+                - paragraph [ref=e319]: Gafas RayBan Meta
+                - paragraph [ref=e320]: $ 1.500.000 · Score 0
+              - paragraph [ref=e323]: IPad · $ 1.500.000
+          - generic [ref=e324]:
+            - meter "Puntaje de salud financiera" [ref=e326]:
+              - generic [ref=e332]: "35"
+              - generic [ref=e333]: Atento
+            - generic [ref=e334]:
+              - button "Gasto 0% EXCELENTE" [ref=e335] [cursor=pointer]:
+                - generic [ref=e336]:
+                  - generic [ref=e337]: Gasto
+                  - generic [ref=e338]:
+                    - generic [ref=e339]: 0%
+                    - generic [ref=e340]: EXCELENTE
+              - button "Deuda 68% CRÍTICO" [ref=e344] [cursor=pointer]:
+                - generic [ref=e345]:
+                  - generic [ref=e346]: Deuda
+                  - generic [ref=e347]:
+                    - generic [ref=e348]: 68%
+                    - generic [ref=e349]: CRÍTICO
+              - button "Ahorro 0% CRÍTICO" [ref=e353] [cursor=pointer]:
+                - generic [ref=e354]:
+                  - generic [ref=e355]: Ahorro
+                  - generic [ref=e356]:
+                    - generic [ref=e357]: 0%
+                    - generic [ref=e358]: CRÍTICO
+              - button "Colchón 6.2 meses SÓLIDO" [ref=e362] [cursor=pointer]:
+                - generic [ref=e363]:
+                  - generic [ref=e364]: Colchón
+                  - generic [ref=e365]:
+                    - generic [ref=e366]: 6.2 meses
+                    - generic [ref=e367]: SÓLIDO
+            - generic [ref=e371]: Hay cosas que van bien, pero tu deuda es crítico — eso anula el resto.
+          - generic [ref=e372]:
+            - generic [ref=e373]:
+              - generic [ref=e374]:
+                - button "Flujo de caja" [expanded] [ref=e375]:
+                  - img [ref=e376]
+                  - generic [ref=e378]: Flujo de caja
+                - button "Configurar widgets" [ref=e379]:
+                  - img [ref=e380]
+              - paragraph [ref=e383]: $ 1.288.687 en gastos este mes
+            - generic [ref=e384]:
+              - generic [ref=e385]:
+                - generic [ref=e386]:
+                  - generic [ref=e387]: Flujo del mes
+                  - paragraph [ref=e388]: Ingresos → Gastos → Neto
+                - generic "Flujo de caja waterfall" [ref=e390]:
+                  - generic [ref=e391]:
+                    - generic [ref=e392]: $ 0
+                    - generic [ref=e394]: Ingresos
+                  - generic [ref=e395]:
+                    - generic [ref=e396]: $ 900.522
+                    - generic: Sin categoría
+                  - generic [ref=e398]:
+                    - generic [ref=e399]: $ 180.865
+                    - generic: Tiendas Online
+                  - generic [ref=e401]:
+                    - generic [ref=e402]: $ 167.900
+                    - generic: Comer Fuera
+                  - generic [ref=e404]:
+                    - generic [ref=e405]: $ 29.400
+                    - generic: Mercado
+                  - generic [ref=e407]:
+                    - generic [ref=e408]: $ 10.000
+                    - generic: Mantenimiento
+                  - generic [ref=e410]:
+                    - generic [ref=e411]: $ 0
+                    - generic [ref=e413]: Neto
+              - generic [ref=e415]:
+                - generic [ref=e416]:
+                  - generic [ref=e417]: Ritmo de gasto
+                  - generic [ref=e418]:
+                    - button "Disponible" [ref=e419]
+                    - button "Total" [ref=e420]
+                - generic [ref=e421]: 0 días↑ Acelerando
+                - paragraph [ref=e422]: "Al ritmo actual, llegas a $0 el 04 abr 2026 · Promedio diario: $ 655.750"
+              - generic [ref=e425]:
+                - generic [ref=e427]:
+                  - generic [ref=e428]:
+                    - generic [ref=e429]: Ingresos vs Gastos
+                    - paragraph [ref=e430]: 6 meses hasta abril 2026
+                  - generic [ref=e431]:
+                    - button "Línea" [ref=e432]
+                    - button "Barras" [ref=e433]
+                - generic [ref=e439]:
+                  - generic [ref=e440]: "Ingresos: $ 0"
+                  - generic [ref=e442]: "Gastos: $ 1.288.687"
+          - generic [ref=e444]:
+            - generic [ref=e445]:
+              - paragraph [ref=e446]: Plan del mes
+              - generic [ref=e447]: La parte estratégica vive ahora en un solo lugar
+              - paragraph [ref=e448]: abril 2026 reúne presupuesto, obligaciones y deuda para decidir antes de bajar a detalle.
+            - generic [ref=e449]:
+              - generic [ref=e450]:
+                - generic [ref=e451]:
+                  - generic [ref=e452]:
+                    - img [ref=e453]
+                    - text: Presupuesto
+                  - paragraph [ref=e456]: Sin base suficiente
+                  - paragraph [ref=e457]: Aún no hay base suficiente para calcular el ritmo del mes.
+                - generic [ref=e458]:
+                  - generic [ref=e459]:
+                    - img [ref=e460]
+                    - text: Deuda
+                  - paragraph [ref=e462]: 23 meses
+                  - paragraph [ref=e463]: La proyección actual usa $ 83.206.364 como saldo pendiente.
+              - generic [ref=e464]:
+                - link "Abrir Plan" [ref=e465] [cursor=pointer]:
+                  - /url: /plan
+                  - text: Abrir Plan
+                  - img
+                - link "Ver detalle" [ref=e466] [cursor=pointer]:
+                  - /url: /categories
+          - generic [ref=e467]:
+            - generic [ref=e468]:
+              - generic [ref=e469]:
+                - button "Actividad" [expanded] [ref=e470]:
+                  - img [ref=e471]
+                  - generic [ref=e473]: Actividad
+                - button "Configurar widgets" [ref=e474]:
+                  - img [ref=e475]
+              - paragraph [ref=e478]: Actividad de los últimos meses
+            - generic [ref=e480]:
+              - generic [ref=e481]:
+                - generic [ref=e482]: Mapa de actividad
+                - paragraph [ref=e483]: Intensidad de gasto diario
+              - generic [ref=e485]:
+                - generic [ref=e486]:
+                  - generic [ref=e487]: Lun
+                  - generic [ref=e488]: Mar
+                  - generic [ref=e489]: Mie
+                  - generic [ref=e490]: Jue
+                  - generic [ref=e491]: Vie
+                  - generic [ref=e492]: Sab
+                  - generic [ref=e493]: Dom
+                - generic [ref=e494]:
+                  - 'generic "2026-04-01: $ 180.865" [ref=e496]'
+                  - 'generic "2026-04-02: $ 118.800" [ref=e497]'
+                  - 'generic "2026-04-03: $ 949.622" [ref=e498]'
+                  - 'generic "2026-04-04: $ 39.400" [ref=e499]'
+                - generic [ref=e500]:
+                  - generic [ref=e501]: Menos
+                  - generic [ref=e507]: Más
+          - generic [ref=e508]:
+            - generic [ref=e509]:
+              - generic [ref=e510]:
+                - button "Cuentas" [expanded] [ref=e511]:
+                  - img [ref=e512]
+                  - generic [ref=e514]: Cuentas
+                - button "Configurar widgets" [ref=e515]:
+                  - img [ref=e516]
+              - paragraph [ref=e519]: 10 cuentas activas
+            - generic [ref=e520]:
+              - generic [ref=e521]:
+                - generic [ref=e522]:
+                  - generic [ref=e523]: Mis cuentas
+                  - generic [ref=e524]:
+                    - button "Configurar cuentas visibles" [ref=e525]:
+                      - img
+                    - link "Ver todas" [ref=e526] [cursor=pointer]:
+                      - /url: /accounts
+                - generic [ref=e527]:
+                  - generic [ref=e528]:
+                    - paragraph [ref=e529]: Cuentas de depósito
+                    - generic [ref=e533]:
+                      - link "Bancolombia Ahorros ****4398" [ref=e534] [cursor=pointer]:
+                        - /url: /accounts/cd86f071-5a0a-4a16-8350-2d031845d716
+                        - paragraph [ref=e537]: Bancolombia Ahorros ****4398
+                      - generic [ref=e538]:
+                        - generic [ref=e540]:
+                          - paragraph [ref=e541]: $ 245.000
+                          - paragraph [ref=e542]: "-82.4%"
+                        - button "Actualizar saldo de Bancolombia Ahorros ****4398" [ref=e543]:
+                          - img [ref=e544]
+                  - generic [ref=e549]:
+                    - paragraph [ref=e550]: Deuda
+                    - generic [ref=e553]:
+                      - generic [ref=e554]:
+                        - link "Bancolombia VISA ****7022 101%" [ref=e555] [cursor=pointer]:
+                          - /url: /accounts/87f9fda7-df75-443c-bc06-01396339dc62
+                          - generic [ref=e557]:
+                            - paragraph [ref=e558]: Bancolombia VISA ****7022
+                            - generic [ref=e562]: 101%
+                        - generic [ref=e563]:
+                          - generic [ref=e565]:
+                            - paragraph [ref=e566]: $ 5.460.053
+                            - paragraph [ref=e567]: +22.0%
+                          - button "Actualizar saldo de Bancolombia VISA ****7022" [ref=e568]:
+                            - img [ref=e569]
+                      - generic [ref=e574]:
+                        - link "Bancolombia AMEX ****5747 98%" [ref=e575] [cursor=pointer]:
+                          - /url: /accounts/887f029a-1e98-4261-af9e-d3ecc7f95c14
+                          - generic [ref=e577]:
+                            - paragraph [ref=e578]: Bancolombia AMEX ****5747
+                            - generic [ref=e582]: 98%
+                        - generic [ref=e583]:
+                          - generic [ref=e585]:
+                            - paragraph [ref=e586]: $ 12.675.595
+                            - paragraph [ref=e587]: +7922146.9%
+                          - button "Actualizar saldo de Bancolombia AMEX ****5747" [ref=e588]:
+                            - img [ref=e589]
+                      - generic [ref=e594]:
+                        - link "Bancolombia Joven ****2365 98%" [ref=e595] [cursor=pointer]:
+                          - /url: /accounts/57e7650b-4ab0-4477-80ba-7cb745257268
+                          - generic [ref=e597]:
+                            - paragraph [ref=e598]: Bancolombia Joven ****2365
+                            - generic [ref=e602]: 98%
+                        - generic [ref=e603]:
+                          - generic [ref=e605]:
+                            - paragraph [ref=e606]: $ 4.917.435
+                            - paragraph [ref=e607]: +119.5%
+                          - button "Actualizar saldo de Bancolombia Joven ****2365" [ref=e608]:
+                            - img [ref=e609]
+                  - link "+2 cuentas más" [ref=e614] [cursor=pointer]:
+                    - /url: /accounts
+              - generic [ref=e615]:
+                - generic [ref=e616]:
+                  - generic [ref=e617]: Últimas transacciones
+                  - link "Ver todas" [ref=e618] [cursor=pointer]:
+                    - /url: /transactions
+                - generic [ref=e620]:
+                  - link "0042980136 04 abr 2026 -$ 18.500" [ref=e621] [cursor=pointer]:
+                    - /url: /transactions/568dc623-8dac-4f04-ab03-87e5173a4523
+                    - generic [ref=e622]:
+                      - img [ref=e623]
+                      - generic [ref=e626]:
+                        - paragraph [ref=e627]: "0042980136"
+                        - paragraph [ref=e628]: 04 abr 2026
+                    - generic [ref=e629]: "-$ 18.500"
+                  - link "Qr El Cerrito 04 abr 2026 -$ 10.900" [ref=e630] [cursor=pointer]:
+                    - /url: /transactions/57f3fb74-01a3-48dd-8efe-a73b3d76aee7
+                    - generic [ref=e631]:
+                      - img [ref=e632]
+                      - generic [ref=e635]:
+                        - paragraph [ref=e636]: Qr El Cerrito
+                        - paragraph [ref=e637]: 04 abr 2026
+                    - generic [ref=e638]: "-$ 10.900"
+                  - link "0090385532 04 abr 2026 -$ 10.000" [ref=e639] [cursor=pointer]:
+                    - /url: /transactions/349e81c1-3024-47b8-95bc-7e1daab04a14
+                    - generic [ref=e640]:
+                      - img [ref=e641]
+                      - generic [ref=e644]:
+                        - paragraph [ref=e645]: "0090385532"
+                        - paragraph [ref=e646]: 04 abr 2026
+                    - generic [ref=e647]: "-$ 10.000"
+                  - link "Hermanita 03 abr 2026 -$ 10.000" [ref=e648] [cursor=pointer]:
+                    - /url: /transactions/d0943b30-5bb5-4ca9-ad23-cf0e273b01ef
+                    - generic [ref=e649]:
+                      - img [ref=e650]
+                      - generic [ref=e653]:
+                        - paragraph [ref=e654]: Hermanita
+                        - paragraph [ref=e655]: 03 abr 2026
+                    - generic [ref=e656]: "-$ 10.000"
+                  - link "RAPPI COLOMBIA*DL 03 abr 2026 -$ 125.000" [ref=e657] [cursor=pointer]:
+                    - /url: /transactions/d78fcd62-2c12-4e91-9b55-bbf224c43e7d
+                    - generic [ref=e658]:
+                      - img [ref=e659]
+                      - generic [ref=e662]:
+                        - paragraph [ref=e663]: RAPPI COLOMBIA*DL
+                        - paragraph [ref=e664]: 03 abr 2026
+                    - generic [ref=e665]: "-$ 125.000"
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e671] [cursor=pointer]:
+    - img [ref=e672]
+  - alert [ref=e675]

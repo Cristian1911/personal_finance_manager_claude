@@ -1,111 +1,111 @@
-# HANDOVER — Session 2026-03-28/29
+# HANDOVER — Mobile v2 Full Redesign (2026-04-04/05)
 
 ## 1. Session Summary
 
-Massive feature session: built the entire AI capture pipeline from research to implementation. Started with mobile keyboard UX fixes (FAB/tab bar hide on keyboard), rewrote the category picker for mobile, restructured the dashboard layout, then built voice capture (Web Speech API + Gemini Flash AI parsing), a universal `/api/capture` endpoint with capture token auth, a Telegram bot with deep-link account linking, and a full MCP server package that exposes Zeta's financial data to any AI assistant (Claude Desktop, etc.).
+Complete mobile redesign for all 4 root tabs (Inicio, Movimientos, Plan, Deudas) on branch `feat/mobile-v2-redesign`. Built ~30 new React components with zone-based layouts, custom heroes per root, expandable chip patterns, and Zeta-branded data visualizations (brass dotted expected lines, sage solid actual lines). Design was iterated through HTML mockup previews → component catalog review → user approval → React implementation → Playwright visual testing. Core UX pattern: "expand inline, never navigate directly" — everything shows a preview first, navigation is secondary.
 
 ## 2. Changes Made
 
-### Mobile Keyboard UX
-- **`webapp/src/hooks/use-keyboard-inset.tsx`** (created) — Context provider + hook wrapping `visualViewport` API. Single listener shared across all consumers.
-- **`webapp/src/components/mobile/fab-menu.tsx`** (modified) — FAB hides when keyboard open. Added `data-testid`. Added "Captura por voz" action.
-- **`webapp/src/components/mobile/bottom-tab-bar.tsx`** (modified) — Returns `null` when keyboard open.
-- **`webapp/src/components/categorize/bulk-action-bar.tsx`** (modified) — Repositions above keyboard, added safe-area inset, `aria-label` on clear button, `bottom-20` to clear tab bar.
-- **`webapp/src/components/mobile/mobile-transaction-form.tsx`** (modified) — Uses shared `useKeyboardInset` hook instead of inline logic.
-- **`webapp/src/app/(dashboard)/layout.tsx`** (modified) — Wrapped mobile section with `KeyboardInsetProvider`.
-- **`webapp/e2e/mobile-keyboard.spec.ts`** (created) — Playwright tests mocking `visualViewport` for keyboard simulation.
+### Shared primitives (`webapp/src/components/mobile/v2/`)
+- `mobile-zone.tsx` — Zone layout (eyebrow + heading + children)
+- `state-chip.tsx` — Colored state pill (sage/brass/warn/danger)
+- `use-expandable-zone.ts` — Accordion hook (one zone expanded at a time)
+- `linked-metric-detail-panel.tsx` — Chip row + full-width expandable detail panel
+- `mobile-header.tsx` — Added `chip?: string` prop to page variant
 
-### Category Picker Rewrite
-- **`webapp/src/components/categorize/category-picker-dialog.tsx`** (rewritten) — Was 94vh full-screen two-panel Dialog. Now: Drawer on mobile with searchable Command list, compact Dialog on desktop.
+### Inicio (`webapp/src/components/mobile/v2/inicio/`) — 7 files
+- `inicio-hero.tsx` — Daily amount ($X/día), expandable math breakdown, controlled from parent accordion
+- `inicio-metrics-grid.tsx` — SVG arc ring (% inside) + próximo ingreso
+- `inicio-focus.tsx` — Single attention signal row
+- `inicio-burndown.tsx` — Copilot-style: "$X restante" centered, brass/sage chart, badge on point
+- `inicio-discovery.tsx` — Two cards, expand FULL WIDTH panel below both (not per-column)
+- `inicio-activity.tsx` — Transaction rows expand inline with quick view (not navigate)
+- `inicio-root.tsx` — Orchestrator with page-level `useExpandableZone`
 
-### Dashboard Layout
-- **`webapp/src/app/(dashboard)/dashboard/page.tsx`** (modified) — Hero full-width. Below: 3-column grid with Attention + Upcoming Payments + Quick Updates as peers.
+### Movimientos (`webapp/src/components/mobile/v2/movimientos/`) — 5 files
+- `movimientos-lectura.tsx` — 3-col stats, expandable dual-line chart (REAL data aggregated by week)
+- `movimientos-herramientas.tsx` — 3-col tools (Categorizar/Destinatarios/Importar), expand inline
+- `movimientos-transaction-row.tsx` — Expandable rows with action pills
+- `movimientos-utilidades.tsx` — Pill buttons opening drawers
+- `movimientos-root.tsx` — Orchestrator with page-level accordion
 
-### Voice Capture (Phase 1)
-- **`webapp/src/hooks/use-voice-capture.ts`** (created) — Web Speech API wrapper with `es-CO` locale.
-- **`webapp/src/types/speech-recognition.d.ts`** (created) — TypeScript declarations for Web Speech API.
-- **`webapp/src/components/mobile/voice-capture-sheet.tsx`** (created) — Chat-style conversational UI with mic + text input, missing field prompts, summary card, confirm flow.
-- **`webapp/src/components/mobile/mobile-sheet-provider.tsx`** (modified) — Wired `VoiceCaptureSheet` for "voice" FAB action.
+### Plan (`webapp/src/components/mobile/v2/plan/`) — 5 files
+- `plan-budget-hero.tsx` — % hero with progress bar + pace marker, expandable per-category breakdown
+- `plan-action-cta.tsx` — "Planificar" multi-option CTA
+- `plan-flow-chart.tsx` — Bar chart: income up / expense down by day (real recurring data)
+- `plan-distribution.tsx` — 50/30/20 bars, budget-type aware
+- `plan-root.tsx` — Orchestrator with page-level accordion
 
-### AI Transaction Parsing
-- **`webapp/src/actions/voice-capture.ts`** (created) — Server action: regex first, Gemini 2.0 Flash fallback with JSON schema enforcement.
-- **Env var needed:** `GEMINI_API_KEY` (free tier)
+### Deudas (`webapp/src/components/mobile/v2/deudas/`) — 7 files
+- `deudas-hero.tsx` — Split bar (capital vs interest), pressure chip
+- `deudas-grid.tsx` — Two matching SVG rings (uso del cupo + próxima salida)
+- `deudas-focus.tsx` — Dominant debt card
+- `deudas-loans-chips.tsx` — Expandable chips with ALL credits' progress bars
+- `deudas-accounts-accordion.tsx` — One account open at a time, tighter spacing
+- `deudas-salary-bar.tsx` — Collapsed bar only, expandable legend
+- `deudas-root.tsx` — Orchestrator with page-level accordion
 
-### Capture Token System (Phase 2)
-- **`supabase/migrations/20260329050657_create_capture_tokens.sql`** (created + pushed) — Table with RLS, indexes, default account FK.
-- **`webapp/src/actions/capture-tokens.ts`** (created) — CRUD actions + `createTelegramLink()` deep link generator.
+### Page wiring (modified)
+- `dashboard/page.tsx` — `MobileDashboardV2` → `InicioRoot`
+- `transactions/page.tsx` — Inline mobile section → `MovimientosRoot`
+- `plan/page.tsx` — Desktop reuse → `PlanRoot`, added `get503020Allocation` + `getCategoriesWithBudgetData`
+- `deudas/page.tsx` — `MobileDebtSection` → `DeudasRoot`
 
-### Universal Capture Endpoint (Phase 2)
-- **`webapp/src/app/api/_shared/capture-auth.ts`** (created) — Shared `authenticateCaptureToken()` helper.
-- **`webapp/src/app/api/capture/route.ts`** (created) — `POST /api/capture` with text parsing, auto-categorization, idempotency.
+### HTML previews (`ui-showcases/`)
+- `mobile-zeta-v2-components.html` — Approved component catalog (visual reference)
+- 4 per-root previews + 1 overview
 
-### Telegram Bot (Phase 3)
-- **`webapp/src/lib/telegram.ts`** (created) — API helpers.
-- **`webapp/src/app/api/webhooks/telegram/route.ts`** (created) — Webhook with deep-link auto-linking, text → transaction flow.
-- **`webapp/src/app/api/webhooks/telegram/setup/route.ts`** (created) — One-time webhook registration.
-- **Env vars needed:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`
-
-### MCP Server (Phase 6) — UNCOMMITTED
-- **`webapp/src/app/api/mcp/summary/route.ts`** (created) — Financial summary endpoint.
-- **`webapp/src/app/api/mcp/accounts/route.ts`** (created) — Account list endpoint.
-- **`webapp/src/app/api/mcp/transactions/route.ts`** (created) — Filtered transactions with pagination.
-- **`webapp/src/app/api/mcp/budgets/route.ts`** (created) — Budget status per category.
-- **`webapp/src/app/api/mcp/debts/route.ts`** (created) — Debt overview endpoint.
-- **`packages/mcp-server/`** (created) — Full MCP server package with 6 tools using `@modelcontextprotocol/sdk`.
-
-### Planning
-- **`.planning/quick/260328-ai-capture-pipeline/PLAN.md`** (created) — Full 6-phase architecture with research sources.
+### Tests
+- `webapp/e2e/mobile-v2-visual.spec.ts` — Visual layout tests
 
 ## 3. Key Decisions
 
-- **Web Speech API over Whisper** — Free, instant, no server cost. Falls back to text on Firefox.
-- **Gemini 2.0 Flash over Claude Haiku** — $0/month free tier. User explicitly chose this. `responseMimeType: "application/json"` enforces valid JSON.
-- **Regex-first, AI-fallback** — `parseQuickCaptureText()` handles structured input instantly. Gemini only when regex confidence < 0.8.
-- **Capture tokens over Supabase JWTs** — Scoped, revocable, `zeta_` prefixed. Used for Telegram, MCP, any future integration.
-- **Chat-style voice capture** — User rejected form-based preview. Wants conversational flow that asks for missing fields one at a time.
-- **Deep link for Telegram** — User rejected copy-paste token flow. Now: one click in Settings → Telegram opens → auto-linked.
-- **Dashboard hero full-width** — User rejected removing the attention card. Wanted layout restructure, not content removal.
-- **MCP as separate package** — Runs locally on user's machine, calls Zeta API via capture token.
-- **`overflow-y-auto` rule saved to memory** — Never use `overflow-hidden` on scrollable areas inside Dialog/Drawer/Popover.
+- **Expand inline, never navigate** — All interactive elements expand a preview first. Navigation is secondary inside the panel. Saved as memory: `feedback_expand_not_navigate.md`
+- **Page-level accordion** — Each root owns ONE `useExpandableZone`. Expanding hero collapses burndown, etc. Saved as memory: `feedback_one_expand_per_page.md`
+- **Burndown/salary bar = hover, NOT expand** — Chart point interactions, not click-to-expand sections
+- **Hero = big daily number** ($X/día), not total available
+- **Ritmo = arc ring with % inside** (not text state like "Bajo control")
+- **Plan flow = bar chart** (day-by-day, forward-looking), **Movimientos flow = line chart** (dancing lines, backward-looking)
+- **Tools grid 3rd card = "Importar"** (email pending) replaces "Detecciones"
+- **Zeta palette for charts**: brass dotted expected, sage solid actual
+- **Distribution adapts to budget type** (50/30/20, YNAB, custom)
+- **Custom SVG icons** for discovery (not emoji)
+- **Deudas loan chips show ALL credits' progress bars** when expanded
 
 ## 4. Current State
 
-- **Build:** Webapp `pnpm build` passes. MCP server `pnpm build` passes.
-- **Branch:** `codex/redesign-management-surfaces`
-- **Uncommitted:**
-  - `packages/mcp-server/` (entire package)
-  - `webapp/src/app/api/mcp/*` (5 route files)
-  - `pnpm-lock.yaml`
-- **Migration:** `capture_tokens` already pushed to production Supabase.
-- **Turbopack cache:** If build fails on files that look correct, `rm -rf webapp/.next && pnpm build`.
+- **Build**: Passes clean (`pnpm build` in webapp/)
+- **Branch**: `feat/mobile-v2-redesign`
+- **Git**: ~30 new files, ~10 modified, all uncommitted
+- **Playwright**: Auth works (`TEST_PASSWORD` in `.env.local`). Plan + Deudas visual tests pass. Inicio passes. Movimientos has selector issues (sidebar text match).
+- **Screenshots**: `webapp/test-results/mobile-v2-*.png` — actual rendered layouts
 
 ## 5. Open Issues & Gotchas
 
-- **No Settings UI for token management** — Server actions exist but no frontend. Needs `/settings/integraciones` or similar.
-- **Telegram webhook not registered** — After deploy: `GET /api/webhooks/telegram/setup?secret=BOT_TOKEN_ID`
-- **Env vars not in production config** — `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `GEMINI_API_KEY` are in `.env.local` only. Need to add to `docker-compose.prod.yml`.
-- **No balance adjustment in `/api/capture`** — Inserts transaction but doesn't call `adjustBalancesForTransactionChanges()`. Balance updates on next page load.
-- **`capture_method` enum missing `CAPTURE_API`** — Routes use `TEXT_QUICK_CAPTURE` as workaround. Consider adding `CAPTURE_API` and `TELEGRAM` via migration.
-- **MCP `get_budget_status`** — Uses raw query, not `get503020Allocation()`. 50/30/20 split not exposed via MCP.
-- **Telegram `/undo` not implemented** — Users will want it.
-- **`CategoryPickerDialog` was replaced with `CategoryZonePicker`** by user between sessions. Several files reference the new component.
+1. **Deudas grid rings should be expandable chips** — User's latest request. Currently static rings, should behave like loan chips with expand panel.
+2. **Movimientos Playwright selectors** — `getByText('HERRAMIENTAS')` matches sidebar link. Need `.lg\\:hidden` scoping.
+3. **Next income data is null** — `inicio-metrics-grid` shows "Sin datos" because no action fetches upcoming INFLOW recurring templates. Need to derive from `planData.recurring.upcoming`.
+4. **Burndown chart not interactive** — Should show tooltip on day tap. Currently static SVG.
+5. **Salary bar not hoverable** — User wants segment-tap tooltips, not expand toggle.
+6. **Legacy components to delete** — `mobile-dashboard-v2.tsx`, `burndown-expandable.tsx`, `inicio-discovery-rail.tsx`, `movimientos-tools-rail.tsx`, `movimientos-utility-sheet.tsx`, `loan-metric-linked-detail.tsx`
+7. **`plan-root.tsx` is `"use client"`** — Added by agent for accordion hook. May cause unnecessary client-side rendering of server-safe children.
 
 ## 6. Suggested Next Steps
 
-1. **Commit MCP server + routes** — All uncommitted files are ready.
-2. ~~Build Settings UI for Integrations~~ — DONE. `IntegrationsCard` added to Settings page with Telegram deep-link, MCP description, and token CRUD.
-3. **Add balance adjustment to `/api/capture`** — Import and call `adjustBalancesForTransactionChanges()` after insert.
-4. **Add env vars to production** — `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `GEMINI_API_KEY`.
-5. **Register Telegram webhook** — Call setup endpoint once after deploy.
-6. **Phase 4: Receipt OCR** — Architecture in plan doc. Extends PDF parser service.
-7. **Phase 5: WhatsApp** — Start Meta Business verification now (1-2 weeks). Implementation is 2 days after.
+1. **Make deudas grid rings expandable** — Convert to `LinkedMetricDetailPanel` chip pattern
+2. **Wire next income data** — Query upcoming INFLOW templates for Inicio metrics
+3. **Add burndown chart interactivity** — SVG touch targets with day-level tooltips
+4. **Delete unused legacy components** — 6 files no longer imported
+5. **Commit** — Large changeset, clear commit message
+6. **Fix Movimientos test selectors** — Scope to mobile container
 
 ## 7. Context for Claude
 
-- **`parseQuickCaptureText()`** — `packages/shared/src/utils/quick-capture.ts`. Regex parser for Colombian Spanish.
-- **`parseVoiceCapture()`** — `webapp/src/actions/voice-capture.ts`. Server action: regex → Gemini Flash fallback. Needs `GEMINI_API_KEY`.
-- **Capture tokens** — Format: `zeta_` + 48 hex chars. Auth via `Bearer` header. Helper: `webapp/src/app/api/_shared/capture-auth.ts`.
-- **MCP server** — `packages/mcp-server/`. Separate TS package. `@modelcontextprotocol/sdk` v1.27. Builds to `dist/`.
-- **Telegram deep linking** — `createTelegramLink(accountId)` → `{ deepLink: "https://t.me/Bot?start=zeta_token" }`. Bot auto-links on `/start`.
-- **Plan doc** — `.planning/quick/260328-ai-capture-pipeline/PLAN.md` has full 6-phase architecture with research sources from `/last30days`.
-- **Scrollable containers rule** — Saved to memory. Always `overflow-y-auto` inside Dialog/Drawer/Popover.
+- **Component catalog**: `ui-showcases/mobile-zeta-v2-components.html` — open in browser for visual reference
+- **Memory files**: `project_mobile_v2_redesign.md`, `feedback_expand_not_navigate.md`, `feedback_one_expand_per_page.md`
+- **`DebtAccount`** from `@zeta/shared` has `monthlyPayment` (not `minPayment`), nullable `creditLimit`/`interestRate`
+- **`AllocationData`** exported from `@/actions/allocation`, not `@/types/domain`
+- **`getAllTags()`** returns `Tag[]`, not `TagWithGroup[]`
+- **Playwright auth**: `TEST_PASSWORD` in `webapp/.env.local`, email hardcoded as `giraldo.0302@gmail.com`
+- **Page-level accordion pattern**: Root owns `useExpandableZone<string>`, passes `expanded: boolean` + `onToggle` to children. Components with internal sub-state (loan chips) accept `sectionActive: boolean` + `onActivate` from root.
+- **Plan page** now fetches `get503020Allocation` and `getCategoriesWithBudgetData` (added this session)

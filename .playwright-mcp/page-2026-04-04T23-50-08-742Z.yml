@@ -1,0 +1,68 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: ZETA
+        - button "Menú de perfil" [ref=e7]: CG
+    - main [ref=e8]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - paragraph [ref=e13]: SALUD FINANCIERA
+          - generic [ref=e14]:
+            - img [ref=e15]
+            - generic [ref=e18]:
+              - generic [ref=e19]: "50"
+              - generic [ref=e20]: DE 100
+        - generic [ref=e22]:
+          - generic [ref=e23]:
+            - paragraph [ref=e24]: DISPONIBLE
+            - paragraph [ref=e25]: "-$ 625.469"
+          - generic [ref=e26]:
+            - paragraph [ref=e27]: PLAN %
+            - paragraph [ref=e28]: 5%
+          - generic [ref=e29]:
+            - paragraph [ref=e30]: PENDIENTES
+            - paragraph [ref=e32]: "405"
+          - generic [ref=e34]:
+            - paragraph [ref=e35]: LIBRE DEUDA
+            - paragraph [ref=e36]: 23m
+        - generic [ref=e37]:
+          - paragraph [ref=e39]: ULTIMO
+          - generic [ref=e40]:
+            - paragraph [ref=e41]: "0042980136"
+            - paragraph [ref=e42]: $ 18.500
+    - navigation [ref=e43]:
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - link "Inicio" [ref=e46] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e47]
+            - text: Inicio
+          - link "Movim." [ref=e52] [cursor=pointer]:
+            - /url: /transactions
+            - img [ref=e53]
+            - text: Movim.
+        - button "Registrar movimiento" [ref=e57]:
+          - img [ref=e58]
+        - generic [ref=e59]:
+          - link "Plan" [ref=e60] [cursor=pointer]:
+            - /url: /plan
+            - img [ref=e61]
+            - text: Plan
+          - link "Deudas" [ref=e64] [cursor=pointer]:
+            - /url: /deudas
+            - img [ref=e65]
+            - text: Deudas
+  - region "Notifications alt+T"
+  - generic [ref=e71] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e72]:
+      - img [ref=e73]
+    - generic [ref=e76]:
+      - button "Open issues overlay" [ref=e77]:
+        - generic [ref=e78]:
+          - generic [ref=e79]: "0"
+          - generic [ref=e80]: "1"
+        - generic [ref=e81]: Issue
+      - button "Collapse issues badge" [ref=e82]:
+        - img [ref=e83]
+  - alert [ref=e85]

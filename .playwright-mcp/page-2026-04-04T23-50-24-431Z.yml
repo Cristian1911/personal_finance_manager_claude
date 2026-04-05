@@ -1,0 +1,176 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: ZETA
+        - button "Menú de perfil" [ref=e7]: CG
+    - main [ref=e8]:
+      - generic [ref=e11]:
+        - generic [ref=e13]:
+          - generic [ref=e14]:
+            - paragraph [ref=e15]: Movimientos
+            - paragraph [ref=e16]: abril 2026
+          - generic [ref=e18]:
+            - button "Filtros" [ref=e20]:
+              - img
+              - text: Filtros
+            - generic [ref=e21]:
+              - button "Mes anterior" [ref=e22]:
+                - img
+              - button "abril 2026" [ref=e23]
+              - button "Mes siguiente" [disabled]:
+                - img
+        - generic [ref=e25]:
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - paragraph [ref=e29]: GASTOS
+              - paragraph [ref=e30]: $ 5.272.750
+            - generic [ref=e31]:
+              - paragraph [ref=e32]: INGRESOS
+              - paragraph [ref=e33]: $ 1.152.378
+            - generic [ref=e34]:
+              - paragraph [ref=e35]: TOTAL
+              - paragraph [ref=e36]: "774"
+          - generic [ref=e37]:
+            - paragraph [ref=e38]: 04 ABR
+            - generic [ref=e39]:
+              - generic [ref=e40]:
+                - generic [ref=e41]:
+                  - paragraph [ref=e42]: "0042980136"
+                  - paragraph [ref=e43]: Sin categoria
+                - paragraph [ref=e44]: $ 18.500
+              - generic [ref=e45]:
+                - generic [ref=e46]:
+                  - paragraph [ref=e47]: Qr El Cerrito
+                  - paragraph [ref=e48]: Sin categoria
+                - paragraph [ref=e49]: $ 10.900
+              - generic [ref=e50]:
+                - generic [ref=e51]:
+                  - paragraph [ref=e52]: "0090385532"
+                  - paragraph [ref=e53]: Sin categoria
+                - paragraph [ref=e54]: $ 10.000
+          - generic [ref=e55]:
+            - paragraph [ref=e56]: 03 ABR
+            - generic [ref=e57]:
+              - generic [ref=e58]:
+                - generic [ref=e59]:
+                  - paragraph [ref=e60]: Hermanita
+                  - paragraph [ref=e61]: Sin categoria
+                - paragraph [ref=e62]: $ 10.000
+              - generic [ref=e63]:
+                - generic [ref=e64]:
+                  - paragraph [ref=e65]: RAPPI COLOMBIA*DL
+                  - paragraph [ref=e66]: Comer Fuera
+                - paragraph [ref=e67]: $ 125.000
+              - generic [ref=e68]:
+                - generic [ref=e69]:
+                  - paragraph [ref=e70]: "0089349501"
+                  - paragraph [ref=e71]: Sin categoria
+                - paragraph [ref=e72]: $ 34.000
+              - generic [ref=e73]:
+                - generic [ref=e74]:
+                  - paragraph [ref=e75]: Ajuste manual de saldo
+                  - paragraph [ref=e76]: Sin categoria
+                - paragraph [ref=e77]: $ 780.622
+          - generic [ref=e78]:
+            - paragraph [ref=e79]: 02 ABR
+            - generic [ref=e80]:
+              - generic [ref=e81]:
+                - generic [ref=e82]:
+                  - paragraph [ref=e83]: "25594871769"
+                  - paragraph [ref=e84]: Sin categoria
+                - paragraph [ref=e85]: $ 75.900
+              - generic [ref=e86]:
+                - generic [ref=e87]:
+                  - paragraph [ref=e88]: RAPPI COLOMBIA*DL
+                  - paragraph [ref=e89]: Comer Fuera
+                - paragraph [ref=e90]: $ 42.900
+          - generic [ref=e91]:
+            - paragraph [ref=e92]: 01 ABR
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - paragraph [ref=e96]: Compras Amazon
+                - paragraph [ref=e97]: Sin categoria
+              - paragraph [ref=e98]: $ 180.865
+          - generic [ref=e99]:
+            - paragraph [ref=e100]: 31 MAR
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - generic [ref=e103]:
+                  - paragraph [ref=e104]: "10872809190"
+                  - paragraph [ref=e105]: Sin categoria
+                - paragraph [ref=e106]: $ 84.000
+              - generic [ref=e107]:
+                - generic [ref=e108]:
+                  - paragraph [ref=e109]: Pago NU Bank
+                  - paragraph [ref=e110]: Obligaciones
+                - paragraph [ref=e111]: $ 1.152.378
+              - generic [ref=e112]:
+                - generic [ref=e113]:
+                  - paragraph [ref=e114]: Transferencia a Nu Tarjeta ****7437
+                  - paragraph [ref=e115]: Obligaciones
+                - paragraph [ref=e116]: $ 1.152.378
+              - generic [ref=e117]:
+                - generic [ref=e118]:
+                  - paragraph [ref=e119]: Panes
+                  - paragraph [ref=e120]: Sin categoria
+                - paragraph [ref=e121]: $ 3.000
+          - generic [ref=e122]:
+            - paragraph [ref=e123]: 30 MAR
+            - generic [ref=e124]:
+              - generic [ref=e125]:
+                - generic [ref=e126]:
+                  - paragraph [ref=e127]: INTERESES CORRIENTES
+                  - paragraph [ref=e128]: Sin categoria
+                - paragraph [ref=e129]: $ 3
+              - generic [ref=e130]:
+                - generic [ref=e131]:
+                  - paragraph [ref=e132]: INTERESES CORRIENTES
+                  - paragraph [ref=e133]: Sin categoria
+                - paragraph [ref=e134]: $ 219.930
+              - generic [ref=e135]:
+                - generic [ref=e136]:
+                  - paragraph [ref=e137]: INTERESES CORRIENTES
+                  - paragraph [ref=e138]: Sin categoria
+                - paragraph [ref=e139]: $ 45.699
+              - generic [ref=e140]:
+                - generic [ref=e141]:
+                  - paragraph [ref=e142]: INTERESES CORRIENTES
+                  - paragraph [ref=e143]: Sin categoria
+                - paragraph [ref=e144]: $ 1
+              - generic [ref=e145]:
+                - generic [ref=e146]:
+                  - paragraph [ref=e147]: CHEF BURGER PLAZA FA
+                  - paragraph [ref=e148]: Sin categoria
+                - paragraph [ref=e149]: $ 119.460
+              - generic [ref=e150]:
+                - generic [ref=e151]:
+                  - paragraph [ref=e152]: Ajuste manual de saldo
+                  - paragraph [ref=e153]: Otros ingresos
+                - paragraph [ref=e154]: $ 2.359.592
+    - navigation [ref=e155]:
+      - generic [ref=e156]:
+        - generic [ref=e157]:
+          - link "Inicio" [ref=e158] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=e159]
+            - text: Inicio
+          - link "Movim." [ref=e164] [cursor=pointer]:
+            - /url: /transactions
+            - img [ref=e165]
+            - text: Movim.
+        - button "Registrar movimiento" [ref=e169]:
+          - img [ref=e170]
+        - generic [ref=e171]:
+          - link "Plan" [ref=e172] [cursor=pointer]:
+            - /url: /plan
+            - img [ref=e173]
+            - text: Plan
+          - link "Deudas" [ref=e176] [cursor=pointer]:
+            - /url: /deudas
+            - img [ref=e177]
+            - text: Deudas
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e184] [cursor=pointer]:
+    - img [ref=e185]
+  - alert [ref=e188]

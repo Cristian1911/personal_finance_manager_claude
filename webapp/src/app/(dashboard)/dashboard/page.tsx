@@ -43,7 +43,8 @@ import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
 import { DashboardAccountPicker } from "@/components/dashboard/dashboard-account-picker";
 import { MonthSelector } from "@/components/month-selector";
 import { trackProductEvent } from "@/actions/product-events";
-import { MobileDashboardV2 } from "@/components/mobile/mobile-dashboard-v2";
+import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
@@ -284,33 +285,28 @@ export default async function DashboardPage({
   ]);
 
   const dashboardReminders = pendingReminders.slice(0, 5);
-
   const mobileRecentTx = recentTx.map((tx) => ({
     id: tx.id,
     description: tx.merchant_name || tx.clean_description || "Sin descripción",
     amount: tx.amount,
     currency_code: tx.currency_code ?? "COP",
     direction: tx.direction,
-    date: tx.transaction_date ?? "",
-    category_name: tx.categories?.name_es ?? tx.categories?.name ?? undefined,
   }));
 
-  // ── Data for MobileDashboardV2 ──────────────────────────────────────────────
-
   const mobileLiquidAccounts = allAccounts
-    .filter((a) => a.account_type === "CHECKING" || a.account_type === "SAVINGS")
-    .map((a) => ({
-      id: a.id,
-      name: a.name,
-      currentBalance: a.current_balance ?? 0,
-      currencyCode: a.currency_code as CurrencyCode,
+    .filter((account) => account.account_type === "CHECKING" || account.account_type === "SAVINGS")
+    .map((account) => ({
+      id: account.id,
+      name: account.name,
+      currentBalance: account.current_balance ?? 0,
+      currencyCode: account.currency_code as CurrencyCode,
     }));
 
-  const mobileFixedExpenses = heroData.pendingObligations.map((o) => ({
-    id: o.id,
-    name: o.name,
-    amount: o.amount,
-    currencyCode: o.currency_code as CurrencyCode,
+  const mobileFixedExpenses = heroData.pendingObligations.map((obligation) => ({
+    id: obligation.id,
+    name: obligation.name,
+    amount: obligation.amount,
+    currencyCode: obligation.currency_code as CurrencyCode,
   }));
 
   const firstPayment = heroData.pendingObligations[0];
@@ -323,37 +319,37 @@ export default async function DashboardPage({
       }
     : null;
 
-  const today = new Date();
   const daysToNextPayment = firstPayment
     ? Math.ceil(
-        (new Date(firstPayment.due_date).getTime() - today.getTime()) /
+        (new Date(firstPayment.due_date).getTime() - Date.now()) /
           (1000 * 60 * 60 * 24)
       )
     : null;
 
-  // Total spent this month (for the math breakdown)
-  // available = total - fixed - spent → spent = total - fixed - available
-  const mobileTotalSpent = heroData.totalLiquid - heroData.totalPending - heroData.availableToSpend;
+  const mobileTotalSpent =
+    heroData.totalLiquid - heroData.totalPending - heroData.availableToSpend;
 
-  // Top 3 budget categories by % used
-  const categoryBudgetData =
-    categoryBudgetResult.success ? categoryBudgetResult.data : [];
+  const categoryBudgetData = categoryBudgetResult.success
+    ? categoryBudgetResult.data
+    : [];
   const mobileTopCategories = categoryBudgetData
-    .filter((c) => c.budget && c.budget > 0 && c.direction === "OUTFLOW")
+    .filter((category) => category.budget && category.budget > 0 && category.direction === "OUTFLOW")
     .sort((a, b) => b.percentUsed - a.percentUsed)
     .slice(0, 3)
-    .map((c) => ({
-      name: c.name_es ?? c.name,
-      percentUsed: c.percentUsed,
+    .map((category) => ({
+      name: category.name_es ?? category.name,
+      percentUsed: category.percentUsed,
     }));
 
-  const mobileUpcomingPaymentsV2 = heroData.pendingObligations.slice(0, 5).map((o) => ({
-    id: o.id,
-    name: o.name,
-    dueDate: o.due_date,
-    amount: o.amount,
-    currencyCode: o.currency_code,
-  }));
+  const mobileUpcomingPaymentsV2 = heroData.pendingObligations
+    .slice(0, 5)
+    .map((obligation) => ({
+      id: obligation.id,
+      name: obligation.name,
+      dueDate: obligation.due_date,
+      amount: obligation.amount,
+      currencyCode: obligation.currency_code,
+    }));
 
   const quickUpdateAccounts: QuickValueUpdateAccount[] = allAccounts.map((account) => ({
     id: account.id,
@@ -377,38 +373,44 @@ export default async function DashboardPage({
 
   return (
     <>
-      {/* Mobile dashboard */}
       <div className="lg:hidden">
-        <div className="space-y-3">
-          <MobileDashboardV2
-            attentionSignals={attentionSnapshot.signals}
+        <MobileHeader variant="dashboard" />
+          <InicioRoot
             hero={{
-              availableToSpend: heroData.availableToSpend,
-              totalBalance: heroData.totalLiquid,
-              pendingFixed: heroData.totalPending,
-              totalSpent: mobileTotalSpent,
+              availablePerDay: (() => {
+                const now = new Date();
+                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                const daysRemaining = Math.max(daysInMonth - now.getDate(), 1);
+                return heroData.availableToSpend / daysRemaining;
+              })(),
+              availableTotal: heroData.availableToSpend,
+              daysRemaining: (() => {
+                const now = new Date();
+                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                return Math.max(daysInMonth - now.getDate(), 1);
+              })(),
               currency: currency as CurrencyCode,
-              daysToNextPayment,
-              liquidAccounts: mobileLiquidAccounts,
-              fixedExpenses: mobileFixedExpenses,
-              nextPayment: mobileNextPayment,
+              breakdown: {
+                totalLiquid: heroData.totalLiquid,
+                fixedExpenses: heroData.totalPending,
+                alreadySpent: mobileTotalSpent,
+              },
             }}
+            metrics={{
+              runwayDays: burnRateData?.discretionary.runwayDays ?? 0,
+              daysInMonth: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(),
+              dayOfMonth: new Date().getDate(),
+              nextIncomeName: null,
+              nextIncomeDays: null,
+              nextIncomeAmount: null,
+              currency: currency as CurrencyCode,
+            }}
+            signals={attentionSnapshot.signals}
             burnRateData={burnRateData}
-            upcomingPayments={mobileUpcomingPaymentsV2}
+            totalBudget={budgetSummary.totalTarget}
             recentTransactions={mobileRecentTx}
-            budget={
-              budgetSummary.totalTarget > 0
-                ? {
-                    totalTarget: budgetSummary.totalTarget,
-                    totalSpent: budgetSummary.totalSpent,
-                    progress: budgetSummary.progress,
-                    currency: currency as CurrencyCode,
-                    topCategories: mobileTopCategories,
-                  }
-                : null
-            }
+            currency={currency as CurrencyCode}
           />
-        </div>
       </div>
 
       {/* Desktop dashboard — section-based layout */}
