@@ -112,27 +112,6 @@ function FlowChart({ weeks }: { weeks: WeekData[] }) {
     );
   }
 
-  // For a single week, show bars instead of lines
-  if (weeks.length === 1) {
-    const w = weeks[0];
-    const max = Math.max(w.income, w.expense, 1);
-    return (
-      <div className="mt-3 space-y-2">
-        <div className="flex items-end gap-3 justify-center h-16">
-          <div className="flex flex-col items-center gap-1">
-            <div className="w-8 rounded-t bg-z-income/80" style={{ height: `${Math.max((w.income / max) * 48, 4)}px` }} />
-            <span className="text-[8px] text-muted-foreground">Ingreso</span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <div className="w-8 rounded-t bg-z-brass/70" style={{ height: `${Math.max((w.expense / max) * 48, 4)}px` }} />
-            <span className="text-[8px] text-muted-foreground">Gasto</span>
-          </div>
-        </div>
-        <p className="text-center text-[9px] text-muted-foreground">{w.label}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="mt-3 space-y-2">
       <svg
@@ -236,49 +215,60 @@ export function MovimientosLectura({
   const weeks = useMemo(() => aggregateByWeek(transactions), [transactions]);
 
   return (
-    <MobileZone eyebrow="LECTURA" heading="Resumen del mes">
-      {/* 3-column summary grid */}
-      <div className="grid grid-cols-3 gap-1.5">
-        <div className={cn(PANEL_INSET_CLASS, "p-2.5 text-center")}>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Movimientos
-          </p>
-          <p className="mt-1 text-[22px] font-bold leading-tight">{count}</p>
-          <p className="text-[9px] text-muted-foreground">visibles</p>
-        </div>
-
-        <div className={cn(PANEL_INSET_CLASS, "p-2.5 text-center")}>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Ingresos
-          </p>
-          <p className="mt-1 text-[22px] font-bold leading-tight text-z-income">
-            {formatCurrency(totalInflow, currency)}
-          </p>
-          <p className="text-[9px] text-muted-foreground">en vista</p>
-        </div>
-
-        <div className={cn(PANEL_INSET_CLASS, "p-2.5 text-center")}>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Gastos
-          </p>
-          <p className="mt-1 text-[22px] font-bold leading-tight">
-            {formatCurrency(totalOutflow, currency)}
-          </p>
-          <p className="text-[9px] text-muted-foreground">en vista</p>
-        </div>
-      </div>
-
-      {/* Expand/collapse toggle */}
+    <MobileZone eyebrow="LECTURA">
+      {/* Whole card is clickable to expand */}
       <button
         type="button"
         onClick={onToggle}
-        className="mx-auto mt-2 block text-[10px] font-medium text-z-brass"
+        className={cn(
+          "w-full text-left rounded-2xl border border-white/6 bg-black/10 p-3 transition-colors",
+          expanded && "ring-1 ring-z-brass/30 bg-z-brass/[0.04]"
+        )}
+        aria-expanded={expanded}
       >
-        {expanded ? "▴ Colapsar" : "▾ Ver flujo por día"}
+        <p className="mb-2 text-[13px] font-semibold">Resumen del mes</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          <div className="text-center">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Movimientos
+            </p>
+            <p className="mt-1 text-[20px] font-bold leading-tight">{count}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Ingresos
+            </p>
+            <p className="mt-1 text-[20px] font-bold leading-tight text-z-income">
+              {formatCurrency(totalInflow, currency)}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Gastos
+            </p>
+            <p className="mt-1 text-[20px] font-bold leading-tight">
+              {formatCurrency(totalOutflow, currency)}
+            </p>
+          </div>
+        </div>
+        <p className="mt-2 text-center text-[10px] font-medium text-z-brass">
+          {expanded ? "▴ Colapsar" : "▾ Ver flujo por día"}
+        </p>
       </button>
 
       {/* Expanded: weekly flow chart with real data */}
-      {expanded && <FlowChart weeks={weeks} />}
+      <div
+        className="grid transition-[grid-template-rows] duration-200 ease-out"
+        style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <div className={cn("mt-1.5 transition-opacity duration-150", expanded ? "opacity-100 delay-75" : "opacity-0")}>
+            <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3")}>
+              <FlowChart weeks={weeks} />
+            </div>
+          </div>
+        </div>
+      </div>
     </MobileZone>
   );
 }
