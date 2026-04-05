@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { MOBILE_TABS, isMobileTabActive } from "@/lib/constants/mobile-nav";
 import {
@@ -45,8 +46,10 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  className="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors"
-                  style={{ color: active ? "var(--z-brass)" : "#4a4f4a" }}
+                  className={cn(
+                    "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
+                    active ? "text-z-brass" : "text-[#4a4f4a]"
+                  )}
                 >
                   <tab.icon className="size-[18px]" />
                   {tab.title}
@@ -75,8 +78,10 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  className="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors"
-                  style={{ color: active ? "var(--z-brass)" : "#4a4f4a" }}
+                  className={cn(
+                    "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
+                    active ? "text-z-brass" : "text-[#4a4f4a]"
+                  )}
                 >
                   <tab.icon className="size-[18px]" />
                   {tab.title}
