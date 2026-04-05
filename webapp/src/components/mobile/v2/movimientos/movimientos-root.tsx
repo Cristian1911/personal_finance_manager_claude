@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { formatDate } from "@/lib/utils/date";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
+import { MonthSelector } from "@/components/month-selector";
 import { MovimientosLectura } from "./movimientos-lectura";
 import { MovimientosHerramientas } from "./movimientos-herramientas";
 import { MovimientosUtilidades } from "./movimientos-utilidades";
@@ -59,7 +61,18 @@ export function MovimientosRoot({
   }, [transactions]);
 
   return (
-    <div className="space-y-5 px-1">
+    <div className="space-y-3">
+      <MobileHeader
+        variant="page"
+        title="Movimientos"
+        chip="Mesa operativa"
+        action={
+          <Suspense>
+            <MonthSelector />
+          </Suspense>
+        }
+      />
+
       {/* Lectura — month summary with expandable flow chart */}
       <MovimientosLectura
         count={count}
