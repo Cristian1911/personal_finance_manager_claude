@@ -38,7 +38,8 @@ export function AssignmentDialog({
   const [selectedIncome, setSelectedIncome] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
 
-  const expenseRemaining = expense ? Number(expense.amount) - existingAssignedToExpense : 0;
+  // Use converted_amount since assignments are in period currency
+  const expenseRemaining = expense ? expense.converted_amount - existingAssignedToExpense : 0;
 
   if (!expense) return null;
 
@@ -90,8 +91,13 @@ export function AssignmentDialog({
               </div>
               <div className="text-right">
                 <p className="text-sm font-semibold tabular-nums">
-                  {formatCurrency(Number(expense.amount), currency)}
+                  {formatCurrency(Number(expense.amount), expense.currency_code)}
                 </p>
+                {expense.currency_code !== currency && (
+                  <p className="text-[10px] text-muted-foreground tabular-nums">
+                    ≈ {formatCurrency(expense.converted_amount, currency)}
+                  </p>
+                )}
                 {existingAssignedToExpense > 0 && (
                   <p className="text-[10px] text-muted-foreground">
                     Falta: {formatCurrency(expenseRemaining, currency)}

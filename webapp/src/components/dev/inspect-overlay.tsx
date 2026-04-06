@@ -110,8 +110,15 @@ export function InspectOverlay({ onSelectComponent, onClose }: InspectOverlayPro
   return (
     <div ref={overlayRef} className="fixed inset-0 z-[9998] cursor-crosshair">
       {/* Instruction bar */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] rounded-full bg-z-surface-3 border border-white/6 px-4 py-2 text-xs text-z-sage-light shadow-lg">
-        Inspeccionar — haz clic en un componente · <kbd className="text-z-brass">Esc</kbd> para salir
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-full bg-z-surface-3 border border-white/6 px-4 py-2 text-xs text-z-sage-light shadow-lg">
+        <span>Inspeccionar — toca un componente</span>
+        <kbd className="hidden text-z-brass lg:inline">Esc</kbd>
+        <button
+          className="ml-1 flex size-6 items-center justify-center rounded-full bg-white/10 text-z-sage-light lg:hidden"
+          onClick={onClose}
+        >
+          ✕
+        </button>
       </div>
 
       {/* Highlight box */}
@@ -148,14 +155,17 @@ export function InspectOverlay({ onSelectComponent, onClose }: InspectOverlayPro
       {contextMenu && (
         <div
           className="fixed z-[10000] rounded-xl border border-white/6 bg-z-surface-2 p-1.5 shadow-xl"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
+          style={{
+            top: Math.min(contextMenu.y, window.innerHeight - 180),
+            left: Math.min(contextMenu.x, window.innerWidth - 200),
+          }}
         >
-          <p className="px-2 py-1 text-[11px] font-semibold text-z-brass">{contextMenu.info.componentName}</p>
+          <p className="px-3 py-1.5 text-xs font-semibold text-z-brass lg:px-2 lg:py-1 lg:text-[11px]">{contextMenu.info.componentName}</p>
           {([
-            { id: "annotate" as const, label: "Anotar componente", emoji: "✏️" },
-            { id: "storybook" as const, label: "Abrir en Storybook", emoji: "🧩" },
-            { id: "copy" as const, label: "Copiar ruta", emoji: "📋" },
-          ]).map((action) => (
+            { id: "annotate" as const, label: "Anotar componente", emoji: "✏️", needsSource: false },
+            { id: "storybook" as const, label: "Abrir en Storybook", emoji: "🧩", needsSource: true },
+            { id: "copy" as const, label: "Copiar ruta", emoji: "📋", needsSource: true },
+          ]).filter((action) => !action.needsSource || contextMenu.info.filePath).map((action) => (
             <button
               key={action.id}
               onClick={() => {
@@ -171,7 +181,7 @@ export function InspectOverlay({ onSelectComponent, onClose }: InspectOverlayPro
                   setContextMenu(null);
                 }
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-z-sage-light hover:bg-white/5"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-z-sage-light hover:bg-white/5 lg:px-2 lg:py-1.5 lg:text-xs"
             >
               <span>{action.emoji}</span> {action.label}
             </button>

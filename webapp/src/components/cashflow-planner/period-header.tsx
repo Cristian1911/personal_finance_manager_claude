@@ -1,7 +1,7 @@
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, TrendingUp, TrendingDown } from "lucide-react";
+import { Calendar, TrendingUp, TrendingDown, ArrowRightLeft } from "lucide-react";
 import type { PeriodPlanData } from "@/types/cashflow-planner";
 
 interface PeriodHeaderProps {
@@ -10,7 +10,10 @@ interface PeriodHeaderProps {
 }
 
 export function PeriodHeader({ data, isExpired = false }: PeriodHeaderProps) {
-  const { period, total_income, total_expenses, total_assigned, total_unassigned, currency } = data;
+  const {
+    period, total_income, total_expenses, total_assigned,
+    total_unassigned, currency, is_multi_currency, exchange_rates,
+  } = data;
   const percentAssigned = total_expenses > 0
     ? Math.round((total_assigned / total_expenses) * 100)
     : 0;
@@ -72,6 +75,20 @@ export function PeriodHeader({ data, isExpired = false }: PeriodHeaderProps) {
           </p>
         </div>
       </div>
+
+      {is_multi_currency && Object.keys(exchange_rates).length > 0 && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <ArrowRightLeft className="h-3 w-3" />
+          <span>
+            Totales en {currency}.
+            {Object.entries(exchange_rates).map(([fc, rate]) => (
+              <span key={fc} className="ml-1">
+                1 {fc} = {formatCurrency(rate, currency)}
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
 
       {total_unassigned > 0 && (
         <p className="text-sm text-amber-400">

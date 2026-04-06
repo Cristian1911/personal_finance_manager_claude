@@ -5,8 +5,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
 export function ReviewModeToggle() {
-  if (process.env.NODE_ENV !== "development") return null;
-
   const { enabled, toggle } = useReviewMode();
 
   return (

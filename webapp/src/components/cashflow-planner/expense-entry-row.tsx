@@ -3,10 +3,17 @@
 import { useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Undo2 } from "lucide-react";
-import { toggleEntryStatus } from "@/actions/cashflow-planner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Check, MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react";
+import { deletePlanningEntry, toggleEntryStatus } from "@/actions/cashflow-planner";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
+import { toast } from "sonner";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
 import type { PlanningEntryWithRelations } from "@/types/cashflow-planner";
 
@@ -15,6 +22,7 @@ interface ExpenseEntryRowProps {
   currency: CurrencyCode;
   assignedAmount?: number;
   onAssign?: () => void;
+  onEdit?: (entry: PlanningEntryWithRelations) => void;
   showAssignButton?: boolean;
 }
 
@@ -32,10 +40,13 @@ export function ExpenseEntryRow({
   currency,
   assignedAmount = 0,
   onAssign,
+  onEdit,
   showAssignButton = true,
 }: ExpenseEntryRowProps) {
   const [isPending, startTransition] = useTransition();
-  const remaining = Number(entry.amount) - assignedAmount;
+  // Assignments are in period currency, so remaining uses converted_amount
+  const remaining = entry.converted_amount - assignedAmount;
+  const isForeignCurrency = entry.currency_code !== currency;
 
   function cycleStatus() {
     const nextStatus: PlanningEntryStatus =
@@ -47,6 +58,17 @@ export function ExpenseEntryRow({
 
     startTransition(async () => {
       await toggleEntryStatus(entry.id, nextStatus);
+    });
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const result = await deletePlanningEntry(entry.id);
+      if (result.success) {
+        toast.success("Gasto eliminado");
+      } else {
+        toast.error(result.error);
+      }
     });
   }
 
@@ -88,8 +110,13 @@ export function ExpenseEntryRow({
 
       <div className="text-right shrink-0">
         <p className="text-sm font-semibold tabular-nums">
-          {formatCurrency(Number(entry.amount), currency)}
+          {formatCurrency(Number(entry.amount), entry.currency_code)}
         </p>
+        {isForeignCurrency && (
+          <p className="text-[10px] text-muted-foreground tabular-nums">
+            ≈ {formatCurrency(entry.converted_amount, currency)}
+          </p>
+        )}
         {assignedAmount > 0 && remaining > 0 && (
           <p className="text-[10px] text-amber-400 tabular-nums">
             Falta: {formatCurrency(remaining, currency)}
@@ -97,16 +124,40 @@ export function ExpenseEntryRow({
         )}
       </div>
 
-      {showAssignButton && remaining > 0 && entry.status !== "SKIPPED" && onAssign && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onAssign}
-          className="shrink-0 text-xs"
-        >
-          Asignar
-        </Button>
-      )}
+      <div className="flex items-center gap-1 shrink-0">
+        {showAssignButton && remaining > 0 && entry.status !== "SKIPPED" && onAssign && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onAssign}
+            className="shrink-0 text-xs"
+          >
+            Asignar
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {onEdit && (
+              <DropdownMenuItem onClick={() => onEdit(entry)}>
+                <Pencil className="mr-2 h-3.5 w-3.5" />
+                Editar
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onClick={handleDelete}
+              className="text-red-400 focus:text-red-400"
+            >
+              <Trash2 className="mr-2 h-3.5 w-3.5" />
+              Eliminar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }

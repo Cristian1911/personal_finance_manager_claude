@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -19,103 +18,80 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
-import { createPlanningEntry } from "@/actions/cashflow-planner";
+import { updatePlanningEntry } from "@/actions/cashflow-planner";
 import { toast } from "sonner";
-import type { PlanningEntryType, CurrencyCode, Account, Category } from "@/types/domain";
+import type { Account, Category, CurrencyCode } from "@/types/domain";
+import type { PlanningEntryWithRelations } from "@/types/cashflow-planner";
 
-interface EntryFormDialogProps {
-  periodId: string;
-  currency?: CurrencyCode;
-  defaultType?: PlanningEntryType;
+interface EditEntryDialogProps {
+  entry: PlanningEntryWithRelations | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currency: CurrencyCode;
   accounts?: Pick<Account, "id" | "name" | "icon" | "color">[];
   categories?: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
-  trigger?: React.ReactNode;
 }
 
-export function EntryFormDialog({
-  periodId,
-  currency = "COP",
-  defaultType = "EXPENSE",
+export function EditEntryDialog({
+  entry,
+  open,
+  onOpenChange,
+  currency,
   accounts = [],
   categories = [],
-  trigger,
-}: EntryFormDialogProps) {
-  const [open, setOpen] = useState(false);
+}: EditEntryDialogProps) {
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
-  const [entryType, setEntryType] = useState<PlanningEntryType>(defaultType);
-  const [expectedDate, setExpectedDate] = useState<string | null>(null);
+  const [expectedDate, setExpectedDate] = useState<string | null>(
+    entry?.expected_date ?? null
+  );
+
+  // Sync date when entry changes
+  if (entry && expectedDate !== entry.expected_date && !open) {
+    setExpectedDate(entry.expected_date);
+  }
+
+  if (!entry) return null;
 
   function handleSubmit(formData: FormData) {
+    if (!entry) return;
     startTransition(async () => {
-      formData.set("period_id", periodId);
-      formData.set("entry_type", entryType);
-      formData.set("currency_code", currency);
+      formData.set("period_id", entry.period_id);
+      formData.set("entry_type", entry.entry_type);
+      formData.set("currency_code", entry.currency_code ?? currency);
       if (expectedDate) formData.set("expected_date", expectedDate);
 
       const amountStr = formData.get("amount") as string;
       formData.set("amount", String(Number(amountStr)));
 
-      const result = await createPlanningEntry(null, formData);
+      const result = await updatePlanningEntry(entry.id, null, formData);
       if (result.success) {
-        toast.success(entryType === "INCOME" ? "Ingreso agregado" : "Gasto agregado");
-        setOpen(false);
-        formRef.current?.reset();
-        setExpectedDate(null);
+        toast.success("Actualizado");
+        onOpenChange(false);
       } else {
         toast.error(result.error);
       }
     });
   }
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="ghost" size="sm">
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Agregar
-          </Button>
-        )}
-      </DialogTrigger>
+  const isExpense = entry.entry_type === "EXPENSE";
 
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {entryType === "INCOME" ? "Agregar ingreso" : "Agregar gasto"}
+            Editar {isExpense ? "gasto" : "ingreso"}
           </DialogTitle>
         </DialogHeader>
 
         <form ref={formRef} action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Tipo</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["INCOME", "EXPENSE"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setEntryType(type)}
-                  className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
-                    entryType === type
-                      ? type === "INCOME"
-                        ? "border-z-income/50 bg-z-income/10 text-z-income"
-                        : "border-z-expense/50 bg-z-expense/10 text-z-expense"
-                      : "border-white/10 text-muted-foreground hover:border-white/20"
-                  }`}
-                >
-                  {type === "INCOME" ? "Ingreso" : "Gasto"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="entry-label">Nombre</Label>
+            <Label htmlFor="edit-label">Nombre</Label>
             <Input
-              id="entry-label"
+              id="edit-label"
               name="label"
-              placeholder={entryType === "INCOME" ? "Ej: Nómina" : "Ej: Electricidad"}
+              defaultValue={entry.label}
               required
               className="bg-card border-white/6"
               disabled={isPending}
@@ -124,13 +100,14 @@ export function EntryFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="entry-amount">Monto</Label>
+              <Label htmlFor="edit-amount">Monto</Label>
               <Input
-                id="entry-amount"
+                id="edit-amount"
                 name="amount"
                 type="number"
                 step="0.01"
                 min="0.01"
+                defaultValue={Number(entry.amount)}
                 required
                 className="bg-card border-white/6"
                 disabled={isPending}
@@ -150,7 +127,7 @@ export function EntryFormDialog({
           {accounts.length > 0 && (
             <div className="space-y-2">
               <Label>Cuenta (opcional)</Label>
-              <Select name="account_id">
+              <Select name="account_id" defaultValue={entry.account?.id ?? ""}>
                 <SelectTrigger className="bg-card border-white/6">
                   <SelectValue placeholder="Seleccionar cuenta" />
                 </SelectTrigger>
@@ -165,10 +142,10 @@ export function EntryFormDialog({
             </div>
           )}
 
-          {entryType === "EXPENSE" && categories.length > 0 && (
+          {isExpense && categories.length > 0 && (
             <div className="space-y-2">
               <Label>Categoría (opcional)</Label>
-              <Select name="category_id">
+              <Select name="category_id" defaultValue={entry.category?.id ?? ""}>
                 <SelectTrigger className="bg-card border-white/6">
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
@@ -184,7 +161,7 @@ export function EntryFormDialog({
           )}
 
           <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Guardando..." : "Agregar"}
+            {isPending ? "Guardando..." : "Guardar"}
           </Button>
         </form>
       </DialogContent>

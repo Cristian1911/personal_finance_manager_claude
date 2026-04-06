@@ -97,8 +97,8 @@ export function ReviewSaveDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-sm rounded-2xl border border-white/6 bg-z-surface p-5 shadow-xl">
+    <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/60 lg:items-center">
+      <div className="w-full max-w-none rounded-t-2xl border border-white/6 bg-z-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl lg:max-w-sm lg:rounded-2xl lg:pb-5">
         <h3 className="text-base font-semibold text-z-white">
           Guardar revisión
         </h3>
@@ -114,7 +114,7 @@ export function ReviewSaveDialog({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="¿Qué hay que arreglar?"
-          className="mt-3 w-full rounded-lg border border-white/6 bg-z-surface-2 px-3 py-2 text-sm text-z-white placeholder:text-z-sage-dark outline-none focus:border-z-brass"
+          className="mt-3 w-full rounded-lg border border-white/6 bg-z-surface-2 px-3 py-3 text-base text-z-white placeholder:text-z-sage-dark outline-none focus:border-z-brass lg:py-2 lg:text-sm"
           maxLength={160}
         />
 
@@ -123,7 +123,7 @@ export function ReviewSaveDialog({
             <button
               key={opt.value}
               onClick={() => setSeverity(opt.value)}
-              className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
+              className={`flex-1 min-h-[44px] rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors lg:min-h-0 lg:py-1.5 lg:text-xs ${
                 severity === opt.value
                   ? "border-z-brass bg-z-brass/10 text-z-brass"
                   : "border-white/6 text-z-sage-light hover:bg-white/5"
@@ -139,16 +139,16 @@ export function ReviewSaveDialog({
         <div className="mt-4 flex gap-2">
           <button
             onClick={onCancel}
-            className="flex-1 rounded-lg border border-white/6 bg-z-surface-3 py-2 text-xs text-z-sage-light"
+            className="flex-1 min-h-[44px] rounded-lg border border-white/6 bg-z-surface-3 py-3 text-sm text-z-sage-light lg:min-h-0 lg:py-2 lg:text-xs"
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
             disabled={!title.trim() || saving}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-z-brass py-2 text-xs font-semibold text-z-ink disabled:opacity-50"
+            className="flex flex-1 min-h-[44px] items-center justify-center gap-1.5 rounded-lg bg-z-brass py-3 text-sm font-semibold text-z-ink disabled:opacity-50 lg:min-h-0 lg:py-2 lg:text-xs"
           >
-            <Save className="size-3.5" />
+            <Save className="size-4 lg:size-3.5" />
             {saving ? "Guardando..." : "Guardar"}
           </button>
         </div>

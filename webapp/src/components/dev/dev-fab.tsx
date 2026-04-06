@@ -25,10 +25,10 @@ export function DevFAB({ onAction, activeAction }: DevFABProps) {
   if (!enabled) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 z-[9999] lg:bottom-6">
+    <div className="fixed bottom-28 left-4 z-[9999] lg:bottom-6">
       {/* Radial menu */}
       {menuOpen && (
-        <div className="absolute bottom-14 left-0 flex flex-col gap-2">
+        <div className="absolute bottom-14 left-0 flex flex-col gap-3 lg:gap-2">
           {actions.map((action) => (
             <button
               key={action.id}
@@ -37,7 +37,7 @@ export function DevFAB({ onAction, activeAction }: DevFABProps) {
                 setMenuOpen(false);
               }}
               className={cn(
-                "flex items-center gap-2 rounded-full px-3 py-2 text-xs font-medium shadow-lg transition-all",
+                "flex min-h-[44px] items-center gap-2 rounded-full px-4 py-3 text-sm font-medium shadow-lg transition-all lg:min-h-0 lg:px-3 lg:py-2 lg:text-xs",
                 activeAction === action.id
                   ? "bg-z-brass text-z-ink"
                   : "bg-z-surface-3 text-z-sage-light border border-white/6 hover:bg-white/5"

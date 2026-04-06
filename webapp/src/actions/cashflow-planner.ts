@@ -8,8 +8,10 @@ import {
   planningEntrySchema,
   planningAssignmentSchema,
 } from "@/lib/validators/cashflow-planner";
+import { getExchangeRate } from "@/actions/exchange-rate";
 import { getOccurrencesBetween } from "@zeta/shared";
 import { parseISO } from "date-fns";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import type { ActionResult } from "@/types/actions";
 import type { TablesInsert } from "@/types/database";
 import type {
@@ -66,6 +68,7 @@ async function hydratePeriodData(
   period: PlanningPeriod
 ): Promise<PeriodPlanData> {
   const supabase = createAdminClient();
+  const periodCurrency = period.currency_code;
 
   const [{ data: rawEntries }, { data: rawAssignments }] = await Promise.all([
     supabase
@@ -87,8 +90,40 @@ async function hydratePeriodData(
       .eq("user_id", userId),
   ]);
 
-  const entries = (rawEntries ?? []) as unknown as PlanningEntryWithRelations[];
+  const rawEntriesTyped = (rawEntries ?? []) as unknown as (Omit<PlanningEntryWithRelations, "converted_amount">)[];
   const assignments = (rawAssignments ?? []) as unknown as PlanningAssignment[];
+
+  const foreignCurrencies = new Set<CurrencyCode>();
+  for (const e of rawEntriesTyped) {
+    if (e.currency_code && e.currency_code !== periodCurrency) {
+      foreignCurrencies.add(e.currency_code);
+    }
+  }
+
+  const exchangeRates: Partial<Record<CurrencyCode, number>> = {};
+  if (foreignCurrencies.size > 0) {
+    const rateResults = await Promise.all(
+      [...foreignCurrencies].map(async (fc) => {
+        const result = await getExchangeRate(fc, periodCurrency);
+        return [fc, result?.rate ?? null] as const;
+      })
+    );
+    for (const [fc, rate] of rateResults) {
+      if (rate != null) exchangeRates[fc] = rate;
+    }
+  }
+
+  const isMultiCurrency = foreignCurrencies.size > 0;
+
+  const entries: PlanningEntryWithRelations[] = rawEntriesTyped.map((e) => {
+    const amount = Number(e.amount);
+    let convertedAmount = amount;
+    if (e.currency_code && e.currency_code !== periodCurrency) {
+      const rate = exchangeRates[e.currency_code];
+      convertedAmount = rate != null ? amount * rate : amount;
+    }
+    return { ...e, converted_amount: convertedAmount };
+  });
 
   const incomeEntries = entries.filter((e) => e.entry_type === "INCOME");
   const expenseEntries = entries.filter((e) => e.entry_type === "EXPENSE");
@@ -119,9 +154,10 @@ async function hydratePeriodData(
 
     return {
       entry,
-      total_amount: Number(entry.amount),
+      // Use converted amount so assignments (in period currency) are comparable
+      total_amount: entry.converted_amount,
       assigned_amount: assignedAmount,
-      remaining_amount: Number(entry.amount) - assignedAmount,
+      remaining_amount: entry.converted_amount - assignedAmount,
       assignments: assignmentDetails,
     };
   });
@@ -134,15 +170,15 @@ async function hydratePeriodData(
 
   const unassignedExpenses = expenseEntries.filter((e) => {
     const assigned = assignedPerExpense.get(e.id) ?? 0;
-    return assigned < Number(e.amount);
+    return assigned < e.converted_amount;
   });
 
   const totalIncome = incomeEntries.reduce(
-    (sum, e) => sum + Number(e.amount),
+    (sum, e) => sum + e.converted_amount,
     0
   );
   const totalExpenses = expenseEntries.reduce(
-    (sum, e) => sum + Number(e.amount),
+    (sum, e) => sum + e.converted_amount,
     0
   );
   const totalAssigned = assignments.reduce(
@@ -152,7 +188,7 @@ async function hydratePeriodData(
 
   return {
     period,
-    currency: period.currency_code,
+    currency: periodCurrency,
     income_envelopes: incomeEnvelopes,
     expense_entries: expenseEntries,
     unassigned_expenses: unassignedExpenses,
@@ -160,6 +196,8 @@ async function hydratePeriodData(
     total_expenses: totalExpenses,
     total_assigned: totalAssigned,
     total_unassigned: totalExpenses - totalAssigned,
+    exchange_rates: exchangeRates,
+    is_multi_currency: isMultiCurrency,
   };
 }
 
@@ -304,7 +342,7 @@ export async function seedPeriodFromRecurring(
     await Promise.all([
       supabase
         .from("recurring_transaction_templates")
-        .select("*")
+        .select(`*, account:accounts!recurring_transaction_templates_account_id_fkey(id, account_type)`)
         .eq("user_id", user.id)
         .eq("is_active", true),
       supabase
@@ -342,6 +380,10 @@ export async function seedPeriodFromRecurring(
       rangeEnd
     );
 
+    const acctType = (template.account as { account_type?: string } | null)?.account_type;
+    const isDebtPayment =
+      template.direction === "INFLOW" && acctType != null && isDebtAccountType(acctType);
+
     for (const date of occurrences) {
       const dedupKey = `${template.id}|${date}`;
       if (existingKeys.has(dedupKey)) continue;
@@ -349,12 +391,19 @@ export async function seedPeriodFromRecurring(
       entriesToInsert.push({
         user_id: user.id,
         period_id: periodId,
-        entry_type: template.direction === "INFLOW" ? "INCOME" : "EXPENSE",
+        // Debt payments flow INTO the debt account but are outflows from the user's budget
+        entry_type: isDebtPayment
+          ? "EXPENSE"
+          : template.direction === "INFLOW" ? "INCOME" : "EXPENSE",
         label: template.merchant_name || template.description || "Sin nombre",
         amount: template.amount,
+        currency_code: template.currency_code,
         expected_date: date,
         recurring_template_id: template.id,
-        account_id: template.account_id,
+        // For debt payments, use the source account (where money leaves from)
+        account_id: isDebtPayment
+          ? (template.transfer_source_account_id ?? template.account_id)
+          : template.account_id,
         category_id: template.category_id,
       });
     }
@@ -368,6 +417,7 @@ export async function seedPeriodFromRecurring(
       entry_type: "EXPENSE",
       label: reminder.title,
       amount: reminder.amount,
+      currency_code: period.currency_code,
       expected_date: reminder.due_date,
     });
   }
@@ -398,6 +448,7 @@ export async function createPlanningEntry(
     entry_type: formData.get("entry_type"),
     label: formData.get("label"),
     amount: Number(formData.get("amount")),
+    currency_code: formData.get("currency_code") || undefined,
     expected_date: formData.get("expected_date"),
     account_id: formData.get("account_id") || undefined,
     category_id: formData.get("category_id") || undefined,
@@ -415,6 +466,7 @@ export async function createPlanningEntry(
       entry_type: parsed.data.entry_type,
       label: parsed.data.label,
       amount: parsed.data.amount,
+      currency_code: parsed.data.currency_code as CurrencyCode,
       expected_date: parsed.data.expected_date,
       account_id: parsed.data.account_id || null,
       category_id: parsed.data.category_id || null,
@@ -442,6 +494,7 @@ export async function updatePlanningEntry(
     entry_type: formData.get("entry_type"),
     label: formData.get("label"),
     amount: Number(formData.get("amount")),
+    currency_code: formData.get("currency_code") || undefined,
     expected_date: formData.get("expected_date"),
     account_id: formData.get("account_id") || undefined,
     category_id: formData.get("category_id") || undefined,
@@ -456,6 +509,7 @@ export async function updatePlanningEntry(
     .update({
       label: parsed.data.label,
       amount: parsed.data.amount,
+      currency_code: parsed.data.currency_code as CurrencyCode,
       expected_date: parsed.data.expected_date,
       account_id: parsed.data.account_id || null,
       category_id: parsed.data.category_id || null,
@@ -534,14 +588,14 @@ export async function createAssignment(
   const [{ data: incomeEntry }, { data: expenseEntry }] = await Promise.all([
     supabase
       .from("planning_entries")
-      .select("id, period_id, amount, entry_type")
+      .select("id, period_id, amount, currency_code, entry_type, planning_periods!inner(currency_code)")
       .eq("id", incomeEntryId)
       .eq("user_id", user.id)
       .eq("entry_type", "INCOME")
       .single(),
     supabase
       .from("planning_entries")
-      .select("id, period_id, amount, entry_type")
+      .select("id, period_id, amount, currency_code, entry_type, planning_periods!inner(currency_code)")
       .eq("id", expenseEntryId)
       .eq("user_id", user.id)
       .eq("entry_type", "EXPENSE")
@@ -554,6 +608,20 @@ export async function createAssignment(
     return { success: false, error: "Gasto no encontrado" };
   if (incomeEntry.period_id !== expenseEntry.period_id)
     return { success: false, error: "El ingreso y el gasto deben estar en el mismo periodo" };
+
+  // Convert entry amounts to period currency for capacity checks
+  const periodCurrencyCode = (incomeEntry.planning_periods as { currency_code: string }).currency_code as CurrencyCode;
+
+  async function toConverted(entryAmount: number, entryCurrency: string): Promise<number> {
+    if (entryCurrency === periodCurrencyCode) return entryAmount;
+    const result = await getExchangeRate(entryCurrency as CurrencyCode, periodCurrencyCode);
+    return result?.rate != null ? entryAmount * result.rate : entryAmount;
+  }
+
+  const [incomeConverted, expenseConverted] = await Promise.all([
+    toConverted(Number(incomeEntry.amount), incomeEntry.currency_code),
+    toConverted(Number(expenseEntry.amount), expenseEntry.currency_code),
+  ]);
 
   // Validate capacity on both sides in parallel
   const [{ data: incomeAssignments }, { data: expenseAssignments }] =
@@ -574,7 +642,7 @@ export async function createAssignment(
     (sum, a) => sum + Number(a.assigned_amount),
     0
   );
-  if (incomeUsed + amount > Number(incomeEntry.amount))
+  if (incomeUsed + amount > incomeConverted)
     return {
       success: false,
       error: "El monto excede el saldo disponible del ingreso",
@@ -584,7 +652,7 @@ export async function createAssignment(
     (sum, a) => sum + Number(a.assigned_amount),
     0
   );
-  if (expenseAssigned + amount > Number(expenseEntry.amount))
+  if (expenseAssigned + amount > expenseConverted)
     return {
       success: false,
       error: "El monto excede lo que falta por asignar del gasto",
@@ -625,8 +693,8 @@ export async function updateAssignment(
   const { data: assignment } = await supabase
     .from("planning_assignments")
     .select(`*,
-      income_entry:planning_entries!planning_assignments_income_entry_id_fkey(amount),
-      expense_entry:planning_entries!planning_assignments_expense_entry_id_fkey(amount)`)
+      income_entry:planning_entries!planning_assignments_income_entry_id_fkey(amount, currency_code, period_id),
+      expense_entry:planning_entries!planning_assignments_expense_entry_id_fkey(amount, currency_code)`)
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -635,11 +703,30 @@ export async function updateAssignment(
     return { success: false, error: "Asignación no encontrada" };
 
   const typedAssignment = assignment as Record<string, unknown> & {
-    income_entry: { amount: number };
-    expense_entry: { amount: number };
+    income_entry: { amount: number; currency_code: string; period_id: string };
+    expense_entry: { amount: number; currency_code: string };
     income_entry_id: string;
     expense_entry_id: string;
   };
+
+  // Fetch period currency for conversion
+  const { data: periodData } = await supabase
+    .from("planning_periods")
+    .select("currency_code")
+    .eq("id", typedAssignment.income_entry.period_id)
+    .single();
+  const pCurrency = (periodData?.currency_code ?? "COP") as CurrencyCode;
+
+  async function toConv(entryAmount: number, entryCurrency: string): Promise<number> {
+    if (entryCurrency === pCurrency) return entryAmount;
+    const result = await getExchangeRate(entryCurrency as CurrencyCode, pCurrency);
+    return result?.rate != null ? entryAmount * result.rate : entryAmount;
+  }
+
+  const [incomeConv, expenseConv] = await Promise.all([
+    toConv(Number(typedAssignment.income_entry.amount), typedAssignment.income_entry.currency_code),
+    toConv(Number(typedAssignment.expense_entry.amount), typedAssignment.expense_entry.currency_code),
+  ]);
 
   const [{ data: otherIncomeAssignments }, { data: otherExpenseAssignments }] =
     await Promise.all([
@@ -661,7 +748,7 @@ export async function updateAssignment(
     (sum, a) => sum + Number(a.assigned_amount),
     0
   );
-  if (incomeOthersTotal + amount > Number(typedAssignment.income_entry.amount))
+  if (incomeOthersTotal + amount > incomeConv)
     return {
       success: false,
       error: "El monto excede el saldo disponible del ingreso",
@@ -671,7 +758,7 @@ export async function updateAssignment(
     (sum, a) => sum + Number(a.assigned_amount),
     0
   );
-  if (expenseOthersTotal + amount > Number(typedAssignment.expense_entry.amount))
+  if (expenseOthersTotal + amount > expenseConv)
     return {
       success: false,
       error: "El monto excede lo que falta por asignar del gasto",
@@ -751,7 +838,7 @@ export async function autoAssignExpenses(
 
   for (const expense of sortedExpenses) {
     const alreadyAssigned = assignedPerExpense.get(expense.id) ?? 0;
-    let needsAssignment = Number(expense.amount) - alreadyAssigned;
+    let needsAssignment = expense.converted_amount - alreadyAssigned;
     if (needsAssignment <= 0) continue;
 
     for (const income of sortedIncomes) {

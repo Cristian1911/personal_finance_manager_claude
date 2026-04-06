@@ -1,12 +1,10 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { PlanHeroWrapper } from "./plan-hero-wrapper";
 import { PlanActionCta } from "./plan-action-cta";
 import { PlanFlowChart } from "./plan-flow-chart";
 import { PlanDistribution } from "./plan-distribution";
 import { MonthSelector } from "@/components/month-selector";
-import { Wallet, ArrowRight } from "lucide-react";
 import type { PlanPageData } from "@/types/plan";
 import type { AllocationData } from "@/actions/allocation";
 import type { CurrencyCode, CategoryBudgetData } from "@/types/domain";
@@ -55,25 +53,6 @@ export function PlanRoot({
         currency={currency}
         categories={categories}
       />
-
-      {/* Planear periodo — link to /plan/periodo */}
-      <Link
-        href="/plan/periodo"
-        className="flex items-center justify-between rounded-2xl border border-white/6 bg-black/10 px-4 py-3.5 transition-colors active:bg-white/5"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-z-income/10">
-            <Wallet className="size-4 text-z-income" />
-          </div>
-          <div>
-            <p className="text-sm font-medium">Planear periodo</p>
-            <p className="text-xs text-muted-foreground">
-              Asigna cada gasto a un ingreso
-            </p>
-          </div>
-        </div>
-        <ArrowRight className="size-4 text-muted-foreground" />
-      </Link>
 
       {/* Planificar CTA */}
       <PlanActionCta />
