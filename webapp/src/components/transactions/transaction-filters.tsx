@@ -24,7 +24,7 @@ import {
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import type { Account, Tag } from "@/types/domain";
 
-export function TransactionFilters({ accounts, tags = [] }: { accounts: Account[]; tags?: Tag[] }) {
+export function TransactionFilters({ accounts, tags = [], embedded = false }: { accounts: Account[]; tags?: Tag[]; embedded?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -241,6 +241,10 @@ export function TransactionFilters({ accounts, tags = [] }: { accounts: Account[
         </div>
       </>
     );
+  }
+
+  if (embedded) {
+    return renderFilters(true);
   }
 
   return (

@@ -4,7 +4,7 @@ import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { AttentionHub } from "@/components/gestionar/attention-hub";
 import { MobileLinkGrid } from "@/components/mobile/mobile-link-grid";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 
 export default async function BandejaPage() {
@@ -13,7 +13,7 @@ export default async function BandejaPage() {
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <MobilePageHeader title="Bandeja" />
+      <MobileHeader variant="sub" title="Bandeja" />
 
       {/* Desktop */}
       <div className="hidden lg:block space-y-6">

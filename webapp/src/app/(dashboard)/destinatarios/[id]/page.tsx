@@ -7,7 +7,7 @@ import {
 } from "@/actions/destinatarios";
 import { getCategories } from "@/actions/categories";
 import { getTagGroups, getTagsForEntity } from "@/actions/tags";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { buildCategoryMap } from "@/lib/utils/categories";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -47,10 +47,7 @@ export default async function DestinatarioDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <MobilePageHeader
-        title={destinatario.name}
-        backHref="/destinatarios"
-      />
+      <MobileHeader variant="sub" title={destinatario.name} backHref="/destinatarios" />
       <div className="hidden lg:flex lg:items-start lg:justify-between lg:gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">

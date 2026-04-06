@@ -7,7 +7,7 @@ import { getDestinatarioRules } from "@/actions/destinatarios";
 import { getPendingEmailStatements } from "@/actions/email-pdf-ingest";
 import { ImportWizard } from "@/components/import/import-wizard";
 import { PendingEmailStatements } from "@/components/import/pending-email-statements";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { Button } from "@/components/ui/button";
 import { PageHero, HeroPill, HeroAccentPill } from "@/components/ui/page-hero";
 import { StatCard } from "@/components/ui/stat-card";
@@ -28,7 +28,7 @@ export default async function ImportPage() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <MobilePageHeader title="Importar Extracto" backHref="/gestionar" />
+      <MobileHeader variant="sub" title="Importar Extracto" backHref="/gestionar" />
 
       <PageHero
         variant="brass"

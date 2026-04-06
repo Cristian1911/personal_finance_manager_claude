@@ -32,7 +32,7 @@ export function ExtraPaymentTrigger({
   if (!hasActiveDebt) return null;
 
   return (
-    <>
+    <div>
       <Button onClick={() => setOpen(true)} className={BRASS_BUTTON_CLASS}>
         <Banknote className="size-4" />
         Tengo plata extra
@@ -44,6 +44,6 @@ export function ExtraPaymentTrigger({
         open={open}
         onOpenChange={setOpen}
       />
-    </>
+    </div>
   );
 }

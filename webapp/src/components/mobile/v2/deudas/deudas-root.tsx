@@ -17,6 +17,7 @@ interface DeudasRootProps {
   overview: DebtOverview;
   salaryBreakdown: MonthlyBreakdown | null;
   currency: CurrencyCode;
+  extraPaymentTrigger?: React.ReactNode;
 }
 
 export function DeudasRoot({
@@ -24,6 +25,7 @@ export function DeudasRoot({
   overview,
   salaryBreakdown,
   currency,
+  extraPaymentTrigger,
 }: DeudasRootProps) {
   /** Page-level accordion — one expanded section at a time */
   const { activeZone, toggle } = useExpandableZone<string>();
@@ -54,17 +56,9 @@ export function DeudasRoot({
   return (
     <div className="space-y-3">
       <MobileHeader
-        variant="page"
+        variant="main"
         title="Deudas"
         subtitle={`Lectura en ${currency}`}
-        action={
-          <Link
-            href="/deudas/planificador"
-            className="rounded-full bg-z-brass px-3.5 py-1.5 text-[11px] font-semibold text-z-ink"
-          >
-            Simular
-          </Link>
-        }
       />
 
       {/* Hero — monthly pressure */}
@@ -73,6 +67,17 @@ export function DeudasRoot({
         monthlyInterest={overview.monthlyInterestEstimate}
         currency={currency}
       />
+
+      {/* Action row — extra payment + simulate */}
+      <div className="flex items-center gap-2">
+        {extraPaymentTrigger}
+        <Link
+          href="/deudas/planificador"
+          className="rounded-full border border-white/6 bg-black/10 px-3.5 py-2 text-[11px] font-semibold text-z-sage-light transition-colors hover:bg-white/5"
+        >
+          Simular pagos
+        </Link>
+      </div>
 
       {/* Two rings: utilization + closest exit — expandable chips */}
       {overview.totalCreditLimit > 0 && (

@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import { getUncategorizedTransactions, getUnreviewedAutoTransactions, getUserCategoryRules, getDestinatarioSuggestionsForInbox } from "@/actions/categorize";
 import { getCategories } from "@/actions/categories";
 import { getTagGroups } from "@/actions/tags";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ export default async function CategorizarPage() {
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <MobilePageHeader title="Categorizar" backHref="/gestionar" />
+      <MobileHeader variant="sub" title="Categorizar" backHref="/gestionar" />
 
       <div className="space-y-4 lg:hidden">
         <div className="space-y-1">

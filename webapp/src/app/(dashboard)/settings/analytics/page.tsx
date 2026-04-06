@@ -15,7 +15,7 @@ import type { Database } from "@/types/database";
 import { formatDate } from "@/lib/utils/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { Button } from "@/components/ui/button";
 import { PageHero, HeroAccentPill, HeroPill } from "@/components/ui/page-hero";
 import { StatCard } from "@/components/ui/stat-card";
@@ -372,7 +372,7 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <MobilePageHeader title="Actividad de uso" backHref="/settings" />
+      <MobileHeader variant="sub" title="Actividad de uso" backHref="/settings" />
 
       <PageHero
         variant="brass"

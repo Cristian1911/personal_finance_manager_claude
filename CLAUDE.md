@@ -25,6 +25,10 @@
 - Project ID: `tgkhaxipfgskxydotdtu` (sa-east-1, org: zybaordjrezdjajzwisk)
 - See `~/.claude/rules/supabase.md` for RLS, auth, migration patterns
 
+## Income & Metrics Rules
+- **Debt inflows are NOT income**: INFLOW to `CREDIT_CARD` or `LOAN` accounts are debt payments. They must NEVER count in income/ingresos metrics. Always filter: `tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id)` where `debtAccountIds` comes from `accounts.filter(a => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")`.
+- **Reference implementation**: `getMonthlyCashflowCached()` in `webapp/src/actions/charts.ts` — all new income calculations must follow this pattern.
+
 ## Gotchas
 - Zod 4 `.uuid()` enforces RFC 9562 — seed category UUIDs (a0000001-...) fail validation
 - shadcn/ui Checkbox: use `checked="indeterminate"`, not an `indeterminate` prop

@@ -27,9 +27,9 @@ export interface InicioRootProps {
     runwayDays: number;
     daysInMonth: number;
     dayOfMonth: number;
-    nextIncomeName: string | null;
-    nextIncomeDays: number | null;
-    nextIncomeAmount: number | null;
+    nextPaymentName: string | null;
+    nextPaymentDays: number | null;
+    nextPaymentAmount: number | null;
     currency: CurrencyCode;
   };
   signals: AttentionSignal[];

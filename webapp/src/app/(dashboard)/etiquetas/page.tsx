@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { getTagGroups } from "@/actions/tags";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { TagManager } from "@/components/tags/tag-manager";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
@@ -11,7 +11,7 @@ export default async function EtiquetasPage() {
 
   const pageHeader = (
     <>
-      <MobilePageHeader title="Etiquetas" backHref="/gestionar" />
+      <MobileHeader variant="sub" title="Etiquetas" backHref="/gestionar" />
 
       <div className="space-y-1 lg:hidden">
         <SectionEyebrow>Etiquetas</SectionEyebrow>

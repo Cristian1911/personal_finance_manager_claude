@@ -80,16 +80,18 @@ async function MobileDebtSection({
 
   return (
     <>
-      <ExtraPaymentTrigger
-        debtAccounts={overview.accounts}
-        sourceAccounts={sourceAccounts}
-        currency={currency}
-      />
       <DeudasRoot
         stats={stats}
         overview={overview}
         salaryBreakdown={salaryBreakdown}
         currency={currency}
+        extraPaymentTrigger={
+          <ExtraPaymentTrigger
+            debtAccounts={overview.accounts}
+            sourceAccounts={sourceAccounts}
+            currency={currency}
+          />
+        }
       />
     </>
   );

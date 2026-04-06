@@ -12,6 +12,7 @@ interface MovimientosLecturaProps {
   totalInflow: number;
   totalOutflow: number;
   transactions: Transaction[];
+  debtAccountIds: Set<string>;
   currency: CurrencyCode;
   expanded: boolean;
   onToggle: () => void;
@@ -26,7 +27,7 @@ interface DayData {
   expense: number;
 }
 
-function aggregateByDay(transactions: Transaction[]): DayData[] {
+function aggregateByDay(transactions: Transaction[], debtAccountIds: Set<string>): DayData[] {
   if (transactions.length === 0) return [];
 
   // Aggregate per calendar day
@@ -36,9 +37,9 @@ function aggregateByDay(transactions: Transaction[]): DayData[] {
     if (tx.is_excluded) continue;
     const date = tx.transaction_date; // "YYYY-MM-DD"
     const entry = dayMap.get(date) ?? { income: 0, expense: 0 };
-    if (tx.direction === "INFLOW") {
+    if (tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id)) {
       entry.income += tx.amount;
-    } else {
+    } else if (tx.direction === "OUTFLOW") {
       entry.expense += tx.amount;
     }
     dayMap.set(date, entry);
@@ -241,11 +242,12 @@ export function MovimientosLectura({
   totalInflow,
   totalOutflow,
   transactions,
+  debtAccountIds,
   currency,
   expanded,
   onToggle,
 }: MovimientosLecturaProps) {
-  const days = useMemo(() => aggregateByDay(transactions), [transactions]);
+  const days = useMemo(() => aggregateByDay(transactions, debtAccountIds), [transactions, debtAccountIds]);
 
   return (
     <MobileZone eyebrow="LECTURA">
@@ -260,18 +262,18 @@ export function MovimientosLectura({
         aria-expanded={expanded}
       >
         <p className="mb-2 text-[13px] font-semibold">Resumen del mes</p>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-1">
           <div className="text-center">
             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Movimientos
             </p>
-            <p className="mt-1 text-[20px] font-bold leading-tight">{count}</p>
+            <p className="mt-1 text-[18px] font-bold leading-tight">{count}</p>
           </div>
           <div className="text-center">
             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Ingresos
             </p>
-            <p className="mt-1 text-[20px] font-bold leading-tight text-z-income">
+            <p className="mt-1 text-[15px] font-bold leading-tight text-z-income tabular-nums">
               {formatCurrency(totalInflow, currency)}
             </p>
           </div>
@@ -279,7 +281,7 @@ export function MovimientosLectura({
             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Gastos
             </p>
-            <p className="mt-1 text-[20px] font-bold leading-tight">
+            <p className="mt-1 text-[15px] font-bold leading-tight tabular-nums">
               {formatCurrency(totalOutflow, currency)}
             </p>
           </div>

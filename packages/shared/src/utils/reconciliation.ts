@@ -75,7 +75,13 @@ export function scoreReconciliationCandidate(
   if (candidate.reconciled_into_transaction_id) return null;
   if (candidate.account_id !== importTx.account_id) return null;
   if (candidate.direction !== importTx.direction) return null;
-  if (Math.abs(candidate.amount - importTx.amount) > 0.0001) return null;
+
+  // Amount tolerance: percentage-based (up to 5% of the larger amount)
+  // Handles: cents in email vs rounded manual (0.03 on 3.8M), lazy manual rounding (~2000 COP)
+  const maxAmount = Math.max(candidate.amount, importTx.amount);
+  const amountDiff = Math.abs(candidate.amount - importTx.amount);
+  const amountPctDiff = maxAmount > 0 ? amountDiff / maxAmount : amountDiff > 0 ? 1 : 0;
+  if (amountPctDiff > 0.05) return null;
 
   const daysDiff = Math.abs(
     differenceInCalendarDays(
@@ -94,9 +100,20 @@ export function scoreReconciliationCandidate(
   );
   const textSimilarity = tokenSimilarity(sourceText, candidateText);
 
-  let score = 0.55;
-  if (daysDiff <= 1) score += 0.2;
-  else if (daysDiff <= 3) score += 0.1;
+  // Score components (max 1.0):
+  //   base:             0.40
+  //   amount closeness: 0.15 (exact) → 0.05 (within 2%) → 0 (2-5%)
+  //   date proximity:   0.20 (same day) → 0.10 (1-3 days)
+  //   text similarity:  0.25 × similarity
+  let score = 0.40;
+
+  if (amountPctDiff < 0.001) score += 0.15;
+  else if (amountPctDiff < 0.01) score += 0.10;
+  else if (amountPctDiff < 0.02) score += 0.05;
+
+  if (daysDiff <= 1) score += 0.20;
+  else if (daysDiff <= 3) score += 0.10;
+
   score += 0.25 * textSimilarity;
 
   let decision: ReconciliationDecision = "NO_MATCH";
@@ -161,6 +178,6 @@ export function mergeTransactionMetadata(
   return {
     category_id: shouldCarryCategory ? manualTx.category_id ?? null : pdfTx.category_id ?? null,
     notes: pdfTx.notes ?? manualTx.notes ?? null,
-    capture_method: "PDF_IMPORT",
+    capture_method: pdfTx.capture_method ?? "PDF_IMPORT",
   };
 }

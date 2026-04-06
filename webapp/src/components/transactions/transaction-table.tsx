@@ -22,9 +22,9 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { toggleExcludeTransaction } from "@/actions/transactions";
-import { categorizeTransaction } from "@/actions/categorize";
+import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
 import { toast } from "sonner";
-import type { Transaction, Category, CategoryWithChildren } from "@/types/domain";
+import type { TransactionWithAccount, Category, CategoryWithChildren } from "@/types/domain";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, FileText } from "lucide-react";
 import { flattenCategories } from "@/lib/utils/categories";
@@ -33,7 +33,7 @@ export function TransactionTable({
   transactions,
   categories,
 }: {
-  transactions: Transaction[];
+  transactions: TransactionWithAccount[];
   categories: CategoryWithChildren[];
 }) {
   const categoryMap = useMemo(() => {
@@ -78,6 +78,7 @@ export function TransactionTable({
             <TableRow>
               <TableHead className="w-10"></TableHead>
               <TableHead>Descripción</TableHead>
+              <TableHead>Cuenta</TableHead>
               <TableHead>Categoría</TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Estado</TableHead>
@@ -100,7 +101,7 @@ function MobileTransactionCard({
   tx,
   categoryMap,
 }: {
-  tx: Transaction;
+  tx: TransactionWithAccount;
   categoryMap: Map<string, Category>;
 }) {
   const description =
@@ -125,16 +126,22 @@ function MobileTransactionCard({
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{description}</p>
           <p className="text-xs text-muted-foreground">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full align-middle mr-1"
+              style={{ backgroundColor: tx.account.color ?? undefined }}
+            />
+            <span>{tx.account.name}</span>
             {category && (
               <>
+                {" · "}
                 <span
                   className="inline-block h-1.5 w-1.5 rounded-full align-middle mr-1"
                   style={{ backgroundColor: category.color }}
                 />
                 <span>{category.name_es ?? category.name}</span>
-                {" · "}
               </>
             )}
+            {" · "}
             {formatDate(tx.transaction_date)}
             {tx.status !== "POSTED" && (
               <span>
@@ -160,7 +167,7 @@ function TransactionRow({
   tx,
   categories,
 }: {
-  tx: Transaction;
+  tx: TransactionWithAccount;
   categories: CategoryWithChildren[];
 }) {
   const [isPending, startTransition] = useTransition();
@@ -194,6 +201,15 @@ function TransactionRow({
               "Sin descripción"}
           </p>
         </Link>
+      </TableCell>
+      <TableCell>
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span
+            className="inline-block h-2 w-2 rounded-full shrink-0"
+            style={{ backgroundColor: tx.account.color ?? undefined }}
+          />
+          <span className="truncate max-w-[120px]">{tx.account.name}</span>
+        </span>
       </TableCell>
       <TableCell>
         <InlineCategoryEdit tx={tx} categories={categories} />
@@ -262,17 +278,29 @@ function InlineCategoryEdit({
   tx,
   categories,
 }: {
-  tx: Transaction;
+  tx: TransactionWithAccount;
   categories: CategoryWithChildren[];
 }) {
   const [isPending, startTransition] = useTransition();
 
   function handleChange(categoryId: string | null) {
     if (!categoryId) return;
+    const previousCategoryId = tx.category_id ?? null;
     startTransition(async () => {
       const result = await categorizeTransaction(tx.id, categoryId);
       if (result?.success) {
-        toast.success("Categoría actualizada");
+        toast.success("Categoría actualizada", {
+          action: {
+            label: "Deshacer",
+            onClick: () => {
+              if (previousCategoryId) {
+                void categorizeTransaction(tx.id, previousCategoryId);
+              } else {
+                void uncategorizeTransaction(tx.id);
+              }
+            },
+          },
+        });
       } else if (result && !result.success) {
         toast.error(result.error);
       }

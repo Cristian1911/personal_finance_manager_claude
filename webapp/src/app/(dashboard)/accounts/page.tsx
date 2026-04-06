@@ -6,7 +6,7 @@ import { getAttentionSnapshot } from "@/actions/attention";
 import { getPreferredCurrency } from "@/actions/profile";
 import { AccountCard } from "@/components/accounts/account-card";
 import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { Button } from "@/components/ui/button";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { SummaryCard } from "@/components/ui/summary-card";
@@ -73,7 +73,7 @@ export default async function AccountsPage() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <MobilePageHeader title="Cuentas" backHref="/gestionar" />
+      <MobileHeader variant="sub" title="Cuentas" backHref="/gestionar" />
 
       <PageHeaderRow
         title="Cuentas"

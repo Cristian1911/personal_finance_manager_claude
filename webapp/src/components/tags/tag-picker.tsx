@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import { createTag, addTagToEntity, removeTagFromEntity } from "@/actions/tags";
+import { UNGROUPED_TAG_GROUP_ID } from "@/lib/constants/tags";
 import { generateSlug } from "@/lib/validators/tags";
 import { TagChip } from "./tag-chip";
 import type { Tag, TagGroupWithTags, TaggableEntity } from "@/types/domain";
@@ -105,14 +106,14 @@ export function TagPicker({
       };
       // Add to local tag groups so it appears in the dropdown for future picks
       setLocalTagGroups((prev) => {
-        const ungrouped = prev.find((g) => g.id === null || g.name === "Sin grupo");
+        const ungrouped = prev.find((g) => g.id === UNGROUPED_TAG_GROUP_ID || g.name === "Sin grupo");
         if (ungrouped) {
           return prev.map((g) =>
             g.id === ungrouped.id ? { ...g, tags: [...g.tags, newTag] } : g
           );
         }
         // No ungrouped group exists — append one
-        return [...prev, { id: null as unknown as string, user_id: null, name: "Sin grupo", color: null, is_system: false, display_order: 999, created_at: new Date().toISOString(), tags: [newTag] }];
+        return [...prev, { id: UNGROUPED_TAG_GROUP_ID, user_id: null, name: "Sin grupo", color: null, is_system: false, display_order: 9999, created_at: new Date().toISOString(), tags: [newTag] }];
       });
       handleAdd(newTag);
     }

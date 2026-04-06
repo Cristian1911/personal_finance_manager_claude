@@ -113,6 +113,11 @@ export type CategoryBudgetData = {
   childrenSpent: Record<string, number>;
 };
 
+// Transaction with account join (used by main transaction views)
+export type TransactionWithAccount = Transaction & {
+  account: Pick<Account, "id" | "name" | "icon" | "color">;
+};
+
 // Transaction with joined relations
 export type TransactionWithRelations = Transaction & {
   account: Pick<Account, "id" | "name" | "icon" | "color">;

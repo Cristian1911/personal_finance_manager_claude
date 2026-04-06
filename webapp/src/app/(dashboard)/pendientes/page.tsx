@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { getReminders } from "@/actions/reminders";
 import { RemindersList } from "@/components/reminders/reminders-list";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 
@@ -16,7 +16,7 @@ export default async function PendientesPage() {
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <MobilePageHeader title="Pendientes" backHref="/dashboard" />
+      <MobileHeader variant="sub" title="Pendientes" backHref="/dashboard" />
 
       <div className="hidden lg:block space-y-1">
         <SectionEyebrow>Pendientes</SectionEyebrow>

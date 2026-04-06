@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatMonthLabel } from "@/lib/utils/date";
 import {
   Drawer,
   DrawerContent,
@@ -11,44 +12,62 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
-import { MonthSelector } from "@/components/month-selector";
-import { MobileTransactionForm } from "@/components/mobile/mobile-transaction-form";
-import type { Account, CategoryWithChildren, Tag } from "@/types/domain";
+import type { Account, Tag } from "@/types/domain";
 
 interface MovimientosUtilidadesProps {
   accounts: Account[];
-  categories: CategoryWithChildren[];
   tags: Tag[];
 }
 
 const pillClass =
-  "rounded-full border border-white/6 bg-black/10 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground";
+  "flex items-center justify-center rounded-full border border-white/6 bg-black/10 text-muted-foreground transition-colors";
 
 export function MovimientosUtilidades({
   accounts,
-  categories,
   tags,
 }: MovimientosUtilidadesProps) {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
-  const monthLabel = formatMonthLabel(new Date());
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentSearch = searchParams.get("search") ?? "";
+  const [searchOpen, setSearchOpen] = useState(!!currentSearch);
+
+  const updateSearch = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) {
+        params.set("search", value);
+      } else {
+        params.delete("search");
+      }
+      params.set("page", "1");
+      router.push(`/transactions?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
-        {/* Buscar */}
         <button
           type="button"
-          className={cn(pillClass, searchOpen && "border-z-brass/30 text-z-brass")}
+          className={cn(
+            pillClass,
+            "size-8",
+            searchOpen && "border-z-brass/30 text-z-brass"
+          )}
           onClick={() => setSearchOpen((prev) => !prev)}
+          aria-label="Buscar"
         >
-          Buscar
+          <Search className="size-3.5" />
         </button>
 
-        {/* Filtrar */}
         <Drawer>
           <DrawerTrigger asChild>
-            <button type="button" className={pillClass}>
+            <button
+              type="button"
+              className={cn(pillClass, "gap-1.5 px-3 py-1.5 text-[10px] font-semibold")}
+            >
+              <SlidersHorizontal className="size-3" />
               Filtrar
             </button>
           </DrawerTrigger>
@@ -58,58 +77,21 @@ export function MovimientosUtilidades({
             </DrawerHeader>
             <div className="overflow-y-auto px-4 pb-6 space-y-4">
               <Suspense>
-                <TransactionFilters accounts={accounts} tags={tags} />
+                <TransactionFilters accounts={accounts} tags={tags} embedded />
               </Suspense>
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        {/* Month selector */}
-        <Drawer>
-          <DrawerTrigger asChild>
-            <button type="button" className={cn(pillClass, "capitalize")}>
-              {monthLabel}
-            </button>
-          </DrawerTrigger>
-          <DrawerContent className="max-h-[80dvh]">
-            <DrawerHeader>
-              <DrawerTitle>Seleccionar mes</DrawerTitle>
-            </DrawerHeader>
-            <div className="overflow-y-auto px-4 pb-6">
-              <Suspense>
-                <MonthSelector />
-              </Suspense>
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        {/* Registrar */}
-        <Drawer>
-          <DrawerTrigger asChild>
-            <button type="button" className={pillClass}>
-              Registrar
-            </button>
-          </DrawerTrigger>
-          <DrawerContent className="max-h-[85dvh]">
-            <DrawerHeader>
-              <DrawerTitle>Registrar movimiento</DrawerTitle>
-            </DrawerHeader>
-            <div className="overflow-y-auto px-4 pb-6">
-              <MobileTransactionForm
-                accounts={accounts}
-                categories={categories}
-              />
             </div>
           </DrawerContent>
         </Drawer>
       </div>
 
-      {/* Search input — inline toggle */}
       {searchOpen && (
         <input
           type="text"
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
+          defaultValue={currentSearch}
+          onChange={(e) => {
+            const timeout = setTimeout(() => updateSearch(e.target.value), 300);
+            return () => clearTimeout(timeout);
+          }}
           placeholder="Buscar movimiento..."
           autoFocus
           className="w-full rounded-xl border border-white/6 bg-black/10 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-z-brass/30 focus:outline-none"

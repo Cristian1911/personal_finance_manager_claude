@@ -16,7 +16,7 @@ import { CategoryZonePicker } from "@/components/categories/category-zone-picker
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { categorizeTransaction } from "@/actions/categorize";
+import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
 import { toggleExcludeTransaction } from "@/actions/transactions";
 import {
   approveEmailTransaction,
@@ -279,12 +279,24 @@ function CategorizarDetail({
   const [isPending, startTransition] = useTransition();
   const items = transactions.slice(0, MAX_ITEMS);
 
-  function handleCategorize(txId: string, categoryId: string | null) {
+  function handleCategorize(tx: Transaction, categoryId: string | null) {
     if (!categoryId) return;
+    const previousCategoryId = tx.category_id ?? null;
     startTransition(async () => {
-      const result = await categorizeTransaction(txId, categoryId);
+      const result = await categorizeTransaction(tx.id, categoryId);
       if (result.success) {
-        toast.success("Categorizada");
+        toast.success("Categorizada", {
+          action: {
+            label: "Deshacer",
+            onClick: () => {
+              if (previousCategoryId) {
+                void categorizeTransaction(tx.id, previousCategoryId);
+              } else {
+                void uncategorizeTransaction(tx.id);
+              }
+            },
+          },
+        });
       } else {
         toast.error(result.error ?? "Error al categorizar");
       }
@@ -350,7 +362,7 @@ function CategorizarDetail({
                   <CategoryZonePicker
                     categories={categories}
                     value={null}
-                    onValueChange={(catId) => handleCategorize(tx.id, catId)}
+                    onValueChange={(catId) => handleCategorize(tx, catId)}
                     direction="OUTFLOW"
                     variant="drawer"
                     triggerClassName="text-[10px] h-auto py-1 px-2.5"

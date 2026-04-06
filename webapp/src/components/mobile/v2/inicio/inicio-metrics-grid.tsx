@@ -12,9 +12,9 @@ interface InicioMetricsGridProps {
   runwayDays: number;
   daysInMonth: number;
   dayOfMonth: number;
-  nextIncomeName: string | null;
-  nextIncomeDays: number | null;
-  nextIncomeAmount: number | null;
+  nextPaymentName: string | null;
+  nextPaymentDays: number | null;
+  nextPaymentAmount: number | null;
   currency: CurrencyCode;
   /** Burndown data — shown as expanded view of Ritmo chip */
   burnRateData: BurnRateResponse | null;
@@ -170,9 +170,9 @@ function BurndownChart({
 export function InicioMetricsGrid({
   daysInMonth,
   dayOfMonth,
-  nextIncomeName,
-  nextIncomeDays,
-  nextIncomeAmount,
+  nextPaymentName,
+  nextPaymentDays,
+  nextPaymentAmount,
   currency,
   burnRateData,
   totalBudget,
@@ -181,8 +181,8 @@ export function InicioMetricsGrid({
 }: InicioMetricsGridProps) {
   const percentage = Math.round((dayOfMonth / daysInMonth) * 100);
   const isRitmoActive = expanded === "ritmo";
-  const isIngresoActive = expanded === "ingreso";
-  const hasActive = isRitmoActive || isIngresoActive;
+  const isPagoActive = expanded === "pago";
+  const hasActive = isRitmoActive || isPagoActive;
 
   return (
     <div>
@@ -204,28 +204,28 @@ export function InicioMetricsGrid({
           <p className="mt-1.5 text-[11px] text-muted-foreground">día {dayOfMonth} de {daysInMonth}</p>
         </button>
 
-        {/* Próximo ingreso chip */}
+        {/* Próximo pago chip */}
         <button
           type="button"
-          onClick={() => onToggle("ingreso")}
+          onClick={() => onToggle("pago")}
           className={cn(
             PANEL_INSET_CLASS,
             "flex w-full flex-col items-center justify-center px-3 py-3 transition-colors",
-            isIngresoActive && "ring-1 ring-z-income/30 bg-z-income/[0.06]"
+            isPagoActive && "ring-1 ring-z-expense/30 bg-z-expense/[0.06]"
           )}
-          aria-expanded={isIngresoActive}
+          aria-expanded={isPagoActive}
         >
-          <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">Próximo ingreso</p>
-          {nextIncomeDays != null ? (
+          <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">Próximo pago</p>
+          {nextPaymentDays != null ? (
             <>
-              <p className="text-[18px] font-[650] leading-tight text-z-income">{nextIncomeDays} días</p>
+              <p className="text-[18px] font-[650] leading-tight text-z-expense">{nextPaymentDays} días</p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {nextIncomeName ?? "Ingreso"}
-                {nextIncomeAmount != null && <> · {formatCurrency(nextIncomeAmount, currency)}</>}
+                {nextPaymentName ?? "Pago"}
+                {nextPaymentAmount != null && <> · {formatCurrency(nextPaymentAmount, currency)}</>}
               </p>
             </>
           ) : (
-            <p className="text-[11px] text-muted-foreground">Sin datos</p>
+            <p className="text-[11px] text-muted-foreground">Sin pagos próximos</p>
           )}
         </button>
       </div>
@@ -254,16 +254,16 @@ export function InicioMetricsGrid({
               </div>
             )}
 
-            {/* Próximo ingreso expanded */}
-            {isIngresoActive && (
-              <div className={cn(PANEL_INSET_CLASS, "border-z-income/20 bg-black/20 p-3 space-y-2")}>
+            {/* Próximo pago expanded */}
+            {isPagoActive && (
+              <div className={cn(PANEL_INSET_CLASS, "border-z-expense/20 bg-black/20 p-3 space-y-2")}>
                 <p className="text-[11px] text-muted-foreground">
-                  {nextIncomeName
-                    ? `${nextIncomeName} llega en ${nextIncomeDays} días.`
-                    : "No hay ingresos programados próximos."}
+                  {nextPaymentName
+                    ? `${nextPaymentName} en ${nextPaymentDays} días.`
+                    : "No hay pagos próximos programados."}
                 </p>
                 <Link href="/recurrentes" className="inline-block text-[11px] font-semibold text-z-brass">
-                  Ver ingresos y gastos →
+                  Ver pagos y recurrentes →
                 </Link>
               </div>
             )}

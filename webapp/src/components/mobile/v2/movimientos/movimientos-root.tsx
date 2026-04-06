@@ -10,7 +10,7 @@ import { MovimientosHerramientas } from "./movimientos-herramientas";
 import { MovimientosUtilidades } from "./movimientos-utilidades";
 import { MovimientosTransactionRow } from "./movimientos-transaction-row";
 import type {
-  Transaction,
+  TransactionWithAccount,
   PendingEmailTransaction,
   CategoryWithChildren,
   Account,
@@ -19,8 +19,7 @@ import type {
 } from "@/types/domain";
 
 interface MovimientosRootProps {
-  transactions: Transaction[];
-  categories: CategoryWithChildren[];
+  transactions: TransactionWithAccount[];
   outflowCategories: CategoryWithChildren[];
   accounts: Account[];
   tags: Tag[];
@@ -34,7 +33,6 @@ interface MovimientosRootProps {
 
 export function MovimientosRoot({
   transactions,
-  categories,
   outflowCategories,
   accounts,
   tags,
@@ -48,6 +46,16 @@ export function MovimientosRoot({
   /** Page-level accordion — one expanded section at a time */
   const { activeZone, toggle } = useExpandableZone<string>();
 
+  const debtAccountIds = useMemo(
+    () =>
+      new Set(
+        accounts
+          .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
+          .map((a) => a.id)
+      ),
+    [accounts]
+  );
+
   const uncategorizedTransactions = useMemo(
     () =>
       transactions
@@ -60,7 +68,7 @@ export function MovimientosRoot({
 
   /** Group transactions by date, sorted descending */
   const groupedByDate = useMemo(() => {
-    const groups = new Map<string, Transaction[]>();
+    const groups = new Map<string, TransactionWithAccount[]>();
     for (const tx of transactions) {
       const date = tx.transaction_date;
       const existing = groups.get(date);
@@ -76,9 +84,8 @@ export function MovimientosRoot({
   return (
     <div className="space-y-3">
       <MobileHeader
-        variant="page"
+        variant="main"
         title="Movimientos"
-        chip="Mesa operativa"
         action={
           <Suspense>
             <MonthSelector />
@@ -92,6 +99,7 @@ export function MovimientosRoot({
         totalInflow={totalInflow}
         totalOutflow={totalOutflow}
         transactions={transactions}
+        debtAccountIds={debtAccountIds}
         currency={currency}
         expanded={activeZone === "lectura"}
         onToggle={() => toggle("lectura")}
@@ -110,10 +118,9 @@ export function MovimientosRoot({
         onToggleTool={(id) => toggle(`tool-${id}`)}
       />
 
-      {/* Utilidades — search, filter, month, register pills */}
+      {/* Utilidades — search + filter pills */}
       <MovimientosUtilidades
         accounts={accounts}
-        categories={categories}
         tags={tags}
       />
 

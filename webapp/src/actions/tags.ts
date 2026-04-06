@@ -7,6 +7,8 @@ import { tagGroupSchema, tagSchema, generateSlug } from "@/lib/validators/tags";
 import type { ActionResult } from "@/types/actions";
 import type { TagGroupWithTags, Tag, TaggableEntity } from "@/types/domain";
 
+import { UNGROUPED_TAG_GROUP_ID } from "@/lib/constants/tags";
+
 // ── Queries ───────────────────────────────────────────────
 
 export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTags[]>> => {
@@ -29,10 +31,26 @@ export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTag
 
   if (tagsError) return { success: false, error: tagsError.message };
 
+  const groupIds = new Set(groups.map((g) => g.id));
   const groupsWithTags: TagGroupWithTags[] = groups.map((g) => ({
     ...g,
     tags: tags.filter((t) => t.group_id === g.id),
   }));
+
+  // Include ungrouped tags (group_id is null or references a deleted group)
+  const ungroupedTags = tags.filter((t) => !t.group_id || !groupIds.has(t.group_id));
+  if (ungroupedTags.length > 0) {
+    groupsWithTags.push({
+      id: UNGROUPED_TAG_GROUP_ID,
+      user_id: null,
+      name: "Sin grupo",
+      color: null,
+      is_system: false,
+      display_order: 9999,
+      created_at: new Date().toISOString(),
+      tags: ungroupedTags,
+    });
+  }
 
   return { success: true, data: groupsWithTags };
 });
