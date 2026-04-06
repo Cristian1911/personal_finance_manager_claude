@@ -241,16 +241,16 @@ export async function applyExtraDebtPayment(
       // Sync currency_balances JSONB if present
       const cb = debtAccount.currency_balances as Record<string, Record<string, unknown>> | null;
       if (cb && cb[currencyCode]) {
+        const newAvailable = debtAccount.account_type === "CREDIT_CARD" && debtAccount.credit_limit != null
+          ? Math.max(Number(debtAccount.credit_limit) - newDebtBalance, 0)
+          : undefined;
         const updatedCb: Record<string, unknown> = {
           ...cb[currencyCode],
           current_balance: newDebtBalance,
+          // Sync all balance-derived fields so extractDebtAccounts reads correct values
+          total_payment_due: Math.max(newDebtBalance, 0),
+          ...(newAvailable !== undefined ? { available_balance: newAvailable } : {}),
         };
-        if (debtAccount.account_type === "CREDIT_CARD" && debtAccount.credit_limit != null) {
-          updatedCb.available_balance = Math.max(
-            Number(debtAccount.credit_limit) - newDebtBalance,
-            0
-          );
-        }
         accountUpdate.currency_balances = { ...cb, [currencyCode]: updatedCb };
       }
 

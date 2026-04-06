@@ -44,6 +44,8 @@ interface ExtraPaymentSheetProps {
     currency_code: string;
   }>;
   currency: CurrencyCode;
+  /** USD→COP exchange rate (if available) for multi-currency cards */
+  usdToCopRate?: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -54,6 +56,7 @@ export function ExtraPaymentSheet({
   debtAccounts,
   sourceAccounts,
   currency,
+  usdToCopRate,
   open,
   onOpenChange,
 }: ExtraPaymentSheetProps) {
@@ -63,6 +66,10 @@ export function ExtraPaymentSheet({
     () => new Set(debtAccounts.filter((a) => a.balance > 0).map((a) => a.id))
   );
   const [manualOverrides, setManualOverrides] = useState<Map<string, number>>(
+    new Map()
+  );
+  /** USD overrides per account (in USD, converted to COP for allocation) */
+  const [usdOverrides, setUsdOverrides] = useState<Map<string, number>>(
     new Map()
   );
   const [isPending, startTransition] = useTransition();
@@ -75,15 +82,43 @@ export function ExtraPaymentSheet({
     return isNaN(value) ? 0 : value;
   }, [totalAmount]);
 
+  // ── USD → COP per account + total ──────────────────────────────────────────
+
+  const usdCopByAccount = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!usdToCopRate) return map;
+    for (const account of debtAccounts) {
+      if (!selectedIds.has(account.id)) continue;
+      let extra = 0;
+      for (const cb of account.currencyBreakdown ?? []) {
+        if (cb.currency === currency || cb.balance <= 0) continue;
+        extra += Math.round((usdOverrides.get(account.id) ?? cb.balance) * usdToCopRate);
+      }
+      if (extra > 0) map.set(account.id, extra);
+    }
+    return map;
+  }, [debtAccounts, selectedIds, usdOverrides, usdToCopRate, currency]);
+
+  const totalUsdInCop = useMemo(
+    () => Array.from(usdCopByAccount.values()).reduce((s, v) => s + v, 0),
+    [usdCopByAccount]
+  );
+
   const allocations = useMemo<ExtraPaymentAllocation[]>(() => {
-    if (parsedAmount <= 0 || selectedIds.size === 0) return [];
+    const copBudget = parsedAmount - totalUsdInCop;
+    if (copBudget <= 0 || selectedIds.size === 0) return [];
     return allocateExtraPayment({
-      totalAmount: parsedAmount,
+      totalAmount: copBudget,
       accounts: debtAccounts,
       selectedIds: Array.from(selectedIds),
       manualOverrides,
     });
-  }, [parsedAmount, debtAccounts, selectedIds, manualOverrides]);
+  }, [parsedAmount, totalUsdInCop, debtAccounts, selectedIds, manualOverrides]);
+
+  const allocatedCopTotal = useMemo(
+    () => allocations.reduce((s, a) => s + a.allocatedAmount, 0),
+    [allocations]
+  );
 
   const impact = useMemo(() => {
     if (allocations.length === 0) return null;
@@ -157,12 +192,13 @@ export function ExtraPaymentSheet({
     const source = sourceAccounts.find((a) => a.id === sourceAccountId);
     if (!source) return;
 
+    // Add USD COP-equivalent to each allocation (bank receives a single COP payment)
     const validAllocations = allocations
       .filter((a) => a.allocatedAmount > 0)
       .map((a) => ({
         accountId: a.accountId,
         accountName: a.accountName,
-        amount: a.allocatedAmount,
+        amount: a.allocatedAmount + (usdCopByAccount.get(a.accountId) ?? 0),
       }));
 
     if (validAllocations.length === 0) return;
@@ -179,16 +215,16 @@ export function ExtraPaymentSheet({
         toast.success(
           `Pago aplicado: ${formatCurrency(result.data.totalPaid, currency)} distribuido en ${result.data.applied} ${result.data.applied === 1 ? "deuda" : "deudas"}`
         );
-        // Reset state
         setTotalAmount("");
         setSourceAccountId("");
         setManualOverrides(new Map());
+        setUsdOverrides(new Map());
         onOpenChange(false);
       } else {
         toast.error(result.error ?? "Error al aplicar el pago");
       }
     });
-  }, [sourceAccountId, sourceAccounts, allocations, currency, onOpenChange]);
+  }, [sourceAccountId, sourceAccounts, allocations, usdCopByAccount, currency, onOpenChange]);
 
   const hasValidAllocation =
     sourceAccountId &&
@@ -201,7 +237,7 @@ export function ExtraPaymentSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-lg overflow-y-auto"
+        className="w-full sm:max-w-lg flex flex-col overflow-hidden"
       >
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -214,7 +250,7 @@ export function ExtraPaymentSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-col gap-6 px-4 pb-4">
+        <div className="flex-1 overflow-y-auto flex flex-col gap-6 px-4 pb-4">
           {/* ── Zone 1: Amount & Source ── */}
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
@@ -317,9 +353,9 @@ export function ExtraPaymentSheet({
                 <div className="flex items-center gap-3">
                   {allocations.length > 0 && (
                     <span className="text-xs tabular-nums text-muted-foreground">
-                      {formatCurrency(allocations.reduce((s, a) => s + a.allocatedAmount, 0), currency)}
+                      {formatCurrency(allocatedCopTotal + totalUsdInCop, currency)}
                       {(() => {
-                        const remaining = parsedAmount - allocations.reduce((s, a) => s + a.allocatedAmount, 0);
+                        const remaining = parsedAmount - allocatedCopTotal - totalUsdInCop;
                         if (remaining <= 0) return null;
                         return (
                           <span className="text-amber-400">
@@ -382,24 +418,48 @@ export function ExtraPaymentSheet({
                               : ""}
                             {formatCurrency(account.balance, currency)}
                           </span>
+                        </div>
+                        <div className="flex flex-col gap-1.5 shrink-0 items-end">
+                          <Input
+                            inputMode="numeric"
+                            disabled={!isSelected}
+                            value={isSelected && displayAmount > 0 ? formatCurrency(displayAmount, currency) : ""}
+                            onChange={(e) =>
+                              handleOverrideAmount(account.id, e.target.value.replace(/\D/g, ""))
+                            }
+                            className="w-28 text-right text-sm"
+                          />
                           {account.currencyBreakdown
                             ?.filter((cb) => cb.currency !== currency && cb.balance > 0)
-                            .map((cb) => (
-                              <span key={cb.currency} className="text-[10px] text-amber-400">
-                                + {formatCurrency(cb.balance, cb.currency as CurrencyCode)} {cb.currency}
-                              </span>
-                            ))}
-
+                            .map((cb) => {
+                              const usdVal = usdOverrides.get(account.id) ?? cb.balance;
+                              const copEquiv = usdToCopRate ? Math.round(usdVal * usdToCopRate) : 0;
+                              return (
+                                <div key={cb.currency} className="flex items-center gap-1.5">
+                                  <Input
+                                    inputMode="numeric"
+                                    disabled={!isSelected || !usdToCopRate}
+                                    placeholder={`${cb.currency}`}
+                                    value={isSelected ? formatCurrency(usdVal, cb.currency as CurrencyCode) : ""}
+                                    onChange={(e) => {
+                                      const num = parseInt(e.target.value.replace(/\D/g, ""), 10);
+                                      setUsdOverrides((prev) => {
+                                        const next = new Map(prev);
+                                        next.set(account.id, isNaN(num) ? 0 : num);
+                                        return next;
+                                      });
+                                    }}
+                                    className="w-20 text-right text-xs h-8"
+                                  />
+                                  {usdToCopRate && copEquiv > 0 && (
+                                    <span className="text-[9px] text-amber-400 whitespace-nowrap">
+                                      ≈ {formatCurrency(copEquiv, currency)}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
                         </div>
-                        <Input
-                          inputMode="numeric"
-                          disabled={!isSelected}
-                          value={isSelected && displayAmount > 0 ? formatCurrency(displayAmount, currency) : ""}
-                          onChange={(e) =>
-                            handleOverrideAmount(account.id, e.target.value.replace(/\D/g, ""))
-                          }
-                          className="w-28 text-right text-sm"
-                        />
                       </div>
                     );
                   })}
@@ -409,7 +469,7 @@ export function ExtraPaymentSheet({
 
         </div>
 
-        <SheetFooter className="flex flex-row gap-2 px-4 pt-2">
+        <SheetFooter className="shrink-0 flex flex-row gap-2 px-4 py-3 pb-20 sm:pb-3 border-t border-white/6">
           <Button
             className={BRASS_BUTTON_CLASS}
             disabled={!hasValidAllocation || isPending}

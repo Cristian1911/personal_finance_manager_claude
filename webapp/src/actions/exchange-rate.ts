@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { CurrencyCode } from "@/types/domain";
 import type { Database } from "@/types/database";
 
@@ -14,12 +14,13 @@ export interface ExchangeRateResult {
   pair: string;
 }
 
-const FRANKFURTER_BASE = "https://api.frankfurter.app";
+// fawazahmed0/exchange-api — static JSON on CDN, no key, 200+ currencies including COP
+const FAWAZ_BASE = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Get the exchange rate for a currency pair (e.g., USD → COP).
- * Checks cache first; fetches from frankfurter.app if stale (>24h).
+ * Checks DB cache first; fetches once per day from fawazahmed0 CDN.
  */
 export async function getExchangeRate(
   from: CurrencyCode,
@@ -28,7 +29,7 @@ export async function getExchangeRate(
   if (from === to) return null;
 
   const pair = `${from}_${to}`;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Check cache
   const { data: cached } = await supabase
@@ -46,54 +47,31 @@ export async function getExchangeRate(
     return formatCached(cached, pair);
   }
 
-  // Fetch fresh rate
+  // Fetch today's rate from fawazahmed0 CDN (single-pair endpoint)
+  const fromLower = from.toLowerCase();
+  const toLower = to.toLowerCase();
   try {
-    const [latestRes, historyRes] = await Promise.all([
-      fetch(`${FRANKFURTER_BASE}/latest?from=${from}&to=${to}`),
-      fetch(`${FRANKFURTER_BASE}/${getDateDaysAgo(30)}..?from=${from}&to=${to}`),
-    ]);
+    const res = await fetch(`${FAWAZ_BASE}/${fromLower}/${toLower}.json`);
+    if (!res.ok) return cached ? formatCached(cached, pair) : null;
 
-    if (!latestRes.ok || !historyRes.ok) return cached ? formatCached(cached, pair) : null;
+    const data = await res.json();
+    const rate = data?.[toLower];
+    if (!rate || typeof rate !== "number") return cached ? formatCached(cached, pair) : null;
 
-    const latest = await latestRes.json();
-    const history = await historyRes.json();
-
-    const rate = latest.rates?.[to];
-    if (!rate) return cached ? formatCached(cached, pair) : null;
-
-    // Build 30-day rates array
-    const rates30d: { date: string; rate: number }[] = [];
-    for (const [date, rates] of Object.entries(history.rates ?? {})) {
-      const r = (rates as Record<string, number>)?.[to];
-      if (r) rates30d.push({ date, rate: r });
-    }
-
-    const avg30d = rates30d.length > 0
-      ? rates30d.reduce((s, r) => s + r.rate, 0) / rates30d.length
-      : null;
-
-    // Upsert cache
-    await supabase.from("exchange_rate_cache").upsert({
+    // Best-effort cache write — don't block the response
+    void supabase.from("exchange_rate_cache").upsert({
       pair,
       rate,
-      rates_30d: rates30d,
-      avg_30d: avg30d,
+      rates_30d: [],
+      avg_30d: null,
       fetched_at: new Date().toISOString(),
     });
 
-    const percentVsAvg = avg30d ? ((rate - avg30d) / avg30d) * 100 : null;
-
-    return { rate, avg30d, percentVsAvg, fetchedAt: new Date().toISOString(), pair };
+    return { rate, avg30d: null, percentVsAvg: null, fetchedAt: new Date().toISOString(), pair };
   } catch (error) {
     console.error("Error fetching exchange rate:", error);
     return cached ? formatCached(cached, pair) : null;
   }
-}
-
-function getDateDaysAgo(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
 }
 
 function formatCached(cached: ExchangeRateCacheRow, pair: string): ExchangeRateResult {
