@@ -267,13 +267,13 @@ export function MovimientosLectura({
             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Movimientos
             </p>
-            <p className="mt-1 text-[20px] font-bold leading-tight">{count}</p>
+            <p className="mt-1 text-[18px] font-bold leading-tight">{count}</p>
           </div>
           <div className="text-center">
             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Ingresos
             </p>
-            <p className="mt-1 text-[14px] font-bold leading-tight text-z-income tabular-nums">
+            <p className="mt-1 text-[15px] font-bold leading-tight text-z-income tabular-nums">
               {formatCurrency(totalInflow, currency)}
             </p>
           </div>
@@ -281,7 +281,7 @@ export function MovimientosLectura({
             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Gastos
             </p>
-            <p className="mt-1 text-[14px] font-bold leading-tight tabular-nums">
+            <p className="mt-1 text-[15px] font-bold leading-tight tabular-nums">
               {formatCurrency(totalOutflow, currency)}
             </p>
           </div>
