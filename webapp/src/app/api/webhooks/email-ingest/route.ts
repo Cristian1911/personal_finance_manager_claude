@@ -15,6 +15,7 @@ import {
   matchAccountByLast4,
 } from "@/lib/email-ingest/statement-filename";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "@/actions/destinatarios";
 import type { Json } from "@/types/database";
@@ -578,7 +579,7 @@ export async function POST(request: NextRequest) {
 
   const { data: candidateAccounts, error: accountLookupError } = await admin
     .from("accounts")
-    .select("id, mask, debit_card_mask, account_type, currency_code")
+    .select("id, mask, debit_card_mask, account_type, currency_code, current_balance")
     .eq("user_id", userId)
     .eq("is_active", true);
 
@@ -655,6 +656,21 @@ export async function POST(request: NextRequest) {
         });
       }
       return NextResponse.json({ ok: true });
+    }
+
+    // Update account balance
+    if (matchedAccount) {
+      const newBalance = applyAccountBalanceDelta({
+        currentBalance: matchedAccount.current_balance ?? 0,
+        accountType: matchedAccount.account_type,
+        direction: parsed.direction,
+        amount: parsed.amount,
+      });
+      await admin
+        .from("accounts")
+        .update({ current_balance: newBalance })
+        .eq("id", suggestedAccountId)
+        .eq("user_id", userId);
     }
 
     await insertLog({
