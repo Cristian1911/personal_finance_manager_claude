@@ -62,7 +62,7 @@ export function MovimientosUtilidades({
             </DrawerHeader>
             <div className="overflow-y-auto px-4 pb-6 space-y-4">
               <Suspense>
-                <TransactionFilters accounts={accounts} tags={tags} />
+                <TransactionFilters accounts={accounts} tags={tags} embedded />
               </Suspense>
             </div>
           </DrawerContent>
