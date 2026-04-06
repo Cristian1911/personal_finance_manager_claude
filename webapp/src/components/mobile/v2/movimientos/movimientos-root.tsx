@@ -20,7 +20,6 @@ import type {
 
 interface MovimientosRootProps {
   transactions: Transaction[];
-  categories: CategoryWithChildren[];
   outflowCategories: CategoryWithChildren[];
   accounts: Account[];
   tags: Tag[];
@@ -34,7 +33,6 @@ interface MovimientosRootProps {
 
 export function MovimientosRoot({
   transactions,
-  categories,
   outflowCategories,
   accounts,
   tags,
@@ -109,10 +107,9 @@ export function MovimientosRoot({
         onToggleTool={(id) => toggle(`tool-${id}`)}
       />
 
-      {/* Utilidades — search, filter, month, register pills */}
+      {/* Utilidades — search + filter pills */}
       <MovimientosUtilidades
         accounts={accounts}
-        categories={categories}
         tags={tags}
       />
 

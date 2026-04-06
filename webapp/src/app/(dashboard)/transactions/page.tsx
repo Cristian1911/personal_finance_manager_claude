@@ -90,7 +90,6 @@ export default async function TransactionsPage({
       <div className="lg:hidden">
         <MovimientosRoot
           transactions={transactionsResult.data}
-          categories={categories}
           outflowCategories={outflowCategories}
           accounts={accounts}
           tags={allTags}

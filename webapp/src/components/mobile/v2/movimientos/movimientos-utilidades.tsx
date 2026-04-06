@@ -11,11 +11,10 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
-import type { Account, CategoryWithChildren, Tag } from "@/types/domain";
+import type { Account, Tag } from "@/types/domain";
 
 interface MovimientosUtilidadesProps {
   accounts: Account[];
-  categories: CategoryWithChildren[];
   tags: Tag[];
 }
 
@@ -24,7 +23,6 @@ const pillClass =
 
 export function MovimientosUtilidades({
   accounts,
-  categories,
   tags,
 }: MovimientosUtilidadesProps) {
   const [searchOpen, setSearchOpen] = useState(false);
