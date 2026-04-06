@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { toggleExcludeTransaction } from "@/actions/transactions";
-import { categorizeTransaction } from "@/actions/categorize";
+import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
 import { toast } from "sonner";
 import type { Transaction, Category, CategoryWithChildren } from "@/types/domain";
 import Link from "next/link";
@@ -269,10 +269,22 @@ function InlineCategoryEdit({
 
   function handleChange(categoryId: string | null) {
     if (!categoryId) return;
+    const previousCategoryId = tx.category_id ?? null;
     startTransition(async () => {
       const result = await categorizeTransaction(tx.id, categoryId);
       if (result?.success) {
-        toast.success("Categoría actualizada");
+        toast.success("Categoría actualizada", {
+          action: {
+            label: "Deshacer",
+            onClick: () => {
+              if (previousCategoryId) {
+                void categorizeTransaction(tx.id, previousCategoryId);
+              } else {
+                void uncategorizeTransaction(tx.id);
+              }
+            },
+          },
+        });
       } else if (result && !result.success) {
         toast.error(result.error);
       }

@@ -66,8 +66,13 @@ export default async function TransactionsPage({
   const hasActiveFilters = activeFilterCount > 0;
   const visibleTransactions = transactionsResult.data.filter((tx) => !tx.is_excluded);
   const summaryCurrency = (visibleTransactions[0]?.currency_code ?? "COP");
+  const debtAccountIds = new Set(
+    accounts
+      .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
+      .map((a) => a.id)
+  );
   const inflowVisible = visibleTransactions
-    .filter((tx) => tx.direction === "INFLOW")
+    .filter((tx) => tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id))
     .reduce((sum, tx) => sum + tx.amount, 0);
   const outflowVisible = visibleTransactions
     .filter((tx) => tx.direction === "OUTFLOW")

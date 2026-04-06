@@ -46,6 +46,16 @@ export function MovimientosRoot({
   /** Page-level accordion — one expanded section at a time */
   const { activeZone, toggle } = useExpandableZone<string>();
 
+  const debtAccountIds = useMemo(
+    () =>
+      new Set(
+        accounts
+          .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
+          .map((a) => a.id)
+      ),
+    [accounts]
+  );
+
   const uncategorizedTransactions = useMemo(
     () =>
       transactions
@@ -89,6 +99,7 @@ export function MovimientosRoot({
         totalInflow={totalInflow}
         totalOutflow={totalOutflow}
         transactions={transactions}
+        debtAccountIds={debtAccountIds}
         currency={currency}
         expanded={activeZone === "lectura"}
         onToggle={() => toggle("lectura")}
