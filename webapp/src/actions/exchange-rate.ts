@@ -58,8 +58,8 @@ export async function getExchangeRate(
     const rate = data?.[toLower];
     if (!rate || typeof rate !== "number") return cached ? formatCached(cached, pair) : null;
 
-    // Best-effort cache write — don't block the response
-    void supabase.from("exchange_rate_cache").upsert({
+    // Cache write — await to ensure it completes before serverless context exits
+    await supabase.from("exchange_rate_cache").upsert({
       pair,
       rate,
       rates_30d: [],

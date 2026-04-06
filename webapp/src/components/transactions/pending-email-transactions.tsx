@@ -242,8 +242,7 @@ export function PendingEmailTransactions({
         }
       } catch {
         setReconLoading(false);
-        clearPending(pendingId);
-        toast.success("Transacción importada");
+        toast.error("Error al importar. Inténtalo de nuevo.");
       }
     });
   }

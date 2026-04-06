@@ -28,13 +28,15 @@ export default async function PlanPage({
   const params = await searchParams;
   const month = params.month;
   const monthLabel = formatMonthLabel(parseMonth(month));
-  const currency = await getPreferredCurrency();
-  const [planData, wishlistSummary, rhythmResult, categoryBudgetResult, activePeriodResult] = await Promise.all([
-    getPlanPageData(month, currency),
+  const [currency, wishlistSummary, activePeriodResult] = await Promise.all([
+    getPreferredCurrency(),
     getWishlistItemsForDashboard(),
+    getActivePeriod(),
+  ]);
+  const [planData, rhythmResult, categoryBudgetResult] = await Promise.all([
+    getPlanPageData(month, currency),
     getCategoriesByRhythm(month, currency),
     getCategoriesWithBudgetData(month, currency),
-    getActivePeriod(),
   ]);
   const allocationData = planData.budget.allocation;
   const rhythmData = rhythmResult.success ? rhythmResult.data : [];

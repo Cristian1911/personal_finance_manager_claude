@@ -73,9 +73,11 @@ export function DebtFreeCountdown({ data }: DebtFreeCountdownProps) {
             &rarr; libre en {data.extraPaymentScenario.monthsToFree} meses
           </p>
           <p className="text-muted-foreground">
-            Ahorras {formatCurrency(data.extraPaymentScenario.interestSaved, data.currency)} en
-            intereses ({data.extraPaymentScenario.monthsSaved} mes
-            {data.extraPaymentScenario.monthsSaved !== 1 ? "es" : ""} antes)
+            {data.extraPaymentScenario.interestSaved > 0
+              ? `Ahorras ${formatCurrency(data.extraPaymentScenario.interestSaved, data.currency)} en intereses — `
+              : ""}
+            {data.extraPaymentScenario.monthsSaved} mes
+            {data.extraPaymentScenario.monthsSaved !== 1 ? "es" : ""} antes
           </p>
         </div>
       )}

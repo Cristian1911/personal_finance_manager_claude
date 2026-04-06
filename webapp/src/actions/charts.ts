@@ -4,6 +4,9 @@ import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccounts } from "@/actions/accounts";
+import { getUpcomingRecurrences } from "@/actions/recurring-templates";
+import { getUpcomingPayments } from "@/actions/payment-reminders";
+import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import {
   formatDate,
   parseMonth,
@@ -11,6 +14,7 @@ import {
   monthEndStr,
   monthsBeforeStart,
 } from "@/lib/utils/date";
+import { addDays } from "date-fns";
 import { computeDebtBalance } from "@zeta/shared";
 import type { Json } from "@/types/database";
 import type { CurrencyCode } from "@/types/domain";
@@ -377,10 +381,10 @@ async function getAccountsWithSparklineDataCached(
 
   const supabase = createAdminClient();
 
-  // 1. Fetch active accounts marked for dashboard
+  // 1. Fetch active accounts marked for dashboard (only columns we use)
   const { data: accounts, error: accountsError } = await supabase
     .from("accounts")
-    .select("*")
+    .select("id, name, account_type, current_balance, currency_balances, credit_limit, currency_code, updated_at, color, interest_rate, monthly_payment, loan_amount")
     .eq("user_id", userId)
     .eq("is_active", true)
     .eq("show_in_dashboard", true)
@@ -655,9 +659,13 @@ export async function getDashboardHeroData(
 
   const baseCurrency = currency ?? "COP";
 
-  // 1. Get liquid accounts + all active accounts for currency detection
-  //    Uses the same getAccountsCached as the accounts page — single cache entry
-  const accountsResult = await getAccounts();
+  const [accountsResult, upcomingRecurrences, statementPayments] = await Promise.all([
+    getAccounts(),
+    getUpcomingRecurrences(30),
+    getUpcomingPayments(),
+  ]);
+
+  // 1. Process accounts
   const dashboardAccounts = accountsResult.success
     ? accountsResult.data.map((a) => ({
         id: a.id,
@@ -668,7 +676,6 @@ export async function getDashboardHeroData(
         updated_at: a.updated_at,
       }))
     : [];
-  const allActiveAccounts = dashboardAccounts;
 
   const currencyAccounts = dashboardAccounts.filter((a) => a.currency_code === baseCurrency);
   const liquidAccounts = currencyAccounts.filter(
@@ -678,26 +685,25 @@ export async function getDashboardHeroData(
     (account) => account.account_type === "CREDIT_CARD"
   );
   const trackedFreshnessAccounts = [...liquidAccounts, ...creditCardAccounts];
-  const hasOtherCurrencies = allActiveAccounts.some((a) => a.currency_code !== baseCurrency);
+  const hasOtherCurrencies = dashboardAccounts.some((a) => a.currency_code !== baseCurrency);
   const totalLiquid = liquidAccounts.reduce(
     (sum, account) => sum + (account.current_balance ?? 0),
     0
   );
 
-  // 2. Compute freshness from oldest updated_at among balances that affect disponible
-  const { getFreshnessLevel } = await import("@/lib/utils/dashboard");
+  // 2. Compute freshness
   const timestamps = trackedFreshnessAccounts.map((a) => a.updated_at).filter(Boolean);
   const oldestUpdate = timestamps.length > 0
     ? timestamps.sort()[0]
     : null;
   const freshness = getFreshnessLevel(oldestUpdate);
 
-  // 3. Get pending obligations from upcoming recurring (OUTFLOW only)
-  // 14-day rolling window — ensures cross-month visibility (e.g. March 31 → April 14)
-  const { getUpcomingRecurrences } = await import("@/actions/recurring-templates");
-  const upcomingRecurrences = await getUpcomingRecurrences(14);
-  const recurringObligations: PendingObligation[] = upcomingRecurrences
-    .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency)
+  // 3. Process recurring obligations (14-day rolling window from shared 30-day fetch)
+  const heroWindowEnd = addDays(new Date(), 14).toISOString().slice(0, 10);
+  const outflowRecurrences = upcomingRecurrences
+    .filter((r) => r.next_date <= heroWindowEnd)
+    .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency);
+  const recurringObligations: PendingObligation[] = outflowRecurrences
     .map((r) => ({
       id: r.template.id,
       name: r.template.merchant_name ?? "Recurrente",
@@ -706,17 +712,13 @@ export async function getDashboardHeroData(
       due_date: r.next_date,
       source: "recurring" as const,
     }));
-  const recurringObligationsForAvailable = upcomingRecurrences
-    .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency)
+  const recurringObligationsForAvailable = outflowRecurrences
     .filter((r) => r.template.account.account_type !== "CREDIT_CARD")
     .reduce((sum, r) => sum + r.template.amount, 0);
 
-  // 4. Get pending obligations from statement payment due dates
-  const { getUpcomingPayments } = await import("@/actions/payment-reminders");
-  const statementPayments = await getUpcomingPayments();
-  const statementObligations: PendingObligation[] = statementPayments
-    .filter((p) => p.currency_code === baseCurrency)
-    // For credit cards, only show if minimum_payment exists (total_payment_due is the full balance, not an obligation)
+  // 4. Process statement payment obligations
+  const currencyPayments = statementPayments.filter((p) => p.currency_code === baseCurrency);
+  const statementObligations: PendingObligation[] = currencyPayments
     .filter((p) => p.account_type !== "CREDIT_CARD" || p.minimum_payment != null)
     .map((p) => ({
       id: p.id,
@@ -726,12 +728,10 @@ export async function getDashboardHeroData(
       due_date: p.payment_due_date,
       source: "statement" as const,
     }));
-  const creditCardStatementPending = statementPayments
-    .filter((p) => p.currency_code === baseCurrency)
+  const creditCardStatementPending = currencyPayments
     .filter((p) => p.account_type === "CREDIT_CARD" && p.minimum_payment != null)
     .reduce((sum, p) => sum + p.minimum_payment!, 0);
-  const nonCardStatementPending = statementPayments
-    .filter((p) => p.currency_code === baseCurrency)
+  const nonCardStatementPending = currencyPayments
     .filter((p) => p.account_type !== "CREDIT_CARD")
     .reduce((sum, p) => sum + p.total_payment_due, 0);
 

@@ -1,30 +1,41 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidateTag, cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { saveScenarioSchema, type SaveScenarioInput } from "@/lib/validators/scenario";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 
 type DebtScenario = Database["public"]["Tables"]["debt_scenarios"]["Row"];
 
-export async function getScenarios(): Promise<DebtScenario[]> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return [];
+async function getScenariosCached(userId: string): Promise<DebtScenario[]> {
+  "use cache";
+  cacheTag("debt");
+  cacheLife("zeta");
 
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("debt_scenarios")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .not("name", "is", null)
     .order("updated_at", { ascending: false });
 
-  if (error) {
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getScenarios(): Promise<DebtScenario[]> {
+  const { user } = await getAuthenticatedClient();
+  if (!user) return [];
+
+  try {
+    return await getScenariosCached(user.id);
+  } catch (error) {
     console.error("Failed to fetch scenarios:", error);
     return [];
   }
-
-  return data ?? [];
 }
 
 export async function getScenario(id: string): Promise<DebtScenario | null> {
