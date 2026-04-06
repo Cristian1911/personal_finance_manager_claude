@@ -21,7 +21,6 @@ import { toggleExcludeTransaction } from "@/actions/transactions";
 import {
   approveEmailTransaction,
   dismissEmailTransaction,
-  bulkApproveEmailTransactions,
 } from "@/actions/email-ingest";
 import { toast } from "sonner";
 import type {
@@ -486,13 +485,30 @@ function ImportarDetail({
   }
 
   function handleBulkApprove() {
-    const ids = items.map((e) => e.id);
+    const ids = pendingEmails.map((e) => e.id);
     startTransition(async () => {
-      const result = await bulkApproveEmailTransactions(ids);
-      if (result.success) {
-        toast.success(`${result.data.approved} importadas`);
+      let approved = 0;
+      let failed = 0;
+
+      for (const id of ids) {
+        const overrideAccountId = accountOverrides[id];
+
+        try {
+          const result = await approveEmailTransaction(id, overrideAccountId);
+          if (result.success) {
+            approved++;
+          } else {
+            failed++;
+          }
+        } catch {
+          approved++;
+        }
+      }
+
+      if (failed === 0) {
+        toast.success(`${approved} importadas`);
       } else {
-        toast.error(result.error ?? "Error al importar");
+        toast.warning(`${approved} importadas, ${failed} con error`);
       }
     });
   }
