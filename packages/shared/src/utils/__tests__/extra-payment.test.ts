@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { allocateExtraPayment } from "../extra-payment";
+import { allocateExtraPayment, computeExtraPaymentImpact } from "../extra-payment";
 import type { DebtAccount } from "../debt";
 
 const makeAccount = (
@@ -118,5 +118,77 @@ describe("allocateExtraPayment", () => {
     });
 
     expect(result).toHaveLength(0);
+  });
+});
+
+describe("computeExtraPaymentImpact", () => {
+  it("calculates monthly interest saved", () => {
+    const allocations = [
+      {
+        accountId: "b",
+        accountName: "b",
+        interestRate: 45,
+        currentBalance: 3_000_000,
+        allocatedAmount: 3_000_000,
+        newBalance: 0,
+        locked: false,
+      },
+    ];
+
+    const impact = computeExtraPaymentImpact({
+      accounts,
+      allocations,
+    });
+
+    // b had 45% EA → monthly rate ~3.13% → ~$93,900/month interest
+    // After paying off, that interest drops to 0
+    expect(impact.monthlyInterestSaved).toBeGreaterThan(90_000);
+    expect(impact.monthlyInterestAfter).toBeLessThan(impact.monthlyInterestBefore);
+  });
+
+  it("calculates payoff simulation deltas", () => {
+    const allocations = [
+      {
+        accountId: "b",
+        accountName: "b",
+        interestRate: 45,
+        currentBalance: 3_000_000,
+        allocatedAmount: 3_000_000,
+        newBalance: 0,
+        locked: false,
+      },
+    ];
+
+    const impact = computeExtraPaymentImpact({
+      accounts,
+      allocations,
+    });
+
+    expect(impact.monthsSaved).toBeGreaterThan(0);
+    expect(impact.totalInterestSavedOverLife).toBeGreaterThan(0);
+    expect(impact.monthsToDebtFreeAfter).toBeLessThan(impact.monthsToDebtFreeBefore);
+  });
+
+  it("returns zeros when no allocation changes balances", () => {
+    const allocations = [
+      {
+        accountId: "a",
+        accountName: "a",
+        interestRate: 28,
+        currentBalance: 5_000_000,
+        allocatedAmount: 0,
+        newBalance: 5_000_000,
+        locked: false,
+      },
+    ];
+
+    const impact = computeExtraPaymentImpact({
+      accounts,
+      allocations,
+    });
+
+    expect(impact.monthlyInterestSaved).toBe(0);
+    expect(impact.monthsSaved).toBe(0);
+    expect(impact.totalInterestSavedOverLife).toBe(0);
   });
 });

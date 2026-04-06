@@ -18,3 +18,4 @@ export * from "./utils/destinatario-matcher";
 export * from "./utils/scenario-types";
 export * from "./utils/scenario-engine";
 export * from "./utils/salary-breakdown";
+export * from "./utils/extra-payment";

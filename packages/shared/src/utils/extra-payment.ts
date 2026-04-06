@@ -1,4 +1,7 @@
 import type { DebtAccount } from "./debt";
+import { estimateMonthlyInterest } from "./debt";
+import { runScenario } from "./scenario-engine";
+import type { ScenarioAllocations } from "./scenario-types";
 
 export interface ExtraPaymentAllocation {
   accountId: string;
@@ -80,4 +83,99 @@ export function allocateExtraPayment(input: {
       locked,
     };
   });
+}
+
+export interface ExtraPaymentImpact {
+  monthlyInterestBefore: number;
+  monthlyInterestAfter: number;
+  monthlyInterestSaved: number;
+  monthsToDebtFreeBefore: number;
+  monthsToDebtFreeAfter: number;
+  monthsSaved: number;
+  totalInterestSavedOverLife: number;
+}
+
+export function computeExtraPaymentImpact(input: {
+  accounts: DebtAccount[];
+  allocations: ExtraPaymentAllocation[];
+}): ExtraPaymentImpact {
+  const { accounts, allocations } = input;
+
+  const allocationMap = new Map(
+    allocations.map((a) => [a.accountId, a.allocatedAmount])
+  );
+
+  let monthlyInterestBefore = 0;
+  let monthlyInterestAfter = 0;
+
+  for (const account of accounts) {
+    const interest = estimateMonthlyInterest(account.balance, account.interestRate);
+    monthlyInterestBefore += interest;
+
+    const allocated = allocationMap.get(account.id) ?? 0;
+    const newBalance = account.balance - allocated;
+    monthlyInterestAfter += estimateMonthlyInterest(newBalance, account.interestRate);
+  }
+
+  const monthlyInterestSaved = monthlyInterestBefore - monthlyInterestAfter;
+
+  const now = new Date();
+  const startMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const emptyAllocations: ScenarioAllocations = {
+    manualOverrides: [],
+    cascadeRedirects: [],
+  };
+
+  const activeAccounts = accounts.filter((a) => a.balance > 0);
+  if (activeAccounts.length === 0) {
+    return {
+      monthlyInterestBefore: 0,
+      monthlyInterestAfter: 0,
+      monthlyInterestSaved: 0,
+      monthsToDebtFreeBefore: 0,
+      monthsToDebtFreeAfter: 0,
+      monthsSaved: 0,
+      totalInterestSavedOverLife: 0,
+    };
+  }
+
+  const resultBefore = runScenario({
+    accounts: activeAccounts,
+    cashEntries: [],
+    strategy: "avalanche",
+    allocations: emptyAllocations,
+    startMonth,
+  });
+
+  const accountsAfter = activeAccounts
+    .map((a) => {
+      const allocated = allocationMap.get(a.id) ?? 0;
+      const newBalance = a.balance - allocated;
+      if (newBalance <= 0) return null;
+      return { ...a, balance: newBalance };
+    })
+    .filter((a): a is DebtAccount => a !== null);
+
+  const resultAfter =
+    accountsAfter.length > 0
+      ? runScenario({
+          accounts: accountsAfter,
+          cashEntries: [],
+          strategy: "avalanche",
+          allocations: emptyAllocations,
+          startMonth,
+        })
+      : { totalMonths: 0, totalInterestPaid: 0 };
+
+  return {
+    monthlyInterestBefore,
+    monthlyInterestAfter,
+    monthlyInterestSaved,
+    monthsToDebtFreeBefore: resultBefore.totalMonths,
+    monthsToDebtFreeAfter: resultAfter.totalMonths,
+    monthsSaved: resultBefore.totalMonths - resultAfter.totalMonths,
+    totalInterestSavedOverLife:
+      resultBefore.totalInterestPaid - resultAfter.totalInterestPaid,
+  };
 }
