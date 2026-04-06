@@ -184,8 +184,8 @@ export function AnnotateCanvas({
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col bg-black">
       {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-white/6 bg-z-surface px-4 py-2">
-        <span className="text-sm font-medium text-z-sage-light">
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/6 bg-z-surface px-4 py-2">
+        <span className="w-full text-sm font-medium text-z-sage-light lg:w-auto">
           {screenshotDataUrl ? "Anotar captura" : "Lienzo libre"}
           {componentHint && (
             <span className="ml-2 text-z-brass">· {componentHint}</span>
@@ -196,19 +196,19 @@ export function AnnotateCanvas({
             <SketchWorkspaceToolbar onImportImage={handleImportImage} />
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <button
             onClick={handleSave}
-            className="flex items-center gap-1.5 rounded-lg bg-z-brass px-3 py-1.5 text-xs font-semibold text-z-ink"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-z-brass px-4 py-2.5 text-sm font-semibold text-z-ink lg:min-h-0 lg:px-3 lg:py-1.5 lg:text-xs"
           >
-            <Save className="size-3.5" />
+            <Save className="size-4 lg:size-3.5" />
             Guardar
           </button>
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 rounded-lg border border-white/6 bg-z-surface-3 px-3 py-1.5 text-xs text-z-sage-light"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-white/6 bg-z-surface-3 px-4 py-2.5 text-sm text-z-sage-light lg:min-h-0 lg:px-3 lg:py-1.5 lg:text-xs"
           >
-            <X className="size-3.5" />
+            <X className="size-4 lg:size-3.5" />
             Cerrar
           </button>
         </div>

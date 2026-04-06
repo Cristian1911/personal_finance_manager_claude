@@ -90,23 +90,23 @@ export function SketchWorkspaceToolbar({ onImportImage }: SketchWorkspaceToolbar
     <div className="flex items-center gap-2">
       <button
         onClick={handleFileImport}
-        className="flex items-center gap-1.5 rounded-lg border border-white/6 bg-z-surface-3 px-3 py-1.5 text-xs text-z-sage-light hover:bg-white/5"
+        className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-white/6 bg-z-surface-3 px-4 py-2.5 text-sm text-z-sage-light hover:bg-white/5 lg:min-h-0 lg:px-3 lg:py-1.5 lg:text-xs"
       >
-        <ImagePlus className="size-3.5" />
+        <ImagePlus className="size-4 lg:size-3.5" />
         Importar imagen
       </button>
 
       <button
         onClick={handleLoadReviews}
         disabled={loadingReviews}
-        className="flex items-center gap-1.5 rounded-lg border border-white/6 bg-z-surface-3 px-3 py-1.5 text-xs text-z-sage-light hover:bg-white/5"
+        className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-white/6 bg-z-surface-3 px-4 py-2.5 text-sm text-z-sage-light hover:bg-white/5 lg:min-h-0 lg:px-3 lg:py-1.5 lg:text-xs"
       >
-        <FolderOpen className="size-3.5" />
+        <FolderOpen className="size-4 lg:size-3.5" />
         {loadingReviews ? "Cargando..." : "Revisiones previas"}
       </button>
 
       {showPreviousReviews && (
-        <div className="absolute top-12 left-0 z-10 max-h-64 w-72 overflow-y-auto rounded-xl border border-white/6 bg-z-surface-2 p-2 shadow-xl">
+        <div className="absolute top-12 left-0 right-0 z-10 max-h-[50vh] w-auto overflow-y-auto rounded-xl border border-white/6 bg-z-surface-2 p-2 shadow-xl lg:right-auto lg:w-72">
           {reviews.length === 0 ? (
             <p className="p-2 text-xs text-z-sage-dark">No hay revisiones</p>
           ) : (
