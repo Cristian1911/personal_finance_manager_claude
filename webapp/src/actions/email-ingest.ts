@@ -65,7 +65,7 @@ async function persistParsedEmail(params: {
 
   const { data: candidateAccounts, error: accountLookupError } = await supabase
     .from("accounts")
-    .select("id, mask, debit_card_mask, account_type, currency_code")
+    .select("id, mask, debit_card_mask, account_type, currency_code, current_balance")
     .eq("user_id", userId)
     .eq("is_active", true);
 
@@ -128,6 +128,24 @@ async function persistParsedEmail(params: {
         return { success: true, data: "duplicate" };
       }
       return { success: false, error: insertError.message };
+    }
+
+    // Update account balance
+    if (matchedAccount) {
+      const newBalance = applyAccountBalanceDelta({
+        currentBalance: matchedAccount.current_balance ?? 0,
+        accountType: matchedAccount.account_type,
+        direction: parsed.direction,
+        amount: parsed.amount,
+      });
+      const { error: balanceError } = await supabase
+        .from("accounts")
+        .update({ current_balance: newBalance })
+        .eq("id", suggestedAccountId)
+        .eq("user_id", userId);
+      if (balanceError) {
+        console.error("[persistParsedEmail] balance update failed:", balanceError);
+      }
     }
 
     revalidateTag("email-ingest", "zeta");
@@ -589,11 +607,14 @@ export async function approveEmailTransaction(
     direction: parsed.direction,
     amount: parsed.amount,
   });
-  await supabase
+  const { error: balanceError } = await supabase
     .from("accounts")
     .update({ current_balance: newBalance })
     .eq("id", accountId)
     .eq("user_id", user.id);
+  if (balanceError) {
+    console.error("[approveEmailTransaction] balance update failed:", balanceError);
+  }
 
   // Mark pending transaction as imported
   const { error: updateError } = await supabase

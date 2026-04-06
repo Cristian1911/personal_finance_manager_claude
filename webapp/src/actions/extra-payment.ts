@@ -151,8 +151,12 @@ export async function applyExtraDebtPayment(
         idempotency_key: outflowKey,
       });
 
-    if (outflowError && outflowError.code !== "23505") {
-      return { success: false, error: outflowError.message };
+    if (outflowError) {
+      if (outflowError.code === "23505") {
+        console.warn("[extraPayment] duplicate outflow skipped:", outflowKey);
+      } else {
+        return { success: false, error: outflowError.message };
+      }
     }
 
     const outflowSkipped = outflowError?.code === "23505";
@@ -187,8 +191,12 @@ export async function applyExtraDebtPayment(
         idempotency_key: inflowKey,
       });
 
-    if (inflowError && inflowError.code !== "23505") {
-      return { success: false, error: inflowError.message };
+    if (inflowError) {
+      if (inflowError.code === "23505") {
+        console.warn("[extraPayment] duplicate inflow skipped:", inflowKey);
+      } else {
+        return { success: false, error: inflowError.message };
+      }
     }
 
     const inflowSkipped = inflowError?.code === "23505";
@@ -202,11 +210,12 @@ export async function applyExtraDebtPayment(
         amount: allocation.amount,
       });
       sourceAccount.current_balance = newSourceBalance;
-      await supabase
+      const { error: srcBalErr } = await supabase
         .from("accounts")
         .update({ current_balance: newSourceBalance })
         .eq("id", sourceAccountId)
         .eq("user_id", user.id);
+      if (srcBalErr) console.error("[extraPayment] source balance update failed:", srcBalErr);
     }
 
     if (!inflowSkipped) {
@@ -217,11 +226,12 @@ export async function applyExtraDebtPayment(
         amount: allocation.amount,
       });
       debtAccount.current_balance = newDebtBalance;
-      await supabase
+      const { error: debtBalErr } = await supabase
         .from("accounts")
         .update({ current_balance: newDebtBalance })
         .eq("id", allocation.accountId)
         .eq("user_id", user.id);
+      if (debtBalErr) console.error("[extraPayment] debt balance update failed:", debtBalErr);
     }
 
     // Count as applied even if idempotency skip (transaction already exists)

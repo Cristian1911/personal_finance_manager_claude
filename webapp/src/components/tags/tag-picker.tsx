@@ -24,9 +24,15 @@ export function TagPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [tags, setTags] = useState<Tag[]>(currentTags);
+  const [localTagGroups, setLocalTagGroups] = useState(allTagGroups);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync when server-fetched props change (e.g. after navigation)
+  useEffect(() => {
+    setLocalTagGroups(allTagGroups);
+  }, [allTagGroups]);
 
   // Close on outside click
   useEffect(() => {
@@ -39,7 +45,7 @@ export function TagPicker({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const allTags = allTagGroups.flatMap((g) =>
+  const allTags = localTagGroups.flatMap((g) =>
     g.tags.map((t) => ({ ...t, groupColor: g.color, groupName: g.name }))
   );
 
@@ -97,11 +103,22 @@ export function TagPicker({
         display_order: 0,
         created_at: new Date().toISOString(),
       };
+      // Add to local tag groups so it appears in the dropdown for future picks
+      setLocalTagGroups((prev) => {
+        const ungrouped = prev.find((g) => g.id === null || g.name === "Sin grupo");
+        if (ungrouped) {
+          return prev.map((g) =>
+            g.id === ungrouped.id ? { ...g, tags: [...g.tags, newTag] } : g
+          );
+        }
+        // No ungrouped group exists — append one
+        return [...prev, { id: null as unknown as string, user_id: null, name: "Sin grupo", color: null, is_system: false, display_order: 999, created_at: new Date().toISOString(), tags: [newTag] }];
+      });
       handleAdd(newTag);
     }
   }
 
-  const tagGroupMap = new Map(allTagGroups.map((g) => [g.id, g]));
+  const tagGroupMap = new Map(localTagGroups.map((g) => [g.id, g]));
 
   return (
     <div className="space-y-2" ref={dropdownRef}>

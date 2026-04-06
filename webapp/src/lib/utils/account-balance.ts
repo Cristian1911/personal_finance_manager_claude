@@ -12,13 +12,17 @@ export function applyAccountBalanceDelta(params: {
   direction: TransactionDirection;
   amount: number;
 }): number {
+  // Supabase returns numeric columns as strings — coerce to avoid string concatenation on +
+  const balance = Number(params.currentBalance);
+  const amount = Number(params.amount);
+
   if (isDebtAccountType(params.accountType)) {
-    if (params.direction === "INFLOW") return params.currentBalance - params.amount;
-    return params.currentBalance + params.amount;
+    if (params.direction === "INFLOW") return balance - amount;
+    return balance + amount;
   }
 
-  if (params.direction === "INFLOW") return params.currentBalance + params.amount;
-  return params.currentBalance - params.amount;
+  if (params.direction === "INFLOW") return balance + amount;
+  return balance - amount;
 }
 
 export function reverseAccountBalanceDelta(params: {

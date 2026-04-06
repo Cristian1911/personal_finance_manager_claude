@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
@@ -666,11 +667,14 @@ export async function POST(request: NextRequest) {
         direction: parsed.direction,
         amount: parsed.amount,
       });
-      await admin
+      const { error: balanceError } = await admin
         .from("accounts")
         .update({ current_balance: newBalance })
         .eq("id", suggestedAccountId)
         .eq("user_id", userId);
+      if (balanceError) {
+        console.error("[webhook] balance update failed:", balanceError);
+      }
     }
 
     await insertLog({
@@ -681,6 +685,16 @@ export async function POST(request: NextRequest) {
       rawBody: rawBodyPreview,
       errorMessage: null,
     });
+
+    // Invalidate caches so dashboard reflects the new transaction
+    revalidateTag("email-ingest", "zeta");
+    revalidateTag("dashboard:hero", "zeta");
+    revalidateTag("dashboard:charts", "zeta");
+    revalidateTag("dashboard:accounts", "zeta");
+    revalidateTag("dashboard:cashflow", "zeta");
+    revalidateTag("dashboard:budgets", "zeta");
+    revalidateTag("accounts", "zeta");
+
     return NextResponse.json({ ok: true });
   }
 
