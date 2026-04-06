@@ -155,6 +155,23 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.pattern_type).toBe("nomina");
   });
 
+  it("parses provider payment inflow from noisy HTML-derived body", () => {
+    const line =
+      "Logo Bancolombia [https://example.com/logo.png] ¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste un pago PROVEEDOR de F PENS PROTECCI por $30,143,338.00 en tu cuenta de Ahorros el 06/04/2026 a las 09:51. Si tienes dudas, llamanos al 018000931987. A tu lado siempre. Tus gastos tienen nombre.";
+    const result = parseBancolombiaEmail(line);
+
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("INFLOW");
+    expect(result!.amount).toBe(30143338);
+    expect(result!.merchant).toBe("F PENS PROTECCI");
+    expect(result!.transaction_date).toBe("2026-04-06");
+    expect(result!.transaction_time).toBe("09:51");
+    expect(result!.pattern_type).toBe("pago_recibido");
+    expect(result!.raw_line).toBe(
+      "Recibiste un pago PROVEEDOR de F PENS PROTECCI por $30,143,338.00 en tu cuenta de Ahorros el 06/04/2026 a las 09:51"
+    );
+  });
+
   // Amount parsing edge cases
   it("parses whole amount without decimals (transfers)", () => {
     const line =

@@ -18,7 +18,15 @@ export interface ParsedEmailTransaction {
     | "qr_pago"
     | "pago_pse"
     | "bre_b"
+    | "pago_recibido"
     | "nomina";
+}
+
+function extractCandidateBody(body: string): string | null {
+  const markerIndex = body.indexOf("Bancolombia:");
+  if (markerIndex === -1) return null;
+
+  return body.slice(markerIndex).replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function parseAmount(raw: string): number {
@@ -240,6 +248,25 @@ const PATTERNS: PatternDef[] = [
       pattern_type: "bre_b",
     }),
   },
+  // Pattern 9: Pago recibido por proveedor (INFLOW)
+  // "Recibiste un pago PROVEEDOR de F PENS PROTECCI por $30,143,338.00 en tu cuenta de Ahorros el 06/04/2026 a las 09:51"
+  {
+    type: "pago_recibido",
+    regex:
+      /Recibiste un pago PROVEEDOR de (.+?) por \$([\d.,]+) en tu cuenta de Ahorros el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/,
+    extract: (m) => ({
+      direction: "INFLOW",
+      amount: parseAmount(m[2]),
+      currency: "COP",
+      merchant: m[1].trim(),
+      destination: null,
+      card_last4: "",
+      card_type: "Cta",
+      transaction_date: parseDateDMY(m[3]),
+      transaction_time: m[4],
+      pattern_type: "pago_recibido",
+    }),
+  },
   // Pattern 9: Nomina (INFLOW)
   // "Recibiste un pago de Nomina de UNIVERSIDAD PON por $1,203,850.00 en tu cuenta de Ahorros el 27/03/2026 a las 03:32"
   {
@@ -264,20 +291,15 @@ const PATTERNS: PatternDef[] = [
 export function parseBancolombiaEmail(
   body: string
 ): ParsedEmailTransaction | null {
-  // Must start with "Bancolombia:" to be a candidate
-  if (!body.startsWith("Bancolombia:") && !body.match(/Bancolombia:\s/)) {
-    return null;
-  }
-
-  // Collapse newlines into spaces — email clients often wrap long lines
-  const normalized = body.replace(/\n+/g, " ").replace(/\s+/g, " ");
+  const normalized = extractCandidateBody(body);
+  if (!normalized) return null;
 
   for (const pattern of PATTERNS) {
     const match = normalized.match(pattern.regex);
     if (match) {
       const parsed = pattern.extract(match);
       if (parsed) {
-        // Extract raw_line: everything after "Bancolombia: " up to the first sentence end
+        // Extract raw_line from the alert segment only, excluding trailing support/marketing copy.
         const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|¿Dudas|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|$)/);
         const raw_line = rawLineMatch ? rawLineMatch[1].trim() : normalized;
         return { ...parsed, raw_line };

@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseBancolombiaEmail } from "@/lib/parsers/bancolombia-email";
 import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
@@ -15,6 +16,7 @@ import {
   matchAccountByLast4,
 } from "@/lib/email-ingest/statement-filename";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "@/actions/destinatarios";
 import type { Json } from "@/types/database";
@@ -578,7 +580,7 @@ export async function POST(request: NextRequest) {
 
   const { data: candidateAccounts, error: accountLookupError } = await admin
     .from("accounts")
-    .select("id, mask, debit_card_mask, account_type, currency_code")
+    .select("id, mask, debit_card_mask, account_type, currency_code, current_balance")
     .eq("user_id", userId)
     .eq("is_active", true);
 
@@ -657,6 +659,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // Update account balance
+    if (matchedAccount) {
+      const newBalance = applyAccountBalanceDelta({
+        currentBalance: matchedAccount.current_balance ?? 0,
+        accountType: matchedAccount.account_type,
+        direction: parsed.direction,
+        amount: parsed.amount,
+      });
+      const { error: balanceError } = await admin
+        .from("accounts")
+        .update({ current_balance: newBalance })
+        .eq("id", suggestedAccountId)
+        .eq("user_id", userId);
+      if (balanceError) {
+        console.error("[webhook] balance update failed:", balanceError);
+      }
+    }
+
     await insertLog({
       userId,
       emailIngestId,
@@ -665,6 +685,16 @@ export async function POST(request: NextRequest) {
       rawBody: rawBodyPreview,
       errorMessage: null,
     });
+
+    // Invalidate caches so dashboard reflects the new transaction
+    revalidateTag("email-ingest", "zeta");
+    revalidateTag("dashboard:hero", "zeta");
+    revalidateTag("dashboard:charts", "zeta");
+    revalidateTag("dashboard:accounts", "zeta");
+    revalidateTag("dashboard:cashflow", "zeta");
+    revalidateTag("dashboard:budgets", "zeta");
+    revalidateTag("accounts", "zeta");
+
     return NextResponse.json({ ok: true });
   }
 

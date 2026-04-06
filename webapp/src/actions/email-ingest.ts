@@ -5,11 +5,180 @@ import { nanoid } from "nanoid";
 import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "./destinatarios";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import type { ParsedEmailTransaction } from "@/lib/parsers/bancolombia-email";
+import {
+  parseBancolombiaEmail,
+  type ParsedEmailTransaction,
+} from "@/lib/parsers/bancolombia-email";
+import { resolveSuggestedEmailAccountId } from "@/lib/email-ingest/account-matching";
 import { accountMaskSuffixMatches } from "@/lib/utils/account-mask";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import type { ActionResult } from "@/types/actions";
 import type { EmailIngestAddress, EmailIngestLog, PendingEmailTransaction, UnrecognizedEmail } from "@/types/domain";
+import type { Json } from "@/types/database";
+
+type AuthenticatedSupabase = Awaited<
+  ReturnType<typeof getAuthenticatedClient>
+>["supabase"];
+
+type ReprocessResult = "imported" | "queued" | "duplicate";
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#\d+;/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getStoredEmailBody(email: Pick<UnrecognizedEmail, "text_body" | "html_body">): string {
+  if (email.text_body?.trim()) return email.text_body;
+  if (email.html_body?.trim()) return stripHtml(email.html_body);
+  return "";
+}
+
+async function persistParsedEmail(params: {
+  supabase: AuthenticatedSupabase;
+  userId: string;
+  emailIngestId: string;
+  defaultAccountId: string | null;
+  autoImport: boolean;
+  parsed: ParsedEmailTransaction;
+  rawBody: string;
+}): Promise<ActionResult<ReprocessResult>> {
+  const { supabase, userId, emailIngestId, defaultAccountId, autoImport, parsed, rawBody } =
+    params;
+
+  const idempotencyKey = await computeIdempotencyKey({
+    provider: "EMAIL",
+    transactionDate: parsed.transaction_date,
+    amount: parsed.amount,
+    rawDescription: parsed.raw_line,
+  });
+
+  let suggestedAccountId = defaultAccountId ?? null;
+
+  const { data: candidateAccounts, error: accountLookupError } = await supabase
+    .from("accounts")
+    .select("id, mask, debit_card_mask, account_type, currency_code, current_balance")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+
+  if (accountLookupError) {
+    return { success: false, error: accountLookupError.message };
+  }
+
+  if (candidateAccounts) {
+    suggestedAccountId = resolveSuggestedEmailAccountId({
+      accounts: candidateAccounts,
+      parsed,
+      defaultAccountId,
+    });
+  }
+
+  if (autoImport && suggestedAccountId) {
+    const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
+    const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
+    const matchText = parsed.merchant ?? parsed.destination ?? parsed.raw_line ?? "";
+    const destMatch = await matchTransactionToDestinatario(userId, matchText);
+
+    let categoryId: string | null = null;
+    let destinatarioId: string | null = null;
+    let categorizationSource: "USER_LEARNED" | "SYSTEM_DEFAULT" | undefined;
+
+    if (destMatch) {
+      destinatarioId = destMatch.destinatario_id;
+      categoryId = destMatch.category_id;
+      categorizationSource = categoryId ? "USER_LEARNED" : undefined;
+    }
+
+    if (!categoryId && parsed.merchant) {
+      categoryId = autoCategorize(parsed.merchant)?.category_id ?? null;
+      if (categoryId) categorizationSource = "SYSTEM_DEFAULT";
+    }
+
+    const { error: insertError } = await supabase.from("transactions").insert({
+      user_id: userId,
+      account_id: suggestedAccountId,
+      amount: parsed.amount,
+      currency_code: currencyCode,
+      direction: parsed.direction,
+      transaction_date: parsed.transaction_date,
+      raw_description: parsed.raw_line,
+      clean_description: parsed.merchant ?? parsed.destination ?? parsed.raw_line,
+      merchant_name: parsed.merchant,
+      category_id: categoryId,
+      destinatario_id: destinatarioId,
+      idempotency_key: idempotencyKey,
+      provider: "EMAIL",
+      capture_method: "EMAIL_IMPORT",
+      is_subscription: false,
+      categorization_source: categorizationSource,
+      status: "POSTED",
+    });
+
+    if (insertError) {
+      if (insertError.code === "23505") {
+        revalidateTag("email-ingest", "zeta");
+        return { success: true, data: "duplicate" };
+      }
+      return { success: false, error: insertError.message };
+    }
+
+    // Update account balance
+    if (matchedAccount) {
+      const newBalance = applyAccountBalanceDelta({
+        currentBalance: matchedAccount.current_balance ?? 0,
+        accountType: matchedAccount.account_type,
+        direction: parsed.direction,
+        amount: parsed.amount,
+      });
+      const { error: balanceError } = await supabase
+        .from("accounts")
+        .update({ current_balance: newBalance })
+        .eq("id", suggestedAccountId)
+        .eq("user_id", userId);
+      if (balanceError) {
+        console.error("[persistParsedEmail] balance update failed:", balanceError);
+      }
+    }
+
+    revalidateTag("email-ingest", "zeta");
+    revalidateTag("dashboard:hero", "zeta");
+    revalidateTag("dashboard:charts", "zeta");
+    revalidateTag("dashboard:accounts", "zeta");
+    revalidateTag("dashboard:cashflow", "zeta");
+    revalidateTag("dashboard:budgets", "zeta");
+    revalidateTag("accounts", "zeta");
+    return { success: true, data: "imported" };
+  }
+
+  const { error: queueError } = await supabase.from("pending_email_transactions").insert({
+    user_id: userId,
+    email_ingest_id: emailIngestId,
+    idempotency_key: idempotencyKey,
+    parsed_data: parsed as unknown as Json,
+    raw_body: rawBody,
+    status: "pending",
+    suggested_account_id: suggestedAccountId,
+  });
+
+  if (queueError) {
+    if (queueError.code === "23505") {
+      revalidateTag("email-ingest", "zeta");
+      return { success: true, data: "duplicate" };
+    }
+    return { success: false, error: queueError.message };
+  }
+
+  revalidateTag("email-ingest", "zeta");
+  return { success: true, data: "queued" };
+}
 
 // ─── Read actions ────────────────────────────────────────────────────────────
 
@@ -109,6 +278,98 @@ export async function dismissUnrecognizedEmail(
 
   if (error) return { success: false, error: error.message };
   return { success: true, data: null };
+}
+
+export async function retryUnrecognizedEmail(
+  id: string
+): Promise<ActionResult<ReprocessResult>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: email, error: fetchError } = await supabase
+    .from("unrecognized_emails")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (fetchError) return { success: false, error: fetchError.message };
+  if (!email) return { success: false, error: "Correo no encontrado" };
+  if (email.status !== "pending") {
+    return { success: false, error: "Este correo ya fue procesado" };
+  }
+
+  const emailBody = getStoredEmailBody(email);
+  if (!emailBody) {
+    return { success: false, error: "El correo no tiene contenido utilizable" };
+  }
+
+  const parsed = parseBancolombiaEmail(emailBody);
+  if (!parsed) {
+    return {
+      success: false,
+      error: "El correo todavía no coincide con ningún patrón conocido",
+    };
+  }
+
+  let ingestAddress: Pick<EmailIngestAddress, "id" | "account_id" | "auto_import"> | null =
+    null;
+
+  if (email.email_ingest_id) {
+    const { data } = await supabase
+      .from("email_ingest_addresses")
+      .select("id, account_id, auto_import")
+      .eq("id", email.email_ingest_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    ingestAddress = data as Pick<
+      EmailIngestAddress,
+      "id" | "account_id" | "auto_import"
+    > | null;
+  }
+
+  if (!ingestAddress) {
+    const { data } = await supabase
+      .from("email_ingest_addresses")
+      .select("id, account_id, auto_import")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    ingestAddress = data as Pick<
+      EmailIngestAddress,
+      "id" | "account_id" | "auto_import"
+    > | null;
+  }
+
+  if (!ingestAddress) {
+    return {
+      success: false,
+      error: "No se encontró una dirección de ingestión activa para reprocesar este correo",
+    };
+  }
+
+  const persistResult = await persistParsedEmail({
+    supabase,
+    userId: user.id,
+    emailIngestId: ingestAddress.id,
+    defaultAccountId: ingestAddress.account_id,
+    autoImport: ingestAddress.auto_import,
+    parsed,
+    rawBody: emailBody,
+  });
+
+  if (!persistResult.success) return persistResult;
+
+  const { error: updateError } = await supabase
+    .from("unrecognized_emails")
+    .update({ status: "resolved" })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  revalidateTag("email-ingest", "zeta");
+  return { success: true, data: persistResult.data };
 }
 
 // ─── Mutation actions ─────────────────────────────────────────────────────────
@@ -242,7 +503,7 @@ export async function approveEmailTransaction(
   // Get the account's currency
   const { data: account, error: accountError } = await supabase
     .from("accounts")
-    .select("currency_code, account_type, debit_card_mask")
+    .select("currency_code, account_type, debit_card_mask, current_balance")
     .eq("id", accountId)
     .eq("user_id", user.id)
     .single();
@@ -337,6 +598,22 @@ export async function approveEmailTransaction(
       return { success: true, data: null };
     }
     return { success: false, error: insertError.message };
+  }
+
+  // Update account balance
+  const newBalance = applyAccountBalanceDelta({
+    currentBalance: account.current_balance ?? 0,
+    accountType: account.account_type,
+    direction: parsed.direction,
+    amount: parsed.amount,
+  });
+  const { error: balanceError } = await supabase
+    .from("accounts")
+    .update({ current_balance: newBalance })
+    .eq("id", accountId)
+    .eq("user_id", user.id);
+  if (balanceError) {
+    console.error("[approveEmailTransaction] balance update failed:", balanceError);
   }
 
   // Mark pending transaction as imported

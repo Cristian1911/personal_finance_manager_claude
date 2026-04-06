@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getDebtOverview } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
+import { getNonDebtAccounts } from "@/actions/extra-payment";
+import { ExtraPaymentTrigger } from "@/components/debt/extra-payment-trigger";
 import { DebtHeroCard } from "@/components/debt/debt-hero-card";
 import { DebtAccountCard } from "@/components/debt/debt-account-card";
 import { DebtQuickStats } from "@/components/debt/debt-quick-stats";
@@ -40,10 +42,12 @@ async function MobileDebtSection({
   currency: CurrencyCode;
   month: string | undefined;
 }) {
-  const [overview, incomeEstimate] = await Promise.all([
+  const [overview, incomeEstimate, sourceAccountsResult] = await Promise.all([
     getDebtOverview(currency),
     getEstimatedIncome(currency, month),
+    getNonDebtAccounts(),
   ]);
+  const sourceAccounts = sourceAccountsResult.success ? sourceAccountsResult.data : [];
 
   if (overview.accounts.length === 0) {
     return (
@@ -75,12 +79,19 @@ async function MobileDebtSection({
   const stats = computeDebtStats(overview.accounts);
 
   return (
-    <DeudasRoot
-      stats={stats}
-      overview={overview}
-      salaryBreakdown={salaryBreakdown}
-      currency={currency}
-    />
+    <>
+      <ExtraPaymentTrigger
+        debtAccounts={overview.accounts}
+        sourceAccounts={sourceAccounts}
+        currency={currency}
+      />
+      <DeudasRoot
+        stats={stats}
+        overview={overview}
+        salaryBreakdown={salaryBreakdown}
+        currency={currency}
+      />
+    </>
   );
 }
 
@@ -95,11 +106,13 @@ async function DesktopDebtSection({
   currency: CurrencyCode;
   month: string | undefined;
 }) {
-  const [overview, incomeEstimate, exchangeRateResult] = await Promise.all([
+  const [overview, incomeEstimate, exchangeRateResult, sourceAccountsResult] = await Promise.all([
     getDebtOverview(currency),
     getEstimatedIncome(currency, month),
     getExchangeRate("USD" as CurrencyCode, currency).catch(() => null),
+    getNonDebtAccounts(),
   ]);
+  const sourceAccounts = sourceAccountsResult.success ? sourceAccountsResult.data : [];
 
   if (overview.accounts.length === 0) {
     return (
@@ -165,6 +178,12 @@ async function DesktopDebtSection({
         overallUtilization={overview.overallUtilization}
         totalCreditUsed={totalCreditUsed}
         totalCreditLimit={overview.totalCreditLimit}
+      />
+
+      <ExtraPaymentTrigger
+        debtAccounts={overview.accounts}
+        sourceAccounts={sourceAccounts}
+        currency={currency}
       />
 
       {salaryBreakdown && incomeEstimate && (
