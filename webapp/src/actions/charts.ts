@@ -3,6 +3,7 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAccounts } from "@/actions/accounts";
 import {
   formatDate,
   parseMonth,
@@ -470,37 +471,6 @@ async function getAccountsWithSparklineDataCached(
   return result;
 }
 
-async function getDashboardAccountsCached(userId: string): Promise<{
-  dashboardAccounts: {
-    id: string;
-    name: string;
-    account_type: string;
-    current_balance: number | null;
-    currency_code: string;
-    updated_at: string | null;
-  }[];
-  allActiveAccounts: { currency_code: string }[];
-}> {
-  "use cache";
-  cacheTag("accounts");
-  cacheLife("zeta");
-
-  const supabase = createAdminClient();
-
-  const { data: dashboardAccounts, error: dashboardError } = await supabase
-    .from("accounts")
-    .select("id, name, account_type, current_balance, currency_code, updated_at")
-    .eq("user_id", userId)
-    .eq("is_active", true);
-
-  if (dashboardError) throw dashboardError;
-
-  return {
-    dashboardAccounts: dashboardAccounts ?? [],
-    allActiveAccounts: dashboardAccounts ?? [],
-  };
-}
-
 // ─── Public wrappers ──────────────────────────────────────────────────────────
 
 /**
@@ -685,8 +655,20 @@ export async function getDashboardHeroData(
 
   const baseCurrency = currency ?? "COP";
 
-  // 1. Get liquid accounts + all active accounts for currency detection (cached)
-  const { dashboardAccounts, allActiveAccounts } = await getDashboardAccountsCached(user.id);
+  // 1. Get liquid accounts + all active accounts for currency detection
+  //    Uses the same getAccountsCached as the accounts page — single cache entry
+  const accountsResult = await getAccounts();
+  const dashboardAccounts = accountsResult.success
+    ? accountsResult.data.map((a) => ({
+        id: a.id,
+        name: a.name,
+        account_type: a.account_type,
+        current_balance: a.current_balance,
+        currency_code: a.currency_code,
+        updated_at: a.updated_at,
+      }))
+    : [];
+  const allActiveAccounts = dashboardAccounts;
 
   const currencyAccounts = dashboardAccounts.filter((a) => a.currency_code === baseCurrency);
   const liquidAccounts = currencyAccounts.filter(

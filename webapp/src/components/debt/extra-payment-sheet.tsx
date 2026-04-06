@@ -127,8 +127,16 @@ export function ExtraPaymentSheet({
   );
 
   const handleOverrideAmount = useCallback(
-    (accountId: string, value: string) => {
-      const num = parseFloat(value.replace(/[^0-9.]/g, ""));
+    (accountId: string, rawDigits: string) => {
+      if (rawDigits === "") {
+        setManualOverrides((prev) => {
+          const next = new Map(prev);
+          next.set(accountId, 0);
+          return next;
+        });
+        return;
+      }
+      const num = parseInt(rawDigits, 10);
       if (isNaN(num) || num < 0) return;
       setManualOverrides((prev) => {
         const next = new Map(prev);
@@ -214,9 +222,9 @@ export function ExtraPaymentSheet({
               <Input
                 id="extra-amount"
                 inputMode="numeric"
-                placeholder="0"
-                value={totalAmount}
-                onChange={(e) => setTotalAmount(e.target.value)}
+                placeholder="$0"
+                value={parsedAmount > 0 ? formatCurrency(parsedAmount, currency) : ""}
+                onChange={(e) => setTotalAmount(e.target.value.replace(/\D/g, ""))}
                 className="text-2xl font-semibold h-14"
               />
             </div>
@@ -320,11 +328,11 @@ export function ExtraPaymentSheet({
                         <Input
                           inputMode="numeric"
                           disabled={!isSelected}
-                          value={isSelected ? String(displayAmount) : ""}
+                          value={isSelected && displayAmount > 0 ? formatCurrency(displayAmount, currency) : ""}
                           onChange={(e) =>
-                            handleOverrideAmount(account.id, e.target.value)
+                            handleOverrideAmount(account.id, e.target.value.replace(/\D/g, ""))
                           }
-                          className="w-24 text-right text-sm"
+                          className="w-28 text-right text-sm"
                         />
                       </div>
                     );
