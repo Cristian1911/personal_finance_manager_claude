@@ -2,7 +2,12 @@
 
 import { revalidateTag } from "next/cache";
 import { nanoid } from "nanoid";
-import { autoCategorize } from "@zeta/shared";
+import {
+  autoCategorize,
+  findReconciliationCandidates,
+  mergeTransactionMetadata,
+  type ReconciliationCandidate,
+} from "@zeta/shared";
 import { matchTransactionToDestinatario } from "./destinatarios";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import {
@@ -466,7 +471,8 @@ export async function clearGmailVerification(): Promise<ActionResult<null>> {
 
 export async function approveEmailTransaction(
   pendingId: string,
-  overrideAccountId?: string
+  overrideAccountId?: string,
+  reconcileWithTransactionId?: string
 ): Promise<ActionResult<null>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
@@ -565,25 +571,29 @@ export async function approveEmailTransaction(
 
   const cleanDescription = merchantName ?? rawDescription;
 
-  const { error: insertError } = await supabase.from("transactions").insert({
-    user_id: user.id,
-    account_id: accountId,
-    amount: parsed.amount,
-    currency_code: account.currency_code,
-    direction: parsed.direction,
-    transaction_date: parsed.transaction_date,
-    raw_description: rawDescription,
-    clean_description: cleanDescription,
-    merchant_name: merchantName,
-    idempotency_key: idempotencyKey,
-    provider: "EMAIL",
-    capture_method: "EMAIL_IMPORT",
-    category_id: categoryId,
-    categorization_source: categorizationSource,
-    destinatario_id: destinatarioId,
-    is_subscription: false,
-    status: "POSTED",
-  });
+  const { data: insertedTx, error: insertError } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: user.id,
+      account_id: accountId,
+      amount: parsed.amount,
+      currency_code: account.currency_code,
+      direction: parsed.direction,
+      transaction_date: parsed.transaction_date,
+      raw_description: rawDescription,
+      clean_description: cleanDescription,
+      merchant_name: merchantName,
+      idempotency_key: idempotencyKey,
+      provider: "EMAIL",
+      capture_method: "EMAIL_IMPORT",
+      category_id: categoryId,
+      categorization_source: categorizationSource,
+      destinatario_id: destinatarioId,
+      is_subscription: false,
+      status: "POSTED",
+    })
+    .select("id, category_id, notes")
+    .single();
 
   if (insertError) {
     if (insertError.code === "23505") {
@@ -600,20 +610,62 @@ export async function approveEmailTransaction(
     return { success: false, error: insertError.message };
   }
 
-  // Update account balance
-  const newBalance = applyAccountBalanceDelta({
-    currentBalance: account.current_balance ?? 0,
-    accountType: account.account_type,
-    direction: parsed.direction,
-    amount: parsed.amount,
-  });
-  const { error: balanceError } = await supabase
-    .from("accounts")
-    .update({ current_balance: newBalance })
-    .eq("id", accountId)
-    .eq("user_id", user.id);
-  if (balanceError) {
-    console.error("[approveEmailTransaction] balance update failed:", balanceError);
+  // Reconcile with existing manual transaction if requested
+  if (reconcileWithTransactionId && insertedTx) {
+    const { data: manualTx } = await supabase
+      .from("transactions")
+      .select(
+        "id, category_id, categorization_source, notes, reconciled_into_transaction_id"
+      )
+      .eq("id", reconcileWithTransactionId)
+      .eq("user_id", user.id)
+      .is("reconciled_into_transaction_id", null)
+      .maybeSingle();
+
+    if (manualTx) {
+      const merged = mergeTransactionMetadata(
+        manualTx as ReconciliationCandidate,
+        {
+          category_id: insertedTx.category_id,
+          notes: insertedTx.notes,
+          capture_method: "EMAIL_IMPORT",
+        }
+      );
+
+      await supabase
+        .from("transactions")
+        .update({
+          category_id: merged.category_id ?? null,
+          notes: merged.notes ?? null,
+          capture_method: merged.capture_method,
+        })
+        .eq("user_id", user.id)
+        .eq("id", insertedTx.id);
+
+      await supabase
+        .from("transactions")
+        .update({ reconciled_into_transaction_id: insertedTx.id })
+        .eq("user_id", user.id)
+        .eq("id", manualTx.id);
+    }
+  }
+
+  // Update account balance — skip when reconciling (manual tx already counted it)
+  if (!reconcileWithTransactionId) {
+    const newBalance = applyAccountBalanceDelta({
+      currentBalance: account.current_balance ?? 0,
+      accountType: account.account_type,
+      direction: parsed.direction,
+      amount: parsed.amount,
+    });
+    const { error: balanceError } = await supabase
+      .from("accounts")
+      .update({ current_balance: newBalance })
+      .eq("id", accountId)
+      .eq("user_id", user.id);
+    if (balanceError) {
+      console.error("[approveEmailTransaction] balance update failed:", balanceError);
+    }
   }
 
   // Mark pending transaction as imported
@@ -633,6 +685,119 @@ export async function approveEmailTransaction(
   revalidateTag("dashboard:budgets", "zeta");
   revalidateTag("accounts", "zeta");
   return { success: true, data: null };
+}
+
+export type ReconciliationCandidatePreview = {
+  id: string;
+  raw_description: string | null;
+  merchant_name: string | null;
+  transaction_date: string;
+  amount: number;
+  direction: string;
+  category_id: string | null;
+  score: number;
+};
+
+export async function checkEmailReconciliation(
+  pendingId: string,
+  overrideAccountId?: string
+): Promise<
+  ActionResult<{
+    candidate: ReconciliationCandidatePreview;
+    score: number;
+    decision: "AUTO_MERGE" | "REVIEW";
+  } | null>
+> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: pending, error: fetchError } = await supabase
+    .from("pending_email_transactions")
+    .select("*")
+    .eq("id", pendingId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (fetchError) return { success: false, error: fetchError.message };
+  if (!pending) return { success: false, error: "No encontrada" };
+
+  const parsed = pending.parsed_data as unknown as ParsedEmailTransaction;
+
+  let accountId = overrideAccountId ?? pending.suggested_account_id;
+  if (!accountId) {
+    const { data: ingestAddress } = await supabase
+      .from("email_ingest_addresses")
+      .select("account_id")
+      .eq("id", pending.email_ingest_id)
+      .eq("user_id", user.id)
+      .single();
+    accountId = ingestAddress?.account_id ?? null;
+  }
+
+  if (!accountId) return { success: true, data: null };
+
+  // ±3 days to match scoring tolerance in scoreReconciliationCandidate
+  const txDate = new Date(parsed.transaction_date);
+  const fromDate = new Date(txDate);
+  fromDate.setDate(fromDate.getDate() - 3);
+  const toDate = new Date(txDate);
+  toDate.setDate(toDate.getDate() + 3);
+  const from = fromDate.toISOString().slice(0, 10);
+  const to = toDate.toISOString().slice(0, 10);
+
+  // Fetch manual transactions that could be duplicates
+  const { data: candidates, error: candError } = await supabase
+    .from("transactions")
+    .select(
+      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id"
+    )
+    .eq("account_id", accountId)
+    .eq("user_id", user.id)
+    .in("capture_method", ["MANUAL_FORM", "TEXT_QUICK_CAPTURE"])
+    .gte("transaction_date", from)
+    .lte("transaction_date", to)
+    .is("reconciled_into_transaction_id", null);
+
+  if (candError) return { success: false, error: candError.message };
+  if (!candidates || candidates.length === 0) return { success: true, data: null };
+
+  const importTx = {
+    account_id: accountId,
+    amount: parsed.amount,
+    direction: parsed.direction,
+    transaction_date: parsed.transaction_date,
+    raw_description: parsed.raw_line,
+  };
+
+  const result = findReconciliationCandidates(
+    importTx,
+    candidates as ReconciliationCandidate[]
+  );
+
+  if (!result.bestMatch || result.bestMatch.decision === "NO_MATCH") {
+    return { success: true, data: null };
+  }
+
+  const matched = candidates.find((c) => c.id === result.bestMatch!.candidateId);
+  if (!matched) return { success: true, data: null };
+
+  return {
+    success: true,
+    data: {
+      candidate: {
+        id: matched.id,
+        raw_description: matched.raw_description,
+        merchant_name: matched.merchant_name,
+        transaction_date: matched.transaction_date,
+        amount: matched.amount,
+        direction: matched.direction,
+        category_id: matched.category_id,
+        score: result.bestMatch.score,
+      },
+      score: result.bestMatch.score,
+      decision: result.bestMatch.decision as "AUTO_MERGE" | "REVIEW",
+    },
+  };
 }
 
 export async function dismissEmailTransaction(
