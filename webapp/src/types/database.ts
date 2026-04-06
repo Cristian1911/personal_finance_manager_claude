@@ -948,6 +948,189 @@ export type Database = {
           },
         ]
       }
+      planning_assignments: {
+        Row: {
+          assigned_amount: number
+          created_at: string
+          expense_entry_id: string
+          id: string
+          income_entry_id: string
+          period_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_amount: number
+          created_at?: string
+          expense_entry_id: string
+          id?: string
+          income_entry_id: string
+          period_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_amount?: number
+          created_at?: string
+          expense_entry_id?: string
+          id?: string
+          income_entry_id?: string
+          period_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_assignments_expense_entry_id_fkey"
+            columns: ["expense_entry_id"]
+            isOneToOne: false
+            referencedRelation: "planning_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_assignments_income_entry_id_fkey"
+            columns: ["income_entry_id"]
+            isOneToOne: false
+            referencedRelation: "planning_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_assignments_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "planning_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_entries: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category_id: string | null
+          completed_at: string | null
+          created_at: string
+          entry_type: Database["public"]["Enums"]["planning_entry_type"]
+          expected_date: string
+          id: string
+          label: string
+          notes: string | null
+          period_id: string
+          recurring_template_id: string | null
+          sort_order: number
+          status: Database["public"]["Enums"]["planning_entry_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          entry_type: Database["public"]["Enums"]["planning_entry_type"]
+          expected_date: string
+          id?: string
+          label: string
+          notes?: string | null
+          period_id: string
+          recurring_template_id?: string | null
+          sort_order?: number
+          status?: Database["public"]["Enums"]["planning_entry_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          entry_type?: Database["public"]["Enums"]["planning_entry_type"]
+          expected_date?: string
+          id?: string
+          label?: string
+          notes?: string | null
+          period_id?: string
+          recurring_template_id?: string | null
+          sort_order?: number
+          status?: Database["public"]["Enums"]["planning_entry_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_entries_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_entries_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "planning_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_entries_recurring_template_id_fkey"
+            columns: ["recurring_template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transaction_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_periods: {
+        Row: {
+          created_at: string
+          currency_code: Database["public"]["Enums"]["currency_code"]
+          end_date: string
+          id: string
+          is_active: boolean
+          name: string | null
+          notes: string | null
+          preset: Database["public"]["Enums"]["planning_period_preset"]
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency_code?: Database["public"]["Enums"]["currency_code"]
+          end_date: string
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          notes?: string | null
+          preset?: Database["public"]["Enums"]["planning_period_preset"]
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency_code?: Database["public"]["Enums"]["currency_code"]
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          notes?: string | null
+          preset?: Database["public"]["Enums"]["planning_period_preset"]
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_events: {
         Row: {
           created_at: string
@@ -1805,6 +1988,9 @@ export type Database = {
         | "CSV_IMPORT"
         | "OCR"
         | "EMAIL"
+      planning_entry_status: "PLANNED" | "COMPLETED" | "SKIPPED"
+      planning_entry_type: "INCOME" | "EXPENSE"
+      planning_period_preset: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM"
       recurrence_frequency:
         | "WEEKLY"
         | "BIWEEKLY"
@@ -1975,6 +2161,9 @@ export const Constants = {
         "OCR",
         "EMAIL",
       ],
+      planning_entry_status: ["PLANNED", "COMPLETED", "SKIPPED"],
+      planning_entry_type: ["INCOME", "EXPENSE"],
+      planning_period_preset: ["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"],
       recurrence_frequency: [
         "WEEKLY",
         "BIWEEKLY",

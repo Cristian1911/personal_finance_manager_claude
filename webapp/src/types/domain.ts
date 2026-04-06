@@ -19,6 +19,55 @@ export type PendingEmailStatement = Tables<"pending_email_statements">;
 export type WishlistItem = Tables<"wishlist_items">;
 export type WishlistReflection = Tables<"wishlist_reflections">;
 
+// Cashflow planner
+export type PlanningPeriodPreset = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM";
+export type PlanningEntryType = "INCOME" | "EXPENSE";
+export type PlanningEntryStatus = "PLANNED" | "COMPLETED" | "SKIPPED";
+
+export interface PlanningPeriod {
+  id: string;
+  user_id: string;
+  name: string | null;
+  preset: PlanningPeriodPreset;
+  start_date: string;
+  end_date: string;
+  currency_code: CurrencyCode;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanningEntry {
+  id: string;
+  user_id: string;
+  period_id: string;
+  entry_type: PlanningEntryType;
+  label: string;
+  amount: number;
+  expected_date: string;
+  status: PlanningEntryStatus;
+  completed_at: string | null;
+  recurring_template_id: string | null;
+  account_id: string | null;
+  category_id: string | null;
+  sort_order: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanningAssignment {
+  id: string;
+  user_id: string;
+  period_id: string;
+  income_entry_id: string;
+  expense_entry_id: string;
+  assigned_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Enum types
 export type TransactionDirection = Enums<"transaction_direction">;
 export type CurrencyCode = Enums<"currency_code">;

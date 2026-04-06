@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BadgeAlert, CalendarClock, Heart, PiggyBank, Sparkles } from "lucide-react";
+import { ArrowRight, BadgeAlert, CalendarClock, Heart, PiggyBank, Sparkles, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
@@ -16,10 +16,17 @@ interface PlanDecisionRailProps {
   recurring: PlanRecurringSummary;
   scenarios: PlanScenarioSummary;
   desires: { totalCount: number; readyCount: number };
+  periodo?: { hasActive: boolean; percentAssigned: number; unassignedCount: number } | null;
   currency: CurrencyCode;
 }
 
 const modules = [
+  {
+    key: "periodo",
+    title: "Planear periodo",
+    href: "/plan/periodo",
+    icon: Wallet,
+  },
   {
     key: "budget",
     title: "Presupuesto",
@@ -58,9 +65,20 @@ export function PlanDecisionRail({
   recurring,
   scenarios,
   desires,
+  periodo,
   currency,
 }: PlanDecisionRailProps) {
   const content = {
+    periodo: {
+      value: periodo?.hasActive
+        ? `${periodo.percentAssigned}% asignado`
+        : "Sin periodo activo",
+      detail: periodo?.hasActive
+        ? periodo.unassignedCount > 0
+          ? `${periodo.unassignedCount} gastos sin asignar`
+          : "Todos los gastos cubiertos"
+        : "Asigna cada gasto a un ingreso específico",
+    },
     budget: {
       value:
         budget.overLimitCount > 0
