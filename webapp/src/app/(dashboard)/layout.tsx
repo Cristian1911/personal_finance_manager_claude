@@ -18,7 +18,6 @@ const DevOverlay = dynamic(
   () => import("@/components/dev/dev-overlay").then((m) => ({ default: m.DevOverlay })),
 );
 
-const IS_DEV = process.env.NODE_ENV === "development";
 
 export default async function DashboardLayout({
   children,
@@ -88,7 +87,7 @@ export default async function DashboardLayout({
           </MobileShellProvider>
         </KeyboardInsetProvider>
       </div>
-      {IS_DEV && <DevOverlay />}
+      <DevOverlay />
     </div>
   );
 }
