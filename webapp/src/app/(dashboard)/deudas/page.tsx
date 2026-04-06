@@ -42,12 +42,14 @@ async function MobileDebtSection({
   currency: CurrencyCode;
   month: string | undefined;
 }) {
-  const [overview, incomeEstimate, sourceAccountsResult] = await Promise.all([
+  const [overview, incomeEstimate, sourceAccountsResult, usdRateResult] = await Promise.all([
     getDebtOverview(currency),
     getEstimatedIncome(currency, month),
     getNonDebtAccounts(),
+    currency !== "USD" ? getExchangeRate("USD", currency) : Promise.resolve(null),
   ]);
   const sourceAccounts = sourceAccountsResult.success ? sourceAccountsResult.data : [];
+  const usdToCopRate = usdRateResult?.rate ?? null;
 
   if (overview.accounts.length === 0) {
     return (
@@ -90,6 +92,7 @@ async function MobileDebtSection({
             debtAccounts={overview.accounts}
             sourceAccounts={sourceAccounts}
             currency={currency}
+            usdToCopRate={usdToCopRate}
           />
         }
       />
@@ -186,6 +189,7 @@ async function DesktopDebtSection({
         debtAccounts={overview.accounts}
         sourceAccounts={sourceAccounts}
         currency={currency}
+        usdToCopRate={exchangeRateResult?.rate ?? null}
       />
 
       {salaryBreakdown && incomeEstimate && (

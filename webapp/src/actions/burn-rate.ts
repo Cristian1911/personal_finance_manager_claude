@@ -83,6 +83,7 @@ async function getBurnRateCached(
     .eq("user_id", userId)
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
     .eq("currency_code", baseCurrency)
     .gte("transaction_date", threeMonthsAgo)
     .order("transaction_date", { ascending: true });

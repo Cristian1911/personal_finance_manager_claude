@@ -51,6 +51,9 @@ export function DeudasRoot({
     creditLimit: a.creditLimit ?? 0,
     minPayment: a.monthlyPayment ?? 0,
     paymentDay: a.paymentDay,
+    otherCurrencies: a.currencyBreakdown
+      ?.filter((cb) => cb.currency !== a.currency && cb.balance > 0)
+      .map((cb) => ({ currency: cb.currency, balance: cb.balance })),
   }));
 
   return (
@@ -94,6 +97,13 @@ export function DeudasRoot({
             balance: cc.balance,
             creditLimit: cc.creditLimit ?? 0,
             utilization: cc.creditLimit ? (cc.balance / cc.creditLimit) * 100 : 0,
+            otherCurrencies: cc.currencyBreakdown
+              ?.filter((cb) => cb.currency !== cc.currency && cb.balance > 0)
+              .map((cb) => ({
+                currency: cb.currency,
+                balance: cb.balance,
+                creditLimit: cb.creditLimit,
+              })),
           }))}
           currency={currency}
           activeChip={activeZone?.startsWith("grid-") ? activeZone : null}

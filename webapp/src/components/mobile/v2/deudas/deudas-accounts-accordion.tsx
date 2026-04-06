@@ -7,6 +7,11 @@ import { StateChip } from "@/components/mobile/v2/state-chip";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
+interface OtherCurrencyDebt {
+  currency: string;
+  balance: number;
+}
+
 interface DebtAccountInfo {
   id: string;
   name: string;
@@ -17,6 +22,7 @@ interface DebtAccountInfo {
   creditLimit: number;
   minPayment: number;
   paymentDay: number | null;
+  otherCurrencies?: OtherCurrencyDebt[];
 }
 
 interface DeudasAccountsAccordionProps {
@@ -77,6 +83,11 @@ export function DeudasAccountsAccordion({
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
                   {formatCurrency(acct.balance, currency)} · {acct.interestRate.toFixed(1)}% EA
                 </p>
+                {acct.otherCurrencies?.map((oc) => (
+                  <p key={oc.currency} className="text-[10px] text-amber-400">
+                    + {formatCurrency(oc.balance, oc.currency as CurrencyCode)} {oc.currency}
+                  </p>
+                ))}
               </div>
               <StateChip
                 label={isOpen ? "Abierta" : acct.balance <= 0 ? "Libre" : "Ver"}
