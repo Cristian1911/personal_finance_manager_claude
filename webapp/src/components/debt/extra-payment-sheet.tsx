@@ -193,13 +193,14 @@ export function ExtraPaymentSheet({
     if (!source) return;
 
     // Add USD COP-equivalent to each allocation (bank receives a single COP payment)
+    // Include accounts with 0 COP allocation but non-zero USD payment
     const validAllocations = allocations
-      .filter((a) => a.allocatedAmount > 0)
       .map((a) => ({
         accountId: a.accountId,
         accountName: a.accountName,
         amount: a.allocatedAmount + (usdCopByAccount.get(a.accountId) ?? 0),
-      }));
+      }))
+      .filter((a) => a.amount > 0);
 
     if (validAllocations.length === 0) return;
 
