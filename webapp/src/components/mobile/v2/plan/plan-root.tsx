@@ -1,7 +1,10 @@
+"use client";
+
 import { Suspense } from "react";
+import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { PlanHeroWrapper } from "./plan-hero-wrapper";
-import { PlanActionCta } from "./plan-action-cta";
+import { PlanZoneChips } from "./plan-zone-chips";
 import { PlanFlowChart } from "./plan-flow-chart";
 import { PlanDistribution } from "./plan-distribution";
 import { MonthSelector } from "@/components/month-selector";
@@ -28,7 +31,7 @@ export function PlanRoot({
   daysInMonth,
   categories,
 }: PlanRootProps) {
-  const isStable = planData.heroSummary.pressure === "stable";
+  const { activeZone, toggle } = useExpandableZone<string>();
 
   return (
     <div className="space-y-2">
@@ -56,8 +59,14 @@ export function PlanRoot({
         categories={categories}
       />
 
-      {/* Planificar CTA */}
-      <PlanActionCta />
+      {/* Expandable zone chips — presupuesto, obligaciones */}
+      <PlanZoneChips
+        budget={planData.budget}
+        recurring={planData.recurring}
+        currency={currency}
+        activeZone={activeZone}
+        onToggle={toggle}
+      />
 
       {/* Flow chart — bar chart day-by-day */}
       <PlanFlowChart
@@ -71,7 +80,7 @@ export function PlanRoot({
       <PlanDistribution allocation={allocationData} />
 
       {/* Scenarios — only when stable */}
-      {isStable && planData.scenarios.count > 0 && (
+      {planData.scenarios.count > 0 && (
         <div className="rounded-2xl border border-white/6 bg-black/10 px-3.5 py-3 text-center text-xs text-muted-foreground">
           {planData.scenarios.count} escenario{planData.scenarios.count !== 1 ? "s" : ""} guardado{planData.scenarios.count !== 1 ? "s" : ""}
         </div>

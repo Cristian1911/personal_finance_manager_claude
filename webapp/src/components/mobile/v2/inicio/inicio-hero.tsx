@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { ChevronRight } from "lucide-react";
 import {
   PANEL_SURFACE_SUBTLE_CLASS,
   HERO_CARD_GRADIENT_CLASS,
@@ -19,6 +21,12 @@ interface InicioHeroProps {
     fixedExpenses: number;
     alreadySpent: number;
   };
+  primaryAccount?: {
+    id: string;
+    name: string;
+    currentBalance: number;
+    currencyCode: CurrencyCode;
+  };
   /** Controlled from parent page-level accordion */
   expanded?: boolean;
   onToggle?: () => void;
@@ -30,6 +38,7 @@ export function InicioHero({
   daysRemaining,
   currency,
   breakdown,
+  primaryAccount,
   expanded = false,
   onToggle,
 }: InicioHeroProps) {
@@ -108,6 +117,32 @@ export function InicioHero({
                   ÷ {daysRemaining} días = {formatCurrency(availablePerDay, currency)}/día
                 </p>
               </div>
+            )}
+
+            {primaryAccount && (
+              <Link
+                href={`/accounts/${primaryAccount.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  PANEL_INSET_CLASS,
+                  "mt-2 flex items-center justify-between border-white/8 bg-black/20 p-3 transition-colors hover:bg-white/[0.04]"
+                )}
+              >
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-sage-dark">
+                    Cuenta principal
+                  </p>
+                  <p className="mt-0.5 text-[12px] text-z-sage-light">
+                    {primaryAccount.name}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[15px] font-bold tabular-nums text-foreground">
+                    {formatCurrency(primaryAccount.currentBalance, primaryAccount.currencyCode)}
+                  </p>
+                  <ChevronRight className="size-3.5 text-muted-foreground/50" />
+                </div>
+              </Link>
             )}
           </div>
         </div>

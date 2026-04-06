@@ -6,6 +6,7 @@ import { getPreferredCurrency } from "@/actions/profile";
 import { PeriodHeader } from "@/components/cashflow-planner/period-header";
 import { EnvelopeBoard } from "@/components/cashflow-planner/envelope-board";
 import { PeriodSetupDialog } from "@/components/cashflow-planner/period-setup-dialog";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { ArrowLeft, CalendarPlus } from "lucide-react";
@@ -54,7 +55,20 @@ export default async function PeriodoPage() {
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <div className="flex items-center justify-between gap-4">
+      {/* Mobile header */}
+      <MobileHeader
+        variant="sub"
+        title="Planear periodo"
+        backHref="/plan"
+        action={
+          planData && !isExpired ? (
+            <PeriodSetupDialog currency={currency} />
+          ) : undefined
+        }
+      />
+
+      {/* Desktop header */}
+      <div className="hidden lg:flex items-center justify-between gap-4">
         <div className="space-y-1">
           <Link
             href="/plan"
@@ -64,7 +78,7 @@ export default async function PeriodoPage() {
             Plan
           </Link>
           <SectionEyebrow>Periodo</SectionEyebrow>
-          <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">
+          <h1 className="text-3xl font-semibold tracking-tight">
             Planear tu dinero
           </h1>
           <p className="text-muted-foreground text-sm">
@@ -78,7 +92,7 @@ export default async function PeriodoPage() {
 
       {/* Expired period banner */}
       {planData && isExpired && (
-        <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 flex items-center justify-between gap-4">
+        <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-amber-400">
               Tu periodo terminó
@@ -91,7 +105,7 @@ export default async function PeriodoPage() {
             currency={currency}
             suggestedStartDate={suggestedStart}
             trigger={
-              <button className="flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-400/20">
+              <button className="flex items-center justify-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-400/20 w-full sm:w-auto">
                 <CalendarPlus className="h-4 w-4" />
                 Nuevo periodo
               </button>

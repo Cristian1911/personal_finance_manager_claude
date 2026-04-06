@@ -5,11 +5,18 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
+interface CurrencyDebtInfo {
+  currency: string;
+  balance: number;
+  creditLimit?: number | null;
+}
+
 interface CreditCardInfo {
   name: string;
   balance: number;
   creditLimit: number;
   utilization: number;
+  otherCurrencies?: CurrencyDebtInfo[];
 }
 
 interface DeudasGridProps {
@@ -171,6 +178,11 @@ export function DeudasGrid({
                       <p className="text-[10px] text-muted-foreground">
                         {formatCurrency(cc.balance, currency)} de {formatCurrency(cc.creditLimit, currency)}
                       </p>
+                      {cc.otherCurrencies?.map((oc) => (
+                        <p key={oc.currency} className="text-[10px] text-muted-foreground">
+                          + {formatCurrency(oc.balance, oc.currency as CurrencyCode)} {oc.currency}
+                        </p>
+                      ))}
                     </div>
                   ))
                 ) : (

@@ -19,12 +19,14 @@ interface ExtraPaymentTriggerProps {
   debtAccounts: DebtAccount[];
   sourceAccounts: SourceAccount[];
   currency: CurrencyCode;
+  usdToCopRate?: number | null;
 }
 
 export function ExtraPaymentTrigger({
   debtAccounts,
   sourceAccounts,
   currency,
+  usdToCopRate,
 }: ExtraPaymentTriggerProps) {
   const [open, setOpen] = useState(false);
 
@@ -41,6 +43,7 @@ export function ExtraPaymentTrigger({
         debtAccounts={debtAccounts}
         sourceAccounts={sourceAccounts}
         currency={currency}
+        usdToCopRate={usdToCopRate}
         open={open}
         onOpenChange={setOpen}
       />

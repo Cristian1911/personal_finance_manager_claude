@@ -81,6 +81,7 @@ async function getEstimatedIncomeCached(
     .eq("user_id", userId)
     .eq("direction", "INFLOW")
     .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
     .neq("status", "CANCELLED")
     .eq("currency_code", baseCurrency)
     .in("account_id", liquidAccountIds)

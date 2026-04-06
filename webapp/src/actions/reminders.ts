@@ -131,6 +131,41 @@ export async function toggleReminder(
   return { success: true, data: null };
 }
 
+export async function updateReminder(
+  id: string,
+  formData: FormData
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const parsed = reminderSchema.safeParse({
+    title: formData.get("title"),
+    amount: formData.get("amount"),
+    currency_code: formData.get("currency_code") || "COP",
+    due_date: formData.get("due_date"),
+  });
+
+  if (!parsed.success)
+    return { success: false, error: parsed.error.issues[0].message };
+
+  const { error } = await supabase
+    .from("financial_reminders")
+    .update({
+      title: parsed.data.title,
+      amount: parsed.data.amount ?? null,
+      currency_code: parsed.data.currency_code,
+      due_date: parsed.data.due_date ?? null,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("reminders", "zeta");
+  revalidateTag("attention", "zeta");
+  return { success: true, data: null };
+}
+
 export async function deleteReminder(
   id: string
 ): Promise<ActionResult<null>> {

@@ -395,6 +395,22 @@ export default async function DashboardPage({
                 fixedExpenses: heroData.totalPending,
                 alreadySpent: mobileTotalSpent,
               },
+              primaryAccount: (() => {
+                const primary = allAccounts.find(
+                  (a) =>
+                    (a.account_type === "SAVINGS" || a.account_type === "CHECKING") &&
+                    a.show_in_dashboard
+                ) ?? allAccounts.find(
+                  (a) => a.account_type === "SAVINGS" || a.account_type === "CHECKING"
+                );
+                if (!primary) return undefined;
+                return {
+                  id: primary.id,
+                  name: primary.name,
+                  currentBalance: primary.current_balance ?? 0,
+                  currencyCode: primary.currency_code as CurrencyCode,
+                };
+              })(),
             }}
             metrics={{
               runwayDays: burnRateData?.discretionary.runwayDays ?? 0,

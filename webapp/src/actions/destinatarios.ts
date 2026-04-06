@@ -359,6 +359,7 @@ export async function getDestinatariosWithSpend(): Promise<
       .eq("user_id", user.id)
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
+      .is("reconciled_into_transaction_id", null)
       .gte("transaction_date", since)
       .not("destinatario_id", "is", null),
   ]);
