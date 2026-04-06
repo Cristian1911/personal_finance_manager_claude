@@ -12,7 +12,7 @@ import { BudgetSummaryBar } from "@/components/budget/budget-summary-bar";
 import { BudgetCategoryGrid } from "@/components/budget/budget-category-grid";
 import { TrendComparison } from "@/components/budget/trend-comparison";
 import { CategoryZoneManager } from "@/components/categories/category-zone-manager";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { MobilePresupuesto } from "@/components/mobile/mobile-presupuesto";
 import { MonthPlanner } from "@/components/budget/month-planner";
 import { MonthSelector } from "@/components/month-selector";
@@ -56,9 +56,7 @@ export default async function CategoriesPage({
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <MobilePageHeader title="Presupuesto" backHref="/plan">
-        <MonthSelector />
-      </MobilePageHeader>
+      <MobileHeader variant="sub" title="Presupuesto" backHref="/plan" action={<MonthSelector />} />
 
       <PageHeaderRow
         title="Presupuesto"

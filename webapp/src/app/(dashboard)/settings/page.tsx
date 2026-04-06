@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { Activity, ArrowRight, Bug, UserRound } from "lucide-react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { Button } from "@/components/ui/button";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { SummaryCard } from "@/components/ui/summary-card";
@@ -54,7 +54,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="max-w-4xl space-y-6 lg:space-y-8">
-      <MobilePageHeader title="Ajustes" backHref="/gestionar" />
+      <MobileHeader variant="sub" title="Ajustes" backHref="/gestionar" />
 
       <PageHeaderRow
         title="Ajustes"

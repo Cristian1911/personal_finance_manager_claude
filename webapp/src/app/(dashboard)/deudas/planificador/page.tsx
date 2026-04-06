@@ -11,7 +11,7 @@ const ScenarioPlanner = dynamic(
   () => import("@/components/debt/scenario-planner").then((m) => ({ default: m.ScenarioPlanner })),
   { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" /> }
 );
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { PageHero, HeroAccentPill } from "@/components/ui/page-hero";
 import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export default async function PlanificadorPage() {
   if (activeDebts.length === 0) {
     return (
       <div className="space-y-6 lg:space-y-8">
-        <MobilePageHeader title="Planificador" backHref="/plan" />
+        <MobileHeader variant="sub" title="Planificador" backHref="/plan" />
         <PageHero
           variant="brass"
           pills={<>
@@ -70,7 +70,7 @@ export default async function PlanificadorPage() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <MobilePageHeader title="Planificador" backHref="/plan" />
+      <MobileHeader variant="sub" title="Planificador" backHref="/plan" />
 
       <PageHero
         variant="brass"

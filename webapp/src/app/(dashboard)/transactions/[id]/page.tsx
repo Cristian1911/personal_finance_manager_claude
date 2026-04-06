@@ -11,7 +11,7 @@ import { TransactionFormDialog } from "@/components/transactions/transaction-for
 import { DeleteTransactionButton } from "@/components/transactions/delete-transaction-button";
 import { DestinatarioPicker } from "@/components/transactions/destinatario-picker";
 import { TagPicker } from "@/components/tags/tag-picker";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,7 +55,7 @@ export default async function TransactionDetailPage({
 
   return (
     <div className="max-w-4xl space-y-6 lg:space-y-8">
-      <MobilePageHeader title="Detalle" backHref="/transactions" />
+      <MobileHeader variant="sub" title="Detalle" backHref="/transactions" />
       <PageHero
         pills={
           <>

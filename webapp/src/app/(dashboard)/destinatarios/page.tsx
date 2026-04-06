@@ -8,7 +8,7 @@ import { getAttentionSnapshot } from "@/actions/attention";
 import { CreateDestinatarioDialog } from "@/components/destinatarios/create-destinatario-dialog";
 import { DestinatarioList } from "@/components/destinatarios/destinatario-list";
 import { DestinatarioSuggestionsTab } from "@/components/destinatarios/destinatario-suggestions-tab";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { buildCategoryMap } from "@/lib/utils/categories";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
@@ -37,7 +37,7 @@ export default async function DestinatariosPage() {
 
   return (
     <div className="space-y-6">
-      <MobilePageHeader title="Destinatarios" backHref="/gestionar" />
+      <MobileHeader variant="sub" title="Destinatarios" backHref="/gestionar" />
 
       <PageHeaderRow
         title="Destinatarios"

@@ -10,7 +10,7 @@ import {
   getRecurringSummary,
   getUpcomingRecurrences,
 } from "@/actions/recurring-templates";
-import { MobilePageHeader } from "@/components/mobile/mobile-page-header";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
 import { RecurringList } from "@/components/recurring/recurring-list";
 import { RecurringTimelineView } from "@/components/recurring/recurring-timeline-view";
@@ -40,7 +40,7 @@ export default async function RecurrentesPage() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <MobilePageHeader title="Recurrentes" backHref="/plan" />
+      <MobileHeader variant="sub" title="Recurrentes" backHref="/plan" />
 
       <PageHeaderRow
         title="Recurrentes"
