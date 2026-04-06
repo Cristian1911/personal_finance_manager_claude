@@ -333,6 +333,32 @@ export function ExtraPaymentSheet({
             </div>
           )}
 
+          {/* ── Allocation summary ── */}
+          {parsedAmount > 0 && allocations.length > 0 && (
+            <div className="flex items-center justify-between text-sm border-t border-white/6 pt-3">
+              <span className="text-muted-foreground">Distribuido</span>
+              <span className="font-medium">
+                {formatCurrency(
+                  allocations.reduce((s, a) => s + a.allocatedAmount, 0),
+                  currency
+                )}
+              </span>
+            </div>
+          )}
+          {parsedAmount > 0 && allocations.length > 0 && (() => {
+            const totalAllocated = allocations.reduce((s, a) => s + a.allocatedAmount, 0);
+            const remaining = parsedAmount - totalAllocated;
+            if (remaining <= 0) return null;
+            return (
+              <div className="flex items-center justify-between text-sm -mt-3">
+                <span className="text-muted-foreground">Sobrante</span>
+                <span className="font-medium text-amber-400">
+                  {formatCurrency(remaining, currency)}
+                </span>
+              </div>
+            );
+          })()}
+
           {/* ── Zone 3: Impact Preview ── */}
           {impact && (
             <div className="flex flex-col gap-3">
