@@ -1010,6 +1010,7 @@ export type Database = {
           category_id: string | null
           completed_at: string | null
           created_at: string
+          currency_code: Database["public"]["Enums"]["currency_code"]
           entry_type: Database["public"]["Enums"]["planning_entry_type"]
           expected_date: string
           id: string
@@ -1028,6 +1029,7 @@ export type Database = {
           category_id?: string | null
           completed_at?: string | null
           created_at?: string
+          currency_code?: Database["public"]["Enums"]["currency_code"]
           entry_type: Database["public"]["Enums"]["planning_entry_type"]
           expected_date: string
           id?: string
@@ -1046,6 +1048,7 @@ export type Database = {
           category_id?: string | null
           completed_at?: string | null
           created_at?: string
+          currency_code?: Database["public"]["Enums"]["currency_code"]
           entry_type?: Database["public"]["Enums"]["planning_entry_type"]
           expected_date?: string
           id?: string

@@ -45,6 +45,7 @@ export interface PlanningEntry {
   entry_type: PlanningEntryType;
   label: string;
   amount: number;
+  currency_code: CurrencyCode;
   expected_date: string;
   status: PlanningEntryStatus;
   completed_at: string | null;

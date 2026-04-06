@@ -1,8 +1,14 @@
 import Link from "next/link";
-import { ChevronRight, PiggyBank, CalendarClock, Sparkles } from "lucide-react";
+import { ChevronRight, PiggyBank, CalendarClock, Sparkles, Wallet } from "lucide-react";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 
 const actions = [
+  {
+    href: "/plan/periodo",
+    icon: Wallet,
+    title: "Planear periodo",
+    description: "Asigna cada gasto a un ingreso",
+  },
   {
     href: "/categories",
     icon: PiggyBank,

@@ -11,6 +11,7 @@ import { MovimientosUtilidades } from "./movimientos-utilidades";
 import { MovimientosTransactionRow } from "./movimientos-transaction-row";
 import type {
   Transaction,
+  PendingEmailTransaction,
   CategoryWithChildren,
   Account,
   Tag,
@@ -20,30 +21,40 @@ import type {
 interface MovimientosRootProps {
   transactions: Transaction[];
   categories: CategoryWithChildren[];
+  outflowCategories: CategoryWithChildren[];
   accounts: Account[];
   tags: Tag[];
   count: number;
   totalInflow: number;
   totalOutflow: number;
   uncategorizedCount: number;
-  pendingEmailCount: number;
+  pendingEmails: PendingEmailTransaction[];
   currency: CurrencyCode;
 }
 
 export function MovimientosRoot({
   transactions,
   categories,
+  outflowCategories,
   accounts,
   tags,
   count,
   totalInflow,
   totalOutflow,
   uncategorizedCount,
-  pendingEmailCount,
+  pendingEmails,
   currency,
 }: MovimientosRootProps) {
   /** Page-level accordion — one expanded section at a time */
   const { activeZone, toggle } = useExpandableZone<string>();
+
+  const uncategorizedTransactions = useMemo(
+    () =>
+      transactions
+        .filter((tx) => tx.direction === "OUTFLOW" && !tx.category_id)
+        .slice(0, 5),
+    [transactions]
+  );
 
   /** Group transactions by date, sorted descending */
   const groupedByDate = useMemo(() => {
@@ -86,9 +97,13 @@ export function MovimientosRoot({
 
       {/* Herramientas — action tools grid */}
       <MovimientosHerramientas
+        uncategorizedTransactions={uncategorizedTransactions}
         uncategorizedCount={uncategorizedCount}
+        pendingEmails={pendingEmails}
         pendingMatchCount={0}
-        pendingEmailCount={pendingEmailCount}
+        categories={outflowCategories}
+        accounts={accounts}
+        currency={currency}
         expandedTool={activeZone?.startsWith("tool-") ? activeZone.replace("tool-", "") : null}
         onToggleTool={(id) => toggle(`tool-${id}`)}
       />

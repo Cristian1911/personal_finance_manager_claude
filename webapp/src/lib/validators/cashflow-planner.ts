@@ -20,6 +20,7 @@ export const planningEntrySchema = z.object({
   entry_type: z.enum(["INCOME", "EXPENSE"]),
   label: z.string().min(1, "El nombre es requerido").max(200),
   amount: z.number().positive("El monto debe ser mayor a cero"),
+  currency_code: z.string().default("COP"),
   expected_date: z.string().min(1, "La fecha es requerida"),
   account_id: uuidStr().optional().or(z.literal("")),
   category_id: uuidStr().optional().or(z.literal("")),

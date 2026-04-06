@@ -1,27 +1,37 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Check, Trash2 } from "lucide-react";
-import { deleteAssignment, toggleEntryStatus } from "@/actions/cashflow-planner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Check, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { deleteAssignment, deletePlanningEntry, toggleEntryStatus } from "@/actions/cashflow-planner";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
-import type { IncomeEnvelope } from "@/types/cashflow-planner";
+import type { IncomeEnvelope, PlanningEntryWithRelations } from "@/types/cashflow-planner";
 
 interface IncomeEnvelopeCardProps {
   envelope: IncomeEnvelope;
   currency: CurrencyCode;
+  onEdit?: (entry: PlanningEntryWithRelations) => void;
 }
 
-export function IncomeEnvelopeCard({ envelope, currency }: IncomeEnvelopeCardProps) {
+export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelopeCardProps) {
   const [isPending, startTransition] = useTransition();
+  const [expanded, setExpanded] = useState(false);
   const { entry, total_amount, assigned_amount, remaining_amount, assignments } = envelope;
   const percentUsed = total_amount > 0
     ? Math.round((assigned_amount / total_amount) * 100)
     : 0;
+  const isForeignCurrency = entry.currency_code !== currency;
 
   function handleRemoveAssignment(assignmentId: string) {
     startTransition(async () => {
@@ -34,6 +44,17 @@ export function IncomeEnvelopeCard({ envelope, currency }: IncomeEnvelopeCardPro
       entry.status === "PLANNED" ? "COMPLETED" : "PLANNED";
     startTransition(async () => {
       await toggleEntryStatus(entry.id, nextStatus);
+    });
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const result = await deletePlanningEntry(entry.id);
+      if (result.success) {
+        toast.success("Ingreso eliminado");
+      } else {
+        toast.error(result.error);
+      }
     });
   }
 
@@ -53,18 +74,51 @@ export function IncomeEnvelopeCard({ envelope, currency }: IncomeEnvelopeCardPro
               }`}
             />
           </button>
-          <div>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-left"
+          >
             <p className="text-sm font-semibold">{entry.label}</p>
             <p className="text-xs text-muted-foreground">
               {formatDate(entry.expected_date)}
               {entry.account && ` · ${entry.account.name}`}
             </p>
-          </div>
+          </button>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-semibold tabular-nums text-z-income">
-            {formatCurrency(total_amount, currency)}
-          </p>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <p className="text-lg font-semibold tabular-nums text-z-income">
+              {formatCurrency(Number(entry.amount), entry.currency_code)}
+            </p>
+            {isForeignCurrency && (
+              <p className="text-[10px] text-muted-foreground tabular-nums">
+                ≈ {formatCurrency(entry.converted_amount, currency)}
+              </p>
+            )}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(entry)}>
+                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  Editar
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="text-red-400 focus:text-red-400"
+              >
+                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -76,7 +130,7 @@ export function IncomeEnvelopeCard({ envelope, currency }: IncomeEnvelopeCardPro
         <Progress value={percentUsed} className="h-1.5" />
       </div>
 
-      {assignments.length > 0 && (
+      {expanded && assignments.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Gastos asignados
@@ -114,6 +168,16 @@ export function IncomeEnvelopeCard({ envelope, currency }: IncomeEnvelopeCardPro
             </div>
           ))}
         </div>
+      )}
+
+      {assignments.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full text-center text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {expanded ? "Ocultar asignaciones" : `Ver ${assignments.length} asignación${assignments.length !== 1 ? "es" : ""}`}
+        </button>
       )}
     </div>
   );

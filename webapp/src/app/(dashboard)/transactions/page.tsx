@@ -91,13 +91,14 @@ export default async function TransactionsPage({
         <MovimientosRoot
           transactions={transactionsResult.data}
           categories={categories}
+          outflowCategories={outflowCategories}
           accounts={accounts}
           tags={allTags}
           count={transactionsResult.count}
           totalInflow={inflowVisible}
           totalOutflow={outflowVisible}
           uncategorizedCount={uncategorizedVisible}
-          pendingEmailCount={pendingTransactions.length}
+          pendingEmails={pendingTransactions}
           currency={summaryCurrency}
         />
       </div>

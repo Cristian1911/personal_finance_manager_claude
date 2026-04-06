@@ -5,6 +5,7 @@ import { IncomeEnvelopeCard } from "./income-envelope-card";
 import { ExpenseEntryRow } from "./expense-entry-row";
 import { AssignmentDialog } from "./assignment-dialog";
 import { EntryFormDialog } from "./entry-form-dialog";
+import { EditEntryDialog } from "./edit-entry-dialog";
 import { AutoAssignButton } from "./auto-assign-button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { Wallet, Receipt } from "lucide-react";
@@ -19,7 +20,9 @@ interface EnvelopeBoardProps {
 
 export function EnvelopeBoard({ data, accounts = [], categories = [] }: EnvelopeBoardProps) {
   const [assignTarget, setAssignTarget] = useState<PlanningEntryWithRelations | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<PlanningEntryWithRelations | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { income_envelopes, expense_entries, unassigned_expenses, currency, period } = data;
 
   const assignedPerExpense = new Map<string, number>();
@@ -35,7 +38,12 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
 
   function openAssignDialog(expense: PlanningEntryWithRelations) {
     setAssignTarget(expense);
-    setDialogOpen(true);
+    setAssignDialogOpen(true);
+  }
+
+  function openEditDialog(entry: PlanningEntryWithRelations) {
+    setEditTarget(entry);
+    setEditDialogOpen(true);
   }
 
   return (
@@ -50,6 +58,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
             </div>
             <EntryFormDialog
               periodId={period.id}
+              currency={currency}
               defaultType="INCOME"
               accounts={accounts}
               categories={categories}
@@ -72,6 +81,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
                   key={env.entry.id}
                   envelope={env}
                   currency={currency}
+                  onEdit={openEditDialog}
                 />
               ))}
             </div>
@@ -91,6 +101,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
               )}
               <EntryFormDialog
                 periodId={period.id}
+                currency={currency}
                 defaultType="EXPENSE"
                 accounts={accounts}
                 categories={categories}
@@ -116,6 +127,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
                   currency={currency}
                   assignedAmount={assignedPerExpense.get(entry.id) ?? 0}
                   onAssign={() => openAssignDialog(entry)}
+                  onEdit={openEditDialog}
                 />
               ))}
             </div>
@@ -124,14 +136,23 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
       </div>
 
       <AssignmentDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
         expense={assignTarget}
         incomeEnvelopes={income_envelopes}
         currency={currency}
         existingAssignedToExpense={
           assignTarget ? (assignedPerExpense.get(assignTarget.id) ?? 0) : 0
         }
+      />
+
+      <EditEntryDialog
+        entry={editTarget}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        currency={currency}
+        accounts={accounts}
+        categories={categories}
       />
     </>
   );
