@@ -1,4 +1,3 @@
-// @ts-nocheck — Tables not in database.ts yet. Remove after: supabase gen types
 "use server";
 
 import { revalidateTag, cacheTag, cacheLife } from "next/cache";
@@ -12,7 +11,9 @@ import {
 import { getOccurrencesBetween } from "@zeta/shared";
 import { parseISO } from "date-fns";
 import type { ActionResult } from "@/types/actions";
+import type { TablesInsert } from "@/types/database";
 import type {
+  CurrencyCode,
   PlanningPeriod,
   PlanningEntry,
   PlanningAssignment,
@@ -39,7 +40,7 @@ async function getPlanningPeriodsCached(
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("planning_periods" as any)
+    .from("planning_periods")
     .select("*")
     .eq("user_id", userId)
     .order("start_date", { ascending: false });
@@ -68,7 +69,7 @@ async function hydratePeriodData(
 
   const [{ data: rawEntries }, { data: rawAssignments }] = await Promise.all([
     supabase
-      .from("planning_entries" as any)
+      .from("planning_entries")
       .select(
         `*,
          account:accounts!planning_entries_account_id_fkey(id, name, icon, color),
@@ -80,7 +81,7 @@ async function hydratePeriodData(
       .order("expected_date")
       .order("sort_order"),
     supabase
-      .from("planning_assignments" as any)
+      .from("planning_assignments")
       .select("*")
       .eq("period_id", period.id)
       .eq("user_id", userId),
@@ -172,7 +173,7 @@ export async function getActivePeriod(): Promise<
 
   const supabase = createAdminClient();
   const { data: period } = await supabase
-    .from("planning_periods" as any)
+    .from("planning_periods")
     .select("*")
     .eq("user_id", user.id)
     .eq("is_active", true)
@@ -197,7 +198,7 @@ export async function getPeriodPlanData(
 
   const supabase = createAdminClient();
   const { data: period, error } = await supabase
-    .from("planning_periods" as any)
+    .from("planning_periods")
     .select("*")
     .eq("id", periodId)
     .eq("user_id", user.id)
@@ -235,20 +236,20 @@ export async function createPlanningPeriod(
     return { success: false, error: parsed.error.issues[0].message };
 
   await supabase
-    .from("planning_periods" as any)
+    .from("planning_periods")
     .update({ is_active: false })
     .eq("user_id", user.id)
     .eq("is_active", true);
 
   const { data, error } = await supabase
-    .from("planning_periods" as any)
+    .from("planning_periods")
     .insert({
       user_id: user.id,
       name: parsed.data.name ?? null,
       preset: parsed.data.preset,
       start_date: parsed.data.start_date,
       end_date: parsed.data.end_date,
-      currency_code: parsed.data.currency_code,
+      currency_code: parsed.data.currency_code as CurrencyCode,
       is_active: true,
       notes: parsed.data.notes ?? null,
     })
@@ -270,7 +271,7 @@ export async function deletePlanningPeriod(
   if (!user) return { success: false, error: "No autenticado" };
 
   const { error } = await supabase
-    .from("planning_periods" as any)
+    .from("planning_periods")
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
@@ -290,7 +291,7 @@ export async function seedPeriodFromRecurring(
   if (!user) return { success: false, error: "No autenticado" };
 
   const { data: period, error: periodErr } = await supabase
-    .from("planning_periods" as any)
+    .from("planning_periods")
     .select("*")
     .eq("id", periodId)
     .eq("user_id", user.id)
@@ -307,7 +308,7 @@ export async function seedPeriodFromRecurring(
         .eq("user_id", user.id)
         .eq("is_active", true),
       supabase
-        .from("planning_entries" as any)
+        .from("planning_entries")
         .select("recurring_template_id, expected_date")
         .eq("period_id", periodId)
         .eq("user_id", user.id)
@@ -330,7 +331,7 @@ export async function seedPeriodFromRecurring(
   const rangeStart = parseISO(period.start_date);
   const rangeEnd = parseISO(period.end_date);
 
-  const entriesToInsert: Array<Record<string, unknown>> = [];
+  const entriesToInsert: TablesInsert<"planning_entries">[] = [];
 
   for (const template of templates ?? []) {
     const occurrences = getOccurrencesBetween(
@@ -373,7 +374,7 @@ export async function seedPeriodFromRecurring(
 
   if (entriesToInsert.length > 0) {
     const { error: insertErr } = await supabase
-      .from("planning_entries" as any)
+      .from("planning_entries")
       .insert(entriesToInsert);
 
     if (insertErr) return { success: false, error: insertErr.message };
@@ -407,7 +408,7 @@ export async function createPlanningEntry(
     return { success: false, error: parsed.error.issues[0].message };
 
   const { data, error } = await supabase
-    .from("planning_entries" as any)
+    .from("planning_entries")
     .insert({
       user_id: user.id,
       period_id: parsed.data.period_id,
@@ -451,7 +452,7 @@ export async function updatePlanningEntry(
     return { success: false, error: parsed.error.issues[0].message };
 
   const { data, error } = await supabase
-    .from("planning_entries" as any)
+    .from("planning_entries")
     .update({
       label: parsed.data.label,
       amount: parsed.data.amount,
@@ -478,7 +479,7 @@ export async function deletePlanningEntry(
   if (!user) return { success: false, error: "No autenticado" };
 
   const { error } = await supabase
-    .from("planning_entries" as any)
+    .from("planning_entries")
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
@@ -497,7 +498,7 @@ export async function toggleEntryStatus(
   if (!user) return { success: false, error: "No autenticado" };
 
   const { error } = await supabase
-    .from("planning_entries" as any)
+    .from("planning_entries")
     .update({
       status,
       completed_at: status === "COMPLETED" ? new Date().toISOString() : null,
@@ -532,14 +533,14 @@ export async function createAssignment(
 
   const [{ data: incomeEntry }, { data: expenseEntry }] = await Promise.all([
     supabase
-      .from("planning_entries" as any)
+      .from("planning_entries")
       .select("id, period_id, amount, entry_type")
       .eq("id", incomeEntryId)
       .eq("user_id", user.id)
       .eq("entry_type", "INCOME")
       .single(),
     supabase
-      .from("planning_entries" as any)
+      .from("planning_entries")
       .select("id, period_id, amount, entry_type")
       .eq("id", expenseEntryId)
       .eq("user_id", user.id)
@@ -558,12 +559,12 @@ export async function createAssignment(
   const [{ data: incomeAssignments }, { data: expenseAssignments }] =
     await Promise.all([
       supabase
-        .from("planning_assignments" as any)
+        .from("planning_assignments")
         .select("assigned_amount")
         .eq("income_entry_id", incomeEntryId)
         .eq("user_id", user.id),
       supabase
-        .from("planning_assignments" as any)
+        .from("planning_assignments")
         .select("assigned_amount")
         .eq("expense_entry_id", expenseEntryId)
         .eq("user_id", user.id),
@@ -590,7 +591,7 @@ export async function createAssignment(
     };
 
   const { data, error } = await supabase
-    .from("planning_assignments" as any)
+    .from("planning_assignments")
     .insert({
       user_id: user.id,
       period_id: incomeEntry.period_id,
@@ -622,7 +623,7 @@ export async function updateAssignment(
     return { success: false, error: "El monto debe ser mayor a cero" };
 
   const { data: assignment } = await supabase
-    .from("planning_assignments" as any)
+    .from("planning_assignments")
     .select(`*,
       income_entry:planning_entries!planning_assignments_income_entry_id_fkey(amount),
       expense_entry:planning_entries!planning_assignments_expense_entry_id_fkey(amount)`)
@@ -643,13 +644,13 @@ export async function updateAssignment(
   const [{ data: otherIncomeAssignments }, { data: otherExpenseAssignments }] =
     await Promise.all([
       supabase
-        .from("planning_assignments" as any)
+        .from("planning_assignments")
         .select("assigned_amount")
         .eq("income_entry_id", typedAssignment.income_entry_id)
         .eq("user_id", user.id)
         .neq("id", id),
       supabase
-        .from("planning_assignments" as any)
+        .from("planning_assignments")
         .select("assigned_amount")
         .eq("expense_entry_id", typedAssignment.expense_entry_id)
         .eq("user_id", user.id)
@@ -677,7 +678,7 @@ export async function updateAssignment(
     };
 
   const { data, error } = await supabase
-    .from("planning_assignments" as any)
+    .from("planning_assignments")
     .update({ assigned_amount: amount })
     .eq("id", id)
     .eq("user_id", user.id)
@@ -697,7 +698,7 @@ export async function deleteAssignment(
   if (!user) return { success: false, error: "No autenticado" };
 
   const { error } = await supabase
-    .from("planning_assignments" as any)
+    .from("planning_assignments")
     .delete()
     .eq("id", id)
     .eq("user_id", user.id);
@@ -745,7 +746,7 @@ export async function autoAssignExpenses(
     (a, b) => a.expected_date.localeCompare(b.expected_date)
   );
 
-  const newAssignments: Array<Record<string, unknown>> = [];
+  const newAssignments: TablesInsert<"planning_assignments">[] = [];
   let assignedCount = 0;
 
   for (const expense of sortedExpenses) {
@@ -781,7 +782,7 @@ export async function autoAssignExpenses(
 
   if (newAssignments.length > 0) {
     const { error } = await supabase
-      .from("planning_assignments" as any)
+      .from("planning_assignments")
       .upsert(newAssignments, { onConflict: "income_entry_id,expense_entry_id" });
 
     if (error) return { success: false, error: error.message };
