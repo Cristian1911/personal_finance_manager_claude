@@ -96,8 +96,8 @@ export function EntryFormDialog({
                   className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
                     entryType === type
                       ? type === "INCOME"
-                        ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-400"
-                        : "border-red-400/50 bg-red-400/10 text-red-400"
+                        ? "border-z-income/50 bg-z-income/10 text-z-income"
+                        : "border-z-expense/50 bg-z-expense/10 text-z-expense"
                       : "border-white/10 text-muted-foreground hover:border-white/20"
                   }`}
                 >

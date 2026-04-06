@@ -3,12 +3,11 @@
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Trash2 } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { deleteAssignment, toggleEntryStatus } from "@/actions/cashflow-planner";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { Badge } from "@/components/ui/badge";
-import { Check } from "lucide-react";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
 import type { IncomeEnvelope } from "@/types/cashflow-planner";
 
@@ -46,11 +45,11 @@ export function IncomeEnvelopeCard({ envelope, currency }: IncomeEnvelopeCardPro
             type="button"
             onClick={handleToggleStatus}
             disabled={isPending}
-            className="shrink-0 rounded-md border border-white/10 p-1 transition-colors hover:border-emerald-400/30"
+            className="shrink-0 rounded-md border border-white/10 p-1 transition-colors hover:border-z-income/30"
           >
             <Check
               className={`h-3.5 w-3.5 ${
-                entry.status === "COMPLETED" ? "text-emerald-400" : "text-muted-foreground"
+                entry.status === "COMPLETED" ? "text-z-income" : "text-muted-foreground"
               }`}
             />
           </button>
@@ -63,7 +62,7 @@ export function IncomeEnvelopeCard({ envelope, currency }: IncomeEnvelopeCardPro
           </div>
         </div>
         <div className="text-right">
-          <p className="text-lg font-semibold tabular-nums text-emerald-400">
+          <p className="text-lg font-semibold tabular-nums text-z-income">
             {formatCurrency(total_amount, currency)}
           </p>
         </div>

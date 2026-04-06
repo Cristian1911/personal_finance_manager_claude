@@ -62,8 +62,8 @@ export function PlanRoot({
         className="flex items-center justify-between rounded-2xl border border-white/6 bg-black/10 px-4 py-3.5 transition-colors active:bg-white/5"
       >
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-400/10">
-            <Wallet className="size-4 text-emerald-400" />
+          <div className="flex size-9 items-center justify-center rounded-xl bg-z-income/10">
+            <Wallet className="size-4 text-z-income" />
           </div>
           <div>
             <p className="text-sm font-medium">Planear periodo</p>

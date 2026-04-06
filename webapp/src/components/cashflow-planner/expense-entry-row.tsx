@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, SkipForward, Undo2 } from "lucide-react";
+import { Check, Undo2 } from "lucide-react";
 import { toggleEntryStatus } from "@/actions/cashflow-planner";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -23,7 +23,7 @@ const STATUS_BADGE: Record<
   { label: string; className: string }
 > = {
   PLANNED: { label: "Pendiente", className: "border-white/10 text-muted-foreground" },
-  COMPLETED: { label: "Pagado", className: "border-emerald-400/30 text-emerald-400" },
+  COMPLETED: { label: "Pagado", className: "border-z-income/30 text-z-income" },
   SKIPPED: { label: "Omitido", className: "border-white/10 text-muted-foreground line-through" },
 };
 
@@ -66,7 +66,7 @@ export function ExpenseEntryRow({
         title="Cambiar estado"
       >
         {entry.status === "PLANNED" && <Check className="h-3.5 w-3.5 text-muted-foreground" />}
-        {entry.status === "COMPLETED" && <Check className="h-3.5 w-3.5 text-emerald-400" />}
+        {entry.status === "COMPLETED" && <Check className="h-3.5 w-3.5 text-z-income" />}
         {entry.status === "SKIPPED" && <Undo2 className="h-3.5 w-3.5 text-muted-foreground" />}
       </button>
 

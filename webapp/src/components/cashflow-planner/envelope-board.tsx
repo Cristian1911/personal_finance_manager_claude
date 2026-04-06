@@ -8,7 +8,7 @@ import { EntryFormDialog } from "./entry-form-dialog";
 import { AutoAssignButton } from "./auto-assign-button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { Wallet, Receipt } from "lucide-react";
-import type { Account, Category, CurrencyCode } from "@/types/domain";
+import type { Account, Category } from "@/types/domain";
 import type { PeriodPlanData, PlanningEntryWithRelations } from "@/types/cashflow-planner";
 
 interface EnvelopeBoardProps {
@@ -22,7 +22,6 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
   const [dialogOpen, setDialogOpen] = useState(false);
   const { income_envelopes, expense_entries, unassigned_expenses, currency, period } = data;
 
-  // Compute assigned per expense across all assignments
   const assignedPerExpense = new Map<string, number>();
   for (const env of income_envelopes) {
     for (const { assignment } of env.assignments) {
@@ -46,7 +45,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-emerald-400" />
+              <Wallet className="h-4 w-4 text-z-income" />
               <SectionEyebrow>Ingresos</SectionEyebrow>
             </div>
             <EntryFormDialog
@@ -83,7 +82,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-red-400" />
+              <Receipt className="h-4 w-4 text-z-expense" />
               <SectionEyebrow>Gastos</SectionEyebrow>
             </div>
             <div className="flex items-center gap-2">

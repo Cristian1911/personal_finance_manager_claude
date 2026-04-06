@@ -6,15 +6,15 @@ import type { PeriodPlanData } from "@/types/cashflow-planner";
 
 interface PeriodHeaderProps {
   data: PeriodPlanData;
+  isExpired?: boolean;
 }
 
-export function PeriodHeader({ data }: PeriodHeaderProps) {
+export function PeriodHeader({ data, isExpired = false }: PeriodHeaderProps) {
   const { period, total_income, total_expenses, total_assigned, total_unassigned, currency } = data;
   const percentAssigned = total_expenses > 0
     ? Math.round((total_assigned / total_expenses) * 100)
     : 0;
   const surplus = total_income - total_expenses;
-  const isExpired = new Date(period.end_date) < new Date();
 
   return (
     <div className="space-y-3">
@@ -43,19 +43,19 @@ export function PeriodHeader({ data }: PeriodHeaderProps) {
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-lg border border-white/6 bg-card p-3 space-y-1">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <TrendingUp className="h-3 w-3 text-emerald-400" />
+            <TrendingUp className="h-3 w-3 text-z-income" />
             Ingresos
           </div>
-          <p className="text-lg font-semibold tabular-nums text-emerald-400">
+          <p className="text-lg font-semibold tabular-nums text-z-income">
             {formatCurrency(total_income, currency)}
           </p>
         </div>
         <div className="rounded-lg border border-white/6 bg-card p-3 space-y-1">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <TrendingDown className="h-3 w-3 text-red-400" />
+            <TrendingDown className="h-3 w-3 text-z-expense" />
             Gastos
           </div>
-          <p className="text-lg font-semibold tabular-nums text-red-400">
+          <p className="text-lg font-semibold tabular-nums text-z-expense">
             {formatCurrency(total_expenses, currency)}
           </p>
         </div>
@@ -65,7 +65,7 @@ export function PeriodHeader({ data }: PeriodHeaderProps) {
           </p>
           <p
             className={`text-lg font-semibold tabular-nums ${
-              surplus >= 0 ? "text-emerald-400" : "text-red-400"
+              surplus >= 0 ? "text-z-income" : "text-z-expense"
             }`}
           >
             {formatCurrency(Math.abs(surplus), currency)}

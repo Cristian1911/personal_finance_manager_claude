@@ -1,4 +1,4 @@
-// @ts-nocheck — New tables not yet in auto-generated database.ts. Remove after running `supabase gen types`.
+// @ts-nocheck — Tables not in database.ts yet. Remove after: supabase gen types
 "use server";
 
 import { revalidateTag, cacheTag, cacheLife } from "next/cache";
@@ -27,10 +27,6 @@ import type {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const TAG = "cashflow-planner";
-
-// NOTE: The new tables (planning_periods, planning_entries, planning_assignments) aren't in
-// the auto-generated database.ts yet — run `supabase gen types` after applying the migration.
-// Until then, `.from("table_name" as any)` is used to bypass the type constraint.
 
 // ─── Cached queries ──────────────────────────────────────────────────────────
 
@@ -70,36 +66,32 @@ async function hydratePeriodData(
 ): Promise<PeriodPlanData> {
   const supabase = createAdminClient();
 
-  // Fetch entries with relations
-  const { data: rawEntries } = await supabase
-    .from("planning_entries" as any)
-    .select(
-      `*,
-       account:accounts!planning_entries_account_id_fkey(id, name, icon, color),
-       category:categories!planning_entries_category_id_fkey(id, name, name_es, icon, color),
-       recurring_template:recurring_transaction_templates!planning_entries_recurring_template_id_fkey(id, merchant_name, frequency)`
-    )
-    .eq("period_id", period.id)
-    .eq("user_id", userId)
-    .order("expected_date")
-    .order("sort_order");
+  const [{ data: rawEntries }, { data: rawAssignments }] = await Promise.all([
+    supabase
+      .from("planning_entries" as any)
+      .select(
+        `*,
+         account:accounts!planning_entries_account_id_fkey(id, name, icon, color),
+         category:categories!planning_entries_category_id_fkey(id, name, name_es, icon, color),
+         recurring_template:recurring_transaction_templates!planning_entries_recurring_template_id_fkey(id, merchant_name, frequency)`
+      )
+      .eq("period_id", period.id)
+      .eq("user_id", userId)
+      .order("expected_date")
+      .order("sort_order"),
+    supabase
+      .from("planning_assignments" as any)
+      .select("*")
+      .eq("period_id", period.id)
+      .eq("user_id", userId),
+  ]);
 
-  const entries = (rawEntries ?? []) as PlanningEntryWithRelations[];
+  const entries = (rawEntries ?? []) as unknown as PlanningEntryWithRelations[];
+  const assignments = (rawAssignments ?? []) as unknown as PlanningAssignment[];
 
-  // Fetch assignments
-  const { data: rawAssignments } = await supabase
-    .from("planning_assignments" as any)
-    .select("*")
-    .eq("period_id", period.id)
-    .eq("user_id", userId);
-
-  const assignments = (rawAssignments ?? []) as PlanningAssignment[];
-
-  // Separate income vs expense
   const incomeEntries = entries.filter((e) => e.entry_type === "INCOME");
   const expenseEntries = entries.filter((e) => e.entry_type === "EXPENSE");
 
-  // Build assignment lookup by income_entry_id
   const assignmentsByIncome = new Map<string, PlanningAssignment[]>();
   for (const a of assignments) {
     const list = assignmentsByIncome.get(a.income_entry_id) ?? [];
@@ -107,10 +99,8 @@ async function hydratePeriodData(
     assignmentsByIncome.set(a.income_entry_id, list);
   }
 
-  // Build expense entry lookup
   const expenseById = new Map(expenseEntries.map((e) => [e.id, e]));
 
-  // Build income envelopes
   const incomeEnvelopes: IncomeEnvelope[] = incomeEntries.map((entry) => {
     const entryAssignments = assignmentsByIncome.get(entry.id) ?? [];
     const assignedAmount = entryAssignments.reduce(
@@ -135,14 +125,12 @@ async function hydratePeriodData(
     };
   });
 
-  // Compute total assigned per expense
   const assignedPerExpense = new Map<string, number>();
   for (const a of assignments) {
     const prev = assignedPerExpense.get(a.expense_entry_id) ?? 0;
     assignedPerExpense.set(a.expense_entry_id, prev + Number(a.assigned_amount));
   }
 
-  // Unassigned = expenses where assigned < amount
   const unassignedExpenses = expenseEntries.filter((e) => {
     const assigned = assignedPerExpense.get(e.id) ?? 0;
     return assigned < Number(e.amount);
@@ -246,7 +234,6 @@ export async function createPlanningPeriod(
   if (!parsed.success)
     return { success: false, error: parsed.error.issues[0].message };
 
-  // Deactivate current active period
   await supabase
     .from("planning_periods" as any)
     .update({ is_active: false })
@@ -302,7 +289,6 @@ export async function seedPeriodFromRecurring(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Fetch the period
   const { data: period, error: periodErr } = await supabase
     .from("planning_periods" as any)
     .select("*")
@@ -313,20 +299,27 @@ export async function seedPeriodFromRecurring(
   if (periodErr || !period)
     return { success: false, error: "Periodo no encontrado" };
 
-  // Fetch active recurring templates
-  const { data: templates } = await supabase
-    .from("recurring_transaction_templates")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
-
-  // Fetch existing entries for dedup
-  const { data: existingEntries } = await supabase
-    .from("planning_entries" as any)
-    .select("recurring_template_id, expected_date")
-    .eq("period_id", periodId)
-    .eq("user_id", user.id)
-    .not("recurring_template_id", "is", null);
+  const [{ data: templates }, { data: existingEntries }, { data: reminders }] =
+    await Promise.all([
+      supabase
+        .from("recurring_transaction_templates")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_active", true),
+      supabase
+        .from("planning_entries" as any)
+        .select("recurring_template_id, expected_date")
+        .eq("period_id", periodId)
+        .eq("user_id", user.id)
+        .not("recurring_template_id", "is", null),
+      supabase
+        .from("financial_reminders")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_completed", false)
+        .gte("due_date", period.start_date)
+        .lte("due_date", period.end_date),
+    ]);
 
   const existingKeys = new Set(
     (existingEntries ?? []).map(
@@ -366,23 +359,14 @@ export async function seedPeriodFromRecurring(
     }
   }
 
-  // Also seed from pending financial reminders in range
-  const { data: reminders } = await supabase
-    .from("financial_reminders")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("is_completed", false)
-    .gte("due_date", period.start_date)
-    .lte("due_date", period.end_date);
-
   for (const reminder of reminders ?? []) {
-    if (!reminder.due_date) continue;
+    if (!reminder.due_date || !reminder.amount || reminder.amount <= 0) continue;
     entriesToInsert.push({
       user_id: user.id,
       period_id: periodId,
       entry_type: "EXPENSE",
       label: reminder.title,
-      amount: reminder.amount ?? 0,
+      amount: reminder.amount,
       expected_date: reminder.due_date,
     });
   }
@@ -546,49 +530,63 @@ export async function createAssignment(
   if (!parsed.success)
     return { success: false, error: parsed.error.issues[0].message };
 
-  // Validate: income entry exists and belongs to user
-  const { data: incomeEntry } = await supabase
-    .from("planning_entries" as any)
-    .select("id, period_id, amount, entry_type")
-    .eq("id", incomeEntryId)
-    .eq("user_id", user.id)
-    .eq("entry_type", "INCOME")
-    .single();
+  const [{ data: incomeEntry }, { data: expenseEntry }] = await Promise.all([
+    supabase
+      .from("planning_entries" as any)
+      .select("id, period_id, amount, entry_type")
+      .eq("id", incomeEntryId)
+      .eq("user_id", user.id)
+      .eq("entry_type", "INCOME")
+      .single(),
+    supabase
+      .from("planning_entries" as any)
+      .select("id, period_id, amount, entry_type")
+      .eq("id", expenseEntryId)
+      .eq("user_id", user.id)
+      .eq("entry_type", "EXPENSE")
+      .single(),
+  ]);
 
   if (!incomeEntry)
     return { success: false, error: "Ingreso no encontrado" };
-
-  // Validate: expense entry exists and belongs to user
-  const { data: expenseEntry } = await supabase
-    .from("planning_entries" as any)
-    .select("id, period_id, amount, entry_type")
-    .eq("id", expenseEntryId)
-    .eq("user_id", user.id)
-    .eq("entry_type", "EXPENSE")
-    .single();
-
   if (!expenseEntry)
     return { success: false, error: "Gasto no encontrado" };
-
-  // Check same period
   if (incomeEntry.period_id !== expenseEntry.period_id)
     return { success: false, error: "El ingreso y el gasto deben estar en el mismo periodo" };
 
-  // Validate remaining capacity of income
-  const { data: existingAssignments } = await supabase
-    .from("planning_assignments" as any)
-    .select("assigned_amount")
-    .eq("income_entry_id", incomeEntryId);
+  // Validate capacity on both sides in parallel
+  const [{ data: incomeAssignments }, { data: expenseAssignments }] =
+    await Promise.all([
+      supabase
+        .from("planning_assignments" as any)
+        .select("assigned_amount")
+        .eq("income_entry_id", incomeEntryId)
+        .eq("user_id", user.id),
+      supabase
+        .from("planning_assignments" as any)
+        .select("assigned_amount")
+        .eq("expense_entry_id", expenseEntryId)
+        .eq("user_id", user.id),
+    ]);
 
-  const currentlyAssigned = (existingAssignments ?? []).reduce(
+  const incomeUsed = (incomeAssignments ?? []).reduce(
     (sum, a) => sum + Number(a.assigned_amount),
     0
   );
-
-  if (currentlyAssigned + amount > Number(incomeEntry.amount))
+  if (incomeUsed + amount > Number(incomeEntry.amount))
     return {
       success: false,
       error: "El monto excede el saldo disponible del ingreso",
+    };
+
+  const expenseAssigned = (expenseAssignments ?? []).reduce(
+    (sum, a) => sum + Number(a.assigned_amount),
+    0
+  );
+  if (expenseAssigned + amount > Number(expenseEntry.amount))
+    return {
+      success: false,
+      error: "El monto excede lo que falta por asignar del gasto",
     };
 
   const { data, error } = await supabase
@@ -623,10 +621,11 @@ export async function updateAssignment(
   if (amount <= 0)
     return { success: false, error: "El monto debe ser mayor a cero" };
 
-  // Get the assignment to validate capacity
   const { data: assignment } = await supabase
     .from("planning_assignments" as any)
-    .select("*, income_entry:planning_entries!planning_assignments_income_entry_id_fkey(amount)")
+    .select(`*,
+      income_entry:planning_entries!planning_assignments_income_entry_id_fkey(amount),
+      expense_entry:planning_entries!planning_assignments_expense_entry_id_fkey(amount)`)
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -634,25 +633,47 @@ export async function updateAssignment(
   if (!assignment)
     return { success: false, error: "Asignación no encontrada" };
 
-  // Check remaining capacity (excluding this assignment)
-  const { data: otherAssignments } = await supabase
-    .from("planning_assignments" as any)
-    .select("assigned_amount")
-    .eq("income_entry_id", assignment.income_entry_id)
-    .neq("id", id);
+  const typedAssignment = assignment as Record<string, unknown> & {
+    income_entry: { amount: number };
+    expense_entry: { amount: number };
+    income_entry_id: string;
+    expense_entry_id: string;
+  };
 
-  const othersTotal = (otherAssignments ?? []).reduce(
+  const [{ data: otherIncomeAssignments }, { data: otherExpenseAssignments }] =
+    await Promise.all([
+      supabase
+        .from("planning_assignments" as any)
+        .select("assigned_amount")
+        .eq("income_entry_id", typedAssignment.income_entry_id)
+        .eq("user_id", user.id)
+        .neq("id", id),
+      supabase
+        .from("planning_assignments" as any)
+        .select("assigned_amount")
+        .eq("expense_entry_id", typedAssignment.expense_entry_id)
+        .eq("user_id", user.id)
+        .neq("id", id),
+    ]);
+
+  const incomeOthersTotal = (otherIncomeAssignments ?? []).reduce(
     (sum, a) => sum + Number(a.assigned_amount),
     0
   );
-  const incomeAmount = Number(
-    (assignment as Record<string, unknown> & { income_entry: { amount: number } }).income_entry.amount
-  );
-
-  if (othersTotal + amount > incomeAmount)
+  if (incomeOthersTotal + amount > Number(typedAssignment.income_entry.amount))
     return {
       success: false,
       error: "El monto excede el saldo disponible del ingreso",
+    };
+
+  const expenseOthersTotal = (otherExpenseAssignments ?? []).reduce(
+    (sum, a) => sum + Number(a.assigned_amount),
+    0
+  );
+  if (expenseOthersTotal + amount > Number(typedAssignment.expense_entry.amount))
+    return {
+      success: false,
+      error: "El monto excede lo que falta por asignar del gasto",
     };
 
   const { data, error } = await supabase
@@ -695,37 +716,31 @@ export async function autoAssignExpenses(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Get full period data
   const result = await getPeriodPlanData(periodId);
   if (!result.success) return result;
 
   const { income_envelopes, expense_entries } = result.data;
 
-  // Build mutable remaining per income
   const remaining = new Map(
     income_envelopes.map((env) => [env.entry.id, env.remaining_amount])
   );
 
-  // Sort incomes by date for chronological assignment
   const sortedIncomes = [...income_envelopes].sort(
-    (a, b) =>
-      a.entry.expected_date.localeCompare(b.entry.expected_date)
+    (a, b) => a.entry.expected_date.localeCompare(b.entry.expected_date)
   );
 
-  // Get already assigned per expense
-  const { data: existingAssignments } = await supabase
-    .from("planning_assignments" as any)
-    .select("expense_entry_id, assigned_amount")
-    .eq("period_id", periodId)
-    .eq("user_id", user.id);
-
+  // Build lookup of existing assignments per (income, expense) pair
+  const existingPairAmounts = new Map<string, number>();
   const assignedPerExpense = new Map<string, number>();
-  for (const a of existingAssignments ?? []) {
-    const prev = assignedPerExpense.get(a.expense_entry_id) ?? 0;
-    assignedPerExpense.set(a.expense_entry_id, prev + Number(a.assigned_amount));
+  for (const env of income_envelopes) {
+    for (const { assignment } of env.assignments) {
+      const pairKey = `${assignment.income_entry_id}|${assignment.expense_entry_id}`;
+      existingPairAmounts.set(pairKey, Number(assignment.assigned_amount));
+      const prev = assignedPerExpense.get(assignment.expense_entry_id) ?? 0;
+      assignedPerExpense.set(assignment.expense_entry_id, prev + Number(assignment.assigned_amount));
+    }
   }
 
-  // Sort expenses by date
   const sortedExpenses = [...expense_entries].sort(
     (a, b) => a.expected_date.localeCompare(b.expected_date)
   );
@@ -742,14 +757,18 @@ export async function autoAssignExpenses(
       const available = remaining.get(income.entry.id) ?? 0;
       if (available <= 0) continue;
 
+      const pairKey = `${income.entry.id}|${expense.id}`;
+      const existingAmount = existingPairAmounts.get(pairKey) ?? 0;
+
       const assignAmount = Math.min(available, needsAssignment);
 
+      // Upsert replaces — write existing + new so we don't lose prior amounts
       newAssignments.push({
         user_id: user.id,
         period_id: periodId,
         income_entry_id: income.entry.id,
         expense_entry_id: expense.id,
-        assigned_amount: assignAmount,
+        assigned_amount: existingAmount + assignAmount,
       });
 
       remaining.set(income.entry.id, available - assignAmount);

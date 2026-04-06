@@ -118,7 +118,7 @@ export function AssignmentDialog({
                     }
                     className={`w-full flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
                       selectedIncome === env.entry.id
-                        ? "border-emerald-400/50 bg-emerald-400/5"
+                        ? "border-z-income/50 bg-z-income/5"
                         : "border-white/6 hover:border-white/12"
                     }`}
                   >
@@ -128,7 +128,7 @@ export function AssignmentDialog({
                         {formatDate(env.entry.expected_date)}
                       </p>
                     </div>
-                    <p className="text-sm font-semibold tabular-nums text-emerald-400">
+                    <p className="text-sm font-semibold tabular-nums text-z-income">
                       {formatCurrency(env.remaining_amount, currency)}
                     </p>
                   </button>

@@ -42,17 +42,15 @@ export default async function PeriodoPage() {
     : [];
 
   const isExpired = planData
-    ? new Date(planData.period.end_date) < new Date()
+    ? planData.period.end_date < new Date().toISOString().split("T")[0]
     : false;
 
-  // Suggest next period start date based on expired period
-  const suggestedStart = planData && isExpired
-    ? (() => {
-        const end = new Date(planData.period.end_date);
-        end.setDate(end.getDate() + 1);
-        return end.toISOString().split("T")[0];
-      })()
-    : undefined;
+  let suggestedStart: string | undefined;
+  if (planData && isExpired) {
+    const next = new Date(planData.period.end_date);
+    next.setDate(next.getDate() + 1);
+    suggestedStart = next.toISOString().split("T")[0];
+  }
 
   return (
     <div className={PAGE_STACK_CLASS}>
@@ -119,27 +117,16 @@ export default async function PeriodoPage() {
         </div>
       )}
 
-      {/* Active period */}
-      {planData && !isExpired && (
-        <>
-          <PeriodHeader data={planData} />
-          <EnvelopeBoard
-            data={planData}
-            accounts={accounts}
-            categories={categories}
-          />
-        </>
-      )}
-
-      {/* Expired period — still show data but read-only feeling */}
-      {planData && isExpired && (
-        <div className="opacity-60 pointer-events-none">
-          <PeriodHeader data={planData} />
-          <EnvelopeBoard
-            data={planData}
-            accounts={accounts}
-            categories={categories}
-          />
+      {planData && (
+        <div className={isExpired ? "opacity-60" : undefined}>
+          <PeriodHeader data={planData} isExpired={isExpired} />
+          {!isExpired && (
+            <EnvelopeBoard
+              data={planData}
+              accounts={accounts}
+              categories={categories}
+            />
+          )}
         </div>
       )}
     </div>

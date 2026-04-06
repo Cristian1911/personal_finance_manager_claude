@@ -17,8 +17,7 @@ import { CalendarPlus } from "lucide-react";
 import { createPlanningPeriod, seedPeriodFromRecurring } from "@/actions/cashflow-planner";
 import { toast } from "sonner";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
-import type { PlanningPeriodPreset } from "@/types/domain";
-import type { CurrencyCode } from "@/types/domain";
+import type { PlanningPeriodPreset, CurrencyCode } from "@/types/domain";
 
 interface PeriodSetupDialogProps {
   currency: CurrencyCode;
