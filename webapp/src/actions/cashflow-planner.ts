@@ -838,7 +838,7 @@ export async function autoAssignExpenses(
 
   for (const expense of sortedExpenses) {
     const alreadyAssigned = assignedPerExpense.get(expense.id) ?? 0;
-    let needsAssignment = Number(expense.amount) - alreadyAssigned;
+    let needsAssignment = expense.converted_amount - alreadyAssigned;
     if (needsAssignment <= 0) continue;
 
     for (const income of sortedIncomes) {

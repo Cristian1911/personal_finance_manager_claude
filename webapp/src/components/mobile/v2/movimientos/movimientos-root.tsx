@@ -51,7 +51,9 @@ export function MovimientosRoot({
   const uncategorizedTransactions = useMemo(
     () =>
       transactions
-        .filter((tx) => tx.direction === "OUTFLOW" && !tx.category_id)
+        .filter(
+          (tx) => !tx.is_excluded && tx.direction === "OUTFLOW" && !tx.category_id
+        )
         .slice(0, 5),
     [transactions]
   );
