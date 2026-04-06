@@ -54,7 +54,7 @@ export function DeudasRoot({
   return (
     <div className="space-y-3">
       <MobileHeader
-        variant="page"
+        variant="main"
         title="Deudas"
         subtitle={`Lectura en ${currency}`}
         action={

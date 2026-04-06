@@ -76,9 +76,8 @@ export function MovimientosRoot({
   return (
     <div className="space-y-3">
       <MobileHeader
-        variant="page"
+        variant="main"
         title="Movimientos"
-        chip="Mesa operativa"
         action={
           <Suspense>
             <MonthSelector />

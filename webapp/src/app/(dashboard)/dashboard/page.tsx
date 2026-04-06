@@ -374,7 +374,7 @@ export default async function DashboardPage({
   return (
     <>
       <div className="lg:hidden">
-        <MobileHeader variant="dashboard" />
+        <MobileHeader variant="main" title="Inicio" />
           <InicioRoot
             hero={{
               availablePerDay: (() => {
@@ -400,9 +400,11 @@ export default async function DashboardPage({
               runwayDays: burnRateData?.discretionary.runwayDays ?? 0,
               daysInMonth: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(),
               dayOfMonth: new Date().getDate(),
-              nextIncomeName: null,
-              nextIncomeDays: null,
-              nextIncomeAmount: null,
+              nextPaymentName: heroData.pendingObligations[0]?.name ?? null,
+              nextPaymentDays: heroData.pendingObligations[0]
+                ? Math.max(0, Math.ceil((new Date(heroData.pendingObligations[0].due_date).getTime() - Date.now()) / 86_400_000))
+                : null,
+              nextPaymentAmount: heroData.pendingObligations[0]?.amount ?? null,
               currency: currency as CurrencyCode,
             }}
             signals={attentionSnapshot.signals}

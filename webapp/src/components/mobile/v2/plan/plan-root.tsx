@@ -33,7 +33,7 @@ export function PlanRoot({
   return (
     <div className="space-y-2">
       <MobileHeader
-        variant="page"
+        variant="main"
         title="Plan"
         subtitle={`${monthLabel} · ${daysInMonth - dayOfMonth}d restantes`}
         action={
