@@ -5,10 +5,10 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { MOBILE_ACTION_BUTTON_CLASS } from "@/lib/constants/styles";
-import type { Transaction } from "@/types/domain";
+import type { TransactionWithAccount } from "@/types/domain";
 
 interface MovimientosTransactionRowProps {
-  transaction: Transaction;
+  transaction: TransactionWithAccount;
 }
 
 export function MovimientosTransactionRow({
@@ -38,7 +38,16 @@ export function MovimientosTransactionRow({
           tx.is_excluded && "opacity-40"
         )}
       >
-        <p className="min-w-0 truncate text-sm font-medium">{description}</p>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{description}</p>
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: tx.account.color ?? undefined }}
+            />
+            <span className="truncate">{tx.account.name}</span>
+          </p>
+        </div>
         <span className="flex shrink-0 items-center gap-1.5 ml-2">
           <span
             className={cn(

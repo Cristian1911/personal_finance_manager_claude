@@ -19,7 +19,7 @@ import {
   reverseAccountBalanceDelta,
 } from "@/lib/utils/account-balance";
 import type { ActionResult, PaginatedResult } from "@/types/actions";
-import type { Transaction } from "@/types/domain";
+import type { Transaction, TransactionWithAccount } from "@/types/domain";
 
 type PersistTransactionParams = {
   userId: string;
@@ -424,7 +424,7 @@ async function persistTransaction(
 
 export async function getTransactions(
   filters: Record<string, string | undefined>
-): Promise<PaginatedResult<Transaction>> {
+): Promise<PaginatedResult<TransactionWithAccount>> {
   const { supabase, user } = await getAuthenticatedClient();
 
   if (!user) return { data: [], count: 0, page: 1, pageSize: 20, totalPages: 0 };
@@ -462,7 +462,7 @@ export async function getTransactions(
   const buildQuery = () => {
     let query = supabase
       .from("transactions")
-      .select("*", { count: "exact" })
+      .select("*, account:accounts(id, name, icon, color)", { count: "exact" })
       .eq("user_id", user.id)
       .order("transaction_date", { ascending: false })
       .order("created_at", { ascending: false })
@@ -496,7 +496,7 @@ export async function getTransactions(
   if (error) return { data: [], count: 0, page, pageSize, totalPages: 0 };
 
   return {
-    data: data ?? [],
+    data: (data ?? []) as unknown as TransactionWithAccount[],
     count: count ?? 0,
     page,
     pageSize,

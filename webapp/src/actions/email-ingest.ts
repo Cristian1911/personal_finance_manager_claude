@@ -8,6 +8,7 @@ import {
   mergeTransactionMetadata,
   type ReconciliationCandidate,
 } from "@zeta/shared";
+import { toISODateString } from "@/lib/utils/date";
 import { matchTransactionToDestinatario } from "./destinatarios";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import {
@@ -704,7 +705,6 @@ export async function checkEmailReconciliation(
 ): Promise<
   ActionResult<{
     candidate: ReconciliationCandidatePreview;
-    score: number;
     decision: "AUTO_MERGE" | "REVIEW";
   } | null>
 > {
@@ -742,8 +742,8 @@ export async function checkEmailReconciliation(
   fromDate.setDate(fromDate.getDate() - 3);
   const toDate = new Date(txDate);
   toDate.setDate(toDate.getDate() + 3);
-  const from = fromDate.toISOString().slice(0, 10);
-  const to = toDate.toISOString().slice(0, 10);
+  const from = toISODateString(fromDate);
+  const to = toISODateString(toDate);
 
   // Fetch manual transactions that could be duplicates
   const { data: candidates, error: candError } = await supabase
@@ -794,7 +794,6 @@ export async function checkEmailReconciliation(
         category_id: matched.category_id,
         score: result.bestMatch.score,
       },
-      score: result.bestMatch.score,
       decision: result.bestMatch.decision as "AUTO_MERGE" | "REVIEW",
     },
   };

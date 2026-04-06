@@ -54,7 +54,7 @@ export function MobileHeader(props: MobileHeaderProps) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {props.action && <div className="shrink-0">{props.action}</div>}
+            {props.action}
             <MobileAvatarMenu />
           </div>
         </div>

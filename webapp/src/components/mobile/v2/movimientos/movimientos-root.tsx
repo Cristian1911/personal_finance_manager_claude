@@ -10,7 +10,7 @@ import { MovimientosHerramientas } from "./movimientos-herramientas";
 import { MovimientosUtilidades } from "./movimientos-utilidades";
 import { MovimientosTransactionRow } from "./movimientos-transaction-row";
 import type {
-  Transaction,
+  TransactionWithAccount,
   PendingEmailTransaction,
   CategoryWithChildren,
   Account,
@@ -19,7 +19,7 @@ import type {
 } from "@/types/domain";
 
 interface MovimientosRootProps {
-  transactions: Transaction[];
+  transactions: TransactionWithAccount[];
   outflowCategories: CategoryWithChildren[];
   accounts: Account[];
   tags: Tag[];
@@ -68,7 +68,7 @@ export function MovimientosRoot({
 
   /** Group transactions by date, sorted descending */
   const groupedByDate = useMemo(() => {
-    const groups = new Map<string, Transaction[]>();
+    const groups = new Map<string, TransactionWithAccount[]>();
     for (const tx of transactions) {
       const date = tx.transaction_date;
       const existing = groups.get(date);

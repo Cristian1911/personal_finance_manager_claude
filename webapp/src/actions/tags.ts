@@ -7,6 +7,8 @@ import { tagGroupSchema, tagSchema, generateSlug } from "@/lib/validators/tags";
 import type { ActionResult } from "@/types/actions";
 import type { TagGroupWithTags, Tag, TaggableEntity } from "@/types/domain";
 
+import { UNGROUPED_TAG_GROUP_ID } from "@/lib/constants/tags";
+
 // ── Queries ───────────────────────────────────────────────
 
 export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTags[]>> => {
@@ -39,7 +41,7 @@ export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTag
   const ungroupedTags = tags.filter((t) => !t.group_id || !groupIds.has(t.group_id));
   if (ungroupedTags.length > 0) {
     groupsWithTags.push({
-      id: "__ungrouped__",
+      id: UNGROUPED_TAG_GROUP_ID,
       user_id: null,
       name: "Sin grupo",
       color: null,

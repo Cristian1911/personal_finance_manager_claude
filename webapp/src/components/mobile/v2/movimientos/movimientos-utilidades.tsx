@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -25,13 +26,28 @@ export function MovimientosUtilidades({
   accounts,
   tags,
 }: MovimientosUtilidadesProps) {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentSearch = searchParams.get("search") ?? "";
+  const [searchOpen, setSearchOpen] = useState(!!currentSearch);
+
+  const updateSearch = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) {
+        params.set("search", value);
+      } else {
+        params.delete("search");
+      }
+      params.set("page", "1");
+      router.push(`/transactions?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
-        {/* Search icon pill */}
         <button
           type="button"
           className={cn(
@@ -45,7 +61,6 @@ export function MovimientosUtilidades({
           <Search className="size-3.5" />
         </button>
 
-        {/* Filter pill */}
         <Drawer>
           <DrawerTrigger asChild>
             <button
@@ -69,12 +84,14 @@ export function MovimientosUtilidades({
         </Drawer>
       </div>
 
-      {/* Search input — inline toggle */}
       {searchOpen && (
         <input
           type="text"
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
+          defaultValue={currentSearch}
+          onChange={(e) => {
+            const timeout = setTimeout(() => updateSearch(e.target.value), 300);
+            return () => clearTimeout(timeout);
+          }}
           placeholder="Buscar movimiento..."
           autoFocus
           className="w-full rounded-xl border border-white/6 bg-black/10 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-z-brass/30 focus:outline-none"
