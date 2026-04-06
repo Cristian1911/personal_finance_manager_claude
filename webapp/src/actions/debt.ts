@@ -42,6 +42,7 @@ async function getDebtOverviewCached(
     .select("*")
     .eq("user_id", userId)
     .eq("is_active", true)
+    .in("account_type", ["CREDIT_CARD", "LOAN"])
     .order("display_order");
 
   if (error) throw error;

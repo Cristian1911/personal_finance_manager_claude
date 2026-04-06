@@ -153,7 +153,7 @@ export default async function DashboardPage({
       getPreferredCurrency(),
       supabase
         .from("transactions")
-        .select("*, categories!category_id(name_es, name)")
+        .select("id, amount, direction, account_id, merchant_name, clean_description, transaction_date, currency_code, categories!category_id(name_es, name)")
         .eq("is_excluded", false)
         .order("transaction_date", { ascending: false })
         .order("created_at", { ascending: false })

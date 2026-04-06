@@ -730,32 +730,31 @@ export async function getCategoriesByRhythm(
 
     const taggedCategoryIds = categoryTagLinks.map((l) => l.category_id);
 
-    // Fetch category details for tagged subcategories
-    const { data: categories } = await supabase
-      .from("categories")
-      .select("id, name, name_es")
-      .in("id", taggedCategoryIds)
-      .eq("is_active", true);
+    const [{ data: categories }, { data: budgets }, { data: spentRows }] = await Promise.all([
+      supabase
+        .from("categories")
+        .select("id, name, name_es")
+        .in("id", taggedCategoryIds)
+        .eq("is_active", true),
 
-    // Fetch budgets for tagged subcategories
-    const { data: budgets } = await supabase
-      .from("budgets")
-      .select("category_id, amount")
-      .eq("user_id", user.id)
-      .eq("period", "monthly")
-      .in("category_id", taggedCategoryIds);
+      supabase
+        .from("budgets")
+        .select("category_id, amount")
+        .eq("user_id", user.id)
+        .eq("period", "monthly")
+        .in("category_id", taggedCategoryIds),
 
-    // Fetch this month's spending for tagged subcategories
-    const { data: spentRows } = await supabase
-      .from("transactions")
-      .select("amount, category_id")
-      .eq("direction", "OUTFLOW")
-      .eq("is_excluded", false)
-      .eq("currency_code", baseCurrency)
-      .gte("transaction_date", monthStartStr(target))
-      .lte("transaction_date", monthEndStr(target))
-      .is("reconciled_into_transaction_id", null)
-      .in("category_id", taggedCategoryIds);
+      supabase
+        .from("transactions")
+        .select("amount, category_id")
+        .eq("direction", "OUTFLOW")
+        .eq("is_excluded", false)
+        .eq("currency_code", baseCurrency)
+        .gte("transaction_date", monthStartStr(target))
+        .lte("transaction_date", monthEndStr(target))
+        .is("reconciled_into_transaction_id", null)
+        .in("category_id", taggedCategoryIds),
+    ]);
 
     // Build lookup maps
     const budgetMap = new Map<string, number>();

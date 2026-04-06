@@ -85,7 +85,8 @@ async function getEstimatedIncomeCached(
     .eq("currency_code", baseCurrency)
     .in("account_id", liquidAccountIds)
     .gte("transaction_date", twelveMonthsAgo)
-    .order("transaction_date", { ascending: false });
+    .order("transaction_date", { ascending: false })
+    .limit(500);
 
   if (txError) throw txError;
   if (!transactions || transactions.length === 0) return null;
