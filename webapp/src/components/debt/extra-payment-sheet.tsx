@@ -265,6 +265,48 @@ export function ExtraPaymentSheet({
             )}
           </div>
 
+          {/* ── Impact Preview — pinned above allocation for constant visibility ── */}
+          {impact && (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/6 bg-z-surface-2/55 p-3 flex flex-col gap-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                    Ahorro mensual en intereses
+                  </span>
+                  <span className="text-lg font-semibold text-z-brass">
+                    {formatCurrency(impact.monthlyInterestSaved, currency)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatCurrency(impact.monthlyInterestBefore, currency)}{" "}
+                    →{" "}
+                    {formatCurrency(impact.monthlyInterestAfter, currency)}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-white/6 bg-z-surface-2/55 p-3 flex flex-col gap-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                    Meses menos de deuda
+                  </span>
+                  <span className="text-lg font-semibold text-z-brass">
+                    {impact.monthsSaved}{" "}
+                    {impact.monthsSaved === 1 ? "mes" : "meses"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {impact.monthsToDebtFreeBefore} →{" "}
+                    {impact.monthsToDebtFreeAfter} meses
+                  </span>
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/6 bg-black/10 px-4 py-3 flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Ahorro total en intereses
+                </span>
+                <span className="text-sm font-semibold text-z-brass">
+                  {formatCurrency(impact.totalInterestSavedOverLife, currency)}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* ── Zone 2: Allocation ── */}
           {parsedAmount > 0 && (
             <div className="flex flex-col gap-3">
@@ -272,16 +314,32 @@ export function ExtraPaymentSheet({
                 <span className="text-sm font-semibold text-foreground">
                   Distribución
                 </span>
-                {manualOverrides.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleResetOverrides}
-                    className="flex items-center gap-1 text-xs text-z-brass hover:text-z-brass/80 transition-colors"
-                  >
-                    <RotateCcw className="size-3" />
-                    Resetear
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  {allocations.length > 0 && (
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {formatCurrency(allocations.reduce((s, a) => s + a.allocatedAmount, 0), currency)}
+                      {(() => {
+                        const remaining = parsedAmount - allocations.reduce((s, a) => s + a.allocatedAmount, 0);
+                        if (remaining <= 0) return null;
+                        return (
+                          <span className="text-amber-400">
+                            {" "}· {formatCurrency(remaining, currency)} sobrante
+                          </span>
+                        );
+                      })()}
+                    </span>
+                  )}
+                  {manualOverrides.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleResetOverrides}
+                      className="flex items-center gap-1 text-xs text-z-brass hover:text-z-brass/80 transition-colors"
+                    >
+                      <RotateCcw className="size-3" />
+                      Resetear
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-col gap-2">
@@ -324,6 +382,14 @@ export function ExtraPaymentSheet({
                               : ""}
                             {formatCurrency(account.balance, currency)}
                           </span>
+                          {account.currencyBreakdown
+                            ?.filter((cb) => cb.currency !== currency && cb.balance > 0)
+                            .map((cb) => (
+                              <span key={cb.currency} className="text-[10px] text-amber-400">
+                                + {formatCurrency(cb.balance, cb.currency as CurrencyCode)} {cb.currency}
+                              </span>
+                            ))}
+
                         </div>
                         <Input
                           inputMode="numeric"
@@ -341,78 +407,6 @@ export function ExtraPaymentSheet({
             </div>
           )}
 
-          {/* ── Allocation summary ── */}
-          {parsedAmount > 0 && allocations.length > 0 && (
-            <div className="flex items-center justify-between text-sm border-t border-white/6 pt-3">
-              <span className="text-muted-foreground">Distribuido</span>
-              <span className="font-medium">
-                {formatCurrency(
-                  allocations.reduce((s, a) => s + a.allocatedAmount, 0),
-                  currency
-                )}
-              </span>
-            </div>
-          )}
-          {parsedAmount > 0 && allocations.length > 0 && (() => {
-            const totalAllocated = allocations.reduce((s, a) => s + a.allocatedAmount, 0);
-            const remaining = parsedAmount - totalAllocated;
-            if (remaining <= 0) return null;
-            return (
-              <div className="flex items-center justify-between text-sm -mt-3">
-                <span className="text-muted-foreground">Sobrante</span>
-                <span className="font-medium text-amber-400">
-                  {formatCurrency(remaining, currency)}
-                </span>
-              </div>
-            );
-          })()}
-
-          {/* ── Zone 3: Impact Preview ── */}
-          {impact && (
-            <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                {/* Monthly interest saved */}
-                <div className="rounded-xl border border-white/6 bg-z-surface-2/55 p-3 flex flex-col gap-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-                    Ahorro mensual en intereses
-                  </span>
-                  <span className="text-lg font-semibold text-z-brass">
-                    {formatCurrency(impact.monthlyInterestSaved, currency)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatCurrency(impact.monthlyInterestBefore, currency)}{" "}
-                    →{" "}
-                    {formatCurrency(impact.monthlyInterestAfter, currency)}
-                  </span>
-                </div>
-
-                {/* Months saved */}
-                <div className="rounded-xl border border-white/6 bg-z-surface-2/55 p-3 flex flex-col gap-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-                    Meses menos de deuda
-                  </span>
-                  <span className="text-lg font-semibold text-z-brass">
-                    {impact.monthsSaved}{" "}
-                    {impact.monthsSaved === 1 ? "mes" : "meses"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {impact.monthsToDebtFreeBefore} →{" "}
-                    {impact.monthsToDebtFreeAfter} meses
-                  </span>
-                </div>
-              </div>
-
-              {/* Total interest saved */}
-              <div className="rounded-xl border border-white/6 bg-black/10 px-4 py-3 flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  Ahorro total en intereses
-                </span>
-                <span className="text-sm font-semibold text-z-brass">
-                  {formatCurrency(impact.totalInterestSavedOverLife, currency)}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
 
         <SheetFooter className="flex flex-row gap-2 px-4 pt-2">

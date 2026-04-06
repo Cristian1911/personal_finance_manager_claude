@@ -88,7 +88,7 @@ export async function applyExtraDebtPayment(
   // Validate all accounts belong to the user and fetch current state
   const { data: accounts, error: accountsError } = await supabase
     .from("accounts")
-    .select("id, name, account_type, current_balance, currency_code")
+    .select("id, name, account_type, current_balance, currency_code, currency_balances, credit_limit")
     .eq("user_id", user.id)
     .in("id", allAccountIds);
 
@@ -226,9 +226,37 @@ export async function applyExtraDebtPayment(
         amount: allocation.amount,
       });
       debtAccount.current_balance = newDebtBalance;
+
+      // Also update currency_balances + available_balance (debt page reads from these)
+      const accountUpdate: Record<string, unknown> = { current_balance: newDebtBalance };
+
+      // Credit cards: recalculate available_balance
+      if (debtAccount.account_type === "CREDIT_CARD" && debtAccount.credit_limit != null) {
+        accountUpdate.available_balance = Math.max(
+          Number(debtAccount.credit_limit) - newDebtBalance,
+          0
+        );
+      }
+
+      // Sync currency_balances JSONB if present
+      const cb = debtAccount.currency_balances as Record<string, Record<string, unknown>> | null;
+      if (cb && cb[currencyCode]) {
+        const updatedCb: Record<string, unknown> = {
+          ...cb[currencyCode],
+          current_balance: newDebtBalance,
+        };
+        if (debtAccount.account_type === "CREDIT_CARD" && debtAccount.credit_limit != null) {
+          updatedCb.available_balance = Math.max(
+            Number(debtAccount.credit_limit) - newDebtBalance,
+            0
+          );
+        }
+        accountUpdate.currency_balances = { ...cb, [currencyCode]: updatedCb };
+      }
+
       const { error: debtBalErr } = await supabase
         .from("accounts")
-        .update({ current_balance: newDebtBalance })
+        .update(accountUpdate)
         .eq("id", allocation.accountId)
         .eq("user_id", user.id);
       if (debtBalErr) console.error("[extraPayment] debt balance update failed:", debtBalErr);

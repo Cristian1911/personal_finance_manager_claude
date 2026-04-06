@@ -22,6 +22,12 @@ export interface InicioRootProps {
       fixedExpenses: number;
       alreadySpent: number;
     };
+    primaryAccount?: {
+      id: string;
+      name: string;
+      currentBalance: number;
+      currencyCode: CurrencyCode;
+    };
   };
   metrics: {
     runwayDays: number;

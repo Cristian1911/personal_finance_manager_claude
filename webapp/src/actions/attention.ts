@@ -37,7 +37,8 @@ async function getAttentionSnapshotCached(
       .eq("user_id", userId)
       .is("destinatario_id", null)
       .not("raw_description", "is", null)
-      .eq("is_excluded", false),
+      .eq("is_excluded", false)
+      .is("reconciled_into_transaction_id", null),
 
     // Signal: Overdue reminders
     supabase

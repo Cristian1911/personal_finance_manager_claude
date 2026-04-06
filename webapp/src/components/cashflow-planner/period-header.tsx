@@ -21,14 +21,14 @@ export function PeriodHeader({ data, isExpired = false }: PeriodHeaderProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-semibold tracking-tight truncate">
             {period.name || "Periodo activo"}
           </h2>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
               {formatDate(period.start_date)} — {formatDate(period.end_date)}
             </span>
             {isExpired && (
@@ -38,36 +38,36 @@ export function PeriodHeader({ data, isExpired = false }: PeriodHeaderProps) {
             )}
           </div>
         </div>
-        <Badge variant="outline" className="text-sm tabular-nums">
+        <Badge variant="outline" className="shrink-0 text-xs sm:text-sm tabular-nums">
           {percentAssigned}% asignado
         </Badge>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-white/6 bg-card p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="rounded-lg border border-white/6 bg-card p-2.5 sm:p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
             <TrendingUp className="h-3 w-3 text-z-income" />
             Ingresos
           </div>
-          <p className="text-lg font-semibold tabular-nums text-z-income">
+          <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-income">
             {formatCurrency(total_income, currency)}
           </p>
         </div>
-        <div className="rounded-lg border border-white/6 bg-card p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="rounded-lg border border-white/6 bg-card p-2.5 sm:p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
             <TrendingDown className="h-3 w-3 text-z-expense" />
             Gastos
           </div>
-          <p className="text-lg font-semibold tabular-nums text-z-expense">
+          <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-expense">
             {formatCurrency(total_expenses, currency)}
           </p>
         </div>
-        <div className="rounded-lg border border-white/6 bg-card p-3 space-y-1">
-          <p className="text-xs text-muted-foreground">
+        <div className="rounded-lg border border-white/6 bg-card p-2.5 sm:p-3 space-y-1">
+          <p className="text-[10px] sm:text-xs text-muted-foreground">
             {surplus >= 0 ? "Superávit" : "Déficit"}
           </p>
           <p
-            className={`text-lg font-semibold tabular-nums ${
+            className={`text-sm sm:text-lg font-semibold tabular-nums ${
               surplus >= 0 ? "text-z-income" : "text-z-expense"
             }`}
           >
