@@ -36,12 +36,14 @@ export function PlanRoot({
         variant="main"
         title="Plan"
         subtitle={`${monthLabel} · ${daysInMonth - dayOfMonth}d restantes`}
-        action={
-          <Suspense fallback={<span className="text-xs capitalize">{monthLabel}</span>}>
-            <MonthSelector />
-          </Suspense>
-        }
       />
+
+      {/* Month navigation */}
+      <div className="flex justify-center">
+        <Suspense fallback={<span className="text-xs capitalize text-muted-foreground">{monthLabel}</span>}>
+          <MonthSelector />
+        </Suspense>
+      </div>
 
       {/* Budget hero — expandable per-category (client boundary isolated) */}
       <PlanHeroWrapper

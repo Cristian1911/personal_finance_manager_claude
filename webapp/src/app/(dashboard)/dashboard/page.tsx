@@ -374,7 +374,7 @@ export default async function DashboardPage({
   return (
     <>
       <div className="lg:hidden">
-        <MobileHeader variant="main" title="Inicio" />
+        <MobileHeader variant="main" title="Zeta" />
           <InicioRoot
             hero={{
               availablePerDay: (() => {
