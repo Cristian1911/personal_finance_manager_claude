@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, Suspense } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,14 @@ export function MovimientosUtilidades({
     [router, searchParams]
   );
 
+  const [searchValue, setSearchValue] = useState(currentSearch);
+
+  useEffect(() => {
+    if (searchValue === currentSearch) return;
+    const timer = setTimeout(() => updateSearch(searchValue), 300);
+    return () => clearTimeout(timer);
+  }, [searchValue, currentSearch, updateSearch]);
+
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
@@ -87,11 +95,8 @@ export function MovimientosUtilidades({
       {searchOpen && (
         <input
           type="text"
-          defaultValue={currentSearch}
-          onChange={(e) => {
-            const timeout = setTimeout(() => updateSearch(e.target.value), 300);
-            return () => clearTimeout(timeout);
-          }}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
           placeholder="Buscar movimiento..."
           autoFocus
           className="w-full rounded-xl border border-white/6 bg-black/10 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-z-brass/30 focus:outline-none"
