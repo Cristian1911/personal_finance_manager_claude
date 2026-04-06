@@ -15,6 +15,7 @@ import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { PlanRoot } from "@/components/mobile/v2/plan/plan-root";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { getPreferredCurrency } from "@/actions/profile";
+import { getActivePeriod } from "@/actions/cashflow-planner";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 
@@ -28,11 +29,12 @@ export default async function PlanPage({
   const month = params.month;
   const monthLabel = formatMonthLabel(parseMonth(month));
   const currency = await getPreferredCurrency();
-  const [planData, wishlistSummary, rhythmResult, categoryBudgetResult] = await Promise.all([
+  const [planData, wishlistSummary, rhythmResult, categoryBudgetResult, activePeriodResult] = await Promise.all([
     getPlanPageData(month, currency),
     getWishlistItemsForDashboard(),
     getCategoriesByRhythm(month, currency),
     getCategoriesWithBudgetData(month, currency),
+    getActivePeriod(),
   ]);
   const allocationData = planData.budget.allocation;
   const rhythmData = rhythmResult.success ? rhythmResult.data : [];
@@ -41,6 +43,16 @@ export default async function PlanPage({
   const now = new Date();
   const planDayOfMonth = now.getDate();
   const planDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const activePeriod = activePeriodResult.success ? activePeriodResult.data : null;
+  const periodoSummary = activePeriod
+    ? {
+        hasActive: true,
+        percentAssigned: activePeriod.total_expenses > 0
+          ? Math.round((activePeriod.total_assigned / activePeriod.total_expenses) * 100)
+          : 0,
+        unassignedCount: activePeriod.unassigned_expenses.length,
+      }
+    : null;
 
   return (
     <div className={PAGE_STACK_CLASS}>
@@ -87,6 +99,7 @@ export default async function PlanPage({
             recurring={planData.recurring}
             scenarios={planData.scenarios}
             desires={{ totalCount: wishlistSummary.totalCount, readyCount: wishlistSummary.readyCount }}
+            periodo={periodoSummary}
             currency={planData.currency}
           />
         </div>
