@@ -24,19 +24,19 @@ const modules = [
   {
     key: "periodo",
     title: "Planear periodo",
-    href: "/plan/periodo",
+    href: "/plan?tab=periodo",
     icon: Wallet,
   },
   {
     key: "budget",
     title: "Presupuesto",
-    href: "/categories",
+    href: "/plan?tab=presupuesto",
     icon: PiggyBank,
   },
   {
     key: "recurring",
     title: "Obligaciones",
-    href: "/recurrentes",
+    href: "/plan?tab=recurrentes",
     icon: CalendarClock,
   },
   {
@@ -48,7 +48,7 @@ const modules = [
   {
     key: "desires",
     title: "Deseos",
-    href: "/deseos",
+    href: "/plan?tab=deseos",
     icon: Heart,
   },
   {

@@ -19,7 +19,6 @@ export const MOBILE_TABS: MobileTab[] = [
   {
     title: "Plan",
     href: "/plan",
-    matchHrefs: ["/presupuesto", "/recurrentes", "/deseos"],
     icon: PiggyBank,
   },
   {

@@ -5,14 +5,10 @@ import {
   Wallet,
   PiggyBank,
   Landmark,
-  Repeat2,
   Inbox,
   Contact,
   Settings,
   BarChart3,
-  Tag,
-  ListChecks,
-  Heart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,11 +34,8 @@ export const PRIMARY_NAV: NavItem[] = [
     href: "/plan",
     icon: PiggyBank,
     matchHrefs: [
-      "/presupuesto",
       "/deudas",
       "/deudas/planificador",
-      "/recurrentes",
-      "/deseos",
     ],
   },
   {
@@ -55,15 +48,10 @@ export const PRIMARY_NAV: NavItem[] = [
 
 export const WORKSPACE_NAV: NavItem[] = [
   { title: "Categorizar", href: "/categorizar", icon: Inbox, attentionPage: "transactions" },
-  { title: "Presupuesto", href: "/presupuesto", icon: PiggyBank, attentionPage: "categories" },
   { title: "Destinatarios", href: "/destinatarios", icon: Contact, attentionPage: "destinatarios" },
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
   { title: "Deudas", href: "/deudas", icon: Landmark },
-  { title: "Recurrentes", href: "/recurrentes", icon: Repeat2, attentionPage: "recurrentes" },
-  { title: "Etiquetas", href: "/etiquetas", icon: Tag },
-  { title: "Pendientes", href: "/pendientes", icon: ListChecks, attentionPage: "pendientes" },
-  { title: "Deseos", href: "/deseos", icon: Heart },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [

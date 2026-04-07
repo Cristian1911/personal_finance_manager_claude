@@ -129,7 +129,9 @@ export const getPlanPageData = cache(
     const categories = categoriesResult.success ? categoriesResult.data.filter((category) => category.direction === "OUTFLOW") : [];
     const overLimitCategories = categories.filter((category) => (category.budget ?? 0) > 0 && category.percentUsed > 100);
     const nearLimitCategories = categories.filter((category) => (category.budget ?? 0) > 0 && category.percentUsed >= 85);
+    const seen = new Set<string>();
     const attentionCategories = [...overLimitCategories, ...nearLimitCategories]
+      .filter((c) => { if (seen.has(c.id)) return false; seen.add(c.id); return true; })
       .sort((a, b) => b.percentUsed - a.percentUsed)
       .slice(0, 4);
 

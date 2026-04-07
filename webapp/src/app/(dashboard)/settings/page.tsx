@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Activity, ArrowRight, Bug, UserRound } from "lucide-react";
+import { Activity, ArrowRight, Bug, Tag, UserRound } from "lucide-react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
@@ -20,6 +20,8 @@ import { BuildInfo } from "@/components/settings/build-info";
 import { ReviewModeToggle } from "@/components/settings/review-mode-toggle";
 import { getCaptureTokens } from "@/actions/capture-tokens";
 import { getEmailIngestAddress, getUnrecognizedEmails } from "@/actions/email-ingest";
+import { getTagGroups } from "@/actions/tags";
+import { TagManager } from "@/components/tags/tag-manager";
 import type { Account } from "@/types/domain";
 
 export default async function SettingsPage() {
@@ -35,7 +37,7 @@ export default async function SettingsPage() {
 
   if (!profile) redirect("/login");
 
-  const [tokensResult, { data: accounts }, emailIngestResult, unrecognizedResult] = await Promise.all([
+  const [tokensResult, { data: accounts }, emailIngestResult, unrecognizedResult, tagGroupsResult] = await Promise.all([
     getCaptureTokens(),
     supabase
       .from("accounts")
@@ -45,6 +47,7 @@ export default async function SettingsPage() {
       .order("display_order"),
     getEmailIngestAddress(),
     getUnrecognizedEmails(),
+    getTagGroups(),
   ]);
 
   const tokens = tokensResult.success ? tokensResult.data : [];
@@ -120,6 +123,27 @@ export default async function SettingsPage() {
               <ArrowRight className="size-4" />
             </Link>
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+              <Tag className="size-4 text-z-brass" />
+            </div>
+            <CardTitle>Etiquetas</CardTitle>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Organiza etiquetas en grupos para anotar transacciones, destinatarios y categorías.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {tagGroupsResult.success ? (
+            <TagManager tagGroups={tagGroupsResult.data} />
+          ) : (
+            <p className="text-sm text-destructive">{tagGroupsResult.error}</p>
+          )}
         </CardContent>
       </Card>
 
