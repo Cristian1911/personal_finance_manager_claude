@@ -144,7 +144,7 @@ export function StepResults({
             {result.autoMerged > 0 && (
               <div className="rounded-lg border p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                  <CheckCircle className="h-4 w-4 text-z-brass" />
                   <span className="text-2xl font-bold">{result.autoMerged}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -155,7 +155,7 @@ export function StepResults({
             {result.manualMerged > 0 && (
               <div className="rounded-lg border p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <RefreshCw className="h-4 w-4 text-sky-600" />
+                  <RefreshCw className="h-4 w-4 text-z-brass" />
                   <span className="text-2xl font-bold">{result.manualMerged}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -179,7 +179,7 @@ export function StepResults({
       )}
 
       {result.adjustmentsExcluded != null && result.adjustmentsExcluded > 0 && (
-        <div className="rounded-md bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-200 text-sm p-3">
+        <div className="rounded-md border border-z-alert/20 bg-z-alert/5 text-z-alert text-sm p-3">
           Se excluyeron {result.adjustmentsExcluded} ajuste(s) manual(es) de saldo que fueron reemplazados por las transacciones del extracto.
         </div>
       )}
@@ -188,7 +188,7 @@ export function StepResults({
         <div className="rounded-md border p-3 space-y-1">
           <p className="text-sm font-medium">Detalles:</p>
           {result.details.map((d, i) => (
-            <p key={i} className="text-xs text-destructive">
+            <p key={i} className="text-xs text-muted-foreground">
               {d}
             </p>
           ))}

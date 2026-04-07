@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, X, Loader2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Loader2, RefreshCw, X } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { dismissUnrecognizedEmail } from "@/actions/email-ingest";
+import { dismissUnrecognizedEmail, retryUnrecognizedEmail } from "@/actions/email-ingest";
 import { formatDate } from "@/lib/utils/date";
 import type { UnrecognizedEmail } from "@/types/domain";
 
@@ -16,6 +17,7 @@ export function UnrecognizedEmailsCard({ initialEmails }: UnrecognizedEmailsCard
   const [emails, setEmails] = useState(initialEmails);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   if (emails.length === 0) return null;
 
@@ -35,6 +37,26 @@ export function UnrecognizedEmailsCard({ initialEmails }: UnrecognizedEmailsCard
         setEmails((prev) => prev.filter((e) => e.id !== id));
       }
     });
+  }
+
+  async function handleRetry(id: string) {
+    setRetryingId(id);
+    try {
+      const result = await retryUnrecognizedEmail(id);
+      if (result.success) {
+        const messages: Record<string, string> = {
+          imported: "Transacción importada correctamente",
+          queued: "Transacción en cola para revisión",
+          duplicate: "La transacción ya existía",
+        };
+        toast.success(messages[result.data] ?? "Procesado correctamente");
+        setEmails((prev) => prev.filter((e) => e.id !== id));
+      } else {
+        toast.error(result.error || "No se pudo reprocesar el correo");
+      }
+    } finally {
+      setRetryingId(null);
+    }
   }
 
   return (
@@ -84,20 +106,36 @@ export function UnrecognizedEmailsCard({ initialEmails }: UnrecognizedEmailsCard
                       </p>
                     </div>
                   </button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleDismiss(email.id)}
-                    disabled={isPending}
-                    aria-label="Descartar"
-                  >
-                    {isPending ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <X className="size-4" />
-                    )}
-                  </Button>
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-8 text-muted-foreground hover:text-z-brass"
+                      onClick={() => handleRetry(email.id)}
+                      disabled={retryingId === email.id || isPending}
+                      aria-label="Reintentar"
+                    >
+                      {retryingId === email.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="size-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDismiss(email.id)}
+                      disabled={isPending || retryingId === email.id}
+                      aria-label="Descartar"
+                    >
+                      {isPending ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <X className="size-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 {isExpanded && (
