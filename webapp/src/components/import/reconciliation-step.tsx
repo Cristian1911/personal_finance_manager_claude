@@ -4,7 +4,10 @@ import { useActionState, useMemo, useState } from "react";
 import { CheckCircle2, GitMerge, Loader2, SplitSquareVertical } from "lucide-react";
 import { importTransactions } from "@/actions/import-transactions";
 import { trackClientEvent } from "@/lib/utils/analytics";
+import { formatCurrency } from "@/lib/utils/currency";
+import { formatDate } from "@/lib/utils/date";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -12,9 +15,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ActionResult } from "@/types/actions";
+import type { CurrencyCode } from "@/types/domain";
 import type {
   ImportResult,
   ReconciliationDecisionInput,
+  ReconciliationPreviewItem,
   ReconciliationPreviewResult,
   StatementMetaForImport,
   TransactionToImport,
@@ -22,16 +27,59 @@ import type {
 
 type ReviewChoice = "MERGE" | "KEEP_BOTH";
 
+function ReconciliationPairCard({
+  item,
+  currency,
+}: {
+  item: ReconciliationPreviewItem;
+  currency: CurrencyCode;
+}) {
+  const imported = item.importedTransaction;
+  const candidate = item.candidate;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between">
+        <div className="grid flex-1 grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Extracto</p>
+            <p className="text-sm font-medium leading-tight">{imported.raw_description}</p>
+            <p className="text-xs text-muted-foreground">{formatDate(imported.transaction_date)}</p>
+            <p className={`text-sm font-semibold ${imported.direction === "INFLOW" ? "text-z-income" : "text-z-debt"}`}>
+              {imported.direction === "OUTFLOW" ? "−" : "+"}{formatCurrency(imported.amount, currency)}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Existente</p>
+            <p className="text-sm font-medium leading-tight">
+              {candidate.raw_description ?? candidate.merchant_name}
+            </p>
+            <p className="text-xs text-muted-foreground">{formatDate(candidate.transaction_date)}</p>
+            <p className="text-sm font-semibold">
+              {formatCurrency(candidate.amount, currency)}
+            </p>
+          </div>
+        </div>
+        <Badge variant="outline" className="ml-2 shrink-0 text-xs">
+          {Math.round(item.candidate.score * 100)}%
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
 export function ReconciliationStep({
   transactions,
   statementMeta,
   preview,
+  currency,
   onComplete,
   onBack,
 }: {
   transactions: TransactionToImport[];
   statementMeta: StatementMetaForImport[];
   preview: ReconciliationPreviewResult;
+  currency: CurrencyCode;
   onComplete: (result: ImportResult) => void;
   onBack: () => void;
 }) {
@@ -141,13 +189,7 @@ export function ReconciliationStep({
           <CardContent className="space-y-3">
             {preview.autoMerge.map((item) => (
               <div key={`${item.statementIndex}:${item.transactionIndex}`} className="rounded-lg border p-3">
-                <p className="text-sm font-medium">{item.importedTransaction.raw_description}</p>
-                <p className="text-xs text-muted-foreground">
-                  Se fusionará con: {item.candidate.raw_description ?? item.candidate.merchant_name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Score {Math.round(item.candidate.score * 100)}%
-                </p>
+                <ReconciliationPairCard item={item} currency={currency} />
               </div>
             ))}
           </CardContent>
@@ -165,15 +207,7 @@ export function ReconciliationStep({
               const choice = reviewChoices[key] ?? "KEEP_BOTH";
               return (
                 <div key={key} className="rounded-lg border p-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">{item.importedTransaction.raw_description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Posible duplicado: {item.candidate.raw_description ?? item.candidate.merchant_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Score {Math.round(item.candidate.score * 100)}%
-                    </p>
-                  </div>
+                  <ReconciliationPairCard item={item} currency={currency} />
                   <div className="mt-3 flex gap-2">
                     <Button
                       type="button"

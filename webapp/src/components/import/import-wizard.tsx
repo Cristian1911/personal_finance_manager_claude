@@ -301,6 +301,7 @@ export function ImportWizard({
             transactions={preparedTransactions}
             statementMeta={preparedStatementMeta}
             preview={reconciliationPreview}
+            currency={(parseResult?.statements[0]?.currency ?? "COP") as CurrencyCode}
             onComplete={handleImportComplete}
             onBack={() => setStep("confirm")}
           />
