@@ -59,32 +59,36 @@ export async function testDestinatarioPattern(
   if (!user) return { success: false, error: "No autenticado" };
 
   // Use server-side filtering via ilike instead of fetching 1000 rows
-  let query = supabase
-    .from("transactions")
-    .select("id, raw_description, transaction_date, amount, currency_code")
-    .eq("user_id", user.id)
-    .is("destinatario_id", null)
-    .not("raw_description", "is", null);
+  const ilikePattern = matchType === "exact" ? pattern : `%${pattern}%`;
 
-  if (matchType === "exact") {
-    query = query.ilike("raw_description", pattern);
-  } else {
-    query = query.ilike("raw_description", `%${pattern}%`);
-  }
+  // Count query (exact total) + sample query (5 rows) in parallel
+  const [countResult, samplesResult] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .is("destinatario_id", null)
+      .not("raw_description", "is", null)
+      .ilike("raw_description", ilikePattern),
+    supabase
+      .from("transactions")
+      .select("id, raw_description, transaction_date, amount, currency_code")
+      .eq("user_id", user.id)
+      .is("destinatario_id", null)
+      .not("raw_description", "is", null)
+      .ilike("raw_description", ilikePattern)
+      .order("transaction_date", { ascending: false })
+      .limit(5),
+  ]);
 
-  const { data, error } = await query
-    .order("transaction_date", { ascending: false })
-    .limit(5);
-
-  if (error) return { success: false, error: error.message };
-
-  const matches = data ?? [];
+  if (countResult.error) return { success: false, error: countResult.error.message };
+  if (samplesResult.error) return { success: false, error: samplesResult.error.message };
 
   return {
     success: true,
     data: {
-      matchCount: matches.length,
-      samples: matches.map((tx) => ({
+      matchCount: countResult.count ?? 0,
+      samples: (samplesResult.data ?? []).map((tx) => ({
         id: tx.id,
         rawDescription: tx.raw_description!,
         date: tx.transaction_date,

@@ -210,7 +210,7 @@ export function DestinatarioPicker({
         </PopoverContent>
       </Popover>
 
-      {categories && (
+      {categories && showCreateDialog && (
         <InlineCreateDestinatarioDialog
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
@@ -279,11 +279,31 @@ function InlineCreateDestinatarioDialog({
   }
 
   function handleTestPatterns() {
-    const firstPattern = patterns.split(",")[0]?.trim();
-    if (!firstPattern) return;
+    const allPatterns = patterns
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (allPatterns.length === 0) return;
     startTestTransition(async () => {
-      const result = await testDestinatarioPattern(firstPattern, "contains");
-      if (result.success) setTestResult(result.data);
+      // Test all patterns and aggregate results
+      const results = await Promise.all(
+        allPatterns.map((p) => testDestinatarioPattern(p, "contains"))
+      );
+      const combined: PatternTestResult = { matchCount: 0, samples: [] };
+      const seenIds = new Set<string>();
+      for (const r of results) {
+        if (!r.success) continue;
+        combined.matchCount += r.data.matchCount;
+        for (const s of r.data.samples) {
+          if (!seenIds.has(s.id)) {
+            seenIds.add(s.id);
+            combined.samples.push(s);
+          }
+        }
+      }
+      // Limit displayed samples to 5
+      combined.samples = combined.samples.slice(0, 5);
+      setTestResult(combined);
     });
   }
 
