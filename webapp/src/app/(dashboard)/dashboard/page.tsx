@@ -50,6 +50,7 @@ import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { AttentionCard } from "@/components/ui/attention-card";
 import { getAttentionSnapshot } from "@/actions/attention";
+import { getAttentionItems } from "@/actions/attention-items";
 import { getRecentImpactEvents } from "@/actions/impact-events";
 import { RecentImpactsWidget } from "@/components/impact/recent-impacts-widget";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
@@ -269,12 +270,13 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, categoryBudgetResult, burnRateData] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, attentionItemsData, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, categoryBudgetResult, burnRateData] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
     getDebtFreeCountdown(currency),
     getAttentionSnapshot(),
+    getAttentionItems(),
     getRecentImpactEvents(3),
     getReminders("pending"),
     getWishlistItemsForDashboard(),
@@ -423,7 +425,7 @@ export default async function DashboardPage({
               nextPaymentAmount: heroData.pendingObligations[0]?.amount ?? null,
               currency: currency as CurrencyCode,
             }}
-            signals={attentionSnapshot.signals}
+            attentionItems={attentionItemsData}
             burnRateData={burnRateData}
             totalBudget={budgetSummary.totalTarget}
             recentTransactions={mobileRecentTx}

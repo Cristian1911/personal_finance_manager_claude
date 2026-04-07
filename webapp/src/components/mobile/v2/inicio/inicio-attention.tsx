@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   AlertTriangle,
   Calendar,
-  Mail,
   ArrowRight,
   ArrowUpRight,
   ArrowDownLeft,

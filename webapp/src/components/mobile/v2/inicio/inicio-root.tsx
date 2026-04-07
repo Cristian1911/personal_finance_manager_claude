@@ -2,13 +2,17 @@
 
 import { InicioHero } from "./inicio-hero";
 import { InicioMetricsGrid } from "./inicio-metrics-grid";
-import { InicioFocus } from "./inicio-focus";
 // Burndown is now inside InicioMetricsGrid as expanded view of Ritmo chip
 import { InicioDiscovery } from "./inicio-discovery";
 import { InicioActivity } from "./inicio-activity";
+import { InicioAttention } from "./inicio-attention";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
-import type { AttentionSignal } from "@/types/attention";
 import type { BurnRateResponse } from "@/actions/burn-rate";
+import type {
+  AttentionOverdueReminder,
+  AttentionUpcomingPayment,
+  AttentionPendingEmail,
+} from "@/actions/attention-items";
 import type { CurrencyCode } from "@/types/domain";
 
 export interface InicioRootProps {
@@ -38,7 +42,11 @@ export interface InicioRootProps {
     nextPaymentAmount: number | null;
     currency: CurrencyCode;
   };
-  signals: AttentionSignal[];
+  attentionItems: {
+    overdueReminders: AttentionOverdueReminder[];
+    upcomingPayments: AttentionUpcomingPayment[];
+    pendingEmails: AttentionPendingEmail[];
+  };
   burnRateData: BurnRateResponse | null;
   totalBudget: number;
   recentTransactions: Array<{
@@ -54,7 +62,7 @@ export interface InicioRootProps {
 export function InicioRoot({
   hero,
   metrics,
-  signals,
+  attentionItems,
   burnRateData,
   totalBudget,
   recentTransactions,
@@ -79,7 +87,14 @@ export function InicioRoot({
         onToggle={toggle}
       />
 
-      <InicioFocus signals={signals} />
+      <InicioAttention
+        overdueReminders={attentionItems.overdueReminders}
+        upcomingPayments={attentionItems.upcomingPayments}
+        pendingEmails={attentionItems.pendingEmails}
+        currency={currency}
+        expanded={activeZone}
+        onToggle={toggle}
+      />
 
       <InicioDiscovery
         expanded={activeZone}
