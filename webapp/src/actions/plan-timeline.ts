@@ -3,11 +3,14 @@
 import "server-only";
 
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getDailyCashflow } from "@/actions/charts";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
+import { getExchangeRate } from "@/actions/exchange-rate";
 import { getAccounts } from "@/actions/accounts";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
-import { parseMonth } from "@/lib/utils/date";
+import { parseMonth, monthStartStr, monthEndStr } from "@/lib/utils/date";
+import type { CurrencyCode, PlanningEntryType } from "@/types/domain";
 
 // --- Types ---
 
@@ -53,6 +56,68 @@ function emptyTimeline(): PlanTimelineData {
   };
 }
 
+// --- Planned entries helper ---
+
+interface PlannedEntryRow {
+  entry_type: PlanningEntryType;
+  day: number;
+  amount: number;
+  currency_code: string;
+  recurring_template_id: string | null;
+}
+
+async function getPlannedEntriesWithRates(
+  userId: string,
+  monthStart: string,
+  monthEnd: string,
+  chartCurrency: CurrencyCode
+): Promise<{ entries: PlannedEntryRow[]; rateMap: Map<string, number> }> {
+  const supabase = createAdminClient();
+
+  const { data: rows } = await supabase
+    .from("planning_entries")
+    .select(
+      "entry_type, expected_date, amount, currency_code, recurring_template_id, planning_periods!inner(id)"
+    )
+    .eq("user_id", userId)
+    .eq("status", "PLANNED")
+    .eq("planning_periods.is_active", true)
+    .lte("planning_periods.start_date", monthEnd)
+    .gte("planning_periods.end_date", monthStart)
+    .gte("expected_date", monthStart)
+    .lte("expected_date", monthEnd);
+
+  if (!rows || rows.length === 0) return { entries: [], rateMap: new Map() };
+
+  const entries: PlannedEntryRow[] = rows.map((e) => ({
+    entry_type: e.entry_type as PlanningEntryType,
+    day: parseInt(e.expected_date.split("-")[2], 10),
+    amount: Number(e.amount),
+    currency_code: e.currency_code,
+    recurring_template_id: e.recurring_template_id,
+  }));
+
+  // Batch-fetch exchange rates for foreign currencies
+  const foreignCurrencies = new Set(
+    entries
+      .filter((e) => e.currency_code !== chartCurrency)
+      .map((e) => e.currency_code)
+  );
+
+  const rateMap = new Map<string, number>();
+  if (foreignCurrencies.size > 0) {
+    const rates = await Promise.all(
+      [...foreignCurrencies].map(async (fc) => {
+        const r = await getExchangeRate(fc as CurrencyCode, chartCurrency);
+        return [fc, r?.rate ?? 1] as const;
+      })
+    );
+    for (const [fc, rate] of rates) rateMap.set(fc, rate);
+  }
+
+  return { entries, rateMap };
+}
+
 // --- Main ---
 
 export async function getPlanTimelineData(
@@ -73,15 +138,25 @@ export async function getPlanTimelineData(
   const isCurrentMonth =
     target.getFullYear() === now.getFullYear() &&
     target.getMonth() === now.getMonth();
+  const isPastMonth =
+    !isCurrentMonth &&
+    (target.getFullYear() < now.getFullYear() ||
+      (target.getFullYear() === now.getFullYear() &&
+        target.getMonth() < now.getMonth()));
   const dayOfMonth = isCurrentMonth ? now.getDate() : daysInMonth;
 
   const remainingDays = isCurrentMonth ? daysInMonth - dayOfMonth : daysInMonth;
 
-  const [dailyCashflow, upcomingRecurrences, accountsResult] =
+  const chartCurrency = (_currency || "COP") as CurrencyCode;
+  const mStart = monthStartStr(target);
+  const mEnd = monthEndStr(target);
+
+  const [dailyCashflow, upcomingRecurrences, accountsResult, planned] =
     await Promise.all([
       getDailyCashflow(month),
       getUpcomingRecurrences(remainingDays > 0 ? remainingDays : 0),
       getAccounts(),
+      getPlannedEntriesWithRates(user.id, mStart, mEnd, chartCurrency),
     ]);
 
   const accounts = accountsResult.success ? accountsResult.data : [];
@@ -105,8 +180,42 @@ export async function getPlanTimelineData(
     });
   }
 
-  // Filter recurrences to the target month
-  const monthStr = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}`;
+  // --- Merge planning entries (PLANNED only, future days) ---
+  const planningTemplateKeys = new Set<string>();
+  const { entries: plannedEntries, rateMap } = planned;
+
+  for (const pe of plannedEntries) {
+    // Past months have real data for all days; current month for days up to today
+    if (isPastMonth || (isCurrentMonth && pe.day <= dayOfMonth)) continue;
+
+    // Track template-based entries for deduplication with recurrences
+    if (pe.recurring_template_id) {
+      planningTemplateKeys.add(`${pe.recurring_template_id}|${pe.day}`);
+    }
+
+    const amount =
+      pe.currency_code !== chartCurrency
+        ? pe.amount * (rateMap.get(pe.currency_code) ?? 1)
+        : pe.amount;
+
+    const existing = dayMap.get(pe.day) ?? {
+      income: 0,
+      expense: 0,
+      isReal: false,
+    };
+
+    if (pe.entry_type === "INCOME") {
+      existing.income += amount;
+    } else {
+      existing.expense += amount;
+    }
+
+    existing.isReal = false;
+    dayMap.set(pe.day, existing);
+  }
+
+  // --- Merge recurring template projections (skip if covered by planning entry) ---
+  const monthStr = mStart.substring(0, 7);
 
   for (const recurrence of upcomingRecurrences) {
     // Only include recurrences within the target month
@@ -116,6 +225,10 @@ export async function getPlanTimelineData(
 
     // Skip past days — they already have real data
     if (isCurrentMonth && recDay <= dayOfMonth) continue;
+
+    // Skip if a planning entry already covers this template+day
+    if (planningTemplateKeys.has(`${recurrence.template.id}|${recDay}`))
+      continue;
 
     const t = recurrence.template;
     const isDebtAccount = isDebtAccountType(t.account.account_type);

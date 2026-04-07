@@ -49,7 +49,7 @@ export function PeriodHeader({ data, isExpired = false }: PeriodHeaderProps) {
             <TrendingUp className="h-3 w-3 text-z-income" />
             Ingresos
           </div>
-          <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-income">
+          <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-income truncate">
             {formatCurrency(total_income, currency)}
           </p>
         </div>
@@ -58,7 +58,7 @@ export function PeriodHeader({ data, isExpired = false }: PeriodHeaderProps) {
             <TrendingDown className="h-3 w-3 text-z-expense" />
             Gastos
           </div>
-          <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-expense">
+          <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-expense truncate">
             {formatCurrency(total_expenses, currency)}
           </p>
         </div>
@@ -67,7 +67,7 @@ export function PeriodHeader({ data, isExpired = false }: PeriodHeaderProps) {
             {surplus >= 0 ? "Superávit" : "Déficit"}
           </p>
           <p
-            className={`text-sm sm:text-lg font-semibold tabular-nums ${
+            className={`text-sm sm:text-lg font-semibold tabular-nums truncate ${
               surplus >= 0 ? "text-z-income" : "text-z-expense"
             }`}
           >
