@@ -180,6 +180,8 @@ export default async function TransactionDetailPage({
                 transactionId={tx.id}
                 currentDestinatarioId={tx.destinatario_id}
                 destinatarios={destinatarios}
+                rawDescription={tx.raw_description}
+                categories={categories}
               />
             </CardContent>
           </Card>
