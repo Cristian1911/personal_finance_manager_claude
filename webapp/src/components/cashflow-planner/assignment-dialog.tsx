@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -146,12 +146,8 @@ export function AssignmentDialog({
           {selectedIncome && (
             <div className="space-y-2">
               <Label htmlFor="assign-amount">Monto a asignar</Label>
-              <Input
+              <CurrencyInput
                 id="assign-amount"
-                type="number"
-                step="0.01"
-                min="0.01"
-                max={expenseRemaining}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="bg-card border-white/6"

@@ -6,6 +6,7 @@ import { createWishlistItem } from "@/actions/wishlist";
 import type { CurrencyCode } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 type DeseosQuickAddProps = {
   currency: CurrencyCode;
@@ -56,13 +57,10 @@ export function DeseosQuickAdd({ currency }: DeseosQuickAddProps) {
           className="flex-1"
           disabled={isPending}
         />
-        <Input
+        <CurrencyInput
           name="amount"
-          type="number"
           placeholder="Monto"
           required
-          min={1}
-          step="any"
           className="w-32"
           disabled={isPending}
         />
