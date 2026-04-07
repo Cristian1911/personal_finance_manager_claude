@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Check, MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react";
+import { ArrowRightLeft, Check, MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react";
 import { deletePlanningEntry, toggleEntryStatus } from "@/actions/cashflow-planner";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -93,12 +93,12 @@ export function ExpenseEntryRow({
       </button>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {entry.category && (
             <span className="text-xs">{entry.category.icon}</span>
           )}
           <span className="text-sm font-medium truncate">{entry.label}</span>
-          <Badge variant="outline" className={`text-[10px] ${badge.className}`}>
+          <Badge variant="outline" className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 ${badge.className}`}>
             {badge.label}
           </Badge>
         </div>
@@ -108,7 +108,7 @@ export function ExpenseEntryRow({
         </div>
       </div>
 
-      <div className="text-right shrink-0">
+      <div className="text-right shrink-0 min-w-[70px]">
         <p className="text-sm font-semibold tabular-nums">
           {formatCurrency(Number(entry.amount), entry.currency_code)}
         </p>
@@ -130,7 +130,7 @@ export function ExpenseEntryRow({
             variant="ghost"
             size="sm"
             onClick={onAssign}
-            className="shrink-0 text-xs"
+            className="shrink-0 text-xs hidden sm:inline-flex"
           >
             Asignar
           </Button>
@@ -142,6 +142,12 @@ export function ExpenseEntryRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {showAssignButton && remaining > 0 && entry.status !== "SKIPPED" && onAssign && (
+              <DropdownMenuItem onClick={onAssign} className="sm:hidden">
+                <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+                Asignar
+              </DropdownMenuItem>
+            )}
             {onEdit && (
               <DropdownMenuItem onClick={() => onEdit(entry)}>
                 <Pencil className="mr-2 h-3.5 w-3.5" />

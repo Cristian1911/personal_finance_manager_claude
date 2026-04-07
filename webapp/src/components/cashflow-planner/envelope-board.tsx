@@ -48,7 +48,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
 
   return (
     <>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Income envelopes */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
