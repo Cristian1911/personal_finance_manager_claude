@@ -166,6 +166,29 @@ export async function updateReminder(
   return { success: true, data: null };
 }
 
+export async function postponeReminder(
+  id: string
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const newDate = tomorrow.toISOString().slice(0, 10);
+
+  const { error } = await supabase
+    .from("financial_reminders")
+    .update({ due_date: newDate })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("reminders", "zeta");
+  revalidateTag("attention", "zeta");
+  return { success: true, data: null };
+}
+
 export async function deleteReminder(
   id: string
 ): Promise<ActionResult<null>> {
