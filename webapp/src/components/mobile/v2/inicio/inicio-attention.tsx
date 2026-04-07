@@ -102,7 +102,7 @@ export function InicioAttention({
           )}
           aria-expanded={isActive("vencidos")}
         >
-          <p className="text-[22px] font-[680] leading-tight text-red-500">
+          <p className={cn("text-[22px] font-[680] leading-tight", overdueReminders.length > 0 ? "text-red-500" : "text-muted-foreground")}>
             {overdueReminders.length}
           </p>
           <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">

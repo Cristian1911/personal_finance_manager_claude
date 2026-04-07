@@ -4,6 +4,7 @@ import { cache } from "react";
 import { revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { reminderSchema } from "@/lib/validators/reminders";
+import { toISODateString } from "@/lib/utils/date";
 import type { ActionResult } from "@/types/actions";
 import type { FinancialReminder } from "@/types/domain";
 
@@ -174,7 +175,7 @@ export async function postponeReminder(
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const newDate = tomorrow.toISOString().slice(0, 10);
+  const newDate = toISODateString(tomorrow);
 
   const { error } = await supabase
     .from("financial_reminders")
