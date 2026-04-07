@@ -87,7 +87,7 @@ export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelop
           </button>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-income">
               {formatCurrency(Number(entry.amount), entry.currency_code)}
             </p>
