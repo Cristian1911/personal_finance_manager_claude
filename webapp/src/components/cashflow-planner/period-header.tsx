@@ -44,30 +44,30 @@ export function PeriodHeader({ data, isExpired = false }: PeriodHeaderProps) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <div className="rounded-lg border border-white/6 bg-card p-2.5 sm:p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
-            <TrendingUp className="h-3 w-3 text-z-income" />
-            Ingresos
+        <div className="rounded-lg border border-white/6 bg-card p-2 sm:p-3 space-y-1 min-w-0">
+          <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
+            <TrendingUp className="h-3 w-3 shrink-0 text-z-income" />
+            <span className="truncate">Ingresos</span>
           </div>
-          <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-income">
+          <p className="truncate text-[13px] sm:text-lg font-semibold tabular-nums text-z-income">
             {formatCurrency(total_income, currency)}
           </p>
         </div>
-        <div className="rounded-lg border border-white/6 bg-card p-2.5 sm:p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
-            <TrendingDown className="h-3 w-3 text-z-expense" />
-            Gastos
+        <div className="rounded-lg border border-white/6 bg-card p-2 sm:p-3 space-y-1 min-w-0">
+          <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
+            <TrendingDown className="h-3 w-3 shrink-0 text-z-expense" />
+            <span className="truncate">Gastos</span>
           </div>
-          <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-expense">
+          <p className="truncate text-[13px] sm:text-lg font-semibold tabular-nums text-z-expense">
             {formatCurrency(total_expenses, currency)}
           </p>
         </div>
-        <div className="rounded-lg border border-white/6 bg-card p-2.5 sm:p-3 space-y-1">
-          <p className="text-[10px] sm:text-xs text-muted-foreground">
+        <div className="rounded-lg border border-white/6 bg-card p-2 sm:p-3 space-y-1 min-w-0">
+          <p className="truncate text-[10px] sm:text-xs text-muted-foreground">
             {surplus >= 0 ? "Superávit" : "Déficit"}
           </p>
           <p
-            className={`text-sm sm:text-lg font-semibold tabular-nums ${
+            className={`truncate text-[13px] sm:text-lg font-semibold tabular-nums ${
               surplus >= 0 ? "text-z-income" : "text-z-expense"
             }`}
           >

@@ -61,6 +61,7 @@ export default async function CategoriesPage({
       <PageHeaderRow
         title="Presupuesto"
         subtitle={`${monthLabel} · ${daysRemaining} días restantes`}
+        className="hidden lg:flex"
         actions={
           <>
             <Button asChild className={BRASS_BUTTON_CLASS}>
@@ -70,9 +71,7 @@ export default async function CategoriesPage({
               </Link>
             </Button>
             <MonthPlanner categories={outflowCategories} />
-            <div className="hidden lg:block">
-              <MonthSelector />
-            </div>
+            <MonthSelector />
           </>
         }
       />
