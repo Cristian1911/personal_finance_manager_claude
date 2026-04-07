@@ -270,7 +270,7 @@ export default async function DashboardPage({
   }
 
   // ── Tier 1: hero + health meters — rendered immediately ──
-  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, attentionItemsData, impactEvents, pendingReminders, wishlistDashboard, wishlistNudges, budgetSummary, categoryBudgetResult, burnRateData] = await Promise.all([
+  const [heroData, healthMetersData, allocationData, debtCountdownData, attentionSnapshot, attentionItemsData, impactEvents, pendingReminders, completedReminders, wishlistDashboard, wishlistNudges, budgetSummary, categoryBudgetResult, burnRateData] = await Promise.all([
     getDashboardHeroData(month, currency),
     getHealthMeters(currency, month),
     get503020Allocation(month, currency),
@@ -279,6 +279,7 @@ export default async function DashboardPage({
     getAttentionItems(),
     getRecentImpactEvents(3),
     getReminders("pending"),
+    getReminders("completed"),
     getWishlistItemsForDashboard(),
     getWishlistNudges(),
     getBudgetSummary(month),
@@ -286,7 +287,7 @@ export default async function DashboardPage({
     getBurnRate(currency),
   ]);
 
-  const dashboardReminders = pendingReminders.slice(0, 5);
+  const recentCompletedReminders = completedReminders.slice(0, 10);
   const mobileRecentTx = recentTx.map((tx) => ({
     id: tx.id,
     description: tx.merchant_name || tx.clean_description || "Sin descripción",
@@ -481,7 +482,7 @@ export default async function DashboardPage({
             {/* ── Impact + Pendientes ── */}
             <div className="grid gap-4 xl:grid-cols-2">
               <RecentImpactsWidget events={impactEvents} />
-              <PendientesWidget reminders={dashboardReminders} />
+              <PendientesWidget reminders={pendingReminders} completedReminders={recentCompletedReminders} />
             </div>
 
             {/* ── Deseos ── */}

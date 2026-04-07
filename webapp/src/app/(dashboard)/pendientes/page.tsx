@@ -1,42 +1,5 @@
-import { connection } from "next/server";
-import { getReminders } from "@/actions/reminders";
-import { RemindersList } from "@/components/reminders/reminders-list";
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { SectionEyebrow } from "@/components/ui/section-eyebrow";
-import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
+import { redirect } from "next/navigation";
 
-export default async function PendientesPage() {
-  await connection();
-  const [pending, completed] = await Promise.all([
-    getReminders("pending"),
-    getReminders("completed"),
-  ]);
-
-  const recentCompleted = completed.slice(0, 10);
-
-  return (
-    <div className={PAGE_STACK_CLASS}>
-      <MobileHeader variant="sub" title="Pendientes" backHref="/dashboard" />
-
-      <div className="hidden lg:block space-y-1">
-        <SectionEyebrow>Pendientes</SectionEyebrow>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Tu lista de pendientes financieros
-        </h1>
-        <p className="text-muted-foreground">
-          Cosas que debes pagar o resolver. No son recurrentes, solo tareas puntuales.
-        </p>
-      </div>
-
-      <div className="lg:hidden space-y-1">
-        <SectionEyebrow>Pendientes</SectionEyebrow>
-        <h1 className="text-2xl font-semibold">Tus pendientes financieros</h1>
-        <p className="text-sm text-muted-foreground">
-          Tareas puntuales que debes pagar o resolver.
-        </p>
-      </div>
-
-      <RemindersList pending={pending} completed={recentCompleted} />
-    </div>
-  );
+export default function PendientesPage() {
+  redirect("/dashboard");
 }

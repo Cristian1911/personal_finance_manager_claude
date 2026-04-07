@@ -3,10 +3,7 @@ import {
   Contact,
   FileUp,
   Landmark,
-  PiggyBank,
-  Repeat2,
   Settings,
-  Tag,
   Tags,
   Wallet,
   type LucideIcon,
@@ -17,10 +14,7 @@ const LINKS: { href: string; icon: LucideIcon; label: string }[] = [
   { href: "/destinatarios", icon: Contact, label: "Destinatarios" },
   { href: "/import", icon: FileUp, label: "Importar" },
   { href: "/accounts", icon: Wallet, label: "Cuentas" },
-  { href: "/presupuesto", icon: PiggyBank, label: "Presupuesto" },
   { href: "/deudas", icon: Landmark, label: "Deudas" },
-  { href: "/recurrentes", icon: Repeat2, label: "Recurrentes" },
-  { href: "/etiquetas", icon: Tag, label: "Etiquetas" },
   { href: "/settings", icon: Settings, label: "Ajustes" },
 ];
 
