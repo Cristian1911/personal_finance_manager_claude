@@ -108,8 +108,8 @@ export function ExpenseEntryRow({
         </div>
       </div>
 
-      <div className="min-w-0 text-right">
-        <p className="truncate text-sm font-semibold tabular-nums">
+      <div className="text-right shrink-0">
+        <p className="text-sm font-semibold tabular-nums">
           {formatCurrency(Number(entry.amount), entry.currency_code)}
         </p>
         {isForeignCurrency && (
