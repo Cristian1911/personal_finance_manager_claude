@@ -138,6 +138,11 @@ export async function getPlanTimelineData(
   const isCurrentMonth =
     target.getFullYear() === now.getFullYear() &&
     target.getMonth() === now.getMonth();
+  const isPastMonth =
+    !isCurrentMonth &&
+    (target.getFullYear() < now.getFullYear() ||
+      (target.getFullYear() === now.getFullYear() &&
+        target.getMonth() < now.getMonth()));
   const dayOfMonth = isCurrentMonth ? now.getDate() : daysInMonth;
 
   const remainingDays = isCurrentMonth ? daysInMonth - dayOfMonth : daysInMonth;
@@ -180,8 +185,8 @@ export async function getPlanTimelineData(
   const { entries: plannedEntries, rateMap } = planned;
 
   for (const pe of plannedEntries) {
-    // Skip past days — they already have real data
-    if (isCurrentMonth && pe.day <= dayOfMonth) continue;
+    // Past months have real data for all days; current month for days up to today
+    if (isPastMonth || (isCurrentMonth && pe.day <= dayOfMonth)) continue;
 
     // Track template-based entries for deduplication with recurrences
     if (pe.recurring_template_id) {
