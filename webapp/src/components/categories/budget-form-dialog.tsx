@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
     Dialog,
     DialogContent,
@@ -87,12 +87,11 @@ export function BudgetFormDialog({
                 <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
                         <label htmlFor="amount" className="text-sm font-medium">Monto Mensual</label>
-                        <Input
+                        <CurrencyInput
                             id="amount"
-                            type="number"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            placeholder="Ej: 500000"
+                            placeholder="Ej: 500.000"
                         />
                     </div>
                 </div>

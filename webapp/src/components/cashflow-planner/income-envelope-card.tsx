@@ -61,7 +61,7 @@ export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelop
   return (
     <div className="rounded-xl border border-white/6 bg-card p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={handleToggleStatus}
@@ -77,18 +77,18 @@ export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelop
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-left"
+            className="text-left min-w-0"
           >
-            <p className="text-sm font-semibold">{entry.label}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm font-semibold truncate">{entry.label}</p>
+            <p className="text-xs text-muted-foreground truncate">
               {formatDate(entry.expected_date)}
               {entry.account && ` · ${entry.account.name}`}
             </p>
           </button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <div className="text-right shrink-0">
-            <p className="text-base sm:text-lg font-semibold tabular-nums text-z-income">
+            <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-income">
               {formatCurrency(Number(entry.amount), entry.currency_code)}
             </p>
             {isForeignCurrency && (
@@ -147,7 +147,7 @@ export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelop
                 <span className="text-sm truncate">
                   {expense_entry.label}
                 </span>
-                <Badge variant="outline" className="text-[10px] shrink-0">
+                <Badge variant="outline" className="text-[10px] shrink-0 hidden sm:inline-flex">
                   {formatDate(expense_entry.expected_date)}
                 </Badge>
               </div>

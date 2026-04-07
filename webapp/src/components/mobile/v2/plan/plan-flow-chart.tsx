@@ -4,205 +4,430 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
-import { StateChip } from "@/components/mobile/v2/state-chip";
 import { MobileZone } from "@/components/mobile/v2/mobile-zone";
-import type { CurrencyCode, UpcomingRecurrence } from "@/types/domain";
+import type { PlanTimelineData } from "@/actions/plan-timeline";
+import type { CurrencyCode } from "@/types/domain";
 
 interface PlanFlowChartProps {
-  upcoming: UpcomingRecurrence[];
+  timelineData: PlanTimelineData;
   currency: CurrencyCode;
-  daysInMonth: number;
-  dayOfMonth: number;
 }
 
-interface DayBar {
-  day: number;
-  income: number;
-  expense: number;
+// SVG dimensions
+const W = 360;
+const H = 180;
+const BASELINE_Y = 90;
+const PAD_L = 32;
+const PAD_R = 10;
+const PAD_T = 15;
+const USABLE_W = W - PAD_L - PAD_R; // 318
+
+function dayX(day: number, daysInMonth: number): number {
+  return PAD_L + ((day - 1) / Math.max(daysInMonth - 1, 1)) * USABLE_W;
 }
 
-export function PlanFlowChart({
-  upcoming,
-  currency,
-  daysInMonth,
-  dayOfMonth,
-}: PlanFlowChartProps) {
-  // Aggregate income/expenses by day
-  const { dayBars, maxVal, paymentsBefore, totalIncome, totalExpense } = useMemo(() => {
-    const dayMap = new Map<number, { income: number; expense: number }>();
+export function PlanFlowChart({ timelineData, currency }: PlanFlowChartProps) {
+  const {
+    days,
+    cumulativeBalance,
+    totalIncome,
+    totalExpense,
+    dangerZone,
+    daysInMonth,
+    dayOfMonth,
+  } = timelineData;
 
-    for (const item of upcoming) {
-      const t = item.template;
-      const day = parseInt(item.next_date.split("-")[2], 10);
-      const entry = dayMap.get(day) ?? { income: 0, expense: 0 };
-      if (t.direction === "INFLOW") {
-        entry.income += t.amount;
-      } else {
-        entry.expense += t.amount;
+  const chart = useMemo(() => {
+    if (days.length === 0) return null;
+
+    // Max bar value for scaling
+    let maxVal = 1;
+    for (const d of days) {
+      maxVal = Math.max(maxVal, d.income, d.expense);
+    }
+
+    // Max absolute balance value for balance polyline scaling
+    let maxAbsBalance = 1;
+    for (const pt of cumulativeBalance) {
+      maxAbsBalance = Math.max(maxAbsBalance, Math.abs(pt.balance));
+    }
+
+    const barW = Math.min(12, USABLE_W / (days.length * 2.5));
+    const scaleUp = (BASELINE_Y - PAD_T) / maxVal;
+    const scaleDown = (H - BASELINE_Y - 30) / maxVal;
+
+    // Balance Y scale: centered on BASELINE_Y
+    const balanceRange = Math.min(BASELINE_Y - PAD_T, H - BASELINE_Y - 30);
+    const balanceScale = balanceRange / maxAbsBalance;
+
+    // Build bar elements
+    const barElements: Array<{
+      key: number;
+      x: number;
+      day: number;
+      income: number;
+      expense: number;
+      isReal: boolean;
+      incomeH: number;
+      expenseH: number;
+      barW: number;
+    }> = [];
+
+    for (const d of days) {
+      const x = dayX(d.day, daysInMonth);
+      barElements.push({
+        key: d.day,
+        x,
+        day: d.day,
+        income: d.income,
+        expense: d.expense,
+        isReal: d.isReal,
+        incomeH: d.income * scaleUp,
+        expenseH: d.expense * scaleDown,
+        barW,
+      });
+    }
+
+    // Build cumulative balance polyline points
+    const balancePoints: Array<{ x: number; y: number; day: number }> = [];
+    for (const pt of cumulativeBalance) {
+      const x = dayX(pt.day, daysInMonth);
+      const y = BASELINE_Y - pt.balance * balanceScale;
+      balancePoints.push({ x, y, day: pt.day });
+    }
+
+    // Split balance points into past/future
+    const pastBalancePoints = balancePoints.filter(
+      (p) => p.day <= dayOfMonth
+    );
+    const futureBalancePoints = balancePoints.filter(
+      (p) => p.day >= dayOfMonth
+    );
+
+    // Grid lines (3 horizontal lines above and below baseline)
+    const gridYPositions = [
+      PAD_T,
+      PAD_T + (BASELINE_Y - PAD_T) / 2,
+      BASELINE_Y + (H - BASELINE_Y - 30) / 2,
+      H - 30,
+    ];
+
+    // Day labels: day 1, every 5th, and last day
+    const todayX = dayX(dayOfMonth, daysInMonth);
+    const dayLabels: Array<{ day: number; x: number }> = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isFirst = d === 1;
+      const isLast = d === daysInMonth;
+      const isFifth = d % 5 === 0;
+      if (isFirst || isLast || isFifth) {
+        // Skip if too close to "Hoy" marker
+        const dx = dayX(d, daysInMonth);
+        if (Math.abs(dx - todayX) > 12 || d === dayOfMonth) {
+          if (d !== dayOfMonth) {
+            dayLabels.push({ day: d, x: dx });
+          }
+        }
       }
-      dayMap.set(day, entry);
     }
 
-    const bars: DayBar[] = Array.from(dayMap.entries())
-      .map(([day, vals]) => ({ day, ...vals }))
-      .sort((a, b) => a.day - b.day);
-
-    let max = 0;
-    let totIn = 0;
-    let totOut = 0;
-    for (const b of bars) {
-      max = Math.max(max, b.income, b.expense);
-      totIn += b.income;
-      totOut += b.expense;
+    // Danger zone X range
+    let dangerRect: {
+      x: number;
+      width: number;
+    } | null = null;
+    if (dangerZone) {
+      const x1 = dayX(dangerZone.startDay, daysInMonth);
+      const x2 = dayX(dangerZone.endDay, daysInMonth);
+      dangerRect = {
+        x: x1 - barW / 2,
+        width: x2 - x1 + barW,
+      };
     }
-
-    // Count expense events before first income event
-    const firstIncomeDay = bars.find((b) => b.income > 0)?.day ?? daysInMonth;
-    const pBefore = bars.filter(
-      (b) => b.expense > 0 && b.day < firstIncomeDay
-    ).length;
 
     return {
-      dayBars: bars,
-      maxVal: max || 1,
-      paymentsBefore: pBefore,
-      totalIncome: totIn,
-      totalExpense: totOut,
+      barElements,
+      pastBalancePoints,
+      futureBalancePoints,
+      gridYPositions,
+      dayLabels,
+      todayX,
+      maxVal,
+      dangerRect,
     };
-  }, [upcoming, daysInMonth]);
+  }, [days, cumulativeBalance, daysInMonth, dayOfMonth, dangerZone]);
 
-  if (dayBars.length === 0) {
+  // Empty state
+  if (days.length === 0 || !chart) {
     return (
       <MobileZone eyebrow="FLUJO DEL MES">
-        <div className={cn(PANEL_INSET_CLASS, "py-8 text-center text-xs text-muted-foreground")}>
-          Sin pagos o ingresos programados
+        <div
+          className={cn(
+            PANEL_INSET_CLASS,
+            "py-8 text-center text-xs text-muted-foreground"
+          )}
+        >
+          Sin pagos o ingresos en este mes
         </div>
       </MobileZone>
     );
   }
 
-  // Chart dimensions
-  const W = 300;
-  const H = 120;
-  const padL = 35;
-  const padR = 10;
-  const padT = 10;
-  const baseline = 65; // Y position of $0 line
-  const barW = Math.min(14, (W - padL - padR) / (dayBars.length * 2.5));
-  const scaleUp = (baseline - padT) / maxVal;
-  const scaleDown = (H - baseline - 20) / maxVal; // 20px for labels
+  const {
+    barElements,
+    pastBalancePoints,
+    futureBalancePoints,
+    gridYPositions,
+    dayLabels,
+    todayX,
+    maxVal,
+    dangerRect,
+  } = chart;
 
-  // Position bars spread across width
-  const usableW = W - padL - padR;
-  const step = dayBars.length > 1 ? usableW / (dayBars.length - 1) : usableW / 2;
+  const net = totalIncome - totalExpense;
 
-  // Today position
-  const todayX = padL + ((dayOfMonth - 1) / (daysInMonth - 1)) * usableW;
+  const toSVGPath = (pts: typeof pastBalancePoints) =>
+    pts.length > 1 ? pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") : "";
+
+  const pastBalancePath = toSVGPath(pastBalancePoints);
+  const futureBalancePath = toSVGPath(futureBalancePoints);
 
   return (
     <MobileZone eyebrow="FLUJO DEL MES">
       <div className={cn(PANEL_INSET_CLASS, "p-3.5")}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[13px] font-semibold">Pagos e ingresos</span>
-          {paymentsBefore > 0 && (
-            <StateChip
-              label={`${paymentsBefore} pago${paymentsBefore > 1 ? "s" : ""} antes del ingreso`}
-              variant="warn"
+        {/* SVG chart */}
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full"
+          style={{ height: 180 }}
+        >
+          <defs>
+            {dangerRect && (
+              <linearGradient
+                id="dangerGrad"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop offset="0%" stopColor="transparent" />
+                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.25" />
+              </linearGradient>
+            )}
+          </defs>
+
+          {/* Grid lines */}
+          {gridYPositions.map((y) => (
+            <line
+              key={y}
+              x1={PAD_L}
+              y1={y}
+              x2={W - PAD_R}
+              y2={y}
+              stroke="rgba(255,255,255,0.03)"
+              strokeWidth="1"
             />
-          )}
-        </div>
+          ))}
 
-        {/* Bar chart SVG */}
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 120 }}>
-          {/* Baseline */}
+          {/* ZERO LINE (brass) */}
           <line
-            x1={padL}
-            y1={baseline}
-            x2={W - padR}
-            y2={baseline}
-            stroke="#2a2d28"
-            strokeWidth="1"
+            x1={PAD_L}
+            y1={BASELINE_Y}
+            x2={W - PAD_R}
+            y2={BASELINE_Y}
+            stroke="var(--z-brass)"
+            strokeWidth="1.5"
+            strokeOpacity="0.4"
           />
-
-          {/* Y-axis labels */}
-          <text x={padL - 4} y={padT + 4} fill="var(--z-sage-dark)" fontSize="7" textAnchor="end">
-            {formatCurrency(maxVal, currency)}
-          </text>
-          <text x={padL - 4} y={baseline + 3} fill="var(--z-sage-dark)" fontSize="7" textAnchor="end">
+          <text
+            x={PAD_L - 4}
+            y={BASELINE_Y + 3}
+            fill="var(--z-brass)"
+            fontSize="7"
+            textAnchor="end"
+            fontWeight="500"
+          >
             $0
           </text>
 
-          {/* "Hoy" marker */}
+          {/* Y-axis max label */}
+          <text
+            x={PAD_L - 4}
+            y={PAD_T + 4}
+            fill="var(--z-sage-dark)"
+            fontSize="7"
+            textAnchor="end"
+          >
+            {formatCurrency(maxVal, currency)}
+          </text>
+
+          {/* Danger zone rect */}
+          {dangerRect && (
+            <rect
+              x={dangerRect.x}
+              y={BASELINE_Y}
+              width={dangerRect.width}
+              height={H - BASELINE_Y - 30}
+              fill="url(#dangerGrad)"
+              rx="2"
+            />
+          )}
+
+          {/* Today marker */}
           <line
             x1={todayX}
-            y1={padT - 2}
+            y1={PAD_T - 2}
             x2={todayX}
-            y2={H - 14}
-            stroke="rgba(255,255,255,0.1)"
+            y2={H - 18}
+            stroke="rgba(255,255,255,0.12)"
             strokeWidth="1"
-            strokeDasharray="3,3"
+            strokeDasharray="4,3"
           />
+          <text
+            x={todayX}
+            y={H - 8}
+            fill="var(--z-sage-light)"
+            fontSize="7"
+            fontWeight="600"
+            textAnchor="middle"
+          >
+            Hoy
+          </text>
 
           {/* Bars */}
-          {dayBars.map((bar, i) => {
-            const x = padL + (dayBars.length > 1 ? i * step : usableW / 2);
-            const isPast = bar.day < dayOfMonth;
-            const isFuture = bar.day > dayOfMonth;
-
+          {barElements.map((bar) => {
+            const isPast = bar.isReal || bar.day <= dayOfMonth;
             return (
-              <g key={bar.day}>
+              <g key={bar.key}>
                 {/* Income bar (UP from baseline) */}
                 {bar.income > 0 && (
                   <rect
-                    x={x - barW / 2}
-                    y={baseline - bar.income * scaleUp}
-                    width={barW}
-                    height={bar.income * scaleUp}
+                    x={bar.x - bar.barW / 2}
+                    y={BASELINE_Y - bar.incomeH}
+                    width={bar.barW}
+                    height={bar.incomeH}
                     rx={3}
                     fill="var(--z-income)"
-                    opacity={isFuture ? 0.5 : 0.85}
+                    opacity={isPast ? 0.85 : 0.35}
+                    stroke={isPast ? "none" : "var(--z-income)"}
+                    strokeWidth={isPast ? 0 : 0.5}
+                    strokeDasharray={isPast ? "none" : "2,2"}
+                    strokeOpacity={isPast ? 0 : 0.6}
                   />
                 )}
                 {/* Expense bar (DOWN from baseline) */}
                 {bar.expense > 0 && (
                   <rect
-                    x={x - barW / 2}
-                    y={baseline}
-                    width={barW}
-                    height={bar.expense * scaleDown}
+                    x={bar.x - bar.barW / 2}
+                    y={BASELINE_Y}
+                    width={bar.barW}
+                    height={bar.expenseH}
                     rx={3}
                     fill="var(--z-debt)"
-                    opacity={isFuture ? 0.45 : 0.75}
+                    opacity={isPast ? 0.75 : 0.35}
+                    stroke={isPast ? "none" : "var(--z-debt)"}
+                    strokeWidth={isPast ? 0 : 0.5}
+                    strokeDasharray={isPast ? "none" : "2,2"}
+                    strokeOpacity={isPast ? 0 : 0.6}
                   />
                 )}
-                {/* Day label */}
-                <text
-                  x={x}
-                  y={H - 4}
-                  fill={bar.day === dayOfMonth ? "var(--z-sage-light)" : "var(--z-sage-dark)"}
-                  fontSize="7"
-                  fontWeight={bar.day === dayOfMonth ? "600" : "400"}
-                  textAnchor="middle"
-                >
-                  {bar.day === dayOfMonth ? "Hoy" : bar.day}
-                </text>
               </g>
             );
           })}
+
+          {/* Cumulative balance polyline — past (solid) */}
+          {pastBalancePath && (
+            <path
+              d={pastBalancePath}
+              fill="none"
+              stroke="var(--z-brass)"
+              strokeWidth="1.5"
+              opacity="0.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+
+          {/* Cumulative balance polyline — future (dashed) */}
+          {futureBalancePath && (
+            <path
+              d={futureBalancePath}
+              fill="none"
+              stroke="var(--z-brass)"
+              strokeWidth="1.5"
+              opacity="0.5"
+              strokeDasharray="4,3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+
+          {/* Day labels */}
+          {dayLabels.map((lbl) => (
+            <text
+              key={lbl.day}
+              x={lbl.x}
+              y={H - 8}
+              fill="var(--z-sage-dark)"
+              fontSize="7"
+              textAnchor="middle"
+            >
+              {lbl.day}
+            </text>
+          ))}
         </svg>
 
-        {/* Legend */}
-        <div className="mt-1 flex items-center gap-4 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <span className="size-[7px] rounded-full bg-z-income" />
-            Ingreso {formatCurrency(totalIncome, currency)}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-[7px] rounded-full bg-z-debt" />
-            Gasto {formatCurrency(totalExpense, currency)}
-          </span>
+        {/* Summary row */}
+        <div className="mt-2.5 flex items-center justify-between">
+          <div className="flex-1 text-center">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-z-sage-dark">
+              Ingresos
+            </p>
+            <p
+              className="mt-0.5 text-[13px] font-semibold tabular-nums"
+              style={{ color: "var(--z-income)" }}
+            >
+              {formatCurrency(totalIncome, currency)}
+            </p>
+          </div>
+
+          <div className="h-6 w-px bg-white/6" />
+
+          <div className="flex-1 text-center">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-z-sage-dark">
+              Gastos
+            </p>
+            <p
+              className="mt-0.5 text-[13px] font-semibold tabular-nums"
+              style={{ color: "var(--z-debt)" }}
+            >
+              {formatCurrency(totalExpense, currency)}
+            </p>
+          </div>
+
+          <div className="h-6 w-px bg-white/6" />
+
+          <div className="flex-1 text-center">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-z-sage-dark">
+              Neto
+            </p>
+            <p
+              className="mt-0.5 text-[13px] font-semibold tabular-nums"
+              style={{ color: net >= 0 ? "var(--z-brass)" : "var(--z-debt)" }}
+            >
+              {formatCurrency(net, currency)}
+            </p>
+          </div>
         </div>
+
+        {/* Danger zone warning chip */}
+        {dangerZone && (
+          <div className="mt-2.5 rounded-lg border border-red-500/15 bg-red-500/5 px-3 py-2 text-center">
+            <p className="text-[11px] font-medium text-red-400">
+              Saldo negativo proyectado del {dangerZone.startDay} al{" "}
+              {dangerZone.endDay} de este mes
+            </p>
+          </div>
+        )}
       </div>
     </MobileZone>
   );

@@ -228,6 +228,7 @@ export function PendingEmailStatements({
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleRetryWithPassword(stmt.id);
                       }}
+                      autoComplete="off"
                     />
                     <Button
                       size="sm"

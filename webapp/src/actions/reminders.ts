@@ -4,6 +4,7 @@ import { cache } from "react";
 import { revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { reminderSchema } from "@/lib/validators/reminders";
+import { toISODateString } from "@/lib/utils/date";
 import type { ActionResult } from "@/types/actions";
 import type { FinancialReminder } from "@/types/domain";
 
@@ -156,6 +157,29 @@ export async function updateReminder(
       currency_code: parsed.data.currency_code,
       due_date: parsed.data.due_date ?? null,
     })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("reminders", "zeta");
+  revalidateTag("attention", "zeta");
+  return { success: true, data: null };
+}
+
+export async function postponeReminder(
+  id: string
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const newDate = toISODateString(tomorrow);
+
+  const { error } = await supabase
+    .from("financial_reminders")
+    .update({ due_date: newDate })
     .eq("id", id)
     .eq("user_id", user.id);
 

@@ -16,6 +16,7 @@ import { PlanRoot } from "@/components/mobile/v2/plan/plan-root";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getActivePeriod } from "@/actions/cashflow-planner";
+import { getPlanTimelineData } from "@/actions/plan-timeline";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 
@@ -33,10 +34,11 @@ export default async function PlanPage({
     getWishlistItemsForDashboard(),
     getActivePeriod(),
   ]);
-  const [planData, rhythmResult, categoryBudgetResult] = await Promise.all([
+  const [planData, rhythmResult, categoryBudgetResult, timelineData] = await Promise.all([
     getPlanPageData(month, currency),
     getCategoriesByRhythm(month, currency),
     getCategoriesWithBudgetData(month, currency),
+    getPlanTimelineData(month, currency),
   ]);
   const allocationData = planData.budget.allocation;
   const rhythmData = rhythmResult.success ? rhythmResult.data : [];
@@ -63,6 +65,7 @@ export default async function PlanPage({
         <PlanRoot
           planData={planData}
           allocationData={allocationData}
+          timelineData={timelineData}
           currency={planData.currency}
           monthLabel={monthLabel}
           dayOfMonth={planDayOfMonth}

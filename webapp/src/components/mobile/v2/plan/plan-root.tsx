@@ -10,11 +10,13 @@ import { PlanDistribution } from "./plan-distribution";
 import { MonthSelector } from "@/components/month-selector";
 import type { PlanPageData } from "@/types/plan";
 import type { AllocationData } from "@/actions/allocation";
+import type { PlanTimelineData } from "@/actions/plan-timeline";
 import type { CurrencyCode, CategoryBudgetData } from "@/types/domain";
 
 interface PlanRootProps {
   planData: PlanPageData;
   allocationData: AllocationData | null;
+  timelineData: PlanTimelineData;
   currency: CurrencyCode;
   monthLabel: string;
   dayOfMonth: number;
@@ -25,6 +27,7 @@ interface PlanRootProps {
 export function PlanRoot({
   planData,
   allocationData,
+  timelineData,
   currency,
   monthLabel,
   dayOfMonth,
@@ -68,12 +71,10 @@ export function PlanRoot({
         onToggle={toggle}
       />
 
-      {/* Flow chart — bar chart day-by-day */}
+      {/* Flow chart — timeline with real+projected data */}
       <PlanFlowChart
-        upcoming={planData.recurring.upcoming}
+        timelineData={timelineData}
         currency={currency}
-        daysInMonth={daysInMonth}
-        dayOfMonth={dayOfMonth}
       />
 
       {/* Distribution — budget-type aware */}
