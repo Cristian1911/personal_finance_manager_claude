@@ -6,6 +6,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { getDailyCashflow } from "@/actions/charts";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { getAccounts } from "@/actions/accounts";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { parseMonth } from "@/lib/utils/date";
 
 // --- Types ---
@@ -31,7 +32,6 @@ export interface PlanTimelineData {
 // --- Helpers ---
 
 const LIQUID_ACCOUNT_TYPES = new Set(["SAVINGS", "CHECKING", "CASH"]);
-const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
 
 function emptyTimeline(): PlanTimelineData {
   const now = new Date();
@@ -70,16 +70,13 @@ export async function getPlanTimelineData(
     0
   ).getDate();
 
-  // Is this the current month?
   const isCurrentMonth =
     target.getFullYear() === now.getFullYear() &&
     target.getMonth() === now.getMonth();
   const dayOfMonth = isCurrentMonth ? now.getDate() : daysInMonth;
 
-  // Remaining days to fetch projected recurrences for
   const remainingDays = isCurrentMonth ? daysInMonth - dayOfMonth : daysInMonth;
 
-  // 1. Fetch all data in parallel
   const [dailyCashflow, upcomingRecurrences, accountsResult] =
     await Promise.all([
       getDailyCashflow(month),
@@ -87,13 +84,11 @@ export async function getPlanTimelineData(
       getAccounts(),
     ]);
 
-  // 2. Compute starting balance from liquid accounts
   const accounts = accountsResult.success ? accountsResult.data : [];
   const currentBalance = accounts
     .filter((a) => LIQUID_ACCOUNT_TYPES.has(a.account_type))
     .reduce((sum, a) => sum + (a.current_balance ?? 0), 0);
 
-  // 3. Build day map from real cashflow data (getDailyCashflow returns all days of the month)
   const dayMap = new Map<
     number,
     { income: number; expense: number; isReal: boolean }
@@ -110,8 +105,7 @@ export async function getPlanTimelineData(
     });
   }
 
-  // 4. Add projected data from upcoming recurrences (future days only)
-  // Build month boundaries for filtering recurrences to the target month
+  // Filter recurrences to the target month
   const monthStr = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}`;
 
   for (const recurrence of upcomingRecurrences) {
@@ -124,7 +118,7 @@ export async function getPlanTimelineData(
     if (isCurrentMonth && recDay <= dayOfMonth) continue;
 
     const t = recurrence.template;
-    const isDebtAccount = DEBT_ACCOUNT_TYPES.has(t.account.account_type);
+    const isDebtAccount = isDebtAccountType(t.account.account_type);
 
     const existing = dayMap.get(recDay) ?? {
       income: 0,
@@ -143,7 +137,6 @@ export async function getPlanTimelineData(
     dayMap.set(recDay, existing);
   }
 
-  // 5. Build the days array for all days that have data
   const days: TimelineDay[] = [];
   for (let d = 1; d <= daysInMonth; d++) {
     const entry = dayMap.get(d);
@@ -158,10 +151,7 @@ export async function getPlanTimelineData(
     });
   }
 
-  // 6. Compute cumulative balance
-  // Derive balance at month start:
-  //   startingBalance = currentBalance - pastNet
-  //   where pastNet = sum of real income - real expenses so far
+  // startingBalance = currentBalance - pastNet (back-derive month start from current balance)
   const pastNet = days
     .filter((d) => d.isReal)
     .reduce((sum, d) => sum + d.income - d.expense, 0);
@@ -178,7 +168,6 @@ export async function getPlanTimelineData(
     cumulativeBalance.push({ day: d, balance: runningBalance });
   }
 
-  // 7. Detect danger zone: longest consecutive run where balance < 0
   let dangerZone: PlanTimelineData["dangerZone"] = null;
   let currentDangerStart: number | null = null;
 
@@ -200,7 +189,6 @@ export async function getPlanTimelineData(
     }
   }
 
-  // 8. Compute totals
   const totalIncome = days.reduce((sum, d) => sum + d.income, 0);
   const totalExpense = days.reduce((sum, d) => sum + d.expense, 0);
 

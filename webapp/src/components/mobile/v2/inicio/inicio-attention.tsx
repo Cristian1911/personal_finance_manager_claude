@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { MobileZone } from "@/components/mobile/v2/mobile-zone";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
+import { daysAgoLabel, daysUntilLabel } from "@/lib/utils/date";
 import { toggleReminder, postponeReminder } from "@/actions/reminders";
 import { recordRecurringOccurrencePayment } from "@/actions/recurring-templates";
 import {
@@ -261,32 +262,6 @@ function DirectionIcon({ direction }: { direction: "OUTFLOW" | "INFLOW" }) {
       )}
     </div>
   );
-}
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function daysAgoLabel(dateStr: string): string {
-  const due = new Date(dateStr + "T00:00:00");
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const diff = Math.floor(
-    (now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  if (diff <= 0) return "Hoy";
-  if (diff === 1) return "Hace 1 dia";
-  return `Hace ${diff} dias`;
-}
-
-function daysUntilLabel(dateStr: string): string {
-  const target = new Date(dateStr + "T00:00:00");
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const diff = Math.floor(
-    (target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  if (diff <= 0) return "Hoy";
-  if (diff === 1) return "Manana";
-  return `En ${diff} dias`;
 }
 
 // ─── Vencidos detail ───────────────────────────────────────────────────────────

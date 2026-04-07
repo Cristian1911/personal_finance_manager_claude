@@ -185,15 +185,11 @@ export function PlanFlowChart({ timelineData, currency }: PlanFlowChartProps) {
 
   const net = totalIncome - totalExpense;
 
-  const pastBalancePath =
-    pastBalancePoints.length > 1
-      ? pastBalancePoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")
-      : "";
+  const toSVGPath = (pts: typeof pastBalancePoints) =>
+    pts.length > 1 ? pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") : "";
 
-  const futureBalancePath =
-    futureBalancePoints.length > 1
-      ? futureBalancePoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ")
-      : "";
+  const pastBalancePath = toSVGPath(pastBalancePoints);
+  const futureBalancePath = toSVGPath(futureBalancePoints);
 
   return (
     <MobileZone eyebrow="FLUJO DEL MES">

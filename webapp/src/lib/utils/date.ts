@@ -72,4 +72,26 @@ export function getDaysRemainingInMonth(date: Date): number {
   return Math.max(0, lastDay - today.getDate());
 }
 
+/** Relative past label in Spanish: "Hoy", "Hace 1 día", "Hace N días" */
+export function daysAgoLabel(dateStr: string): string {
+  const due = new Date(dateStr + "T00:00:00");
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diff = Math.floor((now.getTime() - due.getTime()) / 86_400_000);
+  if (diff <= 0) return "Hoy";
+  if (diff === 1) return "Hace 1 día";
+  return `Hace ${diff} días`;
+}
+
+/** Relative future label in Spanish: "Hoy", "Mañana", "En N días" */
+export function daysUntilLabel(dateStr: string): string {
+  const target = new Date(dateStr + "T00:00:00");
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diff = Math.floor((target.getTime() - now.getTime()) / 86_400_000);
+  if (diff <= 0) return "Hoy";
+  if (diff === 1) return "Mañana";
+  return `En ${diff} días`;
+}
+
 export { addMonths, subMonths };
