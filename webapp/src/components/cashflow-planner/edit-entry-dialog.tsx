@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -101,12 +102,9 @@ export function EditEntryDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="edit-amount">Monto</Label>
-              <Input
+              <CurrencyInput
                 id="edit-amount"
                 name="amount"
-                type="number"
-                step="0.01"
-                min="0.01"
                 defaultValue={Number(entry.amount)}
                 required
                 className="bg-card border-white/6"

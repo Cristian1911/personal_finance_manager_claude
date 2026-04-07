@@ -246,6 +246,7 @@ export function StepUpload({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                autoComplete="off"
               />
             </div>
           </div>
