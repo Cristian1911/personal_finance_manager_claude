@@ -36,7 +36,7 @@ export function DeseosList({
   );
 
   const activeItems = items
-    .filter((i) => i.status === "active" && !optimisticDeleted.has(i.id))
+    .filter((i) => i.status === "wishlist" && !optimisticDeleted.has(i.id))
     .sort((a, b) => {
       // Enriched items first (sorted by score desc), unenriched last
       if (a.enriched && !b.enriched) return -1;
