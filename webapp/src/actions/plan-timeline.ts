@@ -9,8 +9,8 @@ import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { getAccounts } from "@/actions/accounts";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
-import { parseMonth } from "@/lib/utils/date";
-import type { CurrencyCode } from "@/types/domain";
+import { parseMonth, monthStartStr, monthEndStr } from "@/lib/utils/date";
+import type { CurrencyCode, PlanningEntryType } from "@/types/domain";
 
 // --- Types ---
 
@@ -58,51 +58,64 @@ function emptyTimeline(): PlanTimelineData {
 
 // --- Planned entries helper ---
 
-async function getPlannedEntriesForMonth(
+interface PlannedEntryRow {
+  entry_type: PlanningEntryType;
+  day: number;
+  amount: number;
+  currency_code: string;
+  recurring_template_id: string | null;
+}
+
+async function getPlannedEntriesWithRates(
   userId: string,
   monthStart: string,
-  monthEnd: string
-): Promise<
-  Array<{
-    entry_type: "INCOME" | "EXPENSE";
-    expected_date: string;
-    amount: number;
-    currency_code: string;
-    recurring_template_id: string | null;
-  }>
-> {
+  monthEnd: string,
+  chartCurrency: CurrencyCode
+): Promise<{ entries: PlannedEntryRow[]; rateMap: Map<string, number> }> {
   const supabase = createAdminClient();
 
-  const { data: period } = await supabase
-    .from("planning_periods")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .lte("start_date", monthEnd)
-    .gte("end_date", monthStart)
-    .limit(1)
-    .maybeSingle();
-
-  if (!period) return [];
-
-  const { data: entries } = await supabase
+  const { data: rows } = await supabase
     .from("planning_entries")
     .select(
-      "entry_type, expected_date, amount, currency_code, recurring_template_id"
+      "entry_type, expected_date, amount, currency_code, recurring_template_id, planning_periods!inner(id)"
     )
-    .eq("period_id", period.id)
     .eq("user_id", userId)
     .eq("status", "PLANNED")
+    .eq("planning_periods.is_active", true)
+    .lte("planning_periods.start_date", monthEnd)
+    .gte("planning_periods.end_date", monthStart)
     .gte("expected_date", monthStart)
     .lte("expected_date", monthEnd);
 
-  return (entries ?? []).map((e) => ({
-    entry_type: e.entry_type as "INCOME" | "EXPENSE",
-    expected_date: e.expected_date,
+  if (!rows || rows.length === 0) return { entries: [], rateMap: new Map() };
+
+  const entries: PlannedEntryRow[] = rows.map((e) => ({
+    entry_type: e.entry_type as PlanningEntryType,
+    day: parseInt(e.expected_date.split("-")[2], 10),
     amount: Number(e.amount),
     currency_code: e.currency_code,
     recurring_template_id: e.recurring_template_id,
   }));
+
+  // Batch-fetch exchange rates for foreign currencies
+  const foreignCurrencies = new Set(
+    entries
+      .filter((e) => e.currency_code !== chartCurrency)
+      .map((e) => e.currency_code)
+  );
+
+  const rateMap = new Map<string, number>();
+  if (foreignCurrencies.size > 0) {
+    const rates = await Promise.all(
+      [...foreignCurrencies].map(async (fc) => {
+        const r = await getExchangeRate(fc as CurrencyCode, chartCurrency);
+        return [fc, r?.rate ?? 1] as const;
+      })
+    );
+    for (const [fc, rate] of rates) rateMap.set(fc, rate);
+  }
+
+  return { entries, rateMap };
 }
 
 // --- Main ---
@@ -129,20 +142,19 @@ export async function getPlanTimelineData(
 
   const remainingDays = isCurrentMonth ? daysInMonth - dayOfMonth : daysInMonth;
 
-  const monthPad = String(target.getMonth() + 1).padStart(2, "0");
-  const monthStart = `${target.getFullYear()}-${monthPad}-01`;
-  const monthEnd = `${target.getFullYear()}-${monthPad}-${String(daysInMonth).padStart(2, "0")}`;
+  const chartCurrency = (_currency || "COP") as CurrencyCode;
+  const mStart = monthStartStr(target);
+  const mEnd = monthEndStr(target);
 
-  const [dailyCashflow, upcomingRecurrences, accountsResult, plannedEntries] =
+  const [dailyCashflow, upcomingRecurrences, accountsResult, planned] =
     await Promise.all([
       getDailyCashflow(month),
       getUpcomingRecurrences(remainingDays > 0 ? remainingDays : 0),
       getAccounts(),
-      getPlannedEntriesForMonth(user.id, monthStart, monthEnd),
+      getPlannedEntriesWithRates(user.id, mStart, mEnd, chartCurrency),
     ]);
 
   const accounts = accountsResult.success ? accountsResult.data : [];
-  const chartCurrency = (_currency || "COP") as CurrencyCode;
   const currentBalance = accounts
     .filter((a) => LIQUID_ACCOUNT_TYPES.has(a.account_type))
     .reduce((sum, a) => sum + (a.current_balance ?? 0), 0);
@@ -165,37 +177,15 @@ export async function getPlanTimelineData(
 
   // --- Merge planning entries (PLANNED only, future days) ---
   const planningTemplateKeys = new Set<string>();
-
-  // Batch-fetch exchange rates for foreign-currency planning entries
-  const foreignCurrencies = new Set<string>();
-  for (const pe of plannedEntries) {
-    if (pe.currency_code !== chartCurrency) {
-      foreignCurrencies.add(pe.currency_code);
-    }
-  }
-  const rateMap = new Map<string, number>();
-  if (foreignCurrencies.size > 0) {
-    const rates = await Promise.all(
-      [...foreignCurrencies].map(async (fc) => {
-        const r = await getExchangeRate(
-          fc as CurrencyCode,
-          chartCurrency
-        );
-        return [fc, r?.rate ?? 1] as const;
-      })
-    );
-    for (const [fc, rate] of rates) rateMap.set(fc, rate);
-  }
+  const { entries: plannedEntries, rateMap } = planned;
 
   for (const pe of plannedEntries) {
-    const peDay = new Date(pe.expected_date + "T12:00:00").getDate();
-
     // Skip past days — they already have real data
-    if (isCurrentMonth && peDay <= dayOfMonth) continue;
+    if (isCurrentMonth && pe.day <= dayOfMonth) continue;
 
     // Track template-based entries for deduplication with recurrences
     if (pe.recurring_template_id) {
-      planningTemplateKeys.add(`${pe.recurring_template_id}|${peDay}`);
+      planningTemplateKeys.add(`${pe.recurring_template_id}|${pe.day}`);
     }
 
     const amount =
@@ -203,7 +193,7 @@ export async function getPlanTimelineData(
         ? pe.amount * (rateMap.get(pe.currency_code) ?? 1)
         : pe.amount;
 
-    const existing = dayMap.get(peDay) ?? {
+    const existing = dayMap.get(pe.day) ?? {
       income: 0,
       expense: 0,
       isReal: false,
@@ -216,11 +206,11 @@ export async function getPlanTimelineData(
     }
 
     existing.isReal = false;
-    dayMap.set(peDay, existing);
+    dayMap.set(pe.day, existing);
   }
 
   // --- Merge recurring template projections (skip if covered by planning entry) ---
-  const monthStr = `${target.getFullYear()}-${monthPad}`;
+  const monthStr = mStart.substring(0, 7);
 
   for (const recurrence of upcomingRecurrences) {
     // Only include recurrences within the target month

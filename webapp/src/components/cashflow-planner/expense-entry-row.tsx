@@ -73,6 +73,7 @@ export function ExpenseEntryRow({
   }
 
   const badge = STATUS_BADGE[entry.status];
+  const canAssign = showAssignButton && remaining > 0 && entry.status !== "SKIPPED" && !!onAssign;
 
   return (
     <div
@@ -125,7 +126,7 @@ export function ExpenseEntryRow({
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        {showAssignButton && remaining > 0 && entry.status !== "SKIPPED" && onAssign && (
+        {canAssign && (
           <Button
             variant="ghost"
             size="sm"
@@ -142,7 +143,7 @@ export function ExpenseEntryRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {showAssignButton && remaining > 0 && entry.status !== "SKIPPED" && onAssign && (
+            {canAssign && (
               <DropdownMenuItem onClick={onAssign} className="sm:hidden">
                 <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
                 Asignar
