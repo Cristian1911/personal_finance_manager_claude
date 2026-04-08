@@ -17,6 +17,7 @@ import { PlanTabRecurrentes } from "@/components/plan/tabs/plan-tab-recurrentes"
 import { PlanTabDeseos } from "@/components/plan/tabs/plan-tab-deseos";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { PlanRoot } from "@/components/mobile/v2/plan/plan-root";
+import { PlanMobileNavList } from "@/components/plan/plan-mobile-nav-list";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getActivePeriod } from "@/actions/cashflow-planner";
@@ -171,7 +172,7 @@ export default async function PlanPage({
               </Suspense>
             )}
           </div>
-          <PlanTabNav activeTab={activeTab} />
+          {/* NOTE: PlanTabNav removed from here — hidden on mobile, replaced by bottom nav list */}
         </div>
 
         {/* Mobile tab content */}
@@ -183,6 +184,9 @@ export default async function PlanPage({
             </Suspense>
           </div>
         )}
+
+        {/* Bottom navigation to other Plan tabs */}
+        <PlanMobileNavList activeTab={activeTab} />
       </div>
 
       {/* ── Desktop ── */}

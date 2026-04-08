@@ -16,7 +16,7 @@ export type PlanTab = (typeof PLAN_TABS)[number]["key"];
 
 export function PlanTabNav({ activeTab }: { activeTab: PlanTab }) {
   return (
-    <nav className="flex gap-1 overflow-x-auto scrollbar-none rounded-xl border border-white/6 bg-black/10 p-1">
+    <nav className="hidden gap-1 overflow-x-auto scrollbar-none rounded-xl border border-white/6 bg-black/10 p-1 lg:flex">
       {PLAN_TABS.map((tab) => (
         <Link
           key={tab.key}
