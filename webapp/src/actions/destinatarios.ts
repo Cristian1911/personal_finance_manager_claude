@@ -172,7 +172,7 @@ async function getDestinatariosCached(
   const supabase = createCachedClient(accessToken);
   const { data: destinatarios, error } = await supabase
     .from("destinatarios")
-    .select("*, destinatario_rules(count), transactions(count)")
+    .select("*, destinatario_rules!destinatario_rules_destinatario_id_fkey(count), transactions!transactions_destinatario_id_fkey(count)")
     .eq("user_id", userId)
     .order("name", { ascending: true });
 
@@ -263,7 +263,7 @@ async function getDestinatarioCached(
   const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("destinatarios")
-    .select("*, destinatario_rules(*)")
+    .select("*, destinatario_rules!destinatario_rules_destinatario_id_fkey(*)")
     .eq("user_id", userId)
     .eq("id", id)
     .single();
@@ -668,22 +668,25 @@ export async function removeDestinatarioRule(
 
 // ─── getUnmatchedDescriptions ─────────────────────────────────────────────────
 
-export async function getUnmatchedDescriptions(): Promise<
-  ActionResult<string[]>
-> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+async function getUnmatchedDescriptionsCached(
+  userId: string,
+  accessToken: string,
+): Promise<string[]> {
+  "use cache";
+  cacheTag("destinatarios");
+  cacheLife("zeta");
 
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("transactions")
     .select("raw_description")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .is("destinatario_id", null)
     .not("raw_description", "is", null)
     .order("transaction_date", { ascending: false })
     .limit(500);
 
-  if (error) return { success: false, error: error.message };
+  if (error) throw error;
 
   const seen = new Set<string>();
   const descriptions: string[] = [];
@@ -693,8 +696,21 @@ export async function getUnmatchedDescriptions(): Promise<
       descriptions.push(row.raw_description);
     }
   }
+  return descriptions;
+}
 
-  return { success: true, data: descriptions };
+export async function getUnmatchedDescriptions(): Promise<
+  ActionResult<string[]>
+> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getUnmatchedDescriptionsCached(user.id, accessToken);
+    return { success: true, data };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error al cargar las descripciones";
+    return { success: false, error: message };
+  }
 }
 
 // ─── getDestinatarioSuggestions ──────────────────────────────────────────────
@@ -744,22 +760,25 @@ function groupSuggestionsByPrefix(
   return groups;
 }
 
-export async function getDestinatarioSuggestions(): Promise<
-  ActionResult<DestinatarioSuggestionResult[]>
-> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+async function getDestinatarioSuggestionsCached(
+  userId: string,
+  accessToken: string,
+): Promise<DestinatarioSuggestionResult[]> {
+  "use cache";
+  cacheTag("destinatarios");
+  cacheLife("zeta");
 
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("transactions")
     .select("transaction_date, raw_description, amount")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .is("destinatario_id", null)
     .not("raw_description", "is", null)
     .order("transaction_date", { ascending: false })
     .limit(1000);
 
-  if (error) return { success: false, error: error.message };
+  if (error) throw error;
 
   const groups = new Map<
     string,
@@ -806,8 +825,21 @@ export async function getDestinatarioSuggestions(): Promise<
   }
 
   suggestions.sort((a, b) => b.count - a.count);
-  const grouped = groupSuggestionsByPrefix(suggestions);
-  return { success: true, data: grouped.slice(0, 20) };
+  return groupSuggestionsByPrefix(suggestions).slice(0, 20);
+}
+
+export async function getDestinatarioSuggestions(): Promise<
+  ActionResult<DestinatarioSuggestionResult[]>
+> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getDestinatarioSuggestionsCached(user.id, accessToken);
+    return { success: true, data };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error al cargar las sugerencias";
+    return { success: false, error: message };
+  }
 }
 
 // ─── getDestinatarioTransactions ──────────────────────────────────────────────

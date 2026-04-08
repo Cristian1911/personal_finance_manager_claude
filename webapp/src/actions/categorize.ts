@@ -24,7 +24,7 @@ async function getUncategorizedTransactionsCached(
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)"
+      "*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color)"
     )
     .eq("user_id", userId)
     .is("category_id", null)
@@ -84,7 +84,7 @@ async function getUnreviewedAutoCategorizedCached(
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)"
+      "*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color)"
     )
     .eq("user_id", userId)
     .not("category_id", "is", null)
