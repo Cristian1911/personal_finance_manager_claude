@@ -48,6 +48,8 @@
 - Shell `compdef` warning leaks into stdout redirects — always strip first line if piping to file
 - **PostgREST joins through encrypted views**: FK constraints live on `_enc` tables, so PostgREST can't auto-detect relationships through the views. Always use explicit FK hint syntax: `account:accounts!transactions_account_id_fkey(id, name)` — never plain `account:accounts(id, name)`. Without the `!fk_name` hint, the join silently fails and returns empty results.
 - **`"use cache"` + encryption**: Cached functions that query encrypted views must use `createCachedClient(accessToken)` from `@/lib/supabase/cached`, never `createAdminClient()`. The admin client has no JWT, so `zeta_decrypt()` returns NULL for all encrypted columns. The `accessToken` comes from `getAuthenticatedClient()` which returns `{ supabase, user, accessToken }`.
+- **Webhooks/cron + encryption**: API routes using `createAdminClient()` cannot read encrypted columns (no JWT → `zeta_decrypt()` returns NULL). Use `supabase.rpc("get_accounts_with_masks", { p_user_id })` which calls `zeta_decrypt_as()` internally. For new encrypted-column access patterns, use `zeta_decrypt_as(ciphertext, target_user_id)` via RPC.
+- **Adding columns to encrypted tables**: `profiles` and `accounts` are views over `_enc` tables. To add a column: (1) `ALTER TABLE _enc ADD COLUMN`, (2) `DROP` triggers, (3) `DROP VIEW`, (4) `CREATE VIEW` with new column, (5) rebuild INSERT/UPDATE/DELETE trigger functions including the new column, (6) `CREATE TRIGGER` bindings. Never `ALTER TABLE profiles` directly — it's a view.
 
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
