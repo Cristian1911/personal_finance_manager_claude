@@ -132,36 +132,36 @@ async function seedDemoDataInternal(
 
   // 2. Create demo transactions
   const demoTransactions = getDemoTransactions();
-  const txInserts = [];
+  const txInserts = await Promise.all(
+    demoTransactions.map(async (tx) => {
+      const accountId = accountIds[tx.accountIndex];
+      const idempotencyKey = await computeIdempotencyKey({
+        provider: "DEMO",
+        transactionDate: tx.transaction_date,
+        amount: tx.amount,
+        rawDescription: tx.raw_description,
+      });
 
-  for (const tx of demoTransactions) {
-    const accountId = accountIds[tx.accountIndex];
-    const idempotencyKey = await computeIdempotencyKey({
-      provider: "DEMO",
-      transactionDate: tx.transaction_date,
-      amount: tx.amount,
-      rawDescription: tx.raw_description,
-    });
-
-    txInserts.push({
-      user_id: userId,
-      account_id: accountId,
-      amount: tx.amount,
-      currency_code: "COP" as CurrencyCode,
-      direction: tx.direction,
-      transaction_date: tx.transaction_date,
-      merchant_name: tx.merchant_name,
-      raw_description: tx.raw_description,
-      clean_description: tx.merchant_name,
-      category_id: tx.category_id,
-      idempotency_key: idempotencyKey,
-      provider: "MANUAL" as const,
-      capture_method: "MANUAL_FORM" as const,
-      categorization_source: "SYSTEM_DEFAULT" as const,
-      status: "POSTED" as const,
-      is_excluded: false,
-    });
-  }
+      return {
+        user_id: userId,
+        account_id: accountId,
+        amount: tx.amount,
+        currency_code: "COP" as CurrencyCode,
+        direction: tx.direction,
+        transaction_date: tx.transaction_date,
+        merchant_name: tx.merchant_name,
+        raw_description: tx.raw_description,
+        clean_description: tx.merchant_name,
+        category_id: tx.category_id,
+        idempotency_key: idempotencyKey,
+        provider: "MANUAL" as const,
+        capture_method: "MANUAL_FORM" as const,
+        categorization_source: "SYSTEM_DEFAULT" as const,
+        status: "POSTED" as const,
+        is_excluded: false,
+      };
+    })
+  );
 
   // Batch insert transactions
   const { error: txError } = await supabase.from("transactions").insert(txInserts);
