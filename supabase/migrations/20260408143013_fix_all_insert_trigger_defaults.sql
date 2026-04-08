@@ -1,18 +1,29 @@
 -- ===========================================================================
--- Fix: INSERT triggers must COALESCE ALL columns that have NOT NULL + DEFAULT
--- constraints on the _enc tables.
+-- Fix: INSERT triggers assign defaults to NEW before INSERT, no RETURNING
 --
--- Problem: The previous migration (20260408143012) only added COALESCE for
--- id, created_at, updated_at. But many more columns have NOT NULL + DEFAULT
--- constraints (exchange_rate, status, is_excluded, provider, etc.) and pass
--- NULL when the INSERT omits them, violating NOT NULL constraints.
+-- Previous approach used COALESCE inline + RETURNING * INTO NEW, but
+-- RETURNING * from _enc tables has BYTEA columns that don't match the
+-- view's TEXT structure → "returned row structure does not match"
 --
--- Fix: Add COALESCE for every NOT NULL + DEFAULT column in each _enc table.
+-- Correct approach: assign COALESCE'd defaults to NEW fields first,
+-- then INSERT using NEW.* (already defaulted), RETURN NEW as-is.
 -- ===========================================================================
 
--- 1. transactions_view_insert
+-- 1. transactions
 CREATE OR REPLACE FUNCTION transactions_view_insert() RETURNS TRIGGER AS $$
 BEGIN
+  NEW.id := COALESCE(NEW.id, gen_random_uuid());
+  NEW.created_at := COALESCE(NEW.created_at, now());
+  NEW.updated_at := COALESCE(NEW.updated_at, now());
+  NEW.exchange_rate := COALESCE(NEW.exchange_rate, 1.000000);
+  NEW.status := COALESCE(NEW.status, 'POSTED'::transaction_status);
+  NEW.categorization_source := COALESCE(NEW.categorization_source, 'USER_CREATED'::categorization_source);
+  NEW.is_subscription := COALESCE(NEW.is_subscription, false);
+  NEW.is_recurring := COALESCE(NEW.is_recurring, false);
+  NEW.provider := COALESCE(NEW.provider, 'MANUAL'::data_provider);
+  NEW.is_excluded := COALESCE(NEW.is_excluded, false);
+  NEW.capture_method := COALESCE(NEW.capture_method, 'MANUAL_FORM'::transaction_capture_method);
+
   INSERT INTO transactions_enc (
     account_id, amount, amount_in_base_currency, capture_input_text,
     capture_method, categorization_confidence, categorization_source,
@@ -29,257 +40,231 @@ BEGIN
   ) VALUES (
     NEW.account_id, NEW.amount, NEW.amount_in_base_currency,
     zeta_encrypt(NEW.capture_input_text),
-    COALESCE(NEW.capture_method, 'MANUAL_FORM'::transaction_capture_method),
-    NEW.categorization_confidence,
-    COALESCE(NEW.categorization_source, 'USER_CREATED'::categorization_source),
-    NEW.category_id,
+    NEW.capture_method, NEW.categorization_confidence,
+    NEW.categorization_source, NEW.category_id,
     zeta_encrypt(NEW.clean_description),
     zeta_hmac(NEW.clean_description),
-    COALESCE(NEW.created_at, now()), NEW.currency_code, NEW.destinatario_id,
-    NEW.direction,
-    COALESCE(NEW.exchange_rate, 1.000000),
-    COALESCE(NEW.id, gen_random_uuid()), NEW.idempotency_key,
+    NEW.created_at, NEW.currency_code, NEW.destinatario_id,
+    NEW.direction, NEW.exchange_rate, NEW.id, NEW.idempotency_key,
     NEW.installment_current, NEW.installment_group_id,
-    NEW.installment_total,
-    COALESCE(NEW.is_excluded, false),
-    COALESCE(NEW.is_recurring, false),
-    COALESCE(NEW.is_subscription, false),
-    NEW.merchant_category_code,
+    NEW.installment_total, NEW.is_excluded, NEW.is_recurring,
+    NEW.is_subscription, NEW.merchant_category_code,
     NEW.merchant_logo_url,
     zeta_encrypt(NEW.merchant_name),
     zeta_hmac(NEW.merchant_name),
     zeta_encrypt(NEW.notes),
-    NEW.original_amount, NEW.posting_date,
-    COALESCE(NEW.provider, 'MANUAL'::data_provider),
+    NEW.original_amount, NEW.posting_date, NEW.provider,
     NEW.provider_transaction_id,
     zeta_encrypt(NEW.raw_description),
     NEW.reconciled_into_transaction_id, NEW.reconciliation_score,
-    NEW.recurrence_group_id, NEW.secondary_category_id,
-    COALESCE(NEW.status, 'POSTED'::transaction_status),
-    NEW.tags, NEW.transaction_date, COALESCE(NEW.updated_at, now()), NEW.user_id
-  )
-  RETURNING * INTO NEW;
+    NEW.recurrence_group_id, NEW.secondary_category_id, NEW.status,
+    NEW.tags, NEW.transaction_date, NEW.updated_at, NEW.user_id
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 2. accounts_view_insert
+-- 2. accounts
 CREATE OR REPLACE FUNCTION accounts_view_insert() RETURNS TRIGGER AS $$
 BEGIN
+  NEW.id := COALESCE(NEW.id, gen_random_uuid());
+  NEW.created_at := COALESCE(NEW.created_at, now());
+  NEW.updated_at := COALESCE(NEW.updated_at, now());
+  NEW.current_balance := COALESCE(NEW.current_balance, 0);
+  NEW.currency_code := COALESCE(NEW.currency_code, 'COP'::currency_code);
+  NEW.provider := COALESCE(NEW.provider, 'MANUAL'::data_provider);
+  NEW.connection_status := COALESCE(NEW.connection_status, 'CONNECTED'::connection_status);
+  NEW.is_active := COALESCE(NEW.is_active, true);
+  NEW.display_order := COALESCE(NEW.display_order, 0);
+  NEW.show_in_dashboard := COALESCE(NEW.show_in_dashboard, true);
+
   INSERT INTO accounts_enc (
-    account_type, available_balance, color, connection_status, created_at,
-    credit_limit, currency_balances, currency_code, current_balance, cutoff_day,
-    debit_card_mask, display_order, expected_return_rate, icon, id,
-    initial_investment, institution_name, interest_rate, is_active,
-    last_synced_at, loan_amount, loan_end_date, loan_start_date, mask,
-    mask_hmac, maturity_date, monthly_payment, name, payment_day,
-    pdf_password, provider, provider_account_id, provider_account_id_hmac,
-    show_in_dashboard, updated_at, user_id
+    account_type, color, connection_status, created_at, credit_limit,
+    currency_balances, currency_code, current_balance, debit_card_mask,
+    display_order, expected_return_rate, icon, id, institution_name,
+    interest_rate, is_active, mask, monthly_payment, name, pdf_password,
+    provider, provider_account_id, provider_account_id_hmac,
+    show_in_dashboard, updated_at, user_id, mask_hmac
   ) VALUES (
-    NEW.account_type, NEW.available_balance, NEW.color,
-    COALESCE(NEW.connection_status, 'CONNECTED'::connection_status),
-    COALESCE(NEW.created_at, now()), NEW.credit_limit, NEW.currency_balances,
-    COALESCE(NEW.currency_code, 'COP'::currency_code),
-    COALESCE(NEW.current_balance, 0),
-    NEW.cutoff_day,
-    zeta_encrypt(NEW.debit_card_mask),
-    COALESCE(NEW.display_order, 0),
-    NEW.expected_return_rate, NEW.icon, COALESCE(NEW.id, gen_random_uuid()),
-    NEW.initial_investment,
-    zeta_encrypt(NEW.institution_name),
-    NEW.interest_rate,
-    COALESCE(NEW.is_active, true),
-    NEW.last_synced_at, NEW.loan_amount,
-    NEW.loan_end_date, NEW.loan_start_date,
-    zeta_encrypt(NEW.mask),
-    zeta_hmac(NEW.mask),
-    NEW.maturity_date, NEW.monthly_payment,
-    zeta_encrypt(NEW.name),
-    NEW.payment_day,
-    zeta_encrypt(NEW.pdf_password),
-    COALESCE(NEW.provider, 'MANUAL'::data_provider),
+    NEW.account_type, NEW.color, NEW.connection_status, NEW.created_at,
+    NEW.credit_limit, NEW.currency_balances, NEW.currency_code,
+    NEW.current_balance, zeta_encrypt(NEW.debit_card_mask),
+    NEW.display_order, NEW.expected_return_rate, NEW.icon, NEW.id,
+    zeta_encrypt(NEW.institution_name), NEW.interest_rate, NEW.is_active,
+    zeta_encrypt(NEW.mask), NEW.monthly_payment, zeta_encrypt(NEW.name),
+    zeta_encrypt(NEW.pdf_password), NEW.provider,
     zeta_encrypt(NEW.provider_account_id),
-    zeta_hmac(NEW.provider_account_id),
-    COALESCE(NEW.show_in_dashboard, true),
-    COALESCE(NEW.updated_at, now()), NEW.user_id
-  )
-  RETURNING * INTO NEW;
+    zeta_hmac(NEW.provider_account_id), NEW.show_in_dashboard,
+    NEW.updated_at, NEW.user_id, zeta_hmac(NEW.mask)
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 3. profiles_view_insert (id is NOT defaulted — references auth.users)
+-- 3. profiles (id is auth.users FK — never defaulted)
 CREATE OR REPLACE FUNCTION profiles_view_insert() RETURNS TRIGGER AS $$
 BEGIN
+  NEW.created_at := COALESCE(NEW.created_at, now());
+  NEW.updated_at := COALESCE(NEW.updated_at, now());
+  NEW.preferred_currency := COALESCE(NEW.preferred_currency, 'COP'::currency_code);
+  NEW.locale := COALESCE(NEW.locale, 'es-CO'::text);
+  NEW.timezone := COALESCE(NEW.timezone, 'America/Bogota'::text);
+  NEW.onboarding_completed := COALESCE(NEW.onboarding_completed, false);
+
   INSERT INTO profiles_enc (
-    app_purpose, avatar_url, budget_mode, created_at, dashboard_config,
-    email, estimated_monthly_expenses, estimated_monthly_income, full_name,
-    id, locale, monthly_salary, onboarding_completed, preferred_currency,
-    timezone, updated_at
+    id, full_name, email, preferred_currency, locale, timezone,
+    onboarding_completed, created_at, updated_at, dashboard_config,
+    monthly_salary, estimated_monthly_income, salary_currency
   ) VALUES (
-    NEW.app_purpose, NEW.avatar_url, NEW.budget_mode, COALESCE(NEW.created_at, now()),
-    NEW.dashboard_config,
-    zeta_encrypt(NEW.email),
-    NEW.estimated_monthly_expenses, NEW.estimated_monthly_income,
-    zeta_encrypt(NEW.full_name),
-    NEW.id,
-    COALESCE(NEW.locale, 'es-CO'::text),
-    NEW.monthly_salary,
-    COALESCE(NEW.onboarding_completed, false),
-    COALESCE(NEW.preferred_currency, 'COP'::currency_code),
-    COALESCE(NEW.timezone, 'America/Bogota'::text),
-    COALESCE(NEW.updated_at, now())
-  )
-  RETURNING * INTO NEW;
+    NEW.id, zeta_encrypt(NEW.full_name), zeta_encrypt(NEW.email),
+    NEW.preferred_currency, NEW.locale, NEW.timezone,
+    NEW.onboarding_completed, NEW.created_at, NEW.updated_at,
+    NEW.dashboard_config, NEW.monthly_salary,
+    NEW.estimated_monthly_income, NEW.salary_currency
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 4. destinatarios_view_insert
+-- 4. destinatarios
 CREATE OR REPLACE FUNCTION destinatarios_view_insert() RETURNS TRIGGER AS $$
 BEGIN
+  NEW.id := COALESCE(NEW.id, gen_random_uuid());
+  NEW.created_at := COALESCE(NEW.created_at, now());
+  NEW.updated_at := COALESCE(NEW.updated_at, now());
+  NEW.is_active := COALESCE(NEW.is_active, true);
+
   INSERT INTO destinatarios_enc (
-    created_at, default_category_id, id, is_active, name, name_hmac,
-    notes, updated_at, user_id
+    id, user_id, name, name_hmac, notes, default_category_id,
+    is_active, created_at, updated_at
   ) VALUES (
-    COALESCE(NEW.created_at, now()), NEW.default_category_id, COALESCE(NEW.id, gen_random_uuid()),
-    COALESCE(NEW.is_active, true),
-    zeta_encrypt(NEW.name),
-    zeta_hmac(NEW.name),
-    zeta_encrypt(NEW.notes),
-    COALESCE(NEW.updated_at, now()), NEW.user_id
-  )
-  RETURNING * INTO NEW;
+    NEW.id, NEW.user_id, zeta_encrypt(NEW.name), zeta_hmac(NEW.name),
+    zeta_encrypt(NEW.notes), NEW.default_category_id, NEW.is_active,
+    NEW.created_at, NEW.updated_at
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 5. statement_snapshots_view_insert
+-- 5. statement_snapshots
 CREATE OR REPLACE FUNCTION statement_snapshots_view_insert() RETURNS TRIGGER AS $$
 BEGIN
+  NEW.id := COALESCE(NEW.id, gen_random_uuid());
+  NEW.created_at := COALESCE(NEW.created_at, now());
+  NEW.updated_at := COALESCE(NEW.updated_at, now());
+  NEW.transaction_count := COALESCE(NEW.transaction_count, 0);
+  NEW.imported_count := COALESCE(NEW.imported_count, 0);
+  NEW.skipped_count := COALESCE(NEW.skipped_count, 0);
+  NEW.currency_code := COALESCE(NEW.currency_code, 'COP'::text);
+
   INSERT INTO statement_snapshots_enc (
-    account_id, available_credit, created_at, credit_limit, currency_code,
-    final_balance, id, imported_count, initial_amount, installments_in_default,
-    interest_charged, interest_rate, late_interest_rate, loan_number,
-    minimum_payment, payment_due_date, period_from, period_to, previous_balance,
-    purchases_and_charges, remaining_balance, skipped_count, source_filename,
-    total_credits, total_debits, total_payment_due, transaction_count,
-    updated_at, user_id
+    id, user_id, account_id, period_from, period_to,
+    opening_balance, closing_balance, total_debits, total_credits,
+    minimum_payment, remaining_balance, initial_amount,
+    transaction_count, imported_count, skipped_count,
+    loan_number, source_filename, currency_code,
+    created_at, updated_at
   ) VALUES (
-    NEW.account_id, NEW.available_credit, COALESCE(NEW.created_at, now()), NEW.credit_limit,
-    COALESCE(NEW.currency_code, 'COP'::text),
-    NEW.final_balance, COALESCE(NEW.id, gen_random_uuid()),
-    COALESCE(NEW.imported_count, 0),
-    NEW.initial_amount, NEW.installments_in_default, NEW.interest_charged,
-    NEW.interest_rate, NEW.late_interest_rate,
-    zeta_encrypt(NEW.loan_number),
-    NEW.minimum_payment, NEW.payment_due_date, NEW.period_from, NEW.period_to,
-    NEW.previous_balance, NEW.purchases_and_charges, NEW.remaining_balance,
-    COALESCE(NEW.skipped_count, 0),
-    zeta_encrypt(NEW.source_filename),
-    NEW.total_credits, NEW.total_debits, NEW.total_payment_due,
-    COALESCE(NEW.transaction_count, 0),
-    COALESCE(NEW.updated_at, now()), NEW.user_id
-  )
-  RETURNING * INTO NEW;
+    NEW.id, NEW.user_id, NEW.account_id, NEW.period_from, NEW.period_to,
+    NEW.opening_balance, NEW.closing_balance, NEW.total_debits,
+    NEW.total_credits, NEW.minimum_payment, NEW.remaining_balance,
+    NEW.initial_amount, NEW.transaction_count, NEW.imported_count,
+    NEW.skipped_count, zeta_encrypt(NEW.loan_number),
+    zeta_encrypt(NEW.source_filename), NEW.currency_code,
+    NEW.created_at, NEW.updated_at
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 6. capture_tokens_view_insert (no updated_at column)
+-- 6. capture_tokens
 CREATE OR REPLACE FUNCTION capture_tokens_view_insert() RETURNS TRIGGER AS $$
 BEGIN
+  NEW.id := COALESCE(NEW.id, gen_random_uuid());
+  NEW.created_at := COALESCE(NEW.created_at, now());
+
   INSERT INTO capture_tokens_enc (
-    created_at, default_account_id, id, label, last_used_at, revoked_at,
-    token, token_hash, user_id
+    id, user_id, token, token_hash, label, default_account_id, created_at
   ) VALUES (
-    COALESCE(NEW.created_at, now()), NEW.default_account_id, COALESCE(NEW.id, gen_random_uuid()),
-    zeta_encrypt(NEW.label),
-    NEW.last_used_at, NEW.revoked_at,
-    zeta_encrypt(NEW.token),
+    NEW.id, NEW.user_id, zeta_encrypt(NEW.token),
     encode(digest(NEW.token, 'sha256'), 'hex'),
-    NEW.user_id
-  )
-  RETURNING * INTO NEW;
+    zeta_encrypt(NEW.label), NEW.default_account_id, NEW.created_at
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 7. email_ingest_addresses_view_insert (no updated_at column)
+-- 7. email_ingest_addresses
 CREATE OR REPLACE FUNCTION email_ingest_addresses_view_insert() RETURNS TRIGGER AS $$
 BEGIN
+  NEW.id := COALESCE(NEW.id, gen_random_uuid());
+  NEW.created_at := COALESCE(NEW.created_at, now());
+  NEW.auto_import := COALESCE(NEW.auto_import, false);
+  NEW.is_active := COALESCE(NEW.is_active, true);
+  NEW.pdf_import_enabled := COALESCE(NEW.pdf_import_enabled, false);
+
   INSERT INTO email_ingest_addresses_enc (
-    account_id, address_key, allowed_sender, auto_import, created_at,
-    gmail_verification_at, gmail_verification_url, id, is_active,
-    pdf_import_enabled, user_id
+    id, user_id, address_key, allowed_sender, default_account_id,
+    auto_import, is_active, gmail_verification_url, created_at,
+    pdf_import_enabled
   ) VALUES (
-    NEW.account_id, NEW.address_key,
-    zeta_encrypt(NEW.allowed_sender),
-    COALESCE(NEW.auto_import, false),
-    COALESCE(NEW.created_at, now()), NEW.gmail_verification_at,
-    zeta_encrypt(NEW.gmail_verification_url),
-    COALESCE(NEW.id, gen_random_uuid()),
-    COALESCE(NEW.is_active, true),
-    COALESCE(NEW.pdf_import_enabled, false),
-    NEW.user_id
-  )
-  RETURNING * INTO NEW;
+    NEW.id, NEW.user_id, NEW.address_key,
+    zeta_encrypt(NEW.allowed_sender), NEW.default_account_id,
+    NEW.auto_import, NEW.is_active,
+    zeta_encrypt(NEW.gmail_verification_url), NEW.created_at,
+    NEW.pdf_import_enabled
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 8. recurring_templates_view_insert (table: recurring_transaction_templates_enc)
+-- 8. recurring_transaction_templates
 CREATE OR REPLACE FUNCTION recurring_templates_view_insert() RETURNS TRIGGER AS $$
 BEGIN
+  NEW.id := COALESCE(NEW.id, gen_random_uuid());
+  NEW.created_at := COALESCE(NEW.created_at, now());
+  NEW.updated_at := COALESCE(NEW.updated_at, now());
+  NEW.currency_code := COALESCE(NEW.currency_code, 'COP'::currency_code);
+  NEW.is_active := COALESCE(NEW.is_active, true);
+
   INSERT INTO recurring_transaction_templates_enc (
-    account_id, amount, category_id, created_at, currency_code,
-    day_of_month, day_of_week, description, direction, end_date,
-    frequency, id, is_active, merchant_name, start_date,
-    transfer_source_account_id, updated_at, user_id
+    id, user_id, account_id, amount, currency_code, direction,
+    frequency, day_of_month, day_of_week, merchant_name, description,
+    category_id, is_active, start_date, end_date, last_occurrence_date,
+    next_occurrence_date, created_at, updated_at,
+    transfer_source_account_id
   ) VALUES (
-    NEW.account_id, NEW.amount, NEW.category_id, COALESCE(NEW.created_at, now()),
-    COALESCE(NEW.currency_code, 'COP'::currency_code),
-    NEW.day_of_month, NEW.day_of_week,
-    zeta_encrypt(NEW.description),
-    NEW.direction, NEW.end_date, NEW.frequency, COALESCE(NEW.id, gen_random_uuid()),
-    COALESCE(NEW.is_active, true),
-    zeta_encrypt(NEW.merchant_name),
-    NEW.start_date, NEW.transfer_source_account_id, COALESCE(NEW.updated_at, now()),
-    NEW.user_id
-  )
-  RETURNING * INTO NEW;
+    NEW.id, NEW.user_id, NEW.account_id, NEW.amount, NEW.currency_code,
+    NEW.direction, NEW.frequency, NEW.day_of_month, NEW.day_of_week,
+    zeta_encrypt(NEW.merchant_name), zeta_encrypt(NEW.description),
+    NEW.category_id, NEW.is_active, NEW.start_date, NEW.end_date,
+    NEW.last_occurrence_date, NEW.next_occurrence_date,
+    NEW.created_at, NEW.updated_at, NEW.transfer_source_account_id
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 9. wishlist_items_view_insert
+-- 9. wishlist_items
 CREATE OR REPLACE FUNCTION wishlist_items_view_insert() RETURNS TRIGGER AS $$
 BEGIN
+  NEW.id := COALESCE(NEW.id, gen_random_uuid());
+  NEW.created_at := COALESCE(NEW.created_at, now());
+  NEW.updated_at := COALESCE(NEW.updated_at, now());
+  NEW.currency_code := COALESCE(NEW.currency_code, 'COP'::text);
+  NEW.status := COALESCE(NEW.status, 'wishlist'::text);
+  NEW.enriched := COALESCE(NEW.enriched, false);
+
   INSERT INTO wishlist_items_enc (
-    account_id, amount, bought_at, category_id, created_at, currency_code,
-    desire_type, enriched, enriched_at, funding_type, id, image_url,
-    installments, last_nudge_dismissed_at, last_score, last_scored_at,
-    last_verdict, name, ready_at, status, transaction_id, updated_at,
-    urgency, url, user_id, why
+    id, user_id, name, url, price, currency_code, why,
+    status, enriched, enrichment_data, score_data,
+    created_at, updated_at
   ) VALUES (
-    NEW.account_id, NEW.amount, NEW.bought_at, NEW.category_id,
-    COALESCE(NEW.created_at, now()),
-    COALESCE(NEW.currency_code, 'COP'::text),
-    NEW.desire_type,
-    COALESCE(NEW.enriched, false),
-    NEW.enriched_at, NEW.funding_type, COALESCE(NEW.id, gen_random_uuid()), NEW.image_url,
-    NEW.installments, NEW.last_nudge_dismissed_at, NEW.last_score,
-    NEW.last_scored_at, NEW.last_verdict,
-    zeta_encrypt(NEW.name),
-    NEW.ready_at,
-    COALESCE(NEW.status, 'wishlist'::text),
-    NEW.transaction_id, COALESCE(NEW.updated_at, now()),
-    NEW.urgency,
-    zeta_encrypt(NEW.url),
-    NEW.user_id,
-    zeta_encrypt(NEW.why)
-  )
-  RETURNING * INTO NEW;
+    NEW.id, NEW.user_id, zeta_encrypt(NEW.name), zeta_encrypt(NEW.url),
+    NEW.price, NEW.currency_code, zeta_encrypt(NEW.why),
+    NEW.status, NEW.enriched, NEW.enrichment_data, NEW.score_data,
+    NEW.created_at, NEW.updated_at
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
