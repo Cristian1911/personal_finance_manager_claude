@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LogOut,
   Settings,
@@ -44,9 +45,19 @@ interface QuickViewMenuProps {
 
 export function QuickViewMenu({ profile, attentionSnapshot }: QuickViewMenuProps) {
   const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<QuickViewData | null>(null);
   const [loading, startTransition] = useTransition();
+  const prevPathname = useRef(pathname);
+
+  // Auto-close on route change
+  useEffect(() => {
+    if (prevPathname.current !== pathname) {
+      setOpen(false);
+      prevPathname.current = pathname;
+    }
+  }, [pathname]);
 
   const initials = (profile.full_name ?? profile.email ?? "?")
     .split(" ")

@@ -156,8 +156,8 @@ export function InspectOverlay({ onSelectComponent, onClose }: InspectOverlayPro
         <div
           className="fixed z-[10000] rounded-xl border border-white/6 bg-z-surface-2 p-1.5 shadow-xl"
           style={{
-            top: Math.min(contextMenu.y, window.innerHeight - 180),
-            left: Math.min(contextMenu.x, window.innerWidth - 200),
+            top: Math.max(8, Math.min(contextMenu.y, window.innerHeight - 220)),
+            left: Math.max(8, Math.min(contextMenu.x, window.innerWidth - 220)),
           }}
         >
           <p className="px-3 py-1.5 text-xs font-semibold text-z-brass lg:px-2 lg:py-1 lg:text-[11px]">{contextMenu.info.componentName}</p>

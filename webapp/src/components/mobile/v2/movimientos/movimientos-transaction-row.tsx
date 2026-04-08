@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { Hash, UserRound, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
+import { DestinatarioDrawer } from "./destinatario-drawer";
+import { TagDrawer } from "./tag-drawer";
 import type { TransactionWithAccount } from "@/types/domain";
 
 interface MovimientosTransactionRowProps {
@@ -16,6 +18,14 @@ export function MovimientosTransactionRow({
   transaction: tx,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
+  const [destDrawerOpen, setDestDrawerOpen] = useState(false);
+  const [tagDrawerOpen, setTagDrawerOpen] = useState(false);
+
+  // Optimistic local state for destinatario
+  const [localDest, setLocalDest] = useState<{
+    id: string;
+    name: string;
+  } | null>(tx.destinatario ?? null);
 
   const description =
     tx.merchant_name ||
@@ -24,7 +34,15 @@ export function MovimientosTransactionRow({
     "Sin descripción";
 
   const categoryName = tx.category?.name_es ?? tx.category?.name ?? null;
-  const destinatarioName = tx.destinatario?.name ?? null;
+  const destinatarioName = localDest?.name ?? null;
+
+  const handleDestAssigned = useCallback((id: string, name: string) => {
+    setLocalDest({ id, name });
+  }, []);
+
+  const handleDestRemoved = useCallback(() => {
+    setLocalDest(null);
+  }, []);
 
   return (
     <div
@@ -93,24 +111,30 @@ export function MovimientosTransactionRow({
             </Link>
           )}
           {destinatarioName && (
-            <span className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => setDestDrawerOpen(true)}
+              className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.08]"
+            >
               {destinatarioName}
-            </span>
+            </button>
           )}
           {!destinatarioName && (
-            <Link
-              href={`/transactions/${tx.id}`}
+            <button
+              type="button"
+              onClick={() => setDestDrawerOpen(true)}
               className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
             >
               <UserRound className="size-3" />
-            </Link>
+            </button>
           )}
-          <Link
-            href={`/transactions/${tx.id}`}
+          <button
+            type="button"
+            onClick={() => setTagDrawerOpen(true)}
             className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
           >
             <Hash className="size-3" />
-          </Link>
+          </button>
           <div className="flex-1" />
           <Link
             href={`/transactions/${tx.id}`}
@@ -119,6 +143,26 @@ export function MovimientosTransactionRow({
             <Pencil className="size-3" />
           </Link>
         </div>
+      )}
+
+      {/* Drawers — rendered only when expanded to avoid unnecessary mount */}
+      {expanded && (
+        <>
+          <DestinatarioDrawer
+            open={destDrawerOpen}
+            onOpenChange={setDestDrawerOpen}
+            transactionId={tx.id}
+            currentDestinatarioId={localDest?.id ?? null}
+            currentDestinatarioName={destinatarioName}
+            onAssigned={handleDestAssigned}
+            onRemoved={handleDestRemoved}
+          />
+          <TagDrawer
+            open={tagDrawerOpen}
+            onOpenChange={setTagDrawerOpen}
+            transactionId={tx.id}
+          />
+        </>
       )}
     </div>
   );

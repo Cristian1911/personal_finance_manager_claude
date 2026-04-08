@@ -13,6 +13,7 @@ import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
 import { MobileShellProvider } from "@/components/mobile/v2/mobile-shell-provider";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
+import { DemoBanner } from "@/components/dashboard/demo-banner";
 
 const DevOverlay = dynamic(
   () => import("@/components/dev/dev-overlay").then((m) => ({ default: m.DevOverlay })),
@@ -78,6 +79,7 @@ export default async function DashboardLayout({
             }}
           >
             <main className="flex-1 overflow-x-hidden p-4 pb-20 lg:p-6 lg:pb-6">
+              {profile.demo_mode && <DemoBanner />}
               <PageTransition>
                 {children}
               </PageTransition>

@@ -13,6 +13,7 @@ import {
 } from "@/lib/utils/currency-balances";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
+import { getIsDemoFilter } from "@/lib/demo-filter";
 import type { Account, AccountRow, CurrencyCode, TransactionDirection } from "@/types/domain";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -25,7 +26,7 @@ function stripSensitive({ pdf_password: _, ...rest }: AccountRow): Account {
 // Uses createCachedClient(accessToken) so "use cache" works WITH encryption.
 // The admin client has no JWT → zeta_decrypt returns NULL for encrypted columns.
 
-async function getAccountsCached(userId: string, accessToken: string): Promise<Account[]> {
+async function getAccountsCached(userId: string, accessToken: string, isDemo: boolean): Promise<Account[]> {
   "use cache";
   cacheTag("accounts");
   cacheLife("zeta");
@@ -36,6 +37,7 @@ async function getAccountsCached(userId: string, accessToken: string): Promise<A
     .select("*")
     .eq("user_id", userId)
     .eq("is_active", true)
+    .eq("is_demo", isDemo)
     .order("display_order", { ascending: true });
 
   if (error) throw error;
@@ -65,7 +67,8 @@ export async function getAccounts(): Promise<ActionResult<Account[]>> {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getAccountsCached(user.id, accessToken);
+    const isDemo = await getIsDemoFilter(user.id);
+    const data = await getAccountsCached(user.id, accessToken, isDemo);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading accounts:", error);

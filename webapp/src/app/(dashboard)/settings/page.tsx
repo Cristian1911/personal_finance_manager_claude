@@ -19,6 +19,7 @@ import { UnrecognizedEmailsCard } from "@/components/settings/unrecognized-email
 import { BuildInfo } from "@/components/settings/build-info";
 import { ReviewModeToggle } from "@/components/settings/review-mode-toggle";
 import { SettingsMobileAccordion } from "@/components/settings/settings-mobile-accordion";
+import { DemoModeCard } from "@/components/settings/demo-mode-card";
 import { getCaptureTokens } from "@/actions/capture-tokens";
 import { getEmailIngestAddress, getUnrecognizedEmails } from "@/actions/email-ingest";
 import { getTagGroups } from "@/actions/tags";
@@ -218,6 +219,8 @@ export default async function SettingsPage() {
       </div>
 
       {/* Shared bottom items — always visible */}
+      <DemoModeCard initialDemoMode={profile.demo_mode ?? false} />
+
       <BuildInfo />
 
       <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">

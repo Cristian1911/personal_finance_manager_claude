@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BellDot, ChevronRight, Menu, Settings, Upload } from "lucide-react";
 import {
   Popover,
@@ -31,6 +33,18 @@ function getInitials(name?: string | null, email?: string | null): string {
 
 export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
   const shell = useMobileShell();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const prevPathname = useRef(pathname);
+
+  // Auto-close on route change
+  useEffect(() => {
+    if (prevPathname.current !== pathname) {
+      setOpen(false);
+      prevPathname.current = pathname;
+    }
+  }, [pathname]);
+
   const resolvedName = name ?? shell?.name ?? null;
   const resolvedEmail = email ?? shell?.email ?? null;
   const attentionCount = shell?.attentionCount ?? 0;
@@ -39,7 +53,7 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
   const attentionBadge = attentionCount > 9 ? "9+" : `${attentionCount}`;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
