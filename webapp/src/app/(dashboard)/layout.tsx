@@ -9,6 +9,9 @@ import { getProfile } from "@/actions/profile";
 import { getAttentionSnapshot } from "@/actions/attention";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
+import { getDestinatarios } from "@/actions/destinatarios";
+import { getTagGroups } from "@/actions/tags";
+import { AppDataProvider } from "@/components/providers/app-data-provider";
 import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
 import { MobileShellProvider } from "@/components/mobile/v2/mobile-shell-provider";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -33,11 +36,22 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const [profileResult, attentionSnapshot, accountsResult, categoriesResult] = await Promise.all([
+  const [
+    profileResult,
+    attentionSnapshot,
+    accountsResult,
+    categoriesResult,
+    outflowCategoriesResult,
+    destinatariosResult,
+    tagGroupsResult,
+  ] = await Promise.all([
     getProfile(),
     getAttentionSnapshot(),
     getAccounts(),
     getCategories(),
+    getCategories("OUTFLOW"),
+    getDestinatarios(),
+    getTagGroups(),
   ]);
 
   const profile = profileResult.success ? profileResult.data : null;
@@ -52,6 +66,15 @@ export default async function DashboardLayout({
 
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
+  const appData = {
+    accounts,
+    categories,
+    outflowCategories: outflowCategoriesResult.success ? outflowCategoriesResult.data ?? [] : [],
+    destinatarios: (destinatariosResult.success ? destinatariosResult.data : []).map(
+      (d) => ({ id: d.id, name: d.name, is_active: d.is_active })
+    ),
+    tagGroups: tagGroupsResult.success ? tagGroupsResult.data : [],
+  };
   const attentionCount = attentionSnapshot.totalAction;
   const attentionSummary =
     attentionSnapshot.totalAction > 0
@@ -78,14 +101,16 @@ export default async function DashboardLayout({
               attentionSummary,
             }}
           >
-            <main className="flex-1 overflow-x-hidden p-4 pb-20 lg:p-6 lg:pb-6">
-              {profile.demo_mode && <DemoBanner />}
-              <PageTransition>
-                {children}
-              </PageTransition>
-            </main>
+            <AppDataProvider data={appData}>
+              <main className="flex-1 overflow-x-hidden p-4 pb-20 lg:p-6 lg:pb-6">
+                {profile.demo_mode && <DemoBanner />}
+                <PageTransition>
+                  {children}
+                </PageTransition>
+              </main>
 
-            <MobileTabBar accounts={accounts} categories={categories} />
+              <MobileTabBar accounts={accounts} categories={categories} />
+            </AppDataProvider>
           </MobileShellProvider>
         </KeyboardInsetProvider>
       </div>
