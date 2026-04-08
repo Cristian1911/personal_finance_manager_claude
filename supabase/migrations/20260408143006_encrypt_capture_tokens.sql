@@ -6,6 +6,9 @@ SET search_path = public, extensions;
 
 ALTER TABLE capture_tokens RENAME TO capture_tokens_enc;
 
+-- Drop CHECK constraint referencing encrypted column (char_length incompatible with BYTEA)
+ALTER TABLE capture_tokens_enc DROP CONSTRAINT IF EXISTS capture_tokens_token_length;
+
 -- token_hash: SHA-256 of plaintext token for unauthenticated lookup
 -- NOT a per-user HMAC — system-wide hash for API auth flow
 ALTER TABLE capture_tokens_enc ADD COLUMN token_hash TEXT;

@@ -5,7 +5,8 @@
 -- 1. Rename
 ALTER TABLE accounts RENAME TO accounts_enc;
 
--- 2. Drop indexes that reference encrypted columns (incompatible with BYTEA)
+-- 2. Drop indexes and constraints that reference encrypted columns (incompatible with BYTEA)
+ALTER TABLE accounts_enc DROP CONSTRAINT IF EXISTS accounts_name_length;
 DROP INDEX IF EXISTS accounts_provider_unique;
 DROP INDEX IF EXISTS idx_accounts_user_debit_card_mask;
 
