@@ -33,6 +33,8 @@ interface TagZonePickerProps {
   entityId: string;
   placeholder?: string;
   triggerClassName?: string;
+  /** Render as a small icon button instead of a combobox */
+  compact?: boolean;
   variant?: "popover" | "drawer";
 }
 
@@ -41,6 +43,7 @@ export function TagZonePicker({
   entityId,
   placeholder = "Etiquetas",
   triggerClassName,
+  compact = false,
   variant: variantProp,
 }: TagZonePickerProps) {
   const [open, setOpen] = useState(false);
@@ -182,7 +185,18 @@ export function TagZonePicker({
   // ── Trigger ──────────────────────────────────────────────────────────────
 
   const tagCount = currentTags.length;
-  const triggerButton = (
+  const triggerButton = compact ? (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className={cn(
+        "inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]",
+        triggerClassName
+      )}
+    >
+      <Hash className="size-3" />
+    </button>
+  ) : (
     <Button
       variant="outline"
       role="combobox"

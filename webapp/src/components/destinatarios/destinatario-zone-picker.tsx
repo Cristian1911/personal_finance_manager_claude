@@ -31,6 +31,8 @@ interface DestinatarioZonePickerProps {
   triggerClassName?: string;
   /** Currently selected name — avoids extra lookup when known */
   selectedName?: string | null;
+  /** Render as a small icon button instead of a combobox */
+  compact?: boolean;
   variant?: "popover" | "drawer";
 }
 
@@ -40,6 +42,7 @@ export function DestinatarioZonePicker({
   placeholder = "Destinatario",
   triggerClassName,
   selectedName,
+  compact = false,
   variant: variantProp,
 }: DestinatarioZonePickerProps) {
   const [open, setOpen] = useState(false);
@@ -92,7 +95,19 @@ export function DestinatarioZonePicker({
 
   // ── Trigger ──────────────────────────────────────────────────────────────
 
-  const triggerButton = (
+  const triggerButton = compact ? (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className={cn(
+        "inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]",
+        displayName && "bg-white/5 px-2.5 py-1 text-[10px] font-medium",
+        triggerClassName
+      )}
+    >
+      {displayName ? displayName : <UserRound className="size-3" />}
+    </button>
+  ) : (
     <Button
       variant="outline"
       role="combobox"

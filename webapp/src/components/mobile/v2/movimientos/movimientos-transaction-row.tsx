@@ -143,16 +143,12 @@ export function MovimientosTransactionRow({
             value={localDest?.id ?? null}
             onValueChange={handleDestChange}
             selectedName={destinatarioName}
-            placeholder="👤"
-            variant="drawer"
-            triggerClassName="text-[10px] h-auto py-1 px-2 rounded-lg border border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
+            compact
           />
           <TagZonePicker
             entityType="transaction"
             entityId={tx.id}
-            placeholder="#"
-            variant="drawer"
-            triggerClassName="text-[10px] h-auto py-1 px-2 rounded-lg border border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
+            compact
           />
           <div className="flex-1" />
           <Link
