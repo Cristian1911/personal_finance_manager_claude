@@ -19,6 +19,7 @@ ALTER TABLE capture_tokens_enc ALTER COLUMN token_hash SET NOT NULL;
 
 ALTER TABLE capture_tokens_enc
   ALTER COLUMN token TYPE BYTEA USING zeta_encrypt_as(token, user_id);
+ALTER TABLE capture_tokens_enc ALTER COLUMN label DROP DEFAULT;
 ALTER TABLE capture_tokens_enc
   ALTER COLUMN label TYPE BYTEA USING zeta_encrypt_as(label, user_id);
 
