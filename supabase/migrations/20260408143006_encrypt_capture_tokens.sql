@@ -9,6 +9,7 @@ ALTER TABLE capture_tokens RENAME TO capture_tokens_enc;
 ALTER TABLE capture_tokens_enc ADD COLUMN token_hash TEXT;
 UPDATE capture_tokens_enc SET token_hash = encode(digest(token, 'sha256'), 'hex')
 WHERE token IS NOT NULL;
+ALTER TABLE capture_tokens_enc ALTER COLUMN token_hash SET NOT NULL;
 
 ALTER TABLE capture_tokens_enc
   ALTER COLUMN token TYPE BYTEA USING zeta_encrypt_as(token, user_id);
