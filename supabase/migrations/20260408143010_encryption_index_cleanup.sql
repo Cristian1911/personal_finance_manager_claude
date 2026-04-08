@@ -1,12 +1,6 @@
 -- ==================================================
--- Drop useless indexes on encrypted columns
--- ==================================================
-
-DROP INDEX IF EXISTS idx_destinatarios_user_name;
-DROP INDEX IF EXISTS idx_capture_tokens_token;
-
--- ==================================================
 -- Add indexes on HMAC/hash columns for lookup
+-- (blocking indexes already dropped in per-table migrations)
 -- ==================================================
 
 CREATE INDEX idx_transactions_merchant_hmac

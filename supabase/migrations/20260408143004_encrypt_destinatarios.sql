@@ -4,6 +4,9 @@
 
 ALTER TABLE destinatarios RENAME TO destinatarios_enc;
 
+-- Drop index that uses lower(name) — incompatible with BYTEA
+DROP INDEX IF EXISTS idx_destinatarios_user_name;
+
 ALTER TABLE destinatarios_enc ADD COLUMN name_hmac TEXT;
 UPDATE destinatarios_enc SET name_hmac = zeta_hmac_as(name, user_id) WHERE name IS NOT NULL;
 
