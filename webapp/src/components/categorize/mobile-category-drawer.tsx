@@ -48,12 +48,12 @@ export function MobileCategoryDrawer({
   const [applySimilar, setApplySimilar] = useState(false);
   const [expandedParent, setExpandedParent] = useState<string | null>(null);
 
-  // Reset state when transaction changes
+  // Reset state when transaction changes — pre-select suggestion if available
   useEffect(() => {
-    setSelectedCategoryId(null);
+    setSelectedCategoryId(suggestion?.category_id ?? null);
     setApplySimilar(false);
     setExpandedParent(null);
-  }, [transaction?.id]);
+  }, [transaction?.id, suggestion?.category_id]);
 
   if (!transaction) return null;
 

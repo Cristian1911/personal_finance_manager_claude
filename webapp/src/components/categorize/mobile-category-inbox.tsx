@@ -167,12 +167,24 @@ export function MobileCategoryInbox({
     if (!drawerTx) return;
     startTransition(async () => {
       if (activeTab === "auto-review") {
-        const result = await confirmAutoCategory(drawerTx.id);
-        if (result.success) {
-          setAutoTransactions((prev) => prev.filter((t) => t.id !== drawerTx.id));
-          toast.success("Auto-categorización confirmada");
+        // If user picked a different category than the auto-assigned one, override it
+        const autoCategory = drawerTx.category_id;
+        if (autoCategory && categoryId !== autoCategory) {
+          const result = await categorizeTransaction(drawerTx.id, categoryId);
+          if (result.success) {
+            setAutoTransactions((prev) => prev.filter((t) => t.id !== drawerTx.id));
+            toast.success("Categoría corregida");
+          } else {
+            toast.error(result.error ?? "Error al categorizar");
+          }
         } else {
-          toast.error(result.error ?? "Error al confirmar");
+          const result = await confirmAutoCategory(drawerTx.id);
+          if (result.success) {
+            setAutoTransactions((prev) => prev.filter((t) => t.id !== drawerTx.id));
+            toast.success("Auto-categorización confirmada");
+          } else {
+            toast.error(result.error ?? "Error al confirmar");
+          }
         }
       } else {
         const idsToUpdate = [drawerTx.id];
@@ -248,7 +260,7 @@ export function MobileCategoryInbox({
   };
 
   return (
-    <div className="lg:hidden space-y-4">
+    <div className="space-y-4">
       {/* Tab pills */}
       <div className="flex items-center gap-2">
         <button

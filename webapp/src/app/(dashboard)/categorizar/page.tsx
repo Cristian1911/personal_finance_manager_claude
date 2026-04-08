@@ -197,13 +197,15 @@ export default async function CategorizarPage() {
       </div>
 
       {/* Mobile */}
-      <MobileCategoryInbox
-        initialTransactions={transactions}
-        autoCategorizedTransactions={unreviewedAutoTransactions}
-        categories={categories}
-        userRules={userRules}
-        destinatarioSuggestions={destinatarioSuggestions}
-      />
+      <div className="lg:hidden">
+        <MobileCategoryInbox
+          initialTransactions={transactions}
+          autoCategorizedTransactions={unreviewedAutoTransactions}
+          categories={categories}
+          userRules={userRules}
+          destinatarioSuggestions={destinatarioSuggestions}
+        />
+      </div>
 
       {/* Desktop */}
       <div className="hidden lg:block">
