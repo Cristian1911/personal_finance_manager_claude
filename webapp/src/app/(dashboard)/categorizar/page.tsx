@@ -22,6 +22,11 @@ const CategoryInbox = dynamic(
   { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" /> }
 );
 
+const MobileCategoryInbox = dynamic(
+  () => import("@/components/categorize/mobile-category-inbox").then((m) => ({ default: m.MobileCategoryInbox })),
+  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse lg:hidden" /> }
+);
+
 export default async function CategorizarPage() {
   await connection();
   const [transactions, unreviewedAutoTransactions, categoriesResult, userRules, tagGroupsResult, destinatarioSuggestions] = await Promise.all([
@@ -191,14 +196,26 @@ export default async function CategorizarPage() {
         </div>
       </div>
 
-      <CategoryInbox
+      {/* Mobile */}
+      <MobileCategoryInbox
         initialTransactions={transactions}
         autoCategorizedTransactions={unreviewedAutoTransactions}
         categories={categories}
         userRules={userRules}
-        tagGroups={tagGroups}
         destinatarioSuggestions={destinatarioSuggestions}
       />
+
+      {/* Desktop */}
+      <div className="hidden lg:block">
+        <CategoryInbox
+          initialTransactions={transactions}
+          autoCategorizedTransactions={unreviewedAutoTransactions}
+          categories={categories}
+          userRules={userRules}
+          tagGroups={tagGroups}
+          destinatarioSuggestions={destinatarioSuggestions}
+        />
+      </div>
     </div>
   );
 }
