@@ -35,28 +35,33 @@ export function TagDrawer({
   const [search, setSearch] = useState("");
   const [currentTags, setCurrentTags] = useState<Tag[]>([]);
   const [localTagGroups, setLocalTagGroups] = useState<TagGroupWithTags[]>([]);
+  const [groupsLoaded, setGroupsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Lazy-load tag groups and current tags when drawer opens
   useEffect(() => {
     if (!open) {
       setSearch("");
       return;
     }
     setLoading(true);
+    // Tag groups are cached in state; current tags always re-fetched (they change per action)
+    const groupsPromise = groupsLoaded
+      ? Promise.resolve(null)
+      : getTagGroups();
     Promise.all([
-      getTagGroups(),
+      groupsPromise,
       getTagsForEntity("transaction", transactionId),
     ])
       .then(([groupsResult, tags]) => {
-        if (groupsResult.success) {
+        if (groupsResult?.success) {
           setLocalTagGroups(groupsResult.data);
+          setGroupsLoaded(true);
         }
         setCurrentTags(tags);
       })
       .finally(() => setLoading(false));
-  }, [open, transactionId]);
+  }, [open, transactionId, groupsLoaded]);
 
   const allTags = useMemo(
     () =>

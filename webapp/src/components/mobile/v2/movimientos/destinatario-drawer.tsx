@@ -42,6 +42,7 @@ export function DestinatarioDrawer({
 }: DestinatarioDrawerProps) {
   const [search, setSearch] = useState("");
   const [destinatarios, setDestinatarios] = useState<DestinatarioOption[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -50,6 +51,8 @@ export function DestinatarioDrawer({
       setSearch("");
       return;
     }
+    // Skip fetch if already loaded (cache in state)
+    if (loaded) return;
     setLoading(true);
     getDestinatarios()
       .then((result) => {
@@ -61,10 +64,11 @@ export function DestinatarioDrawer({
               is_active: d.is_active,
             }))
           );
+          setLoaded(true);
         }
       })
       .finally(() => setLoading(false));
-  }, [open]);
+  }, [open, loaded]);
 
   const activeDestinatarios = useMemo(
     () => destinatarios.filter((d) => d.is_active),
