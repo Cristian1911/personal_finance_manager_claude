@@ -24,6 +24,7 @@
 ## Supabase
 - Project ID: `tgkhaxipfgskxydotdtu` (sa-east-1, org: zybaordjrezdjajzwisk)
 - See `~/.claude/rules/supabase.md` for RLS, auth, migration patterns
+- **Envelope encryption**: Tables with PII use `_enc` suffix (real table) + view (original name) + INSTEAD OF triggers. When adding a column to any `_enc` table, you MUST also update the view SELECT and the INSTEAD OF INSERT/UPDATE trigger functions. See `docs/superpowers/specs/2026-04-07-envelope-encryption-design.md` for full spec.
 
 ## Income & Metrics Rules
 - **Debt inflows are NOT income**: INFLOW to `CREDIT_CARD` or `LOAN` accounts are debt payments. They must NEVER count in income/ingresos metrics. Always filter: `tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id)` where `debtAccountIds` comes from `accounts.filter(a => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")`.
