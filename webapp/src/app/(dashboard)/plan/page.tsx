@@ -1,27 +1,20 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { getPlanPageData } from "@/actions/plan";
-import { getCategoriesByRhythm } from "@/actions/categories";
 import { getWishlistItemsForDashboard } from "@/actions/wishlist";
 import { MonthSelector } from "@/components/month-selector";
-import { PlanBudgetSection } from "@/components/plan/plan-budget-section";
-import { PlanBudgetToggle } from "@/components/plan/plan-budget-toggle";
-import { PlanDebtSection } from "@/components/plan/plan-debt-section";
-import { PlanHero } from "@/components/plan/plan-hero";
-import { PlanRecurringSection } from "@/components/plan/plan-recurring-section";
-import { PlanScenarioPreview } from "@/components/plan/plan-scenario-preview";
 import { PlanTabNav, type PlanTab } from "@/components/plan/plan-tab-nav";
 import { PlanTabPresupuesto } from "@/components/plan/tabs/plan-tab-presupuesto";
 import { PlanTabPeriodo } from "@/components/plan/tabs/plan-tab-periodo";
 import { PlanTabRecurrentes } from "@/components/plan/tabs/plan-tab-recurrentes";
 import { PlanTabDeseos } from "@/components/plan/tabs/plan-tab-deseos";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
-import { PlanRoot } from "@/components/mobile/v2/plan/plan-root";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getActivePeriod } from "@/actions/cashflow-planner";
-import { getPlanTimelineData } from "@/actions/plan-timeline";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
+import { PlanResumenZone } from "@/components/plan/zones/plan-resumen-zone";
+import { PlanMobileZone } from "@/components/plan/zones/plan-mobile-zone";
+import type { CurrencyCode } from "@/types/domain";
 
 const VALID_TABS: PlanTab[] = ["resumen", "presupuesto", "periodo", "recurrentes", "deseos"];
 
@@ -40,8 +33,7 @@ export default async function PlanPage({
 
   const monthLabel = formatMonthLabel(parseMonth(month));
 
-  // For resumen tab (and mobile), fetch plan data
-  // For other tabs, we only need minimal data for the header
+  // Shell: lightweight data for header + tab nav badges
   const [currency, wishlistSummary, activePeriodResult] = await Promise.all([
     getPreferredCurrency(),
     getWishlistItemsForDashboard(),
@@ -49,15 +41,6 @@ export default async function PlanPage({
   ]);
 
   const isResumen = activeTab === "resumen";
-
-  // Only fetch heavy plan data for resumen tab
-  const [planData, rhythmResult, timelineData] = isResumen
-    ? await Promise.all([
-        getPlanPageData(month, currency),
-        getCategoriesByRhythm(month, currency),
-        getPlanTimelineData(month, currency),
-      ])
-    : [null, null, null];
 
   const activePeriod = activePeriodResult.success ? activePeriodResult.data : null;
   const periodoSummary = activePeriod
@@ -70,70 +53,7 @@ export default async function PlanPage({
       }
     : null;
 
-  // ── Mobile: show PlanRoot for resumen, tab content for others ──
-  const mobileContent = (() => {
-    if (isResumen && planData) {
-      const now = new Date();
-      const planDayOfMonth = now.getDate();
-      const planDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-
-      return (
-        <PlanRoot
-          planData={planData}
-          timelineData={timelineData!}
-          currency={planData.currency}
-          monthLabel={monthLabel}
-          dayOfMonth={planDayOfMonth}
-          daysInMonth={planDaysInMonth}
-          periodoSummary={periodoSummary}
-          wishlistCount={wishlistSummary?.totalCount ?? 0}
-        />
-      );
-    }
-    return null; // Non-resumen tabs render tab content below (shared mobile+desktop)
-  })();
-
-  // ── Desktop: resumen tab shows the full plan layout ──
-  const desktopResumenContent = (() => {
-    if (!isResumen || !planData) return null;
-    const rhythmData = rhythmResult?.success ? rhythmResult.data : [];
-
-    return (
-      <>
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_24rem]">
-          <PlanHero
-            summary={planData.heroSummary}
-            currency={planData.currency}
-            monthLabel={monthLabel}
-            incomeEstimate={planData.incomeEstimate}
-          />
-          {/* Decision rail — now shows tab links instead of page links */}
-          <div className="space-y-3 rounded-2xl border border-white/6 bg-z-surface-2/80 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Módulos del plan
-            </p>
-            <PlanTabNav activeTab={activeTab} />
-          </div>
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-          <PlanBudgetToggle
-            domainView={<PlanBudgetSection budget={planData.budget} currency={planData.currency} />}
-            rhythmGroups={rhythmData}
-            currency={planData.currency}
-          />
-          <div className="space-y-6">
-            <PlanDebtSection debt={planData.debt} currency={planData.currency} />
-            <PlanRecurringSection recurring={planData.recurring} currency={planData.currency} />
-          </div>
-        </div>
-
-        <PlanScenarioPreview scenarios={planData.scenarios} />
-      </>
-    );
-  })();
-
-  // ── Tab content for non-resumen tabs ──
+  // Tab content for non-resumen tabs (already Suspensed)
   const tabContent = (() => {
     switch (activeTab) {
       case "presupuesto":
@@ -149,23 +69,63 @@ export default async function PlanPage({
     }
   })();
 
+  // Skeletons for resumen zones
+  const resumenSkeleton = (
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_24rem]">
+        <div className="h-[280px] rounded-xl bg-z-surface-2 animate-pulse" />
+        <div className="h-[280px] rounded-xl bg-z-surface-2 animate-pulse" />
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="h-[300px] rounded-xl bg-z-surface-2 animate-pulse" />
+        <div className="space-y-6">
+          <div className="h-[140px] rounded-xl bg-z-surface-2 animate-pulse" />
+          <div className="h-[140px] rounded-xl bg-z-surface-2 animate-pulse" />
+        </div>
+      </div>
+      <div className="h-[200px] rounded-xl bg-z-surface-2 animate-pulse" />
+    </div>
+  );
+
+  const mobileSkeleton = (
+    <div className="space-y-4">
+      <div className="h-[200px] rounded-2xl bg-z-surface-2 animate-pulse" />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="h-[80px] rounded-xl bg-z-surface-2 animate-pulse" />
+        <div className="h-[80px] rounded-xl bg-z-surface-2 animate-pulse" />
+      </div>
+      <div className="h-[160px] rounded-xl bg-z-surface-2 animate-pulse" />
+    </div>
+  );
+
   return (
     <div className={PAGE_STACK_CLASS}>
       {/* ── Mobile ── */}
       <div className="lg:hidden">
-        {/* Mobile tab content — PlanRoot handles its own header + month selector */}
-        {mobileContent}
-        {tabContent && (
-          <div className="mt-4">
-            <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
-              {tabContent}
-            </Suspense>
-          </div>
+        {isResumen ? (
+          <Suspense fallback={mobileSkeleton}>
+            <PlanMobileZone
+              month={month}
+              currency={currency as CurrencyCode}
+              monthLabel={monthLabel}
+              periodoSummary={periodoSummary}
+              wishlistCount={wishlistSummary?.totalCount ?? 0}
+            />
+          </Suspense>
+        ) : (
+          tabContent && (
+            <div className="mt-4">
+              <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+                {tabContent}
+              </Suspense>
+            </div>
+          )
         )}
       </div>
 
       {/* ── Desktop ── */}
       <div className="hidden lg:block space-y-6">
+        {/* Header — renders immediately from shell data */}
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
             <SectionEyebrow>Plan</SectionEyebrow>
@@ -184,8 +144,19 @@ export default async function PlanPage({
           </div>
         </div>
 
-        {/* Tab content */}
-        {desktopResumenContent}
+        {/* Resumen content — streams via zone */}
+        {isResumen && (
+          <Suspense fallback={resumenSkeleton}>
+            <PlanResumenZone
+              month={month}
+              currency={currency as CurrencyCode}
+              monthLabel={monthLabel}
+              activeTab={activeTab}
+            />
+          </Suspense>
+        )}
+
+        {/* Tab content — already Suspensed */}
         {tabContent && (
           <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
             {tabContent}

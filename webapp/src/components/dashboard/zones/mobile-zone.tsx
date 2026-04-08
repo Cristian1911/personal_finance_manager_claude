@@ -2,7 +2,6 @@ import { getDashboardHeroData } from "@/actions/charts";
 import { getAttentionItems } from "@/actions/attention-items";
 import { getBurnRate } from "@/actions/burn-rate";
 import { getBudgetSummary } from "@/actions/budgets";
-import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { getAccounts } from "@/actions/accounts";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
@@ -22,13 +21,12 @@ interface MobileZoneProps {
 }
 
 export async function MobileZone({ month, currency, recentTx }: MobileZoneProps) {
-  const [heroData, attentionItemsData, burnRateData, budgetSummary, categoryBudgetResult, accountsResult] =
+  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult] =
     await Promise.all([
       getDashboardHeroData(month, currency),
       getAttentionItems(),
       getBurnRate(currency),
       getBudgetSummary(month),
-      getCategoriesWithBudgetData(month, currency),
       getAccounts(),
     ]);
 
@@ -42,20 +40,6 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     currency_code: tx.currency_code ?? "COP",
     direction: tx.direction,
   }));
-
-  // Compute top categories from budget data
-  const categoryBudgetData = categoryBudgetResult.success ? categoryBudgetResult.data : [];
-  const mobileTopCategories = categoryBudgetData
-    .filter(
-      (category) =>
-        category.budget && category.budget > 0 && category.direction === "OUTFLOW"
-    )
-    .sort((a, b) => b.percentUsed - a.percentUsed)
-    .slice(0, 3)
-    .map((category) => ({
-      name: category.name_es ?? category.name,
-      percentUsed: category.percentUsed,
-    }));
 
   // Derived date values
   const now = new Date();
@@ -98,7 +82,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     : null;
 
   return (
-    <div className="lg:hidden">
+    <>
       <MobileHeader variant="main" title="Zeta" />
       <InicioRoot
         hero={{
@@ -128,6 +112,6 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
         recentTransactions={mobileRecentTx}
         currency={currency}
       />
-    </div>
+    </>
   );
 }
