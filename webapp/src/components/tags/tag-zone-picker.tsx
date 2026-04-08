@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { ChevronsUpDown, Hash, Loader2 } from "lucide-react";
+import { ChevronsUpDown, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,8 +22,8 @@ import {
   addTagToEntity,
   removeTagFromEntity,
   getTagsForEntity,
-  getTagGroups,
 } from "@/actions/tags";
+import { useTagGroups } from "@/components/providers/app-data-provider";
 import { UNGROUPED_TAG_GROUP_ID } from "@/lib/constants/tags";
 import { generateSlug } from "@/lib/validators/tags";
 import { toast } from "sonner";
@@ -51,34 +51,25 @@ export function TagZonePicker({
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const variant = variantProp ?? (isDesktop ? "popover" : "dialog");
 
+  const contextTagGroups = useTagGroups();
   const [currentTags, setCurrentTags] = useState<Tag[]>([]);
-  const [tagGroups, setTagGroups] = useState<TagGroupWithTags[]>([]);
-  const [groupsLoaded, setGroupsLoaded] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [tagGroups, setTagGroups] = useState<TagGroupWithTags[]>(contextTagGroups);
   const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  // Load data on open — groups cached in state, current tags always refreshed
+  // Sync from context when it changes (e.g. after revalidation)
+  useEffect(() => {
+    setTagGroups(contextTagGroups);
+  }, [contextTagGroups]);
+
+  // Load per-entity tags on open
   useEffect(() => {
     if (!open) {
       setSearch("");
       return;
     }
-    // Only show spinner on first load (groups not yet cached)
-    if (!groupsLoaded) setLoading(true);
-    const groupsPromise = groupsLoaded
-      ? Promise.resolve(null)
-      : getTagGroups();
-    Promise.all([groupsPromise, getTagsForEntity(entityType, entityId)])
-      .then(([groupsResult, tags]) => {
-        if (groupsResult?.success) {
-          setTagGroups(groupsResult.data);
-          setGroupsLoaded(true);
-        }
-        setCurrentTags(tags);
-      })
-      .finally(() => setLoading(false));
-  }, [open, entityType, entityId, groupsLoaded]);
+    getTagsForEntity(entityType, entityId).then((tags) => setCurrentTags(tags));
+  }, [open, entityType, entityId]);
 
   const allTags = useMemo(
     () =>
@@ -274,52 +265,42 @@ export function TagZonePicker({
 
       {/* Tag list */}
       <div className="max-h-[50dvh] overflow-y-auto px-1 pb-2">
-        {loading && (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        {[...grouped.entries()].map(([groupName, groupTags]) => (
+          <div key={groupName}>
+            <div className="px-3 py-1.5 text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              {groupName}
+            </div>
+            {groupTags.map((tag) => (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() => handleAdd(tag)}
+                disabled={isPending}
+                className="w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/5"
+              >
+                {tag.name}
+              </button>
+            ))}
+          </div>
+        ))}
+
+        {canCreate && (
+          <div className="border-t border-white/10 pt-2 mt-1">
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={isPending}
+              className="w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-white/5"
+            >
+              Crear: &quot;<span className="text-z-brass">{search.trim()}</span>&quot; ↵
+            </button>
           </div>
         )}
 
-        {!loading && (
-          <>
-            {[...grouped.entries()].map(([groupName, groupTags]) => (
-              <div key={groupName}>
-                <div className="px-3 py-1.5 text-[0.65rem] uppercase tracking-wider text-muted-foreground">
-                  {groupName}
-                </div>
-                {groupTags.map((tag) => (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => handleAdd(tag)}
-                    disabled={isPending}
-                    className="w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/5"
-                  >
-                    {tag.name}
-                  </button>
-                ))}
-              </div>
-            ))}
-
-            {canCreate && (
-              <div className="border-t border-white/10 pt-2 mt-1">
-                <button
-                  type="button"
-                  onClick={handleCreate}
-                  disabled={isPending}
-                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-white/5"
-                >
-                  Crear: &quot;<span className="text-z-brass">{search.trim()}</span>&quot; ↵
-                </button>
-              </div>
-            )}
-
-            {!loading && filtered.length === 0 && !canCreate && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                {search ? "Sin resultados" : "No hay etiquetas disponibles"}
-              </p>
-            )}
-          </>
+        {filtered.length === 0 && !canCreate && (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            {search ? "Sin resultados" : "No hay etiquetas disponibles"}
+          </p>
         )}
       </div>
     </div>

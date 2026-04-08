@@ -242,3 +242,48 @@ export function MobileDebtSkeleton() {
     </Card>
   );
 }
+
+/** Hero zone — hero card + attention + action strip placeholder */
+export function HeroZoneSkeleton() {
+  return (
+    <div className="space-y-4">
+      {/* Hero + Attention 2-col grid */}
+      <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
+        <div className="h-[280px] rounded-xl bg-z-surface-2 animate-pulse" />
+        <div className="h-[280px] rounded-xl bg-z-surface-2 animate-pulse" />
+      </div>
+      {/* Action strip 2-col grid */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="h-[200px] rounded-xl bg-z-surface-2 animate-pulse" />
+        <div className="h-[200px] rounded-xl bg-z-surface-2 animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+/** Widgets zone — impact + pendientes + deseos placeholder */
+export function WidgetsZoneSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="h-[180px] rounded-xl bg-z-surface-2 animate-pulse" />
+        <div className="h-[180px] rounded-xl bg-z-surface-2 animate-pulse" />
+      </div>
+      <div className="h-[140px] rounded-xl bg-z-surface-2 animate-pulse" />
+    </div>
+  );
+}
+
+/** Mobile dashboard — full screen placeholder */
+export function MobileZoneSkeleton() {
+  return (
+    <div className="space-y-4 px-1">
+      <div className="h-[200px] rounded-2xl bg-z-surface-2 animate-pulse" />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="h-[80px] rounded-xl bg-z-surface-2 animate-pulse" />
+        <div className="h-[80px] rounded-xl bg-z-surface-2 animate-pulse" />
+      </div>
+      <div className="h-[120px] rounded-xl bg-z-surface-2 animate-pulse" />
+    </div>
+  );
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronsUpDown, Loader2, UserRound } from "lucide-react";
+import { Check, ChevronsUpDown, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { getDestinatarios } from "@/actions/destinatarios";
+import { useDestinatarios } from "@/components/providers/app-data-provider";
 
 type DestinatarioOption = {
   id: string;
@@ -49,26 +49,8 @@ export function DestinatarioZonePicker({
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const variant = variantProp ?? (isDesktop ? "popover" : "dialog");
 
-  const [destinatarios, setDestinatarios] = useState<DestinatarioOption[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const destinatarios = useDestinatarios();
   const [search, setSearch] = useState("");
-
-  // Lazy-load on first open, cache in state
-  useEffect(() => {
-    if (!open || loaded) return;
-    setLoading(true);
-    getDestinatarios()
-      .then((result) => {
-        if (result.success) {
-          setDestinatarios(
-            result.data.map((d) => ({ id: d.id, name: d.name, is_active: d.is_active }))
-          );
-          setLoaded(true);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [open, loaded]);
 
   useEffect(() => {
     if (!open) setSearch("");
@@ -146,18 +128,12 @@ export function DestinatarioZonePicker({
         />
       </div>
       <div className="max-h-[50dvh] overflow-y-auto px-1 pb-2">
-        {loading && (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
-        )}
-        {!loading && filtered.length === 0 && (
+        {filtered.length === 0 && (
           <p className="py-6 text-center text-sm text-muted-foreground">
             {search ? "Sin resultados" : "No hay destinatarios"}
           </p>
         )}
-        {!loading &&
-          filtered.map((d) => (
+        {filtered.map((d) => (
             <button
               key={d.id}
               type="button"
