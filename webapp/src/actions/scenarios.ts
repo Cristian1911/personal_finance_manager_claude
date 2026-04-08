@@ -2,19 +2,19 @@
 
 import { revalidateTag, cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { saveScenarioSchema, type SaveScenarioInput } from "@/lib/validators/scenario";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 
 type DebtScenario = Database["public"]["Tables"]["debt_scenarios"]["Row"];
 
-async function getScenariosCached(userId: string): Promise<DebtScenario[]> {
+async function getScenariosCached(userId: string, accessToken: string): Promise<DebtScenario[]> {
   "use cache";
   cacheTag("debt");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("debt_scenarios")
     .select("*")
@@ -27,11 +27,11 @@ async function getScenariosCached(userId: string): Promise<DebtScenario[]> {
 }
 
 export async function getScenarios(): Promise<DebtScenario[]> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
 
   try {
-    return await getScenariosCached(user.id);
+    return await getScenariosCached(user.id, accessToken);
   } catch (error) {
     console.error("Failed to fetch scenarios:", error);
     return [];

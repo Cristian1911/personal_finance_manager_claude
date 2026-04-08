@@ -21,9 +21,21 @@
 - Dates: Spanish locale via `formatDate()` from `src/lib/utils/date.ts`
 - Idempotency: `computeIdempotencyKey()` from `src/lib/utils/idempotency.ts` for dedup
 
+## Performance Rules
+- **Cache stable data**: Accounts, categories, destinatarios, profiles, recurring templates, and other slowly-changing data MUST use `"use cache"` with `cacheTag()` + `cacheLife("zeta")`. Transactions are also cached. Mutations invalidate via `revalidateTag()`. Never add a DB query to a page render path without caching unless the data is truly per-request.
+- **Don't add joins or queries without justification**: Before adding PostgREST joins, extra SELECT columns, or new DB calls to a page, consider: (1) is this data already available from a parent component? (2) can it be deferred via Suspense? (3) does it need to load eagerly or only on interaction? Every new query adds latency — explain the trade-off.
+- **Suspense for non-critical data**: Data only needed for interactive elements (edit forms, pickers, dialogs) should be deferred behind `<Suspense>`, not fetched eagerly in the page's main `Promise.all`.
+- **Cached client pattern**: `"use cache"` functions use `createCachedClient(accessToken)` from `@/lib/supabase/cached`. The `accessToken` comes from `getAuthenticatedClient()`. See Gotchas for details.
+
+## UI Rules
+- **No hardcoded colors**: Never use raw hex values, `rgb()`, or arbitrary Tailwind colors (`bg-[#xxx]`). Always use the design tokens defined in `docs/design-system/TOKENS.md` — e.g., `text-z-brass`, `bg-z-surface-2`, `border-white/6`, `text-z-sage-dark`. If a needed token doesn't exist, propose adding it to TOKENS.md first.
+- **No hardcoded styles for layout/spacing**: Prefer existing utility patterns and component props. Check existing components for established patterns before creating new styling approaches.
+- **Reuse existing components**: Before building a new card, badge, stat display, or layout pattern, check `webapp/src/components/ui/` for existing primitives (StatCard, PageHero, Card, Badge, etc.).
+
 ## Supabase
 - Project ID: `tgkhaxipfgskxydotdtu` (sa-east-1, org: zybaordjrezdjajzwisk)
 - See `~/.claude/rules/supabase.md` for RLS, auth, migration patterns
+- **Envelope encryption**: Tables with PII use `_enc` suffix (real table) + view (original name) + INSTEAD OF triggers. When adding a column to any `_enc` table, you MUST also update the view SELECT and the INSTEAD OF INSERT/UPDATE trigger functions. See `docs/superpowers/specs/2026-04-07-envelope-encryption-design.md` for full spec.
 
 ## Income & Metrics Rules
 - **Debt inflows are NOT income**: INFLOW to `CREDIT_CARD` or `LOAN` accounts are debt payments. They must NEVER count in income/ingresos metrics. Always filter: `tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id)` where `debtAccountIds` comes from `accounts.filter(a => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")`.
@@ -34,6 +46,8 @@
 - shadcn/ui Checkbox: use `checked="indeterminate"`, not an `indeterminate` prop
 - Radix Select sends empty string (not null/undefined) when no value — use `z.preprocess` to normalize
 - Shell `compdef` warning leaks into stdout redirects — always strip first line if piping to file
+- **PostgREST joins through encrypted views**: FK constraints live on `_enc` tables, so PostgREST can't auto-detect relationships through the views. Always use explicit FK hint syntax: `account:accounts!transactions_account_id_fkey(id, name)` — never plain `account:accounts(id, name)`. Without the `!fk_name` hint, the join silently fails and returns empty results.
+- **`"use cache"` + encryption**: Cached functions that query encrypted views must use `createCachedClient(accessToken)` from `@/lib/supabase/cached`, never `createAdminClient()`. The admin client has no JWT, so `zeta_decrypt()` returns NULL for all encrypted columns. The `accessToken` comes from `getAuthenticatedClient()` which returns `{ supabase, user, accessToken }`.
 
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project

@@ -599,7 +599,7 @@ export async function POST(request: NextRequest) {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
     const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
     const matchText = parsed.merchant ?? parsed.destination ?? parsed.raw_line ?? "";
-    const destMatch = await matchTransactionToDestinatario(userId, matchText);
+    const destMatch = await matchTransactionToDestinatario(userId, matchText, admin);
 
     let categoryId: string | null = null;
     let destinatarioId: string | null = null;

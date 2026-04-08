@@ -91,7 +91,7 @@ async function persistParsedEmail(params: {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
     const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
     const matchText = parsed.merchant ?? parsed.destination ?? parsed.raw_line ?? "";
-    const destMatch = await matchTransactionToDestinatario(userId, matchText);
+    const destMatch = await matchTransactionToDestinatario(userId, matchText, supabase);
 
     let categoryId: string | null = null;
     let destinatarioId: string | null = null;

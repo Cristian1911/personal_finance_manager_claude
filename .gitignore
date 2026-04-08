@@ -8,6 +8,10 @@ node_modules/
 # Bank PDF examples and unrecognized uploads (sensitive financial data)
 bank_pdf_examples/
 services/pdf_parser/unrecognized/
+image_transaction_samples/
+
+# Audit artifacts
+audit/
 
 # env files (can opt-in for committing if needed)
 .env*

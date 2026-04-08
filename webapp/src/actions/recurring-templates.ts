@@ -3,7 +3,7 @@
 import { revalidateTag, cacheTag, cacheLife } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
@@ -50,13 +50,14 @@ async function computeRecurringGroupUuid(templateId: string, occurrenceDate: str
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
 async function getRecurringTemplatesCached(
-  userId: string
+  userId: string,
+  accessToken: string
 ): Promise<RecurringTemplateWithRelations[]> {
   "use cache";
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
@@ -70,13 +71,14 @@ async function getRecurringTemplatesCached(
 
 async function getRecurringTemplateCached(
   userId: string,
-  id: string
+  id: string,
+  accessToken: string
 ): Promise<RecurringTemplateWithRelations> {
   "use cache";
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
@@ -90,13 +92,14 @@ async function getRecurringTemplateCached(
 
 async function getUpcomingRecurrencesCached(
   userId: string,
-  days: number
+  days: number,
+  accessToken: string
 ): Promise<UpcomingRecurrence[]> {
   "use cache";
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data: templates } = await supabase
     .from("recurring_transaction_templates")
     .select(TEMPLATE_SELECT)
@@ -129,7 +132,7 @@ async function getUpcomingRecurrencesCached(
   return upcoming;
 }
 
-async function getRecurringSummaryCached(userId: string): Promise<{
+async function getRecurringSummaryCached(userId: string, accessToken: string): Promise<{
   totalMonthlyExpenses: number;
   totalMonthlyIncome: number;
   activeCount: number;
@@ -138,7 +141,7 @@ async function getRecurringSummaryCached(userId: string): Promise<{
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data: templates } = await supabase
     .from("recurring_transaction_templates")
     .select("amount, direction, frequency, accounts!recurring_transaction_templates_account_id_fkey(account_type)")
@@ -174,10 +177,10 @@ async function getRecurringSummaryCached(userId: string): Promise<{
 export async function getRecurringTemplates(): Promise<
   ActionResult<RecurringTemplateWithRelations[]>
 > {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getRecurringTemplatesCached(user.id);
+    const data = await getRecurringTemplatesCached(user.id, accessToken);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading recurring templates:", error);
@@ -188,10 +191,10 @@ export async function getRecurringTemplates(): Promise<
 export async function getRecurringTemplate(
   id: string
 ): Promise<ActionResult<RecurringTemplateWithRelations>> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getRecurringTemplateCached(user.id, id);
+    const data = await getRecurringTemplateCached(user.id, id, accessToken);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading recurring template:", error);
@@ -889,9 +892,9 @@ export async function getPaidOccurrenceKeys(
 export async function getUpcomingRecurrences(
   days: number = 30
 ): Promise<UpcomingRecurrence[]> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
-  return getUpcomingRecurrencesCached(user.id, days);
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+  return getUpcomingRecurrencesCached(user.id, days, accessToken);
 }
 
 /**
@@ -902,9 +905,9 @@ export async function getRecurringSummary(): Promise<{
   totalMonthlyIncome: number;
   activeCount: number;
 }> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0 };
-  return getRecurringSummaryCached(user.id);
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0 };
+  return getRecurringSummaryCached(user.id, accessToken);
 }
 
 function toMonthlyAmount(

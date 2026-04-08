@@ -10,6 +10,19 @@ export type AuthActionResult = {
   success?: boolean;
 };
 
+const AUTH_ERROR_MAP: Record<string, string> = {
+  "Invalid login credentials": "Credenciales incorrectas",
+  "Email not confirmed": "Correo no confirmado",
+  "User already registered": "Este correo ya está registrado",
+  "Password should be at least 6 characters": "La contraseña debe tener al menos 6 caracteres",
+  "Email rate limit exceeded": "Demasiados intentos. Intenta más tarde",
+  "For security purposes, you can only request this once every 60 seconds": "Por seguridad, solo puedes solicitar esto una vez cada 60 segundos",
+};
+
+function translateAuthError(message: string): string {
+  return AUTH_ERROR_MAP[message] ?? message;
+}
+
 export async function signIn(
   _prevState: AuthActionResult,
   formData: FormData
@@ -44,7 +57,7 @@ export async function signIn(
       error_code: "login_failed",
       metadata: { email: parsed.data.email },
     });
-    return { error: error.message };
+    return { error: translateAuthError(error.message) };
   }
 
   await trackProductEvent({
@@ -100,7 +113,7 @@ export async function signUp(
       error_code: "signup_failed",
       metadata: { email: parsed.data.email },
     });
-    return { error: error.message };
+    return { error: translateAuthError(error.message) };
   }
 
   if (data.user?.id) {
@@ -140,7 +153,7 @@ export async function resetPasswordRequest(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: translateAuthError(error.message) };
   }
 
   return { success: true };
@@ -165,7 +178,7 @@ export async function updatePassword(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: translateAuthError(error.message) };
   }
 
   redirect("/dashboard");

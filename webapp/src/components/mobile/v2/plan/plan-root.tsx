@@ -1,43 +1,46 @@
 "use client";
 
-import { Suspense } from "react";
-import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
+import { Suspense, useMemo } from "react";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { PlanHeroWrapper } from "./plan-hero-wrapper";
-import { PlanZoneChips } from "./plan-zone-chips";
-import { PlanFlowChart } from "./plan-flow-chart";
-import { PlanDistribution } from "./plan-distribution";
+import { PlanNetHero } from "./plan-net-hero";
+import { PlanExpandableChips } from "./plan-expandable-chips";
+import { PlanDrillCards } from "./plan-drill-cards";
 import { MonthSelector } from "@/components/month-selector";
 import type { PlanPageData } from "@/types/plan";
-import type { AllocationData } from "@/actions/allocation";
 import type { PlanTimelineData } from "@/actions/plan-timeline";
-import type { CurrencyCode, CategoryBudgetData } from "@/types/domain";
+import type { CurrencyCode } from "@/types/domain";
 
 interface PlanRootProps {
   planData: PlanPageData;
-  allocationData: AllocationData | null;
   timelineData: PlanTimelineData;
   currency: CurrencyCode;
   monthLabel: string;
   dayOfMonth: number;
   daysInMonth: number;
-  categories: CategoryBudgetData[];
+  periodoSummary: { hasActive: boolean; percentAssigned: number } | null;
+  wishlistCount: number;
 }
 
 export function PlanRoot({
   planData,
-  allocationData,
   timelineData,
   currency,
   monthLabel,
   dayOfMonth,
   daysInMonth,
-  categories,
+  periodoSummary,
+  wishlistCount,
 }: PlanRootProps) {
-  const { activeZone, toggle } = useExpandableZone<string>();
+  const { incomes, payments } = useMemo(() => {
+    const upcoming = planData.recurring.upcoming;
+    return {
+      incomes: upcoming.filter((u) => u.template.direction === "INFLOW"),
+      payments: upcoming.filter((u) => u.template.direction === "OUTFLOW"),
+    };
+  }, [planData.recurring.upcoming]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 pb-20">
       <MobileHeader
         variant="main"
         title="Plan"
@@ -51,34 +54,30 @@ export function PlanRoot({
         </Suspense>
       </div>
 
-      {/* Budget hero — expandable per-category (client boundary isolated) */}
-      <PlanHeroWrapper
-        totalSpent={planData.budget.totalSpent}
-        totalBudgeted={planData.budget.totalBudgeted}
-        pressure={planData.heroSummary.pressure}
-        dayOfMonth={dayOfMonth}
-        daysInMonth={daysInMonth}
+      {/* Net hero — ingresos vs gastos with expandable chart */}
+      <PlanNetHero
+        ingresos={planData.recurring.totalMonthlyIncome}
+        gastos={planData.recurring.totalMonthlyExpenses}
         currency={currency}
-        categories={categories}
+        daysRemaining={daysInMonth - dayOfMonth}
+        timelineData={timelineData}
       />
 
-      {/* Expandable zone chips — presupuesto, obligaciones */}
-      <PlanZoneChips
+      {/* Expandable chips — próximo ingreso / próximo pago */}
+      <PlanExpandableChips
+        incomes={incomes}
+        payments={payments}
+        currency={currency}
+      />
+
+      {/* Drill cards — navigate to Presupuesto, Periodo, Recurrentes, Deseos */}
+      <PlanDrillCards
         budget={planData.budget}
         recurring={planData.recurring}
-        currency={currency}
-        activeZone={activeZone}
-        onToggle={toggle}
-      />
-
-      {/* Flow chart — timeline with real+projected data */}
-      <PlanFlowChart
-        timelineData={timelineData}
+        periodoSummary={periodoSummary}
+        wishlistCount={wishlistCount}
         currency={currency}
       />
-
-      {/* Distribution — budget-type aware */}
-      <PlanDistribution allocation={allocationData} />
 
       {/* Scenarios — only when stable */}
       {planData.scenarios.count > 0 && (

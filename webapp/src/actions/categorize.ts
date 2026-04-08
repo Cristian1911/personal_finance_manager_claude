@@ -2,9 +2,9 @@
 
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { extractPattern, matchDestinatario, prepareDestinatarioRules } from "@zeta/shared";
-import { getDestinatarioRulesCached } from "./destinatarios";
+import { fetchDestinatarioRules } from "./destinatarios";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithRelations } from "@/types/domain";
 import type { UserRule } from "@zeta/shared";
@@ -12,18 +12,19 @@ import type { UserRule } from "@zeta/shared";
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
 async function getUncategorizedTransactionsCached(
-  userId: string
+  userId: string,
+  accessToken: string
 ): Promise<TransactionWithRelations[]> {
   "use cache";
   cacheTag("categorize");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)"
+      "*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color)"
     )
     .eq("user_id", userId)
     .is("category_id", null)
@@ -35,12 +36,12 @@ async function getUncategorizedTransactionsCached(
   return (data ?? []) as TransactionWithRelations[];
 }
 
-async function getUncategorizedCountCached(userId: string): Promise<number> {
+async function getUncategorizedCountCached(userId: string, accessToken: string): Promise<number> {
   "use cache";
   cacheTag("categorize");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   const { count, error } = await supabase
     .from("transactions")
@@ -53,12 +54,12 @@ async function getUncategorizedCountCached(userId: string): Promise<number> {
   return count ?? 0;
 }
 
-async function getUserCategoryRulesCached(userId: string): Promise<UserRule[]> {
+async function getUserCategoryRulesCached(userId: string, accessToken: string): Promise<UserRule[]> {
   "use cache";
   cacheTag("categorize");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   const { data, error } = await supabase
     .from("category_rules")
@@ -71,18 +72,19 @@ async function getUserCategoryRulesCached(userId: string): Promise<UserRule[]> {
 }
 
 async function getUnreviewedAutoCategorizedCached(
-  userId: string
+  userId: string,
+  accessToken: string
 ): Promise<TransactionWithRelations[]> {
   "use cache";
   cacheTag("categorize");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "*, account:accounts(id, name, icon, color), category:categories!category_id(id, name, name_es, icon, color)"
+      "*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color)"
     )
     .eq("user_id", userId)
     .not("category_id", "is", null)
@@ -96,12 +98,12 @@ async function getUnreviewedAutoCategorizedCached(
   return (data ?? []) as TransactionWithRelations[];
 }
 
-async function getUnreviewedAutoCountCached(userId: string): Promise<number> {
+async function getUnreviewedAutoCountCached(userId: string, accessToken: string): Promise<number> {
   "use cache";
   cacheTag("categorize");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   const { count, error } = await supabase
     .from("transactions")
@@ -123,10 +125,10 @@ async function getUnreviewedAutoCountCached(userId: string): Promise<number> {
 export async function getUncategorizedTransactions(): Promise<
   TransactionWithRelations[]
 > {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
   try {
-    return await getUncategorizedTransactionsCached(user.id);
+    return await getUncategorizedTransactionsCached(user.id, accessToken);
   } catch (err) {
     console.error("Error fetching uncategorized transactions:", err);
     return [];
@@ -137,10 +139,10 @@ export async function getUncategorizedTransactions(): Promise<
  * Count uncategorized, non-excluded transactions (for sidebar badge).
  */
 export async function getUncategorizedCount(): Promise<number> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return 0;
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return 0;
   try {
-    return await getUncategorizedCountCached(user.id);
+    return await getUncategorizedCountCached(user.id, accessToken);
   } catch (err) {
     if (err && typeof err === "object" && "message" in err) {
       console.warn("Error counting uncategorized:", (err as { message: string }).message);
@@ -153,10 +155,10 @@ export async function getUncategorizedCount(): Promise<number> {
  * Fetch user's category rules for auto-categorization.
  */
 export async function getUserCategoryRules(): Promise<UserRule[]> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
   try {
-    return await getUserCategoryRulesCached(user.id);
+    return await getUserCategoryRulesCached(user.id, accessToken);
   } catch (err) {
     console.error("Error fetching category rules:", err);
     return [];
@@ -170,10 +172,10 @@ export async function getUserCategoryRules(): Promise<UserRule[]> {
 export async function getUnreviewedAutoTransactions(): Promise<
   TransactionWithRelations[]
 > {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
   try {
-    return await getUnreviewedAutoCategorizedCached(user.id);
+    return await getUnreviewedAutoCategorizedCached(user.id, accessToken);
   } catch (err) {
     console.error("Error fetching unreviewed auto-categorized:", err);
     return [];
@@ -184,10 +186,10 @@ export async function getUnreviewedAutoTransactions(): Promise<
  * Count auto-categorized transactions not yet reviewed (for badge).
  */
 export async function getUnreviewedAutoCount(): Promise<number> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return 0;
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return 0;
   try {
-    return await getUnreviewedAutoCountCached(user.id);
+    return await getUnreviewedAutoCountCached(user.id, accessToken);
   } catch (err) {
     console.error("Error fetching unreviewed auto count:", err);
     return 0;
@@ -522,12 +524,12 @@ export async function assignDestinatario(
 export async function getDestinatarioSuggestionsForInbox(): Promise<
   Record<string, { destinatario_id: string; destinatario_name: string; category_id: string | null }>
 > {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return {};
+  const { supabase, user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return {};
 
   const [transactions, rules] = await Promise.all([
-    getUncategorizedTransactionsCached(user.id),
-    getDestinatarioRulesCached(user.id),
+    getUncategorizedTransactionsCached(user.id, accessToken),
+    fetchDestinatarioRules(supabase, user.id),
   ]);
 
   if (rules.length === 0 || transactions.length === 0) return {};

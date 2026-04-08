@@ -3,7 +3,7 @@
 import { subMonths } from "date-fns";
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@zeta/shared";
 
@@ -26,14 +26,15 @@ export interface IncomeEstimate {
 async function getEstimatedIncomeCached(
   userId: string,
   currency: CurrencyCode,
-  month: string | undefined
+  month: string | undefined,
+  accessToken: string
 ): Promise<IncomeEstimate | null> {
   "use cache";
   cacheTag("debt");
   cacheTag("profile");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const baseCurrency = currency;
 
   // Fetch profile salary and liquid accounts in parallel
@@ -143,7 +144,7 @@ export async function getEstimatedIncome(
   currency?: CurrencyCode,
   month?: string // "YYYY-MM" — if provided, return income for that specific month
 ): Promise<IncomeEstimate | null> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return null;
-  return getEstimatedIncomeCached(user.id, currency ?? "COP", month);
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return null;
+  return getEstimatedIncomeCached(user.id, currency ?? "COP", month, accessToken);
 }

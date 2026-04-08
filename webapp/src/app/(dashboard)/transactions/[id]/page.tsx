@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { connection } from "next/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,6 +19,106 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHero } from "@/components/ui/page-hero";
 import { StatCard } from "@/components/ui/stat-card";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Transaction } from "@/types/domain";
+
+// ─── Deferred: edit button (needs accounts + categories) ─────────────────────
+
+async function TransactionEditAction({ transaction }: { transaction: Transaction }) {
+  const [accountsResult, categoriesResult] = await Promise.all([
+    getAccounts(),
+    getCategories(),
+  ]);
+
+  return (
+    <TransactionFormDialog
+      transaction={transaction}
+      accounts={accountsResult.success ? accountsResult.data : []}
+      categories={categoriesResult.success ? categoriesResult.data : []}
+    />
+  );
+}
+
+// ─── Deferred: sidebar (needs destinatarios, categories, tags) ───────────────
+
+async function TransactionSidebar({ transaction }: { transaction: Transaction }) {
+  const [destinatariosResult, categoriesResult, tagGroupsResult, transactionTags] = await Promise.all([
+    getDestinatarios(),
+    getCategories(),
+    getTagGroups(),
+    getTagsForEntity("transaction", transaction.id),
+  ]);
+
+  const destinatarios = destinatariosResult.success ? destinatariosResult.data : [];
+  const categories = categoriesResult.success ? categoriesResult.data : [];
+  const tagGroups = tagGroupsResult.success ? tagGroupsResult.data : [];
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+              <ReceiptText className="size-4 text-z-brass" />
+            </div>
+            <div className="space-y-1">
+              <CardTitle>Destinatario</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Ajusta la asociación comercial para mejorar contexto y futuras reglas.
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <DestinatarioPicker
+            transactionId={transaction.id}
+            currentDestinatarioId={transaction.destinatario_id}
+            destinatarios={destinatarios}
+            rawDescription={transaction.raw_description}
+            categories={categories}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+              <Tags className="size-4 text-z-brass" />
+            </div>
+            <div className="space-y-1">
+              <CardTitle>Etiquetas</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Agrega contexto libre: viajes, personas, proyectos.
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <TagPicker
+            entityType="transaction"
+            entityId={transaction.id}
+            currentTags={transactionTags}
+            allTagGroups={tagGroups}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Skeletons ───────────────────────────────────────────────────────────────
+
+function SidebarSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-40 rounded-xl" />
+      <Skeleton className="h-40 rounded-xl" />
+    </div>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default async function TransactionDetailPage({
   params,
@@ -26,25 +127,12 @@ export default async function TransactionDetailPage({
 }) {
   await connection();
   const { id } = await params;
-  const [txResult, accountsResult, categoriesResult, destinatariosResult, tagGroupsResult, transactionTags] =
-    await Promise.all([
-      getTransaction(id),
-      getAccounts(),
-      getCategories(),
-      getDestinatarios(),
-      getTagGroups(),
-      getTagsForEntity("transaction", id),
-    ]);
 
+  // Only fetch the transaction — everything else streams in via Suspense
+  const txResult = await getTransaction(id);
   if (!txResult.success) notFound();
 
   const tx = txResult.data;
-  const accounts = accountsResult.success ? accountsResult.data : [];
-  const categories = categoriesResult.success ? categoriesResult.data : [];
-  const destinatarios = destinatariosResult.success
-    ? destinatariosResult.data
-    : [];
-  const tagGroups = tagGroupsResult.success ? tagGroupsResult.data : [];
   const isInflow = tx.direction === "INFLOW";
   const txStatus =
     tx.status === "POSTED"
@@ -76,11 +164,9 @@ export default async function TransactionDetailPage({
         description={`${formatDate(tx.transaction_date, "dd MMMM yyyy")} \u00b7 ${tx.provider}`}
         actions={
           <>
-            <TransactionFormDialog
-              transaction={tx}
-              accounts={accounts}
-              categories={categories}
-            />
+            <Suspense fallback={<Skeleton className="h-9 w-20 rounded-md" />}>
+              <TransactionEditAction transaction={tx} />
+            </Suspense>
             <DeleteTransactionButton transactionId={tx.id} />
           </>
         }
@@ -160,56 +246,9 @@ export default async function TransactionDetailPage({
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
-                  <ReceiptText className="size-4 text-z-brass" />
-                </div>
-                <div className="space-y-1">
-                  <CardTitle>Destinatario</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Ajusta la asociación comercial para mejorar contexto y futuras reglas.
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <DestinatarioPicker
-                transactionId={tx.id}
-                currentDestinatarioId={tx.destinatario_id}
-                destinatarios={destinatarios}
-                rawDescription={tx.raw_description}
-                categories={categories}
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
-                  <Tags className="size-4 text-z-brass" />
-                </div>
-                <div className="space-y-1">
-                  <CardTitle>Etiquetas</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Agrega contexto libre: viajes, personas, proyectos.
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <TagPicker
-                entityType="transaction"
-                entityId={tx.id}
-                currentTags={transactionTags}
-                allTagGroups={tagGroups}
-              />
-            </CardContent>
-          </Card>
-        </div>
+        <Suspense fallback={<SidebarSkeleton />}>
+          <TransactionSidebar transaction={tx} />
+        </Suspense>
       </div>
     </div>
   );

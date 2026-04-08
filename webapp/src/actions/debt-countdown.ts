@@ -2,7 +2,7 @@
 
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { formatMonthParam } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -26,13 +26,14 @@ export interface DebtCountdownData {
 
 async function getDebtFreeCountdownCached(
   userId: string,
-  currency: CurrencyCode
+  currency: CurrencyCode,
+  accessToken: string
 ): Promise<DebtCountdownData | null> {
   "use cache";
   cacheTag("debt", "snapshots");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   // Fetch debt accounts + latest snapshots in parallel
   // Snapshots not filtered by account_id (unknown until accounts query resolves) — acceptable trade-off for parallelism
@@ -133,11 +134,11 @@ export async function getDebtFreeCountdown(
   currency?: CurrencyCode
 ): Promise<DebtCountdownData | null> {
   const baseCurrency = currency ?? "COP";
-  const { user } = await getAuthenticatedClient();
-  if (!user) return null;
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return null;
 
   try {
-    return await getDebtFreeCountdownCached(user.id, baseCurrency);
+    return await getDebtFreeCountdownCached(user.id, baseCurrency, accessToken);
   } catch (error) {
     console.error("Error computing debt countdown:", error);
     return null;

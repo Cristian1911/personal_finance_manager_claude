@@ -2,7 +2,7 @@
 
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import type { ActionResult } from "@/types/actions";
 import type { Tables } from "@/types/database";
 
@@ -11,13 +11,14 @@ export type StatementSnapshot = Tables<"statement_snapshots">;
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
 async function getLatestSnapshotDatesCached(
-  userId: string
+  userId: string,
+  accessToken: string
 ): Promise<Record<string, string>> {
   "use cache";
   cacheTag("snapshots");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   const { data, error } = await supabase
     .from("statement_snapshots")
@@ -40,13 +41,14 @@ async function getLatestSnapshotDatesCached(
 
 async function getStatementSnapshotsCached(
   userId: string,
-  accountId: string
+  accountId: string,
+  accessToken: string
 ): Promise<StatementSnapshot[]> {
   "use cache";
   cacheTag("snapshots");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   const { data, error } = await supabase
     .from("statement_snapshots")
@@ -68,10 +70,10 @@ async function getStatementSnapshotsCached(
 export async function getLatestSnapshotDates(): Promise<
   Record<string, string>
 > {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return {};
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return {};
   try {
-    return await getLatestSnapshotDatesCached(user.id);
+    return await getLatestSnapshotDatesCached(user.id, accessToken);
   } catch (error) {
     console.error("Error loading snapshot dates:", error);
     return {};
@@ -81,10 +83,10 @@ export async function getLatestSnapshotDates(): Promise<
 export async function getStatementSnapshots(
   accountId: string
 ): Promise<ActionResult<StatementSnapshot[]>> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getStatementSnapshotsCached(user.id, accountId);
+    const data = await getStatementSnapshotsCached(user.id, accountId, accessToken);
     return { success: true, data };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error al cargar los extractos";

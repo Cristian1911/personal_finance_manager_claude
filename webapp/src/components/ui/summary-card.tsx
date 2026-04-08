@@ -24,7 +24,7 @@ export function SummaryCard({ label = "Resumen del período", metrics, className
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-olive-deep">
         {label}
       </p>
-      <div className="mt-3 grid grid-cols-3 gap-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {metrics.map((m) => (
           <CompactMetricBox
             key={m.label}

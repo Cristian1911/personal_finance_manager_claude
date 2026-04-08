@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ArrowDownLeft, ArrowRight, QrCode, CreditCard, Banknote, Building, Wallet, ArrowUpRight as TransferIcon, Mail } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, ArrowRight, QrCode, CreditCard, Banknote, Building, Wallet, ArrowUpRight as TransferIcon, Mail, Hash, UserRound, Pencil } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -17,7 +17,6 @@ import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
-import { toggleExcludeTransaction } from "@/actions/transactions";
 import {
   approveEmailTransaction,
   dismissEmailTransaction,
@@ -303,17 +302,6 @@ function CategorizarDetail({
     });
   }
 
-  function handleExclude(txId: string) {
-    startTransition(async () => {
-      const result = await toggleExcludeTransaction(txId, true);
-      if (result.success) {
-        toast.success("Excluida del presupuesto");
-      } else {
-        toast.error(result.error ?? "Error");
-      }
-    });
-  }
-
   if (totalCount === 0) {
     return (
       <div className="space-y-2">
@@ -358,36 +346,45 @@ function CategorizarDetail({
                 <p className="shrink-0 text-xs font-semibold tabular-nums">
                   {formatCurrency(tx.amount, currency)}
                 </p>
-                <div onClick={(e) => e.stopPropagation()}>
+                <span
+                  className={cn(
+                    "text-muted-foreground/50 text-xs transition-transform shrink-0",
+                    isExpanded && "rotate-90"
+                  )}
+                >
+                  ›
+                </span>
+              </div>
+              {isExpanded && (
+                <div className="flex items-center gap-1.5 pb-2 pl-7" onClick={(e) => e.stopPropagation()}>
                   <CategoryZonePicker
                     categories={categories}
                     value={null}
                     onValueChange={(catId) => handleCategorize(tx, catId)}
                     direction="OUTFLOW"
+                    placeholder="Categoría"
                     variant="drawer"
-                    triggerClassName="text-[10px] h-auto py-1 px-2.5"
+                    triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-lg border border-white/10 bg-white/[0.03] text-z-brass hover:bg-white/[0.06]"
                   />
-                </div>
-              </div>
-              {isExpanded && (
-                <div className="flex flex-wrap items-center gap-1.5 pb-2 pl-7">
                   <Link
                     href={`/transactions/${tx.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-white/[0.06]"
+                    className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
                   >
-                    Asignar destinatario
+                    <UserRound className="size-3" />
                   </Link>
                   <Link
                     href={`/transactions/${tx.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-white/[0.06]"
+                    className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
                   >
-                    Etiquetar
+                    <Hash className="size-3" />
                   </Link>
-                  <ActionPill onClick={() => handleExclude(tx.id)} variant="danger">
-                    Excluir
-                  </ActionPill>
+                  <div className="flex-1" />
+                  <Link
+                    href={`/transactions/${tx.id}`}
+                    className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
+                  >
+                    <Pencil className="size-3" />
+                  </Link>
                 </div>
               )}
             </div>

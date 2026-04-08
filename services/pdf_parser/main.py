@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from models import ParsedStatement
 from parsers import detect_and_parse
+from parsers.image_detection import detect_and_parse_image
 from parsers.opendataloader_fallback import (
     get_opendataloaders_binary,
     is_opendataloader_fallback_enabled,
@@ -203,6 +204,78 @@ async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
             os.remove(tmp_path)
         except OSError as exc:
             logger.warning("Failed to delete temp file %s: %s", tmp_path, exc)
+
+
+MAX_IMAGE_BYTES = 20 * 1024 * 1024  # 20 MB
+ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+
+
+@app.post("/parse-image", response_model=ParseResponse, dependencies=[Depends(_verify_key)])
+async def parse_image(
+    file: UploadFile,
+    screenshot_date: str | None = Form(None),
+):
+    """Parse a bank app screenshot into transactions."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No se proporcionó un archivo")
+
+    ext = os.path.splitext(file.filename.lower())[1]
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Formato no soportado. Se aceptan PNG, JPG o WEBP.",
+        )
+
+    content = await file.read()
+
+    if len(content) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="La imagen excede el tamaño máximo de 20MB")
+
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+    os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)
+
+    logger.info(
+        "Image parse request: filename=%s size_bytes=%s screenshot_date=%s",
+        file.filename,
+        len(content),
+        screenshot_date,
+    )
+
+    from datetime import date as date_type
+
+    sd = None
+    if screenshot_date:
+        try:
+            sd = date_type.fromisoformat(screenshot_date)
+        except ValueError:
+            pass
+
+    try:
+        statements = detect_and_parse_image(tmp_path, screenshot_date=sd)
+        logger.info("Image parse succeeded: filename=%s statements=%s", file.filename, len(statements))
+        return ParseResponse(statements=statements)
+    except ValueError as e:
+        logger.warning("Image parse rejected: filename=%s: %s", file.filename, e)
+        raise HTTPException(
+            status_code=422,
+            detail={"message": str(e), "type": "unsupported_format"},
+        )
+    except Exception:
+        logger.exception("Unexpected image parser failure: filename=%s", file.filename)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Error interno procesando la imagen.",
+                "type": "internal_error",
+            },
+        )
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError as exc:
+            logger.warning("Failed to delete temp image %s: %s", tmp_path, exc)
 
 
 @app.post("/save-unrecognized", dependencies=[Depends(_verify_key)])

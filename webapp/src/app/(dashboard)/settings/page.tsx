@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Activity, ArrowRight, Bug, Tag, UserRound } from "lucide-react";
+import { Activity, ArrowRight, Bug, Mail, Tag, UserRound } from "lucide-react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
@@ -18,6 +18,7 @@ import { EmailIngestCard } from "@/components/settings/email-ingest-card";
 import { UnrecognizedEmailsCard } from "@/components/settings/unrecognized-emails-card";
 import { BuildInfo } from "@/components/settings/build-info";
 import { ReviewModeToggle } from "@/components/settings/review-mode-toggle";
+import { SettingsMobileAccordion } from "@/components/settings/settings-mobile-accordion";
 import { getCaptureTokens } from "@/actions/capture-tokens";
 import { getEmailIngestAddress, getUnrecognizedEmails } from "@/actions/email-ingest";
 import { getTagGroups } from "@/actions/tags";
@@ -55,6 +56,53 @@ export default async function SettingsPage() {
   const unrecognizedEmails = unrecognizedResult.success ? unrecognizedResult.data : [];
   const memberSince = new Date(profile.created_at).toLocaleDateString("es-CO");
 
+  const accordionSections = [
+    {
+      id: "perfil",
+      title: "Perfil",
+      icon: <UserRound className="size-4 text-z-brass" />,
+      children: <ProfileForm profile={profile} />,
+    },
+    {
+      id: "integraciones",
+      title: "Integraciones",
+      icon: <Activity className="size-4 text-z-brass" />,
+      children: (
+        <IntegrationsCard accounts={(accounts ?? []) as Account[]} tokens={tokens} />
+      ),
+    },
+    {
+      id: "email",
+      title: "Email",
+      icon: <Mail className="size-4 text-z-brass" />,
+      children: (
+        <div className="space-y-4">
+          <EmailIngestCard
+            accounts={(accounts ?? []) as Account[]}
+            initialAddress={emailIngestAddress}
+          />
+          <UnrecognizedEmailsCard initialEmails={unrecognizedEmails} />
+        </div>
+      ),
+    },
+    {
+      id: "etiquetas",
+      title: "Etiquetas",
+      icon: <Tag className="size-4 text-z-brass" />,
+      children: tagGroupsResult.success ? (
+        <TagManager tagGroups={tagGroupsResult.data} />
+      ) : (
+        <p className="text-sm text-destructive">{tagGroupsResult.error}</p>
+      ),
+    },
+    {
+      id: "bug",
+      title: "Reportar bug",
+      icon: <Bug className="size-4 text-z-brass" />,
+      children: <BugReportForm />,
+    },
+  ];
+
   return (
     <div className="max-w-4xl space-y-6 lg:space-y-8">
       <MobileHeader variant="sub" title="Ajustes" backHref="/gestionar" />
@@ -84,83 +132,92 @@ export default async function SettingsPage() {
         <AttentionCard signals={[]} />
       </div>
 
-      <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
-              <UserRound className="size-4 text-z-brass" />
+      {/* Mobile: accordion */}
+      <div className="lg:hidden">
+        <SettingsMobileAccordion sections={accordionSections} />
+      </div>
+
+      {/* Desktop: flat card list */}
+      <div className="hidden lg:block space-y-6">
+        <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+                <UserRound className="size-4 text-z-brass" />
+              </div>
+              <CardTitle>Perfil</CardTitle>
             </div>
-            <CardTitle>Perfil</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <ProfileForm profile={profile} />
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <ProfileForm profile={profile} />
+          </CardContent>
+        </Card>
 
-      <IntegrationsCard accounts={(accounts ?? []) as Account[]} tokens={tokens} />
+        <IntegrationsCard accounts={(accounts ?? []) as Account[]} tokens={tokens} />
 
-      <EmailIngestCard
-        accounts={(accounts ?? []) as Account[]}
-        initialAddress={emailIngestAddress}
-      />
+        <EmailIngestCard
+          accounts={(accounts ?? []) as Account[]}
+          initialAddress={emailIngestAddress}
+        />
 
-      <UnrecognizedEmailsCard initialEmails={unrecognizedEmails} />
+        <UnrecognizedEmailsCard initialEmails={unrecognizedEmails} />
 
-      <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
-              <Activity className="size-4 text-z-brass" />
+        <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+                <Tag className="size-4 text-z-brass" />
+              </div>
+              <CardTitle>Etiquetas</CardTitle>
             </div>
-            <CardTitle>Actividad de uso</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Button asChild className={cn(BRASS_BUTTON_CLASS, "w-full")}>
-            <Link href="/settings/analytics">
-              Abrir actividad de uso
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+            <p className="text-sm text-muted-foreground">
+              Organiza etiquetas en grupos para anotar transacciones, destinatarios y categorías.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {tagGroupsResult.success ? (
+              <TagManager tagGroups={tagGroupsResult.data} />
+            ) : (
+              <p className="text-sm text-destructive">{tagGroupsResult.error}</p>
+            )}
+          </CardContent>
+        </Card>
 
-      <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
-              <Tag className="size-4 text-z-brass" />
+        <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+                <Bug className="size-4 text-z-brass" />
+              </div>
+              <CardTitle>Reportar bug</CardTitle>
             </div>
-            <CardTitle>Etiquetas</CardTitle>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Organiza etiquetas en grupos para anotar transacciones, destinatarios y categorías.
-          </p>
-        </CardHeader>
-        <CardContent>
-          {tagGroupsResult.success ? (
-            <TagManager tagGroups={tagGroupsResult.data} />
-          ) : (
-            <p className="text-sm text-destructive">{tagGroupsResult.error}</p>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <BugReportForm />
+          </CardContent>
+        </Card>
 
-      <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
-              <Bug className="size-4 text-z-brass" />
+        <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/6 bg-black/10">
+                <Activity className="size-4 text-z-brass" />
+              </div>
+              <CardTitle>Actividad de uso</CardTitle>
             </div>
-            <CardTitle>Reportar bug</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <BugReportForm />
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className={cn(BRASS_BUTTON_CLASS, "w-full")}>
+              <Link href="/settings/analytics">
+                Abrir actividad de uso
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* Shared bottom items — always visible */}
       <BuildInfo />
 
       <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">

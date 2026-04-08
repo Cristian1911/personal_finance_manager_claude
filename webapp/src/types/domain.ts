@@ -116,6 +116,8 @@ export type CategoryBudgetData = {
 // Transaction with account join (used by main transaction views)
 export type TransactionWithAccount = Transaction & {
   account: Pick<Account, "id" | "name" | "icon" | "color">;
+  category: Pick<Category, "id" | "name" | "name_es" | "icon" | "color"> | null;
+  destinatario: { id: string; name: string } | null;
 };
 
 // Transaction with joined relations

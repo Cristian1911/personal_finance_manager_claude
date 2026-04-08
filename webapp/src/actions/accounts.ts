@@ -2,7 +2,7 @@
 
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { accountSchema } from "@/lib/validators/account";
 import { computeIdempotencyKey } from "@zeta/shared";
 import { getDirectionForBalanceDelta } from "@/lib/utils/account-balance";
@@ -15,18 +15,22 @@ import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
 import type { Account, AccountRow, CurrencyCode, TransactionDirection } from "@/types/domain";
 
-// ─── Cached inner functions ───────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function stripSensitive({ pdf_password: _, ...rest }: AccountRow): Account {
   return rest;
 }
 
-async function getAccountsCached(userId: string): Promise<Account[]> {
+// ─── Cached inner functions ───────────────────────────────────────────────────
+// Uses createCachedClient(accessToken) so "use cache" works WITH encryption.
+// The admin client has no JWT → zeta_decrypt returns NULL for encrypted columns.
+
+async function getAccountsCached(userId: string, accessToken: string): Promise<Account[]> {
   "use cache";
   cacheTag("accounts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
@@ -38,12 +42,12 @@ async function getAccountsCached(userId: string): Promise<Account[]> {
   return (data ?? []).map(stripSensitive);
 }
 
-async function getAccountCached(userId: string, id: string): Promise<Account> {
+async function getAccountCached(userId: string, id: string, accessToken: string): Promise<Account> {
   "use cache";
   cacheTag("accounts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
@@ -58,10 +62,10 @@ async function getAccountCached(userId: string, id: string): Promise<Account> {
 // ─── Public wrappers ──────────────────────────────────────────────────────────
 
 export async function getAccounts(): Promise<ActionResult<Account[]>> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getAccountsCached(user.id);
+    const data = await getAccountsCached(user.id, accessToken);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading accounts:", error);
@@ -70,10 +74,10 @@ export async function getAccounts(): Promise<ActionResult<Account[]>> {
 }
 
 export async function getAccount(id: string): Promise<ActionResult<Account>> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getAccountCached(user.id, id);
+    const data = await getAccountCached(user.id, id, accessToken);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading account:", error);
