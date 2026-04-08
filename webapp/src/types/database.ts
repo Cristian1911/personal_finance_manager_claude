@@ -14,7 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      accounts: {
+      accounts_enc: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
           available_balance: number | null
@@ -40,6 +40,7 @@ export type Database = {
           loan_end_date: string | null
           loan_start_date: string | null
           mask: string | null
+          mask_hmac: string | null
           maturity_date: string | null
           monthly_payment: number | null
           name: string
@@ -47,6 +48,7 @@ export type Database = {
           pdf_password: string | null
           provider: Database["public"]["Enums"]["data_provider"]
           provider_account_id: string | null
+          provider_account_id_hmac: string | null
           show_in_dashboard: boolean
           updated_at: string
           user_id: string
@@ -76,6 +78,7 @@ export type Database = {
           loan_end_date?: string | null
           loan_start_date?: string | null
           mask?: string | null
+          mask_hmac?: string | null
           maturity_date?: string | null
           monthly_payment?: number | null
           name: string
@@ -83,6 +86,7 @@ export type Database = {
           pdf_password?: string | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_account_id?: string | null
+          provider_account_id_hmac?: string | null
           show_in_dashboard?: boolean
           updated_at?: string
           user_id: string
@@ -112,6 +116,7 @@ export type Database = {
           loan_end_date?: string | null
           loan_start_date?: string | null
           mask?: string | null
+          mask_hmac?: string | null
           maturity_date?: string | null
           monthly_payment?: number | null
           name?: string
@@ -119,11 +124,151 @@ export type Database = {
           pdf_password?: string | null
           provider?: Database["public"]["Enums"]["data_provider"]
           provider_account_id?: string | null
+          provider_account_id_hmac?: string | null
           show_in_dashboard?: boolean
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      accounts: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          available_balance: number | null
+          color: string | null
+          connection_status: Database["public"]["Enums"]["connection_status"]
+          created_at: string
+          credit_limit: number | null
+          currency_balances: Json | null
+          currency_code: Database["public"]["Enums"]["currency_code"]
+          current_balance: number
+          cutoff_day: number | null
+          debit_card_mask: string | null
+          display_order: number
+          expected_return_rate: number | null
+          icon: string | null
+          id: string
+          initial_investment: number | null
+          institution_name: string | null
+          interest_rate: number | null
+          is_active: boolean
+          last_synced_at: string | null
+          loan_amount: number | null
+          loan_end_date: string | null
+          loan_start_date: string | null
+          mask: string | null
+          mask_hmac: string | null
+          maturity_date: string | null
+          monthly_payment: number | null
+          name: string
+          payment_day: number | null
+          pdf_password: string | null
+          provider: Database["public"]["Enums"]["data_provider"]
+          provider_account_id: string | null
+          provider_account_id_hmac: string | null
+          show_in_dashboard: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          available_balance?: number | null
+          color?: string | null
+          connection_status?: Database["public"]["Enums"]["connection_status"]
+          created_at?: string
+          credit_limit?: number | null
+          currency_balances?: Json | null
+          currency_code?: Database["public"]["Enums"]["currency_code"]
+          current_balance?: number
+          cutoff_day?: number | null
+          debit_card_mask?: string | null
+          display_order?: number
+          expected_return_rate?: number | null
+          icon?: string | null
+          id?: string
+          initial_investment?: number | null
+          institution_name?: string | null
+          interest_rate?: number | null
+          is_active?: boolean
+          last_synced_at?: string | null
+          loan_amount?: number | null
+          loan_end_date?: string | null
+          loan_start_date?: string | null
+          mask?: string | null
+          mask_hmac?: string | null
+          maturity_date?: string | null
+          monthly_payment?: number | null
+          name: string
+          payment_day?: number | null
+          pdf_password?: string | null
+          provider?: Database["public"]["Enums"]["data_provider"]
+          provider_account_id?: string | null
+          provider_account_id_hmac?: string | null
+          show_in_dashboard?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          available_balance?: number | null
+          color?: string | null
+          connection_status?: Database["public"]["Enums"]["connection_status"]
+          created_at?: string
+          credit_limit?: number | null
+          currency_balances?: Json | null
+          currency_code?: Database["public"]["Enums"]["currency_code"]
+          current_balance?: number
+          cutoff_day?: number | null
+          debit_card_mask?: string | null
+          display_order?: number
+          expected_return_rate?: number | null
+          icon?: string | null
+          id?: string
+          initial_investment?: number | null
+          institution_name?: string | null
+          interest_rate?: number | null
+          is_active?: boolean
+          last_synced_at?: string | null
+          loan_amount?: number | null
+          loan_end_date?: string | null
+          loan_start_date?: string | null
+          mask?: string | null
+          mask_hmac?: string | null
+          maturity_date?: string | null
+          monthly_payment?: number | null
+          name?: string
+          payment_day?: number | null
+          pdf_password?: string | null
+          provider?: Database["public"]["Enums"]["data_provider"]
+          provider_account_id?: string | null
+          provider_account_id_hmac?: string | null
+          show_in_dashboard?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "accounts_user_id_fkey"
             columns: ["user_id"]
@@ -240,6 +385,64 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bug_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capture_tokens_enc: {
+        Row: {
+          created_at: string
+          default_account_id: string | null
+          id: string
+          label: string
+          last_used_at: string | null
+          revoked_at: string | null
+          token: string
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_account_id?: string | null
+          id?: string
+          label: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token: string
+          token_hash?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_account_id?: string | null
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token?: string
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capture_tokens_default_account_id_fkey"
+            columns: ["default_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_tokens_default_account_id_fkey"
+            columns: ["default_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
         ]
       }
       capture_tokens: {
@@ -251,16 +454,18 @@ export type Database = {
           last_used_at: string | null
           revoked_at: string | null
           token: string
+          token_hash: string
           user_id: string
         }
         Insert: {
           created_at?: string
           default_account_id?: string | null
           id?: string
-          label?: string
+          label: string
           last_used_at?: string | null
           revoked_at?: string | null
           token: string
+          token_hash?: string
           user_id: string
         }
         Update: {
@@ -271,9 +476,17 @@ export type Database = {
           last_used_at?: string | null
           revoked_at?: string | null
           token?: string
+          token_hash?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "capture_tokens_default_account_id_fkey"
+            columns: ["default_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "capture_tokens_default_account_id_fkey"
             columns: ["default_account_id"]
@@ -357,6 +570,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "categories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
+            referencedColumns: ["id"]
+          },
         ]
       }
       category_rules: {
@@ -400,6 +620,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -567,10 +794,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "destinatario_rules_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios_enc"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "destinatario_rules_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "destinatario_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -597,6 +838,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "destinatario_tags_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios_enc"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "destinatario_tags_tag_id_fkey"
             columns: ["tag_id"]
             isOneToOne: false
@@ -605,13 +853,14 @@ export type Database = {
           },
         ]
       }
-      destinatarios: {
+      destinatarios_enc: {
         Row: {
           created_at: string
           default_category_id: string | null
           id: string
           is_active: boolean
           name: string
+          name_hmac: string | null
           notes: string | null
           updated_at: string
           user_id: string
@@ -622,6 +871,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          name_hmac?: string | null
           notes?: string | null
           updated_at?: string
           user_id: string
@@ -632,6 +882,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          name_hmac?: string | null
           notes?: string | null
           updated_at?: string
           user_id?: string
@@ -649,6 +900,142 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "destinatarios_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      destinatarios: {
+        Row: {
+          created_at: string
+          default_category_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          name_hmac: string | null
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_category_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          name_hmac?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_category_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          name_hmac?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "destinatarios_default_category_id_fkey"
+            columns: ["default_category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "destinatarios_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "destinatarios_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_ingest_addresses_enc: {
+        Row: {
+          account_id: string | null
+          address_key: string
+          allowed_sender: string | null
+          auto_import: boolean
+          created_at: string
+          gmail_verification_at: string | null
+          gmail_verification_url: string | null
+          id: string
+          is_active: boolean
+          pdf_import_enabled: boolean
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          address_key: string
+          allowed_sender?: string | null
+          auto_import?: boolean
+          created_at?: string
+          gmail_verification_at?: string | null
+          gmail_verification_url?: string | null
+          id?: string
+          is_active?: boolean
+          pdf_import_enabled?: boolean
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          address_key?: string
+          allowed_sender?: string | null
+          auto_import?: boolean
+          created_at?: string
+          gmail_verification_at?: string | null
+          gmail_verification_url?: string | null
+          id?: string
+          is_active?: boolean
+          pdf_import_enabled?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_ingest_addresses_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_ingest_addresses_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_ingest_addresses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_ingest_addresses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -702,6 +1089,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "email_ingest_addresses_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_ingest_addresses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "email_ingest_addresses_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
@@ -750,10 +1151,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "email_ingest_logs_email_ingest_id_fkey"
+            columns: ["email_ingest_id"]
+            isOneToOne: false
+            referencedRelation: "email_ingest_addresses_enc"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "email_ingest_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_ingest_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -882,10 +1297,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pending_email_statements_email_ingest_id_fkey"
+            columns: ["email_ingest_id"]
+            isOneToOne: false
+            referencedRelation: "email_ingest_addresses_enc"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pending_email_statements_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_email_statements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -933,6 +1362,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pending_email_transactions_email_ingest_id_fkey"
+            columns: ["email_ingest_id"]
+            isOneToOne: false
+            referencedRelation: "email_ingest_addresses_enc"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pending_email_transactions_suggested_account_id_fkey"
             columns: ["suggested_account_id"]
             isOneToOne: false
@@ -940,10 +1376,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pending_email_transactions_suggested_account_id_fkey"
+            columns: ["suggested_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pending_email_transactions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_email_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -1070,6 +1520,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "planning_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "planning_entries_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -1088,6 +1545,13 @@ export type Database = {
             columns: ["recurring_template_id"]
             isOneToOne: false
             referencedRelation: "recurring_transaction_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_entries_recurring_template_id_fkey"
+            columns: ["recurring_template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transaction_templates_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -1194,7 +1658,71 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      profiles_enc: {
+        Row: {
+          app_purpose: string | null
+          avatar_url: string | null
+          budget_mode: string | null
+          created_at: string
+          dashboard_config: Json | null
+          email: string
+          estimated_monthly_expenses: number | null
+          estimated_monthly_income: number | null
+          full_name: string | null
+          id: string
+          locale: string
+          monthly_salary: number | null
+          onboarding_completed: boolean
+          preferred_currency: Database["public"]["Enums"]["currency_code"]
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          app_purpose?: string | null
+          avatar_url?: string | null
+          budget_mode?: string | null
+          created_at?: string
+          dashboard_config?: Json | null
+          email: string
+          estimated_monthly_expenses?: number | null
+          estimated_monthly_income?: number | null
+          full_name?: string | null
+          id: string
+          locale?: string
+          monthly_salary?: number | null
+          onboarding_completed?: boolean
+          preferred_currency?: Database["public"]["Enums"]["currency_code"]
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          app_purpose?: string | null
+          avatar_url?: string | null
+          budget_mode?: string | null
+          created_at?: string
+          dashboard_config?: Json | null
+          email?: string
+          estimated_monthly_expenses?: number | null
+          estimated_monthly_income?: number | null
+          full_name?: string | null
+          id?: string
+          locale?: string
+          monthly_salary?: number | null
+          onboarding_completed?: boolean
+          preferred_currency?: Database["public"]["Enums"]["currency_code"]
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -1252,6 +1780,119 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      recurring_transaction_templates_enc: {
+        Row: {
+          account_id: string
+          amount: number
+          category_id: string | null
+          created_at: string
+          currency_code: Database["public"]["Enums"]["currency_code"]
+          day_of_month: number | null
+          day_of_week: number | null
+          description: string | null
+          direction: Database["public"]["Enums"]["transaction_direction"]
+          end_date: string | null
+          frequency: Database["public"]["Enums"]["recurrence_frequency"]
+          id: string
+          is_active: boolean
+          merchant_name: string | null
+          start_date: string
+          transfer_source_account_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          currency_code?: Database["public"]["Enums"]["currency_code"]
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          direction: Database["public"]["Enums"]["transaction_direction"]
+          end_date?: string | null
+          frequency: Database["public"]["Enums"]["recurrence_frequency"]
+          id?: string
+          is_active?: boolean
+          merchant_name?: string | null
+          start_date: string
+          transfer_source_account_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          currency_code?: Database["public"]["Enums"]["currency_code"]
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          direction?: Database["public"]["Enums"]["transaction_direction"]
+          end_date?: string | null
+          frequency?: Database["public"]["Enums"]["recurrence_frequency"]
+          id?: string
+          is_active?: boolean
+          merchant_name?: string | null
+          start_date?: string
+          transfer_source_account_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_transaction_templates_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_transfer_source_account_id_fkey"
+            columns: ["transfer_source_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_transfer_source_account_id_fkey"
+            columns: ["transfer_source_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recurring_transaction_templates: {
         Row: {
@@ -1323,6 +1964,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recurring_transaction_templates_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "recurring_transaction_templates_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -1337,10 +1985,149 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recurring_transaction_templates_transfer_source_account_id_fkey"
+            columns: ["transfer_source_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "recurring_transaction_templates_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statement_snapshots_enc: {
+        Row: {
+          account_id: string
+          available_credit: number | null
+          created_at: string
+          credit_limit: number | null
+          currency_code: string
+          final_balance: number | null
+          id: string
+          imported_count: number
+          initial_amount: number | null
+          installments_in_default: number | null
+          interest_charged: number | null
+          interest_rate: number | null
+          late_interest_rate: number | null
+          loan_number: string | null
+          minimum_payment: number | null
+          payment_due_date: string | null
+          period_from: string | null
+          period_to: string | null
+          previous_balance: number | null
+          purchases_and_charges: number | null
+          remaining_balance: number | null
+          skipped_count: number
+          source_filename: string | null
+          total_credits: number | null
+          total_debits: number | null
+          total_payment_due: number | null
+          transaction_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          available_credit?: number | null
+          created_at?: string
+          credit_limit?: number | null
+          currency_code?: string
+          final_balance?: number | null
+          id?: string
+          imported_count?: number
+          initial_amount?: number | null
+          installments_in_default?: number | null
+          interest_charged?: number | null
+          interest_rate?: number | null
+          late_interest_rate?: number | null
+          loan_number?: string | null
+          minimum_payment?: number | null
+          payment_due_date?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          previous_balance?: number | null
+          purchases_and_charges?: number | null
+          remaining_balance?: number | null
+          skipped_count?: number
+          source_filename?: string | null
+          total_credits?: number | null
+          total_debits?: number | null
+          total_payment_due?: number | null
+          transaction_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          available_credit?: number | null
+          created_at?: string
+          credit_limit?: number | null
+          currency_code?: string
+          final_balance?: number | null
+          id?: string
+          imported_count?: number
+          initial_amount?: number | null
+          installments_in_default?: number | null
+          interest_charged?: number | null
+          interest_rate?: number | null
+          late_interest_rate?: number | null
+          loan_number?: string | null
+          minimum_payment?: number | null
+          payment_due_date?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          previous_balance?: number | null
+          purchases_and_charges?: number | null
+          remaining_balance?: number | null
+          skipped_count?: number
+          source_filename?: string | null
+          total_credits?: number | null
+          total_debits?: number | null
+          total_payment_due?: number | null
+          transaction_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_snapshots_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_snapshots_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_snapshots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_snapshots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -1448,6 +2235,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "statement_snapshots_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_snapshots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "statement_snapshots_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -1490,6 +2291,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_groups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -1543,6 +2351,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
+            referencedColumns: ["id"]
+          },
         ]
       }
       transaction_tags: {
@@ -1573,9 +2388,16 @@ export type Database = {
             referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transaction_tags_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions_enc"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      transactions: {
+      transactions_enc: {
         Row: {
           account_id: string
           amount: number
@@ -1586,6 +2408,7 @@ export type Database = {
           categorization_source: Database["public"]["Enums"]["categorization_source"]
           category_id: string | null
           clean_description: string | null
+          clean_description_hmac: string | null
           created_at: string
           currency_code: Database["public"]["Enums"]["currency_code"]
           destinatario_id: string | null
@@ -1602,6 +2425,7 @@ export type Database = {
           merchant_category_code: string | null
           merchant_logo_url: string | null
           merchant_name: string | null
+          merchant_name_hmac: string | null
           notes: string | null
           original_amount: number | null
           posting_date: string | null
@@ -1628,6 +2452,7 @@ export type Database = {
           categorization_source?: Database["public"]["Enums"]["categorization_source"]
           category_id?: string | null
           clean_description?: string | null
+          clean_description_hmac?: string | null
           created_at?: string
           currency_code: Database["public"]["Enums"]["currency_code"]
           destinatario_id?: string | null
@@ -1644,6 +2469,7 @@ export type Database = {
           merchant_category_code?: string | null
           merchant_logo_url?: string | null
           merchant_name?: string | null
+          merchant_name_hmac?: string | null
           notes?: string | null
           original_amount?: number | null
           posting_date?: string | null
@@ -1670,6 +2496,7 @@ export type Database = {
           categorization_source?: Database["public"]["Enums"]["categorization_source"]
           category_id?: string | null
           clean_description?: string | null
+          clean_description_hmac?: string | null
           created_at?: string
           currency_code?: Database["public"]["Enums"]["currency_code"]
           destinatario_id?: string | null
@@ -1686,6 +2513,7 @@ export type Database = {
           merchant_category_code?: string | null
           merchant_logo_url?: string | null
           merchant_name?: string | null
+          merchant_name_hmac?: string | null
           notes?: string | null
           original_amount?: number | null
           posting_date?: string | null
@@ -1711,10 +2539,230 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transactions_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_reconciled_into_transaction_id_fkey"
+            columns: ["reconciled_into_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_reconciled_into_transaction_id_fkey"
+            columns: ["reconciled_into_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_secondary_category_id_fkey"
+            columns: ["secondary_category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          amount_in_base_currency: number | null
+          capture_input_text: string | null
+          capture_method: Database["public"]["Enums"]["transaction_capture_method"]
+          categorization_confidence: number | null
+          categorization_source: Database["public"]["Enums"]["categorization_source"]
+          category_id: string | null
+          clean_description: string | null
+          clean_description_hmac: string | null
+          created_at: string
+          currency_code: Database["public"]["Enums"]["currency_code"]
+          destinatario_id: string | null
+          direction: Database["public"]["Enums"]["transaction_direction"]
+          exchange_rate: number
+          id: string
+          idempotency_key: string
+          installment_current: number | null
+          installment_group_id: string | null
+          installment_total: number | null
+          is_excluded: boolean
+          is_recurring: boolean
+          is_subscription: boolean
+          merchant_category_code: string | null
+          merchant_logo_url: string | null
+          merchant_name: string | null
+          merchant_name_hmac: string | null
+          notes: string | null
+          original_amount: number | null
+          posting_date: string | null
+          provider: Database["public"]["Enums"]["data_provider"]
+          provider_transaction_id: string | null
+          raw_description: string | null
+          reconciled_into_transaction_id: string | null
+          reconciliation_score: number | null
+          recurrence_group_id: string | null
+          secondary_category_id: string | null
+          status: Database["public"]["Enums"]["transaction_status"]
+          tags: string[] | null
+          transaction_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          amount_in_base_currency?: number | null
+          capture_input_text?: string | null
+          capture_method?: Database["public"]["Enums"]["transaction_capture_method"]
+          categorization_confidence?: number | null
+          categorization_source?: Database["public"]["Enums"]["categorization_source"]
+          category_id?: string | null
+          clean_description?: string | null
+          clean_description_hmac?: string | null
+          created_at?: string
+          currency_code: Database["public"]["Enums"]["currency_code"]
+          destinatario_id?: string | null
+          direction: Database["public"]["Enums"]["transaction_direction"]
+          exchange_rate?: number
+          id?: string
+          idempotency_key: string
+          installment_current?: number | null
+          installment_group_id?: string | null
+          installment_total?: number | null
+          is_excluded?: boolean
+          is_recurring?: boolean
+          is_subscription?: boolean
+          merchant_category_code?: string | null
+          merchant_logo_url?: string | null
+          merchant_name?: string | null
+          merchant_name_hmac?: string | null
+          notes?: string | null
+          original_amount?: number | null
+          posting_date?: string | null
+          provider?: Database["public"]["Enums"]["data_provider"]
+          provider_transaction_id?: string | null
+          raw_description?: string | null
+          reconciled_into_transaction_id?: string | null
+          reconciliation_score?: number | null
+          recurrence_group_id?: string | null
+          secondary_category_id?: string | null
+          status?: Database["public"]["Enums"]["transaction_status"]
+          tags?: string[] | null
+          transaction_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          amount_in_base_currency?: number | null
+          capture_input_text?: string | null
+          capture_method?: Database["public"]["Enums"]["transaction_capture_method"]
+          categorization_confidence?: number | null
+          categorization_source?: Database["public"]["Enums"]["categorization_source"]
+          category_id?: string | null
+          clean_description?: string | null
+          clean_description_hmac?: string | null
+          created_at?: string
+          currency_code?: Database["public"]["Enums"]["currency_code"]
+          destinatario_id?: string | null
+          direction?: Database["public"]["Enums"]["transaction_direction"]
+          exchange_rate?: number
+          id?: string
+          idempotency_key?: string
+          installment_current?: number | null
+          installment_group_id?: string | null
+          installment_total?: number | null
+          is_excluded?: boolean
+          is_recurring?: boolean
+          is_subscription?: boolean
+          merchant_category_code?: string | null
+          merchant_logo_url?: string | null
+          merchant_name?: string | null
+          merchant_name_hmac?: string | null
+          notes?: string | null
+          original_amount?: number | null
+          posting_date?: string | null
+          provider?: Database["public"]["Enums"]["data_provider"]
+          provider_transaction_id?: string | null
+          raw_description?: string | null
+          reconciled_into_transaction_id?: string | null
+          reconciliation_score?: number | null
+          recurrence_group_id?: string | null
+          secondary_category_id?: string | null
+          status?: Database["public"]["Enums"]["transaction_status"]
+          tags?: string[] | null
+          transaction_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios"
             referencedColumns: ["id"]
           },
           {
@@ -1732,10 +2780,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "transactions_reconciled_into_transaction_id_fkey"
+            columns: ["reconciled_into_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transactions_secondary_category_id_fkey"
             columns: ["secondary_category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1790,10 +2852,165 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "unrecognized_emails_email_ingest_id_fkey"
+            columns: ["email_ingest_id"]
+            isOneToOne: false
+            referencedRelation: "email_ingest_addresses_enc"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "unrecognized_emails_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unrecognized_emails_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_enc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_encryption_keys: {
+        Row: {
+          created_at: string | null
+          encrypted_dek: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          encrypted_dek: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          encrypted_dek?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wishlist_items_enc: {
+        Row: {
+          account_id: string | null
+          amount: number
+          bought_at: string | null
+          category_id: string | null
+          created_at: string
+          currency_code: string
+          desire_type: string | null
+          enriched: boolean
+          enriched_at: string | null
+          funding_type: string | null
+          id: string
+          image_url: string | null
+          installments: number | null
+          last_nudge_dismissed_at: string | null
+          last_score: number | null
+          last_scored_at: string | null
+          last_verdict: string | null
+          name: string
+          ready_at: string | null
+          status: string
+          transaction_id: string | null
+          updated_at: string
+          urgency: string | null
+          url: string | null
+          user_id: string
+          why: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          bought_at?: string | null
+          category_id?: string | null
+          created_at?: string
+          currency_code?: string
+          desire_type?: string | null
+          enriched?: boolean
+          enriched_at?: string | null
+          funding_type?: string | null
+          id?: string
+          image_url?: string | null
+          installments?: number | null
+          last_nudge_dismissed_at?: string | null
+          last_score?: number | null
+          last_scored_at?: string | null
+          last_verdict?: string | null
+          name: string
+          ready_at?: string | null
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          urgency?: string | null
+          url?: string | null
+          user_id: string
+          why?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          bought_at?: string | null
+          category_id?: string | null
+          created_at?: string
+          currency_code?: string
+          desire_type?: string | null
+          enriched?: boolean
+          enriched_at?: string | null
+          funding_type?: string | null
+          id?: string
+          image_url?: string | null
+          installments?: number | null
+          last_nudge_dismissed_at?: string | null
+          last_score?: number | null
+          last_scored_at?: string | null
+          last_verdict?: string | null
+          name?: string
+          ready_at?: string | null
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          urgency?: string | null
+          url?: string | null
+          user_id?: string
+          why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_items_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -1892,10 +3109,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "wishlist_items_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "wishlist_items_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
           {
@@ -1949,6 +3180,13 @@ export type Database = {
             referencedRelation: "wishlist_items"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "wishlist_reflections_wishlist_item_id_fkey"
+            columns: ["wishlist_item_id"]
+            isOneToOne: false
+            referencedRelation: "wishlist_items_enc"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -1956,7 +3194,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      zeta_decrypt: { Args: { ciphertext: string }; Returns: string }
+      zeta_encrypt: { Args: { plaintext: string }; Returns: string }
+      zeta_encrypt_as: {
+        Args: { plaintext: string; target_user_id: string }
+        Returns: string
+      }
+      zeta_hmac: { Args: { plaintext: string }; Returns: string }
+      zeta_hmac_as: {
+        Args: { plaintext: string; target_user_id: string }
+        Returns: string
+      }
     }
     Enums: {
       account_type:

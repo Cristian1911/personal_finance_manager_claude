@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
+import { createHash } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 export type CaptureAuth = {
   userId: string;
@@ -22,18 +27,20 @@ export async function authenticateCaptureToken(
 
   const admin = createAdminClient();
 
+  // Query _enc table directly — this runs in unauthenticated context (Bearer auth),
+  // so the view's zeta_decrypt can't resolve auth.uid(). Use token_hash for lookup.
   const { data, error } = await admin
-    .from("capture_tokens")
+    .from("capture_tokens_enc" as "capture_tokens")
     .select("id, user_id, default_account_id")
-    .eq("token", token)
+    .eq("token_hash", hashToken(token))
     .is("revoked_at", null)
     .single();
 
   if (error || !data) return null;
 
-  // Fire-and-forget: update last_used_at
+  // Fire-and-forget: update last_used_at (use view — auth context not needed for admin client update)
   void admin
-    .from("capture_tokens")
+    .from("capture_tokens_enc" as "capture_tokens")
     .update({ last_used_at: new Date().toISOString() })
     .eq("id", data.id);
 
