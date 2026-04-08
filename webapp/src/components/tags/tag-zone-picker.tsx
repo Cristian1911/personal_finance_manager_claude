@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { ChevronsUpDown, Hash, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -35,7 +35,7 @@ interface TagZonePickerProps {
   triggerClassName?: string;
   /** Render as a small icon button instead of a combobox */
   compact?: boolean;
-  variant?: "popover" | "drawer";
+  variant?: "popover" | "dialog";
 }
 
 export function TagZonePicker({
@@ -48,7 +48,7 @@ export function TagZonePicker({
 }: TagZonePickerProps) {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const variant = variantProp ?? (isDesktop ? "popover" : "drawer");
+  const variant = variantProp ?? (isDesktop ? "popover" : "dialog");
 
   const [currentTags, setCurrentTags] = useState<Tag[]>([]);
   const [tagGroups, setTagGroups] = useState<TagGroupWithTags[]>([]);
@@ -329,17 +329,19 @@ export function TagZonePicker({
   return (
     <>
       {triggerButton}
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle className="flex items-center gap-2">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="flex max-h-[70vh] w-full max-w-sm flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b px-4 py-3">
+            <DialogTitle className="flex items-center gap-2">
               <Hash className="size-4 text-z-brass" />
               Etiquetas
-            </DrawerTitle>
-          </DrawerHeader>
-          {body}
-        </DrawerContent>
-      </Drawer>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {body}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
