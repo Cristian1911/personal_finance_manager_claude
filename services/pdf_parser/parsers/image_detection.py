@@ -19,8 +19,8 @@ from parsers.nu_credit_card_app_screenshot import parse_nu_credit_card_app
 
 logger = logging.getLogger("pdf_parser.image_detector")
 
-# Type alias for parser functions
-type ImageParser = type[None]  # just for documentation
+# Type alias for parser functions (plain assignment for Python 3.11 compat)
+ImageParser = None  # documentation-only marker
 
 IMAGE_DETECTORS: list[dict] = [
     {

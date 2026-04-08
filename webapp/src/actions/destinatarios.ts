@@ -142,10 +142,11 @@ export async function fetchDestinatarioRules(
  */
 export async function matchTransactionToDestinatario(
   userId: string,
-  text: string
+  text: string,
+  supabaseClient?: import("@supabase/supabase-js").SupabaseClient<import("@/types/database").Database>,
 ): Promise<{ destinatario_id: string; category_id: string | null } | null> {
-  const { supabase } = await getAuthenticatedClient();
-  const rules = await fetchDestinatarioRules(supabase, userId);
+  const client = supabaseClient ?? (await getAuthenticatedClient()).supabase;
+  const rules = await fetchDestinatarioRules(client, userId);
   if (rules.length === 0) return null;
 
   const prepared = prepareDestinatarioRules(rules);

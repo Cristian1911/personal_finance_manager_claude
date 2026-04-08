@@ -124,7 +124,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
 
   // Destinatario match → auto-categorize fallback
   const matchText = merchant_name ?? capture_input_text ?? "";
-  const destMatch = await matchTransactionToDestinatario(auth.userId, matchText);
+  const destMatch = await matchTransactionToDestinatario(auth.userId, matchText, admin);
 
   let categoryId = body.category_id ?? null;
   let destinatarioId: string | null = null;

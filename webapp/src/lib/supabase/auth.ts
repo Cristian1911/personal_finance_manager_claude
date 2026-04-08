@@ -132,7 +132,18 @@ export const getAuthenticatedClient = cache(async (): Promise<{
     // getSession() failed — fall through to getUser()
   }
 
-  // Slow path: getUser() network call — no access token available here
+  // Slow path: getUser() network call — may refresh the session
   const user = await getUserSafelyStrict(supabase);
+  if (user) {
+    // getUser() may have refreshed the session — retry to get token
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.access_token) {
+        return { supabase, user, accessToken: data.session.access_token };
+      }
+    } catch {
+      // No token available — continue without caching
+    }
+  }
   return { supabase, user, accessToken: null };
 });
