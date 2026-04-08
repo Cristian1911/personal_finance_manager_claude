@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuickPaymentDialog } from "@/components/accounts/quick-payment-dialog";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils";
@@ -82,17 +81,10 @@ export function AccountCard({ account, allAccounts }: AccountCardProps) {
                 ) : null}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex flex-wrap justify-end gap-2">
-                <Badge variant="secondary" className="border-white/6 bg-black/15 text-[11px] text-z-white">
-                  {ACCOUNT_TYPE_SHORT_LABELS[account.account_type]}
-                </Badge>
-                {account.show_in_dashboard ? (
-                  <Badge className="border-z-brass/30 bg-z-brass/10 text-[11px] font-medium text-z-brass hover:bg-z-brass/10">
-                    Inicio
-                  </Badge>
-                ) : null}
-              </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge variant="secondary" className="border-white/6 bg-black/15 text-[11px] text-z-white">
+                {ACCOUNT_TYPE_SHORT_LABELS[account.account_type]}
+              </Badge>
               {allAccounts && allAccounts.length > 0 && (
                 <div
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
