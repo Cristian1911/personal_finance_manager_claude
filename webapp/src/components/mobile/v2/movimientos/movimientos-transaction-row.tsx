@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useCallback, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Hash, UserRound, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
+import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import { categorizeTransaction } from "@/actions/categorize";
-import { DestinatarioDrawer } from "./destinatario-drawer";
-import { TagDrawer } from "./tag-drawer";
+import { assignDestinatario } from "@/actions/categorize";
 import { toast } from "sonner";
 import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
 
@@ -23,17 +24,13 @@ export function MovimientosTransactionRow({
   categories,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const [destDrawerOpen, setDestDrawerOpen] = useState(false);
-  const [tagDrawerOpen, setTagDrawerOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Optimistic local state for destinatario
+  // Optimistic local state
   const [localDest, setLocalDest] = useState<{
     id: string;
     name: string;
   } | null>(tx.destinatario ?? null);
-
-  // Optimistic local state for category
   const [localCategory, setLocalCategory] = useState(tx.category);
 
   const description =
@@ -44,14 +41,6 @@ export function MovimientosTransactionRow({
 
   const categoryName = localCategory?.name_es ?? localCategory?.name ?? null;
   const destinatarioName = localDest?.name ?? null;
-
-  const handleDestAssigned = useCallback((id: string, name: string) => {
-    setLocalDest({ id, name });
-  }, []);
-
-  const handleDestRemoved = useCallback(() => {
-    setLocalDest(null);
-  }, []);
 
   function handleCategorize(categoryId: string | null) {
     if (!categoryId) return;
@@ -66,6 +55,18 @@ export function MovimientosTransactionRow({
       if (!result.success) {
         setLocalCategory(tx.category);
         toast.error("Error al categorizar");
+      }
+    });
+  }
+
+  function handleDestChange(id: string | null, name: string | null) {
+    if (!id || !name) return;
+    setLocalDest({ id, name });
+    startTransition(async () => {
+      const result = await assignDestinatario(tx.id, id);
+      if (!result.success) {
+        setLocalDest(tx.destinatario ?? null);
+        toast.error("Error al asignar destinatario");
       }
     });
   }
@@ -120,15 +121,14 @@ export function MovimientosTransactionRow({
         </div>
       </button>
 
-      {/* Expanded: metadata chips + icon actions */}
+      {/* Expanded: inline pickers + edit link */}
       {expanded && (
         <div className="flex items-center gap-1.5 px-2 pb-2.5 pt-0.5">
-          {categoryName && (
+          {categoryName ? (
             <span className="rounded-lg bg-z-brass/10 px-2.5 py-1 text-[10px] font-semibold text-z-brass">
               {categoryName}
             </span>
-          )}
-          {!categoryName && (
+          ) : (
             <CategoryZonePicker
               categories={categories}
               value={null}
@@ -139,31 +139,21 @@ export function MovimientosTransactionRow({
               triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-lg border border-white/10 bg-white/[0.03] text-z-brass hover:bg-white/[0.06]"
             />
           )}
-          {destinatarioName && (
-            <button
-              type="button"
-              onClick={() => setDestDrawerOpen(true)}
-              className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.08]"
-            >
-              {destinatarioName}
-            </button>
-          )}
-          {!destinatarioName && (
-            <button
-              type="button"
-              onClick={() => setDestDrawerOpen(true)}
-              className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
-            >
-              <UserRound className="size-3" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setTagDrawerOpen(true)}
-            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
-          >
-            <Hash className="size-3" />
-          </button>
+          <DestinatarioZonePicker
+            value={localDest?.id ?? null}
+            onValueChange={handleDestChange}
+            selectedName={destinatarioName}
+            placeholder="👤"
+            variant="drawer"
+            triggerClassName="text-[10px] h-auto py-1 px-2 rounded-lg border border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
+          />
+          <TagZonePicker
+            entityType="transaction"
+            entityId={tx.id}
+            placeholder="#"
+            variant="drawer"
+            triggerClassName="text-[10px] h-auto py-1 px-2 rounded-lg border border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
+          />
           <div className="flex-1" />
           <Link
             href={`/transactions/${tx.id}`}
@@ -173,22 +163,6 @@ export function MovimientosTransactionRow({
           </Link>
         </div>
       )}
-
-      {/* Drawers — at root level so vaul portals work correctly */}
-      <DestinatarioDrawer
-        open={destDrawerOpen}
-        onOpenChange={setDestDrawerOpen}
-        transactionId={tx.id}
-        currentDestinatarioId={localDest?.id ?? null}
-        currentDestinatarioName={destinatarioName}
-        onAssigned={handleDestAssigned}
-        onRemoved={handleDestRemoved}
-      />
-      <TagDrawer
-        open={tagDrawerOpen}
-        onOpenChange={setTagDrawerOpen}
-        transactionId={tx.id}
-      />
     </div>
   );
 }
