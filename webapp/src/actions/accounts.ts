@@ -13,6 +13,7 @@ import {
 } from "@/lib/utils/currency-balances";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
+import { getIsDemoFilter } from "@/lib/demo-filter";
 import type { Account, AccountRow, CurrencyCode, TransactionDirection } from "@/types/domain";
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
@@ -21,7 +22,7 @@ function stripSensitive({ pdf_password: _, ...rest }: AccountRow): Account {
   return rest;
 }
 
-async function getAccountsCached(userId: string): Promise<Account[]> {
+async function getAccountsCached(userId: string, isDemo: boolean): Promise<Account[]> {
   "use cache";
   cacheTag("accounts");
   cacheLife("zeta");
@@ -32,6 +33,7 @@ async function getAccountsCached(userId: string): Promise<Account[]> {
     .select("*")
     .eq("user_id", userId)
     .eq("is_active", true)
+    .eq("is_demo", isDemo)
     .order("display_order", { ascending: true });
 
   if (error) throw error;
@@ -61,7 +63,8 @@ export async function getAccounts(): Promise<ActionResult<Account[]>> {
   const { user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
   try {
-    const data = await getAccountsCached(user.id);
+    const isDemo = await getIsDemoFilter(user.id);
+    const data = await getAccountsCached(user.id, isDemo);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading accounts:", error);

@@ -148,23 +148,32 @@ export default async function DashboardPage({
 
   if (!user) return null;
 
-  // Fetch currency + transactions + cached accounts + dashboard config in parallel
-  const [preferredCurrency, { data: recentTransactions }, allAccountsResult, dashboardConfigData] =
+  // Fetch currency + cached accounts + dashboard config in parallel
+  const [preferredCurrency, allAccountsResult, dashboardConfigData] =
     await Promise.all([
       getPreferredCurrency(),
-      supabase
-        .from("transactions")
-        .select("id, amount, direction, account_id, merchant_name, clean_description, transaction_date, currency_code, categories!category_id(name_es, name)")
-        .eq("is_excluded", false)
-        .order("transaction_date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(5)
-        .is("reconciled_into_transaction_id", null),
       getAccounts(),
       getDashboardConfigWithPurpose(),
     ]);
 
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
+  const accountIdsForFilter = allAccounts.map((a) => a.id);
+
+  // Fetch recent transactions filtered by demo mode accounts
+  let recentTransactionsQuery = supabase
+    .from("transactions")
+    .select("id, amount, direction, account_id, merchant_name, clean_description, transaction_date, currency_code, categories!category_id(name_es, name)")
+    .eq("is_excluded", false)
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(5)
+    .is("reconciled_into_transaction_id", null);
+
+  if (accountIdsForFilter.length > 0) {
+    recentTransactionsQuery = recentTransactionsQuery.in("account_id", accountIdsForFilter);
+  }
+
+  const { data: recentTransactions } = await recentTransactionsQuery;
 
   // Resolve currency from cached accounts — no extra DB queries
   let currency = preferredCurrency;

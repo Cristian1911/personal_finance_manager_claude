@@ -18,6 +18,7 @@ import { EmailIngestCard } from "@/components/settings/email-ingest-card";
 import { UnrecognizedEmailsCard } from "@/components/settings/unrecognized-emails-card";
 import { BuildInfo } from "@/components/settings/build-info";
 import { ReviewModeToggle } from "@/components/settings/review-mode-toggle";
+import { DemoModeCard } from "@/components/settings/demo-mode-card";
 import { getCaptureTokens } from "@/actions/capture-tokens";
 import { getEmailIngestAddress, getUnrecognizedEmails } from "@/actions/email-ingest";
 import { getTagGroups } from "@/actions/tags";
@@ -160,6 +161,8 @@ export default async function SettingsPage() {
           <BugReportForm />
         </CardContent>
       </Card>
+
+      <DemoModeCard initialDemoMode={profile.demo_mode ?? false} />
 
       <BuildInfo />
 

@@ -7,6 +7,7 @@ import { getAccounts } from "@/actions/accounts";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
+import { getIsDemoFilter } from "@/lib/demo-filter";
 import {
   formatDate,
   parseMonth,
@@ -51,7 +52,8 @@ export interface DailySpending {
 async function getCategorySpendingCached(
   userId: string,
   month: string | undefined,
-  currency: CurrencyCode | undefined
+  currency: CurrencyCode | undefined,
+  isDemo: boolean
 ): Promise<CategorySpending[]> {
   "use cache";
   cacheTag("dashboard:charts");
@@ -60,12 +62,23 @@ async function getCategorySpendingCached(
   const supabase = createAdminClient();
   const target = parseMonth(month);
 
+  // Get account IDs matching demo filter
+  const { data: filteredAccounts } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .eq("is_demo", isDemo);
+  const accountIds = (filteredAccounts ?? []).map((a) => a.id);
+  if (accountIds.length === 0) return [];
+
   // Fetch transactions and budgets in parallel
   const [txRes, budgetsRes] = await Promise.all([
     supabase
       .from("transactions")
       .select("amount, category_id, categories!category_id(name_es, name, color, expense_type)")
       .eq("user_id", userId)
+      .in("account_id", accountIds)
       .eq("direction", "OUTFLOW")
       .eq("is_excluded", false)
       .eq("currency_code", currency ?? "COP")
@@ -135,7 +148,8 @@ async function getCategorySpendingCached(
 async function getMonthlyCashflowCached(
   userId: string,
   month: string | undefined,
-  currency: CurrencyCode | undefined
+  currency: CurrencyCode | undefined,
+  isDemo: boolean
 ): Promise<MonthlyCashflow[]> {
   "use cache";
   cacheTag("dashboard:cashflow");
@@ -144,10 +158,21 @@ async function getMonthlyCashflowCached(
   const supabase = createAdminClient();
   const target = parseMonth(month);
 
+  // Get account IDs matching demo filter
+  const { data: filteredAccounts } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .eq("is_demo", isDemo);
+  const accountIds = (filteredAccounts ?? []).map((a) => a.id);
+  if (accountIds.length === 0) return [];
+
   const { data: transactions, error } = await supabase
     .from("transactions")
     .select("transaction_date, amount, direction, accounts!account_id(account_type)")
     .eq("user_id", userId)
+    .in("account_id", accountIds)
     .eq("is_excluded", false)
     .eq("currency_code", currency ?? "COP")
     .gte("transaction_date", monthsBeforeStart(target, 5))
@@ -193,7 +218,8 @@ async function getMonthlyCashflowCached(
 async function getDailySpendingCached(
   userId: string,
   month: string | undefined,
-  currency: CurrencyCode | undefined
+  currency: CurrencyCode | undefined,
+  isDemo: boolean
 ): Promise<DailySpending[]> {
   "use cache";
   cacheTag("dashboard:charts");
@@ -202,10 +228,21 @@ async function getDailySpendingCached(
   const supabase = createAdminClient();
   const target = parseMonth(month);
 
+  // Get account IDs matching demo filter
+  const { data: filteredAccounts } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .eq("is_demo", isDemo);
+  const accountIds = (filteredAccounts ?? []).map((a) => a.id);
+  if (accountIds.length === 0) return [];
+
   const { data: transactions, error } = await supabase
     .from("transactions")
     .select("transaction_date, amount")
     .eq("user_id", userId)
+    .in("account_id", accountIds)
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
     .eq("currency_code", currency ?? "COP")
@@ -239,7 +276,8 @@ export interface MonthMetrics {
 
 async function getMonthMetricsCached(
   userId: string,
-  month: string | undefined
+  month: string | undefined,
+  isDemo: boolean
 ): Promise<MonthMetrics> {
   "use cache";
   cacheTag("dashboard:charts");
@@ -248,10 +286,21 @@ async function getMonthMetricsCached(
   const supabase = createAdminClient();
   const target = parseMonth(month);
 
+  // Get account IDs matching demo filter
+  const { data: filteredAccounts } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .eq("is_demo", isDemo);
+  const accountIds = (filteredAccounts ?? []).map((a) => a.id);
+  if (accountIds.length === 0) return { income: 0, expenses: 0 };
+
   const { data: transactions, error } = await supabase
     .from("transactions")
     .select("amount, direction, accounts!account_id(account_type)")
     .eq("user_id", userId)
+    .in("account_id", accountIds)
     .eq("is_excluded", false)
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target))
@@ -281,7 +330,8 @@ export interface DailyCashflow {
 
 async function getDailyCashflowCached(
   userId: string,
-  month: string | undefined
+  month: string | undefined,
+  isDemo: boolean
 ): Promise<DailyCashflow[]> {
   "use cache";
   cacheTag("dashboard:cashflow");
@@ -292,10 +342,21 @@ async function getDailyCashflowCached(
   const startStr = monthStartStr(target);
   const endStr = monthEndStr(target);
 
+  // Get account IDs matching demo filter
+  const { data: filteredAccounts } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .eq("is_demo", isDemo);
+  const accountIds = (filteredAccounts ?? []).map((a) => a.id);
+  if (accountIds.length === 0) return [];
+
   const { data: transactions, error } = await supabase
     .from("transactions")
     .select("transaction_date, amount, direction, accounts!account_id(account_type)")
     .eq("user_id", userId)
+    .in("account_id", accountIds)
     .eq("is_excluded", false)
     .gte("transaction_date", startStr)
     .lte("transaction_date", endStr)
@@ -372,7 +433,8 @@ export interface GroupedAccounts {
 }
 
 async function getAccountsWithSparklineDataCached(
-  userId: string
+  userId: string,
+  isDemo: boolean
 ): Promise<GroupedAccounts> {
   "use cache";
   cacheTag("accounts");
@@ -387,6 +449,7 @@ async function getAccountsWithSparklineDataCached(
     .select("id, name, account_type, current_balance, currency_balances, credit_limit, currency_code, updated_at, color, interest_rate, monthly_payment, loan_amount")
     .eq("user_id", userId)
     .eq("is_active", true)
+    .eq("is_demo", isDemo)
     .eq("show_in_dashboard", true)
     .order("display_order");
 
@@ -484,7 +547,8 @@ async function getAccountsWithSparklineDataCached(
 export async function getCategorySpending(month?: string, currency?: CurrencyCode): Promise<CategorySpending[]> {
   const { user } = await getAuthenticatedClient();
   if (!user) return [];
-  return getCategorySpendingCached(user.id, month, currency);
+  const isDemo = await getIsDemoFilter(user.id);
+  return getCategorySpendingCached(user.id, month, currency, isDemo);
 }
 
 /**
@@ -493,7 +557,8 @@ export async function getCategorySpending(month?: string, currency?: CurrencyCod
 export async function getMonthlyCashflow(month?: string, currency?: CurrencyCode): Promise<MonthlyCashflow[]> {
   const { user } = await getAuthenticatedClient();
   if (!user) return [];
-  return getMonthlyCashflowCached(user.id, month, currency);
+  const isDemo = await getIsDemoFilter(user.id);
+  return getMonthlyCashflowCached(user.id, month, currency, isDemo);
 }
 
 /**
@@ -502,7 +567,8 @@ export async function getMonthlyCashflow(month?: string, currency?: CurrencyCode
 export async function getDailySpending(month?: string, currency?: CurrencyCode): Promise<DailySpending[]> {
   const { user } = await getAuthenticatedClient();
   if (!user) return [];
-  return getDailySpendingCached(user.id, month, currency);
+  const isDemo = await getIsDemoFilter(user.id);
+  return getDailySpendingCached(user.id, month, currency, isDemo);
 }
 
 /**
@@ -512,7 +578,8 @@ export async function getDailySpending(month?: string, currency?: CurrencyCode):
 export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
   const { user } = await getAuthenticatedClient();
   if (!user) return { income: 0, expenses: 0 };
-  return getMonthMetricsCached(user.id, month);
+  const isDemo = await getIsDemoFilter(user.id);
+  return getMonthMetricsCached(user.id, month, isDemo);
 }
 
 /**
@@ -522,13 +589,15 @@ export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
 export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]> {
   const { user } = await getAuthenticatedClient();
   if (!user) return [];
-  return getDailyCashflowCached(user.id, month);
+  const isDemo = await getIsDemoFilter(user.id);
+  return getDailyCashflowCached(user.id, month, isDemo);
 }
 
 export async function getAccountsWithSparklineData(): Promise<GroupedAccounts> {
   const { user } = await getAuthenticatedClient();
   if (!user) return { deposits: [], debt: [] };
-  return getAccountsWithSparklineDataCached(user.id);
+  const isDemo = await getIsDemoFilter(user.id);
+  return getAccountsWithSparklineDataCached(user.id, isDemo);
 }
 
 // --- Net Worth History ---
@@ -552,11 +621,13 @@ export async function getNetWorthHistory(month?: string, currency?: CurrencyCode
   const baseCurrency = currency ?? "COP";
 
   // 1. Get current active accounts balances to compute current net worth
+  const isDemo = await getIsDemoFilter(user.id);
   const { data: accounts } = await supabase
     .from("accounts")
     .select("current_balance, available_balance, account_type, credit_limit, currency_code")
     .eq("user_id", user.id)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .eq("is_demo", isDemo);
 
   // If no accounts, return early
   if (!accounts || accounts.length === 0) return [];

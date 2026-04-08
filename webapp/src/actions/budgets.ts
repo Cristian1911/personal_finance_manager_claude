@@ -3,6 +3,7 @@
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getIsDemoFilter } from "@/lib/demo-filter";
 import { budgetSchema } from "@/lib/validators/budget";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
@@ -29,7 +30,7 @@ async function getBudgetsCached(userId: string): Promise<Budget[]> {
     return data ?? [];
 }
 
-async function getBudgetSummaryCached(userId: string, month?: string): Promise<BudgetSummary> {
+async function getBudgetSummaryCached(userId: string, month: string | undefined, isDemo: boolean): Promise<BudgetSummary> {
     "use cache";
     cacheTag("budgets");
     cacheLife("zeta");
@@ -49,10 +50,21 @@ async function getBudgetSummaryCached(userId: string, month?: string): Promise<B
     const { monthStartStr, monthEndStr, parseMonth } = await import("@/lib/utils/date");
     const target = parseMonth(month);
 
+    // Get account IDs matching demo filter
+    const { data: filteredAccounts } = await supabase
+        .from("accounts")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .eq("is_demo", isDemo);
+    const accountIds = (filteredAccounts ?? []).map((a: { id: string }) => a.id);
+    if (accountIds.length === 0) return { totalTarget, totalSpent: 0, progress: 0 };
+
     const { data: transactions } = await supabase
         .from("transactions")
         .select("amount")
         .eq("user_id", userId)
+        .in("account_id", accountIds)
         .eq("direction", "OUTFLOW")
         .eq("is_excluded", false)
         .in("category_id", budgetedCategoryIds)
@@ -93,7 +105,8 @@ export interface BudgetSummary {
 export async function getBudgetSummary(month?: string): Promise<BudgetSummary> {
     const { user } = await getAuthenticatedClient();
     if (!user) return { totalTarget: 0, totalSpent: 0, progress: 0 };
-    return getBudgetSummaryCached(user.id, month);
+    const isDemo = await getIsDemoFilter(user.id);
+    return getBudgetSummaryCached(user.id, month, isDemo);
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────

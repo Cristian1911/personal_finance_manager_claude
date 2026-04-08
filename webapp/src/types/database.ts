@@ -35,6 +35,7 @@ export type Database = {
           institution_name: string | null
           interest_rate: number | null
           is_active: boolean
+          is_demo: boolean
           last_synced_at: string | null
           loan_amount: number | null
           loan_end_date: string | null
@@ -71,6 +72,7 @@ export type Database = {
           institution_name?: string | null
           interest_rate?: number | null
           is_active?: boolean
+          is_demo?: boolean
           last_synced_at?: string | null
           loan_amount?: number | null
           loan_end_date?: string | null
@@ -107,6 +109,7 @@ export type Database = {
           institution_name?: string | null
           interest_rate?: number | null
           is_active?: boolean
+          is_demo?: boolean
           last_synced_at?: string | null
           loan_amount?: number | null
           loan_end_date?: string | null
@@ -1203,6 +1206,7 @@ export type Database = {
           budget_mode: string | null
           created_at: string
           dashboard_config: Json | null
+          demo_mode: boolean
           email: string
           estimated_monthly_expenses: number | null
           estimated_monthly_income: number | null
@@ -1221,6 +1225,7 @@ export type Database = {
           budget_mode?: string | null
           created_at?: string
           dashboard_config?: Json | null
+          demo_mode?: boolean
           email: string
           estimated_monthly_expenses?: number | null
           estimated_monthly_income?: number | null
@@ -1239,6 +1244,7 @@ export type Database = {
           budget_mode?: string | null
           created_at?: string
           dashboard_config?: Json | null
+          demo_mode?: boolean
           email?: string
           estimated_monthly_expenses?: number | null
           estimated_monthly_income?: number | null
