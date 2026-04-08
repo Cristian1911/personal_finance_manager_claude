@@ -17,7 +17,11 @@ UPDATE transactions_enc SET
   clean_description_hmac = zeta_hmac_as(clean_description, user_id)
 WHERE clean_description IS NOT NULL;
 
--- 3. Encrypt columns — atomic type change + encryption per column
+-- 3. Drop GIN text search index that references encrypted columns
+--    (COALESCE on clean_description/merchant_name is incompatible with BYTEA)
+DROP INDEX IF EXISTS idx_transactions_description_search;
+
+-- 4. Encrypt columns — atomic type change + encryption per column
 ALTER TABLE transactions_enc
   ALTER COLUMN raw_description TYPE BYTEA USING zeta_encrypt_as(raw_description, user_id);
 ALTER TABLE transactions_enc

@@ -5,11 +5,17 @@
 -- 1. Rename
 ALTER TABLE accounts RENAME TO accounts_enc;
 
--- 2. Add HMAC and backfill
-ALTER TABLE accounts_enc ADD COLUMN mask_hmac TEXT;
-UPDATE accounts_enc SET mask_hmac = zeta_hmac_as(mask, user_id) WHERE mask IS NOT NULL;
+-- 2. Drop indexes that reference encrypted columns (incompatible with BYTEA)
+DROP INDEX IF EXISTS accounts_provider_unique;
+DROP INDEX IF EXISTS idx_accounts_user_debit_card_mask;
 
--- 3. Encrypt columns
+-- 3. Add HMAC columns and backfill
+ALTER TABLE accounts_enc ADD COLUMN mask_hmac TEXT;
+ALTER TABLE accounts_enc ADD COLUMN provider_account_id_hmac TEXT;
+UPDATE accounts_enc SET mask_hmac = zeta_hmac_as(mask, user_id) WHERE mask IS NOT NULL;
+UPDATE accounts_enc SET provider_account_id_hmac = zeta_hmac_as(provider_account_id, user_id) WHERE provider_account_id IS NOT NULL;
+
+-- 4. Encrypt columns
 ALTER TABLE accounts_enc
   ALTER COLUMN name TYPE BYTEA USING zeta_encrypt_as(name, user_id);
 ALTER TABLE accounts_enc
@@ -40,7 +46,7 @@ SELECT
   zeta_decrypt(pdf_password) AS pdf_password,
   provider,
   zeta_decrypt(provider_account_id) AS provider_account_id,
-  show_in_dashboard, updated_at, user_id
+  provider_account_id_hmac, show_in_dashboard, updated_at, user_id
 FROM accounts_enc;
 
 -- 5. INSTEAD OF INSERT
@@ -53,8 +59,8 @@ BEGIN
     initial_investment, institution_name, interest_rate, is_active,
     last_synced_at, loan_amount, loan_end_date, loan_start_date, mask,
     mask_hmac, maturity_date, monthly_payment, name, payment_day,
-    pdf_password, provider, provider_account_id, show_in_dashboard,
-    updated_at, user_id
+    pdf_password, provider, provider_account_id, provider_account_id_hmac,
+    show_in_dashboard, updated_at, user_id
   ) VALUES (
     NEW.account_type, NEW.available_balance, NEW.color, NEW.connection_status,
     NEW.created_at, NEW.credit_limit, NEW.currency_balances, NEW.currency_code,
@@ -73,6 +79,7 @@ BEGIN
     zeta_encrypt(NEW.pdf_password),
     NEW.provider,
     zeta_encrypt(NEW.provider_account_id),
+    zeta_hmac(NEW.provider_account_id),
     NEW.show_in_dashboard, NEW.updated_at, NEW.user_id
   );
   RETURN NEW;
@@ -118,6 +125,7 @@ BEGIN
     pdf_password = zeta_encrypt(NEW.pdf_password),
     provider = NEW.provider,
     provider_account_id = zeta_encrypt(NEW.provider_account_id),
+    provider_account_id_hmac = zeta_hmac(NEW.provider_account_id),
     show_in_dashboard = NEW.show_in_dashboard,
     updated_at = NEW.updated_at,
     user_id = NEW.user_id
@@ -142,6 +150,11 @@ CREATE TRIGGER accounts_view_delete_trg
   INSTEAD OF DELETE ON accounts
   FOR EACH ROW EXECUTE FUNCTION accounts_view_delete();
 
--- 8. Grant
+-- 8. Recreate unique constraint using HMAC (original used plaintext provider_account_id)
+CREATE UNIQUE INDEX accounts_provider_unique
+  ON accounts_enc (user_id, provider, provider_account_id_hmac)
+  WHERE provider_account_id_hmac IS NOT NULL;
+
+-- 9. Grant
 GRANT SELECT, INSERT, UPDATE, DELETE ON accounts TO authenticated;
 GRANT ALL ON accounts TO postgres, service_role;
