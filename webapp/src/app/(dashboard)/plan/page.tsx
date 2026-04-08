@@ -17,8 +17,6 @@ import { PlanTabRecurrentes } from "@/components/plan/tabs/plan-tab-recurrentes"
 import { PlanTabDeseos } from "@/components/plan/tabs/plan-tab-deseos";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { PlanRoot } from "@/components/mobile/v2/plan/plan-root";
-import { PlanMobileNavList } from "@/components/plan/plan-mobile-nav-list";
-import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getActivePeriod } from "@/actions/cashflow-planner";
 import { getPlanTimelineData } from "@/actions/plan-timeline";
@@ -53,14 +51,13 @@ export default async function PlanPage({
   const isResumen = activeTab === "resumen";
 
   // Only fetch heavy plan data for resumen tab
-  const [planData, rhythmResult, categoryBudgetResult, timelineData] = isResumen
+  const [planData, rhythmResult, timelineData] = isResumen
     ? await Promise.all([
         getPlanPageData(month, currency),
         getCategoriesByRhythm(month, currency),
-        getCategoriesWithBudgetData(month, currency),
         getPlanTimelineData(month, currency),
       ])
-    : [null, null, null, null];
+    : [null, null, null];
 
   const activePeriod = activePeriodResult.success ? activePeriodResult.data : null;
   const periodoSummary = activePeriod
@@ -76,8 +73,6 @@ export default async function PlanPage({
   // ── Mobile: show PlanRoot for resumen, tab content for others ──
   const mobileContent = (() => {
     if (isResumen && planData) {
-      const allocationData = planData.budget.allocation;
-      const categoryBudgetData = categoryBudgetResult?.success ? categoryBudgetResult.data : [];
       const now = new Date();
       const planDayOfMonth = now.getDate();
       const planDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -85,13 +80,13 @@ export default async function PlanPage({
       return (
         <PlanRoot
           planData={planData}
-          allocationData={allocationData}
           timelineData={timelineData!}
           currency={planData.currency}
           monthLabel={monthLabel}
           dayOfMonth={planDayOfMonth}
           daysInMonth={planDaysInMonth}
-          categories={categoryBudgetData}
+          periodoSummary={periodoSummary}
+          wishlistCount={wishlistSummary?.totalCount ?? 0}
         />
       );
     }
@@ -101,7 +96,6 @@ export default async function PlanPage({
   // ── Desktop: resumen tab shows the full plan layout ──
   const desktopResumenContent = (() => {
     if (!isResumen || !planData) return null;
-    const allocationData = planData.budget.allocation;
     const rhythmData = rhythmResult?.success ? rhythmResult.data : [];
 
     return (
@@ -159,23 +153,7 @@ export default async function PlanPage({
     <div className={PAGE_STACK_CLASS}>
       {/* ── Mobile ── */}
       <div className="lg:hidden">
-        {/* Tab navigation — always visible on mobile */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">Plan</p>
-              <h1 className="text-xl font-semibold">{activeTab === "resumen" ? "Tu plan" : ""}</h1>
-            </div>
-            {isResumen && (
-              <Suspense fallback={<span className="text-xs capitalize text-muted-foreground">{monthLabel}</span>}>
-                <MonthSelector />
-              </Suspense>
-            )}
-          </div>
-          {/* NOTE: PlanTabNav removed from here — hidden on mobile, replaced by bottom nav list */}
-        </div>
-
-        {/* Mobile tab content */}
+        {/* Mobile tab content — PlanRoot handles its own header + month selector */}
         {mobileContent}
         {tabContent && (
           <div className="mt-4">
@@ -184,9 +162,6 @@ export default async function PlanPage({
             </Suspense>
           </div>
         )}
-
-        {/* Bottom navigation to other Plan tabs */}
-        <PlanMobileNavList activeTab={activeTab} />
       </div>
 
       {/* ── Desktop ── */}

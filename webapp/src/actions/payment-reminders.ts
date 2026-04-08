@@ -2,7 +2,7 @@
 
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
 
 export interface UpcomingPayment {
@@ -19,14 +19,15 @@ export interface UpcomingPayment {
 // ─── Cached inner function ────────────────────────────────────────────────────
 
 async function getUpcomingPaymentsCached(
-  userId: string
+  userId: string,
+  accessToken: string
 ): Promise<UpcomingPayment[]> {
   "use cache";
   cacheTag("snapshots");
   cacheLife("zeta");
 
   const today = toISODateString(new Date());
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   // We want to fetch the LATEST snapshot for each account
   // But doing a group-by or distinct-on is tricky in Supabase clients without a view
@@ -86,11 +87,11 @@ async function getUpcomingPaymentsCached(
 // ─── Public wrapper ───────────────────────────────────────────────────────────
 
 export async function getUpcomingPayments(): Promise<UpcomingPayment[]> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
 
   try {
-    return await getUpcomingPaymentsCached(user.id);
+    return await getUpcomingPaymentsCached(user.id, accessToken);
   } catch (error) {
     console.error("Error loading upcoming payments:", error);
     return [];

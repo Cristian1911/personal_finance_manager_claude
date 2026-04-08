@@ -577,7 +577,7 @@ export function MarketingLandingPage() {
               </Badge>
 
               <div className="space-y-6">
-                <h1 className="max-w-4xl text-5xl font-semibold tracking-tight text-balance sm:text-6xl lg:text-7xl">
+                <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-7xl">
                   Tu dinero deja de sentirse confuso y empieza a contar una historia clara.
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">

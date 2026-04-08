@@ -48,7 +48,7 @@ export function QuickViewMenu({ profile, attentionSnapshot }: QuickViewMenuProps
   const [data, setData] = useState<QuickViewData | null>(null);
   const [loading, startTransition] = useTransition();
 
-  const initials = (profile.full_name ?? profile.email)
+  const initials = (profile.full_name ?? profile.email ?? "?")
     .split(" ")
     .map((n) => n[0])
     .join("")

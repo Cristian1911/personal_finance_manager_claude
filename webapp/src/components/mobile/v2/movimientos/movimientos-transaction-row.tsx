@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Hash, UserRound, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { MOBILE_ACTION_BUTTON_CLASS } from "@/lib/constants/styles";
+import { formatDate } from "@/lib/utils/date";
 import type { TransactionWithAccount } from "@/types/domain";
 
 interface MovimientosTransactionRowProps {
@@ -20,7 +21,10 @@ export function MovimientosTransactionRow({
     tx.merchant_name ||
     tx.clean_description ||
     tx.raw_description ||
-    "Sin descripcion";
+    "Sin descripción";
+
+  const categoryName = tx.category?.name_es ?? tx.category?.name ?? null;
+  const destinatarioName = tx.destinatario?.name ?? null;
 
   return (
     <div
@@ -29,16 +33,16 @@ export function MovimientosTransactionRow({
         expanded && "border-l-2 border-z-brass pl-2"
       )}
     >
-      {/* Collapsed row — always visible */}
+      {/* Collapsed row */}
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
         className={cn(
-          "flex w-full items-center justify-between px-2 py-2 text-left transition-colors hover:bg-white/5",
+          "flex w-full items-center justify-between gap-2 px-2 py-2.5 text-left transition-colors hover:bg-white/5",
           tx.is_excluded && "opacity-40"
         )}
       >
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{description}</p>
           <p className="text-[11px] text-muted-foreground flex items-center gap-1">
             <span
@@ -46,12 +50,14 @@ export function MovimientosTransactionRow({
               style={{ backgroundColor: tx.account.color ?? undefined }}
             />
             <span className="truncate">{tx.account.name}</span>
+            <span className="text-white/15">·</span>
+            <span>{formatDate(tx.transaction_date, "dd MMM")}</span>
           </p>
         </div>
-        <span className="flex shrink-0 items-center gap-1.5 ml-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <span
             className={cn(
-              "text-sm font-medium",
+              "text-sm font-medium tabular-nums",
               tx.direction === "INFLOW" && "text-z-income",
               tx.is_excluded && "line-through"
             )}
@@ -67,33 +73,51 @@ export function MovimientosTransactionRow({
           >
             ›
           </span>
-        </span>
+        </div>
       </button>
 
-      {/* Expanded: action pills */}
+      {/* Expanded: metadata chips + icon actions */}
       {expanded && (
-        <div className="flex gap-2 px-2 pb-2 pt-1">
-          <Link
-            href="/categorizar"
-            className={cn(
-              MOBILE_ACTION_BUTTON_CLASS,
-              "rounded-full px-3 py-1"
-            )}
-          >
-            Categorizar
-          </Link>
+        <div className="flex items-center gap-1.5 px-2 pb-2.5 pt-0.5">
+          {categoryName && (
+            <span className="rounded-lg bg-z-brass/10 px-2.5 py-1 text-[10px] font-semibold text-z-brass">
+              {categoryName}
+            </span>
+          )}
+          {!categoryName && (
+            <Link
+              href="/categorizar"
+              className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-z-brass transition-colors hover:bg-white/[0.06]"
+            >
+              Categoría
+            </Link>
+          )}
+          {destinatarioName && (
+            <span className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+              {destinatarioName}
+            </span>
+          )}
+          {!destinatarioName && (
+            <Link
+              href={`/transactions/${tx.id}`}
+              className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
+            >
+              <UserRound className="size-3" />
+            </Link>
+          )}
           <Link
             href={`/transactions/${tx.id}`}
-            className="rounded-full border border-white/8 bg-transparent px-3 py-1 text-[10px] font-semibold text-muted-foreground"
+            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
           >
-            Editar
+            <Hash className="size-3" />
           </Link>
-          <button
-            type="button"
-            className="rounded-full border border-white/8 bg-transparent px-3 py-1 text-[10px] font-semibold text-muted-foreground"
+          <div className="flex-1" />
+          <Link
+            href={`/transactions/${tx.id}`}
+            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
           >
-            Excluir
-          </button>
+            <Pencil className="size-3" />
+          </Link>
         </div>
       )}
     </div>

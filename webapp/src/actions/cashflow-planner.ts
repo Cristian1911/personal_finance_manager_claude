@@ -2,7 +2,7 @@
 
 import { revalidateTag, cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import {
   planningPeriodSchema,
   planningEntrySchema,
@@ -34,13 +34,14 @@ const TAG = "cashflow-planner";
 // ─── Cached queries ──────────────────────────────────────────────────────────
 
 async function getPlanningPeriodsCached(
-  userId: string
+  userId: string,
+  accessToken: string
 ): Promise<PlanningPeriod[]> {
   "use cache";
   cacheTag(TAG);
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("planning_periods")
     .select("*")
@@ -54,10 +55,10 @@ async function getPlanningPeriodsCached(
 export async function getPlanningPeriods(): Promise<
   ActionResult<PlanningPeriod[]>
 > {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
 
-  const periods = await getPlanningPeriodsCached(user.id);
+  const periods = await getPlanningPeriodsCached(user.id, accessToken);
   return { success: true, data: periods };
 }
 
@@ -65,9 +66,10 @@ export async function getPlanningPeriods(): Promise<
 
 async function hydratePeriodData(
   userId: string,
-  period: PlanningPeriod
+  period: PlanningPeriod,
+  accessToken: string
 ): Promise<PeriodPlanData> {
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const periodCurrency = period.currency_code;
 
   const [{ data: rawEntries }, { data: rawAssignments }] = await Promise.all([
@@ -206,10 +208,10 @@ async function hydratePeriodData(
 export async function getActivePeriod(): Promise<
   ActionResult<PeriodPlanData | null>
 > {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data: period } = await supabase
     .from("planning_periods")
     .select("*")
@@ -223,7 +225,8 @@ export async function getActivePeriod(): Promise<
 
   const planData = await hydratePeriodData(
     user.id,
-    period as PlanningPeriod
+    period as PlanningPeriod,
+    accessToken
   );
   return { success: true, data: planData };
 }
@@ -231,10 +234,10 @@ export async function getActivePeriod(): Promise<
 export async function getPeriodPlanData(
   periodId: string
 ): Promise<ActionResult<PeriodPlanData>> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const { data: period, error } = await supabase
     .from("planning_periods")
     .select("*")
@@ -247,7 +250,8 @@ export async function getPeriodPlanData(
 
   const planData = await hydratePeriodData(
     user.id,
-    period as PlanningPeriod
+    period as PlanningPeriod,
+    accessToken
   );
   return { success: true, data: planData };
 }

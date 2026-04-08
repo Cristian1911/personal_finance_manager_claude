@@ -92,7 +92,7 @@ export default async function TransactionsPage({
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <div className="lg:hidden">
+      <div className="pb-20 lg:hidden lg:pb-0">
         <MovimientosRoot
           transactions={transactionsResult.data}
           outflowCategories={outflowCategories}

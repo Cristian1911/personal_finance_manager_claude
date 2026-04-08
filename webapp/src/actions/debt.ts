@@ -2,7 +2,7 @@
 
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import {
   extractDebtAccounts,
   calcUtilization,
@@ -28,13 +28,14 @@ const EMPTY_DEBT_OVERVIEW: DebtOverview = {
 
 async function getDebtOverviewCached(
   userId: string,
-  currency: CurrencyCode
+  currency: CurrencyCode,
+  accessToken: string
 ): Promise<DebtOverview> {
   "use cache";
   cacheTag("debt");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const baseCurrency = currency;
 
   const { data: accounts, error } = await supabase
@@ -113,8 +114,8 @@ async function getDebtOverviewCached(
 
 export async function getDebtOverview(currency?: CurrencyCode): Promise<DebtOverview> {
   const baseCurrency = currency ?? "COP";
-  const { user } = await getAuthenticatedClient();
+  const { user, accessToken } = await getAuthenticatedClient();
 
-  if (!user) return EMPTY_DEBT_OVERVIEW;
-  return getDebtOverviewCached(user.id, baseCurrency);
+  if (!user || !accessToken) return EMPTY_DEBT_OVERVIEW;
+  return getDebtOverviewCached(user.id, baseCurrency, accessToken);
 }

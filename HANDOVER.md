@@ -1,111 +1,84 @@
-# HANDOVER — Mobile v2 Full Redesign (2026-04-04/05)
+# HANDOVER — 2026-04-08 (Performance Audit)
 
 ## 1. Session Summary
 
-Complete mobile redesign for all 4 root tabs (Inicio, Movimientos, Plan, Deudas) on branch `feat/mobile-v2-redesign`. Built ~30 new React components with zone-based layouts, custom heroes per root, expandable chip patterns, and Zeta-branded data visualizations (brass dotted expected lines, sage solid actual lines). Design was iterated through HTML mockup previews → component catalog review → user approval → React implementation → Playwright visual testing. Core UX pattern: "expand inline, never navigate directly" — everything shows a preview first, navigation is secondary.
+Performance audit triggered by slow "Ver detalle" navigation on the movimientos page. Traced root cause to missing loading states, eager data fetching, and a critical encryption compatibility bug where `createAdminClient()` in `"use cache"` functions returned NULL for all encrypted columns post-envelope-encryption. Fixed all 14 affected action files, introduced `createCachedClient(accessToken)` pattern, optimized `zeta_decrypt()` with DEK session caching, added Suspense splitting to the transaction detail page, and cached transaction queries. Also fixed a broken PostgREST join and updated the transaction row expanded view to use icon-only action buttons.
 
 ## 2. Changes Made
 
-### Shared primitives (`webapp/src/components/mobile/v2/`)
-- `mobile-zone.tsx` — Zone layout (eyebrow + heading + children)
-- `state-chip.tsx` — Colored state pill (sage/brass/warn/danger)
-- `use-expandable-zone.ts` — Accordion hook (one zone expanded at a time)
-- `linked-metric-detail-panel.tsx` — Chip row + full-width expandable detail panel
-- `mobile-header.tsx` — Added `chip?: string` prop to page variant
+### Infrastructure — Cached client pattern
+- **`webapp/src/lib/supabase/cached.ts`** — Created. New `createCachedClient(accessToken)` that creates a Supabase client with user JWT for use inside `"use cache"` functions.
+- **`webapp/src/lib/supabase/auth.ts`** — Modified. `getAuthenticatedClient()` now returns `{ supabase, user, accessToken }` (backward-compatible addition). Fast path extracts token from `getSession()`.
 
-### Inicio (`webapp/src/components/mobile/v2/inicio/`) — 7 files
-- `inicio-hero.tsx` — Daily amount ($X/día), expandable math breakdown, controlled from parent accordion
-- `inicio-metrics-grid.tsx` — SVG arc ring (% inside) + próximo ingreso
-- `inicio-focus.tsx` — Single attention signal row
-- `inicio-burndown.tsx` — Copilot-style: "$X restante" centered, brass/sage chart, badge on point
-- `inicio-discovery.tsx` — Two cards, expand FULL WIDTH panel below both (not per-column)
-- `inicio-activity.tsx` — Transaction rows expand inline with quick view (not navigate)
-- `inicio-root.tsx` — Orchestrator with page-level `useExpandableZone`
+### DB optimization — DEK caching
+- **`supabase/migrations/20260408143011_optimize_zeta_decrypt_dek_cache.sql`** — Created. `zeta_decrypt()`, `zeta_encrypt()`, and `zeta_hmac()` now cache the decrypted DEK in a transaction-local session variable via `set_config('zeta.cached_dek', ...)`. First call does vault+DEK lookup; subsequent calls skip it. Benchmarked: accounts query 17.3ms → 8.4ms (-52%).
 
-### Movimientos (`webapp/src/components/mobile/v2/movimientos/`) — 5 files
-- `movimientos-lectura.tsx` — 3-col stats, expandable dual-line chart (REAL data aggregated by week)
-- `movimientos-herramientas.tsx` — 3-col tools (Categorizar/Destinatarios/Importar), expand inline
-- `movimientos-transaction-row.tsx` — Expandable rows with action pills
-- `movimientos-utilidades.tsx` — Pill buttons opening drawers
-- `movimientos-root.tsx` — Orchestrator with page-level accordion
+### Encryption compatibility — 14 action files fixed
+All `"use cache"` functions that query encrypted views switched from `createAdminClient()` to `createCachedClient(accessToken)`:
+- **`webapp/src/actions/accounts.ts`** — Restored `"use cache"` with token-based client
+- **`webapp/src/actions/destinatarios.ts`** — Restored `"use cache"` for main reads; `fetchDestinatarioRules()` exported for shared use
+- **`webapp/src/actions/categorize.ts`** — All 5 cached functions + `getDestinatarioSuggestionsForInbox()` updated
+- **`webapp/src/actions/debt.ts`** — `getDebtOverviewCached` updated
+- **`webapp/src/actions/recurring-templates.ts`** — All 4 cached functions updated
+- **`webapp/src/actions/statement-snapshots.ts`** — Both cached functions updated
+- **`webapp/src/actions/profile.ts`** — Both cached functions updated
+- **`webapp/src/actions/debt-countdown.ts`** — `getDebtFreeCountdownCached` updated
+- **`webapp/src/actions/cashflow-planner.ts`** — All cached functions updated
+- **`webapp/src/actions/scenarios.ts`** — `getScenariosCached` updated
+- **`webapp/src/actions/attention-items.ts`** — `getAttentionItemsCached` updated
+- **`webapp/src/actions/payment-reminders.ts`** — `getUpcomingPaymentsCached` updated
+- **`webapp/src/actions/income.ts`** — `getEstimatedIncomeCached` updated
 
-### Plan (`webapp/src/components/mobile/v2/plan/`) — 5 files
-- `plan-budget-hero.tsx` — % hero with progress bar + pace marker, expandable per-category breakdown
-- `plan-action-cta.tsx` — "Planificar" multi-option CTA
-- `plan-flow-chart.tsx` — Bar chart: income up / expense down by day (real recurring data)
-- `plan-distribution.tsx` — 50/30/20 bars, budget-type aware
-- `plan-root.tsx` — Orchestrator with page-level accordion
+### Transaction detail page — Suspense + loading
+- **`webapp/src/app/(dashboard)/transactions/[id]/loading.tsx`** — Created. Skeleton matching page structure.
+- **`webapp/src/app/(dashboard)/transactions/[id]/page.tsx`** — Rewritten. Only `getTransaction(id)` blocks initial render. Edit button (`TransactionEditAction`) and sidebar (`TransactionSidebar`) deferred via `<Suspense>`. Page now renders as PPR.
 
-### Deudas (`webapp/src/components/mobile/v2/deudas/`) — 7 files
-- `deudas-hero.tsx` — Split bar (capital vs interest), pressure chip
-- `deudas-grid.tsx` — Two matching SVG rings (uso del cupo + próxima salida)
-- `deudas-focus.tsx` — Dominant debt card
-- `deudas-loans-chips.tsx` — Expandable chips with ALL credits' progress bars
-- `deudas-accounts-accordion.tsx` — One account open at a time, tighter spacing
-- `deudas-salary-bar.tsx` — Collapsed bar only, expandable legend
-- `deudas-root.tsx` — Orchestrator with page-level accordion
+### Transaction caching + PostgREST fix
+- **`webapp/src/actions/transactions.ts`** — `getTransactions()` and `getTransaction()` now use `"use cache"` with `cacheTag("transactions")`. Added `"transactions"` to `revalidateFinancialViews()`. PostgREST join fixed with explicit FK hints: `accounts!transactions_account_id_fkey`, `categories!transactions_category_id_fkey`, `destinatarios!transactions_destinatario_id_fkey`.
 
-### Page wiring (modified)
-- `dashboard/page.tsx` — `MobileDashboardV2` → `InicioRoot`
-- `transactions/page.tsx` — Inline mobile section → `MovimientosRoot`
-- `plan/page.tsx` — Desktop reuse → `PlanRoot`, added `get503020Allocation` + `getCategoriesWithBudgetData`
-- `deudas/page.tsx` — `MobileDebtSection` → `DeudasRoot`
+### UI — Transaction row expanded view
+- **`webapp/src/components/mobile/v2/movimientos/movimientos-transaction-row.tsx`** — Expanded view now uses icon-only action buttons (`UserRound`, `Hash`, `Pencil`) matching CategorizarDetail style. Category/destinatario shown as chips when present, as action links when missing.
+- **`webapp/src/components/mobile/v2/movimientos/movimientos-herramientas.tsx`** — CategorizarDetail expanded view updated to same flat chip layout: `[Categoría picker] [👤] [#] ——— [✏️]`. CategoryZonePicker placeholder changed to "Categoría".
 
-### HTML previews (`ui-showcases/`)
-- `mobile-zeta-v2-components.html` — Approved component catalog (visual reference)
-- 4 per-root previews + 1 overview
-
-### Tests
-- `webapp/e2e/mobile-v2-visual.spec.ts` — Visual layout tests
+### CLAUDE.md rules
+- **`CLAUDE.md`** — Added three new sections: **Performance Rules** (cache stable data, justify new queries, Suspense for non-critical data), **UI Rules** (no hardcoded colors, reuse design tokens from TOKENS.md, reuse existing components), and two Gotchas (PostgREST FK hints through encrypted views, `"use cache"` + encryption pattern).
 
 ## 3. Key Decisions
 
-- **Expand inline, never navigate** — All interactive elements expand a preview first. Navigation is secondary inside the panel. Saved as memory: `feedback_expand_not_navigate.md`
-- **Page-level accordion** — Each root owns ONE `useExpandableZone`. Expanding hero collapses burndown, etc. Saved as memory: `feedback_one_expand_per_page.md`
-- **Burndown/salary bar = hover, NOT expand** — Chart point interactions, not click-to-expand sections
-- **Hero = big daily number** ($X/día), not total available
-- **Ritmo = arc ring with % inside** (not text state like "Bajo control")
-- **Plan flow = bar chart** (day-by-day, forward-looking), **Movimientos flow = line chart** (dancing lines, backward-looking)
-- **Tools grid 3rd card = "Importar"** (email pending) replaces "Detecciones"
-- **Zeta palette for charts**: brass dotted expected, sage solid actual
-- **Distribution adapts to budget type** (50/30/20, YNAB, custom)
-- **Custom SVG icons** for discovery (not emoji)
-- **Deudas loan chips show ALL credits' progress bars** when expanded
+- **`createCachedClient(accessToken)` over alternatives**: Considered (a) removing all caching, (b) passing supabase client directly, (c) impersonation via admin client. Chose token-based client because it preserves `"use cache"` cross-request caching while providing `auth.uid()` for decryption. Cache entries auto-expire with JWT rotation (~1h).
+- **Explicit FK hints over schema reload**: PostgREST can't auto-detect FK relationships through `security_invoker` encrypted views. `NOTIFY pgrst, 'reload schema'` was tried but didn't help. Explicit `!fk_name` syntax is the reliable solution.
+- **Suspense split over full page cache**: Transaction detail page defers accounts/categories/destinatarios/tags behind `<Suspense>` rather than loading everything eagerly. The hero renders with just `getTransaction()` (~3ms).
+- **Icon-only action buttons**: User explicitly requested no text labels for Destinatario (👤) and Etiquetar (#). Pencil icon (✏️) pushed to the right with `flex-1` spacer.
+- **Inline pickers deferred**: User wants 👤, #, and ✏️ to open drawer pickers inline instead of navigating to `/transactions/[id]`. Agreed to implement as follow-up.
 
 ## 4. Current State
 
-- **Build**: Passes clean (`pnpm build` in webapp/)
-- **Branch**: `feat/mobile-v2-redesign`
-- **Git**: ~30 new files, ~10 modified, all uncommitted
-- **Playwright**: Auth works (`TEST_PASSWORD` in `.env.local`). Plan + Deudas visual tests pass. Inicio passes. Movimientos has selector issues (sidebar text match).
-- **Screenshots**: `webapp/test-results/mobile-v2-*.png` — actual rendered layouts
+- **Build**: `pnpm build` passes clean
+- **Branch**: `feat/mobile-polish`
+- **Migration**: `20260408143011_optimize_zeta_decrypt_dek_cache.sql` deployed to Supabase
+- **Uncommitted changes**: ~30 files modified (this session + another agent's parallel work on plan/landing page)
+- **Another agent** was working on plan page and landing page changes simultaneously — those files are also modified but untouched by this session
 
 ## 5. Open Issues & Gotchas
 
-1. **Deudas grid rings should be expandable chips** — User's latest request. Currently static rings, should behave like loan chips with expand panel.
-2. **Movimientos Playwright selectors** — `getByText('HERRAMIENTAS')` matches sidebar link. Need `.lg\\:hidden` scoping.
-3. **Next income data is null** — `inicio-metrics-grid` shows "Sin datos" because no action fetches upcoming INFLOW recurring templates. Need to derive from `planData.recurring.upcoming`.
-4. **Burndown chart not interactive** — Should show tooltip on day tap. Currently static SVG.
-5. **Salary bar not hoverable** — User wants segment-tap tooltips, not expand toggle.
-6. **Legacy components to delete** — `mobile-dashboard-v2.tsx`, `burndown-expandable.tsx`, `inicio-discovery-rail.tsx`, `movimientos-tools-rail.tsx`, `movimientos-utility-sheet.tsx`, `loan-metric-linked-detail.tsx`
-7. **`plan-root.tsx` is `"use client"`** — Added by agent for accordion hook. May cause unnecessary client-side rendering of server-safe children.
+- **Remaining `createAdminClient` users are safe**: `charts.ts`, `categories.ts`, `budgets.ts`, `burn-rate.ts`, `exchange-rate.ts`, `attention.ts`, `email-pdf-ingest.ts`, `product-events.ts`, `plan-timeline.ts` still use `createAdminClient()` but only query non-encrypted columns. No action needed unless they start selecting encrypted fields.
+- **PostgREST FK hints required everywhere**: Any new PostgREST join through an encrypted view MUST use `!fk_name` syntax. This is documented in CLAUDE.md Gotchas but easy to forget.
+- **Transaction row actions are Links, not drawers**: The 👤, #, and ✏️ icon buttons currently navigate to `/transactions/[id]` instead of opening inline pickers. User explicitly requested inline drawers as follow-up.
+- **`TransactionWithAccount` type may need update**: The `getTransactions` query now joins `category` and `destinatario`, but the `TransactionWithAccount` type in `domain.ts` may not reflect these new fields. The data arrives via `as unknown as TransactionWithAccount` cast. Check `webapp/src/types/domain.ts` for the type definition.
+- **`plan-timeline.ts`** uses `createAdminClient()` outside `"use cache"` — it's a read helper, not cached. If it queries encrypted columns, it needs the same fix but with the authenticated client directly (no cache needed).
 
 ## 6. Suggested Next Steps
 
-1. **Make deudas grid rings expandable** — Convert to `LinkedMetricDetailPanel` chip pattern
-2. **Wire next income data** — Query upcoming INFLOW templates for Inicio metrics
-3. **Add burndown chart interactivity** — SVG touch targets with day-level tooltips
-4. **Delete unused legacy components** — 6 files no longer imported
-5. **Commit** — Large changeset, clear commit message
-6. **Fix Movimientos test selectors** — Scope to mobile container
+1. **Inline drawer pickers** — Create `LazyDestinatarioPicker` and `LazyTagPicker` that fetch data on open via server actions, render in a `<Drawer>`. Wire to the 👤 and # icon buttons in both `movimientos-transaction-row.tsx` and `movimientos-herramientas.tsx`. Consider a drawer edit form for ✏️ too.
+2. **Update `TransactionWithAccount` type** — Add `category` and `destinatario` optional fields to match the new PostgREST join in `getTransactions()`.
+3. **Verify movimientos page works** — The PostgREST FK hint fix + schema reload should restore the transaction list. Confirm visually that transactions load and the expanded row chips render correctly.
+4. **Commit this work** — Large changeset across 30+ files. Consider splitting into 2-3 commits: (a) encryption compat + caching infra, (b) transaction detail perf, (c) UI polish.
+5. **Audit other pages for eager loading** — The Suspense pattern used on `/transactions/[id]` could benefit other pages that load edit-form data eagerly (accounts detail, destinatario detail, etc.).
 
 ## 7. Context for Claude
 
-- **Component catalog**: `ui-showcases/mobile-zeta-v2-components.html` — open in browser for visual reference
-- **Memory files**: `project_mobile_v2_redesign.md`, `feedback_expand_not_navigate.md`, `feedback_one_expand_per_page.md`
-- **`DebtAccount`** from `@zeta/shared` has `monthlyPayment` (not `minPayment`), nullable `creditLimit`/`interestRate`
-- **`AllocationData`** exported from `@/actions/allocation`, not `@/types/domain`
-- **`getAllTags()`** returns `Tag[]`, not `TagWithGroup[]`
-- **Playwright auth**: `TEST_PASSWORD` in `webapp/.env.local`, email hardcoded as `giraldo.0302@gmail.com`
-- **Page-level accordion pattern**: Root owns `useExpandableZone<string>`, passes `expanded: boolean` + `onToggle` to children. Components with internal sub-state (loan chips) accept `sectionActive: boolean` + `onActivate` from root.
-- **Plan page** now fetches `get503020Allocation` and `getCategoriesWithBudgetData` (added this session)
+- **Migration already deployed**: `20260408143011` is live on Supabase `tgkhaxipfgskxydotdtu`. Don't re-push.
+- **`accessToken` is backward-compatible**: Adding it to `getAuthenticatedClient()` return type doesn't break existing `const { supabase, user } = ...` destructuring — the new field is simply ignored.
+- **`"use cache"` key includes all args**: The `accessToken` (~1h JWT) becomes part of the cache key, so cache entries auto-expire on token refresh. This is intentional — not a bug.
+- **`fetchDestinatarioRules`** is now exported from `destinatarios.ts` (was private `getDestinatarioRulesCached`). It accepts a `supabase` client parameter and is used by both `destinatarios.ts` and `categorize.ts`.
+- **Design tokens**: `docs/design-system/TOKENS.md` is the canonical reference for all colors and spacing. CLAUDE.md now enforces this.

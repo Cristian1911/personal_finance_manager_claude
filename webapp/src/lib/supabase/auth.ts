@@ -103,16 +103,36 @@ export async function getUserSafelyStrict(
  * server render, so the dashboard (which fires 8+ parallel data fetches)
  * only verifies the JWT once per page load instead of once per function.
  *
- * Uses getSession() (local JWT check, ~0ms) instead of getUser() (~300ms
- * network call to Supabase Auth). If the session is revoked, the admin
- * client queries in cached functions will still work (they bypass auth),
- * and the middleware will catch the revoked token on the next request.
+ * Returns accessToken so "use cache" functions can create their own
+ * authenticated Supabase client via createCachedClient(accessToken).
  */
 export const getAuthenticatedClient = cache(async (): Promise<{
   supabase: SupabaseClient<Database>;
   user: User | null;
+  accessToken: string | null;
 }> => {
   const supabase = await createClient();
-  const user = await getUserSafely(supabase);
-  return { supabase, user };
+
+  // Fast path: getSession() — local JWT check, ~0ms, also gives us the token
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.auth as any).suppressGetSessionWarning = true;
+    const { data, error } = await supabase.auth.getSession();
+    if (!error && data.session?.user) {
+      return {
+        supabase,
+        user: data.session.user,
+        accessToken: data.session.access_token,
+      };
+    }
+    if (error && isIgnorableAuthError(error)) {
+      return { supabase, user: null, accessToken: null };
+    }
+  } catch {
+    // getSession() failed — fall through to getUser()
+  }
+
+  // Slow path: getUser() network call — no access token available here
+  const user = await getUserSafelyStrict(supabase);
+  return { supabase, user, accessToken: null };
 });

@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createDestinatario, matchTransactionToDestinatario } from "@/actions/destinatarios";
@@ -165,6 +166,7 @@ async function adjustBalancesForTransactionChanges(params: {
 }
 
 function revalidateFinancialViews() {
+  revalidateTag("transactions", "zeta");
   revalidateTag("accounts", "zeta");
   revalidateTag("dashboard:accounts", "zeta");
   revalidateTag("dashboard:charts", "zeta");
@@ -422,35 +424,40 @@ async function persistTransaction(
   return { success: true, data };
 }
 
-export async function getTransactions(
-  filters: Record<string, string | undefined>
+// ─── Cached transaction listing ──────────────────────────────────────────────
+
+async function getTransactionsCached(
+  userId: string,
+  accessToken: string,
+  page: number,
+  pageSize: number,
+  dateFrom: string | undefined,
+  dateTo: string | undefined,
+  accountId: string | undefined,
+  categoryId: string | undefined,
+  direction: string | undefined,
+  search: string | undefined,
+  amountMin: number | undefined,
+  amountMax: number | undefined,
+  source: string | undefined,
+  showExcluded: boolean,
+  tagId: string | undefined,
 ): Promise<PaginatedResult<TransactionWithAccount>> {
-  const { supabase, user } = await getAuthenticatedClient();
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
 
-  if (!user) return { data: [], count: 0, page: 1, pageSize: 20, totalPages: 0 };
-
-  const parsed = transactionFiltersSchema.safeParse(filters);
-  const params = parsed.success
-    ? parsed.data
-    : { page: 1, pageSize: 20, showExcluded: false as const };
-
-  const { page, pageSize } = params;
+  const supabase = createCachedClient(accessToken);
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  if (params.month && !params.dateFrom && !params.dateTo) {
-    const target = parseMonth(params.month);
-    params.dateFrom = monthStartStr(target);
-    params.dateTo = monthEndStr(target);
-  }
-
   // Tag filter: pre-fetch matching transaction IDs
   let taggedTransactionIds: string[] | null = null;
-  if (params.tagId) {
+  if (tagId) {
     const { data: taggedIds } = await supabase
       .from("transaction_tags")
       .select("transaction_id")
-      .eq("tag_id", params.tagId);
+      .eq("tag_id", tagId);
 
     if (taggedIds && taggedIds.length > 0) {
       taggedTransactionIds = taggedIds.map((r) => r.transaction_id);
@@ -459,41 +466,36 @@ export async function getTransactions(
     }
   }
 
-  const buildQuery = () => {
-    let query = supabase
-      .from("transactions")
-      .select("*, account:accounts(id, name, icon, color)", { count: "exact" })
-      .eq("user_id", user.id)
-      .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .range(from, to);
+  let query = supabase
+    .from("transactions")
+    .select("*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color), destinatario:destinatarios!transactions_destinatario_id_fkey(id, name)", { count: "exact" })
+    .eq("user_id", userId)
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
-    if (params.accountId) query = query.eq("account_id", params.accountId);
-    if (params.categoryId) query = query.eq("category_id", params.categoryId);
-    if (params.direction) query = query.eq("direction", params.direction);
-    if (params.dateFrom) query = query.gte("transaction_date", params.dateFrom);
-    if (params.dateTo) query = query.lte("transaction_date", params.dateTo);
-    if (params.search) {
-      // Escape PostgREST filter special characters to prevent filter injection
-      const sanitized = params.search
-        .slice(0, 200)
-        .replace(/[\\%_]/g, (c) => `\\${c}`)
-        .replace(/[.,()]/g, "");
-      query = query.or(
-        `merchant_name.ilike.%${sanitized}%,raw_description.ilike.%${sanitized}%,clean_description.ilike.%${sanitized}%`
-      );
-    }
-    if (params.amountMin !== undefined) query = query.gte("amount", params.amountMin);
-    if (params.amountMax !== undefined) query = query.lte("amount", params.amountMax);
-    if (params.source) query = query.eq("capture_method", params.source);
-    if (!params.showExcluded) query = query.eq("is_excluded", false);
-    if (taggedTransactionIds) query = query.in("id", taggedTransactionIds);
+  if (accountId) query = query.eq("account_id", accountId);
+  if (categoryId) query = query.eq("category_id", categoryId);
+  if (direction) query = query.eq("direction", direction as "INFLOW" | "OUTFLOW");
+  if (dateFrom) query = query.gte("transaction_date", dateFrom);
+  if (dateTo) query = query.lte("transaction_date", dateTo);
+  if (search) {
+    const sanitized = search
+      .slice(0, 200)
+      .replace(/[\\%_]/g, (c) => `\\${c}`)
+      .replace(/[.,()]/g, "");
+    query = query.or(
+      `merchant_name.ilike.%${sanitized}%,raw_description.ilike.%${sanitized}%,clean_description.ilike.%${sanitized}%`
+    );
+  }
+  if (amountMin !== undefined) query = query.gte("amount", amountMin);
+  if (amountMax !== undefined) query = query.lte("amount", amountMax);
+  if (source) query = query.eq("capture_method", source as Database["public"]["Enums"]["transaction_capture_method"]);
+  if (!showExcluded) query = query.eq("is_excluded", false);
+  if (taggedTransactionIds) query = query.in("id", taggedTransactionIds);
 
-    return query;
-  };
-
-  const { data, error, count } = await buildQuery().is("reconciled_into_transaction_id", null);
-  if (error) return { data: [], count: 0, page, pageSize, totalPages: 0 };
+  const { data, error, count } = await query.is("reconciled_into_transaction_id", null);
+  if (error) throw error;
 
   return {
     data: (data ?? []) as unknown as TransactionWithAccount[],
@@ -504,21 +506,71 @@ export async function getTransactions(
   };
 }
 
-export async function getTransaction(id: string): Promise<ActionResult<Transaction>> {
-  const { supabase, user } = await getAuthenticatedClient();
+export async function getTransactions(
+  filters: Record<string, string | undefined>
+): Promise<PaginatedResult<TransactionWithAccount>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { data: [], count: 0, page: 1, pageSize: 20, totalPages: 0 };
 
-  if (!user) return { success: false, error: "No autenticado" };
+  const parsed = transactionFiltersSchema.safeParse(filters);
+  const params = parsed.success
+    ? parsed.data
+    : { page: 1, pageSize: 20, showExcluded: false as const };
 
+  if (params.month && !params.dateFrom && !params.dateTo) {
+    const target = parseMonth(params.month);
+    params.dateFrom = monthStartStr(target);
+    params.dateTo = monthEndStr(target);
+  }
+
+  try {
+    return await getTransactionsCached(
+      user.id, accessToken,
+      params.page, params.pageSize,
+      params.dateFrom, params.dateTo,
+      params.accountId, params.categoryId,
+      params.direction, params.search,
+      params.amountMin, params.amountMax,
+      params.source, params.showExcluded ?? false,
+      params.tagId,
+    );
+  } catch {
+    return { data: [], count: 0, page: params.page, pageSize: params.pageSize, totalPages: 0 };
+  }
+}
+
+async function getTransactionCached(
+  userId: string,
+  id: string,
+  accessToken: string,
+): Promise<Transaction> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("id", id)
     .is("reconciled_into_transaction_id", null)
     .single();
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data };
+  if (error) throw error;
+  return data;
+}
+
+export async function getTransaction(id: string): Promise<ActionResult<Transaction>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getTransactionCached(user.id, id, accessToken);
+    return { success: true, data };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error al cargar la transacción";
+    return { success: false, error: message };
+  }
 }
 
 export async function createTransaction(

@@ -4,7 +4,7 @@ import "server-only";
 import { cacheTag, cacheLife } from "next/cache";
 import { addDays } from "date-fns";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
 import { getOccurrencesBetween } from "@zeta/shared";
 import type { RecurrenceFrequency } from "@zeta/shared";
@@ -55,13 +55,14 @@ const EMPTY: AttentionItems = {
 // ─── Cached inner function ───────────────────────────────────────────────────
 
 async function getAttentionItemsCached(
-  userId: string
+  userId: string,
+  accessToken: string
 ): Promise<AttentionItems> {
   "use cache";
   cacheTag("attention");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const today = new Date();
   const todayStr = toISODateString(today);
   const in7Days = addDays(today, 7);
@@ -161,11 +162,11 @@ async function getAttentionItemsCached(
 // ─── Public wrapper ──────────────────────────────────────────────────────────
 
 export async function getAttentionItems(): Promise<AttentionItems> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return EMPTY;
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return EMPTY;
 
   try {
-    return await getAttentionItemsCached(user.id);
+    return await getAttentionItemsCached(user.id, accessToken);
   } catch (err) {
     console.error("Error fetching attention items:", err);
     return EMPTY;
