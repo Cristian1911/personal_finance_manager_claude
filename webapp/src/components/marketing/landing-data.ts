@@ -270,9 +270,9 @@ export const LANDING_INSTITUTIONS: string[] = [
 // ─── Nav links ────────────────────────────────────────────────────────────────
 
 export const LANDING_NAV_LINKS: Array<{ href: string; label: string }> = [
-  { href: "#features", label: "Funciones" },
-  { href: "#how-it-works", label: "Cómo funciona" },
-  { href: "#showcase", label: "En acción" },
-  { href: "#institutions", label: "Bancos" },
-  { href: "#faq", label: "Preguntas" },
+  { href: "#showcase", label: "Showcase" },
+  { href: "#funciones", label: "Funciones" },
+  { href: "#como-funciona", label: "Cómo funciona" },
+  { href: "#colombia", label: "Colombia" },
+  { href: "#faq", label: "FAQ" },
 ];

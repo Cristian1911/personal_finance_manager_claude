@@ -165,7 +165,11 @@ async function seedDemoDataInternal(
 
   // Batch insert transactions
   const { error: txError } = await supabase.from("transactions").insert(txInserts);
-  if (txError) return { success: false, error: `Error creando transacciones demo: ${txError.message}` };
+  if (txError) {
+    // Cleanup: remove already-created demo accounts so next attempt re-seeds fully
+    await supabase.from("accounts").delete().eq("user_id", userId).eq("is_demo", true);
+    return { success: false, error: `Error creando transacciones demo: ${txError.message}` };
+  }
 
   // 3. Create demo budgets with is_demo flag (isolated from real budgets)
   const budgetInserts = DEMO_BUDGETS.map((budget) => ({
@@ -177,7 +181,13 @@ async function seedDemoDataInternal(
   }));
 
   const { error: budgetError } = await supabase.from("budgets").insert(budgetInserts);
-  if (budgetError) return { success: false, error: `Error creando presupuestos demo: ${budgetError.message}` };
+  if (budgetError) {
+    // Cleanup: remove demo accounts + transactions so next attempt re-seeds fully
+    const demoIds = createdAccounts.map((a) => a.id);
+    await supabase.from("transactions").delete().eq("user_id", userId).in("account_id", demoIds);
+    await supabase.from("accounts").delete().eq("user_id", userId).eq("is_demo", true);
+    return { success: false, error: `Error creando presupuestos demo: ${budgetError.message}` };
+  }
 
   return { success: true, data: { demoMode: true } };
 }
@@ -187,6 +197,7 @@ async function seedDemoDataInternal(
 function revalidateAllTags() {
   revalidateTag("profile", "zeta");
   revalidateTag("accounts", "zeta");
+  revalidateTag("transactions", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("dashboard:charts", "zeta");
   revalidateTag("dashboard:cashflow", "zeta");

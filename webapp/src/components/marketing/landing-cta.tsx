@@ -57,7 +57,7 @@ export function LandingCTA() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg" className="gap-2">
-                  <Link href="/auth/register">
+                  <Link href="/signup">
                     Crear cuenta gratis
                     <ArrowRight className="size-4" />
                   </Link>

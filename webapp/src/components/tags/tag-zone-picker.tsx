@@ -26,6 +26,7 @@ import {
 } from "@/actions/tags";
 import { UNGROUPED_TAG_GROUP_ID } from "@/lib/constants/tags";
 import { generateSlug } from "@/lib/validators/tags";
+import { toast } from "sonner";
 import type { Tag, TagGroupWithTags, TaggableEntity } from "@/types/domain";
 
 interface TagZonePickerProps {
@@ -124,17 +125,27 @@ export function TagZonePicker({
   );
 
   function handleAdd(tag: Tag) {
-    setCurrentTags((prev) => [...prev, tag]);
+    const prev = currentTags;
+    setCurrentTags([...prev, tag]);
     setSearch("");
     startTransition(async () => {
-      await addTagToEntity(tag.id, entityType, entityId);
+      const result = await addTagToEntity(tag.id, entityType, entityId);
+      if (!result.success) {
+        setCurrentTags(prev);
+        toast.error("Error al agregar etiqueta");
+      }
     });
   }
 
   function handleRemove(tagId: string) {
-    setCurrentTags((prev) => prev.filter((t) => t.id !== tagId));
+    const prev = currentTags;
+    setCurrentTags(prev.filter((t) => t.id !== tagId));
     startTransition(async () => {
-      await removeTagFromEntity(tagId, entityType, entityId);
+      const result = await removeTagFromEntity(tagId, entityType, entityId);
+      if (!result.success) {
+        setCurrentTags(prev);
+        toast.error("Error al remover etiqueta");
+      }
     });
   }
 
