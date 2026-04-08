@@ -2,6 +2,8 @@
 -- Encrypt capture_tokens table (2 encrypted, 1 hash)
 -- ==================================================
 
+SET search_path = public, extensions;
+
 ALTER TABLE capture_tokens RENAME TO capture_tokens_enc;
 
 -- token_hash: SHA-256 of plaintext token for unauthenticated lookup

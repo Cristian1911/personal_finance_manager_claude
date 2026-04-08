@@ -6,6 +6,9 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS supabase_vault;
 
+-- Supabase installs pgcrypto in the extensions schema
+SET search_path = public, extensions;
+
 -- 1. Create master key (KEK) in Vault
 SELECT vault.create_secret(
   encode(gen_random_bytes(32), 'hex'),
@@ -31,7 +34,7 @@ RETURNS BYTEA
 LANGUAGE plpgsql
 VOLATILE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   master_key TEXT;
@@ -59,7 +62,7 @@ RETURNS TEXT
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   master_key TEXT;
@@ -85,7 +88,7 @@ RETURNS BYTEA
 LANGUAGE plpgsql
 VOLATILE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   master_key TEXT;
@@ -113,7 +116,7 @@ RETURNS TEXT
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   master_key TEXT;
@@ -139,7 +142,7 @@ RETURNS TEXT
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   master_key TEXT;
@@ -170,7 +173,7 @@ CREATE OR REPLACE FUNCTION handle_new_user_encryption_key()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   master_key TEXT;
