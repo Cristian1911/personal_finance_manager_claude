@@ -8,7 +8,6 @@ export function useReviewMode() {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    // Check URL param (client-only, no useSearchParams/Suspense needed)
     const params = new URLSearchParams(window.location.search);
     if (params.get("review") === "true") {
       setEnabled(true);

@@ -8,7 +8,7 @@ import { createDestinatario, matchTransactionToDestinatario } from "@/actions/de
 import { createRecurringTemplate } from "@/actions/recurring-templates";
 import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { getIsDemoFilter } from "@/lib/demo-filter";
+import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import {
   quickCapturePreviewSchema,
   transactionCreateOptionsSchema,
@@ -467,15 +467,9 @@ async function getTransactionsCached(
     }
   }
 
-  // Filter by demo mode: only show transactions from matching accounts
   const isDemo = await getIsDemoFilter(userId);
-  const { data: demoFilterAccounts } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_demo", isDemo);
-  const demoAccountIds = (demoFilterAccounts ?? []).map((a) => a.id);
-  if (demoAccountIds.length === 0) return { data: [], count: 0, page, pageSize, totalPages: 0 };
+  const demoAccountIds = await getDemoAccountIds(supabase, userId, isDemo);
+  if (!demoAccountIds) return { data: [], count: 0, page, pageSize, totalPages: 0 };
 
   let query = supabase
     .from("transactions")

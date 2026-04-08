@@ -7,7 +7,7 @@ import { getAccounts } from "@/actions/accounts";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
-import { getIsDemoFilter } from "@/lib/demo-filter";
+import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import {
   formatDate,
   parseMonth,
@@ -62,15 +62,8 @@ async function getCategorySpendingCached(
   const supabase = createAdminClient();
   const target = parseMonth(month);
 
-  // Get account IDs matching demo filter
-  const { data: filteredAccounts } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .eq("is_demo", isDemo);
-  const accountIds = (filteredAccounts ?? []).map((a) => a.id);
-  if (accountIds.length === 0) return [];
+  const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
+  if (!accountIds) return [];
 
   // Fetch transactions and budgets in parallel
   const [txRes, budgetsRes] = await Promise.all([
@@ -158,15 +151,8 @@ async function getMonthlyCashflowCached(
   const supabase = createAdminClient();
   const target = parseMonth(month);
 
-  // Get account IDs matching demo filter
-  const { data: filteredAccounts } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .eq("is_demo", isDemo);
-  const accountIds = (filteredAccounts ?? []).map((a) => a.id);
-  if (accountIds.length === 0) return [];
+  const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
+  if (!accountIds) return [];
 
   const { data: transactions, error } = await supabase
     .from("transactions")
@@ -228,15 +214,8 @@ async function getDailySpendingCached(
   const supabase = createAdminClient();
   const target = parseMonth(month);
 
-  // Get account IDs matching demo filter
-  const { data: filteredAccounts } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .eq("is_demo", isDemo);
-  const accountIds = (filteredAccounts ?? []).map((a) => a.id);
-  if (accountIds.length === 0) return [];
+  const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
+  if (!accountIds) return [];
 
   const { data: transactions, error } = await supabase
     .from("transactions")
@@ -342,15 +321,8 @@ async function getDailyCashflowCached(
   const startStr = monthStartStr(target);
   const endStr = monthEndStr(target);
 
-  // Get account IDs matching demo filter
-  const { data: filteredAccounts } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .eq("is_demo", isDemo);
-  const accountIds = (filteredAccounts ?? []).map((a) => a.id);
-  if (accountIds.length === 0) return [];
+  const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
+  if (!accountIds) return [];
 
   const { data: transactions, error } = await supabase
     .from("transactions")

@@ -3,7 +3,7 @@
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getIsDemoFilter } from "@/lib/demo-filter";
+import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import { budgetSchema } from "@/lib/validators/budget";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
@@ -52,15 +52,8 @@ async function getBudgetSummaryCached(userId: string, month: string | undefined,
     const { monthStartStr, monthEndStr, parseMonth } = await import("@/lib/utils/date");
     const target = parseMonth(month);
 
-    // Get account IDs matching demo filter
-    const { data: filteredAccounts } = await supabase
-        .from("accounts")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("is_active", true)
-        .eq("is_demo", isDemo);
-    const accountIds = (filteredAccounts ?? []).map((a: { id: string }) => a.id);
-    if (accountIds.length === 0) return { totalTarget, totalSpent: 0, progress: 0 };
+    const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
+    if (!accountIds) return { totalTarget, totalSpent: 0, progress: 0 };
 
     const { data: transactions } = await supabase
         .from("transactions")

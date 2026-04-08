@@ -68,52 +68,21 @@ export async function clearDemoData(): Promise<ActionResult<null>> {
 
   const demoAccountIds = (demoAccounts ?? []).map((a) => a.id);
 
-  if (demoAccountIds.length > 0) {
-    // Delete transactions on demo accounts
-    await supabase
-      .from("transactions")
-      .delete()
-      .eq("user_id", user.id)
-      .in("account_id", demoAccountIds);
+  await Promise.all([
+    // Transactions must be deleted before accounts (FK), but budgets are independent
+    (async () => {
+      if (demoAccountIds.length > 0) {
+        await supabase.from("transactions").delete().eq("user_id", user.id).in("account_id", demoAccountIds);
+        await supabase.from("accounts").delete().eq("user_id", user.id).eq("is_demo", true);
+      }
+    })(),
+    supabase.from("budgets").delete().eq("user_id", user.id).eq("is_demo", true),
+  ]);
 
-    // Delete demo accounts
-    await supabase
-      .from("accounts")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("is_demo", true);
-  }
-
-  // Delete demo budgets
-  await supabase
-    .from("budgets")
-    .delete()
-    .eq("user_id", user.id)
-    .eq("is_demo", true);
-
-  // Turn off demo mode
-  await supabase
-    .from("profiles")
-    .update({ demo_mode: false })
-    .eq("id", user.id);
+  await supabase.from("profiles").update({ demo_mode: false }).eq("id", user.id);
 
   revalidateAllTags();
   return { success: true, data: null };
-}
-
-// ─── Get demo mode status ────────────────────────────────────────────────────
-
-export async function getDemoMode(): Promise<boolean> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return false;
-
-  const { data } = await supabase
-    .from("profiles")
-    .select("demo_mode")
-    .eq("id", user.id)
-    .single();
-
-  return data?.demo_mode ?? false;
 }
 
 // ─── Internal seed function ──────────────────────────────────────────────────

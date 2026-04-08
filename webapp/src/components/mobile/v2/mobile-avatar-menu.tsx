@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { BellDot, ChevronRight, Menu, Settings, Upload } from "lucide-react";
+import { useCloseOnNavigate } from "@/hooks/use-close-on-navigate";
 import {
   Popover,
   PopoverContent,
@@ -33,17 +33,8 @@ function getInitials(name?: string | null, email?: string | null): string {
 
 export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
   const shell = useMobileShell();
-  const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const prevPathname = useRef(pathname);
-
-  // Auto-close on route change
-  useEffect(() => {
-    if (prevPathname.current !== pathname) {
-      setOpen(false);
-      prevPathname.current = pathname;
-    }
-  }, [pathname]);
+  useCloseOnNavigate(useCallback(() => setOpen(false), []));
 
   const resolvedName = name ?? shell?.name ?? null;
   const resolvedEmail = email ?? shell?.email ?? null;

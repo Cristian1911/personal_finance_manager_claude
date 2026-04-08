@@ -45,9 +45,11 @@ export function DestinatarioDrawer({
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Lazy-load destinatarios when drawer opens
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSearch("");
+      return;
+    }
     setLoading(true);
     getDestinatarios()
       .then((result) => {
@@ -62,11 +64,6 @@ export function DestinatarioDrawer({
         }
       })
       .finally(() => setLoading(false));
-  }, [open]);
-
-  // Reset search on close
-  useEffect(() => {
-    if (!open) setSearch("");
   }, [open]);
 
   const activeDestinatarios = useMemo(

@@ -40,7 +40,10 @@ export function TagDrawer({
 
   // Lazy-load tag groups and current tags when drawer opens
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSearch("");
+      return;
+    }
     setLoading(true);
     Promise.all([
       getTagGroups(),
@@ -54,11 +57,6 @@ export function TagDrawer({
       })
       .finally(() => setLoading(false));
   }, [open, transactionId]);
-
-  // Reset search on close
-  useEffect(() => {
-    if (!open) setSearch("");
-  }, [open]);
 
   const allTags = useMemo(
     () =>

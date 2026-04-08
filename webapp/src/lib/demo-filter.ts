@@ -9,6 +9,8 @@
 
 import { cacheTag, cacheLife } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
 
 /**
  * Returns the is_demo filter value for a given user.
@@ -31,4 +33,23 @@ export async function getIsDemoFilter(userId: string): Promise<boolean> {
     .single();
 
   return data?.demo_mode ?? false;
+}
+
+/**
+ * Fetches account IDs matching the demo filter for a user.
+ * Returns null if no accounts match (caller should return empty).
+ */
+export async function getDemoAccountIds(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  isDemo: boolean
+): Promise<string[] | null> {
+  const { data } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .eq("is_demo", isDemo);
+  const ids = (data ?? []).map((a) => a.id);
+  return ids.length > 0 ? ids : null;
 }
