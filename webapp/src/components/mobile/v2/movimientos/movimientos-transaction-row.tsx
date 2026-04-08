@@ -9,8 +9,7 @@ import { formatDate } from "@/lib/utils/date";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
-import { categorizeTransaction } from "@/actions/categorize";
-import { assignDestinatario } from "@/actions/categorize";
+import { categorizeTransaction, assignDestinatario } from "@/actions/categorize";
 import { toast } from "sonner";
 import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
 

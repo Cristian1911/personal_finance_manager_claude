@@ -3,14 +3,8 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils/currency";
 import { LANDING_BUDGET_DATA } from "./landing-data";
-
-const formatCOP = (amount: number) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 function getOverallColor(pct: number): string {
   if (pct > 85) return "text-z-debt";
@@ -28,7 +22,6 @@ export function LandingBudget() {
   return (
     <section className="py-24 px-4">
       <div className="mx-auto max-w-3xl">
-        {/* Heading */}
         <div className="mb-12 text-center">
           <Badge variant="outline" className="mb-4 border-white/12 text-z-brass">
             Presupuesto
@@ -42,10 +35,8 @@ export function LandingBudget() {
           </p>
         </div>
 
-        {/* Card */}
         <Card className="border-white/8 bg-white/[0.03] shadow-2xl shadow-black/10">
           <CardContent className="p-6 sm:p-8">
-            {/* Overall progress */}
             <div className="mb-8">
               <div className="mb-2 flex items-baseline justify-between">
                 <span className="text-sm font-medium text-white/70">Gasto total del mes</span>
@@ -60,12 +51,11 @@ export function LandingBudget() {
                 />
               </div>
               <div className="flex justify-between text-xs text-white/40">
-                <span>{formatCOP(totalSpent)}</span>
-                <span>{formatCOP(totalBudget)}</span>
+                <span>{formatCurrency(totalSpent, "COP")}</span>
+                <span>{formatCurrency(totalBudget, "COP")}</span>
               </div>
             </div>
 
-            {/* Category bars */}
             <div className="space-y-5">
               {LANDING_BUDGET_DATA.map((cat, idx) => {
                 const pct = Math.round((cat.spent / cat.budget) * 100);
@@ -88,7 +78,7 @@ export function LandingBudget() {
                       </span>
                       <span className="text-sm font-medium tabular-nums text-white/60">
                         {isHovered
-                          ? `${formatCOP(cat.spent)} / ${formatCOP(cat.budget)}`
+                          ? `${formatCurrency(cat.spent, "COP")} / ${formatCurrency(cat.budget, "COP")}`
                           : `${pct}%`}
                       </span>
                     </div>

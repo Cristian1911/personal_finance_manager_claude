@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils/currency";
 import { LANDING_HERO_DATA } from "./landing-data";
 
 // ─── Highlights ───────────────────────────────────────────────────────────────
@@ -24,14 +25,6 @@ const highlights = [
     detail: "Presupuesto, bancos locales, deudas y multi-moneda en el mismo flujo.",
   },
 ];
-
-// ─── COP formatter ────────────────────────────────────────────────────────────
-
-const copFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  maximumFractionDigits: 0,
-});
 
 // ─── HeroCard ─────────────────────────────────────────────────────────────────
 
@@ -71,7 +64,7 @@ function HeroCard() {
             Disponible para gastar
           </p>
           <p className="mt-2 text-4xl font-semibold tracking-tight">
-            {copFormatter.format(availableToSpend)}
+            {formatCurrency(availableToSpend, "COP")}
           </p>
 
           {/* Daily spending row */}
@@ -80,10 +73,10 @@ function HeroCard() {
               <span className="text-muted-foreground">Gasto hoy</span>
               <span>
                 <span className="font-medium">
-                  {copFormatter.format(spentToday)}
+                  {formatCurrency(spentToday, "COP")}
                 </span>
                 <span className="ml-1 text-xs text-muted-foreground">
-                  / {copFormatter.format(dailyAllowance)}
+                  / {formatCurrency(dailyAllowance, "COP")}
                 </span>
               </span>
             </div>

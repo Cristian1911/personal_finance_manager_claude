@@ -5,13 +5,8 @@ import { CalendarClock, Check } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils/currency";
 import { LANDING_PLAN_DATA } from "./landing-data";
-
-const fmt = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  maximumFractionDigits: 0,
-});
 
 export function LandingPlan() {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
@@ -50,7 +45,7 @@ export function LandingPlan() {
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Ingresos totales</span>
-                <span className="font-medium text-z-white">{fmt.format(income)}</span>
+                <span className="font-medium text-z-white">{formatCurrency(income, "COP")}</span>
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-white/8">
                 <div className="h-full w-full rounded-full bg-z-income" />
@@ -62,7 +57,7 @@ export function LandingPlan() {
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Compromisos fijos</span>
                 <span className="font-medium text-z-alert">
-                  {fmt.format(committed)}{" "}
+                  {formatCurrency(committed, "COP")}{" "}
                   <span className="text-muted-foreground">({committedPct}%)</span>
                 </span>
               </div>
@@ -82,7 +77,7 @@ export function LandingPlan() {
                     Disponible
                   </p>
                   <p className="mt-1 text-3xl font-semibold text-z-income">
-                    {fmt.format(available)}
+                    {formatCurrency(available, "COP")}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {availablePct}% de los ingresos sin comprometer
@@ -150,7 +145,7 @@ export function LandingPlan() {
                           ob.paid ? "text-muted-foreground" : "text-z-white"
                         }`}
                       >
-                        {fmt.format(ob.amount)}
+                        {formatCurrency(ob.amount, "COP")}
                       </span>
                     </div>
 

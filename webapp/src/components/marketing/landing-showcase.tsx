@@ -66,6 +66,7 @@ const CARD_GAP = 16;
 
 function MobileCarousel({ panels }: { panels: ShowcasePanel[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const activeIdxRef = useRef(0);
   const [activeIdx, setActiveIdx] = useState(0);
 
   useEffect(() => {
@@ -74,8 +75,14 @@ function MobileCarousel({ panels }: { panels: ShowcasePanel[] }) {
 
     function onScroll() {
       if (!el) return;
-      const idx = Math.round(el.scrollLeft / (CARD_WIDTH + CARD_GAP));
-      setActiveIdx(Math.max(0, Math.min(idx, panels.length - 1)));
+      const idx = Math.max(0, Math.min(
+        Math.round(el.scrollLeft / (CARD_WIDTH + CARD_GAP)),
+        panels.length - 1
+      ));
+      if (idx !== activeIdxRef.current) {
+        activeIdxRef.current = idx;
+        setActiveIdx(idx);
+      }
     }
 
     el.addEventListener("scroll", onScroll, { passive: true });
