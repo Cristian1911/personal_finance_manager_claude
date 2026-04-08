@@ -452,12 +452,9 @@ export async function POST(request: NextRequest) {
       after(async () => {
         const adminAsync = createAdminClient();
 
-        // Fetch user accounts for filename → password matching
+        // Use RPC to decrypt masks/passwords — admin client can't use zeta_decrypt()
         const { data: userAccounts } = await adminAsync
-          .from("accounts")
-          .select("id, mask, pdf_password")
-          .eq("user_id", userId)
-          .eq("is_active", true);
+          .rpc("get_accounts_with_masks", { p_user_id: userId });
 
         await Promise.all(
           rowsToProcess.map(async (row) => {
@@ -578,11 +575,10 @@ export async function POST(request: NextRequest) {
 
   let suggestedAccountId = defaultAccountId ?? null;
 
+  // Use RPC to decrypt masks — admin client has no JWT so zeta_decrypt() in the
+  // accounts view returns NULL for encrypted columns (mask, debit_card_mask).
   const { data: candidateAccounts, error: accountLookupError } = await admin
-    .from("accounts")
-    .select("id, mask, debit_card_mask, account_type, currency_code, current_balance")
-    .eq("user_id", userId)
-    .eq("is_active", true);
+    .rpc("get_accounts_with_masks", { p_user_id: userId });
 
   if (!accountLookupError && candidateAccounts) {
     suggestedAccountId = resolveSuggestedEmailAccountId({

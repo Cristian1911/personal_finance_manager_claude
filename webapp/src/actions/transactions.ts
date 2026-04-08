@@ -8,6 +8,7 @@ import { createDestinatario, matchTransactionToDestinatario } from "@/actions/de
 import { createRecurringTemplate } from "@/actions/recurring-templates";
 import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import {
   quickCapturePreviewSchema,
   transactionCreateOptionsSchema,
@@ -466,10 +467,15 @@ async function getTransactionsCached(
     }
   }
 
+  const isDemo = await getIsDemoFilter(userId);
+  const demoAccountIds = await getDemoAccountIds(supabase, userId, isDemo);
+  if (!demoAccountIds) return { data: [], count: 0, page, pageSize, totalPages: 0 };
+
   let query = supabase
     .from("transactions")
     .select("*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color), destinatario:destinatarios!transactions_destinatario_id_fkey(id, name)", { count: "exact" })
     .eq("user_id", userId)
+    .in("account_id", demoAccountIds)
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false })
     .range(from, to);

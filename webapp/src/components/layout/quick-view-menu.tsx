@@ -29,6 +29,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { useCloseOnNavigate } from "@/hooks/use-close-on-navigate";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -47,6 +48,7 @@ export function QuickViewMenu({ profile, attentionSnapshot }: QuickViewMenuProps
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<QuickViewData | null>(null);
   const [loading, startTransition] = useTransition();
+  useCloseOnNavigate(useCallback(() => setOpen(false), []));
 
   const initials = (profile.full_name ?? profile.email ?? "?")
     .split(" ")

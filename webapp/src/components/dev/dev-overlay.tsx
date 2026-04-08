@@ -51,7 +51,19 @@ export function DevOverlay() {
     setActiveAction(action);
   }
 
-  async function handleSelectComponent(info: InspectInfo) {
+  async function handleSelectComponent(info: InspectInfo, action: "annotate" | "storybook" | "copy") {
+    if (action === "copy") {
+      await navigator.clipboard.writeText(info.filePath);
+      setActiveAction(null);
+      return;
+    }
+    if (action === "storybook") {
+      const kebab = info.componentName.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "");
+      window.open(`http://localhost:6006/?path=/story/ui-${kebab}`, "_blank");
+      setActiveAction(null);
+      return;
+    }
+    // action === "annotate"
     const dataUrl = await captureScreenshot();
     setScreenshot(dataUrl);
     setComponentHint(info.componentName);

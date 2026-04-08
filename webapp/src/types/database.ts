@@ -35,6 +35,7 @@ export type Database = {
           institution_name: string | null
           interest_rate: number | null
           is_active: boolean
+          is_demo: boolean
           last_synced_at: string | null
           loan_amount: number | null
           loan_end_date: string | null
@@ -73,6 +74,7 @@ export type Database = {
           institution_name?: string | null
           interest_rate?: number | null
           is_active?: boolean
+          is_demo?: boolean
           last_synced_at?: string | null
           loan_amount?: number | null
           loan_end_date?: string | null
@@ -111,6 +113,7 @@ export type Database = {
           institution_name?: string | null
           interest_rate?: number | null
           is_active?: boolean
+          is_demo?: boolean
           last_synced_at?: string | null
           loan_amount?: number | null
           loan_end_date?: string | null
@@ -299,6 +302,7 @@ export type Database = {
           category_id: string
           created_at: string
           id: string
+          is_demo: boolean
           period: string
           updated_at: string
           user_id: string
@@ -308,6 +312,7 @@ export type Database = {
           category_id: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           period?: string
           updated_at?: string
           user_id: string
@@ -317,6 +322,7 @@ export type Database = {
           category_id?: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           period?: string
           updated_at?: string
           user_id?: string
@@ -1731,6 +1737,7 @@ export type Database = {
           budget_mode: string | null
           created_at: string
           dashboard_config: Json | null
+          demo_mode: boolean
           email: string
           estimated_monthly_expenses: number | null
           estimated_monthly_income: number | null
@@ -1749,6 +1756,7 @@ export type Database = {
           budget_mode?: string | null
           created_at?: string
           dashboard_config?: Json | null
+          demo_mode?: boolean
           email: string
           estimated_monthly_expenses?: number | null
           estimated_monthly_income?: number | null
@@ -1767,6 +1775,7 @@ export type Database = {
           budget_mode?: string | null
           created_at?: string
           dashboard_config?: Json | null
+          demo_mode?: boolean
           email?: string
           estimated_monthly_expenses?: number | null
           estimated_monthly_income?: number | null
@@ -3194,7 +3203,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_accounts_with_masks: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          mask: string | null
+          debit_card_mask: string | null
+          pdf_password: string | null
+          account_type: Database["public"]["Enums"]["account_type"]
+          currency_code: Database["public"]["Enums"]["currency_code"]
+          current_balance: number
+          is_demo: boolean
+        }[]
+      }
       zeta_decrypt: { Args: { ciphertext: string }; Returns: string }
+      zeta_decrypt_as: {
+        Args: { ciphertext: string; target_user_id: string }
+        Returns: string
+      }
       zeta_encrypt: { Args: { plaintext: string }; Returns: string }
       zeta_encrypt_as: {
         Args: { plaintext: string; target_user_id: string }

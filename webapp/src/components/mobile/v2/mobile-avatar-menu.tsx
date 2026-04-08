@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { BellDot, ChevronRight, Menu, Settings, Upload } from "lucide-react";
+import { useCloseOnNavigate } from "@/hooks/use-close-on-navigate";
 import {
   Popover,
   PopoverContent,
@@ -31,6 +33,9 @@ function getInitials(name?: string | null, email?: string | null): string {
 
 export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
   const shell = useMobileShell();
+  const [open, setOpen] = useState(false);
+  useCloseOnNavigate(useCallback(() => setOpen(false), []));
+
   const resolvedName = name ?? shell?.name ?? null;
   const resolvedEmail = email ?? shell?.email ?? null;
   const attentionCount = shell?.attentionCount ?? 0;
@@ -39,7 +44,7 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
   const attentionBadge = attentionCount > 9 ? "9+" : `${attentionCount}`;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"

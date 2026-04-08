@@ -17,3 +17,6 @@
 - [x] Necesitamos ajustar la vista de planeador de periodos porque en móvil no es usable. No es responsiva. (Resuelto: MobileHeader sub variant con back a /plan, stats grid y header responsivos, banner de periodo expirado apilado en móvil)
 - [x] También debemos conectar el diagrama de flujo del mes para que represente los datos reales del plan. (Resuelto: PlanFlowChart reescrito con datos reales + proyectados, línea de saldo acumulado, zona de peligro. Vista de distribución diferida.)
 - [x] También cambiar la fila de opciones que hay en plan. Deberían ser más parecidas a la pestaña movimientos con sus 3 chips expandibles (en este caso, serían presupuesto / Plan del mes / Planes de deuda (?)) y que en el chip muestre algo relevante. (Resuelto: PlanActionCta reemplazado por PlanZoneChips — 3 chips expandibles: Presupuesto, Obligaciones, Deuda, cada uno con métricas clave y panel desplegable con detalle + enlace)
+
+
+- [x] The avatar quick view stays open when i come back from a redirect made from that quick view. It should close on action taken. (Resuelto: MobileAvatarMenu y QuickViewMenu ahora se cierran automáticamente al cambiar de ruta via usePathname)

@@ -140,7 +140,7 @@ export function MovimientosRoot({
               </p>
               <div className="space-y-0.5">
                 {txs.map((tx) => (
-                  <MovimientosTransactionRow key={tx.id} transaction={tx} />
+                  <MovimientosTransactionRow key={tx.id} transaction={tx} categories={outflowCategories} />
                 ))}
               </div>
             </div>

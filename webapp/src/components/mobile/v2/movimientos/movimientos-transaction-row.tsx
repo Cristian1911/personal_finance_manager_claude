@@ -1,21 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Hash, UserRound, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import type { TransactionWithAccount } from "@/types/domain";
+import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
+import { TagZonePicker } from "@/components/tags/tag-zone-picker";
+import { categorizeTransaction, assignDestinatario } from "@/actions/categorize";
+import { toast } from "sonner";
+import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
 
 interface MovimientosTransactionRowProps {
   transaction: TransactionWithAccount;
+  categories: CategoryWithChildren[];
 }
 
 export function MovimientosTransactionRow({
   transaction: tx,
+  categories,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  // Optimistic local state
+  const [localDest, setLocalDest] = useState<{
+    id: string;
+    name: string;
+  } | null>(tx.destinatario ?? null);
+  const [localCategory, setLocalCategory] = useState(tx.category);
 
   const description =
     tx.merchant_name ||
@@ -23,8 +38,37 @@ export function MovimientosTransactionRow({
     tx.raw_description ||
     "Sin descripción";
 
-  const categoryName = tx.category?.name_es ?? tx.category?.name ?? null;
-  const destinatarioName = tx.destinatario?.name ?? null;
+  const categoryName = localCategory?.name_es ?? localCategory?.name ?? null;
+  const destinatarioName = localDest?.name ?? null;
+
+  function handleCategorize(categoryId: string | null) {
+    if (!categoryId) return;
+    const cat = categories
+      .flatMap((c) => [c, ...(c.children ?? [])])
+      .find((c) => c.id === categoryId);
+    if (cat) {
+      setLocalCategory({ id: cat.id, name: cat.name, name_es: cat.name_es, icon: cat.icon, color: cat.color });
+    }
+    startTransition(async () => {
+      const result = await categorizeTransaction(tx.id, categoryId);
+      if (!result.success) {
+        setLocalCategory(tx.category);
+        toast.error("Error al categorizar");
+      }
+    });
+  }
+
+  function handleDestChange(id: string | null, name: string | null) {
+    if (!id || !name) return;
+    setLocalDest({ id, name });
+    startTransition(async () => {
+      const result = await assignDestinatario(tx.id, id);
+      if (!result.success) {
+        setLocalDest(tx.destinatario ?? null);
+        toast.error("Error al asignar destinatario");
+      }
+    });
+  }
 
   return (
     <div
@@ -76,41 +120,35 @@ export function MovimientosTransactionRow({
         </div>
       </button>
 
-      {/* Expanded: metadata chips + icon actions */}
+      {/* Expanded: inline pickers + edit link */}
       {expanded && (
         <div className="flex items-center gap-1.5 px-2 pb-2.5 pt-0.5">
-          {categoryName && (
+          {categoryName ? (
             <span className="rounded-lg bg-z-brass/10 px-2.5 py-1 text-[10px] font-semibold text-z-brass">
               {categoryName}
             </span>
+          ) : (
+            <CategoryZonePicker
+              categories={categories}
+              value={null}
+              onValueChange={handleCategorize}
+              direction={tx.direction === "OUTFLOW" ? "OUTFLOW" : undefined}
+              placeholder="Categoría"
+              variant="drawer"
+              triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-lg border border-white/10 bg-white/[0.03] text-z-brass hover:bg-white/[0.06]"
+            />
           )}
-          {!categoryName && (
-            <Link
-              href="/categorizar"
-              className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-z-brass transition-colors hover:bg-white/[0.06]"
-            >
-              Categoría
-            </Link>
-          )}
-          {destinatarioName && (
-            <span className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-              {destinatarioName}
-            </span>
-          )}
-          {!destinatarioName && (
-            <Link
-              href={`/transactions/${tx.id}`}
-              className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
-            >
-              <UserRound className="size-3" />
-            </Link>
-          )}
-          <Link
-            href={`/transactions/${tx.id}`}
-            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
-          >
-            <Hash className="size-3" />
-          </Link>
+          <DestinatarioZonePicker
+            value={localDest?.id ?? null}
+            onValueChange={handleDestChange}
+            selectedName={destinatarioName}
+            compact
+          />
+          <TagZonePicker
+            entityType="transaction"
+            entityId={tx.id}
+            compact
+          />
           <div className="flex-1" />
           <Link
             href={`/transactions/${tx.id}`}

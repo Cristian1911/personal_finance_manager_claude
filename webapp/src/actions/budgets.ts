@@ -3,6 +3,7 @@
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import { budgetSchema } from "@/lib/validators/budget";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
@@ -13,7 +14,7 @@ type BudgetSummaryTransactionRow = {
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
-async function getBudgetsCached(userId: string): Promise<Budget[]> {
+async function getBudgetsCached(userId: string, isDemo: boolean): Promise<Budget[]> {
     "use cache";
     cacheTag("budgets");
     cacheLife("zeta");
@@ -23,13 +24,14 @@ async function getBudgetsCached(userId: string): Promise<Budget[]> {
         .from("budgets")
         .select("*")
         .eq("user_id", userId)
+        .eq("is_demo", isDemo)
         .order("created_at", { ascending: false });
 
     if (error) throw error;
     return data ?? [];
 }
 
-async function getBudgetSummaryCached(userId: string, month?: string): Promise<BudgetSummary> {
+async function getBudgetSummaryCached(userId: string, month: string | undefined, isDemo: boolean): Promise<BudgetSummary> {
     "use cache";
     cacheTag("budgets");
     cacheLife("zeta");
@@ -39,7 +41,8 @@ async function getBudgetSummaryCached(userId: string, month?: string): Promise<B
     const { data: budgets } = await supabase
         .from("budgets")
         .select("amount, category_id")
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .eq("is_demo", isDemo);
 
     if (!budgets || budgets.length === 0) return { totalTarget: 0, totalSpent: 0, progress: 0 };
 
@@ -49,10 +52,14 @@ async function getBudgetSummaryCached(userId: string, month?: string): Promise<B
     const { monthStartStr, monthEndStr, parseMonth } = await import("@/lib/utils/date");
     const target = parseMonth(month);
 
+    const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
+    if (!accountIds) return { totalTarget, totalSpent: 0, progress: 0 };
+
     const { data: transactions } = await supabase
         .from("transactions")
         .select("amount")
         .eq("user_id", userId)
+        .in("account_id", accountIds)
         .eq("direction", "OUTFLOW")
         .eq("is_excluded", false)
         .in("category_id", budgetedCategoryIds)
@@ -76,7 +83,8 @@ export async function getBudgets(): Promise<ActionResult<Budget[]>> {
     const { user } = await getAuthenticatedClient();
     if (!user) return { success: false, error: "No autenticado" };
     try {
-        const data = await getBudgetsCached(user.id);
+        const isDemo = await getIsDemoFilter(user.id);
+        const data = await getBudgetsCached(user.id, isDemo);
         return { success: true, data };
     } catch (error) {
         console.error("Error loading budgets:", error);
@@ -93,7 +101,8 @@ export interface BudgetSummary {
 export async function getBudgetSummary(month?: string): Promise<BudgetSummary> {
     const { user } = await getAuthenticatedClient();
     if (!user) return { totalTarget: 0, totalSpent: 0, progress: 0 };
-    return getBudgetSummaryCached(user.id, month);
+    const isDemo = await getIsDemoFilter(user.id);
+    return getBudgetSummaryCached(user.id, month, isDemo);
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
