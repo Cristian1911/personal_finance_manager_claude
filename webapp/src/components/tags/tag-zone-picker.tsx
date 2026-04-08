@@ -57,13 +57,14 @@ export function TagZonePicker({
   const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  // Load data on open — groups cached, current tags always refreshed
+  // Load data on open — groups cached in state, current tags always refreshed
   useEffect(() => {
     if (!open) {
       setSearch("");
       return;
     }
-    setLoading(true);
+    // Only show spinner on first load (groups not yet cached)
+    if (!groupsLoaded) setLoading(true);
     const groupsPromise = groupsLoaded
       ? Promise.resolve(null)
       : getTagGroups();
