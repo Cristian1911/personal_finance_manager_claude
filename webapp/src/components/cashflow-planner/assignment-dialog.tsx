@@ -13,6 +13,7 @@ import {
 import { createAssignment } from "@/actions/cashflow-planner";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
+import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
 import { toast } from "sonner";
 import type { CurrencyCode } from "@/types/domain";
 import type { IncomeEnvelope, PlanningEntryWithRelations } from "@/types/cashflow-planner";
@@ -24,6 +25,7 @@ interface AssignmentDialogProps {
   incomeEnvelopes: IncomeEnvelope[];
   currency: CurrencyCode;
   existingAssignedToExpense?: number;
+  incomeColorMap?: Map<string, number>;
 }
 
 export function AssignmentDialog({
@@ -33,6 +35,7 @@ export function AssignmentDialog({
   incomeEnvelopes,
   currency,
   existingAssignedToExpense = 0,
+  incomeColorMap,
 }: AssignmentDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedIncome, setSelectedIncome] = useState<string | null>(null);
@@ -128,11 +131,19 @@ export function AssignmentDialog({
                         : "border-white/6 hover:border-white/12"
                     }`}
                   >
-                    <div>
-                      <p className="text-sm font-medium">{env.entry.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(env.entry.expected_date)}
-                      </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {incomeColorMap && (
+                        <span
+                          className="size-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: getEnvelopeColor(incomeColorMap.get(env.entry.id) ?? 0).hex }}
+                        />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium">{env.entry.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(env.entry.expected_date)}
+                        </p>
+                      </div>
                     </div>
                     <p className="text-sm font-semibold tabular-nums text-z-income">
                       {formatCurrency(env.remaining_amount, currency)}

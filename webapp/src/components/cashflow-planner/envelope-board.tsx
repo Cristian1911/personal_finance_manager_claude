@@ -36,6 +36,20 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
     }
   }
 
+  const incomeColorMap = new Map<string, number>();
+  income_envelopes.forEach((env, index) => incomeColorMap.set(env.entry.id, index));
+
+  type AssignmentChip = { colorIndex: number; amount: number; label: string };
+  const expenseAssignmentChips = new Map<string, AssignmentChip[]>();
+  for (const env of income_envelopes) {
+    const colorIdx = incomeColorMap.get(env.entry.id) ?? 0;
+    for (const { assignment } of env.assignments) {
+      const chips = expenseAssignmentChips.get(assignment.expense_entry_id) ?? [];
+      chips.push({ colorIndex: colorIdx, amount: Number(assignment.assigned_amount), label: env.entry.label });
+      expenseAssignmentChips.set(assignment.expense_entry_id, chips);
+    }
+  }
+
   function openAssignDialog(expense: PlanningEntryWithRelations) {
     setAssignTarget(expense);
     setAssignDialogOpen(true);
@@ -76,11 +90,12 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
             </div>
           ) : (
             <div className="space-y-3">
-              {income_envelopes.map((env) => (
+              {income_envelopes.map((env, index) => (
                 <IncomeEnvelopeCard
                   key={env.entry.id}
                   envelope={env}
                   currency={currency}
+                  colorIndex={index}
                   onEdit={openEditDialog}
                 />
               ))}
@@ -126,6 +141,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
                   entry={entry}
                   currency={currency}
                   assignedAmount={assignedPerExpense.get(entry.id) ?? 0}
+                  assignmentChips={expenseAssignmentChips.get(entry.id) ?? []}
                   onAssign={() => openAssignDialog(entry)}
                   onEdit={openEditDialog}
                 />
@@ -144,6 +160,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
         existingAssignedToExpense={
           assignTarget ? (assignedPerExpense.get(assignTarget.id) ?? 0) : 0
         }
+        incomeColorMap={incomeColorMap}
       />
 
       <EditEntryDialog

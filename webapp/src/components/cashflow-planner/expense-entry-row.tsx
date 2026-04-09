@@ -13,6 +13,8 @@ import { ArrowRightLeft, Check, MoreHorizontal, Pencil, Trash2, Undo2 } from "lu
 import { deletePlanningEntry, toggleEntryStatus } from "@/actions/cashflow-planner";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
+import { cn } from "@/lib/utils";
+import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
 import { toast } from "sonner";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
 import type { PlanningEntryWithRelations } from "@/types/cashflow-planner";
@@ -21,6 +23,7 @@ interface ExpenseEntryRowProps {
   entry: PlanningEntryWithRelations;
   currency: CurrencyCode;
   assignedAmount?: number;
+  assignmentChips?: { colorIndex: number; amount: number; label: string }[];
   onAssign?: () => void;
   onEdit?: (entry: PlanningEntryWithRelations) => void;
   showAssignButton?: boolean;
@@ -39,6 +42,7 @@ export function ExpenseEntryRow({
   entry,
   currency,
   assignedAmount = 0,
+  assignmentChips,
   onAssign,
   onEdit,
   showAssignButton = true,
@@ -122,6 +126,23 @@ export function ExpenseEntryRow({
           <p className="text-[10px] text-amber-400 tabular-nums">
             Falta: {formatCurrency(remaining, currency)}
           </p>
+        )}
+        {assignmentChips && assignmentChips.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-0.5 justify-end">
+            {assignmentChips.map((chip, i) => {
+              const c = getEnvelopeColor(chip.colorIndex);
+              return (
+                <span
+                  key={i}
+                  className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-medium", c.bg, c.text)}
+                  title={chip.label}
+                >
+                  <span className="size-1.5 rounded-full" style={{ backgroundColor: c.hex }} />
+                  {formatCurrency(chip.amount, currency)}
+                </span>
+              );
+            })}
+          </div>
         )}
       </div>
 
