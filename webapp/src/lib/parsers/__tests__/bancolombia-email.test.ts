@@ -181,6 +181,39 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.amount).toBe(44000);
   });
 
+  // Pattern 10: Avance (credit card cash advance)
+  it("parses credit card cash advance (Hiciste un avance)", () => {
+    const line =
+      "Bancolombia: Hiciste un avance de $1,100,000 en tu SUC VIRTUAL el 16:11 09/04/2026 desde tu T.Credito *7022 a la cuenta *4398. ¿Dudas?";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("OUTFLOW");
+    expect(result!.amount).toBe(1100000);
+    expect(result!.merchant).toBe("SUC VIRTUAL");
+    expect(result!.destination).toBe("4398");
+    expect(result!.card_last4).toBe("7022");
+    expect(result!.card_type).toBe("T.Cred");
+    expect(result!.transaction_date).toBe("2026-04-09");
+    expect(result!.transaction_time).toBe("16:11");
+    expect(result!.pattern_type).toBe("avance");
+  });
+
+  // Pattern 11: Transferencia recibida (incoming transfer)
+  it("parses incoming transfer (Recibiste una transferencia)", () => {
+    const line =
+      "Logo Bancolombia [https://example.com/logo.png] ¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste una transferencia por $1,100,000 de CRISTIAN GIRALDO en tu cuenta **4398, el 09/04/2026 a las 16:11. Si tienes dudas, hablemos: 018000931987. Siempre a tu lado.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("INFLOW");
+    expect(result!.amount).toBe(1100000);
+    expect(result!.merchant).toBe("CRISTIAN GIRALDO");
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.card_type).toBe("Cta");
+    expect(result!.transaction_date).toBe("2026-04-09");
+    expect(result!.transaction_time).toBe("16:11");
+    expect(result!.pattern_type).toBe("transferencia_recibida");
+  });
+
   // Unrecognized emails
   it("returns null for non-Bancolombia email", () => {
     const line = "Your Amazon order has shipped!";

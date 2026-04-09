@@ -58,6 +58,8 @@ const PATTERN_LABELS: Record<string, { label: string; icon: typeof Mail }> = {
   pago_pse: { label: "Pago PSE", icon: Building },
   bre_b: { label: "Bre-B", icon: Wallet },
   nomina: { label: "Nómina", icon: Banknote },
+  avance: { label: "Avance", icon: CreditCard },
+  transferencia_recibida: { label: "Transferencia recibida", icon: ArrowDownLeft },
 };
 
 interface PendingEmailTransactionsProps {

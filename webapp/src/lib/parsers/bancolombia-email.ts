@@ -19,7 +19,9 @@ export interface ParsedEmailTransaction {
     | "pago_pse"
     | "bre_b"
     | "pago_recibido"
-    | "nomina";
+    | "nomina"
+    | "avance"
+    | "transferencia_recibida";
 }
 
 function extractCandidateBody(body: string): string | null {
@@ -246,6 +248,44 @@ const PATTERNS: PatternDef[] = [
       transaction_date: parseDateDMY(m[5]),
       transaction_time: m[6],
       pattern_type: "bre_b",
+    }),
+  },
+  // Pattern 10: Avance (credit card cash advance)
+  // "Hiciste un avance de $1,100,000 en tu SUC VIRTUAL el 16:11 09/04/2026 desde tu T.Credito *7022 a la cuenta *4398"
+  {
+    type: "avance",
+    regex:
+      /Hiciste un avance de \$([\d.,]+) en (?:tu )?(.+?) el (\d{2}:\d{2}) (\d{2}\/\d{2}\/\d{4}) desde tu T\.Credito \*(\d+) a la cuenta \*?(\d+)/,
+    extract: (m) => ({
+      direction: "OUTFLOW",
+      amount: parseAmount(m[1]),
+      currency: "COP",
+      merchant: m[2].trim(),
+      destination: m[6],
+      card_last4: m[5],
+      card_type: "T.Cred",
+      transaction_date: parseDateDMY(m[4]),
+      transaction_time: m[3],
+      pattern_type: "avance",
+    }),
+  },
+  // Pattern 11: Transferencia recibida (incoming transfer — INFLOW)
+  // "Recibiste una transferencia por $1,100,000 de CRISTIAN GIRALDO en tu cuenta **4398, el 09/04/2026 a las 16:11"
+  {
+    type: "transferencia_recibida",
+    regex:
+      /Recibiste una transferencia por \$([\d.,]+) de (.+?) en tu cuenta \*{1,2}(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/,
+    extract: (m) => ({
+      direction: "INFLOW",
+      amount: parseAmount(m[1]),
+      currency: "COP",
+      merchant: m[2].trim(),
+      destination: null,
+      card_last4: m[3],
+      card_type: "Cta",
+      transaction_date: parseDateDMY(m[4]),
+      transaction_time: m[5],
+      pattern_type: "transferencia_recibida",
     }),
   },
   // Pattern 9: Pago recibido por proveedor (INFLOW)
