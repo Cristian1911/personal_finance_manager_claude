@@ -7,7 +7,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
 import { getOccurrencesBetween } from "@zeta/shared";
-import { getPaidOccurrenceKeys, getSkippedOccurrenceKeys } from "@/actions/recurring-templates";
+import { getPaidOccurrenceKeys, getSkippedObligationKeys } from "@/actions/recurring-templates";
 import type { RecurrenceFrequency } from "@zeta/shared";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -171,17 +171,17 @@ export async function getAttentionItems(): Promise<AttentionItems> {
 
     // Filter out paid/skipped occurrences from upcoming payments
     if (items.upcomingPayments.length > 0) {
-      const keys = items.upcomingPayments.map(
-        (p) => `${p.templateId}:${p.occurrenceDate}`
-      );
-      const [paidKeys, skippedKeys] = await Promise.all([
-        getPaidOccurrenceKeys(keys),
-        getSkippedOccurrenceKeys(keys),
+      const paidKeys = items.upcomingPayments.map((p) => `${p.templateId}:${p.occurrenceDate}`);
+      const oblKeys = items.upcomingPayments.map((p) => `recurring:${p.templateId}:${p.occurrenceDate}`);
+      const [paid, skipped] = await Promise.all([
+        getPaidOccurrenceKeys(paidKeys),
+        getSkippedObligationKeys(oblKeys),
       ]);
-      const excludeSet = new Set([...paidKeys, ...skippedKeys]);
-      if (excludeSet.size > 0) {
+      const paidSet = new Set(paid);
+      if (paidSet.size > 0 || skipped.size > 0) {
         items.upcomingPayments = items.upcomingPayments.filter(
-          (p) => !excludeSet.has(`${p.templateId}:${p.occurrenceDate}`)
+          (p) => !paidSet.has(`${p.templateId}:${p.occurrenceDate}`) &&
+                 !skipped.has(`recurring:${p.templateId}:${p.occurrenceDate}`)
         );
       }
     }

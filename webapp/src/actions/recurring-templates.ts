@@ -837,88 +837,78 @@ export async function recordRecurringOccurrencePayment(input: {
 }
 
 /**
- * Mark a recurring occurrence as skipped (already paid manually, no transaction needed).
- * Persists to DB so dashboard and other pages reflect the skip.
+ * Skip any obligation (recurring or statement). Uses the generalized obligation_skips table.
+ * Key format: "recurring:{templateId}:{date}" or "statement:{snapshotId}"
  */
-export async function skipRecurringOccurrence(
-  templateId: string,
-  occurrenceDate: string,
+export async function skipObligation(
+  obligationKey: string,
 ): Promise<ActionResult<{ skipped: boolean }>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
   const { error } = await supabase
-    .from("recurring_occurrence_skips")
+    .from("obligation_skips")
     .upsert(
-      {
-        user_id: user.id,
-        template_id: templateId,
-        occurrence_date: occurrenceDate,
-      },
-      { onConflict: "template_id,occurrence_date" }
+      { user_id: user.id, obligation_key: obligationKey },
+      { onConflict: "user_id,obligation_key" }
     );
 
   if (error) return { success: false, error: error.message };
 
   revalidateFinancialViews();
   revalidateTag("recurring", "zeta");
+  revalidateTag("snapshots", "zeta");
 
   return { success: true, data: { skipped: true } };
 }
 
-/**
- * Get which recurring occurrence keys have been skipped (manually marked as paid).
- * Each key is "templateId:occurrenceDate".
- */
-export async function getSkippedOccurrenceKeys(
-  occurrenceKeys: string[]
-): Promise<string[]> {
-  const { user, accessToken } = await getAuthenticatedClient();
-  if (!user || !accessToken || occurrenceKeys.length === 0) return [];
-  return getSkippedOccurrenceKeysCached(user.id, occurrenceKeys, accessToken);
+/** Convenience wrapper — skips a recurring occurrence. */
+export async function skipRecurringOccurrence(
+  templateId: string,
+  occurrenceDate: string,
+): Promise<ActionResult<{ skipped: boolean }>> {
+  return skipObligation(`recurring:${templateId}:${occurrenceDate}`);
 }
 
-async function getSkippedOccurrenceKeysCached(
+/**
+ * Get which obligation keys have been skipped.
+ * Accepts any key format — recurring or statement.
+ */
+export async function getSkippedObligationKeys(
+  keys: string[]
+): Promise<Set<string>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken || keys.length === 0) return new Set();
+  return getSkippedObligationKeysCached(user.id, keys, accessToken);
+}
+
+async function getSkippedObligationKeysCached(
   userId: string,
-  occurrenceKeys: string[],
+  keys: string[],
   accessToken: string,
-): Promise<string[]> {
+): Promise<Set<string>> {
   "use cache";
-  cacheTag("recurring");
+  cacheTag("recurring", "snapshots");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
 
-  // Parse keys into template_id + occurrence_date pairs
-  const pairs: Array<{ templateId: string; occurrenceDate: string; key: string }> = [];
-  for (const key of occurrenceKeys) {
-    const sepIdx = key.indexOf(":");
-    if (sepIdx === -1) continue;
-    pairs.push({
-      templateId: key.slice(0, sepIdx),
-      occurrenceDate: key.slice(sepIdx + 1),
-      key,
-    });
-  }
-  if (pairs.length === 0) return [];
-
-  const templateIds = [...new Set(pairs.map((p) => p.templateId))];
-  const occurrenceDates = [...new Set(pairs.map((p) => p.occurrenceDate))];
-
   const { data } = await supabase
-    .from("recurring_occurrence_skips")
-    .select("template_id, occurrence_date")
+    .from("obligation_skips")
+    .select("obligation_key")
     .eq("user_id", userId)
-    .in("template_id", templateIds)
-    .in("occurrence_date", occurrenceDates);
+    .in("obligation_key", keys);
 
-  if (!data) return [];
+  return new Set((data ?? []).map((row) => row.obligation_key));
+}
 
-  const skipSet = new Set(
-    data.map((row) => `${row.template_id}:${row.occurrence_date}`)
-  );
-
-  return pairs.filter((p) => skipSet.has(p.key)).map((p) => p.key);
+/** Backwards-compatible wrapper for recurring occurrence keys ("templateId:date" format). */
+export async function getSkippedOccurrenceKeys(
+  occurrenceKeys: string[]
+): Promise<string[]> {
+  const prefixed = occurrenceKeys.map((k) => `recurring:${k}`);
+  const skipped = await getSkippedObligationKeys(prefixed);
+  return occurrenceKeys.filter((k) => skipped.has(`recurring:${k}`));
 }
 
 /**

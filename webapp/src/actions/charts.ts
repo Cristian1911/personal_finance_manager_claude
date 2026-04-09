@@ -4,7 +4,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccounts } from "@/actions/accounts";
-import { getUpcomingRecurrences, getPaidOccurrenceKeys, getSkippedOccurrenceKeys } from "@/actions/recurring-templates";
+import { getUpcomingRecurrences, getPaidOccurrenceKeys, getSkippedObligationKeys } from "@/actions/recurring-templates";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
@@ -752,17 +752,25 @@ export async function getDashboardHeroData(
     .filter((r) => r.next_date <= heroWindowEnd)
     .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency);
 
-  // Filter out paid and skipped occurrences
-  const recurrenceKeys = outflowRecurrences.map((r) => `${r.template.id}:${r.next_date}`);
-  const [paidKeys, skippedKeys] = recurrenceKeys.length > 0
-    ? await Promise.all([
-        getPaidOccurrenceKeys(recurrenceKeys),
-        getSkippedOccurrenceKeys(recurrenceKeys),
-      ])
-    : [[], []];
-  const excludeSet = new Set([...paidKeys, ...skippedKeys]);
+  // Build all obligation keys for unified skip/paid filtering
+  const recurringOblKeys = outflowRecurrences.map((r) => `recurring:${r.template.id}:${r.next_date}`);
+  const recurringPaidKeys = outflowRecurrences.map((r) => `${r.template.id}:${r.next_date}`);
+
+  // 4. Process statement payment obligations
+  const currencyPayments = statementPayments.filter((p) => p.currency_code === baseCurrency);
+  const statementOblKeys = currencyPayments.map((p) => `statement:${p.id}`);
+
+  // 5. Filter out paid and skipped obligations (both recurring and statement)
+  const allOblKeys = [...recurringOblKeys, ...statementOblKeys];
+  const [paidKeys, skippedSet] = await Promise.all([
+    recurringPaidKeys.length > 0 ? getPaidOccurrenceKeys(recurringPaidKeys) : Promise.resolve([]),
+    allOblKeys.length > 0 ? getSkippedObligationKeys(allOblKeys) : Promise.resolve(new Set<string>()),
+  ]);
+  const paidSet = new Set(paidKeys);
+
   const activeRecurrences = outflowRecurrences.filter(
-    (r) => !excludeSet.has(`${r.template.id}:${r.next_date}`)
+    (r) => !paidSet.has(`${r.template.id}:${r.next_date}`) &&
+           !skippedSet.has(`recurring:${r.template.id}:${r.next_date}`)
   );
 
   const recurringObligations: PendingObligation[] = activeRecurrences
@@ -778,9 +786,7 @@ export async function getDashboardHeroData(
     .filter((r) => r.template.account.account_type !== "CREDIT_CARD")
     .reduce((sum, r) => sum + r.template.amount, 0);
 
-  // 4. Process statement payment obligations
-  const currencyPayments = statementPayments.filter((p) => p.currency_code === baseCurrency);
-  const statementObligations: PendingObligation[] = currencyPayments
+  const allStatementObligations: PendingObligation[] = currencyPayments
     .filter((p) => p.account_type !== "CREDIT_CARD" || p.minimum_payment != null)
     .map((p) => ({
       id: p.id,
@@ -790,14 +796,17 @@ export async function getDashboardHeroData(
       due_date: p.payment_due_date,
       source: "statement" as const,
     }));
+  const statementObligations = allStatementObligations.filter(
+    (o) => !skippedSet.has(`statement:${o.id}`)
+  );
   const creditCardStatementPending = currencyPayments
-    .filter((p) => p.account_type === "CREDIT_CARD" && p.minimum_payment != null)
+    .filter((p) => p.account_type === "CREDIT_CARD" && p.minimum_payment != null && !skippedSet.has(`statement:${p.id}`))
     .reduce((sum, p) => sum + p.minimum_payment!, 0);
   const nonCardStatementPending = currencyPayments
-    .filter((p) => p.account_type !== "CREDIT_CARD")
+    .filter((p) => p.account_type !== "CREDIT_CARD" && !skippedSet.has(`statement:${p.id}`))
     .reduce((sum, p) => sum + p.total_payment_due, 0);
 
-  // 5. Merge and sort by due date
+  // 6. Merge and sort by due date
   const allObligations = [...recurringObligations, ...statementObligations]
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
 
