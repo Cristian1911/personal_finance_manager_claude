@@ -363,6 +363,7 @@ export async function deleteRecurringTemplate(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("recurring", "zeta");
+  revalidateTag("occurrences", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
@@ -823,39 +824,29 @@ export async function recordRecurringOccurrencePayment(input: {
     return { success: false, error: inserted.error };
   }
 
-  // Mark the matching occurrence as paid if one exists
+  // Mark the matching occurrence as paid
   if (inserted.created > 0) {
-    const { data: occurrence } = await supabase
-      .from("recurring_occurrences")
+    // Get the first created transaction ID via the known recurrence_group_id
+    const { data: primaryTx } = await supabase
+      .from("transactions")
       .select("id")
-      .eq("template_id", payload.templateId)
-      .eq("occurrence_date", payload.occurrenceDate)
+      .eq("recurrence_group_id", recurrenceGroupId)
       .eq("user_id", user.id)
-      .eq("status", "pending")
+      .limit(1)
       .maybeSingle();
 
-    if (occurrence) {
-      // Fetch the primary transaction ID using the recurrence_group_id
-      const { data: primaryTx } = await supabase
-        .from("transactions")
-        .select("id")
-        .eq("recurrence_group_id", recurrenceGroupId)
+    if (primaryTx) {
+      await supabase
+        .from("recurring_occurrences")
+        .update({
+          status: "paid" as const,
+          transaction_id: primaryTx.id,
+          paid_at: new Date().toISOString(),
+        })
+        .eq("template_id", payload.templateId)
+        .eq("occurrence_date", payload.occurrenceDate)
         .eq("user_id", user.id)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (primaryTx) {
-        await supabase
-          .from("recurring_occurrences")
-          .update({
-            status: "paid" as const,
-            transaction_id: primaryTx.id,
-            paid_at: new Date().toISOString(),
-          })
-          .eq("id", occurrence.id)
-          .eq("user_id", user.id);
-      }
+        .eq("status", "pending");
     }
   }
 

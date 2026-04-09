@@ -118,10 +118,10 @@ export function useRecurringMonth(
     let cancelled = false;
 
     const load = async () => {
-      // Ensure rows exist for this month
-      await ensureOccurrencesForRange(monthStart, monthEnd);
-      // Fetch all occurrences
-      const result = await getOccurrencesForMonth(monthKey);
+      const [, result] = await Promise.all([
+        ensureOccurrencesForRange(monthStart, monthEnd),
+        getOccurrencesForMonth(monthKey),
+      ]);
       if (cancelled) return;
       if (result.success) {
         setOccurrences(result.data);

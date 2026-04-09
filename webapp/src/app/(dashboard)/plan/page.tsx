@@ -35,11 +35,9 @@ export default async function PlanPage({
 
   const monthLabel = formatMonthLabel(parseMonth(month));
 
-  // Ensure occurrence rows exist for current month + buffer before rendering
-  await ensureCurrentOccurrences();
-
   // Shell: lightweight data for header + tab nav badges
-  const [currency, wishlistSummary, activePeriodResult] = await Promise.all([
+  const [, currency, wishlistSummary, activePeriodResult] = await Promise.all([
+    ensureCurrentOccurrences(),
     getPreferredCurrency(),
     getWishlistItemsForDashboard(),
     getActivePeriod(),
