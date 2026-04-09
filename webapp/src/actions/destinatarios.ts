@@ -1234,7 +1234,6 @@ export async function applyDestinatarioRules(
     }
   }
 
-  revalidateTag("transactions", "zeta");
   revalidateFinancialViews();
   revalidateTag("destinatarios", "zeta");
 
