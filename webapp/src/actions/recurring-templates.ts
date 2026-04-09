@@ -8,6 +8,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { ensureCurrentOccurrences } from "@/actions/occurrences";
 import {
   getOccurrencesBetween,
   DEBT_PAYMENT_CATEGORY_ID,
@@ -266,6 +267,8 @@ export async function createRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
+  await ensureCurrentOccurrences();
+
   revalidateTag("recurring", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("attention", "zeta");
@@ -336,6 +339,8 @@ export async function updateRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
+  await ensureCurrentOccurrences();
+
   revalidateTag("recurring", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("attention", "zeta");
@@ -378,6 +383,8 @@ export async function toggleRecurringTemplate(
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };
+
+  await ensureCurrentOccurrences();
 
   revalidateTag("recurring", "zeta");
   revalidateTag("dashboard:hero", "zeta");
@@ -816,6 +823,42 @@ export async function recordRecurringOccurrencePayment(input: {
     return { success: false, error: inserted.error };
   }
 
+  // Mark the matching occurrence as paid if one exists
+  if (inserted.created > 0) {
+    const { data: occurrence } = await supabase
+      .from("recurring_occurrences")
+      .select("id")
+      .eq("template_id", payload.templateId)
+      .eq("occurrence_date", payload.occurrenceDate)
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (occurrence) {
+      // Fetch the primary transaction ID using the recurrence_group_id
+      const { data: primaryTx } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("recurrence_group_id", recurrenceGroupId)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (primaryTx) {
+        await supabase
+          .from("recurring_occurrences")
+          .update({
+            status: "paid" as const,
+            transaction_id: primaryTx.id,
+            paid_at: new Date().toISOString(),
+          })
+          .eq("id", occurrence.id)
+          .eq("user_id", user.id);
+      }
+    }
+  }
+
   await updateBalancesForCreatedTransactions({
     supabase,
     userId: user.id,
@@ -824,6 +867,7 @@ export async function recordRecurringOccurrencePayment(input: {
   });
 
   revalidateFinancialViews();
+  revalidateTag("occurrences", "zeta");
   revalidateTag("recurring", "zeta");
   revalidateTag("impact", "zeta");
 
@@ -834,126 +878,6 @@ export async function recordRecurringOccurrencePayment(input: {
       alreadyRecorded: inserted.alreadyRecorded,
     },
   };
-}
-
-/**
- * Skip any obligation (recurring or statement). Uses the generalized obligation_skips table.
- * Key format: "recurring:{templateId}:{date}" or "statement:{snapshotId}"
- */
-export async function skipObligation(
-  obligationKey: string,
-): Promise<ActionResult<{ skipped: boolean }>> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
-
-  const { error } = await supabase
-    .from("obligation_skips")
-    .upsert(
-      { user_id: user.id, obligation_key: obligationKey },
-      { onConflict: "user_id,obligation_key" }
-    );
-
-  if (error) return { success: false, error: error.message };
-
-  revalidateFinancialViews();
-  revalidateTag("recurring", "zeta");
-  revalidateTag("snapshots", "zeta");
-
-  return { success: true, data: { skipped: true } };
-}
-
-/** Convenience wrapper — skips a recurring occurrence. */
-export async function skipRecurringOccurrence(
-  templateId: string,
-  occurrenceDate: string,
-): Promise<ActionResult<{ skipped: boolean }>> {
-  return skipObligation(`recurring:${templateId}:${occurrenceDate}`);
-}
-
-/**
- * Get which obligation keys have been skipped.
- * Accepts any key format — recurring or statement.
- */
-export async function getSkippedObligationKeys(
-  keys: string[]
-): Promise<Set<string>> {
-  const { user, accessToken } = await getAuthenticatedClient();
-  if (!user || !accessToken || keys.length === 0) return new Set();
-  return getSkippedObligationKeysCached(user.id, keys, accessToken);
-}
-
-async function getSkippedObligationKeysCached(
-  userId: string,
-  keys: string[],
-  accessToken: string,
-): Promise<Set<string>> {
-  "use cache";
-  cacheTag("recurring", "snapshots");
-  cacheLife("zeta");
-
-  const supabase = createCachedClient(accessToken);
-
-  const { data } = await supabase
-    .from("obligation_skips")
-    .select("obligation_key")
-    .eq("user_id", userId)
-    .in("obligation_key", keys);
-
-  return new Set((data ?? []).map((row) => row.obligation_key));
-}
-
-/** Backwards-compatible wrapper for recurring occurrence keys ("templateId:date" format). */
-export async function getSkippedOccurrenceKeys(
-  occurrenceKeys: string[]
-): Promise<string[]> {
-  const prefixed = occurrenceKeys.map((k) => `recurring:${k}`);
-  const skipped = await getSkippedObligationKeys(prefixed);
-  return occurrenceKeys.filter((k) => skipped.has(`recurring:${k}`));
-}
-
-/**
- * Check which recurring occurrence keys have already been paid.
- * Each key is "templateId:occurrenceDate". Returns the subset of keys
- * that have matching transactions in the DB (via recurrence_group_id).
- */
-export async function getPaidOccurrenceKeys(
-  occurrenceKeys: string[]
-): Promise<string[]> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user || occurrenceKeys.length === 0) return [];
-
-  // Compute expected recurrence_group_id for each occurrence key
-  const groupIdToKey = new Map<string, string>();
-  await Promise.all(
-    occurrenceKeys.map(async (key) => {
-      const sepIdx = key.indexOf(":");
-      if (sepIdx === -1) return;
-      const templateId = key.slice(0, sepIdx);
-      const occurrenceDate = key.slice(sepIdx + 1);
-      const groupId = await computeRecurringGroupUuid(templateId, occurrenceDate);
-      groupIdToKey.set(groupId, key);
-    })
-  );
-
-  const groupIds = [...groupIdToKey.keys()];
-  if (groupIds.length === 0) return [];
-
-  // Query which group IDs already have transactions
-  const { data } = await supabase
-    .from("transactions")
-    .select("recurrence_group_id")
-    .eq("user_id", user.id)
-    .in("recurrence_group_id", groupIds);
-
-  if (!data) return [];
-
-  const paidKeys: string[] = [];
-  for (const row of data) {
-    if (!row.recurrence_group_id) continue;
-    const key = groupIdToKey.get(row.recurrence_group_id);
-    if (key) paidKeys.push(key);
-  }
-  return paidKeys;
 }
 
 /**
@@ -999,4 +923,85 @@ function toMonthlyAmount(
     default:
       return amount;
   }
+}
+
+// ─── Occurrence key helpers (for use-recurring-month checklist hydration) ─────
+
+/**
+ * Given a list of "templateId:date" keys, returns only those that have a
+ * paid occurrence row in `recurring_occurrences`.
+ */
+export async function getPaidOccurrenceKeys(keys: string[]): Promise<string[]> {
+  if (keys.length === 0) return [];
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from("recurring_occurrences")
+    .select("template_id, occurrence_date")
+    .eq("user_id", user.id)
+    .eq("status", "paid");
+
+  if (!data) return [];
+  const keySet = new Set(keys);
+  return data
+    .map((r) => `${r.template_id}:${r.occurrence_date}`)
+    .filter((k) => keySet.has(k));
+}
+
+/**
+ * Given a list of "templateId:date" keys, returns only those that have a
+ * skipped occurrence row in `recurring_occurrences`.
+ */
+export async function getSkippedOccurrenceKeys(keys: string[]): Promise<string[]> {
+  if (keys.length === 0) return [];
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from("recurring_occurrences")
+    .select("template_id, occurrence_date")
+    .eq("user_id", user.id)
+    .eq("status", "skipped");
+
+  if (!data) return [];
+  const keySet = new Set(keys);
+  return data
+    .map((r) => `${r.template_id}:${r.occurrence_date}`)
+    .filter((k) => keySet.has(k));
+}
+
+/**
+ * Skip a recurring occurrence identified by (templateId, occurrenceDate).
+ * Looks up the occurrence row and sets its status to 'skipped'.
+ */
+export async function skipRecurringOccurrence(
+  templateId: string,
+  occurrenceDate: string,
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: occurrence, error: fetchError } = await supabase
+    .from("recurring_occurrences")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("template_id", templateId)
+    .eq("occurrence_date", occurrenceDate)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (fetchError) return { success: false, error: fetchError.message };
+  if (!occurrence) return { success: false, error: "No se encontró la ocurrencia pendiente." };
+
+  const { error: updateError } = await supabase
+    .from("recurring_occurrences")
+    .update({ status: "skipped" as const, skipped_at: new Date().toISOString() })
+    .eq("id", occurrence.id)
+    .eq("user_id", user.id);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  revalidateTag("occurrences", "zeta");
+  return { success: true, data: undefined };
 }
