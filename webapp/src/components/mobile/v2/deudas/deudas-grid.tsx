@@ -227,13 +227,13 @@ export function DeudasGrid({
                   Progreso de préstamos
                 </p>
                 {loanProgressList.length > 0 ? (
-                  loanProgressList.map((progress, i) => {
+                  loanProgressList.map((progress) => {
                     const pct = progress.percentage ?? 0;
                     const remaining = loanRemainingList.find(
                       (r) => r.accountName === progress.accountName
                     );
                     return (
-                      <div key={`${progress.accountName}-${i}`} className="space-y-1">
+                      <div key={progress.accountId} className="space-y-1">
                         <p className="text-[11px] font-medium text-z-sage-light">
                           {progress.accountName}
                         </p>
@@ -261,8 +261,8 @@ export function DeudasGrid({
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-brass">
                   Desglose por préstamo
                 </p>
-                {loanPayments.map((p, i) => (
-                  <div key={`${p.accountName}-${i}`} className="flex justify-between text-xs text-z-sage-light">
+                {loanPayments.map((p) => (
+                  <div key={p.accountId} className="flex justify-between text-xs text-z-sage-light">
                     <span className="truncate mr-2">{p.accountName}</span>
                     <span className="shrink-0">{formatCurrency(p.amount, currency)}</span>
                   </div>

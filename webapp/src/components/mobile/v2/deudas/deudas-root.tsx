@@ -71,6 +71,7 @@ export function DeudasRoot({
         monthlyInterest={overview.monthlyInterestEstimate}
         currency={currency}
         accounts={overview.accounts.map((a) => ({
+          id: a.id,
           name: a.name,
           type: a.type as "CREDIT_CARD" | "LOAN",
           monthlyPayment: a.monthlyPayment ?? 0,

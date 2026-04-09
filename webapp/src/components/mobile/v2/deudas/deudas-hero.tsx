@@ -7,6 +7,7 @@ import { StateChip } from "@/components/mobile/v2/state-chip";
 import type { CurrencyCode } from "@/types/domain";
 
 interface DebtAccountBreakdown {
+  id: string;
   name: string;
   type: "CREDIT_CARD" | "LOAN";
   monthlyPayment: number;
@@ -116,7 +117,7 @@ export function DeudasHero({
                 {accounts.map((acct) => {
                   const isCC = acct.type === "CREDIT_CARD";
                   return (
-                    <div key={acct.name} className="flex items-center justify-between text-xs">
+                    <div key={acct.id} className="flex items-center justify-between text-xs">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-z-sage-light">{acct.name}</p>
                         <p className="text-[10px] text-muted-foreground">
