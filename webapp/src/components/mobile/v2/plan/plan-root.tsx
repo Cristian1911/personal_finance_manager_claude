@@ -32,9 +32,12 @@ export function PlanRoot({
   wishlistCount,
 }: PlanRootProps) {
   const { incomes, payments } = useMemo(() => {
+    const DEBT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
     const upcoming = planData.recurring.upcoming;
     return {
-      incomes: upcoming.filter((u) => u.template.direction === "INFLOW"),
+      incomes: upcoming.filter(
+        (u) => u.template.direction === "INFLOW" && !DEBT_TYPES.has(u.template.account.account_type)
+      ),
       payments: upcoming.filter((u) => u.template.direction === "OUTFLOW"),
     };
   }, [planData.recurring.upcoming]);

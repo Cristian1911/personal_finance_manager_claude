@@ -105,7 +105,7 @@ export function CashFlowViewToggle({
         {view === "line" ? (
           <>
             <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <LineChart
                   data={data}
                   margin={{ top: 10, right: 10, bottom: 0, left: 0 }}

@@ -7,12 +7,13 @@ import {
   parseMonth,
   formatMonthParam,
   formatMonthLabel,
+  formatMonthLabelShort,
   isCurrentMonth,
   addMonths,
   subMonths,
 } from "@/lib/utils/date";
 
-export function MonthSelector() {
+export function MonthSelector({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -54,9 +55,9 @@ export function MonthSelector() {
         variant={isCurrent ? "secondary" : "outline"}
         size="sm"
         onClick={() => navigateToMonth(new Date())}
-        className="min-w-[120px] sm:min-w-[160px] capitalize"
+        className={compact ? "min-w-0 px-2 text-xs capitalize" : "min-w-[120px] sm:min-w-[160px] capitalize"}
       >
-        {formatMonthLabel(currentMonth)}
+        {compact ? formatMonthLabelShort(currentMonth) : formatMonthLabel(currentMonth)}
       </Button>
 
       <Button

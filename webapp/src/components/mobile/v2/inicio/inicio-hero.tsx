@@ -94,7 +94,7 @@ export function InicioHero({
                   Cómo se calcula
                 </p>
                 <div className="flex justify-between text-xs text-z-sage-light">
-                  <span>Saldo total</span>
+                  <span>Ingresos del mes</span>
                   <span>{formatCurrency(breakdown.totalLiquid, currency)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-z-sage-light">

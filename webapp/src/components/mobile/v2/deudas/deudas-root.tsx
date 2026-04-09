@@ -4,11 +4,12 @@ import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import { DeudasHero } from "./deudas-hero";
 import { DeudasGrid } from "./deudas-grid";
-import { DeudasFocus } from "./deudas-focus";
-import { DeudasLoansChips } from "./deudas-loans-chips";
 import { DeudasAccountsAccordion } from "./deudas-accounts-accordion";
 import { DeudasSalaryBar } from "./deudas-salary-bar";
+import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Banknote, Calculator } from "lucide-react";
 import type { CurrencyCode } from "@/types/domain";
 import type { DebtStats, DebtOverview, MonthlyBreakdown } from "@zeta/shared";
 
@@ -69,20 +70,43 @@ export function DeudasRoot({
         totalMonthlyPayment={stats.totalMonthlyPayment}
         monthlyInterest={overview.monthlyInterestEstimate}
         currency={currency}
+        accounts={overview.accounts.map((a) => ({
+          name: a.name,
+          type: a.type as "CREDIT_CARD" | "LOAN",
+          monthlyPayment: a.monthlyPayment ?? 0,
+          interestRate: a.interestRate ?? 0,
+          balance: a.balance,
+          currency: a.currency,
+        }))}
+        expanded={activeZone === "hero"}
+        onToggle={() => toggle("hero")}
       />
 
-      {/* Action row — extra payment + simulate */}
-      <div className="flex items-center gap-2">
-        {extraPaymentTrigger}
+      {/* Action cards — discovery chip style */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className={cn(PANEL_INSET_CLASS, "flex items-center gap-2.5 px-3 py-3")}>
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-z-brass/20 bg-z-brass/10">
+            <Banknote className="size-4 text-z-brass" />
+          </div>
+          <div className="min-w-0 flex-1">
+            {extraPaymentTrigger}
+          </div>
+        </div>
         <Link
           href="/deudas/planificador"
-          className="rounded-full border border-white/6 bg-black/10 px-3.5 py-2 text-[11px] font-semibold text-z-sage-light transition-colors hover:bg-white/5"
+          className={cn(PANEL_INSET_CLASS, "flex items-center gap-2.5 px-3 py-3 transition-colors active:bg-white/[0.03]")}
         >
-          Simular pagos
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-z-brass/20 bg-z-brass/10">
+            <Calculator className="size-4 text-z-brass" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[12px] font-semibold leading-tight">Simular pagos</p>
+            <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">Planificador</p>
+          </div>
         </Link>
       </div>
 
-      {/* Two rings: utilization + closest exit — expandable chips */}
+      {/* Three rings: utilization + closest exit + loan payment — expandable chips */}
       {overview.totalCreditLimit > 0 && (
         <DeudasGrid
           overallUtilization={overview.overallUtilization}
@@ -106,21 +130,14 @@ export function DeudasRoot({
               })),
           }))}
           currency={currency}
+          loanMonthlyPayment={stats.loans.monthlyPayment}
+          loanPayments={stats.loans.payments}
+          loanProgressList={stats.loans.progressList}
+          loanRemainingList={stats.loans.remainingList}
           activeChip={activeZone?.startsWith("grid-") ? activeZone : null}
           onToggleChip={(id) => toggle(id)}
         />
       )}
-
-      {/* Focus — dominant debt */}
-      <DeudasFocus stats={stats} currency={currency} />
-
-      {/* Loan chips with progress bar */}
-      <DeudasLoansChips
-        stats={stats}
-        currency={currency}
-        sectionActive={activeZone === "loans"}
-        onActivate={() => toggle("loans")}
-      />
 
       {/* Salary bar — collapsed by default (NOT expandable, hover interaction only) */}
       {salaryBreakdown && (

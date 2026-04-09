@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
+import type { AccountPaymentEntry, AccountProgressEntry, AccountRemainingEntry } from "@zeta/shared";
 
 interface CurrencyDebtInfo {
   currency: string;
@@ -29,6 +30,11 @@ interface DeudasGridProps {
   closestExitProgress: number | null;
   creditCards?: CreditCardInfo[];
   currency: CurrencyCode;
+  /** Loan data for the third chip */
+  loanMonthlyPayment: number;
+  loanPayments: AccountPaymentEntry[];
+  loanProgressList: AccountProgressEntry[];
+  loanRemainingList: AccountRemainingEntry[];
   /** Controlled from parent page-level accordion */
   activeChip: string | null;
   onToggleChip: (id: string) => void;
@@ -79,6 +85,10 @@ export function DeudasGrid({
   closestExitProgress,
   creditCards = [],
   currency,
+  loanMonthlyPayment,
+  loanPayments,
+  loanProgressList,
+  loanRemainingList,
   activeChip,
   onToggleChip,
 }: DeudasGridProps) {
@@ -90,12 +100,13 @@ export function DeudasGrid({
   const exitProgress = closestExitProgress ?? 0;
   const isUsoActive = activeChip === "grid-uso";
   const isSalidaActive = activeChip === "grid-salida";
-  const hasActive = isUsoActive || isSalidaActive;
+  const isPrestamosActive = activeChip === "grid-prestamos";
+  const hasActive = isUsoActive || isSalidaActive || isPrestamosActive;
 
   return (
     <div>
       {/* Chip row */}
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
         {/* Uso del cupo — clickable chip */}
         <button
           type="button"
@@ -143,9 +154,28 @@ export function DeudasGrid({
             </div>
           )}
         </button>
+
+        {/* Préstamos / mes — clickable chip */}
+        <button
+          type="button"
+          onClick={() => onToggleChip("grid-prestamos")}
+          className={cn(
+            PANEL_INSET_CLASS,
+            "w-full p-3 text-center transition-colors",
+            isPrestamosActive && "ring-1 ring-z-brass/30 bg-z-brass/[0.06]"
+          )}
+          aria-expanded={isPrestamosActive}
+        >
+          <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+            Préstamos / mes
+          </p>
+          <p className="mt-2 text-lg font-bold text-foreground">
+            {formatCurrency(loanMonthlyPayment, currency)}
+          </p>
+        </button>
       </div>
 
-      {/* Full-width expanded panel below both chips */}
+      {/* Full-width expanded panel below all chips */}
       <div
         className="grid transition-[grid-template-rows] duration-200 ease-out"
         style={{ gridTemplateRows: hasActive ? "1fr" : "0fr" }}
@@ -191,23 +221,52 @@ export function DeudasGrid({
               </div>
             )}
 
-            {isSalidaActive && closestExitName && (
-              <div className={cn(PANEL_INSET_CLASS, "border-z-income/20 bg-black/20 p-3 space-y-2")}>
+            {isSalidaActive && (
+              <div className={cn(PANEL_INSET_CLASS, "border-z-income/20 bg-black/20 p-3 space-y-3")}>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-income">
-                  Detalle de salida
+                  Progreso de préstamos
                 </p>
-                <p className="text-[11px] text-z-sage-light">
-                  {closestExitName}
-                </p>
-                {exitProgress > 0 && (
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
-                    <div className="h-full rounded-full bg-z-brass" style={{ width: `${Math.min(exitProgress, 100)}%` }} />
-                  </div>
+                {loanProgressList.length > 0 ? (
+                  loanProgressList.map((progress, i) => {
+                    const pct = progress.percentage ?? 0;
+                    const remaining = loanRemainingList.find(
+                      (r) => r.accountName === progress.accountName
+                    );
+                    return (
+                      <div key={`${progress.accountName}-${i}`} className="space-y-1">
+                        <p className="text-[11px] font-medium text-z-sage-light">
+                          {progress.accountName}
+                        </p>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
+                          <div
+                            className="h-full rounded-full bg-z-brass"
+                            style={{ width: `${Math.min(pct, 100)}%` }}
+                          />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          {pct.toFixed(0)}% pagado · {formatCurrency(progress.original - progress.paid, currency)} restantes
+                          {remaining ? ` · ${remaining.months}m` : ""}
+                        </p>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">Sin préstamos activos</p>
                 )}
-                <p className="text-[11px] text-muted-foreground">
-                  {exitProgress.toFixed(0)}% pagado · {closestExitMonths}m restantes
-                  {closestExitBalance ? ` · ${formatCurrency(closestExitBalance, currency)}` : ""}
+              </div>
+            )}
+
+            {isPrestamosActive && (
+              <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3 space-y-2")}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-brass">
+                  Desglose por préstamo
                 </p>
+                {loanPayments.map((p, i) => (
+                  <div key={`${p.accountName}-${i}`} className="flex justify-between text-xs text-z-sage-light">
+                    <span className="truncate mr-2">{p.accountName}</span>
+                    <span className="shrink-0">{formatCurrency(p.amount, currency)}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>

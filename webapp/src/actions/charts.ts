@@ -4,7 +4,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccounts } from "@/actions/accounts";
-import { getUpcomingRecurrences } from "@/actions/recurring-templates";
+import { getUpcomingRecurrences, getPaidOccurrenceKeys, getSkippedOccurrenceKeys } from "@/actions/recurring-templates";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
@@ -676,6 +676,8 @@ export interface DashboardHeroData {
   pendingObligations: PendingObligation[];
   totalPending: number;
   availableToSpend: number;
+  monthlyIncome: number;
+  monthlySpent: number;
   freshness: "fresh" | "stale" | "outdated";
   oldestUpdate: string | null;
   currency: string;
@@ -693,6 +695,8 @@ export async function getDashboardHeroData(
       pendingObligations: [],
       totalPending: 0,
       availableToSpend: 0,
+      monthlyIncome: 0,
+      monthlySpent: 0,
       freshness: "outdated",
       oldestUpdate: null,
       currency: "COP",
@@ -702,10 +706,11 @@ export async function getDashboardHeroData(
 
   const baseCurrency = currency ?? "COP";
 
-  const [accountsResult, upcomingRecurrences, statementPayments] = await Promise.all([
+  const [accountsResult, upcomingRecurrences, statementPayments, monthMetrics] = await Promise.all([
     getAccounts(),
     getUpcomingRecurrences(30),
     getUpcomingPayments(),
+    getMonthMetrics(month),
   ]);
 
   // 1. Process accounts
@@ -746,7 +751,21 @@ export async function getDashboardHeroData(
   const outflowRecurrences = upcomingRecurrences
     .filter((r) => r.next_date <= heroWindowEnd)
     .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency);
-  const recurringObligations: PendingObligation[] = outflowRecurrences
+
+  // Filter out paid and skipped occurrences
+  const recurrenceKeys = outflowRecurrences.map((r) => `${r.template.id}:${r.next_date}`);
+  const [paidKeys, skippedKeys] = recurrenceKeys.length > 0
+    ? await Promise.all([
+        getPaidOccurrenceKeys(recurrenceKeys),
+        getSkippedOccurrenceKeys(recurrenceKeys),
+      ])
+    : [[], []];
+  const excludeSet = new Set([...paidKeys, ...skippedKeys]);
+  const activeRecurrences = outflowRecurrences.filter(
+    (r) => !excludeSet.has(`${r.template.id}:${r.next_date}`)
+  );
+
+  const recurringObligations: PendingObligation[] = activeRecurrences
     .map((r) => ({
       id: r.template.id,
       name: r.template.merchant_name ?? "Recurrente",
@@ -755,7 +774,7 @@ export async function getDashboardHeroData(
       due_date: r.next_date,
       source: "recurring" as const,
     }));
-  const recurringObligationsForAvailable = outflowRecurrences
+  const recurringObligationsForAvailable = activeRecurrences
     .filter((r) => r.template.account.account_type !== "CREDIT_CARD")
     .reduce((sum, r) => sum + r.template.amount, 0);
 
@@ -793,6 +812,8 @@ export async function getDashboardHeroData(
     pendingObligations: allObligations,
     totalPending,
     availableToSpend,
+    monthlyIncome: monthMetrics.income,
+    monthlySpent: monthMetrics.expenses,
     freshness,
     oldestUpdate,
     currency: baseCurrency,

@@ -188,8 +188,12 @@ export function computeDebtStats(accounts: DebtAccount[]): DebtStats {
     })
     .sort((a, b) => b.percentage - a.percentage);
 
-  const loanRemainingHeadline = loanRemainingList.length > 0
-    ? { months: loanRemainingList[0].months, accountName: loanRemainingList[0].accountName }
+  const loanRemainingHeadline = loanProgressList.length > 0
+    ? (() => {
+        const topProgress = loanProgressList[0]; // highest % paid
+        const matching = loanRemainingList.find((r) => r.accountName === topProgress.accountName);
+        return { months: matching?.months ?? 0, accountName: topProgress.accountName };
+      })()
     : null;
   const loanProgressHeadline = loanProgressList.length > 0
     ? { percentage: loanProgressList[0].percentage, accountName: loanProgressList[0].accountName }

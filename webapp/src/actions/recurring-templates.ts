@@ -9,7 +9,6 @@ import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import {
-  getNextOccurrence,
   getOccurrencesBetween,
   DEBT_PAYMENT_CATEGORY_ID,
   TRANSFER_CATEGORY_ID,
@@ -835,6 +834,91 @@ export async function recordRecurringOccurrencePayment(input: {
       alreadyRecorded: inserted.alreadyRecorded,
     },
   };
+}
+
+/**
+ * Mark a recurring occurrence as skipped (already paid manually, no transaction needed).
+ * Persists to DB so dashboard and other pages reflect the skip.
+ */
+export async function skipRecurringOccurrence(
+  templateId: string,
+  occurrenceDate: string,
+): Promise<ActionResult<{ skipped: boolean }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("recurring_occurrence_skips")
+    .upsert(
+      {
+        user_id: user.id,
+        template_id: templateId,
+        occurrence_date: occurrenceDate,
+      },
+      { onConflict: "template_id,occurrence_date" }
+    );
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateFinancialViews();
+  revalidateTag("recurring", "zeta");
+
+  return { success: true, data: { skipped: true } };
+}
+
+/**
+ * Get which recurring occurrence keys have been skipped (manually marked as paid).
+ * Each key is "templateId:occurrenceDate".
+ */
+export async function getSkippedOccurrenceKeys(
+  occurrenceKeys: string[]
+): Promise<string[]> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken || occurrenceKeys.length === 0) return [];
+  return getSkippedOccurrenceKeysCached(user.id, occurrenceKeys, accessToken);
+}
+
+async function getSkippedOccurrenceKeysCached(
+  userId: string,
+  occurrenceKeys: string[],
+  accessToken: string,
+): Promise<string[]> {
+  "use cache";
+  cacheTag("recurring");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  // Parse keys into template_id + occurrence_date pairs
+  const pairs: Array<{ templateId: string; occurrenceDate: string; key: string }> = [];
+  for (const key of occurrenceKeys) {
+    const sepIdx = key.indexOf(":");
+    if (sepIdx === -1) continue;
+    pairs.push({
+      templateId: key.slice(0, sepIdx),
+      occurrenceDate: key.slice(sepIdx + 1),
+      key,
+    });
+  }
+  if (pairs.length === 0) return [];
+
+  const templateIds = [...new Set(pairs.map((p) => p.templateId))];
+  const occurrenceDates = [...new Set(pairs.map((p) => p.occurrenceDate))];
+
+  const { data } = await supabase
+    .from("recurring_occurrence_skips")
+    .select("template_id, occurrence_date")
+    .eq("user_id", userId)
+    .in("template_id", templateIds)
+    .in("occurrence_date", occurrenceDates);
+
+  if (!data) return [];
+
+  const skipSet = new Set(
+    data.map((row) => `${row.template_id}:${row.occurrence_date}`)
+  );
+
+  return pairs.filter((p) => skipSet.has(p.key)).map((p) => p.key);
 }
 
 /**

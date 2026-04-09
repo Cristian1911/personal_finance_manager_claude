@@ -18,9 +18,36 @@ const MobileTransactionForm = dynamic(
   { ssr: false, loading: () => null }
 );
 
+const LEFT_TABS = MOBILE_TABS.slice(0, 2);
+const RIGHT_TABS = MOBILE_TABS.slice(2);
+const SAFE_AREA_BOTTOM_STYLE = { paddingBottom: "env(safe-area-inset-bottom)" } as const;
+
 interface MobileTabBarProps {
   accounts: Account[];
   categories: CategoryWithChildren[];
+}
+
+function TabLinks({ tabs, pathname }: { tabs: typeof MOBILE_TABS; pathname: string }) {
+  return (
+    <div className="flex flex-1 items-center justify-around">
+      {tabs.map((tab) => {
+        const active = isMobileTabActive(pathname, tab);
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={cn(
+              "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors",
+              active ? "text-z-brass" : "text-muted-foreground/70"
+            )}
+          >
+            <tab.icon className="size-5" />
+            {tab.title}
+          </Link>
+        );
+      })}
+    </div>
+  );
 }
 
 export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
@@ -30,16 +57,12 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
 
   const keyboardOpen = keyboardInset > 0;
 
-  const leftTabs = MOBILE_TABS.slice(0, 2);
-  const rightTabs = MOBILE_TABS.slice(2);
-
   return (
     <>
-      {/* Full tab bar — hidden when keyboard is open or form is open */}
       {!keyboardOpen && !formOpen && (
         <nav
           className="fixed bottom-0 left-0 right-0 z-[9999] lg:hidden"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          style={SAFE_AREA_BOTTOM_STYLE}
         >
           <div
             className={cn(
@@ -47,59 +70,24 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
               MOBILE_BG_CLASS
             )}
           >
-            <div className="flex flex-1 items-center justify-around">
-              {leftTabs.map((tab) => {
-                const active = isMobileTabActive(pathname, tab);
-                return (
-                  <Link
-                    key={tab.href}
-                    href={tab.href}
-                    className={cn(
-                      "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
-                      active ? "text-z-brass" : "text-muted-foreground/70"
-                    )}
-                  >
-                    <tab.icon className="size-[18px]" />
-                    {tab.title}
-                  </Link>
-                );
-              })}
-            </div>
+            <TabLinks tabs={LEFT_TABS} pathname={pathname} />
 
-            <div className="flex shrink-0 items-center justify-center px-4 py-2">
+            <div className="relative flex shrink-0 items-center justify-center px-4 py-2">
               <button
                 type="button"
                 onClick={() => setFormOpen(true)}
-                className="flex size-[34px] items-center justify-center rounded-full bg-z-brass text-z-ink shadow-[0_0_12px_rgba(184,148,79,0.35)] transition-transform active:scale-95"
+                className="flex size-12 -mt-4 items-center justify-center rounded-full bg-z-brass text-z-ink shadow-[0_0_16px_rgba(184,148,79,0.4)] transition-transform active:scale-95"
                 aria-label="Registrar movimiento"
               >
-                <Plus className="size-4 stroke-[2.5]" />
+                <Plus className="size-5 stroke-[2.5]" />
               </button>
             </div>
 
-            <div className="flex flex-1 items-center justify-around">
-              {rightTabs.map((tab) => {
-                const active = isMobileTabActive(pathname, tab);
-                return (
-                  <Link
-                    key={tab.href}
-                    href={tab.href}
-                    className={cn(
-                      "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
-                      active ? "text-z-brass" : "text-muted-foreground/70"
-                    )}
-                  >
-                    <tab.icon className="size-[18px]" />
-                    {tab.title}
-                  </Link>
-                );
-              })}
-            </div>
+            <TabLinks tabs={RIGHT_TABS} pathname={pathname} />
           </div>
         </nav>
       )}
 
-      {/* Floating FAB — sits above keyboard when it's open on the page (not in form) */}
       {keyboardOpen && !formOpen && (
         <button
           type="button"
@@ -112,10 +100,9 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
         </button>
       )}
 
-      {/* Full-screen transaction form — replaces the old drawer */}
       {formOpen && (
         <div
-          className="fixed inset-0 z-[9999] flex flex-col bg-background lg:hidden"
+          className="fixed inset-0 z-50 flex flex-col bg-background lg:hidden"
           style={{
             paddingTop: "env(safe-area-inset-top)",
             paddingBottom: keyboardOpen
@@ -123,7 +110,6 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
               : "env(safe-area-inset-bottom)",
           }}
         >
-          {/* Header */}
           <div className="flex items-center border-b border-border/40 px-4 py-3">
             <button
               type="button"
@@ -136,10 +122,10 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
             <h2 className="flex-1 text-center text-base font-semibold">
               Registrar movimiento
             </h2>
-            <div className="size-8" />
+            {/* Balances close button width for centered title */}
+            <div className="size-8" aria-hidden="true" />
           </div>
 
-          {/* Scrollable form */}
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
             <MobileTransactionForm
               accounts={accounts}

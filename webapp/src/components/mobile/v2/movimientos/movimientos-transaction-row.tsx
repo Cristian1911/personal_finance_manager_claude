@@ -7,9 +7,8 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
-import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
-import { categorizeTransaction, assignDestinatario } from "@/actions/categorize";
+import { categorizeTransaction } from "@/actions/categorize";
 import { toast } from "sonner";
 import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
 
@@ -26,13 +25,9 @@ export function MovimientosTransactionRow({
   onCategorized,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   // Optimistic local state
-  const [localDest, setLocalDest] = useState<{
-    id: string;
-    name: string;
-  } | null>(tx.destinatario ?? null);
   const [localCategory, setLocalCategory] = useState(tx.category);
 
   const description =
@@ -42,7 +37,6 @@ export function MovimientosTransactionRow({
     "Sin descripción";
 
   const categoryName = localCategory?.name_es ?? localCategory?.name ?? null;
-  const destinatarioName = localDest?.name ?? null;
 
   function handleCategorize(categoryId: string | null) {
     if (!categoryId) return;
@@ -59,18 +53,6 @@ export function MovimientosTransactionRow({
         toast.error("Error al categorizar");
       } else {
         onCategorized?.(tx.id, categoryId);
-      }
-    });
-  }
-
-  function handleDestChange(id: string | null, name: string | null) {
-    if (!id || !name) return;
-    setLocalDest({ id, name });
-    startTransition(async () => {
-      const result = await assignDestinatario(tx.id, id);
-      if (!result.success) {
-        setLocalDest(tx.destinatario ?? null);
-        toast.error("Error al asignar destinatario");
       }
     });
   }
@@ -143,12 +125,6 @@ export function MovimientosTransactionRow({
               triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-lg border border-white/10 bg-white/[0.03] text-z-brass hover:bg-white/[0.06]"
             />
           )}
-          <DestinatarioZonePicker
-            value={localDest?.id ?? null}
-            onValueChange={handleDestChange}
-            selectedName={destinatarioName}
-            compact
-          />
           <TagZonePicker
             entityType="transaction"
             entityId={tx.id}

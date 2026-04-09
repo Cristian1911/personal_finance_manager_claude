@@ -7,6 +7,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
 import { getOccurrencesBetween } from "@zeta/shared";
+import { getPaidOccurrenceKeys, getSkippedOccurrenceKeys } from "@/actions/recurring-templates";
 import type { RecurrenceFrequency } from "@zeta/shared";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -166,7 +167,26 @@ export async function getAttentionItems(): Promise<AttentionItems> {
   if (!user || !accessToken) return EMPTY;
 
   try {
-    return await getAttentionItemsCached(user.id, accessToken);
+    const items = await getAttentionItemsCached(user.id, accessToken);
+
+    // Filter out paid/skipped occurrences from upcoming payments
+    if (items.upcomingPayments.length > 0) {
+      const keys = items.upcomingPayments.map(
+        (p) => `${p.templateId}:${p.occurrenceDate}`
+      );
+      const [paidKeys, skippedKeys] = await Promise.all([
+        getPaidOccurrenceKeys(keys),
+        getSkippedOccurrenceKeys(keys),
+      ]);
+      const excludeSet = new Set([...paidKeys, ...skippedKeys]);
+      if (excludeSet.size > 0) {
+        items.upcomingPayments = items.upcomingPayments.filter(
+          (p) => !excludeSet.has(`${p.templateId}:${p.occurrenceDate}`)
+        );
+      }
+    }
+
+    return items;
   } catch (err) {
     console.error("Error fetching attention items:", err);
     return EMPTY;

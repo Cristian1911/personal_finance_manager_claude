@@ -38,7 +38,6 @@ interface MovimientosHerramientasProps {
   uncategorizedTransactions: Transaction[];
   uncategorizedCount: number;
   pendingEmails: PendingEmailTransaction[];
-  pendingMatchCount: number;
   categories: CategoryWithChildren[];
   accounts: Pick<Account, "id" | "name" | "currency_code">[];
   currency: CurrencyCode;
@@ -46,7 +45,7 @@ interface MovimientosHerramientasProps {
   onToggleTool: (id: string) => void;
 }
 
-type ToolZone = "categorizar" | "destinatarios" | "importar";
+type ToolZone = "categorizar" | "importar";
 
 const accentStyles = {
   categorizar: {
@@ -54,12 +53,6 @@ const accentStyles = {
     panel: "border-z-brass/20",
     eyebrow: "text-z-brass",
     link: "text-z-brass",
-  },
-  destinatarios: {
-    chip: "border-z-alert/30 bg-[linear-gradient(180deg,rgba(var(--z-alert-rgb,230,176,60),0.08),transparent)]",
-    panel: "border-z-alert/20",
-    eyebrow: "text-z-alert",
-    link: "text-z-alert",
   },
   importar: {
     chip: "border-z-sage/30 bg-[linear-gradient(180deg,rgba(var(--z-sage-rgb,142,168,130),0.08),transparent)]",
@@ -73,7 +66,6 @@ export function MovimientosHerramientas({
   uncategorizedTransactions,
   uncategorizedCount,
   pendingEmails,
-  pendingMatchCount,
   categories,
   accounts,
   currency,
@@ -89,7 +81,7 @@ export function MovimientosHerramientas({
 
   return (
     <MobileZone eyebrow="HERRAMIENTAS">
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         <button
           type="button"
           onClick={() => toggle("categorizar")}
@@ -114,31 +106,6 @@ export function MovimientosHerramientas({
             <p className="mt-1 flex items-center justify-center gap-1 text-[9px] text-z-debt">
               <span className="inline-block size-1.5 rounded-full bg-z-debt" />
               {uncategorizedCount} por resolver
-            </p>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => toggle("destinatarios")}
-          className={cn(
-            "rounded-[14px] p-2.5 text-center transition-colors",
-            isActive("destinatarios")
-              ? cn("border", accentStyles.destinatarios.chip)
-              : cn(PANEL_INSET_CLASS)
-          )}
-          aria-expanded={isActive("destinatarios")}
-        >
-          <p className="text-[22px] font-[680] leading-tight">
-            {pendingMatchCount}
-          </p>
-          <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
-            Destinatarios
-          </p>
-          {pendingMatchCount > 0 && (
-            <p className="mt-1 flex items-center justify-center gap-1 text-[9px] text-z-alert">
-              <span className="inline-block size-1.5 rounded-full bg-z-alert" />
-              {pendingMatchCount} sugerencias
             </p>
           )}
         </button>
@@ -192,9 +159,6 @@ export function MovimientosHerramientas({
                     categories={categories}
                     currency={currency}
                   />
-                )}
-                {activeZone === "destinatarios" && (
-                  <DestinatariosDetail count={pendingMatchCount} />
                 )}
                 {activeZone === "importar" && (
                   <ImportarDetail
@@ -409,32 +373,6 @@ function CategorizarDetail({
   );
 }
 
-/* ─── Destinatarios detail ───────────────────────────────────────────────── */
-
-function DestinatariosDetail({ count }: { count: number }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-alert">
-        Asignaciones pendientes
-      </p>
-      <p className="text-xs text-z-sage-light">
-        {count > 0
-          ? `${count} transaccion${count !== 1 ? "es" : ""} sin destinatario asignado. Asignarlos mejora la detección automática.`
-          : "Todos los destinatarios están asignados."}
-      </p>
-      {count > 0 && (
-        <Link
-          href="/destinatarios"
-          className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-z-alert"
-        >
-          Ir a destinatarios
-          <ArrowRight className="size-3" />
-        </Link>
-      )}
-    </div>
-  );
-}
-
 /* ─── Pattern labels ─────────────────────────────────────────────────────── */
 
 const PATTERN_LABELS: Record<string, { label: string; icon: typeof Mail }> = {
@@ -514,7 +452,7 @@ function ImportarDetail({
             failed++;
           }
         } catch {
-          approved++;
+          failed++;
         }
       }
 

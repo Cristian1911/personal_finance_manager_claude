@@ -1790,6 +1790,52 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_occurrence_skips: {
+        Row: {
+          id: string
+          user_id: string
+          template_id: string
+          occurrence_date: string
+          skipped_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          template_id: string
+          occurrence_date: string
+          skipped_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          template_id?: string
+          occurrence_date?: string
+          skipped_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_occurrence_skips_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transaction_templates_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_occurrence_skips_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transaction_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_occurrence_skips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_transaction_templates_enc: {
         Row: {
           account_id: string

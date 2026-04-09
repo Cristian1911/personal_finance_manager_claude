@@ -8,6 +8,7 @@ import { PlanTabPeriodo } from "@/components/plan/tabs/plan-tab-periodo";
 import { PlanTabRecurrentes } from "@/components/plan/tabs/plan-tab-recurrentes";
 import { PlanTabDeseos } from "@/components/plan/tabs/plan-tab-deseos";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { DesktopOnly } from "@/components/ui/responsive-render";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getActivePeriod } from "@/actions/cashflow-planner";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
@@ -123,46 +124,48 @@ export default async function PlanPage({
         )}
       </div>
 
-      {/* ── Desktop ── */}
-      <div className="hidden lg:block space-y-6">
-        {/* Header — renders immediately from shell data */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <SectionEyebrow>Plan</SectionEyebrow>
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight">Tu capa estratégica</h1>
-              <p className="text-muted-foreground">
-                {monthLabel} · reúne presupuesto, deuda, obligaciones y escenarios en una sola decisión
-              </p>
+      {/* ── Desktop (not mounted on mobile to avoid blocking rendering thread) ── */}
+      <DesktopOnly>
+        <div className="space-y-6">
+          {/* Header — renders immediately from shell data */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <SectionEyebrow>Plan</SectionEyebrow>
+              <div>
+                <h1 className="text-3xl font-semibold tracking-tight">Tu capa estratégica</h1>
+                <p className="text-muted-foreground">
+                  {monthLabel} · reúne presupuesto, deuda, obligaciones y escenarios en una sola decisión
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <PlanTabNav activeTab={activeTab} />
+              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-muted animate-pulse" />}>
+                <MonthSelector />
+              </Suspense>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <PlanTabNav activeTab={activeTab} />
-            <Suspense fallback={<div className="h-9 w-40 rounded-md bg-muted animate-pulse" />}>
-              <MonthSelector />
+
+          {/* Resumen content — streams via zone */}
+          {isResumen && (
+            <Suspense fallback={resumenSkeleton}>
+              <PlanResumenZone
+                month={month}
+                currency={currency as CurrencyCode}
+                monthLabel={monthLabel}
+                activeTab={activeTab}
+              />
             </Suspense>
-          </div>
+          )}
+
+          {/* Tab content — already Suspensed */}
+          {tabContent && (
+            <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+              {tabContent}
+            </Suspense>
+          )}
         </div>
-
-        {/* Resumen content — streams via zone */}
-        {isResumen && (
-          <Suspense fallback={resumenSkeleton}>
-            <PlanResumenZone
-              month={month}
-              currency={currency as CurrencyCode}
-              monthLabel={monthLabel}
-              activeTab={activeTab}
-            />
-          </Suspense>
-        )}
-
-        {/* Tab content — already Suspensed */}
-        {tabContent && (
-          <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
-            {tabContent}
-          </Suspense>
-        )}
-      </div>
+      </DesktopOnly>
     </div>
   );
 }
