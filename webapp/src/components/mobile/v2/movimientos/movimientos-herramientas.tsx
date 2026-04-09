@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownLeft, ArrowRight, QrCode, CreditCard, Banknote, Building, Wallet, ArrowUpRight as TransferIcon, Mail, Hash, UserRound, Pencil } from "lucide-react";
 import {
@@ -459,6 +460,7 @@ function ImportarDetail({
   accounts: Pick<Account, "id" | "name" | "currency_code">[];
   currency: CurrencyCode;
 }) {
+  const router = useRouter();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
@@ -475,6 +477,7 @@ function ImportarDetail({
     startTransition(async () => {
       const result = await approveEmailTransaction(id, overrideAccountId);
       if (result.success) {
+        router.refresh();
         toast.success("Importada");
       } else {
         toast.error(result.error ?? "Error al importar");
@@ -486,6 +489,7 @@ function ImportarDetail({
     startTransition(async () => {
       const result = await dismissEmailTransaction(id);
       if (result.success) {
+        router.refresh();
         toast.success("Descartada");
       } else {
         toast.error(result.error ?? "Error al descartar");
@@ -514,6 +518,7 @@ function ImportarDetail({
         }
       }
 
+      router.refresh();
       if (failed === 0) {
         toast.success(`${approved} importadas`);
       } else {
