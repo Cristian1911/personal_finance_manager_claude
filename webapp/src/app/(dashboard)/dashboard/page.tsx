@@ -26,7 +26,9 @@ import { PrefetchLink } from "@/components/ui/prefetch-link";
 import { Button } from "@/components/ui/button";
 import { getAccountsWithSparklineData } from "@/actions/charts";
 import { getAccounts } from "@/actions/accounts";
+import { getRecentTransactions } from "@/actions/transactions";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
+import { isMobileRequest } from "@/lib/utils/device";
 import {
   AccountsOverview,
 } from "@/components/dashboard/accounts-overview";
@@ -53,20 +55,6 @@ import { WidgetsZone } from "@/components/dashboard/zones/widgets-zone";
 import { HealthZone } from "@/components/dashboard/zones/health-zone";
 import { MobileZone } from "@/components/dashboard/zones/mobile-zone";
 import type { HealthMetersData } from "@/actions/health-meters";
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type DashboardTransactionRow = {
-  id: string;
-  amount: number;
-  direction: "INFLOW" | "OUTFLOW";
-  account_id: string;
-  merchant_name?: string | null;
-  clean_description?: string | null;
-  transaction_date?: string;
-  currency_code?: string;
-  categories?: { name_es: string | null; name: string } | null;
-};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tier 2 async Server Components — desktop
@@ -123,36 +111,22 @@ export default async function DashboardPage({
   const target = parseMonth(month);
   const monthLabel = formatMonthLabel(target);
 
-  const { supabase, user } = await getAuthenticatedClient();
+  const { user } = await getAuthenticatedClient();
 
   if (!user) return null;
 
-  // Shell fetches — immediate render data
-  const [preferredCurrency, allAccountsResult, dashboardConfigData] =
+  const isMobile = await isMobileRequest();
+
+  // Shell fetches — all cached, ~0ms on cache hit
+  const [preferredCurrency, allAccountsResult, dashboardConfigData, recentTx] =
     await Promise.all([
       getPreferredCurrency(),
       getAccounts(),
       getDashboardConfigWithPurpose(),
+      getRecentTransactions(),
     ]);
 
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
-  const accountIdsForFilter = allAccounts.map((a) => a.id);
-
-  // Fetch recent transactions filtered by demo mode accounts
-  let recentTransactionsQuery = supabase
-    .from("transactions")
-    .select("id, amount, direction, account_id, merchant_name, clean_description, transaction_date, currency_code, categories!category_id(name_es, name)")
-    .eq("is_excluded", false)
-    .order("transaction_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(5)
-    .is("reconciled_into_transaction_id", null);
-
-  if (accountIdsForFilter.length > 0) {
-    recentTransactionsQuery = recentTransactionsQuery.in("account_id", accountIdsForFilter);
-  }
-
-  const { data: recentTransactions } = await recentTransactionsQuery;
 
   // Resolve currency from cached accounts — no extra DB queries
   let currency = preferredCurrency;
@@ -160,8 +134,6 @@ export default async function DashboardPage({
   if (!hasCurrencyAccounts && allAccounts.length > 0) {
     currency = allAccounts[0].currency_code as CurrencyCode;
   }
-
-  const recentTx = (recentTransactions ?? []) as DashboardTransactionRow[];
   const hasAccounts = allAccounts.length > 0;
   const starterMode = hasAccounts && recentTx.length === 0;
 
@@ -268,12 +240,14 @@ export default async function DashboardPage({
 
   return (
     <>
-      {/* Mobile dashboard — single Suspense zone */}
-      <div className="lg:hidden">
-        <Suspense fallback={<MobileZoneSkeleton />}>
-          <MobileZone month={month} currency={currency as CurrencyCode} recentTx={recentTx} />
-        </Suspense>
-      </div>
+      {/* Mobile dashboard — skip server render on desktop to avoid 6 wasted data fetches */}
+      {isMobile && (
+        <div className="lg:hidden">
+          <Suspense fallback={<MobileZoneSkeleton />}>
+            <MobileZone month={month} currency={currency as CurrencyCode} recentTx={recentTx} />
+          </Suspense>
+        </div>
+      )}
 
       {/* Desktop dashboard — section-based layout */}
       <div className="hidden lg:block">

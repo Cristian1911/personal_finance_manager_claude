@@ -37,6 +37,8 @@ export interface InicioRootProps {
     daysInMonth: number;
     dayOfMonth: number;
     spentToday: number;
+    spentYesterday: number;
+    avgLast7: number;
     currency: CurrencyCode;
   };
   attentionItems: {

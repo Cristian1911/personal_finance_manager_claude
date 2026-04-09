@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   TRANSFER_CATEGORY_ID,
   DEBT_PAYMENT_CATEGORY_ID,
@@ -268,14 +268,7 @@ export async function applyExtraDebtPayment(
   }
 
   // ── 4. Revalidate all affected cache tags ─────────────────────────────────
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("budgets", "zeta");
+  revalidateFinancialViews();
 
   return { success: true, data: { applied, totalPaid } };
 }

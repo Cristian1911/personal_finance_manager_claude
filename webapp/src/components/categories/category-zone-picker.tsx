@@ -278,7 +278,7 @@ export function CategoryZonePicker({
   // -----------------------------------------------------------------------
 
   const pickerContent = (
-    <PickerBody
+    <CategoryPickerBody
       categories={filtered}
       value={value}
       onSelect={handleSelect}
@@ -360,21 +360,23 @@ export function CategoryZonePicker({
 // PickerBody — the two-step zone picker content
 // ---------------------------------------------------------------------------
 
-function PickerBody({
-  categories,
-  value,
-  onSelect,
-  onCategoryCreated,
-  suggestion,
-  direction,
-}: {
+export interface CategoryPickerBodyProps {
   categories: CategoryWithChildren[];
   value: string | null;
   onSelect: (id: string | null) => void;
   onCategoryCreated: (cat: CreatedCategoryInfo) => void;
   suggestion: CategorySuggestion | null;
   direction?: TransactionDirection;
-}) {
+}
+
+export function CategoryPickerBody({
+  categories,
+  value,
+  onSelect,
+  onCategoryCreated,
+  suggestion,
+  direction,
+}: CategoryPickerBodyProps) {
   const [search, setSearch] = useState("");
   const [expandedZoneId, setExpandedZoneId] = useState<string | null>(() => {
     // Pre-expand zone containing current value

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidateTag, cacheTag, cacheLife } from "next/cache";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
@@ -823,12 +824,8 @@ export async function recordRecurringOccurrencePayment(input: {
     createdTxs: inserted.createdTxs,
   });
 
-  revalidateTag("accounts", "zeta");
+  revalidateFinancialViews();
   revalidateTag("recurring", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("categorize", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("attention", "zeta");
   revalidateTag("impact", "zeta");
 
   return {

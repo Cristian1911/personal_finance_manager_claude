@@ -1,6 +1,7 @@
 "use server";
 
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { extractPattern, matchDestinatario, prepareDestinatarioRules } from "@zeta/shared";
@@ -266,13 +267,8 @@ export async function categorizeTransaction(
       .is("default_category_id", null);
   }
 
-  revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
+  revalidateFinancialViews();
   revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -297,12 +293,7 @@ export async function uncategorizeTransaction(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("attention", "zeta");
+  revalidateFinancialViews();
   return { success: true, data: undefined };
 }
 
@@ -324,12 +315,7 @@ export async function confirmAutoCategory(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("attention", "zeta");
+  revalidateFinancialViews();
   return { success: true, data: undefined };
 }
 
@@ -351,12 +337,7 @@ export async function bulkConfirmAutoCategory(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("attention", "zeta");
+  revalidateFinancialViews();
   return { success: true, data: { confirmed: count ?? transactionIds.length } };
 }
 
@@ -419,13 +400,8 @@ export async function bulkCategorize(
     }
   }
 
-  revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
+  revalidateFinancialViews();
   revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: { categorized } };
 }
 
@@ -507,13 +483,8 @@ export async function assignDestinatario(
     );
   }
 
-  revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
+  revalidateFinancialViews();
   revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -589,12 +560,7 @@ export async function bulkApplyDestinatarioMatches(
     if (!error) applied += group.txIds.length;
   }
 
-  revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("attention", "zeta");
+  revalidateFinancialViews();
 
   return { success: true, data: { applied } };
 }
@@ -618,12 +584,7 @@ export async function removeDestinatarioFromTransaction(
     return { success: false, error: error.message };
   }
 
-  revalidateTag("categorize", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
+  revalidateFinancialViews();
   revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }

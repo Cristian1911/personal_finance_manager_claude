@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   computeSnapshotDiffs,
   findReconciliationCandidates,
@@ -847,17 +848,8 @@ export async function importTransactions(
     details,
   });
 
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("categorize", "zeta");
+  revalidateFinancialViews();
   revalidateTag("snapshots", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("attention", "zeta");
   revalidateTag("impact", "zeta");
 
   await trackProductEvent({
