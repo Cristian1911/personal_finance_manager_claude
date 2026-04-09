@@ -248,7 +248,7 @@ export function MobileRecurrentesView({
 
       {/* Completed section */}
       {hook.isHydrated && hook.completed.length > 0 && (
-        <CompletedSection completed={hook.completed} currency={currency} />
+        <CompletedSection completed={hook.completed} />
       )}
     </div>
   );
@@ -260,10 +260,8 @@ export function MobileRecurrentesView({
 
 function CompletedSection({
   completed,
-  currency,
 }: {
   completed: OccurrenceItem[];
-  currency: CurrencyCode;
 }) {
   const [show, setShow] = useState(true);
 

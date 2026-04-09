@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { IncomeEnvelopeCard } from "./income-envelope-card";
 import { ExpenseEntryRow } from "./expense-entry-row";
 import { AssignmentDialog } from "./assignment-dialog";
@@ -8,6 +8,7 @@ import { EntryFormDialog } from "./entry-form-dialog";
 import { EditEntryDialog } from "./edit-entry-dialog";
 import { AutoAssignButton } from "./auto-assign-button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { buildEnvelopeMaps } from "@/lib/utils/cashflow-planner";
 import { Wallet, Receipt } from "lucide-react";
 import type { Account, Category } from "@/types/domain";
 import type { PeriodPlanData, PlanningEntryWithRelations } from "@/types/cashflow-planner";
@@ -25,16 +26,10 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { income_envelopes, expense_entries, unassigned_expenses, currency, period } = data;
 
-  const assignedPerExpense = new Map<string, number>();
-  for (const env of income_envelopes) {
-    for (const { assignment } of env.assignments) {
-      const prev = assignedPerExpense.get(assignment.expense_entry_id) ?? 0;
-      assignedPerExpense.set(
-        assignment.expense_entry_id,
-        prev + Number(assignment.assigned_amount)
-      );
-    }
-  }
+  const { assignedPerExpense, incomeColorMap, expenseAssignmentChips } = useMemo(
+    () => buildEnvelopeMaps(income_envelopes),
+    [income_envelopes],
+  );
 
   function openAssignDialog(expense: PlanningEntryWithRelations) {
     setAssignTarget(expense);
@@ -76,11 +71,12 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
             </div>
           ) : (
             <div className="space-y-3">
-              {income_envelopes.map((env) => (
+              {income_envelopes.map((env, index) => (
                 <IncomeEnvelopeCard
                   key={env.entry.id}
                   envelope={env}
                   currency={currency}
+                  colorIndex={index}
                   onEdit={openEditDialog}
                 />
               ))}
@@ -126,6 +122,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
                   entry={entry}
                   currency={currency}
                   assignedAmount={assignedPerExpense.get(entry.id) ?? 0}
+                  assignmentChips={expenseAssignmentChips.get(entry.id) ?? []}
                   onAssign={() => openAssignDialog(entry)}
                   onEdit={openEditDialog}
                 />
@@ -144,6 +141,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
         existingAssignedToExpense={
           assignTarget ? (assignedPerExpense.get(assignTarget.id) ?? 0) : 0
         }
+        incomeColorMap={incomeColorMap}
       />
 
       <EditEntryDialog

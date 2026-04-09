@@ -23,4 +23,5 @@ export function revalidateFinancialViews() {
   revalidateTag("debt", "zeta");
   revalidateTag("budgets", "zeta");
   revalidateTag("attention", "zeta");
+  revalidateTag("occurrences", "zeta");
 }

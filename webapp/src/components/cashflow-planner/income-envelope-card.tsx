@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,16 +14,18 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
 import type { CurrencyCode, PlanningEntryStatus } from "@/types/domain";
 import type { IncomeEnvelope, PlanningEntryWithRelations } from "@/types/cashflow-planner";
 
 interface IncomeEnvelopeCardProps {
   envelope: IncomeEnvelope;
   currency: CurrencyCode;
+  colorIndex: number;
   onEdit?: (entry: PlanningEntryWithRelations) => void;
 }
 
-export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelopeCardProps) {
+export function IncomeEnvelopeCard({ envelope, currency, colorIndex, onEdit }: IncomeEnvelopeCardProps) {
   const [isPending, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
   const { entry, total_amount, assigned_amount, remaining_amount, assignments } = envelope;
@@ -32,6 +33,7 @@ export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelop
     ? Math.round((assigned_amount / total_amount) * 100)
     : 0;
   const isForeignCurrency = entry.currency_code !== currency;
+  const envelopeColor = getEnvelopeColor(colorIndex);
 
   function handleRemoveAssignment(assignmentId: string) {
     startTransition(async () => {
@@ -59,19 +61,18 @@ export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelop
   }
 
   return (
-    <div className="rounded-xl border border-white/6 bg-card p-4 space-y-3">
+    <div className="rounded-xl border border-white/6 bg-card p-4 space-y-3 border-l-2" style={{ borderLeftColor: envelopeColor.hex }}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={handleToggleStatus}
             disabled={isPending}
-            className="shrink-0 rounded-md border border-white/10 p-1 transition-colors hover:border-z-income/30"
+            className="shrink-0 rounded-md border border-white/10 p-1 transition-colors hover:border-white/20"
           >
             <Check
-              className={`h-3.5 w-3.5 ${
-                entry.status === "COMPLETED" ? "text-z-income" : "text-muted-foreground"
-              }`}
+              className={`h-3.5 w-3.5 ${entry.status === "COMPLETED" ? "" : "text-muted-foreground"}`}
+              style={entry.status === "COMPLETED" ? { color: envelopeColor.hex } : undefined}
             />
           </button>
           <button
@@ -88,7 +89,7 @@ export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelop
         </div>
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <div className="text-right shrink-0">
-            <p className="text-sm sm:text-lg font-semibold tabular-nums text-z-income">
+            <p className={`text-sm sm:text-lg font-semibold tabular-nums ${envelopeColor.text}`}>
               {formatCurrency(Number(entry.amount), entry.currency_code)}
             </p>
             {isForeignCurrency && (
@@ -127,7 +128,9 @@ export function IncomeEnvelopeCard({ envelope, currency, onEdit }: IncomeEnvelop
           <span>Asignado: {formatCurrency(assigned_amount, currency)}</span>
           <span>Disponible: {formatCurrency(remaining_amount, currency)}</span>
         </div>
-        <Progress value={percentUsed} className="h-1.5" />
+        <div className="h-1.5 w-full rounded-full bg-white/6 overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${percentUsed}%`, backgroundColor: envelopeColor.hex }} />
+        </div>
       </div>
 
       {expanded && assignments.length > 0 && (

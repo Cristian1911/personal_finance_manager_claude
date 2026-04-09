@@ -18,7 +18,6 @@ import {
   reflectionSchema,
 } from "@/lib/validators/wishlist";
 import { monthEndStr, monthStartStr, parseMonth } from "@/lib/utils/date";
-import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import type { ActionResult } from "@/types/actions";
 import type { Account, WishlistItem, WishlistReflection } from "@/types/domain";
@@ -293,7 +292,7 @@ export async function getFinancialSnapshot(): Promise<FinancialSnapshot | null> 
 
   const targetMonth = parseMonth(null);
 
-  const [accountsRes, monthTxRes, upcomingPayments, upcomingRecurrences] =
+  const [accountsRes, monthTxRes, upcomingRecurrences] =
     await Promise.all([
       supabase
         .from("accounts")
@@ -308,7 +307,6 @@ export async function getFinancialSnapshot(): Promise<FinancialSnapshot | null> 
         .gte("transaction_date", monthStartStr(targetMonth))
         .lte("transaction_date", monthEndStr(targetMonth))
         .is("reconciled_into_transaction_id", null),
-      getUpcomingPayments(),
       getUpcomingRecurrences(30),
     ]);
 
@@ -360,16 +358,11 @@ export async function getFinancialSnapshot(): Promise<FinancialSnapshot | null> 
     )
     .reduce((sum, item) => sum + item.template.amount, 0);
 
-  const statementCommitments = upcomingPayments.reduce(
-    (sum, item) => sum + item.total_payment_due,
-    0
-  );
-  const upcomingCommittedPayments = recurringCommitments + statementCommitments;
+  const upcomingCommittedPayments = recurringCommitments;
 
-  const daysToNearestPayment = getNearestDays([
-    ...upcomingPayments.map((item) => item.payment_due_date),
-    ...upcomingRecurrences.map((item) => item.next_date),
-  ]);
+  const daysToNearestPayment = getNearestDays(
+    upcomingRecurrences.map((item) => item.next_date)
+  );
 
   const debtUtilizationPct =
     totalCreditLimit > 0

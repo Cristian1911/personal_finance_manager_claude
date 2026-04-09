@@ -1790,31 +1790,70 @@ export type Database = {
         }
         Relationships: []
       }
-      obligation_skips: {
+      recurring_occurrences: {
         Row: {
+          created_at: string
+          expected_amount: number
           id: string
+          occurrence_date: string
+          paid_at: string | null
+          skipped_at: string | null
+          status: Database["public"]["Enums"]["occurrence_status"]
+          template_id: string
+          transaction_id: string | null
           user_id: string
-          obligation_key: string
-          skipped_at: string
         }
         Insert: {
+          created_at?: string
+          expected_amount: number
           id?: string
+          occurrence_date: string
+          paid_at?: string | null
+          skipped_at?: string | null
+          status?: Database["public"]["Enums"]["occurrence_status"]
+          template_id: string
+          transaction_id?: string | null
           user_id: string
-          obligation_key: string
-          skipped_at?: string
         }
         Update: {
+          created_at?: string
+          expected_amount?: number
           id?: string
+          occurrence_date?: string
+          paid_at?: string | null
+          skipped_at?: string | null
+          status?: Database["public"]["Enums"]["occurrence_status"]
+          template_id?: string
+          transaction_id?: string | null
           user_id?: string
-          obligation_key?: string
-          skipped_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "obligation_skips_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "recurring_occurrences_template_id_fkey"
+            columns: ["template_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "recurring_transaction_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_occurrences_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transaction_templates_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_occurrences_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_occurrences_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -3311,6 +3350,7 @@ export type Database = {
         | "OCR_SINGLE"
         | "EMAIL_IMPORT"
         | "EMAIL_PDF_IMPORT"
+      occurrence_status: "pending" | "paid" | "skipped"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
     }
@@ -3486,6 +3526,7 @@ export const Constants = {
         "EMAIL_IMPORT",
         "EMAIL_PDF_IMPORT",
       ],
+      occurrence_status: ["pending", "paid", "skipped"],
       transaction_direction: ["INFLOW", "OUTFLOW"],
       transaction_status: ["PENDING", "POSTED", "CANCELLED"],
     },

@@ -24,6 +24,7 @@ import type {
   TransactionToImport,
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
+import { linkTransactionToOccurrence } from "@/actions/occurrences";
 
 type DebtKind = "credit_card" | "loan";
 type CurrencyCode = Database["public"]["Enums"]["currency_code"];
@@ -744,6 +745,11 @@ export async function importTransactions(
     }
 
     imported++;
+
+    await linkTransactionToOccurrence(
+      tx.account_id, tx.transaction_date,
+      tx.amount, tx.direction, insertedTx.id,
+    );
 
     const decision = tx.import_key
       ? decisionMap.get(tx.import_key)

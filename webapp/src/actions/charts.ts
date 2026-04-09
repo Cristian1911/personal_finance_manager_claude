@@ -4,8 +4,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccounts } from "@/actions/accounts";
-import { getUpcomingRecurrences, getPaidOccurrenceKeys, getSkippedObligationKeys } from "@/actions/recurring-templates";
-import { getUpcomingPayments } from "@/actions/payment-reminders";
+import { getPendingOccurrences } from "@/actions/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import {
@@ -15,7 +14,6 @@ import {
   monthEndStr,
   monthsBeforeStart,
 } from "@/lib/utils/date";
-import { addDays } from "date-fns";
 import { computeDebtBalance } from "@zeta/shared";
 import type { Json } from "@/types/database";
 import type { CurrencyCode } from "@/types/domain";
@@ -673,7 +671,6 @@ export interface PendingObligation {
   amount: number;
   currency_code: string;
   due_date: string;
-  source: "recurring" | "statement";
 }
 
 export interface DashboardHeroData {
@@ -711,10 +708,8 @@ export async function getDashboardHeroData(
 
   const baseCurrency = currency ?? "COP";
 
-  const [accountsResult, upcomingRecurrences, statementPayments, monthMetrics] = await Promise.all([
+  const [accountsResult, monthMetrics] = await Promise.all([
     getAccounts(),
-    getUpcomingRecurrences(30),
-    getUpcomingPayments(),
     getMonthMetrics(month, currency),
   ]);
 
@@ -751,76 +746,30 @@ export async function getDashboardHeroData(
     : null;
   const freshness = getFreshnessLevel(oldestUpdate);
 
-  // 3. Process recurring obligations (14-day rolling window from shared 30-day fetch)
-  const heroWindowEnd = addDays(new Date(), 14).toISOString().slice(0, 10);
-  const outflowRecurrences = upcomingRecurrences
-    .filter((r) => r.next_date <= heroWindowEnd)
-    .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency);
+  // 3. Get pending recurring obligations from materialized occurrences
+  const pendingResult = await getPendingOccurrences(14, baseCurrency);
+  const pendingOccurrences = pendingResult.success ? pendingResult.data : [];
 
-  // Build all obligation keys for unified skip/paid filtering
-  const recurringOblKeys = outflowRecurrences.map((r) => `recurring:${r.template.id}:${r.next_date}`);
-  const recurringPaidKeys = outflowRecurrences.map((r) => `${r.template.id}:${r.next_date}`);
-
-  // 4. Process statement payment obligations
-  const currencyPayments = statementPayments.filter((p) => p.currency_code === baseCurrency);
-  const statementOblKeys = currencyPayments.map((p) => `statement:${p.id}`);
-
-  // 5. Filter out paid and skipped obligations (both recurring and statement)
-  const allOblKeys = [...recurringOblKeys, ...statementOblKeys];
-  const [paidKeys, skippedSet] = await Promise.all([
-    recurringPaidKeys.length > 0 ? getPaidOccurrenceKeys(recurringPaidKeys) : Promise.resolve([]),
-    allOblKeys.length > 0 ? getSkippedObligationKeys(allOblKeys) : Promise.resolve(new Set<string>()),
-  ]);
-  const paidSet = new Set(paidKeys);
-
-  const activeRecurrences = outflowRecurrences.filter(
-    (r) => !paidSet.has(`${r.template.id}:${r.next_date}`) &&
-           !skippedSet.has(`recurring:${r.template.id}:${r.next_date}`)
-  );
-
-  const recurringObligations: PendingObligation[] = activeRecurrences
-    .map((r) => ({
-      id: r.template.id,
-      name: r.template.merchant_name ?? "Recurrente",
-      amount: r.template.amount,
-      currency_code: r.template.currency_code ?? "COP",
-      due_date: r.next_date,
-      source: "recurring" as const,
+  const recurringObligations: PendingObligation[] = pendingOccurrences
+    .filter((o) => o.direction === "OUTFLOW")
+    .map((o) => ({
+      id: o.id,
+      name: o.merchant_name ?? o.description ?? "Recurrente",
+      amount: o.expected_amount,
+      currency_code: o.currency_code,
+      due_date: o.occurrence_date,
     }));
-  const recurringObligationsForAvailable = activeRecurrences
-    .filter((r) => r.template.account.account_type !== "CREDIT_CARD")
-    .reduce((sum, r) => sum + r.template.amount, 0);
 
-  const allStatementObligations: PendingObligation[] = currencyPayments
-    .filter((p) => p.account_type !== "CREDIT_CARD" || p.minimum_payment != null)
-    .map((p) => ({
-      id: p.id,
-      name: p.account_name,
-      amount: p.account_type === "CREDIT_CARD" ? p.minimum_payment! : p.total_payment_due,
-      currency_code: p.currency_code,
-      due_date: p.payment_due_date,
-      source: "statement" as const,
-    }));
-  const statementObligations = allStatementObligations.filter(
-    (o) => !skippedSet.has(`statement:${o.id}`)
-  );
-  const creditCardStatementPending = currencyPayments
-    .filter((p) => p.account_type === "CREDIT_CARD" && p.minimum_payment != null && !skippedSet.has(`statement:${p.id}`))
-    .reduce((sum, p) => sum + p.minimum_payment!, 0);
-  const nonCardStatementPending = currencyPayments
-    .filter((p) => p.account_type !== "CREDIT_CARD" && !skippedSet.has(`statement:${p.id}`))
-    .reduce((sum, p) => sum + p.total_payment_due, 0);
+  const recurringObligationsForAvailable = pendingOccurrences
+    .filter((o) => o.direction === "OUTFLOW" && o.account_type !== "CREDIT_CARD")
+    .reduce((sum, o) => sum + o.expected_amount, 0);
 
-  // 6. Merge and sort by due date
-  const allObligations = [...recurringObligations, ...statementObligations]
+  // 5. Sort by due date
+  const allObligations = recurringObligations
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   const totalPending = allObligations.reduce((sum, o) => sum + o.amount, 0);
-  const availableToSpend =
-    totalLiquid
-    - creditCardStatementPending
-    - recurringObligationsForAvailable
-    - nonCardStatementPending;
+  const availableToSpend = totalLiquid - recurringObligationsForAvailable;
   return {
     totalLiquid,
     pendingObligations: allObligations,

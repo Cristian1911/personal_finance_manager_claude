@@ -49,8 +49,8 @@ export async function PlanTabPeriodo() {
           <MobilePeriodoView
             planData={planData}
             timelineData={timelineData}
-            currency={currency}
-            isExpired={isExpired}
+            accounts={accounts}
+            categories={categories}
           />
         </div>
       )}

@@ -12,6 +12,7 @@ import {
 import { toISODateString } from "@/lib/utils/date";
 import { matchTransactionToDestinatario } from "./destinatarios";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
   parseBancolombiaEmail,
   type ParsedEmailTransaction,
@@ -109,7 +110,7 @@ async function persistParsedEmail(params: {
       if (categoryId) categorizationSource = "SYSTEM_DEFAULT";
     }
 
-    const { error: insertError } = await supabase.from("transactions").insert({
+    const { data: insertedTxAuto, error: insertError } = await supabase.from("transactions").insert({
       user_id: userId,
       account_id: suggestedAccountId,
       amount: parsed.amount,
@@ -127,7 +128,7 @@ async function persistParsedEmail(params: {
       is_subscription: false,
       categorization_source: categorizationSource,
       status: "POSTED",
-    });
+    }).select("id").single();
 
     if (insertError) {
       if (insertError.code === "23505") {
@@ -135,6 +136,13 @@ async function persistParsedEmail(params: {
         return { success: true, data: "duplicate" };
       }
       return { success: false, error: insertError.message };
+    }
+
+    if (insertedTxAuto) {
+      await linkTransactionToOccurrence(
+        suggestedAccountId, parsed.transaction_date,
+        parsed.amount, parsed.direction, insertedTxAuto.id,
+      );
     }
 
     // Update account balance
@@ -605,6 +613,13 @@ export async function approveEmailTransaction(
       return { success: true, data: null };
     }
     return { success: false, error: insertError.message };
+  }
+
+  if (insertedTx) {
+    await linkTransactionToOccurrence(
+      accountId, parsed.transaction_date,
+      parsed.amount, parsed.direction, insertedTx.id,
+    );
   }
 
   // Reconcile with existing manual transaction if requested

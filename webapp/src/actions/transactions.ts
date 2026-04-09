@@ -167,6 +167,7 @@ async function adjustBalancesForTransactionChanges(params: {
 }
 
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { linkTransactionToOccurrence } from "@/actions/occurrences";
 
 function getRecurringScheduleFields(
   startDate: string,
@@ -688,7 +689,13 @@ export async function createTransaction(
       destinatarioId: relatedSetup.data.destinatarioId,
       recurringTemplateId: relatedSetup.data.recurringTemplateId,
     });
+    return transactionResult;
   }
+
+  await linkTransactionToOccurrence(
+    parsed.data.account_id, parsed.data.transaction_date,
+    parsed.data.amount, parsed.data.direction, transactionResult.data.id,
+  );
 
   return transactionResult;
 }
@@ -734,13 +741,22 @@ export async function createQuickCaptureTransaction(
     categoryId = autoCategorize(parsed.data.merchant_name)?.category_id ?? null;
   }
 
-  return persistTransaction(supabase, {
+  const result = await persistTransaction(supabase, {
     userId: user.id,
     ...parsed.data,
     category_id: categoryId,
     destinatario_id: destinatarioId,
     capture_method: "TEXT_QUICK_CAPTURE",
   });
+
+  if (result.success) {
+    await linkTransactionToOccurrence(
+      parsed.data.account_id, parsed.data.transaction_date,
+      parsed.data.amount, parsed.data.direction, result.data.id,
+    );
+  }
+
+  return result;
 }
 
 export async function updateTransaction(
