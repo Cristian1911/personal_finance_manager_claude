@@ -14,7 +14,6 @@ import { z } from "zod";
 import { uuidStr } from "@/lib/validators/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { monthEndStr, monthStartStr, parseMonth } from "@/lib/utils/date";
-import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { trackProductEvent } from "@/actions/product-events";
 import type { ActionResult } from "@/types/actions";
@@ -92,7 +91,6 @@ export async function analyzePurchaseDecisionAction(
     monthTxRes,
     categoryBudgetRes,
     categorySpentRes,
-    upcomingPayments,
     upcomingRecurrences,
   ] = await Promise.all([
     supabase
@@ -127,7 +125,6 @@ export async function analyzePurchaseDecisionAction(
           .lte("transaction_date", monthEndStr(targetMonth))
           .is("reconciled_into_transaction_id", null)
       : Promise.resolve({ data: null, error: null }),
-    getUpcomingPayments(),
     getUpcomingRecurrences(30),
   ]);
 
@@ -180,16 +177,11 @@ export async function analyzePurchaseDecisionAction(
     )
     .reduce((sum, item) => sum + item.template.amount, 0);
 
-  const statementCommitments = upcomingPayments.reduce(
-    (sum, item) => sum + item.total_payment_due,
-    0
-  );
-  const upcomingCommittedPayments = recurringCommitments + statementCommitments;
+  const upcomingCommittedPayments = recurringCommitments;
 
-  const daysToNearestPayment = getNearestDays([
-    ...upcomingPayments.map((item) => item.payment_due_date),
-    ...upcomingRecurrences.map((item) => item.next_date),
-  ]);
+  const daysToNearestPayment = getNearestDays(
+    upcomingRecurrences.map((item) => item.next_date)
+  );
 
   const selectedDebtAfterPurchase =
     selectedAccount.account_type === "CREDIT_CARD"

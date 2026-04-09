@@ -85,7 +85,7 @@ function mapToOccurrenceItem(
 /* ------------------------------------------------------------------ */
 
 export function useRecurringMonth(
-  templates: RecurringTemplateWithRelations[],
+  _templates: RecurringTemplateWithRelations[],
   accounts: Account[]
 ) {
   const router = useRouter();

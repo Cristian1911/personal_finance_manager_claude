@@ -11,6 +11,7 @@ import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { DesktopOnly } from "@/components/ui/responsive-render";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getActivePeriod } from "@/actions/cashflow-planner";
+import { ensureCurrentOccurrences } from "@/actions/occurrences";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 import { PlanResumenZone } from "@/components/plan/zones/plan-resumen-zone";
@@ -33,6 +34,9 @@ export default async function PlanPage({
     : "resumen";
 
   const monthLabel = formatMonthLabel(parseMonth(month));
+
+  // Ensure occurrence rows exist for current month + buffer before rendering
+  await ensureCurrentOccurrences();
 
   // Shell: lightweight data for header + tab nav badges
   const [currency, wishlistSummary, activePeriodResult] = await Promise.all([
