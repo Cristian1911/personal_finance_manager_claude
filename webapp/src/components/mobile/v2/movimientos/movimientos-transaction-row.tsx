@@ -16,11 +16,14 @@ import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domai
 interface MovimientosTransactionRowProps {
   transaction: TransactionWithAccount;
   categories: CategoryWithChildren[];
+  /** Called after a successful category assignment — used by categorizar to remove from list / prompt bulk apply */
+  onCategorized?: (txId: string, categoryId: string) => void;
 }
 
 export function MovimientosTransactionRow({
   transaction: tx,
   categories,
+  onCategorized,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -54,6 +57,8 @@ export function MovimientosTransactionRow({
       if (!result.success) {
         setLocalCategory(tx.category);
         toast.error("Error al categorizar");
+      } else {
+        onCategorized?.(tx.id, categoryId);
       }
     });
   }

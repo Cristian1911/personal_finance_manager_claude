@@ -202,8 +202,6 @@ export default async function CategorizarPage() {
           initialTransactions={transactions}
           autoCategorizedTransactions={unreviewedAutoTransactions}
           categories={categories}
-          userRules={userRules}
-          destinatarioSuggestions={destinatarioSuggestions}
         />
       </div>
 

@@ -7,7 +7,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { extractPattern, matchDestinatario, prepareDestinatarioRules } from "@zeta/shared";
 import { fetchDestinatarioRules } from "./destinatarios";
 import type { ActionResult } from "@/types/actions";
-import type { TransactionWithRelations } from "@/types/domain";
+import type { TransactionWithAccount } from "@/types/domain";
 import type { UserRule } from "@zeta/shared";
 
 // ─── Cached inner functions ───────────────────────────────────────────────────
@@ -15,7 +15,7 @@ import type { UserRule } from "@zeta/shared";
 async function getUncategorizedTransactionsCached(
   userId: string,
   accessToken: string
-): Promise<TransactionWithRelations[]> {
+): Promise<TransactionWithAccount[]> {
   "use cache";
   cacheTag("categorize");
   cacheLife("zeta");
@@ -25,7 +25,7 @@ async function getUncategorizedTransactionsCached(
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color)"
+      "*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color), destinatario:destinatarios!transactions_destinatario_id_fkey(id, name)"
     )
     .eq("user_id", userId)
     .is("category_id", null)
@@ -34,7 +34,7 @@ async function getUncategorizedTransactionsCached(
     .order("created_at", { ascending: false })
     .is("reconciled_into_transaction_id", null);
   if (error) throw error;
-  return (data ?? []) as TransactionWithRelations[];
+  return (data ?? []) as TransactionWithAccount[];
 }
 
 async function getUncategorizedCountCached(userId: string, accessToken: string): Promise<number> {
@@ -75,7 +75,7 @@ async function getUserCategoryRulesCached(userId: string, accessToken: string): 
 async function getUnreviewedAutoCategorizedCached(
   userId: string,
   accessToken: string
-): Promise<TransactionWithRelations[]> {
+): Promise<TransactionWithAccount[]> {
   "use cache";
   cacheTag("categorize");
   cacheLife("zeta");
@@ -85,7 +85,7 @@ async function getUnreviewedAutoCategorizedCached(
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color)"
+      "*, account:accounts!transactions_account_id_fkey(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color), destinatario:destinatarios!transactions_destinatario_id_fkey(id, name)"
     )
     .eq("user_id", userId)
     .not("category_id", "is", null)
@@ -96,7 +96,7 @@ async function getUnreviewedAutoCategorizedCached(
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw error;
-  return (data ?? []) as TransactionWithRelations[];
+  return (data ?? []) as TransactionWithAccount[];
 }
 
 async function getUnreviewedAutoCountCached(userId: string, accessToken: string): Promise<number> {
@@ -124,7 +124,7 @@ async function getUnreviewedAutoCountCached(userId: string, accessToken: string)
  * Fetch all uncategorized, non-excluded transactions with account + category joins.
  */
 export async function getUncategorizedTransactions(): Promise<
-  TransactionWithRelations[]
+  TransactionWithAccount[]
 > {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return [];
@@ -171,7 +171,7 @@ export async function getUserCategoryRules(): Promise<UserRule[]> {
  * These have categorization_source = SYSTEM_DEFAULT and a non-null category.
  */
 export async function getUnreviewedAutoTransactions(): Promise<
-  TransactionWithRelations[]
+  TransactionWithAccount[]
 > {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return [];
