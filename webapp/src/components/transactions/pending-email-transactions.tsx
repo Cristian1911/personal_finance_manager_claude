@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -68,6 +69,7 @@ export function PendingEmailTransactions({
   transactions: initialTransactions,
   accounts,
 }: PendingEmailTransactionsProps) {
+  const router = useRouter();
   const [transactions, setTransactions] = useState(initialTransactions);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -189,6 +191,7 @@ export function PendingEmailTransactions({
         setLoadingId(null);
         if (result.success) {
           clearPending(pendingId);
+          router.refresh();
           toast.success("Transacción importada");
         } else {
           toast.error(result.error);
@@ -212,6 +215,7 @@ export function PendingEmailTransactions({
         setReconLoading(false);
         if (result.success) {
           clearPending(pendingId);
+          router.refresh();
           toast.success("Transacción reconciliada");
         } else {
           toast.error(result.error);
@@ -219,6 +223,7 @@ export function PendingEmailTransactions({
       } catch {
         setReconLoading(false);
         clearPending(pendingId);
+        router.refresh();
         toast.success("Transacción reconciliada");
       }
     });
@@ -236,6 +241,7 @@ export function PendingEmailTransactions({
         setReconLoading(false);
         if (result.success) {
           clearPending(pendingId);
+          router.refresh();
           toast.success("Transacción importada");
         } else {
           toast.error(result.error);
@@ -276,6 +282,7 @@ export function PendingEmailTransactions({
       setTransactions((prev) => prev.filter((t) => !ids.includes(t.id) || !importableIds.has(t.id)));
       setSelected(new Set());
       setBulkLoading(false);
+      router.refresh();
 
       if (failed === 0) {
         toast.success(`${imported} transacciones importadas`);
