@@ -24,7 +24,7 @@ export function Sparkline({ data, color = "neutral", height = 32, width = 96 }: 
 
   return (
     <div style={{ width, height }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
         <AreaChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
           <Area
             type="monotone"

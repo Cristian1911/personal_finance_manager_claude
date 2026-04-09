@@ -21,6 +21,9 @@
 - Dates: Spanish locale via `formatDate()` from `src/lib/utils/date.ts`
 - Idempotency: `computeIdempotencyKey()` from `src/lib/utils/idempotency.ts` for dedup
 
+## Performance Audit Gate
+- **After every feature**: Before claiming work is done, spawn the `perf-auditor` agent (defined in `~/.claude/agents/perf-auditor.md`) to audit changed files against the caching, rendering, and data-fetching rules below. Fix all FAIL items before shipping. This is a build gate, same as `pnpm build`.
+
 ## Performance Rules
 - **Cache stable data**: Accounts, categories, destinatarios, profiles, recurring templates, and other slowly-changing data MUST use `"use cache"` with `cacheTag()` + `cacheLife("zeta")`. Transactions are also cached. Mutations invalidate via `revalidateTag()`. Never add a DB query to a page render path without caching unless the data is truly per-request.
 - **AppDataProvider (shared reference data)**: The dashboard layout preloads accounts, categories (all + outflow), destinatarios, and tag groups into React context via `AppDataProvider` (`@/components/providers/app-data-provider.tsx`). **Client components that need this data MUST use the context hooks** (`useAccounts()`, `useCategories()`, `useOutflowCategories()`, `useDestinatarios()`, `useTagGroups()`, `useAllTags()`) instead of lazy-fetching from server actions. This eliminates loading spinners on pickers and avoids redundant client-side fetches. Server components can still call the cached actions directly (cache hits are ~0ms). After mutations, `revalidateTag()` triggers layout re-render which refreshes the context automatically.

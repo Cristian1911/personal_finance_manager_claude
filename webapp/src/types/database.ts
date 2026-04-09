@@ -1790,6 +1790,35 @@ export type Database = {
         }
         Relationships: []
       }
+      obligation_skips: {
+        Row: {
+          id: string
+          user_id: string
+          obligation_key: string
+          skipped_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          obligation_key: string
+          skipped_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          obligation_key?: string
+          skipped_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligation_skips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_transaction_templates_enc: {
         Row: {
           account_id: string

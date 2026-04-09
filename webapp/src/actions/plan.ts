@@ -10,7 +10,6 @@ import {
   getRecurringSummary,
   getUpcomingRecurrences,
 } from "@/actions/recurring-templates";
-import { getScenarios } from "@/actions/scenarios";
 import { get503020Allocation, type AllocationData } from "@/actions/allocation";
 import { getDashboardHeroData, type DashboardHeroData } from "@/actions/charts";
 import type { CurrencyCode } from "@/types/domain";
@@ -110,7 +109,6 @@ export const getPlanPageData = cache(
       debtCountdown,
       recurringSummary,
       upcomingRecurrences,
-      savedScenarios,
       incomeEstimate,
       allocation,
       heroData,
@@ -120,7 +118,6 @@ export const getPlanPageData = cache(
       getDebtFreeCountdown(baseCurrency),
       getRecurringSummary(),
       getUpcomingRecurrences(30),
-      getScenarios(),
       getEstimatedIncome(baseCurrency, month),
       get503020Allocation(month, baseCurrency),
       getDashboardHeroData(month, baseCurrency),
@@ -186,9 +183,9 @@ export const getPlanPageData = cache(
         dueSoonTotal,
       },
       scenarios: {
-        savedScenarios,
-        latestScenario: savedScenarios[0] ?? null,
-        count: savedScenarios.length,
+        savedScenarios: [],
+        latestScenario: null,
+        count: 0,
       },
       incomeEstimate,
     };

@@ -93,6 +93,7 @@ async function MobileDebtSection({
             sourceAccounts={sourceAccounts}
             currency={currency}
             usdToCopRate={usdToCopRate}
+            variant="compact"
           />
         }
       />

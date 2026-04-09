@@ -56,6 +56,11 @@ export function formatMonthLabel(date: Date): string {
   return format(date, "MMMM yyyy", { locale: es });
 }
 
+/** Short Spanish month label, e.g. "Abr" (no year) */
+export function formatMonthLabelShort(date: Date): string {
+  return format(date, "MMM", { locale: es });
+}
+
 /** Check if a date falls in the current month */
 export function isCurrentMonth(date: Date): boolean {
   const now = new Date();

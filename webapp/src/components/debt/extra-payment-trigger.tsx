@@ -20,6 +20,8 @@ interface ExtraPaymentTriggerProps {
   sourceAccounts: SourceAccount[];
   currency: CurrencyCode;
   usdToCopRate?: number | null;
+  /** "compact" renders text-only (for mobile card layout), default renders brass button */
+  variant?: "default" | "compact";
 }
 
 export function ExtraPaymentTrigger({
@@ -27,6 +29,7 @@ export function ExtraPaymentTrigger({
   sourceAccounts,
   currency,
   usdToCopRate,
+  variant = "default",
 }: ExtraPaymentTriggerProps) {
   const [open, setOpen] = useState(false);
 
@@ -35,10 +38,17 @@ export function ExtraPaymentTrigger({
 
   return (
     <div>
-      <Button onClick={() => setOpen(true)} className={BRASS_BUTTON_CLASS}>
-        <Banknote className="size-4" />
-        Tengo plata extra
-      </Button>
+      {variant === "compact" ? (
+        <button type="button" onClick={() => setOpen(true)} className="text-left">
+          <p className="text-[12px] font-semibold leading-tight">Plata extra</p>
+          <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">Abonar a deuda</p>
+        </button>
+      ) : (
+        <Button onClick={() => setOpen(true)} className={BRASS_BUTTON_CLASS}>
+          <Banknote className="size-4" />
+          Tengo plata extra
+        </Button>
+      )}
       <ExtraPaymentSheet
         debtAccounts={debtAccounts}
         sourceAccounts={sourceAccounts}

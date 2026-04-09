@@ -88,7 +88,7 @@ export function MovimientosRoot({
         title="Movimientos"
         action={
           <Suspense>
-            <MonthSelector />
+            <MonthSelector compact />
           </Suspense>
         }
       />
@@ -110,7 +110,6 @@ export function MovimientosRoot({
         uncategorizedTransactions={uncategorizedTransactions}
         uncategorizedCount={uncategorizedCount}
         pendingEmails={pendingEmails}
-        pendingMatchCount={0}
         categories={outflowCategories}
         accounts={accounts}
         currency={currency}

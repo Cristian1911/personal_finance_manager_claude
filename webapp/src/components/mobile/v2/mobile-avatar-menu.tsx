@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { BellDot, ChevronRight, Menu, Settings, Upload } from "lucide-react";
 import { useCloseOnNavigate } from "@/hooks/use-close-on-navigate";
@@ -35,6 +35,13 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
   const shell = useMobileShell();
   const [open, setOpen] = useState(false);
   useCloseOnNavigate(useCallback(() => setOpen(false), []));
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, { passive: true, capture: true });
+    return () => window.removeEventListener("scroll", close, { capture: true });
+  }, [open]);
 
   const resolvedName = name ?? shell?.name ?? null;
   const resolvedEmail = email ?? shell?.email ?? null;

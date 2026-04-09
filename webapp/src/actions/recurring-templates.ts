@@ -9,7 +9,6 @@ import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import {
-  getNextOccurrence,
   getOccurrencesBetween,
   DEBT_PAYMENT_CATEGORY_ID,
   TRANSFER_CATEGORY_ID,
@@ -835,6 +834,81 @@ export async function recordRecurringOccurrencePayment(input: {
       alreadyRecorded: inserted.alreadyRecorded,
     },
   };
+}
+
+/**
+ * Skip any obligation (recurring or statement). Uses the generalized obligation_skips table.
+ * Key format: "recurring:{templateId}:{date}" or "statement:{snapshotId}"
+ */
+export async function skipObligation(
+  obligationKey: string,
+): Promise<ActionResult<{ skipped: boolean }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("obligation_skips")
+    .upsert(
+      { user_id: user.id, obligation_key: obligationKey },
+      { onConflict: "user_id,obligation_key" }
+    );
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateFinancialViews();
+  revalidateTag("recurring", "zeta");
+  revalidateTag("snapshots", "zeta");
+
+  return { success: true, data: { skipped: true } };
+}
+
+/** Convenience wrapper — skips a recurring occurrence. */
+export async function skipRecurringOccurrence(
+  templateId: string,
+  occurrenceDate: string,
+): Promise<ActionResult<{ skipped: boolean }>> {
+  return skipObligation(`recurring:${templateId}:${occurrenceDate}`);
+}
+
+/**
+ * Get which obligation keys have been skipped.
+ * Accepts any key format — recurring or statement.
+ */
+export async function getSkippedObligationKeys(
+  keys: string[]
+): Promise<Set<string>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken || keys.length === 0) return new Set();
+  return getSkippedObligationKeysCached(user.id, keys, accessToken);
+}
+
+async function getSkippedObligationKeysCached(
+  userId: string,
+  keys: string[],
+  accessToken: string,
+): Promise<Set<string>> {
+  "use cache";
+  cacheTag("recurring", "snapshots");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  const { data } = await supabase
+    .from("obligation_skips")
+    .select("obligation_key")
+    .eq("user_id", userId)
+    .in("obligation_key", keys);
+
+  return new Set((data ?? []).map((row) => row.obligation_key));
+}
+
+/** Backwards-compatible wrapper for recurring occurrence keys ("templateId:date" format). */
+export async function getSkippedOccurrenceKeys(
+  occurrenceKeys: string[]
+): Promise<string[]> {
+  const prefixed = occurrenceKeys.map((k) => `recurring:${k}`);
+  const skipped = await getSkippedObligationKeys(prefixed);
+  return occurrenceKeys.filter((k) => skipped.has(`recurring:${k}`));
 }
 
 /**

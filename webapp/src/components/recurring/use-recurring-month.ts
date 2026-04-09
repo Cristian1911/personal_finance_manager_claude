@@ -13,7 +13,9 @@ import { es } from "date-fns/locale";
 import { getOccurrencesBetween } from "@zeta/shared";
 import {
   getPaidOccurrenceKeys,
+  getSkippedOccurrenceKeys,
   recordRecurringOccurrencePayment,
+  skipRecurringOccurrence,
 } from "@/actions/recurring-templates";
 import { toast } from "sonner";
 import type {
@@ -175,14 +177,15 @@ export function useRecurringMonth(
     const keys = occurrenceKeysStr.split(",");
     let cancelled = false;
 
-    getPaidOccurrenceKeys(keys)
-      .then((paidKeys) => {
+    Promise.all([getPaidOccurrenceKeys(keys), getSkippedOccurrenceKeys(keys)])
+      .then(([paidKeys, skippedKeys]) => {
         if (cancelled) return;
-        if (paidKeys.length > 0) {
+        const allChecked = [...paidKeys, ...skippedKeys];
+        if (allChecked.length > 0) {
           setCheckedItems((prev) => {
             const merged = { ...prev };
             let changed = false;
-            for (const key of paidKeys) {
+            for (const key of allChecked) {
               if (!merged[key]) { merged[key] = true; changed = true; }
             }
             if (!changed) return prev;
@@ -321,11 +324,26 @@ export function useRecurringMonth(
 
   /* ---- skip payment (already paid manually) ---- */
   const skipPayment = useCallback(
-    (item: OccurrenceItem) => {
+    async (item: OccurrenceItem) => {
+      // Optimistic update
       updateCheckedItems((prev) => ({ ...prev, [item.key]: true }));
       toast.success("Marcado como completado");
+
+      // Persist to DB
+      const result = await skipRecurringOccurrence(item.templateId, item.date);
+      if (!result.success) {
+        // Revert optimistic update
+        updateCheckedItems((prev) => {
+          const next = { ...prev };
+          delete next[item.key];
+          return next;
+        });
+        toast.error("No se pudo guardar. Intenta de nuevo.");
+      } else {
+        router.refresh();
+      }
     },
-    [updateCheckedItems]
+    [updateCheckedItems, router]
   );
 
   /* ---- totals ---- */

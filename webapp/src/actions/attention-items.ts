@@ -7,6 +7,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
 import { getOccurrencesBetween } from "@zeta/shared";
+import { getPaidOccurrenceKeys, getSkippedObligationKeys } from "@/actions/recurring-templates";
 import type { RecurrenceFrequency } from "@zeta/shared";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -152,9 +153,9 @@ async function getAttentionItemsCached(
     }
   }
 
-  // Sort by date ascending, limit to 5
+  // Sort by date ascending — don't limit here, the public wrapper
+  // filters paid/skipped entries first and then limits to 5
   upcomingPayments.sort((a, b) => a.occurrenceDate.localeCompare(b.occurrenceDate));
-  upcomingPayments.splice(5);
 
   return { overdueReminders, upcomingPayments, pendingEmails };
 }
@@ -166,7 +167,29 @@ export async function getAttentionItems(): Promise<AttentionItems> {
   if (!user || !accessToken) return EMPTY;
 
   try {
-    return await getAttentionItemsCached(user.id, accessToken);
+    const items = await getAttentionItemsCached(user.id, accessToken);
+
+    // Filter out paid/skipped occurrences from upcoming payments
+    if (items.upcomingPayments.length > 0) {
+      const paidKeys = items.upcomingPayments.map((p) => `${p.templateId}:${p.occurrenceDate}`);
+      const oblKeys = items.upcomingPayments.map((p) => `recurring:${p.templateId}:${p.occurrenceDate}`);
+      const [paid, skipped] = await Promise.all([
+        getPaidOccurrenceKeys(paidKeys),
+        getSkippedObligationKeys(oblKeys),
+      ]);
+      const paidSet = new Set(paid);
+      if (paidSet.size > 0 || skipped.size > 0) {
+        items.upcomingPayments = items.upcomingPayments.filter(
+          (p) => !paidSet.has(`${p.templateId}:${p.occurrenceDate}`) &&
+                 !skipped.has(`recurring:${p.templateId}:${p.occurrenceDate}`)
+        );
+      }
+    }
+
+    // Limit to 5 after filtering (not before)
+    items.upcomingPayments = items.upcomingPayments.slice(0, 5);
+
+    return items;
   } catch (err) {
     console.error("Error fetching attention items:", err);
     return EMPTY;

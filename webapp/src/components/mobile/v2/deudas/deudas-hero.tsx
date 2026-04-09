@@ -1,19 +1,37 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import { StateChip } from "@/components/mobile/v2/state-chip";
 import type { CurrencyCode } from "@/types/domain";
 
+interface DebtAccountBreakdown {
+  id: string;
+  name: string;
+  type: "CREDIT_CARD" | "LOAN";
+  monthlyPayment: number;
+  interestRate: number;
+  balance: number;
+  currency: string;
+}
+
 interface DeudasHeroProps {
   totalMonthlyPayment: number;
   monthlyInterest: number;
   currency: CurrencyCode;
+  accounts?: DebtAccountBreakdown[];
+  expanded?: boolean;
+  onToggle?: () => void;
 }
 
 export function DeudasHero({
   totalMonthlyPayment,
   monthlyInterest,
   currency,
+  accounts,
+  expanded,
+  onToggle,
 }: DeudasHeroProps) {
   const capital = totalMonthlyPayment - monthlyInterest;
   const capitalPct = totalMonthlyPayment > 0
@@ -32,7 +50,13 @@ export function DeudasHero({
     : "Manejable";
 
   return (
-    <div className={cn(PANEL_INSET_CLASS, "p-3.5")}>
+    <button
+      type="button"
+      onClick={onToggle}
+      className={cn(PANEL_INSET_CLASS, "w-full p-3.5 text-left")}
+      aria-expanded={expanded}
+      aria-label="Expandir desglose de cuota mensual"
+    >
       <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
         Cuota mensual
       </p>
@@ -72,6 +96,45 @@ export function DeudasHero({
         </span>
         <StateChip label={pressureLabel} variant={pressure} />
       </div>
-    </div>
+
+      {/* Expandable breakdown */}
+      <div
+        className="grid transition-[grid-template-rows] duration-200 ease-out"
+        style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <div
+            className={cn(
+              "mt-3 transition-opacity duration-150",
+              expanded ? "opacity-100 delay-75" : "opacity-0"
+            )}
+          >
+            {accounts && accounts.length > 0 && (
+              <div className={cn(PANEL_INSET_CLASS, "border-white/8 bg-black/20 p-3 space-y-2")}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-brass">
+                  Desglose por cuenta
+                </p>
+                {accounts.map((acct) => {
+                  const isCC = acct.type === "CREDIT_CARD";
+                  return (
+                    <div key={acct.id} className="flex items-center justify-between text-xs">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-z-sage-light">{acct.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {isCC ? "Tarjeta" : "Préstamo"} · {acct.interestRate > 0 ? `${acct.interestRate.toFixed(1)}% EA` : "Sin tasa"}
+                        </p>
+                      </div>
+                      <p className="shrink-0 font-semibold text-foreground">
+                        {formatCurrency(acct.monthlyPayment, currency)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </button>
   );
 }

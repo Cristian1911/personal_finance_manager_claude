@@ -63,17 +63,15 @@ export async function getLiveDashboardData(
     ? last7Days.reduce((sum, d) => sum + d.amount, 0) / last7Days.length
     : 0;
 
-  const alreadySpent = heroData.totalLiquid - heroData.totalPending - heroData.availableToSpend;
-
   return {
     hero: {
       availablePerDay: heroData.availableToSpend / daysRemaining,
       availableTotal: heroData.availableToSpend,
       daysRemaining,
       breakdown: {
-        totalLiquid: heroData.totalLiquid,
+        totalLiquid: heroData.monthlyIncome,
         fixedExpenses: heroData.totalPending,
-        alreadySpent,
+        alreadySpent: heroData.monthlySpent,
       },
     },
     metrics: {

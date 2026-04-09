@@ -4,7 +4,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccounts } from "@/actions/accounts";
-import { getUpcomingRecurrences } from "@/actions/recurring-templates";
+import { getUpcomingRecurrences, getPaidOccurrenceKeys, getSkippedObligationKeys } from "@/actions/recurring-templates";
 import { getUpcomingPayments } from "@/actions/payment-reminders";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
@@ -256,6 +256,7 @@ export interface MonthMetrics {
 async function getMonthMetricsCached(
   userId: string,
   month: string | undefined,
+  currency: CurrencyCode | undefined,
   isDemo: boolean
 ): Promise<MonthMetrics> {
   "use cache";
@@ -265,13 +266,17 @@ async function getMonthMetricsCached(
   const supabase = createAdminClient();
   const target = parseMonth(month);
 
-  // Get account IDs matching demo filter
-  const { data: filteredAccounts } = await supabase
+  // Get account IDs matching demo filter + optional currency
+  let accountQuery = supabase
     .from("accounts")
     .select("id")
     .eq("user_id", userId)
     .eq("is_active", true)
     .eq("is_demo", isDemo);
+  if (currency) {
+    accountQuery = accountQuery.eq("currency_code", currency);
+  }
+  const { data: filteredAccounts } = await accountQuery;
   const accountIds = (filteredAccounts ?? []).map((a) => a.id);
   if (accountIds.length === 0) return { income: 0, expenses: 0 };
 
@@ -547,11 +552,11 @@ export async function getDailySpending(month?: string, currency?: CurrencyCode):
  * Get total income and expenses for a given month.
  * Used for computing trend percentages vs previous period.
  */
-export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
+export async function getMonthMetrics(month?: string, currency?: CurrencyCode): Promise<MonthMetrics> {
   const { user } = await getAuthenticatedClient();
   if (!user) return { income: 0, expenses: 0 };
   const isDemo = await getIsDemoFilter(user.id);
-  return getMonthMetricsCached(user.id, month, isDemo);
+  return getMonthMetricsCached(user.id, month, currency, isDemo);
 }
 
 /**
@@ -676,6 +681,8 @@ export interface DashboardHeroData {
   pendingObligations: PendingObligation[];
   totalPending: number;
   availableToSpend: number;
+  monthlyIncome: number;
+  monthlySpent: number;
   freshness: "fresh" | "stale" | "outdated";
   oldestUpdate: string | null;
   currency: string;
@@ -693,6 +700,8 @@ export async function getDashboardHeroData(
       pendingObligations: [],
       totalPending: 0,
       availableToSpend: 0,
+      monthlyIncome: 0,
+      monthlySpent: 0,
       freshness: "outdated",
       oldestUpdate: null,
       currency: "COP",
@@ -702,10 +711,11 @@ export async function getDashboardHeroData(
 
   const baseCurrency = currency ?? "COP";
 
-  const [accountsResult, upcomingRecurrences, statementPayments] = await Promise.all([
+  const [accountsResult, upcomingRecurrences, statementPayments, monthMetrics] = await Promise.all([
     getAccounts(),
     getUpcomingRecurrences(30),
     getUpcomingPayments(),
+    getMonthMetrics(month, currency),
   ]);
 
   // 1. Process accounts
@@ -746,7 +756,29 @@ export async function getDashboardHeroData(
   const outflowRecurrences = upcomingRecurrences
     .filter((r) => r.next_date <= heroWindowEnd)
     .filter((r) => r.template.direction === "OUTFLOW" && (r.template.currency_code ?? "COP") === baseCurrency);
-  const recurringObligations: PendingObligation[] = outflowRecurrences
+
+  // Build all obligation keys for unified skip/paid filtering
+  const recurringOblKeys = outflowRecurrences.map((r) => `recurring:${r.template.id}:${r.next_date}`);
+  const recurringPaidKeys = outflowRecurrences.map((r) => `${r.template.id}:${r.next_date}`);
+
+  // 4. Process statement payment obligations
+  const currencyPayments = statementPayments.filter((p) => p.currency_code === baseCurrency);
+  const statementOblKeys = currencyPayments.map((p) => `statement:${p.id}`);
+
+  // 5. Filter out paid and skipped obligations (both recurring and statement)
+  const allOblKeys = [...recurringOblKeys, ...statementOblKeys];
+  const [paidKeys, skippedSet] = await Promise.all([
+    recurringPaidKeys.length > 0 ? getPaidOccurrenceKeys(recurringPaidKeys) : Promise.resolve([]),
+    allOblKeys.length > 0 ? getSkippedObligationKeys(allOblKeys) : Promise.resolve(new Set<string>()),
+  ]);
+  const paidSet = new Set(paidKeys);
+
+  const activeRecurrences = outflowRecurrences.filter(
+    (r) => !paidSet.has(`${r.template.id}:${r.next_date}`) &&
+           !skippedSet.has(`recurring:${r.template.id}:${r.next_date}`)
+  );
+
+  const recurringObligations: PendingObligation[] = activeRecurrences
     .map((r) => ({
       id: r.template.id,
       name: r.template.merchant_name ?? "Recurrente",
@@ -755,13 +787,11 @@ export async function getDashboardHeroData(
       due_date: r.next_date,
       source: "recurring" as const,
     }));
-  const recurringObligationsForAvailable = outflowRecurrences
+  const recurringObligationsForAvailable = activeRecurrences
     .filter((r) => r.template.account.account_type !== "CREDIT_CARD")
     .reduce((sum, r) => sum + r.template.amount, 0);
 
-  // 4. Process statement payment obligations
-  const currencyPayments = statementPayments.filter((p) => p.currency_code === baseCurrency);
-  const statementObligations: PendingObligation[] = currencyPayments
+  const allStatementObligations: PendingObligation[] = currencyPayments
     .filter((p) => p.account_type !== "CREDIT_CARD" || p.minimum_payment != null)
     .map((p) => ({
       id: p.id,
@@ -771,14 +801,17 @@ export async function getDashboardHeroData(
       due_date: p.payment_due_date,
       source: "statement" as const,
     }));
+  const statementObligations = allStatementObligations.filter(
+    (o) => !skippedSet.has(`statement:${o.id}`)
+  );
   const creditCardStatementPending = currencyPayments
-    .filter((p) => p.account_type === "CREDIT_CARD" && p.minimum_payment != null)
+    .filter((p) => p.account_type === "CREDIT_CARD" && p.minimum_payment != null && !skippedSet.has(`statement:${p.id}`))
     .reduce((sum, p) => sum + p.minimum_payment!, 0);
   const nonCardStatementPending = currencyPayments
-    .filter((p) => p.account_type !== "CREDIT_CARD")
+    .filter((p) => p.account_type !== "CREDIT_CARD" && !skippedSet.has(`statement:${p.id}`))
     .reduce((sum, p) => sum + p.total_payment_due, 0);
 
-  // 5. Merge and sort by due date
+  // 6. Merge and sort by due date
   const allObligations = [...recurringObligations, ...statementObligations]
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
 
@@ -793,6 +826,8 @@ export async function getDashboardHeroData(
     pendingObligations: allObligations,
     totalPending,
     availableToSpend,
+    monthlyIncome: monthMetrics.income,
+    monthlySpent: monthMetrics.expenses,
     freshness,
     oldestUpdate,
     currency: baseCurrency,
