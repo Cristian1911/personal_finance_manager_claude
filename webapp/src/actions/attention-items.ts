@@ -6,9 +6,7 @@ import { addDays } from "date-fns";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
-import { getOccurrencesBetween } from "@zeta/shared";
-import { getPaidOccurrenceKeys, getSkippedObligationKeys } from "@/actions/recurring-templates";
-import type { RecurrenceFrequency } from "@zeta/shared";
+import { ensureCurrentOccurrences } from "@/actions/occurrences";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -68,7 +66,7 @@ async function getAttentionItemsCached(
   const todayStr = toISODateString(today);
   const in7Days = addDays(today, 7);
 
-  const [remindersRes, emailsRes, templatesRes] = await Promise.all([
+  const [remindersRes, emailsRes, occurrencesRes] = await Promise.all([
     // 1. Overdue reminders
     supabase
       .from("financial_reminders")
@@ -88,14 +86,26 @@ async function getAttentionItemsCached(
       .order("created_at", { ascending: false })
       .limit(5),
 
-    // 3. Active recurring templates (compute occurrences in JS)
+    // 3. Pending recurring occurrences (next 7 days, already materialized)
     supabase
-      .from("recurring_transaction_templates")
-      .select(
-        "id, merchant_name, description, amount, direction, frequency, start_date, end_date"
-      )
+      .from("recurring_occurrences")
+      .select(`
+        id,
+        template_id,
+        occurrence_date,
+        expected_amount,
+        template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
+          merchant_name,
+          description,
+          direction
+        )
+      `)
       .eq("user_id", userId)
-      .eq("is_active", true),
+      .eq("status", "pending")
+      .gte("occurrence_date", todayStr)
+      .lte("occurrence_date", toISODateString(in7Days))
+      .order("occurrence_date")
+      .limit(10),
   ]);
 
   // ── Map overdue reminders ──────────────────────────────────────────────────
@@ -128,34 +138,19 @@ async function getAttentionItemsCached(
     }
   );
 
-  // ── Compute upcoming payments from templates ───────────────────────────────
+  // ── Map upcoming payments from materialized occurrences ───────────────────
 
-  const upcomingPayments: AttentionUpcomingPayment[] = [];
-
-  for (const t of templatesRes.data ?? []) {
-    const occurrences = getOccurrencesBetween(
-      t.start_date,
-      t.frequency as RecurrenceFrequency,
-      t.end_date,
-      today,
-      in7Days
-    );
-
-    for (const occ of occurrences) {
-      upcomingPayments.push({
-        templateId: t.id,
-        name: t.merchant_name ?? t.description ?? "Pago recurrente",
-        amount: t.amount,
-        next_date: occ,
-        direction: t.direction,
-        occurrenceDate: occ,
-      });
-    }
-  }
-
-  // Sort by date ascending — don't limit here, the public wrapper
-  // filters paid/skipped entries first and then limits to 5
-  upcomingPayments.sort((a, b) => a.occurrenceDate.localeCompare(b.occurrenceDate));
+  const upcomingPayments: AttentionUpcomingPayment[] = (occurrencesRes.data ?? []).map((o) => {
+    const tmpl = o.template as { merchant_name: string | null; description: string | null; direction: string } | null;
+    return {
+      templateId: o.template_id,
+      name: tmpl?.merchant_name ?? tmpl?.description ?? "Pago recurrente",
+      amount: o.expected_amount,
+      next_date: o.occurrence_date,
+      direction: (tmpl?.direction ?? "OUTFLOW") as "INFLOW" | "OUTFLOW",
+      occurrenceDate: o.occurrence_date,
+    };
+  }).slice(0, 5);
 
   return { overdueReminders, upcomingPayments, pendingEmails };
 }
@@ -167,29 +162,9 @@ export async function getAttentionItems(): Promise<AttentionItems> {
   if (!user || !accessToken) return EMPTY;
 
   try {
-    const items = await getAttentionItemsCached(user.id, accessToken);
-
-    // Filter out paid/skipped occurrences from upcoming payments
-    if (items.upcomingPayments.length > 0) {
-      const paidKeys = items.upcomingPayments.map((p) => `${p.templateId}:${p.occurrenceDate}`);
-      const oblKeys = items.upcomingPayments.map((p) => `recurring:${p.templateId}:${p.occurrenceDate}`);
-      const [paid, skipped] = await Promise.all([
-        getPaidOccurrenceKeys(paidKeys),
-        getSkippedObligationKeys(oblKeys),
-      ]);
-      const paidSet = new Set(paid);
-      if (paidSet.size > 0 || skipped.size > 0) {
-        items.upcomingPayments = items.upcomingPayments.filter(
-          (p) => !paidSet.has(`${p.templateId}:${p.occurrenceDate}`) &&
-                 !skipped.has(`recurring:${p.templateId}:${p.occurrenceDate}`)
-        );
-      }
-    }
-
-    // Limit to 5 after filtering (not before)
-    items.upcomingPayments = items.upcomingPayments.slice(0, 5);
-
-    return items;
+    // Ensure occurrences are generated for current window
+    await ensureCurrentOccurrences();
+    return await getAttentionItemsCached(user.id, accessToken);
   } catch (err) {
     console.error("Error fetching attention items:", err);
     return EMPTY;
