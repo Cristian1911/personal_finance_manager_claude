@@ -167,6 +167,7 @@ async function adjustBalancesForTransactionChanges(params: {
 }
 
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { findMatchingOccurrence, markOccurrencePaid } from "@/actions/occurrences";
 
 function getRecurringScheduleFields(
   startDate: string,
@@ -688,6 +689,18 @@ export async function createTransaction(
       destinatarioId: relatedSetup.data.destinatarioId,
       recurringTemplateId: relatedSetup.data.recurringTemplateId,
     });
+    return transactionResult;
+  }
+
+  // Auto-link to a matching pending occurrence if one exists
+  const matchId = await findMatchingOccurrence(
+    parsed.data.account_id,
+    parsed.data.transaction_date,
+    parsed.data.amount,
+    parsed.data.direction,
+  );
+  if (matchId) {
+    await markOccurrencePaid(matchId, transactionResult.data.id);
   }
 
   return transactionResult;
@@ -734,13 +747,27 @@ export async function createQuickCaptureTransaction(
     categoryId = autoCategorize(parsed.data.merchant_name)?.category_id ?? null;
   }
 
-  return persistTransaction(supabase, {
+  const result = await persistTransaction(supabase, {
     userId: user.id,
     ...parsed.data,
     category_id: categoryId,
     destinatario_id: destinatarioId,
     capture_method: "TEXT_QUICK_CAPTURE",
   });
+
+  if (result.success) {
+    const matchId = await findMatchingOccurrence(
+      parsed.data.account_id,
+      parsed.data.transaction_date,
+      parsed.data.amount,
+      parsed.data.direction,
+    );
+    if (matchId) {
+      await markOccurrencePaid(matchId, result.data.id);
+    }
+  }
+
+  return result;
 }
 
 export async function updateTransaction(

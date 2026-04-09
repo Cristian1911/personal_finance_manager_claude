@@ -24,6 +24,7 @@ import type {
   TransactionToImport,
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
+import { findMatchingOccurrence, markOccurrencePaid } from "@/actions/occurrences";
 
 type DebtKind = "credit_card" | "loan";
 type CurrencyCode = Database["public"]["Enums"]["currency_code"];
@@ -744,6 +745,17 @@ export async function importTransactions(
     }
 
     imported++;
+
+    // Auto-link to a matching pending occurrence if one exists
+    const matchId = await findMatchingOccurrence(
+      tx.account_id,
+      tx.transaction_date,
+      tx.amount,
+      tx.direction,
+    );
+    if (matchId) {
+      await markOccurrencePaid(matchId, insertedTx.id);
+    }
 
     const decision = tx.import_key
       ? decisionMap.get(tx.import_key)
