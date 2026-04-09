@@ -5,6 +5,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { useLiveDailyMetrics } from "@/hooks/use-live-metrics";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -178,6 +179,12 @@ export function InicioMetricsGrid({
   expanded,
   onToggle,
 }: InicioMetricsGridProps) {
+  // Live refresh: server values display instantly, hook corrects if stale
+  const live = useLiveDailyMetrics(
+    { spentToday, spentYesterday, avgLast7 },
+    currency,
+  );
+
   const percentage = Math.round((dayOfMonth / daysInMonth) * 100);
   const isRitmoActive = expanded === "ritmo";
   const isGastoActive = expanded === "gasto-hoy";
@@ -217,12 +224,12 @@ export function InicioMetricsGrid({
           <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">Gasto hoy</p>
           <p className={cn(
             "text-[18px] font-[650] leading-tight",
-            spentToday === 0 ? "text-z-sage-light" : "text-foreground"
+            live.spentToday === 0 ? "text-z-sage-light" : "text-foreground"
           )}>
-            {compact(spentToday, currency)}
+            {compact(live.spentToday, currency)}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {spentToday === 0 ? "Sin gastos" : "gastado hoy"}
+            {live.spentToday === 0 ? "Sin gastos" : "gastado hoy"}
           </p>
         </button>
       </div>
@@ -256,16 +263,16 @@ export function InicioMetricsGrid({
               <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3 space-y-2")}>
                 <div className="flex items-baseline justify-between">
                   <span className="text-[11px] text-muted-foreground">Hoy</span>
-                  <span className="text-sm font-semibold">{formatCurrency(spentToday, currency)}</span>
+                  <span className="text-sm font-semibold">{formatCurrency(live.spentToday, currency)}</span>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-[11px] text-muted-foreground">Ayer</span>
-                  <span className="text-sm font-semibold text-muted-foreground">{formatCurrency(spentYesterday, currency)}</span>
+                  <span className="text-sm font-semibold text-muted-foreground">{formatCurrency(live.spentYesterday, currency)}</span>
                 </div>
-                {avgLast7 > 0 && (
+                {live.avgLast7 > 0 && (
                   <div className="flex items-baseline justify-between">
                     <span className="text-[11px] text-muted-foreground">Promedio 7 días</span>
-                    <span className="text-sm font-semibold text-muted-foreground">{formatCurrency(Math.round(avgLast7), currency)}</span>
+                    <span className="text-sm font-semibold text-muted-foreground">{formatCurrency(Math.round(live.avgLast7), currency)}</span>
                   </div>
                 )}
                 <Link href="/transactions" className="inline-block text-[11px] font-semibold text-z-brass">

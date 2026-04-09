@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   cacheLife: {
     zeta: {
-      stale: 60,
+      stale: 120,
       revalidate: 300,
       expire: 3600,
     },
