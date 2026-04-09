@@ -167,7 +167,7 @@ async function adjustBalancesForTransactionChanges(params: {
 }
 
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
-import { findMatchingOccurrence, markOccurrencePaid } from "@/actions/occurrences";
+import { linkTransactionToOccurrence } from "@/actions/occurrences";
 
 function getRecurringScheduleFields(
   startDate: string,
@@ -692,16 +692,10 @@ export async function createTransaction(
     return transactionResult;
   }
 
-  // Auto-link to a matching pending occurrence if one exists
-  const matchId = await findMatchingOccurrence(
-    parsed.data.account_id,
-    parsed.data.transaction_date,
-    parsed.data.amount,
-    parsed.data.direction,
+  await linkTransactionToOccurrence(
+    parsed.data.account_id, parsed.data.transaction_date,
+    parsed.data.amount, parsed.data.direction, transactionResult.data.id,
   );
-  if (matchId) {
-    await markOccurrencePaid(matchId, transactionResult.data.id);
-  }
 
   return transactionResult;
 }
@@ -756,15 +750,10 @@ export async function createQuickCaptureTransaction(
   });
 
   if (result.success) {
-    const matchId = await findMatchingOccurrence(
-      parsed.data.account_id,
-      parsed.data.transaction_date,
-      parsed.data.amount,
-      parsed.data.direction,
+    await linkTransactionToOccurrence(
+      parsed.data.account_id, parsed.data.transaction_date,
+      parsed.data.amount, parsed.data.direction, result.data.id,
     );
-    if (matchId) {
-      await markOccurrencePaid(matchId, result.data.id);
-    }
   }
 
   return result;

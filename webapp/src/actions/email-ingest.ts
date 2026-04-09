@@ -12,7 +12,7 @@ import {
 import { toISODateString } from "@/lib/utils/date";
 import { matchTransactionToDestinatario } from "./destinatarios";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { findMatchingOccurrence, markOccurrencePaid } from "@/actions/occurrences";
+import { linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
   parseBancolombiaEmail,
   type ParsedEmailTransaction,
@@ -138,17 +138,11 @@ async function persistParsedEmail(params: {
       return { success: false, error: insertError.message };
     }
 
-    // Auto-link to a matching pending occurrence if one exists
     if (insertedTxAuto) {
-      const matchId = await findMatchingOccurrence(
-        suggestedAccountId,
-        parsed.transaction_date,
-        parsed.amount,
-        parsed.direction,
+      await linkTransactionToOccurrence(
+        suggestedAccountId, parsed.transaction_date,
+        parsed.amount, parsed.direction, insertedTxAuto.id,
       );
-      if (matchId) {
-        await markOccurrencePaid(matchId, insertedTxAuto.id);
-      }
     }
 
     // Update account balance
@@ -621,17 +615,11 @@ export async function approveEmailTransaction(
     return { success: false, error: insertError.message };
   }
 
-  // Auto-link to a matching pending occurrence if one exists
   if (insertedTx) {
-    const matchId = await findMatchingOccurrence(
-      accountId,
-      parsed.transaction_date,
-      parsed.amount,
-      parsed.direction,
+    await linkTransactionToOccurrence(
+      accountId, parsed.transaction_date,
+      parsed.amount, parsed.direction, insertedTx.id,
     );
-    if (matchId) {
-      await markOccurrencePaid(matchId, insertedTx.id);
-    }
   }
 
   // Reconcile with existing manual transaction if requested

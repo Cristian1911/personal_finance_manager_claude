@@ -925,5 +925,3 @@ function toMonthlyAmount(
   }
 }
 
-// ─── Occurrence key helpers (for use-recurring-month checklist hydration) ─────
-

@@ -6,7 +6,7 @@ import { addDays } from "date-fns";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
-import { ensureCurrentOccurrences } from "@/actions/occurrences";
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -162,8 +162,6 @@ export async function getAttentionItems(): Promise<AttentionItems> {
   if (!user || !accessToken) return EMPTY;
 
   try {
-    // Ensure occurrences are generated for current window
-    await ensureCurrentOccurrences();
     return await getAttentionItemsCached(user.id, accessToken);
   } catch (err) {
     console.error("Error fetching attention items:", err);

@@ -111,10 +111,8 @@ async function getOccurrencesForMonthCached(
 
   const supabase = createCachedClient(accessToken);
   const monthStart = `${month}-01`;
-  // Build the last day of the month: increment month, subtract 1 day
-  const [year, mon] = month.split("-").map(Number);
-  const nextMonthStart = new Date(year, mon, 1); // mon is already 1-based after split, and Date month is 0-based so this is correct
-  const monthEnd = addDays(nextMonthStart, -1).toISOString().split("T")[0];
+  const monthDate = new Date(`${month}-01T12:00:00`);
+  const monthEnd = endOfMonth(monthDate).toISOString().split("T")[0];
 
   const { data, error } = await supabase
     .from("recurring_occurrences")
@@ -369,4 +367,21 @@ export async function findMatchingOccurrence(
   }
 
   return null;
+}
+
+/**
+ * Convenience: find a matching pending occurrence and mark it paid.
+ * Used by all transaction creation paths (FAB, email, PDF import).
+ */
+export async function linkTransactionToOccurrence(
+  accountId: string,
+  transactionDate: string,
+  amount: number,
+  direction: "INFLOW" | "OUTFLOW",
+  transactionId: string,
+): Promise<void> {
+  const matchId = await findMatchingOccurrence(accountId, transactionDate, amount, direction);
+  if (matchId) {
+    await markOccurrencePaid(matchId, transactionId);
+  }
 }

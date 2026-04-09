@@ -4,7 +4,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccounts } from "@/actions/accounts";
-import { ensureCurrentOccurrences, getPendingOccurrences } from "@/actions/occurrences";
+import { getPendingOccurrences } from "@/actions/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import {
@@ -746,10 +746,7 @@ export async function getDashboardHeroData(
     : null;
   const freshness = getFreshnessLevel(oldestUpdate);
 
-  // 3. Ensure occurrences are generated for current window
-  await ensureCurrentOccurrences();
-
-  // 4. Get pending recurring obligations from materialized occurrences
+  // 3. Get pending recurring obligations from materialized occurrences
   const pendingResult = await getPendingOccurrences(14, baseCurrency);
   const pendingOccurrences = pendingResult.success ? pendingResult.data : [];
 
