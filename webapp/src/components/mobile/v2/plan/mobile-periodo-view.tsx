@@ -342,7 +342,7 @@ function IncomeCard({
               className={cn(
                 "flex size-5 items-center justify-center rounded-md border transition-colors",
                 entry.status === "COMPLETED"
-                  ? "border-z-income/40 bg-z-income/15 text-z-income"
+                  ? cn(color.border, color.bg, color.text)
                   : "border-white/10 bg-white/5 text-muted-foreground"
               )}
             >

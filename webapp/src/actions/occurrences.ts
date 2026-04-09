@@ -343,24 +343,22 @@ export async function findMatchingOccurrence(
     .from("recurring_occurrences")
     .select(
       `id, expected_amount,
-       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
+       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
          account_id, direction
        )`
     )
     .eq("user_id", user.id)
     .eq("status", "pending")
+    .eq("template.account_id", accountId)
+    .eq("template.direction", direction)
     .gte("occurrence_date", windowStart)
     .lte("occurrence_date", windowEnd);
 
   if (error || !data) return null;
 
-  // Filter by account + direction + amount (1% tolerance)
+  // Match by amount (1% tolerance)
   const tolerance = amount * 0.01;
   for (const row of data) {
-    const tmpl = row.template as { account_id: string; direction: string } | null;
-    if (!tmpl) continue;
-    if (tmpl.account_id !== accountId) continue;
-    if (tmpl.direction !== direction) continue;
     if (Math.abs(row.expected_amount - amount) <= tolerance) {
       return row.id;
     }

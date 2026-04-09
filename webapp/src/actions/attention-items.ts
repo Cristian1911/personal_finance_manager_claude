@@ -141,13 +141,13 @@ async function getAttentionItemsCached(
   // ── Map upcoming payments from materialized occurrences ───────────────────
 
   const upcomingPayments: AttentionUpcomingPayment[] = (occurrencesRes.data ?? []).map((o) => {
-    const tmpl = o.template as { merchant_name: string | null; description: string | null; direction: string } | null;
+    const tmpl = o.template as { merchant_name: string | null; description: string | null; direction: string };
     return {
       templateId: o.template_id,
-      name: tmpl?.merchant_name ?? tmpl?.description ?? "Pago recurrente",
+      name: tmpl.merchant_name ?? tmpl.description ?? "Pago recurrente",
       amount: o.expected_amount,
       next_date: o.occurrence_date,
-      direction: (tmpl?.direction ?? "OUTFLOW") as "INFLOW" | "OUTFLOW",
+      direction: tmpl.direction as "INFLOW" | "OUTFLOW",
       occurrenceDate: o.occurrence_date,
     };
   }).slice(0, 5);
