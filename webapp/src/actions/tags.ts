@@ -1,35 +1,40 @@
 "use server";
 
 import { cache } from "react";
-import { revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { tagGroupSchema, tagSchema, generateSlug } from "@/lib/validators/tags";
 import type { ActionResult } from "@/types/actions";
 import type { TagGroupWithTags, Tag, TaggableEntity } from "@/types/domain";
 
 import { UNGROUPED_TAG_GROUP_ID } from "@/lib/constants/tags";
 
-// ── Queries ───────────────────────────────────────────────
+// ── Cached inner functions ───────────────────────────────
 
-export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTags[]>> => {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+async function getTagGroupsCached(userId: string, accessToken: string): Promise<TagGroupWithTags[]> {
+  "use cache";
+  cacheTag("tags");
+  cacheLife("zeta");
 
-  const { data: groups, error: groupsError } = await supabase
-    .from("tag_groups")
-    .select("*")
-    .or(`user_id.eq.${user.id},user_id.is.null`)
-    .order("display_order");
+  const supabase = createCachedClient(accessToken);
 
-  if (groupsError) return { success: false, error: groupsError.message };
+  const [{ data: groups, error: groupsError }, { data: tags, error: tagsError }] =
+    await Promise.all([
+      supabase
+        .from("tag_groups")
+        .select("*")
+        .or(`user_id.eq.${userId},user_id.is.null`)
+        .order("display_order"),
+      supabase
+        .from("tags")
+        .select("*")
+        .or(`user_id.eq.${userId},user_id.is.null`)
+        .order("display_order"),
+    ]);
 
-  const { data: tags, error: tagsError } = await supabase
-    .from("tags")
-    .select("*")
-    .or(`user_id.eq.${user.id},user_id.is.null`)
-    .order("display_order");
-
-  if (tagsError) return { success: false, error: tagsError.message };
+  if (groupsError) throw groupsError;
+  if (tagsError) throw tagsError;
 
   const groupIds = new Set(groups.map((g) => g.id));
   const groupsWithTags: TagGroupWithTags[] = groups.map((g) => ({
@@ -37,7 +42,6 @@ export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTag
     tags: tags.filter((t) => t.group_id === g.id),
   }));
 
-  // Include ungrouped tags (group_id is null or references a deleted group)
   const ungroupedTags = tags.filter((t) => !t.group_id || !groupIds.has(t.group_id));
   if (ungroupedTags.length > 0) {
     groupsWithTags.push({
@@ -52,7 +56,38 @@ export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTag
     });
   }
 
-  return { success: true, data: groupsWithTags };
+  return groupsWithTags;
+}
+
+async function getAllTagsCached(userId: string, accessToken: string): Promise<Tag[]> {
+  "use cache";
+  cacheTag("tags");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  const { data, error } = await supabase
+    .from("tags")
+    .select("*")
+    .or(`user_id.eq.${userId},user_id.is.null`)
+    .order("display_order");
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ── Public wrappers ──────────────────────────────────────
+
+export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTags[]>> => {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+
+  try {
+    const data = await getTagGroupsCached(user.id, accessToken);
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error loading tag groups:", error);
+    return { success: false, error: "Error al cargar las etiquetas" };
+  }
 });
 
 export const getTagsForEntity = cache(
@@ -102,16 +137,15 @@ export const getTagsForEntity = cache(
 );
 
 export const getAllTags = cache(async (): Promise<Tag[]> => {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
 
-  const { data } = await supabase
-    .from("tags")
-    .select("*")
-    .or(`user_id.eq.${user.id},user_id.is.null`)
-    .order("display_order");
-
-  return data ?? [];
+  try {
+    return await getAllTagsCached(user.id, accessToken);
+  } catch (error) {
+    console.error("Error loading tags:", error);
+    return [];
+  }
 });
 
 // ── Tag Group Mutations ───────────────────────────────────

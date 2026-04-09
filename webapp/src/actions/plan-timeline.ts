@@ -2,8 +2,10 @@
 
 import "server-only";
 
+import { cache } from "react";
+import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { getDailyCashflow } from "@/actions/charts";
 import { getUpcomingRecurrences } from "@/actions/recurring-templates";
 import { getExchangeRate } from "@/actions/exchange-rate";
@@ -66,13 +68,17 @@ interface PlannedEntryRow {
   recurring_template_id: string | null;
 }
 
-async function getPlannedEntriesWithRates(
+async function getPlannedEntriesCached(
   userId: string,
   monthStart: string,
   monthEnd: string,
-  chartCurrency: CurrencyCode
-): Promise<{ entries: PlannedEntryRow[]; rateMap: Map<string, number> }> {
-  const supabase = createAdminClient();
+  accessToken: string,
+): Promise<PlannedEntryRow[]> {
+  "use cache";
+  cacheTag("cashflow-planner");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
 
   const { data: rows } = await supabase
     .from("planning_entries")
@@ -87,17 +93,28 @@ async function getPlannedEntriesWithRates(
     .gte("expected_date", monthStart)
     .lte("expected_date", monthEnd);
 
-  if (!rows || rows.length === 0) return { entries: [], rateMap: new Map() };
+  if (!rows || rows.length === 0) return [];
 
-  const entries: PlannedEntryRow[] = rows.map((e) => ({
+  return rows.map((e) => ({
     entry_type: e.entry_type as PlanningEntryType,
     day: parseInt(e.expected_date.split("-")[2], 10),
     amount: Number(e.amount),
     currency_code: e.currency_code,
     recurring_template_id: e.recurring_template_id,
   }));
+}
 
-  // Batch-fetch exchange rates for foreign currencies
+async function getPlannedEntriesWithRates(
+  userId: string,
+  monthStart: string,
+  monthEnd: string,
+  chartCurrency: CurrencyCode,
+  accessToken: string,
+): Promise<{ entries: PlannedEntryRow[]; rateMap: Map<string, number> }> {
+  const entries = await getPlannedEntriesCached(userId, monthStart, monthEnd, accessToken);
+
+  if (entries.length === 0) return { entries: [], rateMap: new Map() };
+
   const foreignCurrencies = new Set(
     entries
       .filter((e) => e.currency_code !== chartCurrency)
@@ -120,12 +137,12 @@ async function getPlannedEntriesWithRates(
 
 // --- Main ---
 
-export async function getPlanTimelineData(
+export const getPlanTimelineData = cache(async (
   month?: string,
   _currency?: string
-): Promise<PlanTimelineData> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return emptyTimeline();
+): Promise<PlanTimelineData> => {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return emptyTimeline();
 
   const target = parseMonth(month);
   const now = new Date();
@@ -156,7 +173,7 @@ export async function getPlanTimelineData(
       getDailyCashflow(month),
       getUpcomingRecurrences(remainingDays > 0 ? remainingDays : 0),
       getAccounts(),
-      getPlannedEntriesWithRates(user.id, mStart, mEnd, chartCurrency),
+      getPlannedEntriesWithRates(user.id, mStart, mEnd, chartCurrency, accessToken),
     ]);
 
   const accounts = accountsResult.success ? accountsResult.data : [];
@@ -315,4 +332,4 @@ export async function getPlanTimelineData(
     daysInMonth,
     dayOfMonth,
   };
-}
+});

@@ -270,6 +270,7 @@ export async function createRecurringTemplate(
   await ensureCurrentOccurrences();
 
   revalidateTag("recurring", "zeta");
+  revalidateTag("occurrences", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("attention", "zeta");
   return { success: true, data };
@@ -342,6 +343,7 @@ export async function updateRecurringTemplate(
   await ensureCurrentOccurrences();
 
   revalidateTag("recurring", "zeta");
+  revalidateTag("occurrences", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("attention", "zeta");
   return { success: true, data };
