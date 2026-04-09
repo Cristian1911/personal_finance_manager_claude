@@ -56,14 +56,16 @@ export function InicioDiscovery({ expanded, onToggle }: InicioDiscoveryProps) {
     <div>
       {/* Chip row — always visible */}
       <div className="grid grid-cols-2 gap-1.5">
-        {/* ¿Puedo comprarlo? → opens purchase recommender drawer directly */}
+        {/* ¿Puedo comprarlo? → expands to preview, then opens drawer */}
         <button
           type="button"
-          onClick={() => setDrawerOpen(true)}
+          onClick={() => onToggle("discovery-compra")}
           className={cn(
             PANEL_INSET_CLASS,
-            "flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors active:bg-white/[0.03]"
+            "flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors active:bg-white/[0.03]",
+            activeId === "discovery-compra" && "ring-1 ring-z-brass/30 bg-z-brass/[0.06]"
           )}
+          aria-expanded={activeId === "discovery-compra"}
         >
           <IconBox><LightbulbIcon /></IconBox>
           <div className="min-w-0">
@@ -72,7 +74,7 @@ export function InicioDiscovery({ expanded, onToggle }: InicioDiscoveryProps) {
           </div>
         </button>
 
-        {/* Mapa del mes → expands to show plan teaser */}
+        {/* Plan del mes → expands to show plan teaser */}
         <button
           type="button"
           onClick={() => onToggle("discovery-mapa")}
@@ -91,37 +93,64 @@ export function InicioDiscovery({ expanded, onToggle }: InicioDiscoveryProps) {
         </button>
       </div>
 
-      {/* Expanded panel for Plan del mes — full width below */}
+      {/* Expanded panel — full width below both chips */}
       <div
         className="grid transition-[grid-template-rows] duration-200 ease-out"
-        style={{ gridTemplateRows: activeId === "discovery-mapa" ? "1fr" : "0fr" }}
+        style={{ gridTemplateRows: activeId ? "1fr" : "0fr" }}
       >
         <div className="overflow-hidden">
           <div
             className={cn(
               "mt-1.5 transition-opacity duration-150",
-              activeId === "discovery-mapa" ? "opacity-100 delay-75" : "opacity-0"
+              activeId ? "opacity-100 delay-75" : "opacity-0"
             )}
           >
-            <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3.5 space-y-3")}>
-              <p className="text-[12px] font-medium leading-snug text-foreground/90">
-                Presupuesto, obligaciones y deuda en un solo lugar.
-              </p>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Revisa cuánto tienes comprometido, cuánto puedes gastar con libertad y cómo va tu
-                estrategia de pago de deuda — todo antes de que empiece el detalle del día a día.
-              </p>
-              <Link
-                href="/plan"
-                className={cn(
-                  BRASS_BUTTON_CLASS,
-                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold"
-                )}
-              >
-                Abrir mi plan
-                <ArrowRightIcon />
-              </Link>
-            </div>
+            {/* ¿Puedo comprarlo? preview */}
+            {activeId === "discovery-compra" && (
+              <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3.5 space-y-3")}>
+                <p className="text-[12px] font-medium leading-snug text-foreground/90">
+                  Analiza el impacto real de una compra antes de hacerla.
+                </p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Ingresa el monto y Zeta cruza tu liquidez, deuda, presupuesto y pagos próximos para
+                  decirte si es buen momento — o si es mejor esperar.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  className={cn(
+                    BRASS_BUTTON_CLASS,
+                    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold"
+                  )}
+                >
+                  Evaluar una compra
+                  <ArrowRightIcon />
+                </button>
+              </div>
+            )}
+
+            {/* Plan del mes preview */}
+            {activeId === "discovery-mapa" && (
+              <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3.5 space-y-3")}>
+                <p className="text-[12px] font-medium leading-snug text-foreground/90">
+                  Presupuesto, obligaciones y deuda en un solo lugar.
+                </p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Revisa cuánto tienes comprometido, cuánto puedes gastar con libertad y cómo va tu
+                  estrategia de pago de deuda — todo antes de que empiece el detalle del día a día.
+                </p>
+                <Link
+                  href="/plan"
+                  className={cn(
+                    BRASS_BUTTON_CLASS,
+                    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold"
+                  )}
+                >
+                  Abrir mi plan
+                  <ArrowRightIcon />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
