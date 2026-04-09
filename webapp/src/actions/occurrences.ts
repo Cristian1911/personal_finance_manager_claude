@@ -204,7 +204,6 @@ export async function ensureOccurrencesForRange(
 
   if (upsertError) return { success: false, error: upsertError.message };
 
-  revalidateTag("occurrences", "zeta");
   return { success: true, data: undefined };
 }
 

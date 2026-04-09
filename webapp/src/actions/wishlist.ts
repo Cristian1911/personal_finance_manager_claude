@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, revalidateTag } from "next/cache";
 import {
   analyzePurchaseDecision,
   calcUtilization,
@@ -12,6 +12,7 @@ import {
   type PurchaseUrgency,
 } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createCachedClient } from "@/lib/supabase/cached";
 import {
   createWishlistItemSchema,
   enrichWishlistItemSchema,
@@ -78,26 +79,69 @@ function invalidateWishlist() {
   revalidateTag("wishlist", "zeta");
 }
 
-// ─── Section 1: CRUD Queries & Mutations ─────────────────────────────────────
+// ─── Cached inner functions ─────────────────────────────────────────────────
 
-export async function getWishlistItems(): Promise<WishlistItem[]> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return [];
+async function getWishlistItemsCached(
+  userId: string,
+  accessToken: string,
+): Promise<WishlistItem[]> {
+  "use cache";
+  cacheTag("wishlist");
+  cacheLife("zeta");
 
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("wishlist_items")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("status", { ascending: true })
     .order("last_score", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
-  if (error) {
+  if (error) throw error;
+  return (data ?? []) as WishlistItem[];
+}
+
+async function getWishlistItemsForDashboardCached(
+  userId: string,
+  accessToken: string,
+): Promise<{ items: WishlistItem[]; totalCount: number; readyCount: number }> {
+  "use cache";
+  cacheTag("wishlist");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  const { data, error } = await supabase
+    .from("wishlist_items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "wishlist")
+    .order("last_score", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) throw error;
+
+  const all = (data ?? []) as WishlistItem[];
+  const readyCount = all.filter(
+    (item) => item.last_score != null && item.last_score >= 55
+  ).length;
+
+  return { items: all.slice(0, 2), totalCount: all.length, readyCount };
+}
+
+// ─── Section 1: CRUD Queries & Mutations ─────────────────────────────────────
+
+export async function getWishlistItems(): Promise<WishlistItem[]> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+
+  try {
+    return await getWishlistItemsCached(user.id, accessToken);
+  } catch (error) {
     console.error("Error fetching wishlist items:", error);
     return [];
   }
-
-  return (data ?? []) as WishlistItem[];
 }
 
 export async function getWishlistItemsForDashboard(): Promise<{
@@ -105,33 +149,15 @@ export async function getWishlistItemsForDashboard(): Promise<{
   totalCount: number;
   readyCount: number;
 }> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { items: [], totalCount: 0, readyCount: 0 };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { items: [], totalCount: 0, readyCount: 0 };
 
-  const { data, error } = await supabase
-    .from("wishlist_items")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("status", "wishlist")
-    .order("last_score", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  if (error) {
+  try {
+    return await getWishlistItemsForDashboardCached(user.id, accessToken);
+  } catch (error) {
     console.error("Error fetching dashboard wishlist items:", error);
     return { items: [], totalCount: 0, readyCount: 0 };
   }
-
-  const all = (data ?? []) as WishlistItem[];
-  const readyCount = all.filter(
-    (item) => item.last_score != null && item.last_score >= 55
-  ).length;
-
-  return {
-    items: all.slice(0, 2),
-    totalCount: all.length,
-    readyCount,
-  };
 }
 
 export async function createWishlistItem(
