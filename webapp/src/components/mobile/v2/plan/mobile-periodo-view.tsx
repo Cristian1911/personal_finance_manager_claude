@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
+import { buildEnvelopeMaps, nextExpenseStatus, nextIncomeStatus } from "@/lib/utils/cashflow-planner";
 import { PlanFlowChart } from "./plan-flow-chart";
 import { EntryFormDialog } from "@/components/cashflow-planner/entry-form-dialog";
 import { EditEntryDialog } from "@/components/cashflow-planner/edit-entry-dialog";
@@ -51,8 +52,6 @@ const STATUS_BADGE: Record<
 interface MobilePeriodoViewProps {
   planData: PeriodPlanData;
   timelineData: PlanTimelineData;
-  currency: CurrencyCode;
-  isExpired: boolean;
   accounts: Pick<Account, "id" | "name" | "icon" | "color">[];
   categories: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
 }
@@ -60,13 +59,12 @@ interface MobilePeriodoViewProps {
 export function MobilePeriodoView({
   planData,
   timelineData,
-  currency,
-  isExpired,
   accounts,
   categories,
 }: MobilePeriodoViewProps) {
   const {
     period,
+    currency,
     income_envelopes,
     expense_entries,
     total_expenses,
@@ -87,45 +85,10 @@ export function MobilePeriodoView({
   const [isPending, startTransition] = useTransition();
 
   /* ── Computed data ── */
-  const assignedPerExpense = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const env of income_envelopes) {
-      for (const { assignment } of env.assignments) {
-        map.set(
-          assignment.expense_entry_id,
-          (map.get(assignment.expense_entry_id) ?? 0) +
-            Number(assignment.assigned_amount)
-        );
-      }
-    }
-    return map;
-  }, [income_envelopes]);
-
-  const incomeColorMap = useMemo(() => {
-    const map = new Map<string, number>();
-    income_envelopes.forEach((env, i) => map.set(env.entry.id, i));
-    return map;
-  }, [income_envelopes]);
-
-  const expenseAssignmentChips = useMemo(() => {
-    const map = new Map<
-      string,
-      { colorIndex: number; amount: number; label: string }[]
-    >();
-    for (const env of income_envelopes) {
-      const ci = incomeColorMap.get(env.entry.id) ?? 0;
-      for (const { assignment } of env.assignments) {
-        const chips = map.get(assignment.expense_entry_id) ?? [];
-        chips.push({
-          colorIndex: ci,
-          amount: Number(assignment.assigned_amount),
-          label: env.entry.label,
-        });
-        map.set(assignment.expense_entry_id, chips);
-      }
-    }
-    return map;
-  }, [income_envelopes, incomeColorMap]);
+  const { assignedPerExpense, incomeColorMap, expenseAssignmentChips } = useMemo(
+    () => buildEnvelopeMaps(income_envelopes),
+    [income_envelopes],
+  );
 
   const percentAssigned =
     total_expenses > 0
@@ -136,23 +99,11 @@ export function MobilePeriodoView({
 
   /* ── Handlers ── */
   function cycleExpenseStatus(entry: PlanningEntryWithRelations) {
-    const next: PlanningEntryStatus =
-      entry.status === "PLANNED"
-        ? "COMPLETED"
-        : entry.status === "COMPLETED"
-          ? "SKIPPED"
-          : "PLANNED";
-    startTransition(async () => {
-      await toggleEntryStatus(entry.id, next);
-    });
+    startTransition(async () => { await toggleEntryStatus(entry.id, nextExpenseStatus(entry.status)); });
   }
 
-  function toggleIncomeStatus(entry: PlanningEntryWithRelations) {
-    const next: PlanningEntryStatus =
-      entry.status === "PLANNED" ? "COMPLETED" : "PLANNED";
-    startTransition(async () => {
-      await toggleEntryStatus(entry.id, next);
-    });
+  function toggleIncomeStatusHandler(entry: PlanningEntryWithRelations) {
+    startTransition(async () => { await toggleEntryStatus(entry.id, nextIncomeStatus(entry.status)); });
   }
 
   function handleDeleteEntry(id: string) {
@@ -182,7 +133,7 @@ export function MobilePeriodoView({
   }
 
   return (
-    <div className={cn("space-y-4", isExpired && "opacity-60")}>
+    <div className="space-y-4">
       {/* Chart hero */}
       <PlanFlowChart timelineData={timelineData} currency={currency} />
 
@@ -241,7 +192,7 @@ export function MobilePeriodoView({
                 }
                 onEdit={openEdit}
                 onDelete={handleDeleteEntry}
-                onToggleStatus={toggleIncomeStatus}
+                onToggleStatus={toggleIncomeStatusHandler}
                 onRemoveAssignment={handleRemoveAssignment}
                 isPending={isPending}
               />

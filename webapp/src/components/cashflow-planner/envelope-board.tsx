@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { IncomeEnvelopeCard } from "./income-envelope-card";
 import { ExpenseEntryRow } from "./expense-entry-row";
 import { AssignmentDialog } from "./assignment-dialog";
@@ -8,6 +8,7 @@ import { EntryFormDialog } from "./entry-form-dialog";
 import { EditEntryDialog } from "./edit-entry-dialog";
 import { AutoAssignButton } from "./auto-assign-button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { buildEnvelopeMaps } from "@/lib/utils/cashflow-planner";
 import { Wallet, Receipt } from "lucide-react";
 import type { Account, Category } from "@/types/domain";
 import type { PeriodPlanData, PlanningEntryWithRelations } from "@/types/cashflow-planner";
@@ -25,30 +26,10 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { income_envelopes, expense_entries, unassigned_expenses, currency, period } = data;
 
-  const assignedPerExpense = new Map<string, number>();
-  for (const env of income_envelopes) {
-    for (const { assignment } of env.assignments) {
-      const prev = assignedPerExpense.get(assignment.expense_entry_id) ?? 0;
-      assignedPerExpense.set(
-        assignment.expense_entry_id,
-        prev + Number(assignment.assigned_amount)
-      );
-    }
-  }
-
-  const incomeColorMap = new Map<string, number>();
-  income_envelopes.forEach((env, index) => incomeColorMap.set(env.entry.id, index));
-
-  type AssignmentChip = { colorIndex: number; amount: number; label: string };
-  const expenseAssignmentChips = new Map<string, AssignmentChip[]>();
-  for (const env of income_envelopes) {
-    const colorIdx = incomeColorMap.get(env.entry.id) ?? 0;
-    for (const { assignment } of env.assignments) {
-      const chips = expenseAssignmentChips.get(assignment.expense_entry_id) ?? [];
-      chips.push({ colorIndex: colorIdx, amount: Number(assignment.assigned_amount), label: env.entry.label });
-      expenseAssignmentChips.set(assignment.expense_entry_id, chips);
-    }
-  }
+  const { assignedPerExpense, incomeColorMap, expenseAssignmentChips } = useMemo(
+    () => buildEnvelopeMaps(income_envelopes),
+    [income_envelopes],
+  );
 
   function openAssignDialog(expense: PlanningEntryWithRelations) {
     setAssignTarget(expense);

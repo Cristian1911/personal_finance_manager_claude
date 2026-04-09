@@ -25,7 +25,7 @@ interface AssignmentDialogProps {
   incomeEnvelopes: IncomeEnvelope[];
   currency: CurrencyCode;
   existingAssignedToExpense?: number;
-  incomeColorMap?: Map<string, number>;
+  incomeColorMap: Map<string, number>;
 }
 
 export function AssignmentDialog({
@@ -132,12 +132,10 @@ export function AssignmentDialog({
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      {incomeColorMap && (
-                        <span
-                          className="size-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: getEnvelopeColor(incomeColorMap.get(env.entry.id) ?? 0).hex }}
-                        />
-                      )}
+                      <span
+                        className="size-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: getEnvelopeColor(incomeColorMap.get(env.entry.id) ?? 0).hex }}
+                      />
                       <div>
                         <p className="text-sm font-medium">{env.entry.label}</p>
                         <p className="text-xs text-muted-foreground">
