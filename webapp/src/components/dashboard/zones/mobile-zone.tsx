@@ -1,4 +1,4 @@
-import { getDashboardHeroData } from "@/actions/charts";
+import { getDashboardHeroData, getDailySpending } from "@/actions/charts";
 import { getAttentionItems } from "@/actions/attention-items";
 import { getBurnRate } from "@/actions/burn-rate";
 import { getBudgetSummary } from "@/actions/budgets";
@@ -21,13 +21,14 @@ interface MobileZoneProps {
 }
 
 export async function MobileZone({ month, currency, recentTx }: MobileZoneProps) {
-  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult] =
+  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult, dailySpending] =
     await Promise.all([
       getDashboardHeroData(month, currency),
       getAttentionItems(),
       getBurnRate(currency),
       getBudgetSummary(month),
       getAccounts(),
+      getDailySpending(month, currency),
     ]);
 
   const allAccounts = accountsResult.success ? accountsResult.data : [];
@@ -66,20 +67,13 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     };
   })();
 
+  // Today's spending from cached daily data
+  const todayStr = now.toLocaleDateString("en-CA");
+  const spentToday = dailySpending.find((d) => d.date === todayStr)?.amount ?? 0;
+
   // Mobile total spent derivation
   const mobileTotalSpent =
     heroData.totalLiquid - heroData.totalPending - heroData.availableToSpend;
-
-  // Next payment info
-  const firstPayment = heroData.pendingObligations[0];
-  const nextPaymentDays = firstPayment
-    ? Math.max(
-        0,
-        Math.ceil(
-          (new Date(firstPayment.due_date).getTime() - Date.now()) / 86_400_000
-        )
-      )
-    : null;
 
   return (
     <>
@@ -98,12 +92,9 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           primaryAccount,
         }}
         metrics={{
-          runwayDays: burnRateData?.discretionary.runwayDays ?? 0,
           daysInMonth,
           dayOfMonth: now.getDate(),
-          nextPaymentName: firstPayment?.name ?? null,
-          nextPaymentDays,
-          nextPaymentAmount: firstPayment?.amount ?? null,
+          spentToday,
           currency,
         }}
         attentionItems={attentionItemsData}
