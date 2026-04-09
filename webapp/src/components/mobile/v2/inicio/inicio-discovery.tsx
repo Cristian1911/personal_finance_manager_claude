@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { PurchaseRecommenderDrawer } from "./purchase-recommender-drawer";
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -23,6 +25,14 @@ function CalendarIcon() {
   );
 }
 
+function ArrowRightIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 8h10M9 4l4 4-4 4" />
+    </svg>
+  );
+}
+
 function IconBox({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-z-brass/20 bg-z-brass/10">
@@ -30,21 +40,6 @@ function IconBox({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-// ─── Detail content per card ─────────────────────────────────────────────────
-
-const details: Record<string, { text: string; href: string; label: string }> = {
-  "discovery-deseos": {
-    text: "Describe lo que quieres comprar y Zeta evalúa si cabe en tu plan.",
-    href: "/deseos",
-    label: "Ir a deseos →",
-  },
-  "discovery-mapa": {
-    text: "Tu presupuesto distribuido en el calendario.",
-    href: "/plan",
-    label: "Ver plan →",
-  },
-};
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -55,21 +50,20 @@ interface InicioDiscoveryProps {
 
 export function InicioDiscovery({ expanded, onToggle }: InicioDiscoveryProps) {
   const activeId = expanded?.startsWith("discovery-") ? expanded : null;
-  const detail = activeId ? details[activeId] : null;
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <div>
       {/* Chip row — always visible */}
       <div className="grid grid-cols-2 gap-1.5">
+        {/* ¿Puedo comprarlo? → opens purchase recommender drawer directly */}
         <button
           type="button"
-          onClick={() => onToggle("discovery-deseos")}
+          onClick={() => setDrawerOpen(true)}
           className={cn(
             PANEL_INSET_CLASS,
-            "flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors active:bg-white/[0.03]",
-            activeId === "discovery-deseos" && "ring-1 ring-z-brass/30 bg-z-brass/[0.06]"
+            "flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors active:bg-white/[0.03]"
           )}
-          aria-expanded={activeId === "discovery-deseos"}
         >
           <IconBox><LightbulbIcon /></IconBox>
           <div className="min-w-0">
@@ -78,6 +72,7 @@ export function InicioDiscovery({ expanded, onToggle }: InicioDiscoveryProps) {
           </div>
         </button>
 
+        {/* Mapa del mes → expands to show plan teaser */}
         <button
           type="button"
           onClick={() => onToggle("discovery-mapa")}
@@ -90,37 +85,49 @@ export function InicioDiscovery({ expanded, onToggle }: InicioDiscoveryProps) {
         >
           <IconBox><CalendarIcon /></IconBox>
           <div className="min-w-0">
-            <p className="text-[12px] font-semibold leading-tight">Mapa del mes</p>
-            <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">Tu gasto en el tiempo</p>
+            <p className="text-[12px] font-semibold leading-tight">Plan del mes</p>
+            <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">Tu estrategia financiera</p>
           </div>
         </button>
       </div>
 
-      {/* Expanded panel — FULL WIDTH below both cards */}
+      {/* Expanded panel for Plan del mes — full width below */}
       <div
         className="grid transition-[grid-template-rows] duration-200 ease-out"
-        style={{ gridTemplateRows: activeId ? "1fr" : "0fr" }}
+        style={{ gridTemplateRows: activeId === "discovery-mapa" ? "1fr" : "0fr" }}
       >
         <div className="overflow-hidden">
           <div
             className={cn(
               "mt-1.5 transition-opacity duration-150",
-              activeId ? "opacity-100 delay-75" : "opacity-0"
+              activeId === "discovery-mapa" ? "opacity-100 delay-75" : "opacity-0"
             )}
           >
-            {detail && (
-              <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3 space-y-2")}>
-                <p className="text-[11px] leading-snug text-muted-foreground">
-                  {detail.text}
-                </p>
-                <Link href={detail.href} className="inline-block text-[11px] font-semibold text-z-brass">
-                  {detail.label}
-                </Link>
-              </div>
-            )}
+            <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3.5 space-y-3")}>
+              <p className="text-[12px] font-medium leading-snug text-foreground/90">
+                Presupuesto, obligaciones y deuda en un solo lugar.
+              </p>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Revisa cuánto tienes comprometido, cuánto puedes gastar con libertad y cómo va tu
+                estrategia de pago de deuda — todo antes de que empiece el detalle del día a día.
+              </p>
+              <Link
+                href="/plan"
+                className={cn(
+                  BRASS_BUTTON_CLASS,
+                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold"
+                )}
+              >
+                Abrir mi plan
+                <ArrowRightIcon />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Purchase recommender drawer */}
+      <PurchaseRecommenderDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
     </div>
   );
 }
