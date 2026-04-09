@@ -10,16 +10,20 @@ import {
   subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { getOccurrencesBetween } from "@zeta/shared";
 import {
   recordRecurringOccurrencePayment,
 } from "@/actions/recurring-templates";
-import { skipOccurrence } from "@/actions/occurrences";
+import {
+  getOccurrencesForMonth,
+  skipOccurrence,
+  ensureOccurrencesForRange,
+} from "@/actions/occurrences";
 import { toast } from "sonner";
 import type {
   Account,
   RecurringTemplateWithRelations,
 } from "@/types/domain";
+import type { RecurringOccurrence } from "@/actions/occurrences";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -27,6 +31,7 @@ import type {
 
 export interface OccurrenceItem {
   key: string; // templateId:date
+  occurrenceId: string; // DB row ID for skip/paid mutations
   templateId: string;
   merchant: string;
   date: string; // YYYY-MM-DD
@@ -46,10 +51,34 @@ export interface OccurrenceItem {
 export type DateStatus = "today" | "past" | "future";
 
 /* ------------------------------------------------------------------ */
-/*  Constants                                                          */
+/*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
+function mapToOccurrenceItem(
+  o: RecurringOccurrence,
+  accounts: Account[]
+): OccurrenceItem {
+  const isDebtPayment =
+    o.account_type === "CREDIT_CARD" || o.account_type === "LOAN";
+  return {
+    key: `${o.template_id}:${o.occurrence_date}`,
+    occurrenceId: o.id,
+    templateId: o.template_id,
+    merchant: o.merchant_name ?? o.description ?? "Recurrente",
+    date: o.occurrence_date,
+    plannedAmount: o.expected_amount,
+    direction: o.direction,
+    accountName: o.account_name,
+    accountId: o.account_id,
+    categoryName: o.category_name ?? "Sin categoría",
+    categoryIcon: o.category_icon ?? "tag",
+    categoryColor: o.category_color ?? "#6b7280",
+    currencyCode: o.currency_code,
+    isDebtPayment,
+    transferSourceAccountId: o.transfer_source_account_id,
+    accountLastFour: accounts.find((a) => a.id === o.account_id)?.mask ?? "",
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /*  Hook                                                               */
@@ -60,13 +89,13 @@ export function useRecurringMonth(
   accounts: Account[]
 ) {
   const router = useRouter();
+
   /* ---- month cursor ---- */
   const [monthCursor, setMonthCursor] = useState(() => new Date());
   const monthStart = startOfMonth(monthCursor);
   const monthEnd = endOfMonth(monthCursor);
   const monthKey = format(monthCursor, "yyyy-MM");
   const todayStr = format(new Date(), "yyyy-MM-dd");
-  const storageKey = `zeta:recurring-checklist:${monthKey}`;
 
   const monthLabel = format(monthCursor, "MMMM yyyy", { locale: es });
 
@@ -79,108 +108,50 @@ export function useRecurringMonth(
     []
   );
 
-  /* ---- checked items (localStorage + DB hydration) ---- */
-  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  /* ---- DB-backed occurrences state ---- */
+  const [occurrences, setOccurrences] = useState<RecurringOccurrence[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load from localStorage on mount and when month changes
+  /* ---- Load occurrences from DB on mount and month change ---- */
   useEffect(() => {
     setIsHydrated(false);
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      setCheckedItems(raw ? (JSON.parse(raw) as Record<string, boolean>) : {});
-    } catch {
-      setCheckedItems({});
-    }
-  }, [storageKey]);
+    let cancelled = false;
 
-  // Write helper — syncs to localStorage inside the state update
-  const updateCheckedItems = useCallback(
-    (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => {
-      setCheckedItems((prev) => {
-        const next = updater(prev);
-        try {
-          window.localStorage.setItem(storageKey, JSON.stringify(next));
-        } catch { /* quota exceeded — silent */ }
-        return next;
-      });
-    },
-    [storageKey]
-  );
-
-  /* ---- occurrence generation ---- */
-  const occurrences = useMemo<OccurrenceItem[]>(() => {
-    const list: OccurrenceItem[] = [];
-
-    for (const template of templates) {
-      if (!template.is_active) continue;
-
-      const dates = getOccurrencesBetween(
-        template.start_date,
-        template.frequency,
-        template.end_date,
-        monthStart,
-        monthEnd
-      );
-
-      const isDebtPayment = DEBT_ACCOUNT_TYPES.has(
-        template.account.account_type
-      );
-
-      for (const date of dates) {
-        list.push({
-          key: `${template.id}:${date}`,
-          templateId: template.id,
-          merchant: template.merchant_name ?? "Recurrente",
-          date,
-          plannedAmount: template.amount,
-          direction: template.direction,
-          accountName: template.account.name,
-          accountId: template.account.id,
-          categoryName:
-            template.category?.name_es ??
-            template.category?.name ??
-            "Sin categoría",
-          categoryIcon: template.category?.icon ?? "tag",
-          categoryColor: template.category?.color ?? "#6b7280",
-          currencyCode: (template.currency_code ?? template.account.currency_code) as string,
-          isDebtPayment,
-          transferSourceAccountId:
-            template.transfer_source_account?.id ?? null,
-          accountLastFour:
-            accounts.find((a) => a.id === template.account.id)?.mask ?? "",
-        });
+    const load = async () => {
+      // Ensure rows exist for this month
+      await ensureOccurrencesForRange(monthStart, monthEnd);
+      // Fetch all occurrences
+      const result = await getOccurrencesForMonth(monthKey);
+      if (cancelled) return;
+      if (result.success) {
+        setOccurrences(result.data);
       }
-    }
+      setIsHydrated(true);
+    };
 
-    return list.sort((a, b) => {
-      const byDate = a.date.localeCompare(b.date);
-      if (byDate !== 0) return byDate;
-      return a.merchant.localeCompare(b.merchant);
-    });
-  }, [templates, accounts, monthStart, monthEnd]);
-
-  /* ---- DB hydration: seed checked state from actual transactions ---- */
-  const occurrenceKeysStr = useMemo(
-    () => occurrences.map((o) => o.key).join(","),
-    [occurrences],
-  );
-
-  // TODO(occurrences-v2): hydrate paid/skipped state from recurring_occurrences table
-  // (replaces old getPaidOccurrenceKeys + getSkippedOccurrenceKeys which used obligation_skips)
-  useEffect(() => {
-    setIsHydrated(true);
-  }, [occurrenceKeysStr]);
+    load();
+    return () => {
+      cancelled = true;
+    };
+    // monthStart/monthEnd are derived from monthKey — only re-run when monthKey changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthKey]);
 
   /* ---- pending / completed splits ---- */
   const pending = useMemo(
-    () => occurrences.filter((item) => !checkedItems[item.key]),
-    [occurrences, checkedItems]
+    () =>
+      occurrences
+        .filter((o) => o.status === "pending")
+        .map((o) => mapToOccurrenceItem(o, accounts)),
+    [occurrences, accounts]
   );
 
   const completed = useMemo(
-    () => occurrences.filter((item) => checkedItems[item.key]),
-    [occurrences, checkedItems]
+    () =>
+      occurrences
+        .filter((o) => o.status !== "pending")
+        .map((o) => mapToOccurrenceItem(o, accounts)),
+    [occurrences, accounts]
   );
 
   /* ---- pending grouped by date ---- */
@@ -197,14 +168,14 @@ export function useRecurringMonth(
   /* ---- occurrence counts per date (for calendar dots) ---- */
   const dateOccurrenceCounts = useMemo(() => {
     const map = new Map<string, { total: number; completed: number }>();
-    for (const item of occurrences) {
-      const entry = map.get(item.date) ?? { total: 0, completed: 0 };
+    for (const o of occurrences) {
+      const entry = map.get(o.occurrence_date) ?? { total: 0, completed: 0 };
       entry.total += 1;
-      if (checkedItems[item.key]) entry.completed += 1;
-      map.set(item.date, entry);
+      if (o.status !== "pending") entry.completed += 1;
+      map.set(o.occurrence_date, entry);
     }
     return map;
-  }, [occurrences, checkedItems]);
+  }, [occurrences]);
 
   /* ---- date status helper ---- */
   const getDateStatus = useCallback(
@@ -270,8 +241,12 @@ export function useRecurringMonth(
         return;
       }
 
-      // Mark as checked and persist to localStorage
-      updateCheckedItems((prev) => ({ ...prev, [item.key]: true }));
+      // Optimistically mark as paid in local state
+      setOccurrences((prev) =>
+        prev.map((o) =>
+          o.id === item.occurrenceId ? { ...o, status: "paid" as const } : o
+        )
+      );
 
       const created = result.data?.created ?? 0;
       const duplicates = result.data?.alreadyRecorded ?? 0;
@@ -287,32 +262,49 @@ export function useRecurringMonth(
         toast.info("Este pago ya estaba registrado anteriormente.");
       }
     },
-    [todayStr, updateCheckedItems, router]
+    [todayStr, router]
   );
 
-  /* ---- skip payment (already paid manually) ---- */
+  /* ---- skip payment ---- */
   const skipPayment = useCallback(
     async (item: OccurrenceItem) => {
       // Optimistic update
-      updateCheckedItems((prev) => ({ ...prev, [item.key]: true }));
+      setOccurrences((prev) =>
+        prev.map((o) =>
+          o.id === item.occurrenceId ? { ...o, status: "skipped" as const } : o
+        )
+      );
       toast.success("Marcado como completado");
 
-      // TODO(occurrences-v2): skipOccurrence now requires an occurrence ID from
-      // recurring_occurrences table. The hook needs to be refactored to load
-      // occurrences from the materialized table and pass their IDs here.
-      // For now, we skip the DB call — the optimistic update persists via localStorage.
-      void skipOccurrence; // keep import live until refactor
-      router.refresh();
+      const result = await skipOccurrence(item.occurrenceId);
+      if (!result.success) {
+        // Revert on failure
+        setOccurrences((prev) =>
+          prev.map((o) =>
+            o.id === item.occurrenceId
+              ? { ...o, status: "pending" as const }
+              : o
+          )
+        );
+        toast.error("No se pudo guardar. Intenta de nuevo.");
+      } else {
+        router.refresh();
+      }
     },
-    [updateCheckedItems, router]
+    [router]
   );
 
   /* ---- totals ---- */
   const totalPlanned = useMemo(
     () =>
       occurrences
-        .filter((o) => o.direction === "OUTFLOW" || o.isDebtPayment)
-        .reduce((sum, o) => sum + o.plannedAmount, 0),
+        .filter(
+          (o) =>
+            o.direction === "OUTFLOW" ||
+            o.account_type === "CREDIT_CARD" ||
+            o.account_type === "LOAN"
+        )
+        .reduce((sum, o) => sum + o.expected_amount, 0),
     [occurrences]
   );
 
@@ -333,8 +325,7 @@ export function useRecurringMonth(
     pendingByDate,
     dateOccurrenceCounts,
 
-    // Checked state
-    checkedItems,
+    // Loading state
     isHydrated,
 
     // Actions
