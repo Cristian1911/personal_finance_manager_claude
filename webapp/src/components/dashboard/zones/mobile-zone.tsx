@@ -76,10 +76,6 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     ? last7Days.reduce((sum, d) => sum + d.amount, 0) / last7Days.length
     : 0;
 
-  // Mobile total spent derivation
-  const mobileTotalSpent =
-    heroData.totalLiquid - heroData.totalPending - heroData.availableToSpend;
-
   return (
     <>
       <MobileHeader variant="main" title="Zeta" />
@@ -90,9 +86,9 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           daysRemaining,
           currency,
           breakdown: {
-            totalLiquid: heroData.totalLiquid,
+            totalLiquid: heroData.monthlyIncome,
             fixedExpenses: heroData.totalPending,
-            alreadySpent: mobileTotalSpent,
+            alreadySpent: heroData.monthlySpent,
           },
           primaryAccount,
         }}

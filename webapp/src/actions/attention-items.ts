@@ -153,9 +153,9 @@ async function getAttentionItemsCached(
     }
   }
 
-  // Sort by date ascending, limit to 5
+  // Sort by date ascending — don't limit here, the public wrapper
+  // filters paid/skipped entries first and then limits to 5
   upcomingPayments.sort((a, b) => a.occurrenceDate.localeCompare(b.occurrenceDate));
-  upcomingPayments.splice(5);
 
   return { overdueReminders, upcomingPayments, pendingEmails };
 }
@@ -185,6 +185,9 @@ export async function getAttentionItems(): Promise<AttentionItems> {
         );
       }
     }
+
+    // Limit to 5 after filtering (not before)
+    items.upcomingPayments = items.upcomingPayments.slice(0, 5);
 
     return items;
   } catch (err) {

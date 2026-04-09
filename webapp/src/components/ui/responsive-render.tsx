@@ -1,14 +1,23 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { useState, useEffect, type ReactNode } from "react";
 
 /**
- * Only renders children on viewports >= the lg breakpoint (1024px).
- * Prevents heavy desktop components from mounting on mobile.
+ * Renders children on the server (preserves SSR/streaming for desktop).
+ * On the client, unmounts children on mobile viewports (< 1024px)
+ * to prevent heavy desktop components from blocking the rendering thread.
  */
 export function DesktopOnly({ children }: { children: ReactNode }) {
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
-  if (!isDesktop) return null;
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1023px)");
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  if (isMobile) return null;
   return <>{children}</>;
 }

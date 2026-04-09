@@ -256,6 +256,7 @@ export interface MonthMetrics {
 async function getMonthMetricsCached(
   userId: string,
   month: string | undefined,
+  currency: CurrencyCode | undefined,
   isDemo: boolean
 ): Promise<MonthMetrics> {
   "use cache";
@@ -265,13 +266,17 @@ async function getMonthMetricsCached(
   const supabase = createAdminClient();
   const target = parseMonth(month);
 
-  // Get account IDs matching demo filter
-  const { data: filteredAccounts } = await supabase
+  // Get account IDs matching demo filter + optional currency
+  let accountQuery = supabase
     .from("accounts")
     .select("id")
     .eq("user_id", userId)
     .eq("is_active", true)
     .eq("is_demo", isDemo);
+  if (currency) {
+    accountQuery = accountQuery.eq("currency_code", currency);
+  }
+  const { data: filteredAccounts } = await accountQuery;
   const accountIds = (filteredAccounts ?? []).map((a) => a.id);
   if (accountIds.length === 0) return { income: 0, expenses: 0 };
 
@@ -547,11 +552,11 @@ export async function getDailySpending(month?: string, currency?: CurrencyCode):
  * Get total income and expenses for a given month.
  * Used for computing trend percentages vs previous period.
  */
-export async function getMonthMetrics(month?: string): Promise<MonthMetrics> {
+export async function getMonthMetrics(month?: string, currency?: CurrencyCode): Promise<MonthMetrics> {
   const { user } = await getAuthenticatedClient();
   if (!user) return { income: 0, expenses: 0 };
   const isDemo = await getIsDemoFilter(user.id);
-  return getMonthMetricsCached(user.id, month, isDemo);
+  return getMonthMetricsCached(user.id, month, currency, isDemo);
 }
 
 /**
@@ -710,7 +715,7 @@ export async function getDashboardHeroData(
     getAccounts(),
     getUpcomingRecurrences(30),
     getUpcomingPayments(),
-    getMonthMetrics(month),
+    getMonthMetrics(month, currency),
   ]);
 
   // 1. Process accounts
