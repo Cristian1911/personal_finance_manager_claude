@@ -1,6 +1,7 @@
 "use server";
 
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import {
@@ -1045,13 +1046,8 @@ export async function bulkLinkToDestinatario(
     categorized = count ?? 0;
   }
 
-  revalidateTag("categorize", "zeta");
+  revalidateFinancialViews();
   revalidateTag("destinatarios", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: { linked: linkedCount ?? transactionIds.length, categorized } };
 }
 
@@ -1238,13 +1234,8 @@ export async function applyDestinatarioRules(
     }
   }
 
-  revalidateTag("categorize", "zeta");
+  revalidateFinancialViews();
   revalidateTag("destinatarios", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("attention", "zeta");
 
   return { success: true, data: { linked: matchingIds.length, categorized } };
 }

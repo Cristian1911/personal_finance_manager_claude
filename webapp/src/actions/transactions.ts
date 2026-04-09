@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { cacheTag, cacheLife } from "next/cache";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -166,19 +166,7 @@ async function adjustBalancesForTransactionChanges(params: {
   return { success: true, data: undefined };
 }
 
-function revalidateFinancialViews() {
-  revalidateTag("transactions", "zeta");
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("categorize", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("attention", "zeta");
-}
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 
 function getRecurringScheduleFields(
   startDate: string,
@@ -577,6 +565,54 @@ export async function getTransaction(id: string): Promise<ActionResult<Transacti
     const message = error instanceof Error ? error.message : "Error al cargar la transacción";
     return { success: false, error: message };
   }
+}
+
+// ─── Recent transactions (dashboard) ────────────────────────────────────────
+
+export type RecentTransaction = {
+  id: string;
+  amount: number;
+  direction: "INFLOW" | "OUTFLOW";
+  account_id: string;
+  merchant_name: string | null;
+  clean_description: string | null;
+  transaction_date: string;
+  currency_code: string;
+  categories: { name_es: string | null; name: string } | null;
+};
+
+async function getRecentTransactionsCached(
+  userId: string,
+  accessToken: string,
+  isDemo: boolean,
+): Promise<RecentTransaction[]> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  const demoAccountIds = await getDemoAccountIds(supabase, userId, isDemo);
+  if (!demoAccountIds) return [];
+
+  const { data } = await supabase
+    .from("transactions")
+    .select("id, amount, direction, account_id, merchant_name, clean_description, transaction_date, currency_code, categories!category_id(name_es, name)")
+    .eq("user_id", userId)
+    .in("account_id", demoAccountIds)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  return (data ?? []) as unknown as RecentTransaction[];
+}
+
+export async function getRecentTransactions(): Promise<RecentTransaction[]> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+  const isDemo = await getIsDemoFilter(user.id);
+  return getRecentTransactionsCached(user.id, accessToken, isDemo);
 }
 
 export async function createTransaction(

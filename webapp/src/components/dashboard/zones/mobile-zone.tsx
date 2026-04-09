@@ -3,21 +3,17 @@ import { getAttentionItems } from "@/actions/attention-items";
 import { getBurnRate } from "@/actions/burn-rate";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getAccounts } from "@/actions/accounts";
+import type { RecentTransaction } from "@/actions/transactions";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
+import { toISODateString } from "@/lib/utils/date";
+import { subDays } from "date-fns";
 import type { CurrencyCode } from "@/types/domain";
 
 interface MobileZoneProps {
   month: string | undefined;
   currency: CurrencyCode;
-  recentTx: Array<{
-    id: string;
-    amount: number;
-    direction: "INFLOW" | "OUTFLOW";
-    merchant_name?: string | null;
-    clean_description?: string | null;
-    currency_code?: string;
-  }>;
+  recentTx: RecentTransaction[];
 }
 
 export async function MobileZone({ month, currency, recentTx }: MobileZoneProps) {
@@ -67,9 +63,18 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     };
   })();
 
-  // Today's spending from cached daily data
-  const todayStr = now.toLocaleDateString("en-CA");
+  // Today's and yesterday's spending from cached daily data
+  const todayStr = toISODateString(now);
   const spentToday = dailySpending.find((d) => d.date === todayStr)?.amount ?? 0;
+  const yesterdayStr = toISODateString(subDays(now, 1));
+  const spentYesterday = dailySpending.find((d) => d.date === yesterdayStr)?.amount ?? 0;
+
+  // Last 7 days average (excluding today) — divide by actual days with data
+  const sevenDaysAgo = toISODateString(subDays(now, 7));
+  const last7Days = dailySpending.filter((d) => d.date < todayStr && d.date >= sevenDaysAgo);
+  const avgLast7 = last7Days.length > 0
+    ? last7Days.reduce((sum, d) => sum + d.amount, 0) / last7Days.length
+    : 0;
 
   // Mobile total spent derivation
   const mobileTotalSpent =
@@ -95,6 +100,8 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           daysInMonth,
           dayOfMonth: now.getDate(),
           spentToday,
+          spentYesterday,
+          avgLast7,
           currency,
         }}
         attentionItems={attentionItemsData}

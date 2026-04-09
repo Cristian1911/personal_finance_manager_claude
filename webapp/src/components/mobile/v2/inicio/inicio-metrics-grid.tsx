@@ -12,6 +12,8 @@ interface InicioMetricsGridProps {
   daysInMonth: number;
   dayOfMonth: number;
   spentToday: number;
+  spentYesterday: number;
+  avgLast7: number;
   currency: CurrencyCode;
   /** Burndown data — shown as expanded view of Ritmo chip */
   burnRateData: BurnRateResponse | null;
@@ -168,6 +170,8 @@ export function InicioMetricsGrid({
   daysInMonth,
   dayOfMonth,
   spentToday,
+  spentYesterday,
+  avgLast7,
   currency,
   burnRateData,
   totalBudget,
@@ -175,7 +179,6 @@ export function InicioMetricsGrid({
   onToggle,
 }: InicioMetricsGridProps) {
   const percentage = Math.round((dayOfMonth / daysInMonth) * 100);
-  const dailyBudget = totalBudget > 0 ? totalBudget / daysInMonth : 0;
   const isRitmoActive = expanded === "ritmo";
   const isGastoActive = expanded === "gasto-hoy";
   const hasActive = isRitmoActive || isGastoActive;
@@ -214,19 +217,13 @@ export function InicioMetricsGrid({
           <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">Gasto hoy</p>
           <p className={cn(
             "text-[18px] font-[650] leading-tight",
-            spentToday === 0
-              ? "text-z-sage-light"
-              : dailyBudget > 0 && spentToday > dailyBudget
-                ? "text-z-expense"
-                : "text-foreground"
+            spentToday === 0 ? "text-z-sage-light" : "text-foreground"
           )}>
             {compact(spentToday, currency)}
           </p>
-          {dailyBudget > 0 && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              meta {compact(dailyBudget, currency)}/día
-            </p>
-          )}
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {spentToday === 0 ? "Sin gastos" : "gastado hoy"}
+          </p>
         </button>
       </div>
 
@@ -257,38 +254,19 @@ export function InicioMetricsGrid({
             {/* Gasto hoy expanded */}
             {isGastoActive && (
               <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3 space-y-2")}>
-                {dailyBudget > 0 ? (
-                  <>
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-[11px] text-muted-foreground">Gastado hoy</span>
-                      <span className="text-sm font-semibold">{formatCurrency(spentToday, currency)}</span>
-                    </div>
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-[11px] text-muted-foreground">Meta diaria</span>
-                      <span className="text-sm font-semibold text-z-sage-light">{formatCurrency(dailyBudget, currency)}</span>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/6">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all",
-                          spentToday <= dailyBudget ? "bg-z-income" : "bg-z-expense"
-                        )}
-                        style={{ width: `${Math.min((spentToday / dailyBudget) * 100, 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {spentToday <= dailyBudget
-                        ? `Te quedan ${formatCurrency(dailyBudget - spentToday, currency)} del presupuesto de hoy.`
-                        : `Excediste la meta diaria por ${formatCurrency(spentToday - dailyBudget, currency)}.`}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">
-                    {spentToday > 0
-                      ? `Hoy has gastado ${formatCurrency(spentToday, currency)}.`
-                      : "Sin gastos registrados hoy."}
-                  </p>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[11px] text-muted-foreground">Hoy</span>
+                  <span className="text-sm font-semibold">{formatCurrency(spentToday, currency)}</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[11px] text-muted-foreground">Ayer</span>
+                  <span className="text-sm font-semibold text-muted-foreground">{formatCurrency(spentYesterday, currency)}</span>
+                </div>
+                {avgLast7 > 0 && (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[11px] text-muted-foreground">Promedio 7 días</span>
+                    <span className="text-sm font-semibold text-muted-foreground">{formatCurrency(Math.round(avgLast7), currency)}</span>
+                  </div>
                 )}
                 <Link href="/transactions" className="inline-block text-[11px] font-semibold text-z-brass">
                   Ver movimientos →

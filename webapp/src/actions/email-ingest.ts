@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { nanoid } from "nanoid";
 import {
   autoCategorize,
@@ -154,13 +155,8 @@ async function persistParsedEmail(params: {
       }
     }
 
+    revalidateFinancialViews();
     revalidateTag("email-ingest", "zeta");
-    revalidateTag("dashboard:hero", "zeta");
-    revalidateTag("dashboard:charts", "zeta");
-    revalidateTag("dashboard:accounts", "zeta");
-    revalidateTag("dashboard:cashflow", "zeta");
-    revalidateTag("dashboard:budgets", "zeta");
-    revalidateTag("accounts", "zeta");
     return { success: true, data: "imported" };
   }
 
@@ -678,13 +674,8 @@ export async function approveEmailTransaction(
 
   if (updateError) return { success: false, error: updateError.message };
 
+  revalidateFinancialViews();
   revalidateTag("email-ingest", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("accounts", "zeta");
   return { success: true, data: null };
 }
 
