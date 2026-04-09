@@ -34,12 +34,9 @@ export interface InicioRootProps {
     };
   };
   metrics: {
-    runwayDays: number;
     daysInMonth: number;
     dayOfMonth: number;
-    nextPaymentName: string | null;
-    nextPaymentDays: number | null;
-    nextPaymentAmount: number | null;
+    spentToday: number;
     currency: CurrencyCode;
   };
   attentionItems: {
