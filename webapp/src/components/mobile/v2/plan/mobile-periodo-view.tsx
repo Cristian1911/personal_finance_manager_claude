@@ -276,7 +276,6 @@ export function MobilePeriodoView({
                 key={entry.id}
                 entry={entry}
                 currency={currency}
-                assignedAmount={assignedPerExpense.get(entry.id) ?? 0}
                 assignmentChips={expenseAssignmentChips.get(entry.id) ?? []}
                 isExpanded={expandedExpenseId === entry.id}
                 onToggle={() =>
@@ -499,7 +498,6 @@ function IncomeCard({
 function ExpenseRow({
   entry,
   currency,
-  assignedAmount,
   assignmentChips,
   isExpanded,
   onToggle,
@@ -511,7 +509,6 @@ function ExpenseRow({
 }: {
   entry: PlanningEntryWithRelations;
   currency: CurrencyCode;
-  assignedAmount: number;
   assignmentChips: { colorIndex: number; amount: number; label: string }[];
   isExpanded: boolean;
   onToggle: () => void;
