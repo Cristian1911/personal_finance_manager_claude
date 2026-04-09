@@ -29,7 +29,7 @@ import { useAccounts, useOutflowCategories } from "@/components/providers/app-da
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
-import type { Account, CategoryWithChildren } from "@/types/domain";
+import type { Account, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
 const urgencyLabels: Record<PurchaseUrgency, string> = {
   NECESSARY: "Necesidad",
@@ -66,9 +66,10 @@ const verdictMeta: Record<
 interface PurchaseRecommenderDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  currency: CurrencyCode;
 }
 
-export function PurchaseRecommenderDrawer({ open, onOpenChange }: PurchaseRecommenderDrawerProps) {
+export function PurchaseRecommenderDrawer({ open, onOpenChange, currency }: PurchaseRecommenderDrawerProps) {
   const allAccounts = useAccounts();
   const categories = useOutflowCategories();
 
@@ -148,7 +149,7 @@ export function PurchaseRecommenderDrawer({ open, onOpenChange }: PurchaseRecomm
 
         <div className="flex-1 overflow-y-auto px-4 pb-6">
           {result ? (
-            <ResultView result={result} amount={amount} fundingType={fundingType} onReset={reset} />
+            <ResultView result={result} amount={amount} fundingType={fundingType} currency={currency} onReset={reset} />
           ) : (
             <FormView
               activeAccounts={activeAccounts}
@@ -327,11 +328,13 @@ function ResultView({
   result,
   amount,
   fundingType,
+  currency,
   onReset,
 }: {
   result: PurchaseDecisionResult;
   amount: string;
   fundingType: PurchaseFundingType;
+  currency: CurrencyCode;
   onReset: () => void;
 }) {
   const meta = verdictMeta[result.verdict];
@@ -351,7 +354,7 @@ function ResultView({
           </div>
           <div className="text-right">
             <p className="text-lg font-semibold">
-              {formatCurrency(result.metrics.effectiveImmediateImpact)}
+              {formatCurrency(result.metrics.effectiveImmediateImpact, currency)}
             </p>
             <p className="text-[10px] text-muted-foreground">
               {fundingType === "INSTALLMENTS" ? "primera cuota" : "impacto inmediato"}
@@ -369,8 +372,8 @@ function ResultView({
         <div className="divide-y divide-white/6">
           <BeforeAfterMobile
             label="Liquidez"
-            before={formatCurrency(result.metrics.currentLiquidBuffer)}
-            after={formatCurrency(result.metrics.projectedLiquidBuffer)}
+            before={formatCurrency(result.metrics.currentLiquidBuffer, currency)}
+            after={formatCurrency(result.metrics.projectedLiquidBuffer, currency)}
             improved={result.metrics.projectedLiquidBuffer >= result.metrics.currentLiquidBuffer}
           />
           {result.metrics.selectedAccountUtilizationBefore !== null &&
@@ -386,8 +389,8 @@ function ResultView({
             result.metrics.budgetRemainingAfterPurchase !== null && (
               <BeforeAfterMobile
                 label="Presupuesto"
-                before={formatCurrency(result.metrics.currentBudgetRemaining)}
-                after={formatCurrency(result.metrics.budgetRemainingAfterPurchase)}
+                before={formatCurrency(result.metrics.currentBudgetRemaining, currency)}
+                after={formatCurrency(result.metrics.budgetRemainingAfterPurchase, currency)}
                 improved={result.metrics.budgetRemainingAfterPurchase >= result.metrics.currentBudgetRemaining}
               />
             )}

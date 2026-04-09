@@ -96,6 +96,7 @@ export function InicioRoot({
       <InicioDiscovery
         expanded={activeZone}
         onToggle={toggle}
+        currency={currency}
       />
 
       <InicioActivity transactions={recentTransactions} />

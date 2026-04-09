@@ -68,7 +68,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
   })();
 
   // Today's spending from cached daily data
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = now.toLocaleDateString("en-CA");
   const spentToday = dailySpending.find((d) => d.date === todayStr)?.amount ?? 0;
 
   // Mobile total spent derivation

@@ -46,9 +46,10 @@ function IconBox({ children }: { children: React.ReactNode }) {
 interface InicioDiscoveryProps {
   expanded: string | null;
   onToggle: (id: string) => void;
+  currency: import("@/types/domain").CurrencyCode;
 }
 
-export function InicioDiscovery({ expanded, onToggle }: InicioDiscoveryProps) {
+export function InicioDiscovery({ expanded, onToggle, currency }: InicioDiscoveryProps) {
   const activeId = expanded?.startsWith("discovery-") ? expanded : null;
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -156,7 +157,7 @@ export function InicioDiscovery({ expanded, onToggle }: InicioDiscoveryProps) {
       </div>
 
       {/* Purchase recommender drawer */}
-      <PurchaseRecommenderDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
+      <PurchaseRecommenderDrawer open={drawerOpen} onOpenChange={setDrawerOpen} currency={currency} />
     </div>
   );
 }
