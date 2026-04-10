@@ -17,6 +17,7 @@ const AUTH_ERROR_MAP: Record<string, string> = {
   "Password should be at least 6 characters": "La contraseña debe tener al menos 6 caracteres",
   "Email rate limit exceeded": "Demasiados intentos. Intenta más tarde",
   "For security purposes, you can only request this once every 60 seconds": "Por seguridad, solo puedes solicitar esto una vez cada 60 segundos",
+  "Database error saving new user": "Error al crear usuario. Intenta nuevamente",
 };
 
 function translateAuthError(message: string): string {

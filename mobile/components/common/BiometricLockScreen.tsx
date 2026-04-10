@@ -24,28 +24,28 @@ export function BiometricLockScreen({
   return (
     <View style={styles.container}>
       <View className="items-center">
-        <View className="h-20 w-20 rounded-full bg-emerald-100 items-center justify-center mb-6">
-          <Fingerprint size={40} color="#C5BFAE" />
+        <View className="h-20 w-20 rounded-full bg-z-brass-10 items-center justify-center mb-6">
+          <Fingerprint size={40} color="#937844" />
         </View>
-        <Text className="text-2xl font-inter-bold text-gray-900 mb-2">
+        <Text className="text-2xl font-inter-bold text-foreground mb-2">
           Zeta
         </Text>
-        <Text className="text-base font-inter text-gray-500 mb-10 text-center px-8">
+        <Text className="text-base font-inter text-muted-foreground mb-10 text-center px-8">
           Usa tu huella o Face ID para desbloquear
         </Text>
 
         <Pressable
           onPress={attemptUnlock}
-          className="rounded-xl bg-primary px-8 py-3.5 active:bg-emerald-700 mb-4"
+          className="rounded-xl bg-z-brass px-8 py-3.5 mb-4"
         >
-          <Text className="text-white font-inter-bold text-base">
+          <Text className="text-z-ink font-inter-bold text-base">
             Desbloquear
           </Text>
         </Pressable>
 
         <Pressable onPress={onFallback} className="px-4 py-2">
-          <Text className="text-sm font-inter-medium text-gray-500">
-            Usar contraseña
+          <Text className="text-sm font-inter-medium text-muted-foreground">
+            Usar contrasena
           </Text>
         </Pressable>
       </View>
@@ -56,7 +56,7 @@ export function BiometricLockScreen({
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#121412",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 999,

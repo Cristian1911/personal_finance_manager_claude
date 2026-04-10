@@ -8,6 +8,13 @@ import {
   CircleDot,
 } from "lucide-react-native";
 
+/** Canonical set of debt account types — use this instead of inline Set literals */
+export const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
+
+export function isDebtAccountType(type: string): boolean {
+  return DEBT_ACCOUNT_TYPES.has(type);
+}
+
 export const ACCOUNT_TYPES = [
   {
     value: "CHECKING",

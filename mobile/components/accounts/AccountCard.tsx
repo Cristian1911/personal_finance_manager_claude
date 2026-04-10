@@ -19,7 +19,7 @@ export function AccountCard({ account, onPress }: Props) {
 
   return (
     <Pressable
-      className="bg-white rounded-xl p-4 flex-row items-center active:bg-gray-50"
+      className="bg-z-surface-2 border border-white-6 rounded-xl p-4 flex-row items-center"
       onPress={onPress}
     >
       {/* Icon circle */}
@@ -33,7 +33,7 @@ export function AccountCard({ account, onPress }: Props) {
       {/* Name + institution */}
       <View className="flex-1 min-w-0">
         <Text
-          className="text-gray-900 font-inter-semibold text-sm"
+          className="text-foreground font-inter-semibold text-sm"
           numberOfLines={1}
         >
           {account.name}
@@ -41,14 +41,14 @@ export function AccountCard({ account, onPress }: Props) {
         <View className="flex-row items-center mt-0.5 gap-2">
           {account.institution_name && (
             <Text
-              className="text-gray-400 font-inter text-xs"
+              className="text-muted-foreground font-inter text-xs"
               numberOfLines={1}
             >
               {account.institution_name}
             </Text>
           )}
-          <View className="bg-gray-100 rounded px-1.5 py-0.5">
-            <Text className="text-gray-500 font-inter text-xs">{shortLabel}</Text>
+          <View className="bg-black-10 rounded px-1.5 py-0.5">
+            <Text className="text-muted-foreground font-inter text-xs">{shortLabel}</Text>
           </View>
         </View>
       </View>
@@ -57,7 +57,7 @@ export function AccountCard({ account, onPress }: Props) {
       <View className="ml-3 items-end flex-shrink-0">
         <Text
           className={`font-inter-semibold text-sm ${
-            isDebt ? "text-red-500" : "text-gray-900"
+            isDebt ? "text-z-debt" : "text-foreground"
           }`}
         >
           {formatCurrency(
@@ -66,7 +66,7 @@ export function AccountCard({ account, onPress }: Props) {
           )}
         </Text>
         {account.account_type === "CREDIT_CARD" && account.credit_limit && (
-          <Text className="text-gray-400 font-inter text-xs mt-0.5">
+          <Text className="text-muted-foreground font-inter text-xs mt-0.5">
             límite {formatCurrency(account.credit_limit, (account.currency_code as CurrencyCode) ?? "COP")}
           </Text>
         )}
