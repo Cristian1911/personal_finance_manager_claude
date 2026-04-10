@@ -151,7 +151,7 @@ export function LandingAudience() {
 
 export function LandingHowItWorks() {
   return (
-    <section id="como-funciona" className="space-y-12 py-24">
+    <section id="como-funciona" className="space-y-12 py-16 sm:py-24">
       <SectionHeading
         eyebrow="Proceso"
         title="Tres pasos para tener claridad financiera"
@@ -187,7 +187,7 @@ export function LandingHowItWorks() {
 
 export function LandingFAQ() {
   return (
-    <section id="faq" className="space-y-12 py-24">
+    <section id="faq" className="space-y-12 py-16 sm:py-24">
       <SectionHeading
         eyebrow="Preguntas frecuentes"
         title="Lo que más nos preguntan"
