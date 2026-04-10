@@ -260,11 +260,6 @@ async function processEmail(ctx: {
 
   // Webhook payload has metadata only — fetch full email content from Resend API
   const emailContent = await fetchEmailContent(emailId);
-
-  if (!emailContent) {
-    console.error(`[email-ingest][${emailId}] fetchEmailContent returned null — Resend API may be down or email_id invalid`);
-  }
-
   const emailText = emailContent?.text ?? null;
   const emailHtml = emailContent?.html ?? null;
   // Prefer plain text; fall back to stripped HTML
