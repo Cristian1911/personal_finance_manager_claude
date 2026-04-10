@@ -21,47 +21,73 @@
 - Dates: Spanish locale via `formatDate()` from `src/lib/utils/date.ts`
 - Idempotency: `computeIdempotencyKey()` from `src/lib/utils/idempotency.ts` for dedup
 
-## Performance Audit Gate
-- **After every feature**: Before claiming work is done, spawn the `perf-auditor` agent (defined in `~/.claude/agents/perf-auditor.md`) to audit changed files against the caching, rendering, and data-fetching rules below. Fix all FAIL items before shipping. This is a build gate, same as `pnpm build`.
+## Agents
+
+Spawn these specialized agents for domain-specific review and diagnosis. Each has embedded Zeta knowledge — no orientation reads needed.
+
+| Agent | When to Spawn |
+|---|---|
+| `perf-auditor` | **Build gate.** After every feature, before claiming done. Audits caching, rendering, queries, bundle. |
+| `frontend-auditor` | Full design system audit — tokens, a11y, responsive, localization. |
+| `zetas-front-guy` | Quick UI review after modifying TSX/CSS. Storybook + token compliance. |
+| `cache-doctor` | Stale UI after mutations, adding `"use cache"` functions, revalidation bugs. |
+| `supabase-migrator` | Creating migrations — especially encrypted tables, RLS, FK joins. |
+| `server-action-reviewer` | After creating/modifying files in `src/actions/`. Auth, validation, revalidation. |
+| `recurring-doctor` | Recurring obligations, upcoming payments, occurrence lifecycle. |
+| `import-flow-doctor` | PDF/email import flow, reconciliation, idempotency, installments. |
+| `pdf-parser-creator` | Adding support for a new bank's PDF statements. |
+| `ux-analyst` | UX cohesion audit — interaction consistency, navigation logic, visual narrative, flow completeness. |
+
+**Review gates** (enforced before shipping, same priority as `pnpm build`):
+1. `perf-auditor` — every feature
+2. `zetas-front-guy` — every TSX/CSS change
+3. `server-action-reviewer` — every new/modified server action
 
 ## Performance Rules
-- **Cache stable data**: Accounts, categories, destinatarios, profiles, recurring templates, and other slowly-changing data MUST use `"use cache"` with `cacheTag()` + `cacheLife("zeta")`. Transactions are also cached. Mutations invalidate via `revalidateTag()`. Never add a DB query to a page render path without caching unless the data is truly per-request.
-- **AppDataProvider (shared reference data)**: The dashboard layout preloads accounts, categories (all + outflow), destinatarios, and tag groups into React context via `AppDataProvider` (`@/components/providers/app-data-provider.tsx`). **Client components that need this data MUST use the context hooks** (`useAccounts()`, `useCategories()`, `useOutflowCategories()`, `useDestinatarios()`, `useTagGroups()`, `useAllTags()`) instead of lazy-fetching from server actions. This eliminates loading spinners on pickers and avoids redundant client-side fetches. Server components can still call the cached actions directly (cache hits are ~0ms). After mutations, `revalidateTag()` triggers layout re-render which refreshes the context automatically.
-- **Don't add joins or queries without justification**: Before adding PostgREST joins, extra SELECT columns, or new DB calls to a page, consider: (1) is this data already available from AppDataProvider context? (2) can it be deferred via Suspense? (3) does it need to load eagerly or only on interaction? Every new query adds latency — explain the trade-off.
-- **Suspense for non-critical data**: Data only needed for interactive elements (edit forms, pickers, dialogs) should be deferred behind `<Suspense>`, not fetched eagerly in the page's main `Promise.all`.
-- **Cached client pattern**: `"use cache"` functions use `createCachedClient(accessToken)` from `@/lib/supabase/cached`. The `accessToken` comes from `getAuthenticatedClient()`. See Gotchas for details.
-- **Live metrics for volatile data**: Client components that display volatile financial data (amounts, counts, metrics that change with every transaction) should use the `useLiveDashboard` pattern from `@/hooks/use-live-metrics.ts`. The page loads instantly from Route Cache, then a client-side hook calls a server action on mount to silently correct stale values. Use `getLiveDashboardData()` from `@/actions/live-dashboard.ts` for mobile dashboard (hero + gasto hoy + attention). For new volatile metrics on other pages, create similar hooks that call the appropriate cached server action — one round-trip per page, not per metric.
-- **Cache invalidation after mutations**: All transaction-mutating actions must call `revalidateFinancialViews()` from `@/lib/cache/revalidation.ts` + domain-specific extras. This invalidates the Data Cache (server-side `"use cache"` results). For same-page freshness, `startTransition` + server action auto-refreshes the route. Email import paths also use `router.refresh()` as a safety net. Cross-page freshness is handled by live metrics hooks, not `revalidatePath`.
-- **cacheLife("zeta")**: `stale: 120` (Route Cache — 2min client-side page caching), `revalidate: 300` (Data Cache — 5min background revalidation), `expire: 3600` (1hr hard expire). `revalidateTag` immediately invalidates Data Cache; Route Cache expires naturally or via live hooks.
+- **Cache all data reads**: `"use cache"` + `cacheTag()` + `cacheLife("zeta")`. Never add an uncached DB query to a render path.
+- **AppDataProvider**: Client components use context hooks (`useAccounts()`, `useCategories()`, `useOutflowCategories()`, `useDestinatarios()`, `useTagGroups()`, `useAllTags()`) — never lazy-fetch from server actions.
+- **Justify new queries**: Check (1) AppDataProvider already has it? (2) deferrable via Suspense? (3) needed eagerly or only on interaction?
+- **Suspense for non-critical data**: Pickers, dialogs, edit forms → `<Suspense>`, not in the page's main `Promise.all`.
+- **Cached client pattern**: `"use cache"` functions use `createCachedClient(accessToken)` from `@/lib/supabase/cached` — never `createAdminClient()` (encrypted columns return NULL).
+- **Live metrics for volatile data**: `useLiveDashboard` pattern — page loads from Route Cache, client hook silently corrects stale values on mount.
+- **Cache invalidation**: Transaction mutations → `revalidateFinancialViews()`. Same-page → `startTransition`. Cross-page → live metrics hooks.
+- **cacheLife("zeta")**: stale 120s / revalidate 300s / expire 3600s. `revalidateTag("tag", "zeta")` — second arg is cacheLife profile, not a second tag.
+- Spawn `cache-doctor` for stale UI diagnosis.
 
 ## UI Rules
-- **No hardcoded colors**: Never use raw hex values, `rgb()`, or arbitrary Tailwind colors (`bg-[#xxx]`). Always use the design tokens defined in `docs/design-system/TOKENS.md` — e.g., `text-z-brass`, `bg-z-surface-2`, `border-white/6`, `text-z-sage-dark`. If a needed token doesn't exist, propose adding it to TOKENS.md first.
-- **No hardcoded styles for layout/spacing**: Prefer existing utility patterns and component props. Check existing components for established patterns before creating new styling approaches.
-- **Reuse existing components**: Before building a new card, badge, stat display, or layout pattern, check `webapp/src/components/ui/` for existing primitives (StatCard, PageHero, Card, Badge, etc.).
+- **No hardcoded colors**: Use design tokens from `docs/design-system/TOKENS.md` — e.g., `text-z-brass`, `bg-z-surface-2`, `border-white/6`. Propose new tokens to TOKENS.md first.
+- **No hardcoded styles**: Prefer existing utility patterns and component props from established components.
+- **Reuse existing components**: Check `webapp/src/components/ui/` (41 stories) before building new cards, badges, stat displays, or layout patterns.
+- **Button variants**: Only `BRASS_BUTTON_CLASS`, `GHOST_BUTTON_CLASS`, `BRASS_GHOST_BUTTON_CLASS` from `@/lib/constants/styles.ts`.
+- Spawn `zetas-front-guy` after any TSX/CSS change. Spawn `frontend-auditor` for comprehensive reviews.
 
 ## Supabase
 - Project ID: `tgkhaxipfgskxydotdtu` (sa-east-1, org: zybaordjrezdjajzwisk)
 - See `~/.claude/rules/supabase.md` for RLS, auth, migration patterns
-- **Envelope encryption**: Tables with PII use `_enc` suffix (real table) + view (original name) + INSTEAD OF triggers. When adding a column to any `_enc` table, you MUST also update the view SELECT and the INSTEAD OF INSERT/UPDATE trigger functions. See `docs/superpowers/specs/2026-04-07-envelope-encryption-design.md` for full spec.
+- **Envelope encryption**: 9 tables with PII use `_enc` suffix (real table) + view (original name) + INSTEAD OF triggers. Adding a column is a 6-step process — **always spawn `supabase-migrator`** for encrypted table changes.
+- **PostgREST joins through views**: Always use FK hint syntax `!fk_name` — plain joins silently return empty.
+- Spawn `supabase-migrator` for any migration work.
 
 ## Recurring Obligations
-- **Single source of truth: `recurring_occurrences` table.** All pending/upcoming payment calculations MUST query `recurring_occurrences WHERE status='pending'` via `getPendingOccurrences()` or `getOccurrencesForMonth()` from `@/actions/occurrences.ts`. Never compute occurrences in JS from templates, and never use `getUpcomingPayments()` (statement_snapshots) for obligation amounts — statement snapshots are historical import data, not the source of truth for what's owed.
-- **Occurrence lifecycle:** `pending` → `paid` (linked to transaction via `transaction_id`) or `skipped`. All transaction creation paths (FAB, email import, PDF import, recurring confirm) auto-link to pending occurrences via `findMatchingOccurrence()`.
-- **Idempotent generation:** `ensureCurrentOccurrences()` creates rows for the current month + 14 days. Call it before querying occurrences. Uses `ON CONFLICT DO NOTHING` to preserve existing status.
+- **Source of truth: `recurring_occurrences` table.** Query via `getPendingOccurrences()` / `getOccurrencesForMonth()`. Never compute in JS, never use `statement_snapshots`.
+- **Lifecycle:** `pending` → `paid` (linked via `transaction_id`) or `skipped`. All tx creation paths auto-link via `findMatchingOccurrence()`.
+- **Idempotent generation:** `ensureCurrentOccurrences()` before querying. Uses `ON CONFLICT DO NOTHING`.
+- Spawn `recurring-doctor` when working on recurring obligations.
 
 ## Income & Metrics Rules
-- **Debt inflows are NOT income**: INFLOW to `CREDIT_CARD` or `LOAN` accounts are debt payments. They must NEVER count in income/ingresos metrics. Always filter: `tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id)` where `debtAccountIds` comes from `accounts.filter(a => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")`.
-- **Reference implementation**: `getMonthlyCashflowCached()` in `webapp/src/actions/charts.ts` — all new income calculations must follow this pattern.
+- **Debt inflows are NOT income**: INFLOW to `CREDIT_CARD` or `LOAN` accounts must be excluded from income metrics. Filter: `tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id)`.
+- **Reference**: `getMonthlyCashflowCached()` in `webapp/src/actions/charts.ts`. `server-action-reviewer` checks this automatically.
 
 ## Gotchas
 - Zod 4 `.uuid()` enforces RFC 9562 — seed category UUIDs (a0000001-...) fail validation
 - shadcn/ui Checkbox: use `checked="indeterminate"`, not an `indeterminate` prop
 - Radix Select sends empty string (not null/undefined) when no value — use `z.preprocess` to normalize
 - Shell `compdef` warning leaks into stdout redirects — always strip first line if piping to file
-- **PostgREST joins through encrypted views**: FK constraints live on `_enc` tables, so PostgREST can't auto-detect relationships through the views. Always use explicit FK hint syntax: `account:accounts!transactions_account_id_fkey(id, name)` — never plain `account:accounts(id, name)`. Without the `!fk_name` hint, the join silently fails and returns empty results.
-- **`"use cache"` + encryption**: Cached functions that query encrypted views must use `createCachedClient(accessToken)` from `@/lib/supabase/cached`, never `createAdminClient()`. The admin client has no JWT, so `zeta_decrypt()` returns NULL for all encrypted columns. The `accessToken` comes from `getAuthenticatedClient()` which returns `{ supabase, user, accessToken }`.
-- **Webhooks/cron + encryption**: API routes using `createAdminClient()` cannot read encrypted columns (no JWT → `zeta_decrypt()` returns NULL). Use `supabase.rpc("get_accounts_with_masks", { p_user_id })` which calls `zeta_decrypt_as()` internally. For new encrypted-column access patterns, use `zeta_decrypt_as(ciphertext, target_user_id)` via RPC.
-- **Adding columns to encrypted tables**: `profiles` and `accounts` are views over `_enc` tables. To add a column: (1) `ALTER TABLE _enc ADD COLUMN`, (2) `DROP` triggers, (3) `DROP VIEW`, (4) `CREATE VIEW` with new column, (5) rebuild INSERT/UPDATE/DELETE trigger functions including the new column, (6) `CREATE TRIGGER` bindings. Never `ALTER TABLE profiles` directly — it's a view.
+- **Encryption gotchas** (see `supabase-migrator` and `cache-doctor` agents for full details):
+  - PostgREST joins through views: always use `!fk_name` hint syntax — plain joins silently fail
+  - `"use cache"` + encryption: use `createCachedClient(accessToken)`, never `createAdminClient()` (returns NULL)
+  - Webhooks/cron: use `zeta_decrypt_as()` via RPC — admin client can't decrypt
+  - Adding columns to `_enc` tables: 6-step process — spawn `supabase-migrator`
 
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
