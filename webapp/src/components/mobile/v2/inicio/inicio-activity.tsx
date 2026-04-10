@@ -27,7 +27,7 @@ interface InicioActivityProps {
 export function InicioActivity({ transactions }: InicioActivityProps) {
   if (transactions.length === 0) return null;
 
-  const visible = transactions.slice(0, 3);
+  const visible = transactions.slice(0, 5);
 
   return (
     <div>
