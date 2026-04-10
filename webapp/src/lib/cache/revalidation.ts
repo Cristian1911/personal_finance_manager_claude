@@ -10,6 +10,9 @@ import { revalidateTag } from "next/cache";
  * Callers should add domain-specific extras after calling this:
  *   revalidateFinancialViews();
  *   revalidateTag("email-ingest", "zeta");   // domain extra
+ *
+ * NOTE: revalidateTag(tag, profile) — the second arg is the cacheLife
+ * profile name ("zeta"), NOT a second tag. Always pass "zeta".
  */
 export function revalidateFinancialViews() {
   revalidateTag("transactions", "zeta");

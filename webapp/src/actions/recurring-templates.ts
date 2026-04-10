@@ -15,6 +15,7 @@ import {
   TRANSFER_CATEGORY_ID,
 } from "@zeta/shared";
 import { addDays } from "date-fns";
+import { toISODateString } from "@/lib/utils/date";
 import { z } from "zod";
 import { uuidStr } from "@/lib/validators/shared";
 import type { ActionResult } from "@/types/actions";
@@ -94,23 +95,48 @@ async function getRecurringTemplateCached(
 async function getUpcomingRecurrencesCached(
   userId: string,
   days: number,
+  todayStr: string,
   accessToken: string
 ): Promise<UpcomingRecurrence[]> {
   "use cache";
-  cacheTag("recurring");
+  cacheTag("recurring", "occurrences");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
-  const { data: templates } = await supabase
-    .from("recurring_transaction_templates")
-    .select(TEMPLATE_SELECT)
-    .eq("user_id", userId)
-    .eq("is_active", true);
+
+  const now = new Date(`${todayStr}T00:00:00`);
+  const rangeEnd = addDays(now, days);
+  const rangeStartStr = todayStr;
+  const rangeEndStr = toISODateString(rangeEnd);
+
+  const occurrenceKey = (templateId: string, date: string) => `${templateId}|${date}`;
+
+  const [templatesRes, resolvedRes] = await Promise.all([
+    supabase
+      .from("recurring_transaction_templates")
+      .select(TEMPLATE_SELECT)
+      .eq("user_id", userId)
+      .eq("is_active", true),
+    supabase
+      .from("recurring_occurrences")
+      .select("template_id, occurrence_date")
+      .eq("user_id", userId)
+      .in("status", ["paid", "skipped"])
+      .gte("occurrence_date", rangeStartStr)
+      .lte("occurrence_date", rangeEndStr),
+  ]);
+
+  if (templatesRes.error) throw templatesRes.error;
+  if (resolvedRes.error) throw resolvedRes.error;
+
+  const templates = templatesRes.data;
+  const resolvedOccurrences = resolvedRes.data;
 
   if (!templates || templates.length === 0) return [];
 
-  const now = new Date();
-  const rangeEnd = addDays(now, days);
+  const resolvedKeys = new Set(
+    (resolvedOccurrences ?? []).map((o) => occurrenceKey(o.template_id, o.occurrence_date))
+  );
 
   const upcoming: UpcomingRecurrence[] = [];
 
@@ -124,6 +150,7 @@ async function getUpcomingRecurrencesCached(
     );
 
     for (const date of dates) {
+      if (resolvedKeys.has(occurrenceKey(template.id, date))) continue;
       upcoming.push({ template, next_date: date });
     }
   }
@@ -390,6 +417,7 @@ export async function toggleRecurringTemplate(
   await ensureCurrentOccurrences();
 
   revalidateTag("recurring", "zeta");
+  revalidateTag("occurrences", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
@@ -882,7 +910,7 @@ export async function getUpcomingRecurrences(
 ): Promise<UpcomingRecurrence[]> {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return [];
-  return getUpcomingRecurrencesCached(user.id, days, accessToken);
+  return getUpcomingRecurrencesCached(user.id, days, toISODateString(new Date()), accessToken);
 }
 
 /**
