@@ -37,7 +37,7 @@ type ResendEmailPayload = {
     email_id: string;
     from: string;
     to: string[];
-    subject: string;
+    subject?: string;
   };
 };
 
@@ -167,6 +167,14 @@ function stripHtml(html: string): string {
 
 // ── Log helper ───────────────────────────────────────────────────────────────
 
+function buildRawBodyPreview(subject: string | null, body: string | null): string | null {
+  if (!subject && !body) return null;
+  const parts: string[] = [];
+  if (subject) parts.push(`[Subject: ${subject}]`);
+  if (body) parts.push(body);
+  return parts.join("\n").slice(0, 500);
+}
+
 async function insertLog(params: {
   userId: string | null;
   emailIngestId: string | null;
@@ -176,7 +184,7 @@ async function insertLog(params: {
   errorMessage: string | null;
 }) {
   const admin = createAdminClient();
-  await admin.from("email_ingest_logs").insert({
+  const { error } = await admin.from("email_ingest_logs").insert({
     user_id: params.userId,
     email_ingest_id: params.emailIngestId,
     from_address: params.fromAddress,
@@ -184,6 +192,9 @@ async function insertLog(params: {
     raw_body: params.rawBody ? params.rawBody.slice(0, 500) : null,
     error_message: params.errorMessage,
   });
+  if (error) {
+    console.error("[email-ingest] Failed to insert log:", error.message, params);
+  }
 }
 
 // ── Route handler ────────────────────────────────────────────────────────────
@@ -195,6 +206,7 @@ export async function POST(request: NextRequest) {
   // 1. Verify Resend webhook signature
   const isValid = await verifyResendSignature(request, rawBody);
   if (!isValid) {
+    console.warn("[email-ingest] Signature verification failed — rejecting webhook");
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -202,24 +214,60 @@ export async function POST(request: NextRequest) {
   let payload: ResendEmailPayload;
   try {
     payload = JSON.parse(rawBody) as ResendEmailPayload;
-  } catch {
+  } catch (e) {
+    console.error("[email-ingest] JSON parse error:", e instanceof Error ? e.message : e);
     return NextResponse.json({ ok: true });
   }
 
   // Only handle email.received events
   if (payload.type !== "email.received") {
+    console.log(`[email-ingest] Ignoring event type: ${payload.type}`);
     return NextResponse.json({ ok: true });
   }
 
-  const { from, to, email_id: emailId } = payload.data;
+  const { from, to, subject, email_id: emailId } = payload.data;
+  console.log(`[email-ingest][${emailId}] Received email from=${from} to=${to?.[0]} subject="${subject ?? "(none)"}"`);
+
+  try {
+  return await processEmail({ emailId, from, to, subject });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error(`[email-ingest][${emailId}] Unhandled error:`, message, stack);
+    // Best-effort DB log — may fail if the error is a DB connection issue
+    await insertLog({
+      userId: null,
+      emailIngestId: null,
+      fromAddress: from ?? "unknown",
+      status: "parse_failed",
+      rawBody: buildRawBodyPreview(subject ?? null, null),
+      errorMessage: `Unhandled error: ${message}`,
+    }).catch(() => {});
+    // Return 200 to prevent Resend retries that would keep failing
+    return NextResponse.json({ ok: true });
+  }
+}
+
+async function processEmail(ctx: {
+  emailId: string;
+  from: string;
+  to: string[];
+  subject?: string;
+}) {
+  const { emailId, from, to, subject } = ctx;
 
   // Webhook payload has metadata only — fetch full email content from Resend API
   const emailContent = await fetchEmailContent(emailId);
+
+  if (!emailContent) {
+    console.error(`[email-ingest][${emailId}] fetchEmailContent returned null — Resend API may be down or email_id invalid`);
+  }
+
   const emailText = emailContent?.text ?? null;
   const emailHtml = emailContent?.html ?? null;
   // Prefer plain text; fall back to stripped HTML
   const emailBody = emailText || (emailHtml ? stripHtml(emailHtml) : "");
-  const rawBodyPreview = emailBody?.slice(0, 500) ?? null;
+  const rawBodyPreview = buildRawBodyPreview(subject ?? null, emailBody);
 
   // 3. Extract address key from recipient (e.g. "u_abc123@domain.com" → "u_abc123")
   //    Resend lowercases the `to` on direct inbound emails, so normalize here
@@ -228,13 +276,14 @@ export async function POST(request: NextRequest) {
   const addressKey = recipientEmail.split("@")[0] ?? "";
 
   if (!addressKey) {
+    console.warn(`[email-ingest][${emailId}] No address_key in recipient: ${recipientEmail}`);
     await insertLog({
       userId: null,
       emailIngestId: null,
       fromAddress: from,
       status: "parse_failed",
       rawBody: rawBodyPreview,
-      errorMessage: "Could not extract address_key from recipient",
+      errorMessage: `Could not extract address_key from recipient: ${recipientEmail}`,
     });
     return NextResponse.json({ ok: true });
   }
@@ -252,6 +301,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (!ingestAddress) {
+    console.warn(`[email-ingest][${emailId}] No active ingest address for key="${addressKey}"`);
     await insertLog({
       userId: null,
       emailIngestId: null,
@@ -275,8 +325,8 @@ export async function POST(request: NextRequest) {
   // 5. Detect Gmail forwarding verification emails
   const fromLower = from.toLowerCase();
   if (fromLower.includes("forwarding-noreply@google.com")) {
-    const emailContent = emailBody || emailHtml || "";
-    const verifyMatch = emailContent.match(
+    const verificationContent = emailBody || emailHtml || "";
+    const verifyMatch = verificationContent.match(
       /https:\/\/mail\.google\.com\/mail\/vf-[^\s"<>]+/
     );
     if (verifyMatch) {
@@ -306,6 +356,7 @@ export async function POST(request: NextRequest) {
   const isBankSender = ALLOWED_SENDERS.some((s) => fromLower.includes(s));
   const isAllowedSender = allowedSender && fromLower.includes(allowedSender.toLowerCase());
   if (!isBankSender && !isAllowedSender) {
+    console.log(`[email-ingest][${emailId}] Sender rejected: "${from}" (allowed_sender=${allowedSender ?? "none"})`);
     await insertLog({
       userId,
       emailIngestId,
@@ -316,6 +367,8 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ ok: true });
   }
+
+  console.log(`[email-ingest][${emailId}] Sender OK (bank=${isBankSender}, allowed=${!!isAllowedSender}), user=${userId}`);
 
   // 7. Rate limit: max 100 emails/day/user
   const withinLimit = await checkRateLimit(userId);
@@ -398,7 +451,7 @@ export async function POST(request: NextRequest) {
           user_id: userId,
           email_ingest_id: emailIngestId,
           from_address: from,
-          subject: payload.data.subject ?? null,
+          subject: subject ?? null,
           original_filename: filename,
           storage_path: storagePath,
           file_size_bytes: bytes.byteLength,
@@ -528,19 +581,46 @@ export async function POST(request: NextRequest) {
   }
 
   if (pdfProcessed && !emailBody.trim()) {
+    console.log(`[email-ingest][${emailId}] PDF processed, no text body — skipping text parse`);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Log fetchEmailContent failure explicitly — email will likely fail parsing
+  if (!emailContent) {
+    console.error(`[email-ingest][${emailId}] No email content available — Resend API fetch failed. Email will be stored as unrecognized.`);
+    await insertLog({
+      userId,
+      emailIngestId,
+      fromAddress: from,
+      status: "parse_failed",
+      rawBody: rawBodyPreview,
+      errorMessage: `Resend API fetch failed for email_id=${emailId} — no text/html body available to parse`,
+    });
+    // Store as unrecognized so it's visible in the UI, even without body content
+    await admin.from("unrecognized_emails").insert({
+      user_id: userId,
+      email_ingest_id: emailIngestId,
+      from_address: from,
+      subject: subject ?? null,
+      text_body: null,
+      html_body: null,
+      status: "pending",
+    });
     return NextResponse.json({ ok: true });
   }
 
   // 8. Parse email body
+  console.log(`[email-ingest][${emailId}] Parsing email body (${emailBody.length} chars, hasText=${!!emailText}, hasHtml=${!!emailHtml})`);
   const parsed = parseBancolombiaEmail(emailBody);
 
   if (!parsed) {
+    console.log(`[email-ingest][${emailId}] No pattern matched — storing as unrecognized. Body preview: ${emailBody.slice(0, 200)}`);
     // Store full email for parser improvement review
     await admin.from("unrecognized_emails").insert({
       user_id: userId,
       email_ingest_id: emailIngestId,
       from_address: from,
-      subject: payload.data.subject ?? null,
+      subject: subject ?? null,
       text_body: emailText,
       html_body: emailHtml,
       status: "pending",
@@ -556,6 +636,8 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ ok: true });
   }
+
+  console.log(`[email-ingest][${emailId}] Parsed: pattern=${parsed.pattern_type} amount=${parsed.amount} direction=${parsed.direction} card=${parsed.card_last4}`);
 
   // Clear Gmail verification URL now that real emails are flowing
   await admin
@@ -591,6 +673,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 9. Auto-import or queue
+  console.log(`[email-ingest][${emailId}] autoImport=${autoImport} suggestedAccountId=${suggestedAccountId}`);
   if (autoImport && suggestedAccountId) {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
     const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
@@ -634,6 +717,7 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       if (insertError.code === "23505") {
+        console.log(`[email-ingest][${emailId}] Duplicate transaction (idempotency conflict)`);
         await insertLog({
           userId,
           emailIngestId,
@@ -643,6 +727,7 @@ export async function POST(request: NextRequest) {
           errorMessage: "Duplicate transaction (idempotency key conflict)",
         });
       } else {
+        console.error(`[email-ingest][${emailId}] Transaction insert failed: ${insertError.message} (code=${insertError.code})`);
         await insertLog({
           userId,
           emailIngestId,
@@ -654,6 +739,8 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ ok: true });
     }
+
+    console.log(`[email-ingest][${emailId}] Transaction auto-imported successfully`);
 
     // Update account balance
     if (matchedAccount) {
@@ -694,7 +781,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // 10. Queue in pending_email_transactions
+  // 10. Queue in pending_email_transactions (auto_import off or no suggested account)
+  console.log(`[email-ingest][${emailId}] Queuing for manual review`);
   const { error: queueError } = await admin.from("pending_email_transactions").insert({
     user_id: userId,
     email_ingest_id: emailIngestId,
@@ -707,6 +795,7 @@ export async function POST(request: NextRequest) {
 
   if (queueError) {
     if (queueError.code === "23505") {
+      console.log(`[email-ingest][${emailId}] Duplicate pending transaction`);
       await insertLog({
         userId,
         emailIngestId,
@@ -716,6 +805,7 @@ export async function POST(request: NextRequest) {
         errorMessage: "Duplicate pending transaction (idempotency key conflict)",
       });
     } else {
+      console.error(`[email-ingest][${emailId}] Queue insert failed: ${queueError.message}`);
       await insertLog({
         userId,
         emailIngestId,
@@ -729,6 +819,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 11. Log as queued
+  console.log(`[email-ingest][${emailId}] Queued successfully for manual review`);
   await insertLog({
     userId,
     emailIngestId,
