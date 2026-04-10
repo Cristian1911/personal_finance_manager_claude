@@ -364,6 +364,7 @@ async function syncLoanRecurringTemplate(params: {
 
 async function fetchReconciliationCandidates(
   supabase: SupabaseClient<Database>,
+  userId: string,
   transactions: TransactionToImport[]
 ): Promise<Map<string, ReconciliationCandidate[]>> {
   const accountIds = [...new Set(transactions.map((tx) => tx.account_id))];
@@ -378,13 +379,15 @@ async function fetchReconciliationCandidates(
     .select(
       "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
     )
+    .eq("user_id", userId)
     .in("account_id", accountIds)
     .in("capture_method", ["MANUAL_FORM", "TEXT_QUICK_CAPTURE"])
     .gte("transaction_date", from)
     .lte("transaction_date", to)
     .is("reconciled_into_transaction_id", null);
   if (error) {
-    throw error;
+    console.error("fetchReconciliationCandidates error:", error.message);
+    return new Map();
   }
 
   const grouped = new Map<string, ReconciliationCandidate[]>();
@@ -403,11 +406,19 @@ export async function previewImportReconciliation(
     importedTransaction: TransactionToImport;
   }>
 ): Promise<ReconciliationPreviewResult> {
-  const { supabase } = await getAuthenticatedClient();
-  const groupedCandidates = await fetchReconciliationCandidates(
-    supabase,
-    items.map((item) => item.importedTransaction)
-  );
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { autoMerge: [], review: [], unmatched: [] };
+
+  let groupedCandidates: Map<string, ReconciliationCandidate[]>;
+  try {
+    groupedCandidates = await fetchReconciliationCandidates(
+      supabase,
+      user.id,
+      items.map((item) => item.importedTransaction)
+    );
+  } catch {
+    return { autoMerge: [], review: [], unmatched: [] };
+  }
   const autoMerge: ReconciliationPreviewItem[] = [];
   const review: ReconciliationPreviewItem[] = [];
   const unmatched: ReconciliationPreviewResult["unmatched"] = [];
@@ -628,6 +639,7 @@ async function processStatementMeta(params: {
       await supabase
         .from("statement_snapshots")
         .update(snapshotRow)
+        .eq("user_id", userId)
         .eq("id", existingSnapshot.id);
     } else {
       await supabase.from("statement_snapshots").insert(snapshotRow);
@@ -870,10 +882,13 @@ export async function importTransactions(
         "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id"
       )
       .eq("id", decision.candidateTransactionId)
+      .eq("user_id", user.id)
       .is("reconciled_into_transaction_id", null)
       .maybeSingle();
     if (manualTxError) {
-      throw manualTxError;
+      errors++;
+      details.push(`Reconciliación: ${tx.raw_description}: ${manualTxError.message}`);
+      continue;
     }
 
     if (!manualTx) {

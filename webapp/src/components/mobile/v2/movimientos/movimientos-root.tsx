@@ -69,17 +69,14 @@ export function MovimientosRoot({
   );
 
   /** Build tags-by-transaction lookup from joined transaction_tags */
-  type JoinedTag = { tag: { id: string; name: string; color: string | null; group: { color: string | null } | null } };
-  type TxWithTags = TransactionWithAccount & { transaction_tags?: JoinedTag[] };
-
   const tagsByTxId = useMemo(() => {
     const map = new Map<string, Array<{ id: string; name: string; color: string | null; group_color: string | null }>>();
-    for (const tx of transactions as TxWithTags[]) {
-      const txTags = tx.transaction_tags;
-      if (txTags && txTags.length > 0) {
+    for (const tx of transactions) {
+      const txTags = (tx as any).transaction_tags;
+      if (txTags && Array.isArray(txTags)) {
         map.set(
           tx.id,
-          txTags.map((tt) => ({
+          txTags.map((tt: any) => ({
             id: tt.tag.id,
             name: tt.tag.name,
             color: tt.tag.color,

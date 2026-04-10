@@ -141,15 +141,13 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
         })}
       </div>
 
-      <div className="pt-2 text-center">
-        <Link
-          href="/transactions"
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
-        >
-          Ver todos
-          <ArrowRight className="size-3" />
-        </Link>
-      </div>
+      <Link
+        href="/transactions"
+        className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
+      >
+        Ver todos
+        <ArrowRight className="size-3" />
+      </Link>
     </div>
   );
 }
