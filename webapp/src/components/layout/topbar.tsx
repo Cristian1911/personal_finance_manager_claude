@@ -9,12 +9,11 @@ interface TopbarProps {
 }
 
 export function Topbar({ profile, attentionSnapshot }: TopbarProps) {
-  const snapshot = attentionSnapshot ?? { signals: [], totalAction: 0, totalSuggestion: 0, perPage: {} };
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 lg:px-6">
       <MobileNav attentionSnapshot={attentionSnapshot} />
       <div className="flex-1" />
-      <QuickViewMenu profile={profile} attentionSnapshot={snapshot} />
+      <QuickViewMenu profile={profile} />
     </header>
   );
 }

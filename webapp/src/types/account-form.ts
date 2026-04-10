@@ -16,6 +16,7 @@ export interface AccountFormDefaults {
   loan_start_year?: number;
   loan_end_month?: number;
   loan_end_year?: number;
+  is_payroll_deducted?: boolean;
   initial_investment?: number;
   expected_return_rate?: number;
   maturity_month?: number;

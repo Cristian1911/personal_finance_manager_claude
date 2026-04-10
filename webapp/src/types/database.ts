@@ -36,6 +36,7 @@ export type Database = {
           interest_rate: number | null
           is_active: boolean
           is_demo: boolean
+          is_payroll_deducted: boolean
           last_synced_at: string | null
           loan_amount: number | null
           loan_end_date: string | null
@@ -75,6 +76,7 @@ export type Database = {
           interest_rate?: number | null
           is_active?: boolean
           is_demo?: boolean
+          is_payroll_deducted?: boolean
           last_synced_at?: string | null
           loan_amount?: number | null
           loan_end_date?: string | null
@@ -114,6 +116,7 @@ export type Database = {
           interest_rate?: number | null
           is_active?: boolean
           is_demo?: boolean
+          is_payroll_deducted?: boolean
           last_synced_at?: string | null
           loan_amount?: number | null
           loan_end_date?: string | null
@@ -170,6 +173,8 @@ export type Database = {
           institution_name: string | null
           interest_rate: number | null
           is_active: boolean
+          is_demo: boolean
+          is_payroll_deducted: boolean
           last_synced_at: string | null
           loan_amount: number | null
           loan_end_date: string | null
@@ -208,6 +213,8 @@ export type Database = {
           institution_name?: string | null
           interest_rate?: number | null
           is_active?: boolean
+          is_demo?: boolean
+          is_payroll_deducted?: boolean
           last_synced_at?: string | null
           loan_amount?: number | null
           loan_end_date?: string | null
@@ -246,6 +253,8 @@ export type Database = {
           institution_name?: string | null
           interest_rate?: number | null
           is_active?: boolean
+          is_demo?: boolean
+          is_payroll_deducted?: boolean
           last_synced_at?: string | null
           loan_amount?: number | null
           loan_end_date?: string | null

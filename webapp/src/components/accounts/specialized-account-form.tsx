@@ -160,6 +160,19 @@ function LoanFields({ account, defaults }: { account?: Account; defaults: Accoun
         />
       </div>
 
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          id="is_payroll_deducted"
+          name="is_payroll_deducted"
+          defaultChecked={account?.is_payroll_deducted ?? defaults.is_payroll_deducted ?? false}
+          className="h-4 w-4 rounded border border-white/6"
+        />
+        <Label htmlFor="is_payroll_deducted" className="text-sm font-normal cursor-pointer">
+          Descuento de nómina (libranza)
+        </Label>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Inicio del préstamo</Label>
@@ -446,7 +459,7 @@ export function SpecializedAccountForm({ account, defaultValues, onSuccess }: Pr
             id="show_in_dashboard"
             name="show_in_dashboard"
             defaultChecked={account?.show_in_dashboard ?? true}
-            className="h-4 w-4 rounded border-border"
+            className="h-4 w-4 rounded border border-white/6"
           />
           <Label htmlFor="show_in_dashboard" className="text-sm font-normal cursor-pointer">
             Mostrar en dashboard

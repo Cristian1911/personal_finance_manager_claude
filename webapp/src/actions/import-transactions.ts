@@ -30,7 +30,7 @@ type DebtKind = "credit_card" | "loan";
 type CurrencyCode = Database["public"]["Enums"]["currency_code"];
 type ImportedAccountRow = Pick<
   Database["public"]["Tables"]["accounts"]["Row"],
-  "id" | "name" | "currency_code" | "currency_balances" | "account_type"
+  "id" | "name" | "currency_code" | "currency_balances" | "account_type" | "is_payroll_deducted"
 >;
 type StatementSnapshotSyncRow = Pick<
   Database["public"]["Tables"]["statement_snapshots"]["Row"],
@@ -268,8 +268,103 @@ async function syncCreditCardRecurringTemplate(params: {
   }
 }
 
+async function syncLoanRecurringTemplate(params: {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  meta: StatementMetaForImport;
+  account?: ImportedAccountRow;
+  prevSnapshot: StatementSnapshotSyncRow | null;
+  existingTemplate?: RecurringTemplateSyncRow;
+  templateMap: Map<string, RecurringTemplateSyncRow>;
+  details: string[];
+}): Promise<void> {
+  const ln = params.meta.loanMetadata;
+  if (!ln?.payment_due_date || ln.total_payment_due == null || ln.total_payment_due <= 0) return;
+
+  // Skip if this statement is older than one we already processed
+  if (params.prevSnapshot) {
+    const prevDue = params.prevSnapshot.payment_due_date;
+    if (prevDue && ln.payment_due_date < prevDue) return;
+  }
+
+  const dayOfMonth = getDayOfMonth(ln.payment_due_date);
+  if (!dayOfMonth) return;
+
+  const accountName = params.account?.name ?? "préstamo";
+  const templateKey = buildRecurringTemplateKey(params.meta.accountId, params.meta.currency);
+  const merchantName =
+    params.existingTemplate?.merchant_name?.trim() ||
+    buildDebtPaymentMerchantName(accountName);
+  const description = params.existingTemplate?.description?.trim() || null;
+  // Prefer minimum_payment (for banks that provide it), fall back to total_payment_due
+  const amount = Math.round((ln.minimum_payment ?? ln.total_payment_due) * 100) / 100;
+
+  try {
+    if (params.existingTemplate) {
+      const { data, error } = await params.supabase
+        .from("recurring_transaction_templates")
+        .update({
+          amount,
+          currency_code: params.meta.currency as CurrencyCode,
+          merchant_name: merchantName,
+          description,
+          start_date: ln.payment_due_date,
+          day_of_month: dayOfMonth,
+        })
+        .eq("user_id", params.userId)
+        .eq("id", params.existingTemplate.id)
+        .select(RECURRING_TEMPLATE_SYNC_SELECT)
+        .single();
+
+      if (error) throw error;
+      params.templateMap.set(templateKey, data as RecurringTemplateSyncRow);
+      params.details.push(
+        IMPORT_DETAIL_MESSAGES.recurringTemplateUpdated(accountName, params.meta.currency)
+      );
+      return;
+    }
+
+    const { data, error } = await params.supabase
+      .from("recurring_transaction_templates")
+      .insert({
+        user_id: params.userId,
+        account_id: params.meta.accountId,
+        transfer_source_account_id: null,
+        amount,
+        currency_code: params.meta.currency as CurrencyCode,
+        direction: "INFLOW",
+        frequency: "MONTHLY",
+        merchant_name: merchantName,
+        description,
+        category_id: null,
+        day_of_month: dayOfMonth,
+        day_of_week: null,
+        start_date: ln.payment_due_date,
+        end_date: null,
+      })
+      .select(RECURRING_TEMPLATE_SYNC_SELECT)
+      .single();
+
+    if (error) throw error;
+    params.templateMap.set(templateKey, data as RecurringTemplateSyncRow);
+    params.details.push(
+      IMPORT_DETAIL_MESSAGES.recurringTemplateCreated(accountName, params.meta.currency)
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    params.details.push(
+      IMPORT_DETAIL_MESSAGES.recurringTemplateSyncFailed(
+        accountName,
+        params.meta.currency,
+        message
+      )
+    );
+  }
+}
+
 async function fetchReconciliationCandidates(
   supabase: SupabaseClient<Database>,
+  userId: string,
   transactions: TransactionToImport[]
 ): Promise<Map<string, ReconciliationCandidate[]>> {
   const accountIds = [...new Set(transactions.map((tx) => tx.account_id))];
@@ -284,13 +379,15 @@ async function fetchReconciliationCandidates(
     .select(
       "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
     )
+    .eq("user_id", userId)
     .in("account_id", accountIds)
     .in("capture_method", ["MANUAL_FORM", "TEXT_QUICK_CAPTURE"])
     .gte("transaction_date", from)
     .lte("transaction_date", to)
     .is("reconciled_into_transaction_id", null);
   if (error) {
-    throw error;
+    console.error("fetchReconciliationCandidates error:", error.message);
+    return new Map();
   }
 
   const grouped = new Map<string, ReconciliationCandidate[]>();
@@ -309,11 +406,20 @@ export async function previewImportReconciliation(
     importedTransaction: TransactionToImport;
   }>
 ): Promise<ReconciliationPreviewResult> {
-  const { supabase } = await getAuthenticatedClient();
-  const groupedCandidates = await fetchReconciliationCandidates(
-    supabase,
-    items.map((item) => item.importedTransaction)
-  );
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { autoMerge: [], review: [], unmatched: [] };
+
+  let groupedCandidates: Map<string, ReconciliationCandidate[]>;
+  try {
+    groupedCandidates = await fetchReconciliationCandidates(
+      supabase,
+      user.id,
+      items.map((item) => item.importedTransaction)
+    );
+  } catch (err) {
+    console.error("previewImportReconciliation: failed to fetch candidates", err);
+    return { autoMerge: [], review: [], unmatched: [] };
+  }
   const autoMerge: ReconciliationPreviewItem[] = [];
   const review: ReconciliationPreviewItem[] = [];
   const unmatched: ReconciliationPreviewResult["unmatched"] = [];
@@ -390,16 +496,16 @@ async function processStatementMeta(params: {
   const uniqueAccountIds = [...new Set(statementMeta.map((m) => m.accountId))];
   const { data: accountRows } = await supabase
     .from("accounts")
-    .select("id, name, currency_code, currency_balances, account_type")
+    .select("id, name, currency_code, currency_balances, account_type, is_payroll_deducted")
     .eq("user_id", userId)
     .in("id", uniqueAccountIds);
   const accountMap = new Map(
     ((accountRows ?? []) as ImportedAccountRow[]).map((account) => [account.id, account])
   );
 
-  const hasCreditCardMetadata = statementMeta.some((meta) => meta.creditCardMetadata);
+  const hasDebtMetadata = statementMeta.some((meta) => meta.creditCardMetadata || meta.loanMetadata);
   const recurringTemplateMap = new Map<string, RecurringTemplateSyncRow>();
-  if (hasCreditCardMetadata) {
+  if (hasDebtMetadata) {
     const { data: recurringTemplates } = await supabase
       .from("recurring_transaction_templates")
       .select(RECURRING_TEMPLATE_SYNC_SELECT)
@@ -534,6 +640,7 @@ async function processStatementMeta(params: {
       await supabase
         .from("statement_snapshots")
         .update(snapshotRow)
+        .eq("user_id", userId)
         .eq("id", existingSnapshot.id);
     } else {
       await supabase.from("statement_snapshots").insert(snapshotRow);
@@ -607,7 +714,8 @@ async function processStatementMeta(params: {
       if (ln.payment_due_date) {
         accountUpdate.payment_day = new Date(ln.payment_due_date).getUTCDate();
       }
-      if (ln.minimum_payment != null) accountUpdate.monthly_payment = ln.minimum_payment;
+      const loanMonthly = ln.minimum_payment ?? ln.total_payment_due;
+      if (loanMonthly != null) accountUpdate.monthly_payment = loanMonthly;
     } else if (
       !meta.creditCardMetadata &&
       !meta.loanMetadata &&
@@ -629,6 +737,7 @@ async function processStatementMeta(params: {
       isFirstImport: !prevSnapshot,
     });
 
+    const templateKey = buildRecurringTemplateKey(meta.accountId, meta.currency);
     if (meta.creditCardMetadata) {
       await syncCreditCardRecurringTemplate({
         supabase,
@@ -636,9 +745,18 @@ async function processStatementMeta(params: {
         meta,
         account,
         prevSnapshot,
-        existingTemplate: recurringTemplateMap.get(
-          buildRecurringTemplateKey(meta.accountId, meta.currency)
-        ),
+        existingTemplate: recurringTemplateMap.get(templateKey),
+        templateMap: recurringTemplateMap,
+        details,
+      });
+    } else if (meta.loanMetadata && !account?.is_payroll_deducted) {
+      await syncLoanRecurringTemplate({
+        supabase,
+        userId,
+        meta,
+        account,
+        prevSnapshot,
+        existingTemplate: recurringTemplateMap.get(templateKey),
         templateMap: recurringTemplateMap,
         details,
       });
@@ -765,10 +883,13 @@ export async function importTransactions(
         "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id"
       )
       .eq("id", decision.candidateTransactionId)
+      .eq("user_id", user.id)
       .is("reconciled_into_transaction_id", null)
       .maybeSingle();
     if (manualTxError) {
-      throw manualTxError;
+      errors++;
+      details.push(`Reconciliación: ${tx.raw_description}: ${manualTxError.message}`);
+      continue;
     }
 
     if (!manualTx) {
