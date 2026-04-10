@@ -89,19 +89,15 @@ export function MobileTabBar({ accounts, categories }: MobileTabBarProps) {
       )}
 
       {keyboardOpen && !formOpen && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-[9999] flex items-center justify-center py-2 lg:hidden"
-          style={SAFE_AREA_BOTTOM_STYLE}
+        <button
+          type="button"
+          onClick={() => setFormOpen(true)}
+          className="fixed left-1/2 z-[9999] flex size-11 -translate-x-1/2 items-center justify-center rounded-full bg-z-brass text-z-ink shadow-[0_0_16px_rgba(184,148,79,0.4)] lg:hidden"
+          style={{ bottom: `${keyboardInset + 12}px` }}
+          aria-label="Registrar movimiento"
         >
-          <button
-            type="button"
-            onClick={() => setFormOpen(true)}
-            className="flex size-11 items-center justify-center rounded-full bg-z-brass text-z-ink shadow-[0_0_16px_rgba(184,148,79,0.4)]"
-            aria-label="Registrar movimiento"
-          >
-            <Plus className="size-4 stroke-[2.5]" />
-          </button>
-        </div>
+          <Plus className="size-4 stroke-[2.5]" />
+        </button>
       )}
 
       {formOpen && (

@@ -86,7 +86,7 @@ export function MovimientosHerramientas({
   // Reset optimistic state when server data refreshes (new props)
   useEffect(() => {
     setCategorizedIds(new Set());
-  }, [uncategorizedTransactions]);
+  }, [uncategorizedCount]);
 
   const optimisticCount = Math.max(0, uncategorizedCount - categorizedIds.size);
 
