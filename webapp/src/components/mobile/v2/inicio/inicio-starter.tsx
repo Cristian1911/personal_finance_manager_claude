@@ -6,8 +6,8 @@ import { BRASS_BUTTON_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 
 const AFTER_IMPORT_ITEMS = [
-  { icon: BarChart3, label: "Metricas activas" },
-  { icon: Tags, label: "Auto-categorias" },
+  { icon: BarChart3, label: "Métricas activas" },
+  { icon: Tags, label: "Auto-categorías" },
   { icon: Bell, label: "Alertas activas" },
 ] as const;
 
@@ -17,7 +17,7 @@ export function InicioStarter() {
       {/* Welcome text */}
       <div className="px-1">
         <p className="text-[15px] font-semibold text-foreground">
-          Tu base esta lista
+          Tu base está lista
         </p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
           Falta activar tu flujo con datos reales.
@@ -44,8 +44,8 @@ export function InicioStarter() {
                 Importa tu primer extracto
               </p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                Al importar un extracto PDF, Zeta activa tus metricas, categoriza
-                automaticamente y detecta patrones de gasto.
+                Al importar un extracto PDF, Zeta activa tus métricas, categoriza
+                automáticamente y detecta patrones de gasto.
               </p>
             </div>
 
@@ -73,7 +73,7 @@ export function InicioStarter() {
       {/* After import benefits */}
       <div>
         <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
-          Despues de importar
+          Después de importar
         </p>
         <div className="grid grid-cols-3 gap-2">
           {AFTER_IMPORT_ITEMS.map(({ icon: Icon, label }) => (

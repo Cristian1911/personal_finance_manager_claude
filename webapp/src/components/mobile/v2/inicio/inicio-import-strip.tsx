@@ -27,10 +27,10 @@ export function InicioImportStrip({ daysSinceImport }: InicioImportStripProps) {
       {/* Text */}
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold text-foreground">
-          {daysSinceImport} dias sin importar
+          {daysSinceImport} días sin importar
         </p>
         <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
-          Actualiza para que las metricas reflejen tu posicion real.
+          Actualiza para que las métricas reflejen tu posición real.
         </p>
       </div>
 
