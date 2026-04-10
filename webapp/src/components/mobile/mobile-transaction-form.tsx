@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useActionState } from "react";
-import { useRouter } from "next/navigation";
+
 import {
   Loader2,
   ArrowUpRight,
@@ -30,11 +30,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import type { ActionResult } from "@/types/actions";
 import type {
   Account,
   CategoryWithChildren,
-  Transaction,
   TransactionDirection,
 } from "@/types/domain";
 
@@ -77,7 +75,6 @@ export function MobileTransactionForm({
   isTransfer,
   onSuccess,
 }: MobileTransactionFormProps) {
-  const router = useRouter();
   // Determine initial transaction type from props (backward compat)
   const initialType: TransactionType = isTransfer
     ? "transfer"
@@ -93,20 +90,17 @@ export function MobileTransactionForm({
 
   const direction = defaultDirection ?? directionFromType(transactionType);
 
-  const [state, formAction, pending] = useActionState<
-    ActionResult<Transaction>,
-    FormData
-  >(
-    async (prevState, formData) => {
-      const result = await createTransaction(prevState, formData);
-      if (result.success) {
-        router.refresh();
-        onSuccess?.();
-      }
-      return result;
-    },
-    { success: false, error: "" },
-  );
+  const [state, formAction, pending] = useActionState(createTransaction, {
+    success: false,
+    error: "",
+  });
+
+  // Close form after action transition commits (route already revalidated)
+  useEffect(() => {
+    if (state.success) {
+      onSuccess?.();
+    }
+  }, [state.success]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const STORAGE_KEY = "zeta:quick-capture-account";
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => {
