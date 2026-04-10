@@ -8,16 +8,16 @@ import { cn } from "@/lib/utils";
 import type { EmailIngestLog } from "@/types/domain";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  imported: { label: "Importado", className: "bg-emerald-400/20 text-emerald-400" },
-  queued: { label: "En cola", className: "bg-blue-400/20 text-blue-400" },
-  parsed: { label: "Parseado", className: "bg-blue-400/20 text-blue-400" },
-  duplicate: { label: "Duplicado", className: "bg-zinc-400/20 text-zinc-400" },
-  parse_failed: { label: "Error", className: "bg-red-400/20 text-red-400" },
+  imported: { label: "Importado", className: "bg-emerald-500/20 text-emerald-500" },
+  queued: { label: "En cola", className: "bg-z-brass/20 text-z-brass" },
+  parsed: { label: "Parseado", className: "bg-z-brass/20 text-z-brass" },
+  duplicate: { label: "Duplicado", className: "bg-white/6 text-muted-foreground" },
+  parse_failed: { label: "Error", className: "bg-red-500/20 text-red-500" },
   sender_rejected: { label: "Remitente rechazado", className: "bg-amber-400/20 text-amber-400" },
   rate_limited: { label: "Límite excedido", className: "bg-amber-400/20 text-amber-400" },
-  pdf_queued: { label: "PDF en cola", className: "bg-blue-400/20 text-blue-400" },
-  pdf_parse_failed: { label: "PDF error", className: "bg-red-400/20 text-red-400" },
-  pdf_imported: { label: "PDF importado", className: "bg-emerald-400/20 text-emerald-400" },
+  pdf_queued: { label: "PDF en cola", className: "bg-z-brass/20 text-z-brass" },
+  pdf_parse_failed: { label: "PDF error", className: "bg-red-500/20 text-red-500" },
+  pdf_imported: { label: "PDF importado", className: "bg-emerald-500/20 text-emerald-500" },
 };
 
 interface EmailIngestLogsCardProps {
@@ -53,7 +53,7 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
             <div className="flex items-center gap-2">
               <CardTitle>Historial de correos</CardTitle>
               {errorCount > 0 && (
-                <span className="rounded-full bg-red-400/20 px-2 py-0.5 text-xs font-semibold text-red-400">
+                <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-500">
                   {errorCount} {errorCount === 1 ? "error" : "errores"}
                 </span>
               )}
@@ -71,7 +71,7 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
             const isExpanded = expanded.has(log.id);
             const config = STATUS_CONFIG[log.status] ?? {
               label: log.status,
-              className: "bg-zinc-400/20 text-zinc-400",
+              className: "bg-white/6 text-muted-foreground",
             };
 
             return (
@@ -105,7 +105,7 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
                     {log.error_message && (
                       <div className="space-y-1">
                         <p className="text-xs font-medium text-muted-foreground">Error</p>
-                        <p className="rounded-md border border-border/40 bg-black/20 px-3 py-2 text-xs text-red-400">
+                        <p className="rounded-md border border-white/6 bg-black/20 px-3 py-2 text-xs text-red-500">
                           {log.error_message}
                         </p>
                       </div>
@@ -113,7 +113,7 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
                     {log.raw_body && (
                       <div className="space-y-1">
                         <p className="text-xs font-medium text-muted-foreground">Contenido recibido</p>
-                        <pre className="max-h-36 overflow-y-auto whitespace-pre-wrap rounded-md border border-border/40 bg-black/20 p-3 text-xs leading-relaxed">
+                        <pre className="max-h-36 overflow-y-auto whitespace-pre-wrap rounded-md border border-white/6 bg-black/20 p-3 text-xs leading-relaxed">
                           {log.raw_body}
                         </pre>
                       </div>

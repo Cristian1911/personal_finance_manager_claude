@@ -19,6 +19,8 @@ import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "@/actions/destinatarios";
+import { linkTransactionToOccurrence } from "@/actions/occurrences";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import type { Json } from "@/types/database";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -229,7 +231,7 @@ export async function POST(request: NextRequest) {
   console.log(`[email-ingest][${emailId}] Received email from=${from} to=${to?.[0]} subject="${subject ?? "(none)"}"`);
 
   try {
-  return await processEmail({ emailId, from, to, subject });
+    return await processEmail({ emailId, from, to, subject });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
@@ -373,6 +375,7 @@ async function processEmail(ctx: {
   // 7. Rate limit: max 100 emails/day/user
   const withinLimit = await checkRateLimit(userId);
   if (!withinLimit) {
+    console.log(`[email-ingest][${emailId}] Rate limited (${RATE_LIMIT_PER_DAY}/day)`);
     await insertLog({
       userId,
       emailIngestId,
@@ -384,8 +387,35 @@ async function processEmail(ctx: {
     return NextResponse.json({ ok: true });
   }
 
-  // 7. Check for PDF attachments
-  const pdfAttachments = filterPdfAttachments(emailContent?.attachments ?? []);
+  // 7a. If Resend API failed, log and store as unrecognized — don't proceed with empty data
+  if (!emailContent) {
+    console.error(`[email-ingest][${emailId}] No email content available — Resend API fetch failed`);
+    await insertLog({
+      userId,
+      emailIngestId,
+      fromAddress: from,
+      status: "parse_failed",
+      rawBody: rawBodyPreview,
+      errorMessage: `Resend API fetch failed for email_id=${emailId} — no content available`,
+    });
+    const { error: unrecognizedError } = await admin.from("unrecognized_emails").insert({
+      user_id: userId,
+      email_ingest_id: emailIngestId,
+      from_address: from,
+      subject: subject ?? null,
+      text_body: null,
+      html_body: null,
+      status: "pending",
+    });
+    if (unrecognizedError) {
+      console.error(`[email-ingest][${emailId}] Failed to insert unrecognized_email:`, unrecognizedError.message);
+    }
+    revalidateTag("email-ingest", "zeta");
+    return NextResponse.json({ ok: true });
+  }
+
+  // 7b. Check for PDF attachments
+  const pdfAttachments = filterPdfAttachments(emailContent.attachments);
 
   const insertedPdfRows: Array<{ id: string; buffer: ArrayBuffer; filename: string }> = [];
   let pdfProcessed = false;
@@ -585,30 +615,6 @@ async function processEmail(ctx: {
     return NextResponse.json({ ok: true });
   }
 
-  // Log fetchEmailContent failure explicitly — email will likely fail parsing
-  if (!emailContent) {
-    console.error(`[email-ingest][${emailId}] No email content available — Resend API fetch failed. Email will be stored as unrecognized.`);
-    await insertLog({
-      userId,
-      emailIngestId,
-      fromAddress: from,
-      status: "parse_failed",
-      rawBody: rawBodyPreview,
-      errorMessage: `Resend API fetch failed for email_id=${emailId} — no text/html body available to parse`,
-    });
-    // Store as unrecognized so it's visible in the UI, even without body content
-    await admin.from("unrecognized_emails").insert({
-      user_id: userId,
-      email_ingest_id: emailIngestId,
-      from_address: from,
-      subject: subject ?? null,
-      text_body: null,
-      html_body: null,
-      status: "pending",
-    });
-    return NextResponse.json({ ok: true });
-  }
-
   // 8. Parse email body
   console.log(`[email-ingest][${emailId}] Parsing email body (${emailBody.length} chars, hasText=${!!emailText}, hasHtml=${!!emailHtml})`);
   const parsed = parseBancolombiaEmail(emailBody);
@@ -616,7 +622,7 @@ async function processEmail(ctx: {
   if (!parsed) {
     console.log(`[email-ingest][${emailId}] No pattern matched — storing as unrecognized. Body preview: ${emailBody.slice(0, 200)}`);
     // Store full email for parser improvement review
-    await admin.from("unrecognized_emails").insert({
+    const { error: unrecognizedError } = await admin.from("unrecognized_emails").insert({
       user_id: userId,
       email_ingest_id: emailIngestId,
       from_address: from,
@@ -625,6 +631,9 @@ async function processEmail(ctx: {
       html_body: emailHtml,
       status: "pending",
     });
+    if (unrecognizedError) {
+      console.error(`[email-ingest][${emailId}] Failed to insert unrecognized_email:`, unrecognizedError.message);
+    }
 
     await insertLog({
       userId,
@@ -634,6 +643,7 @@ async function processEmail(ctx: {
       rawBody: rawBodyPreview,
       errorMessage: "Email body did not match any known Bancolombia pattern",
     });
+    revalidateTag("email-ingest", "zeta");
     return NextResponse.json({ ok: true });
   }
 
@@ -695,7 +705,7 @@ async function processEmail(ctx: {
       if (categoryId) categorizationSource = "SYSTEM_DEFAULT";
     }
 
-    const { error: insertError } = await admin.from("transactions").insert({
+    const { data: insertedTx, error: insertError } = await admin.from("transactions").insert({
       user_id: userId,
       account_id: suggestedAccountId,
       amount: parsed.amount,
@@ -713,7 +723,7 @@ async function processEmail(ctx: {
       is_subscription: false,
       categorization_source: categorizationSource,
       status: "POSTED",
-    });
+    }).select("id").single();
 
     if (insertError) {
       if (insertError.code === "23505") {
@@ -741,6 +751,17 @@ async function processEmail(ctx: {
     }
 
     console.log(`[email-ingest][${emailId}] Transaction auto-imported successfully`);
+
+    // Link to pending recurring occurrence if applicable
+    if (insertedTx) {
+      await linkTransactionToOccurrence(
+        suggestedAccountId,
+        parsed.transaction_date,
+        parsed.amount,
+        parsed.direction,
+        insertedTx.id,
+      );
+    }
 
     // Update account balance
     if (matchedAccount) {
@@ -770,13 +791,8 @@ async function processEmail(ctx: {
     });
 
     // Invalidate caches so dashboard reflects the new transaction
+    revalidateFinancialViews();
     revalidateTag("email-ingest", "zeta");
-    revalidateTag("dashboard:hero", "zeta");
-    revalidateTag("dashboard:charts", "zeta");
-    revalidateTag("dashboard:accounts", "zeta");
-    revalidateTag("dashboard:cashflow", "zeta");
-    revalidateTag("dashboard:budgets", "zeta");
-    revalidateTag("accounts", "zeta");
 
     return NextResponse.json({ ok: true });
   }
@@ -829,5 +845,6 @@ async function processEmail(ctx: {
     errorMessage: null,
   });
 
+  revalidateTag("email-ingest", "zeta");
   return NextResponse.json({ ok: true });
 }

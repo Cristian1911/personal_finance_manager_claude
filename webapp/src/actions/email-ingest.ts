@@ -247,7 +247,7 @@ export async function getEmailIngestLogs(): Promise<ActionResult<EmailIngestLog[
 
   const { data, error } = await supabase
     .from("email_ingest_logs")
-    .select("*")
+    .select("id, status, from_address, error_message, raw_body, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -568,7 +568,7 @@ export async function approveEmailTransaction(
   const idempotencyKey =
     pending.idempotency_key ||
     (await computeIdempotencyKey({
-      provider: "EMAIL_IMPORT",
+      provider: "EMAIL",
       transactionDate: parsed.transaction_date,
       amount: parsed.amount,
       rawDescription: parsed.raw_line,
