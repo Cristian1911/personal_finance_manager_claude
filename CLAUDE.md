@@ -36,7 +36,7 @@ Spawn these specialized agents for domain-specific review and diagnosis. Each ha
 | `recurring-doctor` | Recurring obligations, upcoming payments, occurrence lifecycle. |
 | `import-flow-doctor` | PDF/email import flow, reconciliation, idempotency, installments. |
 | `pdf-parser-creator` | Adding support for a new bank's PDF statements. |
-| `ux-analyst` | UX cohesion audit — interaction consistency, navigation logic, visual narrative, flow completeness. |
+| `ux-analyst` | "Review the app experience", UX cohesion, interaction inconsistencies, navigation logic, flow gaps. Spawn when asked to audit UX or review the overall experience. |
 
 **Review gates** (enforced before shipping, same priority as `pnpm build`):
 1. `perf-auditor` — every feature
