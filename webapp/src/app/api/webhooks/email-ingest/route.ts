@@ -414,214 +414,205 @@ async function processEmail(ctx: {
     return NextResponse.json({ ok: true });
   }
 
-  // 7b. Check for PDF attachments
-  const pdfAttachments = filterPdfAttachments(emailContent.attachments);
+  // 7b. Try text parsing FIRST — it's instant (regex). PDF is the fallback.
+  console.log(`[email-ingest][${emailId}] Parsing email body (${emailBody.length} chars, hasText=${!!emailText}, hasHtml=${!!emailHtml})`);
+  const parsed = emailBody.trim() ? parseBancolombiaEmail(emailBody) : null;
 
-  const insertedPdfRows: Array<{ id: string; buffer: ArrayBuffer; filename: string }> = [];
-  let pdfProcessed = false;
+  if (parsed) {
+    console.log(`[email-ingest][${emailId}] Text parsed: pattern=${parsed.pattern_type} amount=${parsed.amount} direction=${parsed.direction} card=${parsed.card_last4} — skipping PDF fallback`);
+  }
 
-  if (pdfAttachments.length > 0 && pdfImportEnabled) {
-    pdfProcessed = true;
-    // Store pending rows immediately, parse async via after()
-    for (const attachment of pdfAttachments) {
-      const filename = attachment.filename || "attachment.pdf";
-      // Decode once — reuse buffer for hash, storage, and after() closure
-      const bytes = Buffer.from(attachment.content, "base64");
-      const contentHash = await computePdfHash(bytes.buffer);
+  // 7c. If text parsing failed, fall back to PDF attachments
+  if (!parsed) {
+    const pdfAttachments = filterPdfAttachments(emailContent.attachments);
 
-      // Check idempotency: skip if we already have this PDF
-      const { data: existing } = await admin
-        .from("pending_email_statements")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("idempotency_hash", contentHash)
-        .not("status", "in", "(dismissed)")
-        .maybeSingle();
+    if (pdfAttachments.length > 0 && pdfImportEnabled) {
+      console.log(`[email-ingest][${emailId}] Text parse failed — falling back to ${pdfAttachments.length} PDF attachment(s)`);
+      const insertedPdfRows: Array<{ id: string; buffer: ArrayBuffer; filename: string }> = [];
 
-      if (existing) {
-        await insertLog({
-          userId,
-          emailIngestId,
-          fromAddress: from,
-          status: "duplicate",
-          rawBody: rawBodyPreview,
-          errorMessage: `Duplicate PDF: ${filename}`,
-        });
-        continue;
-      }
+      for (const attachment of pdfAttachments) {
+        const filename = attachment.filename || "attachment.pdf";
+        const bytes = Buffer.from(attachment.content, "base64");
+        const contentHash = await computePdfHash(bytes.buffer);
 
-      // Store PDF in Supabase Storage
-      const timestamp = Date.now();
-      const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const storagePath = `${userId}/${timestamp}-${safeName}`;
+        // Check idempotency: skip if we already have this PDF
+        const { data: existing } = await admin
+          .from("pending_email_statements")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("idempotency_hash", contentHash)
+          .not("status", "in", "(dismissed)")
+          .maybeSingle();
 
-      const { error: uploadError } = await admin.storage
-        .from("email-pdfs")
-        .upload(storagePath, bytes.buffer, {
-          contentType: "application/pdf",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        await insertLog({
-          userId,
-          emailIngestId,
-          fromAddress: from,
-          status: "pdf_parse_failed",
-          rawBody: rawBodyPreview,
-          errorMessage: `Storage upload failed: ${uploadError.message}`,
-        });
-        continue;
-      }
-
-      // Insert pending row with status 'pending'
-      const { data: inserted, error: insertError } = await admin
-        .from("pending_email_statements")
-        .insert({
-          user_id: userId,
-          email_ingest_id: emailIngestId,
-          from_address: from,
-          subject: subject ?? null,
-          original_filename: filename,
-          storage_path: storagePath,
-          file_size_bytes: bytes.byteLength,
-          status: "pending",
-          idempotency_hash: contentHash,
-        })
-        .select("id")
-        .single();
-
-      if (insertError) {
-        // Clean up orphaned storage on insert failure
-        await admin.storage.from("email-pdfs").remove([storagePath]);
-        if (insertError.code === "23505") {
+        if (existing) {
           await insertLog({
             userId,
             emailIngestId,
             fromAddress: from,
             status: "duplicate",
             rawBody: rawBodyPreview,
-            errorMessage: `Duplicate PDF statement: ${filename}`,
+            errorMessage: `Duplicate PDF: ${filename}`,
           });
-        } else {
+          continue;
+        }
+
+        // Store PDF in Supabase Storage
+        const timestamp = Date.now();
+        const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `${userId}/${timestamp}-${safeName}`;
+
+        const { error: uploadError } = await admin.storage
+          .from("email-pdfs")
+          .upload(storagePath, bytes.buffer, {
+            contentType: "application/pdf",
+            upsert: false,
+          });
+
+        if (uploadError) {
           await insertLog({
             userId,
             emailIngestId,
             fromAddress: from,
             status: "pdf_parse_failed",
             rawBody: rawBodyPreview,
-            errorMessage: `Insert error: ${insertError.message}`,
+            errorMessage: `Storage upload failed: ${uploadError.message}`,
           });
+          continue;
         }
-        continue;
+
+        // Insert pending row with status 'pending'
+        const { data: inserted, error: insertError } = await admin
+          .from("pending_email_statements")
+          .insert({
+            user_id: userId,
+            email_ingest_id: emailIngestId,
+            from_address: from,
+            subject: subject ?? null,
+            original_filename: filename,
+            storage_path: storagePath,
+            file_size_bytes: bytes.byteLength,
+            status: "pending",
+            idempotency_hash: contentHash,
+          })
+          .select("id")
+          .single();
+
+        if (insertError) {
+          await admin.storage.from("email-pdfs").remove([storagePath]);
+          if (insertError.code === "23505") {
+            await insertLog({
+              userId,
+              emailIngestId,
+              fromAddress: from,
+              status: "duplicate",
+              rawBody: rawBodyPreview,
+              errorMessage: `Duplicate PDF statement: ${filename}`,
+            });
+          } else {
+            await insertLog({
+              userId,
+              emailIngestId,
+              fromAddress: from,
+              status: "pdf_parse_failed",
+              rawBody: rawBodyPreview,
+              errorMessage: `Insert error: ${insertError.message}`,
+            });
+          }
+          continue;
+        }
+
+        insertedPdfRows.push({ id: inserted.id, buffer: bytes.buffer, filename });
+
+        await insertLog({
+          userId,
+          emailIngestId,
+          fromAddress: from,
+          status: "pdf_queued",
+          rawBody: rawBodyPreview,
+          errorMessage: null,
+        });
       }
 
-      insertedPdfRows.push({ id: inserted.id, buffer: bytes.buffer, filename });
+      // Parse PDFs asynchronously after responding to Resend
+      const rowsToProcess = [...insertedPdfRows];
+      if (rowsToProcess.length > 0) {
+        after(async () => {
+          const adminAsync = createAdminClient();
 
-      await insertLog({
-        userId,
-        emailIngestId,
-        fromAddress: from,
-        status: "pdf_queued",
-        rawBody: rawBodyPreview,
-        errorMessage: null,
-      });
-    }
+          const { data: userAccounts } = await adminAsync
+            .rpc("get_accounts_with_masks", { p_user_id: userId });
 
-    // Parse PDFs asynchronously after responding to Resend.
-    // Buffers are captured in the closure — no re-download needed.
-    const rowsToProcess = [...insertedPdfRows];
-    if (rowsToProcess.length > 0) {
-      after(async () => {
-        const adminAsync = createAdminClient();
+          await Promise.all(
+            rowsToProcess.map(async (row) => {
+              try {
+                const filenameInfo = parseStatementFilename(row.filename);
+                const accountMatch = filenameInfo && userAccounts
+                  ? matchAccountByLast4(
+                      userAccounts as Array<{ id: string; mask: string | null; pdf_password: string | null }>,
+                      filenameInfo.last4,
+                    )
+                  : null;
 
-        // Use RPC to decrypt masks/passwords — admin client can't use zeta_decrypt()
-        const { data: userAccounts } = await adminAsync
-          .rpc("get_accounts_with_masks", { p_user_id: userId });
+                const password = accountMatch?.pdfPassword ?? undefined;
 
-        await Promise.all(
-          rowsToProcess.map(async (row) => {
-            try {
-              // Match filename → account → password
-              const filenameInfo = parseStatementFilename(row.filename);
-              const accountMatch = filenameInfo && userAccounts
-                ? matchAccountByLast4(
-                    userAccounts as Array<{ id: string; mask: string | null; pdf_password: string | null }>,
-                    filenameInfo.last4,
-                  )
-                : null;
+                if (isPdfEncrypted(row.buffer) && !password) {
+                  await adminAsync
+                    .from("pending_email_statements")
+                    .update({
+                      status: "needs_password",
+                      error_message: "PDF protegido con contraseña",
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", row.id)
+                    .eq("user_id", userId);
+                  return;
+                }
 
-              const password = accountMatch?.pdfPassword ?? undefined;
+                const parseResult = await parsePdfBuffer({
+                  buffer: row.buffer,
+                  filename: row.filename,
+                  password,
+                });
 
-              // Fast encryption check — skip parser round-trip if encrypted without password
-              if (isPdfEncrypted(row.buffer) && !password) {
+                if (parseResult.success) {
+                  await adminAsync
+                    .from("pending_email_statements")
+                    .update({
+                      status: "parsed",
+                      parsed_data: parseResult.statements as unknown as Json,
+                      parsed_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", row.id)
+                    .eq("user_id", userId);
+                } else {
+                  await adminAsync
+                    .from("pending_email_statements")
+                    .update({
+                      status: parseResult.needsPassword ? "needs_password" : "parse_failed",
+                      error_message: parseResult.error,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", row.id)
+                    .eq("user_id", userId);
+                }
+              } catch {
                 await adminAsync
                   .from("pending_email_statements")
-                  .update({
-                    status: "needs_password",
-                    error_message: "PDF protegido con contraseña",
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq("id", row.id)
-                  .eq("user_id", userId);
-                return;
-              }
-
-              const parseResult = await parsePdfBuffer({
-                buffer: row.buffer,
-                filename: row.filename,
-                password,
-              });
-
-              if (parseResult.success) {
-                await adminAsync
-                  .from("pending_email_statements")
-                  .update({
-                    status: "parsed",
-                    parsed_data: parseResult.statements as unknown as Json,
-                    parsed_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq("id", row.id)
-                  .eq("user_id", userId);
-              } else {
-                await adminAsync
-                  .from("pending_email_statements")
-                  .update({
-                    status: parseResult.needsPassword ? "needs_password" : "parse_failed",
-                    error_message: parseResult.error,
-                    updated_at: new Date().toISOString(),
-                  })
+                  .update({ status: "parse_failed", error_message: "Error inesperado al procesar", updated_at: new Date().toISOString() })
                   .eq("id", row.id)
                   .eq("user_id", userId);
               }
-            } catch {
-              await adminAsync
-                .from("pending_email_statements")
-                .update({ status: "parse_failed", error_message: "Error inesperado al procesar", updated_at: new Date().toISOString() })
-                .eq("id", row.id)
-                .eq("user_id", userId);
-            }
-          }),
-        );
-      });
+            }),
+          );
+        });
+      }
+
+      return NextResponse.json({ ok: true });
     }
 
-    // Skip text parsing if PDFs came from a statement sender (no text alerts in those emails)
-  }
-
-  if (pdfProcessed && !emailBody.trim()) {
-    console.log(`[email-ingest][${emailId}] PDF processed, no text body — skipping text parse`);
-    return NextResponse.json({ ok: true });
-  }
-
-  // 8. Parse email body
-  console.log(`[email-ingest][${emailId}] Parsing email body (${emailBody.length} chars, hasText=${!!emailText}, hasHtml=${!!emailHtml})`);
-  const parsed = parseBancolombiaEmail(emailBody);
-
-  if (!parsed) {
-    console.log(`[email-ingest][${emailId}] No pattern matched — storing as unrecognized. Body preview: ${emailBody.slice(0, 200)}`);
-    // Store full email for parser improvement review
+    // No PDFs either — store as unrecognized
+    console.log(`[email-ingest][${emailId}] No pattern matched, no PDF fallback — storing as unrecognized. Body preview: ${emailBody.slice(0, 200)}`);
     const { error: unrecognizedError } = await admin.from("unrecognized_emails").insert({
       user_id: userId,
       email_ingest_id: emailIngestId,
@@ -646,8 +637,6 @@ async function processEmail(ctx: {
     revalidateTag("email-ingest", "zeta");
     return NextResponse.json({ ok: true });
   }
-
-  console.log(`[email-ingest][${emailId}] Parsed: pattern=${parsed.pattern_type} amount=${parsed.amount} direction=${parsed.direction} card=${parsed.card_last4}`);
 
   // Clear Gmail verification URL now that real emails are flowing
   await admin
