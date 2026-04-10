@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -46,16 +48,26 @@ export function PlanExpandableChips({
             expanded === "payment" && "opacity-50"
           )}
         >
-          <p className="text-lg font-bold text-emerald-400">
-            {nextIncome
-              ? formatCurrency(nextIncome.template.amount ?? 0, currency)
-              : "—"}
-          </p>
-          <p className="text-[10px] text-emerald-400/80">Próximo ingreso</p>
-          {nextIncome && (
-            <p className="text-[9px] text-muted-foreground">
-              {nextIncome.template.description} · {formatDate(new Date(nextIncome.next_date), "dd MMM")}
-            </p>
+          {nextIncome ? (
+            <>
+              <p className="text-lg font-bold text-emerald-400">
+                {formatCurrency(nextIncome.template.amount ?? 0, currency)}
+              </p>
+              <p className="text-[10px] text-emerald-400/80">Próximo ingreso</p>
+              <p className="text-[9px] text-muted-foreground">
+                {nextIncome.template.description} · {formatDate(new Date(nextIncome.next_date), "dd MMM")}
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-1 text-emerald-400/60">
+                <Plus className="size-4" />
+                <p className="text-xs font-semibold">Mapear ingreso</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Agrega un ingreso recurrente
+              </p>
+            </>
           )}
         </button>
 
@@ -70,21 +82,31 @@ export function PlanExpandableChips({
             expanded === "income" && "opacity-50"
           )}
         >
-          <p className="text-lg font-bold text-red-400">
-            {nextPayment
-              ? formatCurrency(nextPayment.template.amount ?? 0, currency)
-              : "—"}
-          </p>
-          <p className="text-[10px] text-red-400/80">Próximo pago</p>
-          {nextPayment && (
-            <p className="text-[9px] text-muted-foreground">
-              {nextPayment.template.description} · {formatDate(new Date(nextPayment.next_date), "dd MMM")}
-            </p>
+          {nextPayment ? (
+            <>
+              <p className="text-lg font-bold text-red-400">
+                {formatCurrency(nextPayment.template.amount ?? 0, currency)}
+              </p>
+              <p className="text-[10px] text-red-400/80">Próximo pago</p>
+              <p className="text-[9px] text-muted-foreground">
+                {nextPayment.template.description} · {formatDate(new Date(nextPayment.next_date), "dd MMM")}
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-1 text-red-400/60">
+                <Plus className="size-4" />
+                <p className="text-xs font-semibold">Mapear pago</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Agrega un pago recurrente
+              </p>
+            </>
           )}
         </button>
       </div>
 
-      {expanded && expandedList.length > 0 && (
+      {expanded && (
         <div className={cn(
           "rounded-xl border p-3",
           expanded === "income"
@@ -94,31 +116,55 @@ export function PlanExpandableChips({
           <p className={cn("text-[10px] font-semibold uppercase tracking-widest mb-2", expandedColor)}>
             {expandedLabel}
           </p>
-          <div className="divide-y divide-white/5">
-            {expandedList.map((item, i) => (
-              <div key={`${item.template.id}-${i}`} className="flex items-center justify-between py-2">
-                <div>
-                  <p className="text-xs font-medium">{item.template.description}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {formatDate(new Date(item.next_date), "dd MMM yyyy")}
-                    {item.template.account && ` · ${item.template.account.name}`}
-                  </p>
-                </div>
-                <p className={cn("text-sm font-semibold", expandedColor)}>
-                  {formatCurrency(item.template.amount ?? 0, currency)}
-                </p>
+          {expandedList.length > 0 ? (
+            <>
+              <div className="divide-y divide-white/5">
+                {expandedList.map((item, i) => (
+                  <div key={`${item.template.id}-${i}`} className="flex items-center justify-between py-2">
+                    <div>
+                      <p className="text-xs font-medium">{item.template.description}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {formatDate(new Date(item.next_date), "dd MMM yyyy")}
+                        {item.template.account && ` · ${item.template.account.name}`}
+                      </p>
+                    </div>
+                    <p className={cn("text-sm font-semibold", expandedColor)}>
+                      {formatCurrency(item.template.amount ?? 0, currency)}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2 text-xs">
-            <span className="text-muted-foreground">Total</span>
-            <span className={cn("font-bold", expandedColor)}>
-              {formatCurrency(
-                expandedList.reduce((sum, item) => sum + (item.template.amount ?? 0), 0),
-                currency
-              )}
-            </span>
-          </div>
+              <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2 text-xs">
+                <span className="text-muted-foreground">Total</span>
+                <span className={cn("font-bold", expandedColor)}>
+                  {formatCurrency(
+                    expandedList.reduce((sum, item) => sum + (item.template.amount ?? 0), 0),
+                    currency
+                  )}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="py-3 text-center">
+              <p className="text-xs text-muted-foreground mb-2">
+                {expanded === "income"
+                  ? "No tienes ingresos recurrentes configurados"
+                  : "No tienes pagos recurrentes configurados"}
+              </p>
+              <Link
+                href="/recurrentes"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                  expanded === "income"
+                    ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                    : "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                )}
+              >
+                <Plus className="size-3.5" />
+                Crear en Recurrentes
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </div>

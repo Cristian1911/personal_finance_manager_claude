@@ -97,20 +97,40 @@ async function getUpcomingRecurrencesCached(
   accessToken: string
 ): Promise<UpcomingRecurrence[]> {
   "use cache";
-  cacheTag("recurring");
+  cacheTag("recurring", "occurrences");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
-  const { data: templates } = await supabase
-    .from("recurring_transaction_templates")
-    .select(TEMPLATE_SELECT)
-    .eq("user_id", userId)
-    .eq("is_active", true);
-
-  if (!templates || templates.length === 0) return [];
 
   const now = new Date();
   const rangeEnd = addDays(now, days);
+  const rangeStartStr = now.toISOString().split("T")[0];
+  const rangeEndStr = rangeEnd.toISOString().split("T")[0];
+
+  // Fetch templates and already-resolved occurrences in parallel
+  const [{ data: templates }, { data: resolvedOccurrences }] = await Promise.all([
+    supabase
+      .from("recurring_transaction_templates")
+      .select(TEMPLATE_SELECT)
+      .eq("user_id", userId)
+      .eq("is_active", true),
+    supabase
+      .from("recurring_occurrences")
+      .select("template_id, occurrence_date, status")
+      .eq("user_id", userId)
+      .in("status", ["paid", "skipped"])
+      .gte("occurrence_date", rangeStartStr)
+      .lte("occurrence_date", rangeEndStr),
+  ]);
+
+  if (!templates || templates.length === 0) return [];
+
+  // Build a set of "templateId|date" keys for paid/skipped occurrences
+  const resolvedKeys = new Set(
+    (resolvedOccurrences ?? []).map(
+      (o) => `${o.template_id}|${o.occurrence_date}`
+    )
+  );
 
   const upcoming: UpcomingRecurrence[] = [];
 
@@ -124,6 +144,8 @@ async function getUpcomingRecurrencesCached(
     );
 
     for (const date of dates) {
+      // Skip occurrences already marked as paid or skipped
+      if (resolvedKeys.has(`${template.id}|${date}`)) continue;
       upcoming.push({ template, next_date: date });
     }
   }
