@@ -16,12 +16,13 @@ import { BugReportForm } from "@/components/settings/bug-report-form";
 import { IntegrationsCard } from "@/components/settings/integrations-card";
 import { EmailIngestCard } from "@/components/settings/email-ingest-card";
 import { UnrecognizedEmailsCard } from "@/components/settings/unrecognized-emails-card";
+import { EmailIngestLogsCard } from "@/components/settings/email-ingest-logs-card";
 import { BuildInfo } from "@/components/settings/build-info";
 import { ReviewModeToggle } from "@/components/settings/review-mode-toggle";
 import { SettingsMobileAccordion } from "@/components/settings/settings-mobile-accordion";
 import { DemoModeCard } from "@/components/settings/demo-mode-card";
 import { getCaptureTokens } from "@/actions/capture-tokens";
-import { getEmailIngestAddress, getUnrecognizedEmails } from "@/actions/email-ingest";
+import { getEmailIngestAddress, getEmailIngestLogs, getUnrecognizedEmails } from "@/actions/email-ingest";
 import { getTagGroups } from "@/actions/tags";
 import { TagManager } from "@/components/tags/tag-manager";
 import type { Account } from "@/types/domain";
@@ -39,7 +40,7 @@ export default async function SettingsPage() {
 
   if (!profile) redirect("/login");
 
-  const [tokensResult, { data: accounts }, emailIngestResult, unrecognizedResult, tagGroupsResult] = await Promise.all([
+  const [tokensResult, { data: accounts }, emailIngestResult, unrecognizedResult, emailLogsResult, tagGroupsResult] = await Promise.all([
     getCaptureTokens(),
     supabase
       .from("accounts")
@@ -49,12 +50,14 @@ export default async function SettingsPage() {
       .order("display_order"),
     getEmailIngestAddress(),
     getUnrecognizedEmails(),
+    getEmailIngestLogs(),
     getTagGroups(),
   ]);
 
   const tokens = tokensResult.success ? tokensResult.data : [];
   const emailIngestAddress = emailIngestResult.success ? emailIngestResult.data : null;
   const unrecognizedEmails = unrecognizedResult.success ? unrecognizedResult.data : [];
+  const emailLogs = emailLogsResult.success ? emailLogsResult.data : [];
   const memberSince = new Date(profile.created_at).toLocaleDateString("es-CO");
 
   const accordionSections = [
@@ -83,6 +86,7 @@ export default async function SettingsPage() {
             initialAddress={emailIngestAddress}
           />
           <UnrecognizedEmailsCard initialEmails={unrecognizedEmails} />
+          <EmailIngestLogsCard initialLogs={emailLogs} />
         </div>
       ),
     },
@@ -162,6 +166,8 @@ export default async function SettingsPage() {
         />
 
         <UnrecognizedEmailsCard initialEmails={unrecognizedEmails} />
+
+        <EmailIngestLogsCard initialLogs={emailLogs} />
 
         <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
           <CardHeader>

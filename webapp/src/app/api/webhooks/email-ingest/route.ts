@@ -19,6 +19,8 @@ import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "@/actions/destinatarios";
+import { linkTransactionToOccurrence } from "@/actions/occurrences";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import type { Json } from "@/types/database";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -37,7 +39,7 @@ type ResendEmailPayload = {
     email_id: string;
     from: string;
     to: string[];
-    subject: string;
+    subject?: string;
   };
 };
 
@@ -167,6 +169,14 @@ function stripHtml(html: string): string {
 
 // ── Log helper ───────────────────────────────────────────────────────────────
 
+function buildRawBodyPreview(subject: string | null, body: string | null): string | null {
+  if (!subject && !body) return null;
+  const parts: string[] = [];
+  if (subject) parts.push(`[Subject: ${subject}]`);
+  if (body) parts.push(body);
+  return parts.join("\n").slice(0, 500);
+}
+
 async function insertLog(params: {
   userId: string | null;
   emailIngestId: string | null;
@@ -176,7 +186,7 @@ async function insertLog(params: {
   errorMessage: string | null;
 }) {
   const admin = createAdminClient();
-  await admin.from("email_ingest_logs").insert({
+  const { error } = await admin.from("email_ingest_logs").insert({
     user_id: params.userId,
     email_ingest_id: params.emailIngestId,
     from_address: params.fromAddress,
@@ -184,6 +194,9 @@ async function insertLog(params: {
     raw_body: params.rawBody ? params.rawBody.slice(0, 500) : null,
     error_message: params.errorMessage,
   });
+  if (error) {
+    console.error("[email-ingest] Failed to insert log:", error.message, params);
+  }
 }
 
 // ── Route handler ────────────────────────────────────────────────────────────
@@ -195,6 +208,7 @@ export async function POST(request: NextRequest) {
   // 1. Verify Resend webhook signature
   const isValid = await verifyResendSignature(request, rawBody);
   if (!isValid) {
+    console.warn("[email-ingest] Signature verification failed — rejecting webhook");
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -202,16 +216,47 @@ export async function POST(request: NextRequest) {
   let payload: ResendEmailPayload;
   try {
     payload = JSON.parse(rawBody) as ResendEmailPayload;
-  } catch {
+  } catch (e) {
+    console.error("[email-ingest] JSON parse error:", e instanceof Error ? e.message : e);
     return NextResponse.json({ ok: true });
   }
 
   // Only handle email.received events
   if (payload.type !== "email.received") {
+    console.log(`[email-ingest] Ignoring event type: ${payload.type}`);
     return NextResponse.json({ ok: true });
   }
 
-  const { from, to, email_id: emailId } = payload.data;
+  const { from, to, subject, email_id: emailId } = payload.data;
+  console.log(`[email-ingest][${emailId}] Received email from=${from} to=${to?.[0]} subject="${subject ?? "(none)"}"`);
+
+  try {
+    return await processEmail({ emailId, from, to, subject });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error(`[email-ingest][${emailId}] Unhandled error:`, message, stack);
+    // Best-effort DB log — may fail if the error is a DB connection issue
+    await insertLog({
+      userId: null,
+      emailIngestId: null,
+      fromAddress: from ?? "unknown",
+      status: "parse_failed",
+      rawBody: buildRawBodyPreview(subject ?? null, null),
+      errorMessage: `Unhandled error: ${message}`,
+    }).catch(() => {});
+    // Return 200 to prevent Resend retries that would keep failing
+    return NextResponse.json({ ok: true });
+  }
+}
+
+async function processEmail(ctx: {
+  emailId: string;
+  from: string;
+  to: string[];
+  subject?: string;
+}) {
+  const { emailId, from, to, subject } = ctx;
 
   // Webhook payload has metadata only — fetch full email content from Resend API
   const emailContent = await fetchEmailContent(emailId);
@@ -219,7 +264,7 @@ export async function POST(request: NextRequest) {
   const emailHtml = emailContent?.html ?? null;
   // Prefer plain text; fall back to stripped HTML
   const emailBody = emailText || (emailHtml ? stripHtml(emailHtml) : "");
-  const rawBodyPreview = emailBody?.slice(0, 500) ?? null;
+  const rawBodyPreview = buildRawBodyPreview(subject ?? null, emailBody);
 
   // 3. Extract address key from recipient (e.g. "u_abc123@domain.com" → "u_abc123")
   //    Resend lowercases the `to` on direct inbound emails, so normalize here
@@ -228,13 +273,14 @@ export async function POST(request: NextRequest) {
   const addressKey = recipientEmail.split("@")[0] ?? "";
 
   if (!addressKey) {
+    console.warn(`[email-ingest][${emailId}] No address_key in recipient: ${recipientEmail}`);
     await insertLog({
       userId: null,
       emailIngestId: null,
       fromAddress: from,
       status: "parse_failed",
       rawBody: rawBodyPreview,
-      errorMessage: "Could not extract address_key from recipient",
+      errorMessage: `Could not extract address_key from recipient: ${recipientEmail}`,
     });
     return NextResponse.json({ ok: true });
   }
@@ -252,6 +298,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (!ingestAddress) {
+    console.warn(`[email-ingest][${emailId}] No active ingest address for key="${addressKey}"`);
     await insertLog({
       userId: null,
       emailIngestId: null,
@@ -275,8 +322,8 @@ export async function POST(request: NextRequest) {
   // 5. Detect Gmail forwarding verification emails
   const fromLower = from.toLowerCase();
   if (fromLower.includes("forwarding-noreply@google.com")) {
-    const emailContent = emailBody || emailHtml || "";
-    const verifyMatch = emailContent.match(
+    const verificationContent = emailBody || emailHtml || "";
+    const verifyMatch = verificationContent.match(
       /https:\/\/mail\.google\.com\/mail\/vf-[^\s"<>]+/
     );
     if (verifyMatch) {
@@ -306,6 +353,7 @@ export async function POST(request: NextRequest) {
   const isBankSender = ALLOWED_SENDERS.some((s) => fromLower.includes(s));
   const isAllowedSender = allowedSender && fromLower.includes(allowedSender.toLowerCase());
   if (!isBankSender && !isAllowedSender) {
+    console.log(`[email-ingest][${emailId}] Sender rejected: "${from}" (allowed_sender=${allowedSender ?? "none"})`);
     await insertLog({
       userId,
       emailIngestId,
@@ -317,9 +365,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  console.log(`[email-ingest][${emailId}] Sender OK (bank=${isBankSender}, allowed=${!!isAllowedSender}), user=${userId}`);
+
   // 7. Rate limit: max 100 emails/day/user
   const withinLimit = await checkRateLimit(userId);
   if (!withinLimit) {
+    console.log(`[email-ingest][${emailId}] Rate limited (${RATE_LIMIT_PER_DAY}/day)`);
     await insertLog({
       userId,
       emailIngestId,
@@ -331,220 +382,244 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // 7. Check for PDF attachments
-  const pdfAttachments = filterPdfAttachments(emailContent?.attachments ?? []);
+  // 7a. If Resend API failed, log and store as unrecognized — don't proceed with empty data
+  if (!emailContent) {
+    console.error(`[email-ingest][${emailId}] No email content available — Resend API fetch failed`);
+    await insertLog({
+      userId,
+      emailIngestId,
+      fromAddress: from,
+      status: "parse_failed",
+      rawBody: rawBodyPreview,
+      errorMessage: `Resend API fetch failed for email_id=${emailId} — no content available`,
+    });
+    const { error: unrecognizedError } = await admin.from("unrecognized_emails").insert({
+      user_id: userId,
+      email_ingest_id: emailIngestId,
+      from_address: from,
+      subject: subject ?? null,
+      text_body: null,
+      html_body: null,
+      status: "pending",
+    });
+    if (unrecognizedError) {
+      console.error(`[email-ingest][${emailId}] Failed to insert unrecognized_email:`, unrecognizedError.message);
+    }
+    revalidateTag("email-ingest", "zeta");
+    return NextResponse.json({ ok: true });
+  }
 
-  const insertedPdfRows: Array<{ id: string; buffer: ArrayBuffer; filename: string }> = [];
-  let pdfProcessed = false;
+  // 7b. Try text parsing FIRST — it's instant (regex). PDF is the fallback.
+  console.log(`[email-ingest][${emailId}] Parsing email body (${emailBody.length} chars, hasText=${!!emailText}, hasHtml=${!!emailHtml})`);
+  const parsed = emailBody.trim() ? parseBancolombiaEmail(emailBody) : null;
 
-  if (pdfAttachments.length > 0 && pdfImportEnabled) {
-    pdfProcessed = true;
-    // Store pending rows immediately, parse async via after()
-    for (const attachment of pdfAttachments) {
-      const filename = attachment.filename || "attachment.pdf";
-      // Decode once — reuse buffer for hash, storage, and after() closure
-      const bytes = Buffer.from(attachment.content, "base64");
-      const contentHash = await computePdfHash(bytes.buffer);
+  if (parsed) {
+    console.log(`[email-ingest][${emailId}] Text parsed: pattern=${parsed.pattern_type} amount=${parsed.amount} direction=${parsed.direction} card=${parsed.card_last4} — skipping PDF fallback`);
+  }
 
-      // Check idempotency: skip if we already have this PDF
-      const { data: existing } = await admin
-        .from("pending_email_statements")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("idempotency_hash", contentHash)
-        .not("status", "in", "(dismissed)")
-        .maybeSingle();
+  // 7c. If text parsing failed, fall back to PDF attachments
+  if (!parsed) {
+    const pdfAttachments = filterPdfAttachments(emailContent.attachments);
 
-      if (existing) {
-        await insertLog({
-          userId,
-          emailIngestId,
-          fromAddress: from,
-          status: "duplicate",
-          rawBody: rawBodyPreview,
-          errorMessage: `Duplicate PDF: ${filename}`,
-        });
-        continue;
-      }
+    if (pdfAttachments.length > 0 && pdfImportEnabled) {
+      console.log(`[email-ingest][${emailId}] Text parse failed — falling back to ${pdfAttachments.length} PDF attachment(s)`);
+      const insertedPdfRows: Array<{ id: string; buffer: ArrayBuffer; filename: string }> = [];
 
-      // Store PDF in Supabase Storage
-      const timestamp = Date.now();
-      const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const storagePath = `${userId}/${timestamp}-${safeName}`;
+      for (const attachment of pdfAttachments) {
+        const filename = attachment.filename || "attachment.pdf";
+        const bytes = Buffer.from(attachment.content, "base64");
+        const contentHash = await computePdfHash(bytes.buffer);
 
-      const { error: uploadError } = await admin.storage
-        .from("email-pdfs")
-        .upload(storagePath, bytes.buffer, {
-          contentType: "application/pdf",
-          upsert: false,
-        });
+        // Check idempotency: skip if we already have this PDF
+        const { data: existing } = await admin
+          .from("pending_email_statements")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("idempotency_hash", contentHash)
+          .not("status", "in", "(dismissed)")
+          .maybeSingle();
 
-      if (uploadError) {
-        await insertLog({
-          userId,
-          emailIngestId,
-          fromAddress: from,
-          status: "pdf_parse_failed",
-          rawBody: rawBodyPreview,
-          errorMessage: `Storage upload failed: ${uploadError.message}`,
-        });
-        continue;
-      }
-
-      // Insert pending row with status 'pending'
-      const { data: inserted, error: insertError } = await admin
-        .from("pending_email_statements")
-        .insert({
-          user_id: userId,
-          email_ingest_id: emailIngestId,
-          from_address: from,
-          subject: payload.data.subject ?? null,
-          original_filename: filename,
-          storage_path: storagePath,
-          file_size_bytes: bytes.byteLength,
-          status: "pending",
-          idempotency_hash: contentHash,
-        })
-        .select("id")
-        .single();
-
-      if (insertError) {
-        // Clean up orphaned storage on insert failure
-        await admin.storage.from("email-pdfs").remove([storagePath]);
-        if (insertError.code === "23505") {
+        if (existing) {
           await insertLog({
             userId,
             emailIngestId,
             fromAddress: from,
             status: "duplicate",
             rawBody: rawBodyPreview,
-            errorMessage: `Duplicate PDF statement: ${filename}`,
+            errorMessage: `Duplicate PDF: ${filename}`,
           });
-        } else {
+          continue;
+        }
+
+        // Store PDF in Supabase Storage
+        const timestamp = Date.now();
+        const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `${userId}/${timestamp}-${safeName}`;
+
+        const { error: uploadError } = await admin.storage
+          .from("email-pdfs")
+          .upload(storagePath, bytes.buffer, {
+            contentType: "application/pdf",
+            upsert: false,
+          });
+
+        if (uploadError) {
           await insertLog({
             userId,
             emailIngestId,
             fromAddress: from,
             status: "pdf_parse_failed",
             rawBody: rawBodyPreview,
-            errorMessage: `Insert error: ${insertError.message}`,
+            errorMessage: `Storage upload failed: ${uploadError.message}`,
           });
+          continue;
         }
-        continue;
+
+        // Insert pending row with status 'pending'
+        const { data: inserted, error: insertError } = await admin
+          .from("pending_email_statements")
+          .insert({
+            user_id: userId,
+            email_ingest_id: emailIngestId,
+            from_address: from,
+            subject: subject ?? null,
+            original_filename: filename,
+            storage_path: storagePath,
+            file_size_bytes: bytes.byteLength,
+            status: "pending",
+            idempotency_hash: contentHash,
+          })
+          .select("id")
+          .single();
+
+        if (insertError) {
+          await admin.storage.from("email-pdfs").remove([storagePath]);
+          if (insertError.code === "23505") {
+            await insertLog({
+              userId,
+              emailIngestId,
+              fromAddress: from,
+              status: "duplicate",
+              rawBody: rawBodyPreview,
+              errorMessage: `Duplicate PDF statement: ${filename}`,
+            });
+          } else {
+            await insertLog({
+              userId,
+              emailIngestId,
+              fromAddress: from,
+              status: "pdf_parse_failed",
+              rawBody: rawBodyPreview,
+              errorMessage: `Insert error: ${insertError.message}`,
+            });
+          }
+          continue;
+        }
+
+        insertedPdfRows.push({ id: inserted.id, buffer: bytes.buffer, filename });
+
+        await insertLog({
+          userId,
+          emailIngestId,
+          fromAddress: from,
+          status: "pdf_queued",
+          rawBody: rawBodyPreview,
+          errorMessage: null,
+        });
       }
 
-      insertedPdfRows.push({ id: inserted.id, buffer: bytes.buffer, filename });
+      // Parse PDFs asynchronously after responding to Resend
+      const rowsToProcess = [...insertedPdfRows];
+      if (rowsToProcess.length > 0) {
+        after(async () => {
+          const adminAsync = createAdminClient();
 
-      await insertLog({
-        userId,
-        emailIngestId,
-        fromAddress: from,
-        status: "pdf_queued",
-        rawBody: rawBodyPreview,
-        errorMessage: null,
-      });
-    }
+          const { data: userAccounts } = await adminAsync
+            .rpc("get_accounts_with_masks", { p_user_id: userId });
 
-    // Parse PDFs asynchronously after responding to Resend.
-    // Buffers are captured in the closure — no re-download needed.
-    const rowsToProcess = [...insertedPdfRows];
-    if (rowsToProcess.length > 0) {
-      after(async () => {
-        const adminAsync = createAdminClient();
+          await Promise.all(
+            rowsToProcess.map(async (row) => {
+              try {
+                const filenameInfo = parseStatementFilename(row.filename);
+                const accountMatch = filenameInfo && userAccounts
+                  ? matchAccountByLast4(
+                      userAccounts as Array<{ id: string; mask: string | null; pdf_password: string | null }>,
+                      filenameInfo.last4,
+                    )
+                  : null;
 
-        // Use RPC to decrypt masks/passwords — admin client can't use zeta_decrypt()
-        const { data: userAccounts } = await adminAsync
-          .rpc("get_accounts_with_masks", { p_user_id: userId });
+                const password = accountMatch?.pdfPassword ?? undefined;
 
-        await Promise.all(
-          rowsToProcess.map(async (row) => {
-            try {
-              // Match filename → account → password
-              const filenameInfo = parseStatementFilename(row.filename);
-              const accountMatch = filenameInfo && userAccounts
-                ? matchAccountByLast4(
-                    userAccounts as Array<{ id: string; mask: string | null; pdf_password: string | null }>,
-                    filenameInfo.last4,
-                  )
-                : null;
+                if (isPdfEncrypted(row.buffer) && !password) {
+                  await adminAsync
+                    .from("pending_email_statements")
+                    .update({
+                      status: "needs_password",
+                      error_message: "PDF protegido con contraseña",
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", row.id)
+                    .eq("user_id", userId);
+                  return;
+                }
 
-              const password = accountMatch?.pdfPassword ?? undefined;
+                const parseResult = await parsePdfBuffer({
+                  buffer: row.buffer,
+                  filename: row.filename,
+                  password,
+                });
 
-              // Fast encryption check — skip parser round-trip if encrypted without password
-              if (isPdfEncrypted(row.buffer) && !password) {
+                if (parseResult.success) {
+                  await adminAsync
+                    .from("pending_email_statements")
+                    .update({
+                      status: "parsed",
+                      parsed_data: parseResult.statements as unknown as Json,
+                      parsed_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", row.id)
+                    .eq("user_id", userId);
+                } else {
+                  await adminAsync
+                    .from("pending_email_statements")
+                    .update({
+                      status: parseResult.needsPassword ? "needs_password" : "parse_failed",
+                      error_message: parseResult.error,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", row.id)
+                    .eq("user_id", userId);
+                }
+              } catch {
                 await adminAsync
                   .from("pending_email_statements")
-                  .update({
-                    status: "needs_password",
-                    error_message: "PDF protegido con contraseña",
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq("id", row.id)
-                  .eq("user_id", userId);
-                return;
-              }
-
-              const parseResult = await parsePdfBuffer({
-                buffer: row.buffer,
-                filename: row.filename,
-                password,
-              });
-
-              if (parseResult.success) {
-                await adminAsync
-                  .from("pending_email_statements")
-                  .update({
-                    status: "parsed",
-                    parsed_data: parseResult.statements as unknown as Json,
-                    parsed_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq("id", row.id)
-                  .eq("user_id", userId);
-              } else {
-                await adminAsync
-                  .from("pending_email_statements")
-                  .update({
-                    status: parseResult.needsPassword ? "needs_password" : "parse_failed",
-                    error_message: parseResult.error,
-                    updated_at: new Date().toISOString(),
-                  })
+                  .update({ status: "parse_failed", error_message: "Error inesperado al procesar", updated_at: new Date().toISOString() })
                   .eq("id", row.id)
                   .eq("user_id", userId);
               }
-            } catch {
-              await adminAsync
-                .from("pending_email_statements")
-                .update({ status: "parse_failed", error_message: "Error inesperado al procesar", updated_at: new Date().toISOString() })
-                .eq("id", row.id)
-                .eq("user_id", userId);
-            }
-          }),
-        );
-      });
+            }),
+          );
+        });
+      }
+
+      return NextResponse.json({ ok: true });
     }
 
-    // Skip text parsing if PDFs came from a statement sender (no text alerts in those emails)
-  }
-
-  if (pdfProcessed && !emailBody.trim()) {
-    return NextResponse.json({ ok: true });
-  }
-
-  // 8. Parse email body
-  const parsed = parseBancolombiaEmail(emailBody);
-
-  if (!parsed) {
-    // Store full email for parser improvement review
-    await admin.from("unrecognized_emails").insert({
+    // No PDFs either — store as unrecognized
+    console.log(`[email-ingest][${emailId}] No pattern matched, no PDF fallback — storing as unrecognized. Body preview: ${emailBody.slice(0, 200)}`);
+    const { error: unrecognizedError } = await admin.from("unrecognized_emails").insert({
       user_id: userId,
       email_ingest_id: emailIngestId,
       from_address: from,
-      subject: payload.data.subject ?? null,
+      subject: subject ?? null,
       text_body: emailText,
       html_body: emailHtml,
       status: "pending",
     });
+    if (unrecognizedError) {
+      console.error(`[email-ingest][${emailId}] Failed to insert unrecognized_email:`, unrecognizedError.message);
+    }
 
     await insertLog({
       userId,
@@ -554,6 +629,7 @@ export async function POST(request: NextRequest) {
       rawBody: rawBodyPreview,
       errorMessage: "Email body did not match any known Bancolombia pattern",
     });
+    revalidateTag("email-ingest", "zeta");
     return NextResponse.json({ ok: true });
   }
 
@@ -591,6 +667,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 9. Auto-import or queue
+  console.log(`[email-ingest][${emailId}] autoImport=${autoImport} suggestedAccountId=${suggestedAccountId}`);
   if (autoImport && suggestedAccountId) {
     const matchedAccount = candidateAccounts?.find((a) => a.id === suggestedAccountId);
     const currencyCode = matchedAccount?.currency_code ?? parsed.currency;
@@ -612,7 +689,7 @@ export async function POST(request: NextRequest) {
       if (categoryId) categorizationSource = "SYSTEM_DEFAULT";
     }
 
-    const { error: insertError } = await admin.from("transactions").insert({
+    const { data: insertedTx, error: insertError } = await admin.from("transactions").insert({
       user_id: userId,
       account_id: suggestedAccountId,
       amount: parsed.amount,
@@ -630,10 +707,11 @@ export async function POST(request: NextRequest) {
       is_subscription: false,
       categorization_source: categorizationSource,
       status: "POSTED",
-    });
+    }).select("id").single();
 
     if (insertError) {
       if (insertError.code === "23505") {
+        console.log(`[email-ingest][${emailId}] Duplicate transaction (idempotency conflict)`);
         await insertLog({
           userId,
           emailIngestId,
@@ -643,6 +721,7 @@ export async function POST(request: NextRequest) {
           errorMessage: "Duplicate transaction (idempotency key conflict)",
         });
       } else {
+        console.error(`[email-ingest][${emailId}] Transaction insert failed: ${insertError.message} (code=${insertError.code})`);
         await insertLog({
           userId,
           emailIngestId,
@@ -653,6 +732,19 @@ export async function POST(request: NextRequest) {
         });
       }
       return NextResponse.json({ ok: true });
+    }
+
+    console.log(`[email-ingest][${emailId}] Transaction auto-imported successfully`);
+
+    // Link to pending recurring occurrence if applicable
+    if (insertedTx) {
+      await linkTransactionToOccurrence(
+        suggestedAccountId,
+        parsed.transaction_date,
+        parsed.amount,
+        parsed.direction,
+        insertedTx.id,
+      );
     }
 
     // Update account balance
@@ -683,18 +775,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Invalidate caches so dashboard reflects the new transaction
+    revalidateFinancialViews();
     revalidateTag("email-ingest", "zeta");
-    revalidateTag("dashboard:hero", "zeta");
-    revalidateTag("dashboard:charts", "zeta");
-    revalidateTag("dashboard:accounts", "zeta");
-    revalidateTag("dashboard:cashflow", "zeta");
-    revalidateTag("dashboard:budgets", "zeta");
-    revalidateTag("accounts", "zeta");
 
     return NextResponse.json({ ok: true });
   }
 
-  // 10. Queue in pending_email_transactions
+  // 10. Queue in pending_email_transactions (auto_import off or no suggested account)
+  console.log(`[email-ingest][${emailId}] Queuing for manual review`);
   const { error: queueError } = await admin.from("pending_email_transactions").insert({
     user_id: userId,
     email_ingest_id: emailIngestId,
@@ -707,6 +795,7 @@ export async function POST(request: NextRequest) {
 
   if (queueError) {
     if (queueError.code === "23505") {
+      console.log(`[email-ingest][${emailId}] Duplicate pending transaction`);
       await insertLog({
         userId,
         emailIngestId,
@@ -716,6 +805,7 @@ export async function POST(request: NextRequest) {
         errorMessage: "Duplicate pending transaction (idempotency key conflict)",
       });
     } else {
+      console.error(`[email-ingest][${emailId}] Queue insert failed: ${queueError.message}`);
       await insertLog({
         userId,
         emailIngestId,
@@ -729,6 +819,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 11. Log as queued
+  console.log(`[email-ingest][${emailId}] Queued successfully for manual review`);
   await insertLog({
     userId,
     emailIngestId,
@@ -738,5 +829,6 @@ export async function POST(request: NextRequest) {
     errorMessage: null,
   });
 
+  revalidateTag("email-ingest", "zeta");
   return NextResponse.json({ ok: true });
 }
