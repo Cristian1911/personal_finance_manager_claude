@@ -28,8 +28,8 @@ Specialized agents MUST be spawned at these checkpoints — not deferred to the 
 | Task 10 | `perf-auditor` | Final gate — verify tags join perf, caching, rendering strategy, bundle |
 
 **Rules:**
-- Each agent runs in **foreground** — wait for its result before proceeding to the next task.
-- If an agent flags issues, fix them before moving on. Do NOT batch agent fixes at the end.
+- Agents run in **background** (`run_in_background: true`) — implementation continues while the agent reviews. When the agent reports back, fix any flagged issues before the final build gate.
+- If a background agent flags critical issues (e.g., wrong auth pattern, missing cache invalidation), pause and fix immediately.
 - `zetas-front-guy` reviews are cumulative — Tasks 2, 3, 5 (new components / wiring) are reviewed alongside their first consumer (Task 6/7).
 
 ---
@@ -841,7 +841,7 @@ Run: `cd webapp && pnpm install && pnpm build`
 
 Expected: Clean build, no errors.
 
-- [ ] **Step 2: Spawn `perf-auditor` agent (foreground)**
+- [ ] **Step 2: Spawn `perf-auditor` agent (background)**
 
 ```
 Agent(subagent_type="perf-auditor", prompt="Audit the mobile UX changes for performance.
@@ -853,7 +853,7 @@ Focus on:
 Report issues ranked by severity.")
 ```
 
-- [ ] **Step 3: Spawn `zetas-front-guy` agent (foreground)**
+- [ ] **Step 3: Spawn `zetas-front-guy` agent (background, parallel with step 2)**
 
 ```
 Agent(subagent_type="zetas-front-guy", prompt="Review all mobile UX changes for design system compliance.

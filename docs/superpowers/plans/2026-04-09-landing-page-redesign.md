@@ -23,8 +23,8 @@ Specialized agents MUST be spawned at these checkpoints — not deferred to the 
 | Task 6 | `perf-auditor` | Final gate — verify no new client-side bundles, no heavy imports, rendering strategy |
 
 **Rules:**
-- Each agent runs in **foreground** — wait for its result before proceeding to the next task.
-- If an agent flags issues, fix them before moving on. Do NOT batch agent fixes at the end.
+- Agents run in **background** (`run_in_background: true`) — implementation continues while the agent reviews. When the agent reports back, fix any flagged issues before the final build gate.
+- If a background agent flags critical issues, pause and fix immediately.
 - Tasks 1, 2, 5 are structural (deletions, reordering, padding) — low risk, no agent review needed until the next visual task.
 
 ---
@@ -337,7 +337,7 @@ Run: `cd webapp && pnpm install && pnpm build`
 
 Expected: Clean build, no errors.
 
-- [ ] **Step 2: Spawn `perf-auditor` agent (foreground)**
+- [ ] **Step 2: Spawn `perf-auditor` agent (background)**
 
 ```
 Agent(subagent_type="perf-auditor", prompt="Audit the landing page redesign for performance.
@@ -349,7 +349,7 @@ Focus on:
 Report issues ranked by severity.")
 ```
 
-- [ ] **Step 3: Spawn `zetas-front-guy` agent (foreground)**
+- [ ] **Step 3: Spawn `zetas-front-guy` agent (background, parallel with step 2)**
 
 ```
 Agent(subagent_type="zetas-front-guy", prompt="Review all landing page changes for design system compliance.
