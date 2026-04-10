@@ -66,6 +66,26 @@ export function MovimientosRoot({
     [transactions]
   );
 
+  /** Build tags-by-transaction lookup from joined transaction_tags */
+  const tagsByTxId = useMemo(() => {
+    const map = new Map<string, Array<{ id: string; name: string; color: string | null; group_color: string | null }>>();
+    for (const tx of transactions) {
+      const txTags = (tx as any).transaction_tags;
+      if (txTags && Array.isArray(txTags)) {
+        map.set(
+          tx.id,
+          txTags.map((tt: any) => ({
+            id: tt.tag.id,
+            name: tt.tag.name,
+            color: tt.tag.color,
+            group_color: tt.tag.group?.color ?? null,
+          }))
+        );
+      }
+    }
+    return map;
+  }, [transactions]);
+
   /** Group transactions by date, sorted descending */
   const groupedByDate = useMemo(() => {
     const groups = new Map<string, TransactionWithAccount[]>();
@@ -139,7 +159,7 @@ export function MovimientosRoot({
               </p>
               <div className="space-y-0.5">
                 {txs.map((tx) => (
-                  <MovimientosTransactionRow key={tx.id} transaction={tx} categories={outflowCategories} />
+                  <MovimientosTransactionRow key={tx.id} transaction={tx} categories={outflowCategories} tags={tagsByTxId.get(tx.id)} />
                 ))}
               </div>
             </div>
