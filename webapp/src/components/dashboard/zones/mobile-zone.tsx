@@ -47,7 +47,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     amount: tx.amount,
     currency_code: tx.currency_code ?? "COP",
     direction: tx.direction,
-    account_name: tx.accounts?.name ?? "",
+    account_name: tx.accounts?.name ?? "Sin cuenta",
     account_color: tx.accounts?.color ?? null,
     category_name: tx.categories?.name_es ?? tx.categories?.name ?? null,
     category_icon: tx.categories?.icon ?? null,
