@@ -1,7 +1,9 @@
 "use client";
 
 import { Suspense, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/date";
+import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { MonthSelector } from "@/components/month-selector";
@@ -109,12 +111,14 @@ export function MovimientosRoot({
       <MobileHeader
         variant="main"
         title="Movimientos"
-        action={
-          <Suspense>
-            <MonthSelector compact />
-          </Suspense>
-        }
       />
+
+      {/* Month navigation — matches Plan layout */}
+      <div className="flex justify-center">
+        <Suspense fallback={<span className="text-xs capitalize text-muted-foreground">...</span>}>
+          <MonthSelector />
+        </Suspense>
+      </div>
 
       {/* Lectura — month summary with expandable flow chart */}
       <MovimientosLectura
@@ -157,7 +161,7 @@ export function MovimientosRoot({
         <div className="space-y-4">
           {groupedByDate.map(([date, txs]) => (
             <div key={date}>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <p className={cn("mb-2", SECTION_EYEBROW_CLASS)}>
                 {formatDate(date, "EEEE, dd MMM")}
               </p>
               <div className="space-y-0.5">

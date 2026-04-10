@@ -6,8 +6,6 @@ import { DeudasHero } from "./deudas-hero";
 import { DeudasGrid } from "./deudas-grid";
 import { DeudasAccountsAccordion } from "./deudas-accounts-accordion";
 import { DeudasSalaryBar } from "./deudas-salary-bar";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Banknote, Calculator } from "lucide-react";
 import type { CurrencyCode } from "@/types/domain";
@@ -83,30 +81,6 @@ export function DeudasRoot({
         onToggle={() => toggle("hero")}
       />
 
-      {/* Action cards — discovery chip style */}
-      <div className="grid grid-cols-2 gap-1.5">
-        <div className={cn(PANEL_INSET_CLASS, "flex items-center gap-2.5 px-3 py-3")}>
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-z-brass/20 bg-z-brass/10">
-            <Banknote className="size-4 text-z-brass" />
-          </div>
-          <div className="min-w-0 flex-1">
-            {extraPaymentTrigger}
-          </div>
-        </div>
-        <Link
-          href="/deudas/planificador"
-          className={cn(PANEL_INSET_CLASS, "flex items-center gap-2.5 px-3 py-3 transition-colors active:bg-white/[0.03]")}
-        >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-z-brass/20 bg-z-brass/10">
-            <Calculator className="size-4 text-z-brass" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[12px] font-semibold leading-tight">Simular pagos</p>
-            <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">Planificador</p>
-          </div>
-        </Link>
-      </div>
-
       {/* Three rings: utilization + closest exit + loan payment — expandable chips */}
       {overview.totalCreditLimit > 0 && (
         <DeudasGrid
@@ -139,6 +113,26 @@ export function DeudasRoot({
           onToggleChip={(id) => toggle(id)}
         />
       )}
+
+      {/* Action chips */}
+      {(() => {
+        const chipClass = "inline-flex items-center gap-2 rounded-full border border-white/6 bg-white/[0.03] px-3 py-1.5 text-xs transition-colors";
+        return (
+          <div className="flex flex-wrap gap-2 px-1">
+            <div className={chipClass}>
+              <Banknote className="size-3.5 text-z-brass" />
+              {extraPaymentTrigger}
+            </div>
+            <Link
+              href="/deudas/planificador"
+              className={`${chipClass} active:bg-white/[0.06]`}
+            >
+              <Calculator className="size-3.5 text-z-brass" />
+              <span>Simular pagos</span>
+            </Link>
+          </div>
+        );
+      })()}
 
       {/* Salary bar — collapsed by default (NOT expandable, hover interaction only) */}
       {salaryBreakdown && (

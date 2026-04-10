@@ -6,7 +6,6 @@ import {
   LogOut,
   Settings,
   Wallet,
-  AlertTriangle,
   CalendarClock,
   ListChecks,
   Loader2,
@@ -34,16 +33,13 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
-import type { Profile } from "@/types/domain";
-import type { AttentionSnapshot } from "@/types/attention";
-import type { CurrencyCode } from "@/types/domain";
+import type { Profile, CurrencyCode } from "@/types/domain";
 
 interface QuickViewMenuProps {
   profile: Profile;
-  attentionSnapshot: AttentionSnapshot;
 }
 
-export function QuickViewMenu({ profile, attentionSnapshot }: QuickViewMenuProps) {
+export function QuickViewMenu({ profile }: QuickViewMenuProps) {
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<QuickViewData | null>(null);
@@ -56,8 +52,6 @@ export function QuickViewMenu({ profile, attentionSnapshot }: QuickViewMenuProps
     .join("")
     .toUpperCase()
     .slice(0, 2);
-
-  const actionCount = attentionSnapshot.totalAction;
 
   const handleOpenFresh = useCallback(
     (nextOpen: boolean) => {
@@ -81,11 +75,6 @@ export function QuickViewMenu({ profile, attentionSnapshot }: QuickViewMenuProps
       <Avatar className="h-8 w-8">
         <AvatarFallback className="text-xs">{initials}</AvatarFallback>
       </Avatar>
-      {actionCount > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-z-debt px-1 text-[10px] font-bold text-white">
-          {actionCount}
-        </span>
-      )}
     </button>
   );
 
@@ -93,7 +82,6 @@ export function QuickViewMenu({ profile, attentionSnapshot }: QuickViewMenuProps
     <QuickViewContent
       data={data}
       loading={loading}
-      attentionSnapshot={attentionSnapshot}
       profile={profile}
       onClose={() => setOpen(false)}
     />
@@ -138,23 +126,15 @@ export function QuickViewMenu({ profile, attentionSnapshot }: QuickViewMenuProps
 function QuickViewContent({
   data,
   loading,
-  attentionSnapshot,
   profile,
   onClose,
 }: {
   data: QuickViewData | null;
   loading: boolean;
-  attentionSnapshot: AttentionSnapshot;
   profile: Profile;
   onClose: () => void;
 }) {
   const firstName = profile.full_name?.split(" ")[0] ?? "Hola";
-  const actionSignals = attentionSnapshot.signals.filter(
-    (s) => s.priority === "action",
-  );
-  const suggestionSignals = attentionSnapshot.signals.filter(
-    (s) => s.priority === "suggestion",
-  );
 
   return (
     <div className="flex flex-col">
@@ -252,50 +232,6 @@ function QuickViewContent({
           </>
         ) : null}
       </div>
-
-      {/* Alerts */}
-      {(actionSignals.length > 0 || suggestionSignals.length > 0) && (
-        <div className="border-t px-4 py-3 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <AlertTriangle className="h-3 w-3" />
-            Necesita atención
-          </div>
-          {actionSignals.map((s) => (
-            <Link
-              key={s.key}
-              href={s.actionHref}
-              onClick={onClose}
-              className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-accent/50 transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-z-debt shrink-0" />
-                {s.label}
-              </span>
-              <span className="flex items-center gap-1 text-muted-foreground">
-                {s.count}
-                <ArrowRight className="h-3 w-3" />
-              </span>
-            </Link>
-          ))}
-          {suggestionSignals.map((s) => (
-            <Link
-              key={s.key}
-              href={s.actionHref}
-              onClick={onClose}
-              className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-accent/50 transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-z-alert shrink-0" />
-                {s.label}
-              </span>
-              <span className="flex items-center gap-1 text-muted-foreground">
-                {s.count}
-                <ArrowRight className="h-3 w-3" />
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
 
       {/* Footer: Settings + Sign out */}
       <div className="border-t px-4 py-2 flex items-center justify-between">

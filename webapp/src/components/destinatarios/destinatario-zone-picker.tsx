@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronsUpDown, UserRound } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Check, ChevronsUpDown, Plus, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +17,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
+import { createDestinatario } from "@/actions/destinatarios";
+import { toast } from "sonner";
 
 type DestinatarioOption = {
   id: string;
@@ -46,6 +48,9 @@ export function DestinatarioZonePicker({
   variant: variantProp,
 }: DestinatarioZonePickerProps) {
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [, startCreateTransition] = useTransition();
+  const createInputRef = useRef<HTMLInputElement>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const variant = variantProp ?? (isDesktop ? "popover" : "dialog");
 
@@ -53,7 +58,10 @@ export function DestinatarioZonePicker({
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (!open) setSearch("");
+    if (!open) {
+      setSearch("");
+      setCreating(false);
+    }
   }, [open]);
 
   const active = useMemo(
@@ -75,6 +83,24 @@ export function DestinatarioZonePicker({
     setOpen(false);
   }
 
+  function handleCreate(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    startCreateTransition(async () => {
+      const fd = new FormData();
+      fd.set("name", trimmed);
+      const result = await createDestinatario({ success: false, error: "" }, fd);
+      if (result.success) {
+        onValueChange(result.data.id, result.data.name);
+        setOpen(false);
+        setCreating(false);
+        toast.success(`Destinatario "${trimmed}" creado`);
+      } else {
+        toast.error(result.error || "Error al crear destinatario");
+      }
+    });
+  }
+
   // ── Trigger ──────────────────────────────────────────────────────────────
 
   const triggerButton = compact ? (
@@ -82,7 +108,7 @@ export function DestinatarioZonePicker({
       type="button"
       onClick={() => setOpen(true)}
       className={cn(
-        "inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]",
+        "inline-flex items-center justify-center rounded-lg border border-white/6 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]",
         displayName && "bg-white/5 px-2.5 py-1 text-[10px] font-medium",
         triggerClassName
       )}
@@ -123,16 +149,27 @@ export function DestinatarioZonePicker({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar destinatario..."
-          className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-z-brass/40"
+          className="w-full rounded-lg border border-white/6 bg-white/[0.03] px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-z-brass/40"
           autoFocus
         />
       </div>
       <div className="max-h-[50dvh] overflow-y-auto px-1 pb-2">
-        {filtered.length === 0 && (
+        {filtered.length === 0 && search ? (
+          <div className="px-3 py-4">
+            <button
+              type="button"
+              onClick={() => handleCreate(search)}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-z-brass transition-colors hover:bg-white/5"
+            >
+              <Plus className="size-3.5" />
+              <span>Crear &laquo;{search}&raquo;</span>
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            {search ? "Sin resultados" : "No hay destinatarios"}
+            No hay destinatarios
           </p>
-        )}
+        ) : null}
         {filtered.map((d) => (
             <button
               key={d.id}
@@ -144,6 +181,43 @@ export function DestinatarioZonePicker({
               {d.id === value && <Check className="size-4 text-z-brass" />}
             </button>
           ))}
+        {/* Inline create form */}
+        {creating && !search ? (
+          <form
+            className="flex items-center gap-1.5 px-3 py-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = createInputRef.current?.value;
+              if (name) handleCreate(name);
+            }}
+          >
+            <input
+              ref={createInputRef}
+              type="text"
+              placeholder="Nombre..."
+              className="flex-1 rounded-lg border border-white/6 bg-white/[0.03] px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-z-brass/40"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-z-brass/15 px-2.5 py-1.5 text-xs font-medium text-z-brass transition-colors hover:bg-z-brass/25"
+            >
+              Crear
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              if (search) handleCreate(search);
+              else setCreating(true);
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-z-brass transition-colors hover:bg-white/5"
+          >
+            <Plus className="size-3.5" />
+            <span>Crear nuevo</span>
+          </button>
+        )}
       </div>
     </div>
   );

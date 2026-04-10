@@ -119,6 +119,7 @@ function buildAccountInsertData(formData: FormData) {
     icon: formData.get("icon") || undefined,
     mask: formData.get("mask") || undefined,
     show_in_dashboard: formData.has("show_in_dashboard") ? formData.get("show_in_dashboard") === "on" : false,
+    is_payroll_deducted: formData.has("is_payroll_deducted") ? formData.get("is_payroll_deducted") === "on" : false,
   };
 
   // Filter out undefined/null values for cleaner insert

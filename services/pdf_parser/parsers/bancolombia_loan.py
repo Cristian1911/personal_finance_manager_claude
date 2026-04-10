@@ -16,10 +16,8 @@ import pdfplumber
 from models import (
     LoanMetadata,
     ParsedStatement,
-    ParsedTransaction,
     StatementSummary,
     StatementType,
-    TransactionDirection,
 )
 
 # --- Regex patterns ---
@@ -90,8 +88,6 @@ def parse_loan(pdf_path: str, password: str | None = None) -> ParsedStatement:
     total_payment_due: float | None = None
     cuotas_in_mora: int = 0
     cuota_numero: int | None = None
-
-    transactions: list[ParsedTransaction] = []
 
     with pdfplumber.open(pdf_path, password=password) as pdf:
         for page in pdf.pages:
@@ -197,18 +193,12 @@ def parse_loan(pdf_path: str, password: str | None = None) -> ParsedStatement:
                     if m:
                         cuota_numero = int(m.group(1))
 
-    # Create a single transaction for the monthly payment if we have the data
-    if total_payment_due and total_payment_due > 0 and payment_due_date:
-        transactions.append(
-            ParsedTransaction(
-                date=payment_due_date,
-                description=f"Pago cuota {loan_type or 'Crédito'} - {loan_number or ''}".strip(),
-                amount=total_payment_due,
-                direction=TransactionDirection.OUTFLOW,
-                installment_current=cuota_numero,
-                installment_total=None,  # Loan term not available in statement
-            )
-        )
+    # Loan statements are status reports, not transaction logs.
+    # They don't contain payment history — only the current balance and
+    # next payment due. Many Colombian loans (libranza, calamidad) are
+    # payroll-deducted, so there is no visible payment transaction.
+    # The webapp import flow syncs account metadata (balance, rate,
+    # payment_day) from loan_metadata without needing transactions.
 
     # Set period_from to statement_cut_date - 30 days (approximate), period_to to cut date
     period_to = statement_cut_date
@@ -243,5 +233,5 @@ def parse_loan(pdf_path: str, password: str | None = None) -> ParsedStatement:
             statement_cut_date=statement_cut_date,
             last_payment_date=last_payment_date,
         ),
-        transactions=transactions,
+        transactions=[],
     )

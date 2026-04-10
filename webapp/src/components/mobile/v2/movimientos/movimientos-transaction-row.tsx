@@ -7,7 +7,6 @@ import { Pencil, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
-import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import { TagChip } from "@/components/tags/tag-chip";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { categorizeTransaction } from "@/actions/categorize";
@@ -79,7 +78,7 @@ export function MovimientosTransactionRow({
       >
         <div className={cn(
           "flex size-[22px] shrink-0 items-center justify-center rounded-md",
-          tx.direction === "INFLOW" ? "bg-green-500/12 text-z-income" : "bg-orange-500/12 text-z-expense"
+          tx.direction === "INFLOW" ? "bg-z-income/12 text-z-income" : "bg-z-expense/12 text-z-expense"
         )}>
           {tx.direction === "INFLOW" ? <ArrowDownLeft className="size-3" /> : <ArrowUpRight className="size-3" />}
         </div>
@@ -114,8 +113,8 @@ export function MovimientosTransactionRow({
         </span>
       </button>
 
-      {/* Tags (collapsed only) */}
-      {!expanded && tags.length > 0 && (
+      {/* Tags */}
+      {tags.length > 0 && (
         <div className="flex flex-wrap gap-1 px-2 pb-1.5 pl-[38px]">
           {tags.map((t) => (
             <TagChip
@@ -143,18 +142,13 @@ export function MovimientosTransactionRow({
               direction={tx.direction === "OUTFLOW" ? "OUTFLOW" : undefined}
               placeholder="Categoría"
               variant="drawer"
-              triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-lg border border-white/10 bg-white/[0.03] text-z-brass hover:bg-white/[0.06]"
+              triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-lg border border-white/6 bg-white/[0.03] text-z-brass hover:bg-white/[0.06]"
             />
           )}
-          <TagZonePicker
-            entityType="transaction"
-            entityId={tx.id}
-            compact
-          />
           <div className="flex-1" />
           <Link
             href={`/transactions/${tx.id}`}
-            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
+            className="inline-flex items-center justify-center rounded-lg border border-white/6 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
           >
             <Pencil className="size-3" />
           </Link>
