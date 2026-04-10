@@ -3,12 +3,12 @@
 import { useState, useTransition } from "react";
 
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import { Pencil, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate } from "@/lib/utils/date";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
+import { TagChip } from "@/components/tags/tag-chip";
 import { categorizeTransaction } from "@/actions/categorize";
 import { toast } from "sonner";
 import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
@@ -16,6 +16,7 @@ import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domai
 interface MovimientosTransactionRowProps {
   transaction: TransactionWithAccount;
   categories: CategoryWithChildren[];
+  tags?: Array<{ id: string; name: string; color: string | null; group_color: string | null }>;
   /** Called after a successful category assignment — used by categorizar to remove from list / prompt bulk apply */
   onCategorized?: (txId: string, categoryId: string) => void;
 }
@@ -23,6 +24,7 @@ interface MovimientosTransactionRowProps {
 export function MovimientosTransactionRow({
   transaction: tx,
   categories,
+  tags = [],
   onCategorized,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
@@ -70,10 +72,16 @@ export function MovimientosTransactionRow({
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
         className={cn(
-          "flex w-full items-center justify-between gap-2 px-2 py-2.5 text-left transition-colors hover:bg-white/5",
+          "flex w-full items-center gap-2 px-2 py-2.5 text-left transition-colors hover:bg-white/5",
           tx.is_excluded && "opacity-40"
         )}
       >
+        <div className={cn(
+          "flex size-[22px] shrink-0 items-center justify-center rounded-md",
+          tx.direction === "INFLOW" ? "bg-green-500/12 text-z-income" : "bg-orange-500/12 text-z-expense"
+        )}>
+          {tx.direction === "INFLOW" ? <ArrowDownLeft className="size-3" /> : <ArrowUpRight className="size-3" />}
+        </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{description}</p>
           <p className="text-[11px] text-muted-foreground flex items-center gap-1">
@@ -83,30 +91,38 @@ export function MovimientosTransactionRow({
             />
             <span className="truncate">{tx.account.name}</span>
             <span className="text-white/15">·</span>
-            <span>{formatDate(tx.transaction_date, "dd MMM")}</span>
+            {categoryName ? (
+              <span>{localCategory?.icon} {categoryName}</span>
+            ) : (
+              <span className="text-z-brass">Sin cat.</span>
+            )}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <span
-            className={cn(
-              "text-sm font-medium tabular-nums",
-              tx.direction === "INFLOW" && "text-z-income",
-              tx.is_excluded && "line-through"
-            )}
-          >
-            {tx.direction === "INFLOW" ? "+" : "-"}
-            {formatCurrency(tx.amount, tx.currency_code)}
-          </span>
-          <span
-            className={cn(
-              "text-muted-foreground/50 text-xs transition-transform",
-              expanded && "rotate-90"
-            )}
-          >
-            ›
-          </span>
-        </div>
+        <span
+          className={cn(
+            "shrink-0 text-sm font-medium tabular-nums",
+            tx.direction === "INFLOW" && "text-z-income",
+            tx.is_excluded && "line-through"
+          )}
+        >
+          {tx.direction === "INFLOW" ? "+" : "-"}
+          {formatCurrency(tx.amount, tx.currency_code)}
+        </span>
       </button>
+
+      {/* Tags (collapsed only) */}
+      {!expanded && tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 px-2 pb-1.5 pl-[38px]">
+          {tags.map((t) => (
+            <TagChip
+              key={t.id}
+              tag={{ id: t.id, name: t.name, color: t.color } as any}
+              groupColor={t.group_color}
+              size="sm"
+            />
+          ))}
+        </div>
+      )}
 
       {/* Expanded: inline pickers + edit link */}
       {expanded && (
