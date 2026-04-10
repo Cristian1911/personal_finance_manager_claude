@@ -95,6 +95,7 @@ async function getRecurringTemplateCached(
 async function getUpcomingRecurrencesCached(
   userId: string,
   days: number,
+  todayStr: string,
   accessToken: string
 ): Promise<UpcomingRecurrence[]> {
   "use cache";
@@ -103,9 +104,9 @@ async function getUpcomingRecurrencesCached(
 
   const supabase = createCachedClient(accessToken);
 
-  const now = new Date();
+  const now = new Date(`${todayStr}T00:00:00`);
   const rangeEnd = addDays(now, days);
-  const rangeStartStr = toISODateString(now);
+  const rangeStartStr = todayStr;
   const rangeEndStr = toISODateString(rangeEnd);
 
   const occurrenceKey = (templateId: string, date: string) => `${templateId}|${date}`;
@@ -410,6 +411,7 @@ export async function toggleRecurringTemplate(
   await ensureCurrentOccurrences();
 
   revalidateTag("recurring", "zeta");
+  revalidateTag("occurrences", "zeta");
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
@@ -902,7 +904,7 @@ export async function getUpcomingRecurrences(
 ): Promise<UpcomingRecurrence[]> {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return [];
-  return getUpcomingRecurrencesCached(user.id, days, accessToken);
+  return getUpcomingRecurrencesCached(user.id, days, toISODateString(new Date()), accessToken);
 }
 
 /**
