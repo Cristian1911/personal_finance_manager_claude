@@ -33,17 +33,20 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
 
   const starterMode = allAccounts.length > 0 && recentTx.length === 0;
 
+  // Single date reference for the entire render
+  const now = new Date();
+
   const daysSinceImport = (() => {
     const dates = Object.values(latestSnapshotDates);
     if (dates.length === 0) return 999;
     const latest = dates.reduce((a, b) => (a > b ? a : b));
-    return differenceInDays(new Date(), new Date(latest));
+    return differenceInDays(now, new Date(latest));
   })();
 
   // Map recent transactions to mobile format
   const mobileRecentTx = recentTx.map((tx) => ({
     id: tx.id,
-    description: tx.merchant_name || tx.clean_description || "Sin descripcion",
+    description: tx.merchant_name || tx.clean_description || "Sin descripción",
     amount: tx.amount,
     currency_code: tx.currency_code ?? "COP",
     direction: tx.direction,
@@ -59,8 +62,6 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     })),
   }));
 
-  // Derived date values
-  const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysRemaining = Math.max(daysInMonth - now.getDate(), 1);
 

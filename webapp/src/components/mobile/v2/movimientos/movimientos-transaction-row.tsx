@@ -120,7 +120,7 @@ export function MovimientosTransactionRow({
           {tags.map((t) => (
             <TagChip
               key={t.id}
-              tag={{ id: t.id, name: t.name, color: t.color } as any}
+              tag={{ name: t.name, color: t.color }}
               groupColor={t.group_color}
               size="sm"
             />

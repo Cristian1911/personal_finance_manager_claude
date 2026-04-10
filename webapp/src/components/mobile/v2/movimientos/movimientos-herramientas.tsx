@@ -524,7 +524,7 @@ function ImportarDetail({
           </span>
         </Link>
         <p className="text-[10px] text-muted-foreground">
-          0 emails pendientes de revision
+          0 emails pendientes de revisión
         </p>
       </div>
     );

@@ -76,15 +76,7 @@ export function InicioRoot({
 }: InicioRootProps) {
   const { activeZone, toggle } = useExpandableZone<string>();
 
-  if (starterMode) {
-    return (
-      <div className="space-y-2">
-        <InicioStarter />
-      </div>
-    );
-  }
-
-  // Live refresh: one server call corrects hero + metrics + attention
+  // Must be called before any conditional return (Rules of Hooks)
   const live = useLiveDashboard(
     {
       hero: {
@@ -102,6 +94,14 @@ export function InicioRoot({
     },
     currency,
   );
+
+  if (starterMode) {
+    return (
+      <div className="space-y-2">
+        <InicioStarter />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
