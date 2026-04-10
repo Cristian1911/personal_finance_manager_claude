@@ -174,7 +174,7 @@ function buildRawBodyPreview(subject: string | null, body: string | null): strin
   const parts: string[] = [];
   if (subject) parts.push(`[Subject: ${subject}]`);
   if (body) parts.push(body);
-  return parts.join("\n").slice(0, 500);
+  return parts.join("\n").slice(0, 800);
 }
 
 async function insertLog(params: {
@@ -191,7 +191,7 @@ async function insertLog(params: {
     email_ingest_id: params.emailIngestId,
     from_address: params.fromAddress,
     status: params.status,
-    raw_body: params.rawBody ? params.rawBody.slice(0, 500) : null,
+    raw_body: params.rawBody ? params.rawBody.slice(0, 800) : null,
     error_message: params.errorMessage,
   });
   if (error) {
