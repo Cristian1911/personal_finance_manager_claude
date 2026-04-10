@@ -31,15 +31,15 @@ export function MonthSelector({
   const isCurrentMonth = month === currentMonth;
 
   return (
-    <View className="flex-row items-center justify-between rounded-xl bg-white px-3 py-2 shadow-sm">
+    <View className="flex-row items-center justify-between rounded-xl bg-z-surface-2 border border-white-6 px-3 py-2">
       <Pressable
         onPress={() => onChange(shiftMonth(month, -1))}
-        className="h-8 w-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+        className="h-8 w-8 items-center justify-center rounded-full bg-black-10"
       >
-        <ChevronLeft size={16} color="#6B7280" />
+        <ChevronLeft size={16} color="#938C7E" />
       </Pressable>
 
-      <Text className="text-gray-700 font-inter-semibold text-sm capitalize">
+      <Text className="text-foreground font-inter-semibold text-sm capitalize">
         {formatMonthLabel(labelDate)}
       </Text>
 
@@ -47,19 +47,18 @@ export function MonthSelector({
         {!isCurrentMonth && (
           <Pressable
             onPress={() => onChange(currentMonth)}
-            className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 active:bg-emerald-100"
+            className="rounded-full border border-z-brass-20 bg-z-brass-8 px-2.5 py-1"
           >
-            <Text className="text-emerald-700 font-inter-medium text-xs">Hoy</Text>
+            <Text className="text-z-brass font-inter-medium text-xs">Hoy</Text>
           </Pressable>
         )}
         <Pressable
           onPress={() => onChange(shiftMonth(month, 1))}
-          className="h-8 w-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+          className="h-8 w-8 items-center justify-center rounded-full bg-black-10"
         >
-          <ChevronRight size={16} color="#6B7280" />
+          <ChevronRight size={16} color="#938C7E" />
         </Pressable>
       </View>
     </View>
   );
 }
-

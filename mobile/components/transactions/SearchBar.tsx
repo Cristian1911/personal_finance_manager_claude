@@ -31,12 +31,12 @@ export function SearchBar({
   }, [onSearch]);
 
   return (
-    <View className="flex-row items-center bg-white rounded-lg px-3 py-2.5 mx-4 mt-3 mb-2 border border-gray-200">
-      <Search size={18} color="#9CA3AF" />
+    <View className="flex-row items-center bg-z-surface-2 rounded-lg px-3 py-2.5 border border-white-6">
+      <Search size={18} color="#938C7E" />
       <TextInput
-        className="flex-1 ml-2 text-gray-900 font-inter text-sm"
+        className="flex-1 ml-2 text-foreground font-inter text-sm"
         placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor="#938C7E"
         value={value}
         onChangeText={handleChange}
         autoCapitalize="none"

@@ -3,7 +3,6 @@ import "../global.css";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
   DarkTheme,
-  DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
@@ -20,7 +19,7 @@ import { ActivityIndicator, AppState, Platform, StyleSheet, View } from "react-n
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 
-import { useColorScheme } from "@/components/useColorScheme";
+// Dark theme forced — no color scheme toggle
 import { AppKeyboardProvider } from "../components/common/AppKeyboardAwareScrollView";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
@@ -97,7 +96,6 @@ function buildSheetOptions(detents: [number, number]) {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
   const { session, loading, demoMode } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -215,7 +213,7 @@ function RootLayoutNav() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={DarkTheme}>
         <BugReportViewShot>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -264,6 +262,19 @@ function RootLayoutNav() {
               name="purchase-decision"
               options={buildSheetOptions([0.85, 1.0])}
             />
+            {/* Stack screens displaced from tabs */}
+            <Stack.Screen
+              name="settings"
+              options={{ presentation: "card", headerShown: false }}
+            />
+            <Stack.Screen
+              name="accounts-list"
+              options={{ presentation: "card", headerShown: false }}
+            />
+            <Stack.Screen
+              name="menu"
+              options={{ presentation: "card", headerShown: false }}
+            />
           </Stack>
         </BugReportViewShot>
         <BugFAB />
@@ -275,7 +286,7 @@ function RootLayoutNav() {
         )}
         {isLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#C5BFAE" />
+            <ActivityIndicator size="large" color="#937844" />
           </View>
         )}
       </ThemeProvider>
@@ -286,7 +297,7 @@ function RootLayoutNav() {
 const styles = StyleSheet.create({
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#121412",
     alignItems: "center",
     justifyContent: "center",
   },
