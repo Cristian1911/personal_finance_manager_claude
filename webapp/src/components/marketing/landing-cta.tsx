@@ -33,7 +33,7 @@ const BLURBS = [
 
 export function LandingCTA() {
   return (
-    <section className="py-24">
+    <section className="py-16 sm:py-24">
       <Card className="overflow-hidden border-white/8 bg-gradient-to-br from-white/[0.06] via-background to-z-income/[0.04] shadow-2xl shadow-black/10">
         <CardContent className="p-8 sm:p-12">
           <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr]">

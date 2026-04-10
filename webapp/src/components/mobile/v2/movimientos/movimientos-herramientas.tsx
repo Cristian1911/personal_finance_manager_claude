@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, ArrowDownLeft, ArrowRight, QrCode, CreditCard, Banknote, Building, Wallet, ArrowUpRight as TransferIcon, Mail, Hash, UserRound, Pencil } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, ArrowRight, QrCode, CreditCard, Banknote, Building, Wallet, ArrowUpRight as TransferIcon, Mail, Hash, UserRound, Pencil, FileUp } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MobileZone } from "@/components/mobile/v2/mobile-zone";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
@@ -125,21 +125,19 @@ export function MovimientosHerramientas({
           type="button"
           onClick={() => toggle("importar")}
           className={cn(
-            "rounded-[14px] p-2.5 text-center transition-colors",
-            isActive("importar")
-              ? cn("border", accentStyles.importar.chip)
-              : cn(PANEL_INSET_CLASS)
+            "rounded-[14px] border p-2.5 text-center transition-colors",
+            accentStyles.importar.chip
           )}
           aria-expanded={isActive("importar")}
         >
-          <p className="text-[22px] font-[680] leading-tight">
+          <p className="text-[22px] font-[680] leading-tight text-z-sage">
             {pendingEmailCount}
           </p>
           <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
             Importar
           </p>
-          <p className="mt-1 text-[9px] text-muted-foreground">
-            {pendingEmailCount > 0 ? "emails pendientes" : "sin pendientes"}
+          <p className="mt-1 text-[9px] text-z-sage">
+            {pendingEmailCount > 0 ? `${pendingEmailCount} emails` : "Subir PDF"}
           </p>
         </button>
       </div>
@@ -508,10 +506,25 @@ function ImportarDetail({
     return (
       <div className="space-y-2">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-sage">
-          Importación por email
+          Importar extracto
         </p>
-        <p className="text-xs text-z-sage-light">
-          No hay transacciones pendientes de importar.
+        <Link
+          href="/import"
+          className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/[0.03]"
+        >
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-z-sage/20 bg-z-sage/10">
+            <FileUp className="size-4 text-z-sage" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold">Subir PDF del banco</p>
+            <p className="text-[9px] text-muted-foreground">Extracto mensual de cualquier banco</p>
+          </div>
+          <span className={cn("shrink-0 rounded-lg px-3 py-1 text-[10px] font-semibold", BRASS_BUTTON_CLASS)}>
+            Subir
+          </span>
+        </Link>
+        <p className="text-[10px] text-muted-foreground">
+          0 emails pendientes de revisión
         </p>
       </div>
     );
@@ -522,6 +535,25 @@ function ImportarDetail({
       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-sage">
         Pendientes por correo
       </p>
+
+      {/* PDF upload CTA */}
+      <Link
+        href="/import"
+        className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/[0.03]"
+      >
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-z-sage/20 bg-z-sage/10">
+          <FileUp className="size-4 text-z-sage" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold">Subir PDF del banco</p>
+          <p className="text-[9px] text-muted-foreground">Extracto mensual de cualquier banco</p>
+        </div>
+        <span className={cn("shrink-0 rounded-lg px-3 py-1 text-[10px] font-semibold", BRASS_BUTTON_CLASS)}>
+          Subir
+        </span>
+      </Link>
+
+      <div className="h-px bg-white/6" />
 
       <div className={cn("space-y-0.5", isPending && "pointer-events-none opacity-60")}>
         {items.map((email) => {

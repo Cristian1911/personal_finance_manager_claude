@@ -579,7 +579,11 @@ export type RecentTransaction = {
   clean_description: string | null;
   transaction_date: string;
   currency_code: string;
-  categories: { name_es: string | null; name: string } | null;
+  categories: { name_es: string | null; name: string; icon: string } | null;
+  accounts: { name: string; color: string | null } | null;
+  transaction_tags: Array<{
+    tag: { id: string; name: string; color: string | null; group: { color: string | null } | null };
+  }>;
 };
 
 async function getRecentTransactionsCached(
@@ -597,7 +601,13 @@ async function getRecentTransactionsCached(
 
   const { data } = await supabase
     .from("transactions")
-    .select("id, amount, direction, account_id, merchant_name, clean_description, transaction_date, currency_code, categories!category_id(name_es, name)")
+    .select(`
+      id, amount, direction, account_id, merchant_name, clean_description,
+      transaction_date, currency_code,
+      categories!transactions_category_id_fkey(name_es, name, icon),
+      accounts!transactions_account_id_fkey(name, color),
+      transaction_tags!transaction_tags_transaction_id_fkey(tag:tags(id, name, color, group:tag_groups(color)))
+    `)
     .eq("user_id", userId)
     .in("account_id", demoAccountIds)
     .eq("is_excluded", false)

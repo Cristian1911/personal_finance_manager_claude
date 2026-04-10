@@ -99,8 +99,8 @@ function MobileCarousel({ panels }: { panels: ShowcasePanel[] }) {
           overflowX: "auto",
           scrollSnapType: "x mandatory",
           scrollbarWidth: "none",
-          paddingLeft: "calc(50% - 140px)",
-          paddingRight: "calc(50% - 140px)",
+          paddingLeft: "max(16px, calc(50% - 140px))",
+          paddingRight: "max(16px, calc(50% - 140px))",
         }}
       >
         {panels.map((panel) => {
@@ -109,7 +109,7 @@ function MobileCarousel({ panels }: { panels: ShowcasePanel[] }) {
             <div
               key={panel.id}
               className="snap-center shrink-0"
-              style={{ width: CARD_WIDTH }}
+              style={{ width: "min(280px, calc(100vw - 48px))" }}
             >
               <PhoneFrame>
                 <div className="flex flex-col">
@@ -164,20 +164,22 @@ function MobileCarousel({ panels }: { panels: ShowcasePanel[] }) {
 
 export function LandingShowcase() {
   return (
-    <section id="showcase" className="py-24 px-4">
+    <section id="showcase" className="py-16 sm:py-24 px-4">
       <div className="mx-auto max-w-5xl">
         {/* Heading */}
         <div className="mb-12 flex flex-col items-center gap-4 text-center">
-          <Badge variant="outline" className="border-white/12 text-white/60">
-            Showcase
+          <Badge
+            variant="outline"
+            className="border-white/10 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-z-sage-light"
+          >
+            Todo lo que hace
           </Badge>
-          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Todo lo que necesitas, en un solo lugar
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Herramientas que responden preguntas, no crean trabajo
           </h2>
-          <p className="max-w-2xl text-base text-white/50">
-            Desde la importación de extractos hasta la planificación de deudas
-            — cada función está conectada para darte claridad en el momento
-            correcto.
+          <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
+            Cada modulo esta pensado para responderte algo concreto sobre tu
+            dinero.
           </p>
         </div>
 

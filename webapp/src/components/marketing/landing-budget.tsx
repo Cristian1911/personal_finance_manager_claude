@@ -20,7 +20,7 @@ export function LandingBudget() {
   const overallPct = Math.round((totalSpent / totalBudget) * 100);
 
   return (
-    <section className="py-24 px-4">
+    <section className="py-16 sm:py-24 px-4">
       <div className="mx-auto max-w-3xl">
         <div className="mb-12 text-center">
           <Badge variant="outline" className="mb-4 border-white/12 text-z-brass">

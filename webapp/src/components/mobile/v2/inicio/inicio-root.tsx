@@ -5,6 +5,8 @@ import { InicioMetricsGrid } from "./inicio-metrics-grid";
 import { InicioDiscovery } from "./inicio-discovery";
 import { InicioActivity } from "./inicio-activity";
 import { InicioAttention } from "./inicio-attention";
+import { InicioStarter } from "./inicio-starter";
+import { InicioImportStrip } from "./inicio-import-strip";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import { useLiveDashboard } from "@/hooks/use-live-metrics";
 import type { LiveDashboardData } from "@/actions/live-dashboard";
@@ -44,12 +46,19 @@ export interface InicioRootProps {
   };
   burnRateData: BurnRateResponse | null;
   totalBudget: number;
+  starterMode: boolean;
+  daysSinceImport: number;
   recentTransactions: Array<{
     id: string;
     description: string;
     amount: number;
     currency_code: string;
     direction: "INFLOW" | "OUTFLOW";
+    account_name: string;
+    account_color: string | null;
+    category_name: string | null;
+    category_icon: string | null;
+    tags: Array<{ id: string; name: string; color: string | null; group_color: string | null }>;
   }>;
   currency: CurrencyCode;
 }
@@ -60,12 +69,14 @@ export function InicioRoot({
   attentionItems,
   burnRateData,
   totalBudget,
+  starterMode,
+  daysSinceImport,
   recentTransactions,
   currency,
 }: InicioRootProps) {
   const { activeZone, toggle } = useExpandableZone<string>();
 
-  // Live refresh: one server call corrects hero + metrics + attention
+  // Must be called before any conditional return (Rules of Hooks)
   const live = useLiveDashboard(
     {
       hero: {
@@ -84,6 +95,14 @@ export function InicioRoot({
     currency,
   );
 
+  if (starterMode) {
+    return (
+      <div className="space-y-2">
+        <InicioStarter />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <InicioHero
@@ -96,6 +115,8 @@ export function InicioRoot({
         expanded={activeZone === "hero"}
         onToggle={() => toggle("hero")}
       />
+
+      <InicioImportStrip daysSinceImport={daysSinceImport} />
 
       <InicioMetricsGrid
         daysInMonth={metrics.daysInMonth}

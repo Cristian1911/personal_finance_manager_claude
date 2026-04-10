@@ -6,7 +6,6 @@ import { LandingBudget } from "./landing-budget";
 import { LandingPlan } from "./landing-plan";
 import { LandingShowcase } from "./landing-showcase";
 import {
-  LandingFeatures,
   LandingAudience,
   LandingHowItWorks,
   LandingFAQ,
@@ -24,12 +23,11 @@ export function MarketingLandingPage() {
 
       <main className="relative">
         <LandingHero />
+        <LandingHowItWorks />
         <LandingBudget />
         <LandingPlan />
         <LandingShowcase />
-        <LandingFeatures />
         <LandingAudience />
-        <LandingHowItWorks />
         <LandingCTA />
         <LandingFAQ />
       </main>

@@ -1,10 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { Tag } from "@/types/domain";
-
 interface TagChipProps {
-  tag: Tag;
+  tag: { name: string; color: string | null };
   groupColor?: string | null;
   onRemove?: () => void;
   size?: "sm" | "md";

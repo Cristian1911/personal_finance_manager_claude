@@ -24,7 +24,8 @@ async function getLatestSnapshotDatesCached(
     .from("statement_snapshots")
     .select("account_id, created_at")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(200);
 
   if (error) throw error;
   if (!data) return {};

@@ -17,7 +17,7 @@ export function LandingPlan() {
   const availablePct = Math.round((available / income) * 100);
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-24 sm:px-6 lg:px-8">
+    <section className="mx-auto max-w-6xl px-4 py-16 sm:py-24 sm:px-6 lg:px-8">
       {/* Heading */}
       <div className="mb-12 text-center">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-z-sage-light">
