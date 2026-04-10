@@ -1,4 +1,3 @@
-import { CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -8,11 +7,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  LANDING_FEATURES,
   LANDING_WORKFLOW,
   LANDING_FAQS,
   LANDING_INSTITUTIONS,
-  type Feature,
 } from "./landing-data";
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
@@ -43,64 +40,6 @@ function SectionHeading({
         </p>
       </div>
     </div>
-  );
-}
-
-// ─── Feature card ─────────────────────────────────────────────────────────────
-
-function FeatureCard({
-  title,
-  description,
-  icon: Icon,
-  bullets,
-  accentClassName,
-}: Feature) {
-  return (
-    <Card className="relative overflow-hidden border-white/8 bg-white/[0.03] py-0 shadow-2xl shadow-black/10">
-      <div
-        className={`pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b ${accentClassName}`}
-      />
-      <CardHeader className="relative gap-4 px-6 pt-6">
-        <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-black/20">
-          <Icon className="size-5 text-z-sage-light" />
-        </div>
-        <div className="space-y-2">
-          <CardTitle className="text-xl">{title}</CardTitle>
-          <CardDescription className="text-sm leading-6 text-muted-foreground">
-            {description}
-          </CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent className="px-6 pb-6">
-        <ul className="space-y-3 text-sm leading-6 text-z-white/86">
-          {bullets.map((bullet) => (
-            <li key={bullet} className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-z-income" />
-              <span>{bullet}</span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── LandingFeatures ─────────────────────────────────────────────────────────
-
-export function LandingFeatures() {
-  return (
-    <section id="funciones" className="space-y-12 py-24">
-      <SectionHeading
-        eyebrow="Lo que hace"
-        title="Herramientas diseñadas para decisiones, no para contabilidad"
-        description="Cada módulo de Zeta está pensado para responderte una pregunta concreta sobre tu dinero, no para darte más datos que procesar."
-      />
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-        {LANDING_FEATURES.map((feature) => (
-          <FeatureCard key={feature.title} {...feature} />
-        ))}
-      </div>
-    </section>
   );
 }
 

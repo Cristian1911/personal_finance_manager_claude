@@ -6,10 +6,6 @@ import {
   Scale,
   Repeat2,
   Send,
-  TrendingUp,
-  Landmark,
-  PiggyBank,
-  BadgeDollarSign,
 } from "lucide-react";
 
 // ─── Hero mock data ───────────────────────────────────────────────────────────
@@ -113,91 +109,6 @@ export const LANDING_SHOWCASE_PANELS: ShowcasePanel[] = [
     description: "Anota un gasto en segundos, sin abrir formularios. El sistema lo categoriza y lo conecta con tu plan.",
     icon: Send,
     gradient: "from-sky-400/20 via-sky-400/8 to-transparent",
-  },
-];
-
-// ─── Features ─────────────────────────────────────────────────────────────────
-
-export type Feature = {
-  title: string;
-  description: string;
-  icon: LucideIcon;
-  bullets: [string, string, string];
-  accentClassName: string;
-};
-
-export const LANDING_FEATURES: Feature[] = [
-  {
-    title: "Dashboard que responde qué hacer hoy",
-    description:
-      "Zeta te muestra si vas bien, dónde se va la presión y qué vale la pena ajustar primero.",
-    icon: TrendingUp,
-    bullets: [
-      "Resumen diario con foco en margen, gasto y próximas decisiones",
-      "Señales visuales para saber si vas en control o corrigiendo",
-      "Panel pensado para entender rápido, no para explorar de más",
-    ],
-    accentClassName: "from-z-income/20 via-z-income/8 to-transparent",
-  },
-  {
-    title: "Importación de extractos PDF",
-    description:
-      "Subes tus extractos y Zeta organiza movimientos, detecta cuentas y ayuda a conciliar duplicados.",
-    icon: Landmark,
-    bullets: [
-      "Compatible con bancos y billeteras usados en Colombia",
-      "Preparado para revisar importaciones sin perder trazabilidad",
-      "Convierte una tarea administrativa en un flujo guiado",
-    ],
-    accentClassName: "from-z-alert/20 via-z-alert/8 to-transparent",
-  },
-  {
-    title: "Presupuesto 50/30/20 con contexto real",
-    description:
-      "No solo registra gastos: te muestra cuánto margen te queda y qué categoría está rompiendo el plan.",
-    icon: PiggyBank,
-    bullets: [
-      "Vista por categorías y señales de sobreconsumo",
-      "Asignación simple para gasto fijo, variable y ahorro",
-      "Más útil que un presupuesto plano porque conecta con el resto del sistema",
-    ],
-    accentClassName: "from-primary/24 via-primary/10 to-transparent",
-  },
-  {
-    title: "Deudas con estrategia, no solo saldo",
-    description:
-      "Modela pagos y entiende qué decisión libera presión antes. Ideal para tarjetas, cuotas y metas de salida.",
-    icon: Scale,
-    bullets: [
-      "Visión del costo real de la deuda",
-      "Planificador para priorizar pagos con intención",
-      "Contexto para evitar que el pago mínimo dicte todo el mes",
-    ],
-    accentClassName: "from-z-debt/20 via-z-debt/8 to-transparent",
-  },
-  {
-    title: "Cuentas y balances multi-moneda",
-    description:
-      "Si manejas COP, USD u otras monedas, puedes ver saldos y movimientos sin forzar una sola realidad.",
-    icon: BadgeDollarSign,
-    bullets: [
-      "Cuentas separadas por moneda cuando hace falta",
-      "Mejor lectura de efectivo real y compromisos",
-      "Útil para freelancers, viajes o ingresos mixtos",
-    ],
-    accentClassName: "from-sky-400/20 via-sky-400/8 to-transparent",
-  },
-  {
-    title: "Recurrentes, destinatarios y orden operativo",
-    description:
-      "Pagos por venir, reglas de destinatarios y bandejas para que lo repetitivo no te robe energía mental.",
-    icon: Repeat2,
-    bullets: [
-      "Pagos próximos visibles antes de que se vuelvan problema",
-      "Reglas para reconocer mejor movimientos frecuentes",
-      "Flujos de gestión pensados para mantener el sistema limpio",
-    ],
-    accentClassName: "from-violet-300/20 via-violet-300/8 to-transparent",
   },
 ];
 
