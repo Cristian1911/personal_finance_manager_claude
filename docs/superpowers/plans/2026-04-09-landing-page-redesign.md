@@ -10,7 +10,22 @@
 
 **Spec:** `docs/superpowers/specs/2026-04-09-landing-page-redesign.md`
 
-**Review agents:** `zetas-front-guy` (every TSX change), `perf-auditor` (bundle check)
+---
+
+## Agent Dispatch Schedule
+
+Specialized agents MUST be spawned at these checkpoints — not deferred to the end.
+
+| After Task | Agent to Spawn | Why |
+|------------|---------------|-----|
+| Task 3 | `zetas-front-guy` | Hero copy + MobileHeroStrip + highlights grid — verify tokens, typography, responsive patterns |
+| Task 4 | `zetas-front-guy` | Showcase heading + carousel fix — verify tokens, heading hierarchy, carousel responsive behavior |
+| Task 6 | `perf-auditor` | Final gate — verify no new client-side bundles, no heavy imports, rendering strategy |
+
+**Rules:**
+- Each agent runs in **foreground** — wait for its result before proceeding to the next task.
+- If an agent flags issues, fix them before moving on. Do NOT batch agent fixes at the end.
+- Tasks 1, 2, 5 are structural (deletions, reordering, padding) — low risk, no agent review needed until the next visual task.
 
 ---
 
@@ -314,7 +329,7 @@ fix: reduce section padding on mobile (py-16 sm:py-24)
 
 ---
 
-### Task 6: Build gate + agent reviews
+### Task 6: Build gate + final agent reviews
 
 - [ ] **Step 1: Run full build**
 
@@ -322,10 +337,37 @@ Run: `cd webapp && pnpm install && pnpm build`
 
 Expected: Clean build, no errors.
 
-- [ ] **Step 2: Run `zetas-front-guy` agent review**
+- [ ] **Step 2: Spawn `perf-auditor` agent (foreground)**
 
-Spawn `zetas-front-guy` to review all changed TSX files for design token compliance.
+```
+Agent(subagent_type="perf-auditor", prompt="Audit the landing page redesign for performance.
+Focus on:
+1. Removing LandingFeatures — did it reduce client bundle? Any dead imports left?
+2. MobileHeroStrip in landing-hero.tsx — is it properly hidden on desktop (no SSR waste)?
+3. Showcase carousel responsive width change — any layout shift risk?
+4. Overall: no new client-side libraries, no unnecessary 'use client' additions.
+Report issues ranked by severity.")
+```
 
-- [ ] **Step 3: Fix any issues from reviews**
+- [ ] **Step 3: Spawn `zetas-front-guy` agent (foreground)**
 
-- [ ] **Step 4: Final commit if review fixes were needed**
+```
+Agent(subagent_type="zetas-front-guy", prompt="Review all landing page changes for design system compliance.
+Files changed:
+- webapp/src/components/marketing/landing-page.tsx (section reorder)
+- webapp/src/components/marketing/landing-hero.tsx (copy, MobileHeroStrip, highlights grid)
+- webapp/src/components/marketing/landing-features.tsx (LandingFeatures removed, padding reduced)
+- webapp/src/components/marketing/landing-showcase.tsx (heading, carousel width, padding)
+- webapp/src/components/marketing/landing-budget.tsx (padding)
+- webapp/src/components/marketing/landing-plan.tsx (padding)
+- webapp/src/components/marketing/landing-cta.tsx (padding)
+Check: hardcoded colors, wrong tokens, heading hierarchy consistency,
+button variant compliance (BRASS_BUTTON_CLASS vs bg-primary), border-radius,
+typography vs TOKENS.md. The landing page currently uses bg-primary for CTAs
+which differs from the app's bg-z-brass — flag if this inconsistency should
+be addressed or is intentional for marketing vs product distinction.")
+```
+
+- [ ] **Step 4: Fix any issues flagged by agents**
+
+- [ ] **Step 5: Final commit if review fixes were needed**

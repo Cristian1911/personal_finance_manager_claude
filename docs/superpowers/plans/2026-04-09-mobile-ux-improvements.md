@@ -12,7 +12,25 @@
 
 **Visual companion:** `docs/visual-companions/ux-improvements-april-2026.html`
 
-**Review agents:** `zetas-front-guy` (every TSX change), `perf-auditor` (tags join), `cache-doctor` (if new cached queries)
+---
+
+## Agent Dispatch Schedule
+
+Specialized agents MUST be spawned at these checkpoints — not deferred to the end.
+
+| After Task | Agent to Spawn | Why |
+|------------|---------------|-----|
+| Task 1 | `server-action-reviewer` | Modified `actions/transactions.ts` — verify auth, defense-in-depth, return types |
+| Task 4 | `cache-doctor` | `MobileZone` now calls `getLatestSnapshotDates()` — verify caching + revalidation path |
+| Task 6 | `zetas-front-guy` | `InicioActivity` rewrite — verify tokens, component reuse, design system |
+| Task 7 | `zetas-front-guy` | `MovimientosTransactionRow` enrichment — verify tokens, layout consistency |
+| Task 9 | `zetas-front-guy` | `ImportarDetail` + chip changes — verify tokens, button variants |
+| Task 10 | `perf-auditor` | Final gate — verify tags join perf, caching, rendering strategy, bundle |
+
+**Rules:**
+- Each agent runs in **foreground** — wait for its result before proceeding to the next task.
+- If an agent flags issues, fix them before moving on. Do NOT batch agent fixes at the end.
+- `zetas-front-guy` reviews are cumulative — Tasks 2, 3, 5 (new components / wiring) are reviewed alongside their first consumer (Task 6/7).
 
 ---
 
@@ -815,7 +833,7 @@ feat: Importar chip always sage, ImportarDetail includes PDF upload CTA
 
 ---
 
-### Task 10: Build gate + agent reviews
+### Task 10: Build gate + final agent reviews
 
 - [ ] **Step 1: Run full build**
 
@@ -823,14 +841,32 @@ Run: `cd webapp && pnpm install && pnpm build`
 
 Expected: Clean build, no errors.
 
-- [ ] **Step 2: Run `zetas-front-guy` agent review**
+- [ ] **Step 2: Spawn `perf-auditor` agent (foreground)**
 
-Spawn `zetas-front-guy` to review all changed/created TSX files for design system compliance.
+```
+Agent(subagent_type="perf-auditor", prompt="Audit the mobile UX changes for performance.
+Focus on:
+1. The tags join added to getRecentTransactions in webapp/src/actions/transactions.ts — is the Supabase join (transaction_tags → tags → tag_groups) efficient? Any N+1 risk?
+2. MobileZone now calls getLatestSnapshotDates() — is it cached properly with cacheTag/cacheLife?
+3. New components (inicio-starter.tsx, inicio-import-strip.tsx) — any unnecessary client-side weight?
+4. MovimientosTransactionRow now imports TagChip — does this affect the transactions page bundle?
+Report issues ranked by severity.")
+```
 
-- [ ] **Step 3: Run `perf-auditor` agent review**
+- [ ] **Step 3: Spawn `zetas-front-guy` agent (foreground)**
 
-Spawn `perf-auditor` to verify the tags join in `getRecentTransactions` doesn't regress performance.
+```
+Agent(subagent_type="zetas-front-guy", prompt="Review all mobile UX changes for design system compliance.
+Files changed/created:
+- webapp/src/components/mobile/v2/inicio/inicio-starter.tsx (new)
+- webapp/src/components/mobile/v2/inicio/inicio-import-strip.tsx (new)
+- webapp/src/components/mobile/v2/inicio/inicio-activity.tsx (rewritten)
+- webapp/src/components/mobile/v2/movimientos/movimientos-transaction-row.tsx (enriched)
+- webapp/src/components/mobile/v2/movimientos/movimientos-herramientas.tsx (importar chip + detail)
+Check: hardcoded colors, wrong tokens, missing component reuse, button variant violations,
+border-radius violations, typography mismatches vs TOKENS.md.")
+```
 
-- [ ] **Step 4: Fix any issues from reviews**
+- [ ] **Step 4: Fix any issues flagged by agents**
 
 - [ ] **Step 5: Final commit if review fixes were needed**
