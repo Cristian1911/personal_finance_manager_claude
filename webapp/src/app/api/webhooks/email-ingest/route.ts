@@ -287,25 +287,33 @@ async function processEmail(ctx: {
 
   const admin = createAdminClient();
 
-  // 4. Look up email_ingest_addresses by address_key + is_active = true
-  //    Use case-insensitive match: Resend may lowercase the recipient address
-  //    on direct inbound delivery while the stored key retains mixed case.
-  const { data: ingestAddress } = await admin
-    .from("email_ingest_addresses")
-    .select("id, user_id, account_id, auto_import, allowed_sender, pdf_import_enabled")
-    .filter("address_key", "ilike", addressKey.replace(/%/g, "\\%").replace(/_/g, "\\_"))
-    .eq("is_active", true)
-    .single();
+  // 4. Look up email_ingest_addresses via RPC that can decrypt encrypted columns.
+  //    The admin client has no JWT, so zeta_decrypt() in the view returns NULL for
+  //    encrypted fields (allowed_sender, gmail_verification_url). The RPC uses
+  //    zeta_decrypt_as() with the row's user_id to decrypt correctly.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: ingestAddress, error: lookupError } = await (admin as any)
+    .rpc("get_email_ingest_settings", { p_address_key: addressKey })
+    .maybeSingle() as { data: {
+      id: string; user_id: string; account_id: string | null;
+      auto_import: boolean; allowed_sender: string | null;
+      pdf_import_enabled: boolean; address_key: string;
+    } | null; error: { message: string; code?: string } | null };
+
+  if (lookupError) {
+    console.error(`[email-ingest][${emailId}] RPC get_email_ingest_settings failed:`, lookupError.message);
+  }
 
   if (!ingestAddress) {
-    console.warn(`[email-ingest][${emailId}] No active ingest address for key="${addressKey}"`);
+    const detail = lookupError ? ` (DB error: ${lookupError.message})` : "";
+    console.warn(`[email-ingest][${emailId}] No active ingest address for key="${addressKey}"${detail}`);
     await insertLog({
       userId: null,
       emailIngestId: null,
       fromAddress: from,
       status: "parse_failed",
       rawBody: rawBodyPreview,
-      errorMessage: `No active ingest address found for key: ${addressKey}`,
+      errorMessage: `No active ingest address found for key: ${addressKey}${detail}`,
     });
     return NextResponse.json({ ok: true });
   }
@@ -321,20 +329,27 @@ async function processEmail(ctx: {
 
   // 5. Detect Gmail forwarding verification emails
   const fromLower = from.toLowerCase();
-  if (fromLower.includes("forwarding-noreply@google.com")) {
+  // Extract bare email from potential "Name <email>" format for sender validation
+  const fromEmail = fromLower.match(/<([^>]+)>/)?.[1] ?? fromLower.trim();
+
+  if (fromEmail.includes("forwarding-noreply@google.com")) {
     const verificationContent = emailBody || emailHtml || "";
     const verifyMatch = verificationContent.match(
       /https:\/\/mail\.google\.com\/mail\/vf-[^\s"<>]+/
     );
     if (verifyMatch) {
-      await admin
-        .from("email_ingest_addresses")
-        .update({
-          gmail_verification_url: verifyMatch[0],
-          gmail_verification_at: new Date().toISOString(),
-        })
-        .eq("id", emailIngestId)
-        .eq("user_id", userId);
+      // Use RPC to write encrypted column — admin client has no JWT,
+      // so zeta_encrypt() in the view trigger fails without auth.uid().
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: verifyError } = await (admin as any)
+        .rpc("set_gmail_verification", {
+          p_ingest_id: emailIngestId,
+          p_user_id: userId,
+          p_url: verifyMatch[0],
+        });
+      if (verifyError) {
+        console.error(`[email-ingest][${emailId}] Failed to save Gmail verification URL:`, verifyError.message);
+      }
     }
     await insertLog({
       userId,
@@ -349,10 +364,13 @@ async function processEmail(ctx: {
     return NextResponse.json({ ok: true });
   }
 
-  // 6. Validate sender — accept bank notifications or the user's personal forwarding email
-  const isBankSender = ALLOWED_SENDERS.some((s) => fromLower.includes(s));
-  const isAllowedSender = allowedSender && fromLower.includes(allowedSender.toLowerCase());
-  if (!isBankSender && !isAllowedSender) {
+  // 6. Validate sender — accept bank notifications, user's forwarding email, or the ingest address itself
+  const isBankSender = ALLOWED_SENDERS.some((s) => fromEmail.includes(s));
+  const isAllowedSender = allowedSender && fromEmail.includes(allowedSender.toLowerCase());
+  // Allow the ingest address itself as sender (Resend internal routing edge case).
+  // Match full local-part + "@" to prevent substring spoofing.
+  const isSelfSender = fromEmail.startsWith(`${addressKey.toLowerCase()}@`);
+  if (!isBankSender && !isAllowedSender && !isSelfSender) {
     console.log(`[email-ingest][${emailId}] Sender rejected: "${from}" (allowed_sender=${allowedSender ?? "none"})`);
     await insertLog({
       userId,
@@ -365,7 +383,7 @@ async function processEmail(ctx: {
     return NextResponse.json({ ok: true });
   }
 
-  console.log(`[email-ingest][${emailId}] Sender OK (bank=${isBankSender}, allowed=${!!isAllowedSender}), user=${userId}`);
+  console.log(`[email-ingest][${emailId}] Sender OK (bank=${isBankSender}, allowed=${!!isAllowedSender}, self=${isSelfSender}), user=${userId}`);
 
   // 7. Rate limit: max 100 emails/day/user
   const withinLimit = await checkRateLimit(userId);
@@ -633,9 +651,12 @@ async function processEmail(ctx: {
     return NextResponse.json({ ok: true });
   }
 
-  // Clear Gmail verification URL now that real emails are flowing
-  await admin
-    .from("email_ingest_addresses")
+  // Clear Gmail verification URL now that real emails are flowing.
+  // Write to _enc table directly — the view returns NULL for encrypted columns
+  // with admin client, so the .not() filter would match nothing through the view.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (admin as any)
+    .from("email_ingest_addresses_enc")
     .update({ gmail_verification_url: null, gmail_verification_at: null })
     .eq("id", emailIngestId)
     .eq("user_id", userId)
