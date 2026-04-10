@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import { TagChip } from "@/components/tags/tag-chip";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { categorizeTransaction } from "@/actions/categorize";
 import { toast } from "sonner";
 import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
@@ -92,7 +93,10 @@ export function MovimientosTransactionRow({
             <span className="truncate">{tx.account.name}</span>
             <span className="text-white/15">·</span>
             {categoryName ? (
-              <span>{localCategory?.icon} {categoryName}</span>
+              <span className="inline-flex items-center gap-0.5 truncate">
+                {localCategory?.icon && <CategoryIcon icon={localCategory.icon} className="size-3 shrink-0" />}
+                {categoryName}
+              </span>
             ) : (
               <span className="text-z-brass">Sin cat.</span>
             )}

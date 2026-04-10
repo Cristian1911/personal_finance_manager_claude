@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { TagChip } from "@/components/tags/tag-chip";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -27,7 +28,7 @@ interface InicioActivityProps {
 export function InicioActivity({ transactions }: InicioActivityProps) {
   if (transactions.length === 0) return null;
 
-  const visible = transactions.slice(0, 5);
+  const visible = transactions.slice(0, 3);
 
   return (
     <div>
@@ -69,10 +70,10 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                 <span className="truncate">{tx.account_name}</span>
                 <span className="text-white/15">·</span>
                 {tx.category_icon ? (
-                  <>
-                    <span>{tx.category_icon}</span>
-                    <span className="truncate">{tx.category_name}</span>
-                  </>
+                  <span className="inline-flex items-center gap-0.5 truncate">
+                    <CategoryIcon icon={tx.category_icon} className="size-3 shrink-0" />
+                    {tx.category_name}
+                  </span>
                 ) : (
                   <span className="text-z-brass">Sin cat.</span>
                 )}
