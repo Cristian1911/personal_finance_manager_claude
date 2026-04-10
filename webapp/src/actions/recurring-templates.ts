@@ -15,6 +15,7 @@ import {
   TRANSFER_CATEGORY_ID,
 } from "@zeta/shared";
 import { addDays } from "date-fns";
+import { toISODateString } from "@/lib/utils/date";
 import { z } from "zod";
 import { uuidStr } from "@/lib/validators/shared";
 import type { ActionResult } from "@/types/actions";
@@ -104,10 +105,11 @@ async function getUpcomingRecurrencesCached(
 
   const now = new Date();
   const rangeEnd = addDays(now, days);
-  const rangeStartStr = now.toISOString().split("T")[0];
-  const rangeEndStr = rangeEnd.toISOString().split("T")[0];
+  const rangeStartStr = toISODateString(now);
+  const rangeEndStr = toISODateString(rangeEnd);
 
-  // Fetch templates and already-resolved occurrences in parallel
+  const occurrenceKey = (templateId: string, date: string) => `${templateId}|${date}`;
+
   const [{ data: templates }, { data: resolvedOccurrences }] = await Promise.all([
     supabase
       .from("recurring_transaction_templates")
@@ -116,7 +118,7 @@ async function getUpcomingRecurrencesCached(
       .eq("is_active", true),
     supabase
       .from("recurring_occurrences")
-      .select("template_id, occurrence_date, status")
+      .select("template_id, occurrence_date")
       .eq("user_id", userId)
       .in("status", ["paid", "skipped"])
       .gte("occurrence_date", rangeStartStr)
@@ -125,11 +127,8 @@ async function getUpcomingRecurrencesCached(
 
   if (!templates || templates.length === 0) return [];
 
-  // Build a set of "templateId|date" keys for paid/skipped occurrences
   const resolvedKeys = new Set(
-    (resolvedOccurrences ?? []).map(
-      (o) => `${o.template_id}|${o.occurrence_date}`
-    )
+    (resolvedOccurrences ?? []).map((o) => occurrenceKey(o.template_id, o.occurrence_date))
   );
 
   const upcoming: UpcomingRecurrence[] = [];
@@ -144,8 +143,7 @@ async function getUpcomingRecurrencesCached(
     );
 
     for (const date of dates) {
-      // Skip occurrences already marked as paid or skipped
-      if (resolvedKeys.has(`${template.id}|${date}`)) continue;
+      if (resolvedKeys.has(occurrenceKey(template.id, date))) continue;
       upcoming.push({ template, next_date: date });
     }
   }
