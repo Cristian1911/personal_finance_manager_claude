@@ -3,11 +3,12 @@ import { getAttentionItems } from "@/actions/attention-items";
 import { getBurnRate } from "@/actions/burn-rate";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getAccounts } from "@/actions/accounts";
+import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import type { RecentTransaction } from "@/actions/transactions";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { toISODateString } from "@/lib/utils/date";
-import { subDays } from "date-fns";
+import { subDays, differenceInDays } from "date-fns";
 import type { CurrencyCode } from "@/types/domain";
 
 interface MobileZoneProps {
@@ -17,7 +18,7 @@ interface MobileZoneProps {
 }
 
 export async function MobileZone({ month, currency, recentTx }: MobileZoneProps) {
-  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult, dailySpending] =
+  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult, dailySpending, latestSnapshotDates] =
     await Promise.all([
       getDashboardHeroData(month, currency),
       getAttentionItems(),
@@ -25,17 +26,37 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
       getBudgetSummary(month),
       getAccounts(),
       getDailySpending(month, currency),
+      getLatestSnapshotDates(),
     ]);
 
   const allAccounts = accountsResult.success ? accountsResult.data : [];
 
+  const starterMode = allAccounts.length > 0 && recentTx.length === 0;
+
+  const daysSinceImport = (() => {
+    const dates = Object.values(latestSnapshotDates);
+    if (dates.length === 0) return 999;
+    const latest = dates.reduce((a, b) => (a > b ? a : b));
+    return differenceInDays(new Date(), new Date(latest));
+  })();
+
   // Map recent transactions to mobile format
   const mobileRecentTx = recentTx.map((tx) => ({
     id: tx.id,
-    description: tx.merchant_name || tx.clean_description || "Sin descripción",
+    description: tx.merchant_name || tx.clean_description || "Sin descripcion",
     amount: tx.amount,
     currency_code: tx.currency_code ?? "COP",
     direction: tx.direction,
+    account_name: tx.accounts?.name ?? "",
+    account_color: tx.accounts?.color ?? null,
+    category_name: tx.categories?.name_es ?? tx.categories?.name ?? null,
+    category_icon: tx.categories?.icon ?? null,
+    tags: (tx.transaction_tags ?? []).map((tt) => ({
+      id: tt.tag.id,
+      name: tt.tag.name,
+      color: tt.tag.color,
+      group_color: tt.tag.group?.color ?? null,
+    })),
   }));
 
   // Derived date values
@@ -103,6 +124,8 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
         attentionItems={attentionItemsData}
         burnRateData={burnRateData}
         totalBudget={budgetSummary.totalTarget}
+        starterMode={starterMode}
+        daysSinceImport={daysSinceImport}
         recentTransactions={mobileRecentTx}
         currency={currency}
       />
