@@ -72,7 +72,7 @@ export function InicioStarter() {
 
       {/* After import benefits */}
       <div>
-        <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+        <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.18em] text-z-sage-dark">
           Después de importar
         </p>
         <div className="grid grid-cols-3 gap-2">

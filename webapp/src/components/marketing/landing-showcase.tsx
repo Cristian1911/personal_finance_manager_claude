@@ -170,7 +170,7 @@ export function LandingShowcase() {
         <div className="mb-12 flex flex-col items-center gap-4 text-center">
           <Badge
             variant="outline"
-            className="border-white/10 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-z-sage-light"
+            className="border-white/10 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-z-sage-light"
           >
             Todo lo que hace
           </Badge>

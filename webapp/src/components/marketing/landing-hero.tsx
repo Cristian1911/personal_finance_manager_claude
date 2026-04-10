@@ -123,10 +123,10 @@ function MobileHeroStrip() {
   return (
     <div className="relative">
       <div className="absolute -inset-4 rounded-2xl bg-gradient-to-b from-primary/14 via-transparent to-z-income/8 blur-2xl" />
-      <Card className="relative overflow-hidden rounded-xl border-white/10 bg-[#111111]/90 shadow-2xl shadow-black/35">
+      <Card className="relative overflow-hidden rounded-xl border-white/6 bg-z-ink/90 shadow-2xl shadow-black/35">
         {/* Available to spend */}
         <div className="px-5 pt-5 pb-4">
-          <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Disponible para gastar
           </p>
           <p className="mt-1 text-2xl font-semibold tracking-tight">
@@ -135,7 +135,7 @@ function MobileHeroStrip() {
         </div>
 
         {/* Daily spending row */}
-        <div className="mx-5 mb-5 rounded-xl border border-white/8 bg-white/[0.03] p-3">
+        <div className="mx-5 mb-5 rounded-xl border border-white/6 bg-white/[0.03] p-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Gasto hoy</span>
             <span>

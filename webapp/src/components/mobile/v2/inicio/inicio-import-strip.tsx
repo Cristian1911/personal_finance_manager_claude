@@ -15,12 +15,12 @@ export function InicioImportStrip({ daysSinceImport }: InicioImportStripProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-[14px] border border-z-brass/20 p-3",
+        "flex items-center gap-3 rounded-xl border border-z-brass/20 p-3",
         "bg-[linear-gradient(135deg,rgba(var(--z-brass-rgb,183,165,122),0.06),transparent_50%)]"
       )}
     >
       {/* Icon box */}
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-z-brass/20 bg-z-brass/10">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-z-brass/20 bg-z-brass/10">
         <FileUp className="h-4 w-4 text-z-brass" />
       </div>
 

@@ -31,7 +31,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
 
   return (
     <div>
-      <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+      <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-z-sage-dark">
         Reciente
       </p>
 
