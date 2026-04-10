@@ -81,7 +81,7 @@ export function MovimientosHerramientas({
 
   // Optimistic: track IDs categorized from the detail panel so both
   // the chip count and the item list update immediately.
-  const [categorizedIds, setCategorizedIds] = useState<Set<string>>(new Set());
+  const [categorizedIds, setCategorizedIds] = useState(() => new Set<string>());
 
   // Reset optimistic state when server data refreshes (new props)
   useEffect(() => {

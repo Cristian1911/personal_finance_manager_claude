@@ -30,11 +30,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import type { ActionResult } from "@/types/actions";
 import type {
   Account,
   CategoryWithChildren,
-  Transaction,
   TransactionDirection,
 } from "@/types/domain";
 
@@ -95,7 +93,7 @@ export function MobileTransactionForm({
   const [state, formAction, pending] = useActionState(createTransaction, {
     success: false,
     error: "",
-  } as ActionResult<Transaction>);
+  });
 
   // Close form after action transition commits (route already revalidated)
   useEffect(() => {
