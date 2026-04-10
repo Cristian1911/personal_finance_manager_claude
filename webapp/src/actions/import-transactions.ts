@@ -416,7 +416,8 @@ export async function previewImportReconciliation(
       user.id,
       items.map((item) => item.importedTransaction)
     );
-  } catch {
+  } catch (err) {
+    console.error("previewImportReconciliation: failed to fetch candidates", err);
     return { autoMerge: [], review: [], unmatched: [] };
   }
   const autoMerge: ReconciliationPreviewItem[] = [];
