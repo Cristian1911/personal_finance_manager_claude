@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownLeft, ArrowRight, QrCode, CreditCard, Banknote, Building, Wallet, ArrowUpRight as TransferIcon, Mail, Hash, UserRound, Pencil } from "lucide-react";
@@ -79,6 +79,17 @@ export function MovimientosHerramientas({
   const activeAccent = activeZone ? accentStyles[activeZone] : null;
   const pendingEmailCount = pendingEmails.length;
 
+  // Optimistic: track IDs categorized from the detail panel so both
+  // the chip count and the item list update immediately.
+  const [categorizedIds, setCategorizedIds] = useState<Set<string>>(new Set());
+
+  // Reset optimistic state when server data refreshes (new props)
+  useEffect(() => {
+    setCategorizedIds(new Set());
+  }, [uncategorizedTransactions]);
+
+  const optimisticCount = Math.max(0, uncategorizedCount - categorizedIds.size);
+
   return (
     <MobileZone eyebrow="HERRAMIENTAS">
       <div className="grid grid-cols-2 gap-1.5">
@@ -97,15 +108,15 @@ export function MovimientosHerramientas({
           aria-expanded={isActive("categorizar")}
         >
           <p className="text-[22px] font-[680] leading-tight text-z-brass">
-            {uncategorizedCount}
+            {optimisticCount}
           </p>
           <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
             Categorizar
           </p>
-          {uncategorizedCount > 0 && (
+          {optimisticCount > 0 && (
             <p className="mt-1 flex items-center justify-center gap-1 text-[9px] text-z-debt">
               <span className="inline-block size-1.5 rounded-full bg-z-debt" />
-              {uncategorizedCount} por resolver
+              {optimisticCount} por resolver
             </p>
           )}
         </button>
@@ -158,6 +169,17 @@ export function MovimientosHerramientas({
                     totalCount={uncategorizedCount}
                     categories={categories}
                     currency={currency}
+                    categorizedIds={categorizedIds}
+                    onOptimisticCategorize={(txId: string) =>
+                      setCategorizedIds((prev) => new Set(prev).add(txId))
+                    }
+                    onOptimisticRollback={(txId: string) =>
+                      setCategorizedIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(txId);
+                        return next;
+                      })
+                    }
                   />
                 )}
                 {activeZone === "importar" && (
@@ -233,19 +255,32 @@ function CategorizarDetail({
   totalCount,
   categories,
   currency,
+  categorizedIds,
+  onOptimisticCategorize,
+  onOptimisticRollback,
 }: {
   transactions: Transaction[];
   totalCount: number;
   categories: CategoryWithChildren[];
   currency: CurrencyCode;
+  categorizedIds: Set<string>;
+  onOptimisticCategorize: (txId: string) => void;
+  onOptimisticRollback: (txId: string) => void;
 }) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const items = transactions.slice(0, MAX_ITEMS);
+
+  const visibleTransactions = transactions.filter((tx) => !categorizedIds.has(tx.id));
+  const items = visibleTransactions.slice(0, MAX_ITEMS);
+  const visibleCount = Math.max(0, totalCount - categorizedIds.size);
 
   function handleCategorize(tx: Transaction, categoryId: string | null) {
     if (!categoryId) return;
     const previousCategoryId = tx.category_id ?? null;
+
+    // Optimistic: remove from list immediately (updates chip count too)
+    onOptimisticCategorize(tx.id);
+
     startTransition(async () => {
       const result = await categorizeTransaction(tx.id, categoryId);
       if (result.success) {
@@ -262,12 +297,14 @@ function CategorizarDetail({
           },
         });
       } else {
+        // Rollback optimistic removal
+        onOptimisticRollback(tx.id);
         toast.error(result.error ?? "Error al categorizar");
       }
     });
   }
 
-  if (totalCount === 0) {
+  if (visibleCount <= 0) {
     return (
       <div className="space-y-2">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-brass">
@@ -359,7 +396,7 @@ function CategorizarDetail({
 
       <div className="flex items-center justify-between pt-1">
         <p className="text-[10px] text-muted-foreground">
-          Mostrando {items.length} de {totalCount}
+          Mostrando {items.length} de {visibleCount}
         </p>
         <Link
           href="/categorizar"
