@@ -114,11 +114,56 @@ function HeroCard() {
   );
 }
 
+// ─── MobileHeroStrip ─────────────────────────────────────────────────────────
+
+function MobileHeroStrip() {
+  const { availableToSpend, spentToday, dailyAllowance } = LANDING_HERO_DATA;
+  const spentPct = Math.round((spentToday / dailyAllowance) * 100);
+
+  return (
+    <div className="relative">
+      <div className="absolute -inset-4 rounded-2xl bg-gradient-to-b from-primary/14 via-transparent to-z-income/8 blur-2xl" />
+      <Card className="relative overflow-hidden rounded-xl border-white/10 bg-[#111111]/90 shadow-2xl shadow-black/35">
+        {/* Available to spend */}
+        <div className="px-5 pt-5 pb-4">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Disponible para gastar
+          </p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight">
+            {formatCurrency(availableToSpend, "COP")}
+          </p>
+        </div>
+
+        {/* Daily spending row */}
+        <div className="mx-5 mb-5 rounded-xl border border-white/8 bg-white/[0.03] p-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Gasto hoy</span>
+            <span>
+              <span className="font-medium">
+                {formatCurrency(spentToday, "COP")}
+              </span>
+              <span className="ml-1 text-xs text-muted-foreground">
+                / {formatCurrency(dailyAllowance, "COP")}
+              </span>
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 rounded-full bg-white/8">
+            <div
+              className="h-1.5 rounded-full bg-primary"
+              style={{ width: `${Math.min(spentPct, 100)}%` }}
+            />
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // ─── LandingHero ─────────────────────────────────────────────────────────────
 
 export function LandingHero() {
   return (
-    <section className="mx-auto max-w-7xl px-6 pb-20 pt-16 sm:pt-24">
+    <section className="mx-auto max-w-7xl px-6 pb-12 pt-12 sm:pb-20 sm:pt-24">
       <div className="grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(24rem,0.9fr)] lg:items-center">
         {/* Left column — copy */}
         <div className="space-y-8">
@@ -129,13 +174,11 @@ export function LandingHero() {
 
           <div className="space-y-6">
             <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-7xl">
-              Tu dinero deja de sentirse confuso y empieza a contar una historia
-              clara.
+              Claridad diaria sobre tu dinero.
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">
-              Zeta reúne extractos, presupuesto, deudas, cuentas y pagos
-              recurrentes para darte una vista accionable de tus finanzas
-              personales en Colombia.
+              Extractos, presupuesto, deudas y pagos recurrentes en una sola
+              vista. Sin conectar tu banco. Hecho para Colombia.
             </p>
           </div>
 
@@ -160,7 +203,7 @@ export function LandingHero() {
             </Button>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-3">
             {highlights.map((highlight) => (
               <div
                 key={highlight.label}
@@ -178,8 +221,13 @@ export function LandingHero() {
           </div>
         </div>
 
-        {/* Right column — dashboard card */}
-        <HeroCard />
+        {/* Right column — dashboard card (desktop) / strip (mobile) */}
+        <div className="hidden lg:block">
+          <HeroCard />
+        </div>
+        <div className="lg:hidden">
+          <MobileHeroStrip />
+        </div>
       </div>
     </section>
   );
