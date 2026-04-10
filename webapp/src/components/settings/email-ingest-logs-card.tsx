@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ScrollText } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, RefreshCw, ScrollText } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
+import { retryEmailIngestLog } from "@/actions/email-ingest";
 import type { EmailIngestLog } from "@/types/domain";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -20,16 +23,20 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   pdf_imported: { label: "PDF importado", className: "bg-emerald-500/20 text-emerald-500" },
 };
 
+const RETRYABLE_STATUSES = new Set(["sender_rejected", "parse_failed", "rate_limited"]);
+
 interface EmailIngestLogsCardProps {
   initialLogs: EmailIngestLog[];
 }
 
 export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
+  const [logs, setLogs] = useState(initialLogs);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
-  if (initialLogs.length === 0) return null;
+  if (logs.length === 0) return null;
 
-  const errorCount = initialLogs.filter(
+  const errorCount = logs.filter(
     (l) => l.status === "parse_failed" || l.status === "sender_rejected" || l.status === "pdf_parse_failed"
   ).length;
 
@@ -40,6 +47,26 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
       else next.add(id);
       return next;
     });
+  }
+
+  async function handleRetry(id: string) {
+    setRetryingId(id);
+    try {
+      const result = await retryEmailIngestLog(id);
+      if (result.success) {
+        const messages: Record<string, string> = {
+          imported: "Transacción importada correctamente",
+          queued: "Transacción en cola para revisión",
+          duplicate: "La transacción ya existía",
+        };
+        toast.success(messages[result.data] ?? "Procesado correctamente");
+        setLogs((prev) => prev.filter((l) => l.id !== id));
+      } else {
+        toast.error(result.error || "No se pudo reprocesar el correo");
+      }
+    } finally {
+      setRetryingId(null);
+    }
   }
 
   return (
@@ -59,7 +86,7 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Últimos {initialLogs.length} correos procesados por el webhook. Revisa aquí si un correo no generó transacción.
+              Últimos {logs.length} correos procesados por el webhook. Revisa aquí si un correo no generó transacción.
             </p>
           </div>
         </div>
@@ -67,8 +94,9 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
 
       <CardContent className="p-0">
         <div className="divide-y divide-white/6">
-          {initialLogs.map((log) => {
+          {logs.map((log) => {
             const isExpanded = expanded.has(log.id);
+            const isRetryable = RETRYABLE_STATUSES.has(log.status) && !!log.raw_body;
             const config = STATUS_CONFIG[log.status] ?? {
               label: log.status,
               className: "bg-white/6 text-muted-foreground",
@@ -76,29 +104,47 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
 
             return (
               <div key={log.id} className="px-6 py-3">
-                <button
-                  onClick={() => toggleExpand(log.id)}
-                  className="flex w-full items-center gap-3 text-left"
-                >
-                  {isExpanded ? (
-                    <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", config.className)}>
-                        {config.label}
-                      </span>
-                      <span className="truncate text-sm text-muted-foreground">
-                        {log.from_address}
-                      </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => toggleExpand(log.id)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", config.className)}>
+                          {config.label}
+                        </span>
+                        <span className="truncate text-sm text-muted-foreground">
+                          {log.from_address}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground/60">
+                        {formatDate(log.created_at)}
+                      </p>
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground/60">
-                      {formatDate(log.created_at)}
-                    </p>
-                  </div>
-                </button>
+                  </button>
+                  {isRetryable && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-8 shrink-0 text-muted-foreground hover:text-z-brass"
+                      onClick={() => handleRetry(log.id)}
+                      disabled={retryingId === log.id}
+                      aria-label="Reintentar"
+                    >
+                      {retryingId === log.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="size-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
 
                 {isExpanded && (
                   <div className="mt-3 space-y-2 pl-7">

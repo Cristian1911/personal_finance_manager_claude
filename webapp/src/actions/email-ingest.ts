@@ -382,6 +382,92 @@ export async function retryUnrecognizedEmail(
   return { success: true, data: persistResult.data };
 }
 
+export async function retryEmailIngestLog(
+  logId: string
+): Promise<ActionResult<ReprocessResult>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: log, error: fetchError } = await supabase
+    .from("email_ingest_logs")
+    .select("id, user_id, email_ingest_id, raw_body, status")
+    .eq("id", logId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (fetchError) return { success: false, error: fetchError.message };
+  if (!log) return { success: false, error: "Log no encontrado" };
+
+  const retryableStatuses = ["sender_rejected", "parse_failed", "rate_limited"];
+  if (!retryableStatuses.includes(log.status)) {
+    return { success: false, error: "Este correo no se puede reintentar" };
+  }
+
+  // Extract body from raw_body — strip the [Subject: ...] prefix if present
+  let emailBody = log.raw_body ?? "";
+  const subjectPrefixMatch = emailBody.match(/^\[Subject: [^\]]*\]\n?/);
+  if (subjectPrefixMatch) {
+    emailBody = emailBody.slice(subjectPrefixMatch[0].length);
+  }
+
+  if (!emailBody.trim()) {
+    return { success: false, error: "El log no tiene contenido de correo para reprocesar" };
+  }
+
+  const parsed = parseBancolombiaEmail(emailBody);
+  if (!parsed) {
+    return {
+      success: false,
+      error: "El contenido no coincide con ningún patrón conocido",
+    };
+  }
+
+  // Find the ingest address for this user
+  let ingestAddress: Pick<EmailIngestAddress, "id" | "account_id" | "auto_import"> | null = null;
+
+  if (log.email_ingest_id) {
+    const { data } = await supabase
+      .from("email_ingest_addresses")
+      .select("id, account_id, auto_import")
+      .eq("id", log.email_ingest_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    ingestAddress = data as Pick<EmailIngestAddress, "id" | "account_id" | "auto_import"> | null;
+  }
+
+  if (!ingestAddress) {
+    const { data } = await supabase
+      .from("email_ingest_addresses")
+      .select("id, account_id, auto_import")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    ingestAddress = data as Pick<EmailIngestAddress, "id" | "account_id" | "auto_import"> | null;
+  }
+
+  if (!ingestAddress) {
+    return {
+      success: false,
+      error: "No se encontró una dirección de ingestión activa",
+    };
+  }
+
+  const persistResult = await persistParsedEmail({
+    supabase,
+    userId: user.id,
+    emailIngestId: ingestAddress.id,
+    defaultAccountId: ingestAddress.account_id,
+    autoImport: ingestAddress.auto_import,
+    parsed,
+    rawBody: emailBody,
+  });
+
+  if (!persistResult.success) return persistResult;
+
+  revalidateTag("email-ingest", "zeta");
+  return { success: true, data: persistResult.data };
+}
+
 // ─── Mutation actions ─────────────────────────────────────────────────────────
 
 export async function generateIngestAddress(): Promise<ActionResult<EmailIngestAddress>> {
