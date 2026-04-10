@@ -111,7 +111,7 @@ async function getUpcomingRecurrencesCached(
 
   const occurrenceKey = (templateId: string, date: string) => `${templateId}|${date}`;
 
-  const [{ data: templates }, { data: resolvedOccurrences }] = await Promise.all([
+  const [templatesRes, resolvedRes] = await Promise.all([
     supabase
       .from("recurring_transaction_templates")
       .select(TEMPLATE_SELECT)
@@ -125,6 +125,12 @@ async function getUpcomingRecurrencesCached(
       .gte("occurrence_date", rangeStartStr)
       .lte("occurrence_date", rangeEndStr),
   ]);
+
+  if (templatesRes.error) throw templatesRes.error;
+  if (resolvedRes.error) throw resolvedRes.error;
+
+  const templates = templatesRes.data;
+  const resolvedOccurrences = resolvedRes.data;
 
   if (!templates || templates.length === 0) return [];
 
