@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zeta — Mobile UX Improvements</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --z-ink: #1a1d1a;
+    --z-obsidian: #121412;
+    --z-surface-1: #151815;
+    --z-surface-2: rgba(26,29,26,0.80);
+    --z-brass: #c8b560;
+    --z-brass-10: rgba(200,181,96,0.10);
+    --z-brass-20: rgba(200,181,96,0.20);
+    --z-sage-light: #b0b89c;
+    --z-sage-dark: #7a8068;
+    --z-sage: #8ea882;
+    --z-income: #10b981;
+    --z-expense: #f59e0b;
+    --z-debt: #ef4444;
+    --z-border: rgba(255,255,255,0.06);
+    --z-muted: rgba(255,255,255,0.50);
+    --z-card: #111;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--z-obsidian);
+    color: #e0e0e0;
+    line-height: 1.5;
+    padding: 0;
+  }
+
+  .page-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  .page-header {
+    text-align: center;
+    margin-bottom: 48px;
+    padding-top: 40px;
+  }
+  .page-header h1 {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .page-header .subtitle {
+    font-size: 15px;
+    color: var(--z-sage-dark);
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  .page-header .date {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--z-brass);
+    margin-bottom: 16px;
+  }
+
+  /* ── Section ── */
+  .section { margin-bottom: 72px; }
+  .section-number {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.18em; color: var(--z-brass); margin-bottom: 6px;
+  }
+  .section-title {
+    font-size: 24px; font-weight: 700; letter-spacing: -0.02em;
+    color: #fff; margin-bottom: 6px;
+  }
+  .section-desc {
+    font-size: 14px; color: var(--z-sage-dark); margin-bottom: 28px; max-width: 600px;
+  }
+
+  /* ── Mobile frame ── */
+  .phones-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .phone {
+    width: 320px;
+    border-radius: 28px;
+    border: 2px solid rgba(255,255,255,0.08);
+    background: var(--z-obsidian);
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+  }
+  .phone.before { opacity: 0.6; }
+  .phone-label {
+    padding: 8px 16px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    text-align: center;
+  }
+  .phone-label.before-l { background: rgba(239,68,68,0.06); color: #f87171; }
+  .phone-label.after-l { background: rgba(16,185,129,0.06); color: #34d399; }
+  .status-bar {
+    height: 24px;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px; font-weight: 600; color: #fff;
+  }
+  .phone-content {
+    padding: 8px 14px 16px;
+    min-height: 420px;
+  }
+  .tab-bar {
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 6px;
+    border-top: 1px solid var(--z-border);
+    background: rgba(0,0,0,0.4);
+  }
+  .tab-item {
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--z-muted);
+    opacity: 0.5;
+  }
+  .tab-item.active { color: var(--z-brass); opacity: 1; }
+  .tab-icon {
+    width: 20px; height: 20px;
+    margin: 0 auto 2px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  .tab-item.active .tab-icon { background: var(--z-brass-10); }
+  .fab-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--z-brass);
+    color: var(--z-ink);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700;
+    margin-top: -20px;
+    box-shadow: 0 4px 16px rgba(200,181,96,0.3);
+  }
+
+  /* ── In-phone components ── */
+  .m-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0 10px;
+  }
+  .m-header h2 { font-size: 15px; font-weight: 600; }
+  .m-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--z-brass-20); border: 1px solid var(--z-brass);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--z-brass);
+  }
+
+  .m-eyebrow {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.22em; color: var(--z-sage-dark); margin-bottom: 6px;
+  }
+
+  .m-card {
+    border-radius: 14px; border: 1px solid var(--z-border);
+    background: linear-gradient(180deg, rgba(26,29,26,0.7), rgba(18,20,18,0.9));
+    padding: 12px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+  .m-card-inset {
+    border-radius: 14px; border: 1px solid var(--z-border);
+    background: rgba(0,0,0,0.1); padding: 10px;
+  }
+
+  /* Attention chips */
+  .m-chips { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .m-chip {
+    border-radius: 14px; border: 1px solid var(--z-border);
+    background: rgba(0,0,0,0.1); padding: 8px; text-align: center;
+  }
+  .m-chip-num { font-size: 20px; font-weight: 680; line-height: 1.1; }
+  .m-chip-label { font-size: 9px; font-weight: 600; color: var(--z-muted); margin-top: 2px; }
+  .m-chip-sub { font-size: 8px; color: var(--z-muted); margin-top: 2px; }
+
+  /* Transaction rows */
+  .m-tx {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 2px;
+    border-bottom: 1px solid var(--z-border);
+  }
+  .m-tx:last-child { border-bottom: none; }
+  .m-tx-icon {
+    width: 22px; height: 22px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; flex-shrink: 0;
+  }
+  .m-tx-icon.inflow { background: rgba(16,185,129,0.12); color: var(--z-income); }
+  .m-tx-icon.outflow { background: rgba(245,158,11,0.12); color: var(--z-expense); }
+  .m-tx-info { flex: 1; min-width: 0; }
+  .m-tx-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-tx-meta { font-size: 10px; color: var(--z-muted); display: flex; align-items: center; gap: 3px; margin-top: 1px; }
+  .m-tx-amount { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .m-tx-amount.inflow { color: var(--z-income); }
+
+  /* Account dot */
+  .acc-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+  /* Tag chip */
+  .m-tag {
+    display: inline-flex; align-items: center;
+    padding: 0px 6px; border-radius: 999px;
+    font-size: 9px; font-weight: 500;
+  }
+
+  /* Date group */
+  .m-date-group {
+    padding: 4px 2px;
+    font-size: 9px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.18em; color: var(--z-sage-dark);
+    border-bottom: 1px solid var(--z-border);
+    margin-top: 6px;
+  }
+  .m-date-group:first-child { margin-top: 0; }
+
+  /* Meta separator */
+  .sep { color: rgba(255,255,255,0.15); }
+
+  /* Annotation */
+  .annotation {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: var(--radius-xl);
+    background: rgba(200,181,96,0.05);
+    border-left: 3px solid var(--z-brass);
+    font-size: 12px; color: var(--z-sage-light); line-height: 1.6;
+  }
+  .annotation strong { color: var(--z-brass); }
+  .annotation code { color: var(--z-brass); font-size: 11px; }
+
+  /* Issue callout */
+  .issue {
+    padding: 12px 14px; border-radius: var(--radius-xl);
+    background: rgba(239,68,68,0.04); border-left: 3px solid var(--z-debt);
+    font-size: 12px; color: #fca5a5; margin-bottom: 16px;
+  }
+  .issue strong { color: #f87171; }
+
+  /* Divider */
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 0; margin: 32px 0;
+  }
+  .divider .line { flex: 1; height: 1px; background: var(--z-border); }
+  .divider .label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.18em; color: var(--z-muted);
+  }
+
+  /* Section title in phone */
+  .m-section-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+
+  /* Import banner */
+  .import-strip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--z-brass-20);
+    background: linear-gradient(135deg, rgba(200,181,96,0.06), transparent 60%);
+  }
+  .import-strip-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--z-brass-10);
+    border: 1px solid var(--z-brass-20);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0; color: var(--z-brass);
+  }
+  .import-strip-text { flex: 1; }
+  .import-strip-title { font-size: 12px; font-weight: 600; color: #e0e0e0; }
+  .import-strip-desc { font-size: 10px; color: var(--z-sage-dark); margin-top: 1px; }
+  .btn-brass-sm {
+    display: inline-flex; padding: 5px 12px; border-radius: 8px;
+    font-size: 11px; font-weight: 600;
+    background: var(--z-brass); color: var(--z-ink); border: none;
+    flex-shrink: 0;
+  }
+  .btn-ghost-sm {
+    display: inline-flex; padding: 5px 12px; border-radius: 8px;
+    font-size: 11px; font-weight: 500;
+    background: rgba(0,0,0,0.1); color: var(--z-sage-light);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* Starter card */
+  .starter-cta {
+    border-radius: 14px;
+    border: 1px solid var(--z-brass-20);
+    background: linear-gradient(135deg, rgba(200,181,96,0.08), transparent 60%);
+    padding: 16px;
+    text-align: center;
+  }
+  .starter-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: var(--z-brass-10);
+    border: 1px solid var(--z-brass-20);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin: 0 auto 10px; color: var(--z-brass);
+  }
+  .starter-title {
+    font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px;
+  }
+  .starter-desc {
+    font-size: 11px; color: var(--z-sage-dark); margin-bottom: 12px; line-height: 1.5;
+  }
+  .starter-alt {
+    font-size: 10px; color: var(--z-muted); margin-top: 10px;
+  }
+  .starter-alt a {
+    color: var(--z-sage-light); text-decoration: underline;
+  }
+
+  /* TOC */
+  .toc {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 48px; justify-content: center;
+  }
+  .toc a {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 14px; border-radius: 999px;
+    font-size: 12px; font-weight: 500;
+    background: rgba(255,255,255,0.04); color: var(--z-sage-light);
+    border: 1px solid var(--z-border); text-decoration: none;
+    transition: all 0.15s;
+  }
+  .toc a:hover {
+    background: var(--z-brass-10); border-color: var(--z-brass-20); color: var(--z-brass);
+  }
+
+  /* ── Summary grid ── */
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+  .summary-card {
+    border-radius: var(--radius-2xl); border: 1px solid var(--z-border);
+    background: var(--z-surface-2); padding: 14px; text-align: center;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+  .summary-card .icon { font-size: 24px; margin-bottom: 6px; }
+  .summary-card h4 { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 3px; }
+  .summary-card p { font-size: 11px; color: var(--z-sage-dark); }
+
+  @media (max-width: 700px) {
+    .phones-row { flex-direction: column; align-items: center; }
+    .summary-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div class="date">Abril 2026 — Mobile Webapp</div>
+    <h1>Mejoras de Experiencia Mobile</h1>
+    <p class="subtitle">
+      Tres cambios de alto impacto en la vista mobile: importacion como CTA principal, transaction rows estandarizados, y colores de etiquetas visibles en filas.
+    </p>
+  </div>
+
+  <div class="toc">
+    <a href="#import">1. Importacion</a>
+    <a href="#transactions">2. Transaction rows</a>
+    <a href="#tags">3. Tags con color</a>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 1: IMPORT ON MOBILE                                           -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="section" id="import">
+    <div class="section-number">Seccion 01</div>
+    <div class="section-title">Importacion como accion principal en mobile</div>
+    <p class="section-desc">
+      En mobile, "Importar PDF" solo es accesible via hamburger drawer. El Inicio no tiene starter mode. El chip "Importar" en Movimientos solo muestra emails pendientes. El acto fundacional de Zeta esta enterrado.
+    </p>
+
+    <!-- ── 1A: Starter mode ── -->
+    <h3 style="font-size:15px; font-weight:600; color:#fff; margin-bottom:12px;">
+      1A — Inicio: Starter mode mobile (primera vez)
+    </h3>
+
+    <div class="issue">
+      <strong>Hoy:</strong> No existe starter mode en mobile. El InicioRoot siempre muestra hero con $0/dia, metricas vacias, attention vacia, y activity vacia. Un usuario nuevo ve una app muerta.
+    </div>
+
+    <div class="phones-row">
+      <!-- BEFORE -->
+      <div class="phone before">
+        <div class="phone-label before-l">Actual — sin datos</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="m-header">
+            <h2>Zeta</h2>
+            <div class="m-avatar">CG</div>
+          </div>
+
+          <!-- Hero showing $0 -->
+          <div class="m-card" style="margin-bottom:8px;">
+            <div class="m-eyebrow">Disponible para gastar</div>
+            <div style="display:flex; align-items:baseline; gap:4px;">
+              <span style="font-size:28px; font-weight:800; color:var(--z-sage-light);">$0</span>
+              <span style="font-size:12px; color:var(--z-muted);">/dia</span>
+            </div>
+            <div style="font-size:10px; color:var(--z-muted); margin-top:2px;">= $0 este mes · 22 dias restantes</div>
+          </div>
+
+          <!-- Empty metrics -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
+            <div class="m-card-inset" style="padding:8px; text-align:center;">
+              <div style="font-size:9px; font-weight:600; color:var(--z-sage-dark);">RITMO</div>
+              <div style="font-size:16px; font-weight:700; color:var(--z-muted); margin-top:2px;">—</div>
+            </div>
+            <div class="m-card-inset" style="padding:8px; text-align:center;">
+              <div style="font-size:9px; font-weight:600; color:var(--z-sage-dark);">GASTO HOY</div>
+              <div style="font-size:16px; font-weight:700; color:var(--z-muted); margin-top:2px;">$0</div>
+            </div>
+          </div>
+
+          <!-- Empty activity -->
+          <div style="padding:20px 0; text-align:center;">
+            <div style="font-size:11px; color:var(--z-muted);">No hay actividad reciente</div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">🏠</div>Inicio</div>
+          <div class="tab-item"><div class="tab-icon">↔</div>Movim.</div>
+          <div class="fab-btn">+</div>
+          <div class="tab-item"><div class="tab-icon">🐷</div>Plan</div>
+          <div class="tab-item"><div class="tab-icon">🏛</div>Deudas</div>
+        </div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="phone">
+        <div class="phone-label after-l">Propuesta — starter mode</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="m-header">
+            <h2>Zeta</h2>
+            <div class="m-avatar">CG</div>
+          </div>
+
+          <!-- Welcome message -->
+          <div style="margin-bottom:12px;">
+            <div style="font-size:16px; font-weight:600; color:#fff;">Tu base esta lista</div>
+            <div style="font-size:11px; color:var(--z-sage-dark);">Falta activar tu flujo con datos reales.</div>
+          </div>
+
+          <!-- Primary CTA: Import -->
+          <div class="starter-cta">
+            <div class="starter-icon">📄</div>
+            <div class="starter-title">Importa tu primer extracto</div>
+            <div class="starter-desc">
+              Sube el PDF de tu banco y Zeta extrae movimientos, aprende destinatarios y activa metricas automaticamente.
+            </div>
+            <span class="btn-brass-sm" style="font-size:12px; padding:8px 20px;">Importar extracto PDF</span>
+            <div class="starter-alt">
+              O <a href="#">registra un movimiento manual</a>
+            </div>
+          </div>
+
+          <!-- What happens next -->
+          <div style="margin-top:12px;">
+            <div class="m-eyebrow">Despues de importar</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+              <div class="m-card-inset" style="padding:8px; text-align:center;">
+                <div style="font-size:14px; margin-bottom:2px;">📊</div>
+                <div style="font-size:9px; color:var(--z-sage-dark);">Metricas activas</div>
+              </div>
+              <div class="m-card-inset" style="padding:8px; text-align:center;">
+                <div style="font-size:14px; margin-bottom:2px;">🏷️</div>
+                <div style="font-size:9px; color:var(--z-sage-dark);">Auto-categorias</div>
+              </div>
+              <div class="m-card-inset" style="padding:8px; text-align:center;">
+                <div style="font-size:14px; margin-bottom:2px;">🔔</div>
+                <div style="font-size:9px; color:var(--z-sage-dark);">Alertas activas</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">🏠</div>Inicio</div>
+          <div class="tab-item"><div class="tab-icon">↔</div>Movim.</div>
+          <div class="fab-btn">+</div>
+          <div class="tab-item"><div class="tab-icon">🐷</div>Plan</div>
+          <div class="tab-item"><div class="tab-icon">🏛</div>Deudas</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Cambio:</strong> <code>InicioRoot</code> recibe una prop <code>starterMode</code> desde <code>MobileZone</code>. Cuando es true, renderiza un CTA de importacion prominente en vez del hero + metricas vacias. El botton principal lleva a <code>/import</code>. La alternativa de registro manual es un link secundario.
+    </div>
+
+    <!-- ── 1B: Stale import banner ── -->
+    <h3 style="font-size:15px; font-weight:600; color:#fff; margin: 28px 0 12px;">
+      1B — Inicio: Banner contextual cuando hay datos stale
+    </h3>
+
+    <div class="issue">
+      <strong>Hoy:</strong> Cuando freshness es "stale" o "outdated", el hero muestra un pill de estado pero no ofrece accion directa. El usuario no sabe que importar resuelve el problema. El <code>DashboardAlerts</code> de desktop (que muestra "Hace X dias sin importar") no tiene equivalente mobile.
+    </div>
+
+    <div class="phones-row">
+      <div class="phone">
+        <div class="phone-label after-l">Propuesta — Banner bajo hero</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="m-header">
+            <h2>Zeta</h2>
+            <div class="m-avatar">CG</div>
+          </div>
+
+          <!-- Hero condensed -->
+          <div class="m-card" style="margin-bottom:6px;">
+            <div class="m-eyebrow">Disponible para gastar</div>
+            <div style="display:flex; align-items:baseline; gap:4px;">
+              <span style="font-size:28px; font-weight:800; color:var(--z-sage-light);">$61.411</span>
+              <span style="font-size:12px; color:var(--z-muted);">/dia</span>
+            </div>
+            <div style="font-size:10px; color:var(--z-muted); margin-top:2px;">= $1.350.050 este mes · 22 dias</div>
+          </div>
+
+          <!-- NEW: Import strip -->
+          <div class="import-strip" style="margin-bottom:8px;">
+            <div class="import-strip-icon">📄</div>
+            <div class="import-strip-text">
+              <div class="import-strip-title">18 dias sin importar</div>
+              <div class="import-strip-desc">Actualiza para que las metricas reflejen tu posicion real.</div>
+            </div>
+            <span class="btn-brass-sm">Importar</span>
+          </div>
+
+          <!-- Metrics -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+            <div class="m-card-inset" style="padding:8px; text-align:center;">
+              <div style="font-size:9px; font-weight:600; color:var(--z-sage-dark);">RITMO</div>
+              <div style="font-size:14px; font-weight:700; margin-top:2px;">dia 9 de 30</div>
+            </div>
+            <div class="m-card-inset" style="padding:8px; text-align:center;">
+              <div style="font-size:9px; font-weight:600; color:var(--z-sage-dark);">GASTO HOY</div>
+              <div style="font-size:14px; font-weight:700; margin-top:2px;">$28.900</div>
+            </div>
+          </div>
+
+          <!-- Attention -->
+          <div class="m-eyebrow" style="margin-top:8px;">ATENCION</div>
+          <div class="m-chips">
+            <div class="m-chip">
+              <div class="m-chip-num" style="color:var(--z-debt);">0</div>
+              <div class="m-chip-label">Vencidos</div>
+            </div>
+            <div class="m-chip">
+              <div class="m-chip-num" style="color:var(--z-brass);">3</div>
+              <div class="m-chip-label">Pagos</div>
+              <div class="m-chip-sub">en 7 dias</div>
+            </div>
+            <div class="m-chip">
+              <div class="m-chip-num" style="color:var(--z-sage);">2</div>
+              <div class="m-chip-label">Emails</div>
+              <div class="m-chip-sub">sin revisar</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">🏠</div>Inicio</div>
+          <div class="tab-item"><div class="tab-icon">↔</div>Movim.</div>
+          <div class="fab-btn">+</div>
+          <div class="tab-item"><div class="tab-icon">🐷</div>Plan</div>
+          <div class="tab-item"><div class="tab-icon">🏛</div>Deudas</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Cambio:</strong> Nuevo componente <code>InicioImportStrip</code> que se muestra entre el hero y las metricas cuando <code>freshness !== "fresh"</code>. Recibe <code>daysSinceImport</code> del <code>latestSnapshotDates</code> de <code>MobileZone</code>. El boton lleva a <code>/import</code>. Se oculta cuando freshness es "fresh".
+    </div>
+
+    <!-- ── 1C: Movimientos Importar chip ── -->
+    <h3 style="font-size:15px; font-weight:600; color:#fff; margin: 28px 0 12px;">
+      1C — Movimientos: Chip "Importar" incluye PDF
+    </h3>
+
+    <div class="issue">
+      <strong>Hoy:</strong> El chip "Importar" en <code>MovimientosHerramientas</code> solo muestra emails pendientes. Cuando el count es 0, dice "sin pendientes" y parece inactivo. No hay forma de llegar a importar PDF desde Movimientos en mobile.
+    </div>
+
+    <div class="phones-row">
+      <!-- BEFORE -->
+      <div class="phone before">
+        <div class="phone-label before-l">Actual</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="m-header">
+            <h2>Movimientos</h2>
+            <div style="font-size:10px; color:var(--z-muted);">Abr 2026</div>
+          </div>
+
+          <div class="m-eyebrow" style="margin-top:8px;">HERRAMIENTAS</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <div class="m-chip" style="border-color: var(--z-brass-20); background: linear-gradient(180deg,rgba(200,181,96,0.08),transparent);">
+              <div class="m-chip-num" style="color:var(--z-brass);">5</div>
+              <div class="m-chip-label">Categorizar</div>
+              <div class="m-chip-sub" style="color:var(--z-debt);">5 por resolver</div>
+            </div>
+            <div class="m-chip">
+              <div class="m-chip-num" style="color:var(--z-muted);">0</div>
+              <div class="m-chip-label">Importar</div>
+              <div class="m-chip-sub">sin pendientes</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item"><div class="tab-icon">🏠</div>Inicio</div>
+          <div class="tab-item active"><div class="tab-icon">↔</div>Movim.</div>
+          <div class="fab-btn">+</div>
+          <div class="tab-item"><div class="tab-icon">🐷</div>Plan</div>
+          <div class="tab-item"><div class="tab-icon">🏛</div>Deudas</div>
+        </div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="phone">
+        <div class="phone-label after-l">Propuesta</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="m-header">
+            <h2>Movimientos</h2>
+            <div style="font-size:10px; color:var(--z-muted);">Abr 2026</div>
+          </div>
+
+          <div class="m-eyebrow" style="margin-top:8px;">HERRAMIENTAS</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <div class="m-chip" style="border-color: var(--z-brass-20); background: linear-gradient(180deg,rgba(200,181,96,0.08),transparent);">
+              <div class="m-chip-num" style="color:var(--z-brass);">5</div>
+              <div class="m-chip-label">Categorizar</div>
+              <div class="m-chip-sub" style="color:var(--z-debt);">5 por resolver</div>
+            </div>
+            <div class="m-chip" style="border-color:rgba(142,168,130,0.3); background: linear-gradient(180deg,rgba(142,168,130,0.08),transparent);">
+              <div class="m-chip-num" style="color:var(--z-sage);">0</div>
+              <div class="m-chip-label">Importar</div>
+              <div class="m-chip-sub" style="color:var(--z-sage);">Subir PDF</div>
+            </div>
+          </div>
+
+          <!-- Expanded import panel -->
+          <div class="m-card-inset" style="margin-top:6px; border-color:rgba(142,168,130,0.2); background:rgba(0,0,0,0.2); padding:12px;">
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.18em; color:var(--z-sage); margin-bottom:8px;">Importar extracto</div>
+
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+              <div style="width:32px; height:32px; border-radius:8px; background:rgba(142,168,130,0.1); border:1px solid rgba(142,168,130,0.2); display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--z-sage);">📄</div>
+              <div style="flex:1;">
+                <div style="font-size:11px; font-weight:600;">Subir PDF del banco</div>
+                <div style="font-size:9px; color:var(--z-sage-dark);">Extracto mensual de cualquier banco</div>
+              </div>
+              <span class="btn-brass-sm">Subir</span>
+            </div>
+
+            <div style="height:1px; background:var(--z-border); margin:8px 0;"></div>
+            <div style="font-size:10px; color:var(--z-muted);">0 emails pendientes de revision</div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item"><div class="tab-icon">🏠</div>Inicio</div>
+          <div class="tab-item active"><div class="tab-icon">↔</div>Movim.</div>
+          <div class="fab-btn">+</div>
+          <div class="tab-item"><div class="tab-icon">🐷</div>Plan</div>
+          <div class="tab-item"><div class="tab-icon">🏛</div>Deudas</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Cambios:</strong><br>
+      1. Chip "Importar" siempre muestra estilo sage activo (no gris/inactivo cuando emails=0). El subtitle cambia a "Subir PDF".<br>
+      2. <code>ImportarDetail</code> se extiende: arriba del listado de emails pendientes, muestra un CTA de "Subir PDF del banco" que lleva a <code>/import</code>. Emails pendientes aparecen abajo como seccion secundaria.<br>
+      3. La idea: el chip "Importar" es la puerta a toda la importacion (PDF + email), no solo a emails.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 2: TRANSACTION ROW STANDARDIZATION                            -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="section" id="transactions">
+    <div class="section-number">Seccion 02</div>
+    <div class="section-title">Transaction rows estandarizados en mobile</div>
+    <p class="section-desc">
+      <code>InicioActivity</code> usa un layout ultra-simple (solo description + amount, sin cuenta, sin categoria, sin direction icon). El canonico es <code>MovimientosTransactionRow</code>. Todos los rows deben seguir el mismo patron visual.
+    </p>
+
+    <!-- ── 2A: InicioActivity Before/After ── -->
+    <h3 style="font-size:15px; font-weight:600; color:#fff; margin-bottom:12px;">
+      2A — Inicio: "Reciente" adopta el patron canonico
+    </h3>
+
+    <div class="issue">
+      <strong>Hoy:</strong> <code>InicioActivity</code> muestra: description (text-[13px]) + amount. Sin account dot, sin direction icon, sin category. Visualmente, es una lista aplanada que no comunica nada sobre la transaccion. El expand muestra un panel con "Ingreso/Gasto · monto" + "Ver detalle" — redundante.
+    </div>
+
+    <div class="phones-row">
+      <!-- BEFORE -->
+      <div class="phone before">
+        <div class="phone-label before-l">Actual — InicioActivity</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content" style="padding-top:16px;">
+          <div class="m-eyebrow">RECIENTE</div>
+
+          <!-- Current simple rows -->
+          <div style="border-bottom:1px solid var(--z-border); padding:8px 0;">
+            <div style="display:flex; justify-content:space-between;">
+              <span style="font-size:13px;">Exito Centro Mayor</span>
+              <span style="font-size:13px; font-weight:500;">-$342.800</span>
+            </div>
+          </div>
+          <div style="border-bottom:1px solid var(--z-border); padding:8px 0;">
+            <div style="display:flex; justify-content:space-between;">
+              <span style="font-size:13px;">Nomina Empresa SAS</span>
+              <span style="font-size:13px; font-weight:500; color:var(--z-income);">+$4.200.000</span>
+            </div>
+          </div>
+          <div style="padding:8px 0;">
+            <div style="display:flex; justify-content:space-between;">
+              <span style="font-size:13px;">Rappi</span>
+              <span style="font-size:13px; font-weight:500;">-$28.900</span>
+            </div>
+          </div>
+
+          <div style="padding:20px 0; text-align:center; font-size:10px; color:var(--z-muted);">
+            No se sabe la cuenta, la categoria, ni la fecha de cada transaccion.
+          </div>
+        </div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="phone">
+        <div class="phone-label after-l">Propuesta — patron canonico</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content" style="padding-top:16px;">
+          <div class="m-eyebrow">RECIENTE</div>
+
+          <!-- Row 1 -->
+          <div class="m-tx">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-info">
+              <div class="m-tx-name">Exito Centro Mayor</div>
+              <div class="m-tx-meta">
+                <span class="acc-dot" style="background:#4ade80;"></span>
+                Bancolombia
+                <span class="sep">&middot;</span>
+                🛒 Mercado
+              </div>
+            </div>
+            <div class="m-tx-amount">-$342.800</div>
+          </div>
+
+          <!-- Row 2 -->
+          <div class="m-tx">
+            <div class="m-tx-icon inflow">↙</div>
+            <div class="m-tx-info">
+              <div class="m-tx-name">Nomina Empresa SAS</div>
+              <div class="m-tx-meta">
+                <span class="acc-dot" style="background:#4ade80;"></span>
+                Bancolombia
+                <span class="sep">&middot;</span>
+                💰 Salario
+              </div>
+            </div>
+            <div class="m-tx-amount inflow">+$4.200.000</div>
+          </div>
+
+          <!-- Row 3 -->
+          <div class="m-tx">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-info">
+              <div class="m-tx-name">Rappi</div>
+              <div class="m-tx-meta">
+                <span class="acc-dot" style="background:#a78bfa;"></span>
+                Nu
+                <span class="sep">&middot;</span>
+                <span style="color:var(--z-brass);">Sin cat.</span>
+              </div>
+            </div>
+            <div class="m-tx-amount">-$28.900</div>
+          </div>
+
+          <div style="text-align:center; margin-top:8px;">
+            <span style="font-size:11px; font-weight:600; color:var(--z-brass);">Ver todos →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Cambio:</strong> <code>InicioActivity</code> usa el mismo layout visual que <code>MovimientosTransactionRow</code> collapsed state: direction icon + description + meta line (account dot · account name · category). Sin expand (el tap lleva directo a <code>/transactions/{id}</code>).<br><br>
+      <strong>Datos:</strong> <code>MobileZone</code> ya pasa <code>recentTx</code> con amount/direction/description. Necesita extender el tipo para incluir <code>account_name</code>, <code>account_color</code>, <code>category_name</code>, <code>category_icon</code>.
+    </div>
+
+    <!-- ── 2B: MovimientosTransactionRow with account dot visible ── -->
+    <h3 style="font-size:15px; font-weight:600; color:#fff; margin: 28px 0 12px;">
+      2B — Movimientos: Direction icon + category en collapsed
+    </h3>
+
+    <div class="issue">
+      <strong>Hoy:</strong> <code>MovimientosTransactionRow</code> collapsed state muestra: description + account(dot+name) + date + amount. No muestra direction icon ni category. Category solo aparece al expandir. El usuario no puede escanear que tipo de gasto es sin expandir cada fila.
+    </div>
+
+    <div class="phones-row">
+      <!-- BEFORE -->
+      <div class="phone before">
+        <div class="phone-label before-l">Actual — collapsed</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content" style="padding-top:12px;">
+          <div class="m-date-group">Lunes, 7 Abr</div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 2px; border-bottom:1px solid var(--z-border);">
+            <div style="min-width:0; flex:1;">
+              <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Exito Centro Mayor</div>
+              <div style="font-size:10px; color:var(--z-muted); display:flex; align-items:center; gap:3px; margin-top:1px;">
+                <span class="acc-dot" style="background:#4ade80;"></span>
+                Bancolombia <span class="sep">&middot;</span> 07 abr
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <span style="font-size:13px; font-weight:500; font-variant-numeric:tabular-nums;">-$342.800</span>
+              <span style="font-size:10px; color:var(--z-muted);">›</span>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 2px; border-bottom:1px solid var(--z-border);">
+            <div style="min-width:0; flex:1;">
+              <div style="font-size:13px; font-weight:500;">Rappi</div>
+              <div style="font-size:10px; color:var(--z-muted); display:flex; align-items:center; gap:3px; margin-top:1px;">
+                <span class="acc-dot" style="background:#a78bfa;"></span>
+                Nu <span class="sep">&middot;</span> 07 abr
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <span style="font-size:13px; font-weight:500; font-variant-numeric:tabular-nums;">-$28.900</span>
+              <span style="font-size:10px; color:var(--z-muted);">›</span>
+            </div>
+          </div>
+
+          <div style="font-size:10px; color:var(--z-muted); text-align:center; padding:16px 0;">
+            Sin direction icon. Sin categoria. Hay que expandir para ver mas.
+          </div>
+        </div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="phone">
+        <div class="phone-label after-l">Propuesta — enriched collapsed</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content" style="padding-top:12px;">
+          <div class="m-date-group">Lunes, 7 Abr</div>
+
+          <div class="m-tx">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-info">
+              <div class="m-tx-name">Exito Centro Mayor</div>
+              <div class="m-tx-meta">
+                <span class="acc-dot" style="background:#4ade80;"></span>
+                Bancolombia
+                <span class="sep">&middot;</span>
+                🛒 Mercado
+              </div>
+            </div>
+            <div class="m-tx-amount">-$342.800</div>
+          </div>
+
+          <div class="m-tx">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-info">
+              <div class="m-tx-name">Rappi</div>
+              <div class="m-tx-meta">
+                <span class="acc-dot" style="background:#a78bfa;"></span>
+                Nu
+                <span class="sep">&middot;</span>
+                <span style="color:var(--z-brass);">Sin cat.</span>
+              </div>
+            </div>
+            <div class="m-tx-amount">-$28.900</div>
+          </div>
+
+          <div class="m-tx">
+            <div class="m-tx-icon inflow">↙</div>
+            <div class="m-tx-info">
+              <div class="m-tx-name">Nomina Empresa SAS</div>
+              <div class="m-tx-meta">
+                <span class="acc-dot" style="background:#4ade80;"></span>
+                Bancolombia
+                <span class="sep">&middot;</span>
+                💰 Salario
+              </div>
+            </div>
+            <div class="m-tx-amount inflow">+$4.200.000</div>
+          </div>
+
+          <div class="m-date-group">Viernes, 4 Abr</div>
+
+          <div class="m-tx">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-info">
+              <div class="m-tx-name">Netflix</div>
+              <div class="m-tx-meta">
+                <span class="acc-dot" style="background:#a78bfa;"></span>
+                Nu
+                <span class="sep">&middot;</span>
+                🎬 Entretenimiento
+              </div>
+            </div>
+            <div class="m-tx-amount">-$33.900</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Cambios en <code>MovimientosTransactionRow</code>:</strong><br>
+      1. Agregar direction icon (22px rounded box, outflow=orange, inflow=green) a la izquierda<br>
+      2. Reemplazar fecha en la meta line por categoria (icon + name). La fecha ya esta en el group header.<br>
+      3. Sin categoria: muestra "Sin cat." en brass como CTA implicito<br>
+      4. Mantener el expand para TagZonePicker + CategoryZonePicker + edit link
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 3: TAG COLORS INLINE                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="section" id="tags">
+    <div class="section-number">Seccion 03</div>
+    <div class="section-title">Etiquetas con color en filas mobile</div>
+    <p class="section-desc">
+      En Settings las etiquetas muestran su color. En las filas de transacciones, los tags son invisibles en el collapsed state — solo aparece un icono <code>#</code> gris al expandir. El color es la senal visual que hace utiles las etiquetas.
+    </p>
+
+    <div class="issue">
+      <strong>Hoy:</strong> <code>MovimientosTransactionRow</code> expanded state muestra <code>TagZonePicker compact</code> como un boton <code>#</code> de 10px. No hay chips, no hay colores, no hay nombres de tag visibles. El usuario no sabe que tags tiene cada transaccion sin abrir cada fila.
+    </div>
+
+    <!-- ── 3A: Tags in collapsed row ── -->
+    <h3 style="font-size:15px; font-weight:600; color:#fff; margin-bottom:12px;">
+      3A — Tags visibles en collapsed row
+    </h3>
+
+    <div class="phones-row">
+      <div class="phone">
+        <div class="phone-label after-l">Propuesta — tags con color inline</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content" style="padding-top:12px;">
+          <div class="m-date-group">Lunes, 7 Abr</div>
+
+          <!-- Row with tags -->
+          <div style="padding:8px 2px; border-bottom:1px solid var(--z-border);">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="m-tx-icon outflow">↗</div>
+              <div style="flex:1; min-width:0;">
+                <div class="m-tx-name">Exito Centro Mayor</div>
+                <div class="m-tx-meta">
+                  <span class="acc-dot" style="background:#4ade80;"></span>
+                  Bancolombia
+                  <span class="sep">&middot;</span>
+                  🛒 Mercado
+                </div>
+              </div>
+              <div class="m-tx-amount">-$342.800</div>
+            </div>
+            <!-- Tags row -->
+            <div style="display:flex; gap:4px; margin-top:4px; padding-left:30px;">
+              <span class="m-tag" style="border:1px solid rgba(99,182,237,0.4); background:rgba(99,182,237,0.08); color:rgb(99,182,237);">mensual</span>
+              <span class="m-tag" style="border:1px solid rgba(168,130,255,0.4); background:rgba(168,130,255,0.08); color:rgb(168,130,255);">hogar</span>
+            </div>
+          </div>
+
+          <!-- Row with single tag -->
+          <div style="padding:8px 2px; border-bottom:1px solid var(--z-border);">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="m-tx-icon outflow">↗</div>
+              <div style="flex:1; min-width:0;">
+                <div class="m-tx-name">Rappi</div>
+                <div class="m-tx-meta">
+                  <span class="acc-dot" style="background:#a78bfa;"></span>
+                  Nu
+                  <span class="sep">&middot;</span>
+                  🍔 Restaurantes
+                </div>
+              </div>
+              <div class="m-tx-amount">-$28.900</div>
+            </div>
+            <div style="display:flex; gap:4px; margin-top:4px; padding-left:30px;">
+              <span class="m-tag" style="border:1px solid rgba(251,191,36,0.4); background:rgba(251,191,36,0.08); color:rgb(251,191,36);">impulso</span>
+            </div>
+          </div>
+
+          <!-- Row without tags (clean) -->
+          <div style="padding:8px 2px; border-bottom:1px solid var(--z-border);">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="m-tx-icon inflow">↙</div>
+              <div style="flex:1; min-width:0;">
+                <div class="m-tx-name">Nomina Empresa SAS</div>
+                <div class="m-tx-meta">
+                  <span class="acc-dot" style="background:#4ade80;"></span>
+                  Bancolombia
+                  <span class="sep">&middot;</span>
+                  💰 Salario
+                </div>
+              </div>
+              <div class="m-tx-amount inflow">+$4.200.000</div>
+            </div>
+          </div>
+
+          <!-- Row with many tags -->
+          <div class="m-date-group">Viernes, 4 Abr</div>
+          <div style="padding:8px 2px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="m-tx-icon outflow">↗</div>
+              <div style="flex:1; min-width:0;">
+                <div class="m-tx-name">Falabella Cuota 3/12</div>
+                <div class="m-tx-meta">
+                  <span class="acc-dot" style="background:#f87171;"></span>
+                  Falabella TC
+                  <span class="sep">&middot;</span>
+                  🛍 Compras
+                </div>
+              </div>
+              <div class="m-tx-amount">-$89.900</div>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; padding-left:30px;">
+              <span class="m-tag" style="border:1px solid rgba(99,182,237,0.4); background:rgba(99,182,237,0.08); color:rgb(99,182,237);">mensual</span>
+              <span class="m-tag" style="border:1px solid rgba(251,191,36,0.4); background:rgba(251,191,36,0.08); color:rgb(251,191,36);">planificado</span>
+              <span class="m-tag" style="border:1px solid rgba(168,130,255,0.4); background:rgba(168,130,255,0.08); color:rgb(168,130,255);">hogar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Implementacion:</strong><br>
+      1. <code>MovimientosTransactionRow</code> recibe <code>tags: TagWithGroup[]</code> como prop (join en la query de transacciones)<br>
+      2. En collapsed state, si <code>tags.length > 0</code>, renderiza una fila de <code>TagChip size="sm"</code> debajo del meta line, con <code>padding-left</code> alineado al texto (30px, ancho del icon).<br>
+      3. <code>TagChip</code> ya maneja el color cascade: <code>tag.color ?? groupColor</code>. Solo se necesita pasar <code>groupColor</code> desde el join.<br>
+      4. Sin tags: no se renderiza nada extra — la fila queda limpia como la de "Nomina" arriba.
+    </div>
+
+    <!-- ── 3B: Consistency proof ── -->
+    <h3 style="font-size:15px; font-weight:600; color:#fff; margin: 28px 0 12px;">
+      3B — Consistencia: Settings ↔ Inline
+    </h3>
+
+    <div style="max-width:500px; margin:0 auto;">
+      <div style="border-radius:16px; border:1px solid var(--z-border); background:var(--z-surface-1); overflow:hidden;">
+        <div style="padding:10px 14px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.18em; color:var(--z-brass); border-bottom:1px solid var(--z-border); background:rgba(200,181,96,0.04);">
+          Mismo TagChip — dos tamanos
+        </div>
+        <div style="padding:16px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div>
+              <div style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.18em; color:var(--z-sage-dark); margin-bottom:8px;">Settings (size="md")</div>
+              <div style="display:flex; flex-wrap:wrap; gap:5px;">
+                <span class="m-tag" style="border:1px solid rgba(99,182,237,0.4); background:rgba(99,182,237,0.08); color:rgb(99,182,237); font-size:11px; padding:2px 10px;">mensual</span>
+                <span class="m-tag" style="border:1px solid rgba(251,191,36,0.4); background:rgba(251,191,36,0.08); color:rgb(251,191,36); font-size:11px; padding:2px 10px;">impulso</span>
+                <span class="m-tag" style="border:1px solid rgba(168,130,255,0.4); background:rgba(168,130,255,0.08); color:rgb(168,130,255); font-size:11px; padding:2px 10px;">hogar</span>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.18em; color:var(--z-sage-dark); margin-bottom:8px;">Inline (size="sm")</div>
+              <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                <span class="m-tag" style="border:1px solid rgba(99,182,237,0.4); background:rgba(99,182,237,0.08); color:rgb(99,182,237);">mensual</span>
+                <span class="m-tag" style="border:1px solid rgba(251,191,36,0.4); background:rgba(251,191,36,0.08); color:rgb(251,191,36);">impulso</span>
+                <span class="m-tag" style="border:1px solid rgba(168,130,255,0.4); background:rgba(168,130,255,0.08); color:rgb(168,130,255);">hogar</span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px; font-size:10px; color:var(--z-sage-dark);">
+            Mismo componente <code style="color:var(--z-brass);">TagChip</code>. Mismo color cascade. Solo cambia el <code style="color:var(--z-brass);">size</code> prop.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SUMMARY                                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="divider">
+      <span class="line"></span>
+      <span class="label">Resumen de cambios</span>
+      <span class="line"></span>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="icon">📄</div>
+        <h4>Import como CTA #1</h4>
+        <p>Starter mode mobile. Import strip en hero stale. Chip "Importar" con acceso a PDF.</p>
+      </div>
+      <div class="summary-card">
+        <div class="icon">📋</div>
+        <h4>Rows estandarizados</h4>
+        <p>InicioActivity adopta patron canonico. Direction icon + category en collapsed.</p>
+      </div>
+      <div class="summary-card">
+        <div class="icon">🏷️</div>
+        <h4>Tags con color</h4>
+        <p>TagChip size="sm" en collapsed rows. Color visible sin expandir.</p>
+      </div>
+    </div>
+
+    <div class="annotation" style="margin-top:20px;">
+      <strong>Archivos a modificar:</strong><br>
+      &bull; <code>mobile-zone.tsx</code> — Pasar <code>starterMode</code> + <code>daysSinceImport</code> a InicioRoot<br>
+      &bull; <code>inicio-root.tsx</code> — Recibir <code>starterMode</code>, renderizar CTA en vez de hero/metricas<br>
+      &bull; <code>inicio-activity.tsx</code> — Reescribir para usar direction icon + account + category<br>
+      &bull; <code>movimientos-transaction-row.tsx</code> — Agregar direction icon + category en collapsed, tags debajo<br>
+      &bull; <code>movimientos-herramientas.tsx</code> — Extender ImportarDetail con "Subir PDF"<br>
+      &bull; Queries de transacciones — Join <code>transaction_tags → tags → tag_groups</code> para tag colors
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
