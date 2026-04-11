@@ -464,6 +464,22 @@ export async function retryEmailIngestLog(
 
   if (!persistResult.success) return persistResult;
 
+  // Update the log status so it no longer shows as failed on reload
+  const statusMap: Record<string, string> = {
+    imported: "imported",
+    queued: "queued",
+    duplicate: "duplicate",
+  };
+  const newStatus = statusMap[persistResult.data] ?? "imported";
+  const { error: updateError } = await supabase
+    .from("email_ingest_logs")
+    .update({ status: newStatus, error_message: null })
+    .eq("id", logId)
+    .eq("user_id", user.id);
+  if (updateError) {
+    console.error("[retryEmailIngestLog] log status update failed:", updateError);
+  }
+
   revalidateTag("email-ingest", "zeta");
   return { success: true, data: persistResult.data };
 }
