@@ -484,6 +484,24 @@ export async function retryEmailIngestLog(
   return { success: true, data: persistResult.data };
 }
 
+export async function dismissEmailIngestLog(
+  logId: string
+): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("email_ingest_logs")
+    .update({ status: "dismissed" })
+    .eq("id", logId)
+    .eq("user_id", user.id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("email-ingest", "zeta");
+  return { success: true, data: null };
+}
+
 // ─── Mutation actions ─────────────────────────────────────────────────────────
 
 export async function generateIngestAddress(): Promise<ActionResult<EmailIngestAddress>> {

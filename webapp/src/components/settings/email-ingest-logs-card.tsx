@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, RefreshCw, ScrollText } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, RefreshCw, ScrollText, X } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
-import { retryEmailIngestLog } from "@/actions/email-ingest";
+import { retryEmailIngestLog, dismissEmailIngestLog } from "@/actions/email-ingest";
 import type { EmailIngestLog } from "@/types/domain";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -21,6 +21,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   pdf_queued: { label: "PDF en cola", className: "bg-z-brass/20 text-z-brass" },
   pdf_parse_failed: { label: "PDF error", className: "bg-red-500/20 text-red-500" },
   pdf_imported: { label: "PDF importado", className: "bg-emerald-500/20 text-emerald-500" },
+  dismissed: { label: "Descartado", className: "bg-white/6 text-muted-foreground" },
 };
 
 const RETRYABLE_STATUSES = new Set(["sender_rejected", "parse_failed", "rate_limited"]);
@@ -33,6 +34,7 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
   const [logs, setLogs] = useState(initialLogs);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
 
   if (logs.length === 0) return null;
 
@@ -66,6 +68,20 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
       }
     } finally {
       setRetryingId(null);
+    }
+  }
+
+  async function handleDismiss(id: string) {
+    setDismissingId(id);
+    try {
+      const result = await dismissEmailIngestLog(id);
+      if (result.success) {
+        setLogs((prev) => prev.filter((l) => l.id !== id));
+      } else {
+        toast.error(result.error || "No se pudo descartar");
+      }
+    } finally {
+      setDismissingId(null);
     }
   }
 
@@ -129,20 +145,36 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
                     </div>
                   </button>
                   {isRetryable && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-8 shrink-0 text-muted-foreground hover:text-z-brass"
-                      onClick={() => handleRetry(log.id)}
-                      disabled={retryingId === log.id}
-                      aria-label="Reintentar"
-                    >
-                      {retryingId === log.id ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="size-4" />
-                      )}
-                    </Button>
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-8 text-muted-foreground hover:text-z-brass"
+                        onClick={() => handleRetry(log.id)}
+                        disabled={retryingId === log.id || dismissingId === log.id}
+                        aria-label="Reintentar"
+                      >
+                        {retryingId === log.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="size-4" />
+                        )}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDismiss(log.id)}
+                        disabled={retryingId === log.id || dismissingId === log.id}
+                        aria-label="Descartar"
+                      >
+                        {dismissingId === log.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <X className="size-4" />
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </div>
 
