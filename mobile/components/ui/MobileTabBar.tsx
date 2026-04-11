@@ -1,6 +1,6 @@
 import { View, Pressable, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useKeyboardController } from "react-native-keyboard-controller";
+import { useKeyboardState } from "react-native-keyboard-controller";
 import { Plus } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "../../lib/constants/colors";
@@ -30,7 +30,7 @@ interface TabBarProps {
 export function MobileTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { enabled: keyboardVisible } = useKeyboardController();
+  const keyboardVisible = useKeyboardState((s) => s.isVisible);
 
   // Hide tab bar when keyboard is open
   if (keyboardVisible) return null;
