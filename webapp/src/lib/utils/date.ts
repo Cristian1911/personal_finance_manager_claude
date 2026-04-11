@@ -23,6 +23,26 @@ export function toISODateString(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
+/**
+ * Format a Date as "YYYY-MM-DD" in Colombia timezone (America/Bogota, UTC-5).
+ * Transaction dates from Colombian banks are always in local time, so server-side
+ * "today" comparisons must use Colombian time — not the server's system timezone
+ * (UTC in Docker containers).
+ */
+export function toColombiaDateString(date: Date): string {
+  return date.toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+}
+
+/**
+ * Get the day-of-month in Colombia timezone.
+ * Used for daysRemaining calculations that must match Colombian calendar day.
+ */
+export function getColombiaDayOfMonth(date: Date): number {
+  return Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Bogota", day: "numeric" }).format(date)
+  );
+}
+
 /** Parse a "YYYY-MM" string into a Date (1st of that month). Falls back to current month. */
 export function parseMonth(month?: string | null): Date {
   if (!month) return startOfMonth(new Date());

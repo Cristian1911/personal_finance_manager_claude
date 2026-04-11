@@ -3,20 +3,21 @@
 import "server-only";
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { toISODateString } from "@/lib/utils/date";
+import { createCachedClient } from "@/lib/supabase/cached";
+import { toColombiaDateString } from "@/lib/utils/date";
 import type { AttentionSignal, AttentionSnapshot, AttentionPage } from "@/types/attention";
 
 // ─── Cached inner function ────────────────────────────────────────────────────
 
 async function getAttentionSnapshotCached(
+  accessToken: string,
   userId: string
 ): Promise<AttentionSnapshot> {
   "use cache";
   cacheTag("attention");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   // Run queries in parallel
   const [uncategorizedRes, destinatarioRes, overdueRemindersRes] = await Promise.all([
@@ -46,7 +47,7 @@ async function getAttentionSnapshotCached(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("is_completed", false)
-      .lt("due_date", toISODateString(new Date())),
+      .lt("due_date", toColombiaDateString(new Date())),
   ]);
 
   const signals: AttentionSignal[] = [];
@@ -128,12 +129,12 @@ async function getAttentionSnapshotCached(
 // ─── Public wrapper ───────────────────────────────────────────────────────────
 
 export async function getAttentionSnapshot(): Promise<AttentionSnapshot> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) {
     return { signals: [], totalAction: 0, totalSuggestion: 0, perPage: {} };
   }
   try {
-    return await getAttentionSnapshotCached(user.id);
+    return await getAttentionSnapshotCached(accessToken, user.id);
   } catch (err) {
     console.error("Error computing attention snapshot:", err);
     return { signals: [], totalAction: 0, totalSuggestion: 0, perPage: {} };

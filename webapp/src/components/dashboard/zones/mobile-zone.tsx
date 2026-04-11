@@ -7,7 +7,7 @@ import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import type { RecentTransaction } from "@/actions/transactions";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { toISODateString } from "@/lib/utils/date";
+import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import { subDays, differenceInDays } from "date-fns";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -62,8 +62,11 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     })),
   }));
 
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysRemaining = Math.max(daysInMonth - now.getDate(), 1);
+  const colombiaDay = getColombiaDayOfMonth(now);
+  const todayStr = toColombiaDateString(now);
+  const [yearStr, monthStr] = todayStr.split("-");
+  const daysInMonth = new Date(Number(yearStr), Number(monthStr), 0).getDate();
+  const daysRemaining = Math.max(daysInMonth - colombiaDay, 1);
 
   // Primary account lookup
   const primaryAccount = (() => {
@@ -85,14 +88,13 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     };
   })();
 
-  // Today's and yesterday's spending from cached daily data
-  const todayStr = toISODateString(now);
+  // Today's and yesterday's spending from cached daily data (Colombia timezone)
   const spentToday = dailySpending.find((d) => d.date === todayStr)?.amount ?? 0;
-  const yesterdayStr = toISODateString(subDays(now, 1));
+  const yesterdayStr = toColombiaDateString(subDays(now, 1));
   const spentYesterday = dailySpending.find((d) => d.date === yesterdayStr)?.amount ?? 0;
 
   // Last 7 days average (excluding today) — divide by actual days with data
-  const sevenDaysAgo = toISODateString(subDays(now, 7));
+  const sevenDaysAgo = toColombiaDateString(subDays(now, 7));
   const last7Days = dailySpending.filter((d) => d.date < todayStr && d.date >= sevenDaysAgo);
   const avgLast7 = last7Days.length > 0
     ? last7Days.reduce((sum, d) => sum + d.amount, 0) / last7Days.length

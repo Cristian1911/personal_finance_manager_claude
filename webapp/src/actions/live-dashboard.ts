@@ -2,7 +2,7 @@
 
 import { getDashboardHeroData, getDailySpending } from "@/actions/charts";
 import { getAttentionItems } from "@/actions/attention-items";
-import { toISODateString } from "@/lib/utils/date";
+import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import { subDays } from "date-fns";
 import type { CurrencyCode } from "@/types/domain";
 import type {
@@ -49,12 +49,15 @@ export async function getLiveDashboardData(
   ]);
 
   const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysRemaining = Math.max(daysInMonth - now.getDate(), 1);
+  const colombiaDay = getColombiaDayOfMonth(now);
+  const todayStr = toColombiaDateString(now);
+  // Derive daysInMonth from the Colombia date to avoid UTC mismatch at month boundaries
+  const [yearStr, monthStr] = todayStr.split("-");
+  const daysInMonth = new Date(Number(yearStr), Number(monthStr), 0).getDate();
+  const daysRemaining = Math.max(daysInMonth - colombiaDay, 1);
 
-  const todayStr = toISODateString(now);
-  const yesterdayStr = toISODateString(subDays(now, 1));
-  const sevenDaysAgo = toISODateString(subDays(now, 7));
+  const yesterdayStr = toColombiaDateString(subDays(now, 1));
+  const sevenDaysAgo = toColombiaDateString(subDays(now, 7));
 
   const spentToday = dailySpending.find((d) => d.date === todayStr)?.amount ?? 0;
   const spentYesterday = dailySpending.find((d) => d.date === yesterdayStr)?.amount ?? 0;

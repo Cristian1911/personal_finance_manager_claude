@@ -3,7 +3,7 @@
 import { getDashboardHeroData, getDailySpending } from "@/actions/charts";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getReminders } from "@/actions/reminders";
-import { toISODateString } from "@/lib/utils/date";
+import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import type { PendingObligation } from "@/actions/charts";
 import type { CurrencyCode, FinancialReminder } from "@/types/domain";
 
@@ -37,12 +37,13 @@ export async function getQuickViewData(): Promise<QuickViewData> {
   ]);
 
   const now = new Date();
-  const todayStr = toISODateString(now);
+  const todayStr = toColombiaDateString(now);
   const todayEntry = dailySpending.find((d) => d.date === todayStr);
   const spentToday = todayEntry?.amount ?? 0;
 
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysLeft = daysInMonth - now.getDate() + 1; // include today
+  const [yearStr, monthStr] = todayStr.split("-");
+  const daysInMonth = new Date(Number(yearStr), Number(monthStr), 0).getDate();
+  const daysLeft = daysInMonth - getColombiaDayOfMonth(now) + 1; // include today
   const remainingBudget = Math.max(0, budgetSummary.totalTarget - budgetSummary.totalSpent);
   const dailyAllowance = daysLeft > 0 ? remainingBudget / daysLeft : 0;
 
