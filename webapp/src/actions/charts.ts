@@ -805,16 +805,18 @@ export async function getDailyBudgetPace(
   month?: string,
   currency?: CurrencyCode
 ): Promise<{ data: DailyBudgetPace[]; totalBudget: number; totalSpent: number }> {
-  const target = parseMonth(month);
   const dailyData = await getDailySpending(month, currency);
   const { getBudgetSummary } = await import("@/actions/budgets");
   const budgetSummary = await getBudgetSummary(month);
 
   const totalBudget = budgetSummary.totalTarget;
-  const daysInMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-  const dailyIdeal = totalBudget / daysInMonth;
-
   const todayStr = toColombiaDateString(new Date());
+  // Derive daysInMonth from the month parameter or Colombia "today" to avoid
+  // UTC mismatch at month boundaries (midnight-5AM UTC on the 1st).
+  const refDate = month ?? todayStr.substring(0, 7);
+  const [y, m] = refDate.split("-");
+  const daysInMonth = new Date(Number(y), Number(m), 0).getDate();
+  const dailyIdeal = totalBudget / daysInMonth;
   let cumulativeActual = 0;
 
   const data: DailyBudgetPace[] = dailyData.map((d) => {
