@@ -75,6 +75,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 2. Fix UPDATE trigger
+--    When has_auth is false, encrypted columns preserve existing ciphertext
+--    from transactions_enc. The admin client can't decrypt values through
+--    the view (zeta_decrypt returns NULL), so re-encrypting those NULLs
+--    would destroy data. Instead, read the raw ciphertext from _enc.
 CREATE OR REPLACE FUNCTION transactions_view_update() RETURNS TRIGGER AS $$
 DECLARE
   has_auth BOOLEAN;
@@ -85,13 +89,13 @@ BEGIN
     account_id = NEW.account_id,
     amount = NEW.amount,
     amount_in_base_currency = NEW.amount_in_base_currency,
-    capture_input_text = CASE WHEN has_auth THEN zeta_encrypt(NEW.capture_input_text) ELSE zeta_encrypt_as(NEW.capture_input_text, NEW.user_id) END,
+    capture_input_text = CASE WHEN has_auth THEN zeta_encrypt(NEW.capture_input_text) ELSE (SELECT te.capture_input_text FROM transactions_enc te WHERE te.id = OLD.id) END,
     capture_method = NEW.capture_method,
     categorization_confidence = NEW.categorization_confidence,
     categorization_source = NEW.categorization_source,
     category_id = NEW.category_id,
-    clean_description = CASE WHEN has_auth THEN zeta_encrypt(NEW.clean_description) ELSE zeta_encrypt_as(NEW.clean_description, NEW.user_id) END,
-    clean_description_hmac = CASE WHEN has_auth THEN zeta_hmac(NEW.clean_description) ELSE zeta_hmac_as(NEW.clean_description, NEW.user_id) END,
+    clean_description = CASE WHEN has_auth THEN zeta_encrypt(NEW.clean_description) ELSE (SELECT te.clean_description FROM transactions_enc te WHERE te.id = OLD.id) END,
+    clean_description_hmac = CASE WHEN has_auth THEN zeta_hmac(NEW.clean_description) ELSE (SELECT te.clean_description_hmac FROM transactions_enc te WHERE te.id = OLD.id) END,
     created_at = NEW.created_at,
     currency_code = NEW.currency_code,
     destinatario_id = NEW.destinatario_id,
@@ -106,14 +110,14 @@ BEGIN
     is_subscription = NEW.is_subscription,
     merchant_category_code = NEW.merchant_category_code,
     merchant_logo_url = NEW.merchant_logo_url,
-    merchant_name = CASE WHEN has_auth THEN zeta_encrypt(NEW.merchant_name) ELSE zeta_encrypt_as(NEW.merchant_name, NEW.user_id) END,
-    merchant_name_hmac = CASE WHEN has_auth THEN zeta_hmac(NEW.merchant_name) ELSE zeta_hmac_as(NEW.merchant_name, NEW.user_id) END,
-    notes = CASE WHEN has_auth THEN zeta_encrypt(NEW.notes) ELSE zeta_encrypt_as(NEW.notes, NEW.user_id) END,
+    merchant_name = CASE WHEN has_auth THEN zeta_encrypt(NEW.merchant_name) ELSE (SELECT te.merchant_name FROM transactions_enc te WHERE te.id = OLD.id) END,
+    merchant_name_hmac = CASE WHEN has_auth THEN zeta_hmac(NEW.merchant_name) ELSE (SELECT te.merchant_name_hmac FROM transactions_enc te WHERE te.id = OLD.id) END,
+    notes = CASE WHEN has_auth THEN zeta_encrypt(NEW.notes) ELSE (SELECT te.notes FROM transactions_enc te WHERE te.id = OLD.id) END,
     original_amount = NEW.original_amount,
     posting_date = NEW.posting_date,
     provider = NEW.provider,
     provider_transaction_id = NEW.provider_transaction_id,
-    raw_description = CASE WHEN has_auth THEN zeta_encrypt(NEW.raw_description) ELSE zeta_encrypt_as(NEW.raw_description, NEW.user_id) END,
+    raw_description = CASE WHEN has_auth THEN zeta_encrypt(NEW.raw_description) ELSE (SELECT te.raw_description FROM transactions_enc te WHERE te.id = OLD.id) END,
     reconciled_into_transaction_id = NEW.reconciled_into_transaction_id,
     reconciliation_score = NEW.reconciliation_score,
     recurrence_group_id = NEW.recurrence_group_id,
