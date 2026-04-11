@@ -2,7 +2,7 @@
 
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { getAccounts } from "@/actions/accounts";
 import { getPendingOccurrences } from "@/actions/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
@@ -48,6 +48,7 @@ export interface DailySpending {
 // ─── Cached inner functions ───────────────────────────────────────────────────
 
 async function getCategorySpendingCached(
+  accessToken: string,
   userId: string,
   month: string | undefined,
   currency: CurrencyCode | undefined,
@@ -57,7 +58,7 @@ async function getCategorySpendingCached(
   cacheTag("dashboard:charts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const target = parseMonth(month);
 
   const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
@@ -137,6 +138,7 @@ async function getCategorySpendingCached(
 }
 
 async function getMonthlyCashflowCached(
+  accessToken: string,
   userId: string,
   month: string | undefined,
   currency: CurrencyCode | undefined,
@@ -146,7 +148,7 @@ async function getMonthlyCashflowCached(
   cacheTag("dashboard:cashflow");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const target = parseMonth(month);
 
   const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
@@ -200,6 +202,7 @@ async function getMonthlyCashflowCached(
 }
 
 async function getDailySpendingCached(
+  accessToken: string,
   userId: string,
   month: string | undefined,
   currency: CurrencyCode | undefined,
@@ -209,7 +212,7 @@ async function getDailySpendingCached(
   cacheTag("dashboard:charts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const target = parseMonth(month);
 
   const accountIds = await getDemoAccountIds(supabase, userId, isDemo);
@@ -252,6 +255,7 @@ export interface MonthMetrics {
 }
 
 async function getMonthMetricsCached(
+  accessToken: string,
   userId: string,
   month: string | undefined,
   currency: CurrencyCode | undefined,
@@ -261,7 +265,7 @@ async function getMonthMetricsCached(
   cacheTag("dashboard:charts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const target = parseMonth(month);
 
   // Get account IDs matching demo filter + optional currency
@@ -311,6 +315,7 @@ export interface DailyCashflow {
 }
 
 async function getDailyCashflowCached(
+  accessToken: string,
   userId: string,
   month: string | undefined,
   isDemo: boolean
@@ -319,7 +324,7 @@ async function getDailyCashflowCached(
   cacheTag("dashboard:cashflow");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const target = parseMonth(month);
   const startStr = monthStartStr(target);
   const endStr = monthEndStr(target);
@@ -408,6 +413,7 @@ export interface GroupedAccounts {
 }
 
 async function getAccountsWithSparklineDataCached(
+  accessToken: string,
   userId: string,
   isDemo: boolean
 ): Promise<GroupedAccounts> {
@@ -416,7 +422,7 @@ async function getAccountsWithSparklineDataCached(
   cacheTag("dashboard:accounts");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   // 1. Fetch active accounts marked for dashboard (only columns we use)
   const { data: accounts, error: accountsError } = await supabase
@@ -520,30 +526,30 @@ async function getAccountsWithSparklineDataCached(
  * Returns top categories sorted by total amount descending.
  */
 export async function getCategorySpending(month?: string, currency?: CurrencyCode): Promise<CategorySpending[]> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
   const isDemo = await getIsDemoFilter(user.id);
-  return getCategorySpendingCached(user.id, month, currency, isDemo);
+  return getCategorySpendingCached(accessToken, user.id, month, currency, isDemo);
 }
 
 /**
  * Monthly income vs expenses for the 6 months ending at the given month.
  */
 export async function getMonthlyCashflow(month?: string, currency?: CurrencyCode): Promise<MonthlyCashflow[]> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
   const isDemo = await getIsDemoFilter(user.id);
-  return getMonthlyCashflowCached(user.id, month, currency, isDemo);
+  return getMonthlyCashflowCached(accessToken, user.id, month, currency, isDemo);
 }
 
 /**
  * Daily spending (OUTFLOW) for the given month (defaults to current).
  */
 export async function getDailySpending(month?: string, currency?: CurrencyCode): Promise<DailySpending[]> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
   const isDemo = await getIsDemoFilter(user.id);
-  return getDailySpendingCached(user.id, month, currency, isDemo);
+  return getDailySpendingCached(accessToken, user.id, month, currency, isDemo);
 }
 
 /**
@@ -551,10 +557,10 @@ export async function getDailySpending(month?: string, currency?: CurrencyCode):
  * Used for computing trend percentages vs previous period.
  */
 export async function getMonthMetrics(month?: string, currency?: CurrencyCode): Promise<MonthMetrics> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { income: 0, expenses: 0 };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { income: 0, expenses: 0 };
   const isDemo = await getIsDemoFilter(user.id);
-  return getMonthMetricsCached(user.id, month, currency, isDemo);
+  return getMonthMetricsCached(accessToken, user.id, month, currency, isDemo);
 }
 
 /**
@@ -562,17 +568,17 @@ export async function getMonthMetrics(month?: string, currency?: CurrencyCode): 
  * Returns data for each day with both income and expenses.
  */
 export async function getDailyCashflow(month?: string): Promise<DailyCashflow[]> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return [];
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
   const isDemo = await getIsDemoFilter(user.id);
-  return getDailyCashflowCached(user.id, month, isDemo);
+  return getDailyCashflowCached(accessToken, user.id, month, isDemo);
 }
 
 export async function getAccountsWithSparklineData(): Promise<GroupedAccounts> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { deposits: [], debt: [] };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { deposits: [], debt: [] };
   const isDemo = await getIsDemoFilter(user.id);
-  return getAccountsWithSparklineDataCached(user.id, isDemo);
+  return getAccountsWithSparklineDataCached(accessToken, user.id, isDemo);
 }
 
 // --- Net Worth History ---
@@ -807,7 +813,7 @@ export async function getDailyBudgetPace(
   const daysInMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
   const dailyIdeal = totalBudget / daysInMonth;
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
   let cumulativeActual = 0;
 
   const data: DailyBudgetPace[] = dailyData.map((d) => {

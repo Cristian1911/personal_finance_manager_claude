@@ -3,7 +3,7 @@
 import { getDashboardHeroData, getDailySpending } from "@/actions/charts";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getReminders } from "@/actions/reminders";
-import { toISODateString } from "@/lib/utils/date";
+import { toColombiaDateString } from "@/lib/utils/date";
 import type { PendingObligation } from "@/actions/charts";
 import type { CurrencyCode, FinancialReminder } from "@/types/domain";
 
@@ -37,7 +37,7 @@ export async function getQuickViewData(): Promise<QuickViewData> {
   ]);
 
   const now = new Date();
-  const todayStr = toISODateString(now);
+  const todayStr = toColombiaDateString(now);
   const todayEntry = dailySpending.find((d) => d.date === todayStr);
   const spentToday = todayEntry?.amount ?? 0;
 
