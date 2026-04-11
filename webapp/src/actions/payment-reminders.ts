@@ -3,7 +3,7 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
-import { toISODateString } from "@/lib/utils/date";
+import { toColombiaDateString } from "@/lib/utils/date";
 
 export interface UpcomingPayment {
     id: string; // snapshot id
@@ -26,7 +26,7 @@ async function getUpcomingPaymentsCached(
   cacheTag("snapshots");
   cacheLife("zeta");
 
-  const today = toISODateString(new Date());
+  const today = toColombiaDateString(new Date());
   const supabase = createCachedClient(accessToken);
 
   // We want to fetch the LATEST snapshot for each account

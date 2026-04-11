@@ -3,8 +3,8 @@
 import { subMonths } from "date-fns";
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { toISODateString } from "@/lib/utils/date";
+import { createCachedClient } from "@/lib/supabase/cached";
+import { toColombiaDateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 
 export interface BurnRateDataPoint {
@@ -33,6 +33,7 @@ export interface BurnRateResponse {
 // ─── Cached inner function ────────────────────────────────────────────────────
 
 async function getBurnRateCached(
+  accessToken: string,
   userId: string,
   currency: string
 ): Promise<BurnRateResponse | null> {
@@ -42,7 +43,7 @@ async function getBurnRateCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const baseCurrency = currency as CurrencyCode;
 
   // 0. Compute pending obligations from active recurring templates (OUTFLOW only)
@@ -76,7 +77,7 @@ async function getBurnRateCached(
   );
 
   // 2. Fetch outflow transactions (last 3 months — enough for stable average + chart)
-  const threeMonthsAgo = toISODateString(subMonths(new Date(), 3));
+  const threeMonthsAgo = toColombiaDateString(subMonths(new Date(), 3));
   const { data: transactions, error: txError } = await supabase
     .from("transactions")
     .select("id, amount, transaction_date, direction, is_recurring")
@@ -115,10 +116,10 @@ async function getBurnRateCached(
 export async function getBurnRate(
   currency?: string
 ): Promise<BurnRateResponse | null> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return null;
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return null;
 
-  return getBurnRateCached(user.id, currency ?? "COP");
+  return getBurnRateCached(accessToken, user.id, currency ?? "COP");
 }
 
 function computeBurnRate(
@@ -139,7 +140,7 @@ function computeBurnRate(
     };
   }
 
-  const todayStr = toISODateString(today);
+  const todayStr = toColombiaDateString(today);
 
   // Date range
   const firstDate = new Date(transactions[0].transaction_date);
@@ -168,7 +169,7 @@ function computeBurnRate(
   // Trend: last 14 days vs overall
   const twoWeeksAgo = new Date(today);
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-  const twoWeeksAgoStr = toISODateString(twoWeeksAgo);
+  const twoWeeksAgoStr = toColombiaDateString(twoWeeksAgo);
 
   let recentTotal = 0;
   let recentDays = 0;
@@ -192,7 +193,7 @@ function computeBurnRate(
 
   // Chart data points: reconstruct daily balance for current month
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const monthStartStr = toISODateString(monthStart);
+  const monthStartStr = toColombiaDateString(monthStart);
 
   const currentMonthTxns = transactions.filter(
     (t) => t.transaction_date >= monthStartStr && t.transaction_date <= todayStr
@@ -212,7 +213,7 @@ function computeBurnRate(
     d <= today;
     d.setDate(d.getDate() + 1)
   ) {
-    dates.push(toISODateString(d));
+    dates.push(toColombiaDateString(d));
   }
 
   // Reconstruct daily balances by walking backwards from today's known balance
@@ -231,7 +232,7 @@ function computeBurnRate(
   // Add projected point at zero
   if (runwayDays < 999 && runwayDays > 0) {
     dataPoints.push({
-      date: toISODateString(runwayDate),
+      date: toColombiaDateString(runwayDate),
       balance: 0,
     });
   }
@@ -240,7 +241,7 @@ function computeBurnRate(
     mode,
     dailyAverage,
     runwayDays,
-    runwayDate: toISODateString(runwayDate),
+    runwayDate: toColombiaDateString(runwayDate),
     trend,
     dataPoints,
     monthsOfData,
