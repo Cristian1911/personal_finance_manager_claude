@@ -3,6 +3,7 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
+import { toColombiaDateString } from "@/lib/utils/date";
 import { getAccounts } from "@/actions/accounts";
 import { getPendingOccurrences } from "@/actions/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
@@ -813,7 +814,7 @@ export async function getDailyBudgetPace(
   const daysInMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
   const dailyIdeal = totalBudget / daysInMonth;
 
-  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+  const todayStr = toColombiaDateString(new Date());
   let cumulativeActual = 0;
 
   const data: DailyBudgetPace[] = dailyData.map((d) => {
