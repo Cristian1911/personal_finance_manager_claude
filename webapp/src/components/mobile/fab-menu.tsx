@@ -48,7 +48,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent>
           <DrawerTitle className="sr-only">Acciones</DrawerTitle>
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-[calc(5rem+env(safe-area-inset-bottom))]">
             {/* Voice capture — prominent */}
             <button
               type="button"
