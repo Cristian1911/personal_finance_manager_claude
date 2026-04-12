@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { MOBILE_TABS, isMobileTabActive } from "@/lib/constants/mobile-nav";
 import { MOBILE_BG_CLASS } from "@/lib/constants/styles";
 import { useMobileActionMenu } from "@/components/mobile/mobile-sheet-provider";
@@ -38,6 +39,10 @@ function TabLinks({ tabs, pathname }: { tabs: typeof MOBILE_TABS; pathname: stri
 export function MobileTabBar() {
   const pathname = usePathname();
   const { openActionMenu } = useMobileActionMenu();
+  const keyboardInset = useKeyboardInset();
+
+  // Hide tab bar when virtual keyboard is open to avoid overlapping input
+  if (keyboardInset > 0) return null;
 
   return (
     <nav
