@@ -364,13 +364,27 @@ async function processEmail(ctx: {
     return NextResponse.json({ ok: true });
   }
 
-  // 6. Validate sender — accept bank notifications, user's forwarding email, or the ingest address itself
+  // 6. Validate sender — accept bank notifications, user's forwarding email, user-configured senders, or the ingest address itself
   const isBankSender = ALLOWED_SENDERS.some((s) => fromEmail.includes(s));
   const isAllowedSender = allowedSender && fromEmail.includes(allowedSender.toLowerCase());
   // Allow the ingest address itself as sender (Resend internal routing edge case).
   // Match full local-part + "@" to prevent substring spoofing.
   const isSelfSender = fromEmail.startsWith(`${addressKey.toLowerCase()}@`);
+
+  // Check user-configured allowed senders
+  let isUserConfiguredSender = false;
   if (!isBankSender && !isAllowedSender && !isSelfSender) {
+    const { data: userSenders } = await admin
+      .from("email_ingest_allowed_senders")
+      .select("sender_email")
+      .eq("user_id", userId);
+
+    isUserConfiguredSender = (userSenders ?? []).some(
+      (s) => fromEmail.includes(s.sender_email.toLowerCase())
+    );
+  }
+
+  if (!isBankSender && !isAllowedSender && !isSelfSender && !isUserConfiguredSender) {
     console.log(`[email-ingest][${emailId}] Sender rejected: "${from}" (allowed_sender=${allowedSender ?? "none"})`);
     await insertLog({
       userId,
@@ -383,7 +397,7 @@ async function processEmail(ctx: {
     return NextResponse.json({ ok: true });
   }
 
-  console.log(`[email-ingest][${emailId}] Sender OK (bank=${isBankSender}, allowed=${!!isAllowedSender}, self=${isSelfSender}), user=${userId}`);
+  console.log(`[email-ingest][${emailId}] Sender OK (bank=${isBankSender}, allowed=${!!isAllowedSender}, self=${isSelfSender}, userConfigured=${isUserConfiguredSender}), user=${userId}`);
 
   // 7. Rate limit: max 100 emails/day/user
   const withinLimit = await checkRateLimit(userId);

@@ -328,11 +328,27 @@ const PATTERNS: PatternDef[] = [
   },
 ];
 
+/** Phrases indicating the transaction was declined/failed — not a real movement */
+const FAILED_TX_PHRASES = [
+  "no fue exitosa",
+  "no se afecto",
+  "fue rechazada",
+  "no se realizo",
+  "no se realizó",
+  "intento fallido",
+];
+
 export function parseBancolombiaEmail(
   body: string
 ): ParsedEmailTransaction | null {
   const normalized = extractCandidateBody(body);
   if (!normalized) return null;
+
+  // Reject informative emails about failed/declined transactions
+  const lower = normalized.toLowerCase();
+  if (FAILED_TX_PHRASES.some((phrase) => lower.includes(phrase))) {
+    return null;
+  }
 
   for (const pattern of PATTERNS) {
     const match = normalized.match(pattern.regex);

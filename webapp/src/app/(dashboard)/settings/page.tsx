@@ -22,7 +22,7 @@ import { ReviewModeToggle } from "@/components/settings/review-mode-toggle";
 import { SettingsMobileAccordion } from "@/components/settings/settings-mobile-accordion";
 import { DemoModeCard } from "@/components/settings/demo-mode-card";
 import { getCaptureTokens } from "@/actions/capture-tokens";
-import { getEmailIngestAddress, getEmailIngestLogs, getUnrecognizedEmails } from "@/actions/email-ingest";
+import { getEmailIngestAddress, getEmailIngestLogs, getUnrecognizedEmails, getAllowedSenders } from "@/actions/email-ingest";
 import { getTagGroups } from "@/actions/tags";
 import { TagManager } from "@/components/tags/tag-manager";
 import type { Account } from "@/types/domain";
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
 
   if (!profile) redirect("/login");
 
-  const [tokensResult, { data: accounts }, emailIngestResult, unrecognizedResult, emailLogsResult, tagGroupsResult] = await Promise.all([
+  const [tokensResult, { data: accounts }, emailIngestResult, unrecognizedResult, emailLogsResult, tagGroupsResult, allowedSenders] = await Promise.all([
     getCaptureTokens(),
     supabase
       .from("accounts")
@@ -52,6 +52,7 @@ export default async function SettingsPage() {
     getUnrecognizedEmails(),
     getEmailIngestLogs(),
     getTagGroups(),
+    getAllowedSenders(),
   ]);
 
   const tokens = tokensResult.success ? tokensResult.data : [];
@@ -84,6 +85,7 @@ export default async function SettingsPage() {
           <EmailIngestCard
             accounts={(accounts ?? []) as Account[]}
             initialAddress={emailIngestAddress}
+            initialAllowedSenders={allowedSenders}
           />
           <UnrecognizedEmailsCard initialEmails={unrecognizedEmails} />
           <EmailIngestLogsCard initialLogs={emailLogs} />
@@ -163,6 +165,7 @@ export default async function SettingsPage() {
         <EmailIngestCard
           accounts={(accounts ?? []) as Account[]}
           initialAddress={emailIngestAddress}
+          initialAllowedSenders={allowedSenders}
         />
 
         <UnrecognizedEmailsCard initialEmails={unrecognizedEmails} />

@@ -961,3 +961,74 @@ export async function bulkApproveEmailTransactions(
 
   return { success: true, data: { approved, errors } };
 }
+
+// ── Allowed Senders CRUD ──────────────────────────────────────────────────────
+
+export type AllowedSender = {
+  id: string;
+  sender_email: string;
+  label: string | null;
+  created_at: string;
+};
+
+export async function getAllowedSenders(): Promise<AllowedSender[]> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from("email_ingest_allowed_senders")
+    .select("id, sender_email, label, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true });
+
+  return (data ?? []) as AllowedSender[];
+}
+
+export async function addAllowedSender(
+  senderEmail: string,
+  label?: string | null
+): Promise<ActionResult<AllowedSender>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const email = senderEmail.trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    return { success: false, error: "Dirección de correo inválida" };
+  }
+
+  const { data, error } = await supabase
+    .from("email_ingest_allowed_senders")
+    .insert({
+      user_id: user.id,
+      sender_email: email,
+      label: label?.trim() || null,
+    })
+    .select("id, sender_email, label, created_at")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      return { success: false, error: "Este remitente ya está registrado" };
+    }
+    return { success: false, error: error.message };
+  }
+
+  revalidateTag("email-ingest", "zeta");
+  return { success: true, data: data as AllowedSender };
+}
+
+export async function removeAllowedSender(id: string): Promise<ActionResult<null>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("email_ingest_allowed_senders")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidateTag("email-ingest", "zeta");
+  return { success: true, data: null };
+}

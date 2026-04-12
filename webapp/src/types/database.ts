@@ -984,6 +984,30 @@ export type Database = {
           },
         ]
       }
+      email_ingest_allowed_senders: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          sender_email: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          sender_email: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          sender_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_ingest_addresses_enc: {
         Row: {
           account_id: string | null
