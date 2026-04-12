@@ -12,7 +12,8 @@ const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20 MB
 
 function getFileExtension(name: string): string {
-  return name.toLowerCase().slice(name.lastIndexOf("."));
+  const dotIndex = name.lastIndexOf(".");
+  return dotIndex !== -1 ? name.toLowerCase().slice(dotIndex) : "";
 }
 
 function isImageFile(name: string): boolean {
@@ -68,7 +69,7 @@ export function StepUpload({
     }
     const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_PDF_SIZE;
     if (f.size > maxSize) {
-      setError(`El archivo excede el tamaño máximo de ${isImage ? "20" : "10"}MB`);
+      setError(`El archivo excede el tamaño máximo de ${maxSize / (1024 * 1024)}MB`);
       return;
     }
     setFile(f);
