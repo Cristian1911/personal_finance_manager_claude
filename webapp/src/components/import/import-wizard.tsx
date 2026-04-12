@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Check, ShieldCheck } from "lucide-react";
+import { getPendingScreenshotFile } from "@/components/mobile/mobile-sheet-provider";
 import type { Account, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 import type { DestinatarioRule } from "@zeta/shared";
 import type {
@@ -25,7 +27,7 @@ import { cn } from "@/lib/utils";
 type Step = "upload" | "review" | "destinatarios" | "confirm" | "reconcile" | "results";
 
 const STEPS: { key: Step; label: string }[] = [
-  { key: "upload", label: "Subir PDF" },
+  { key: "upload", label: "Subir archivo" },
   { key: "review", label: "Revisar" },
   { key: "destinatarios", label: "Destinatarios" },
   { key: "confirm", label: "Confirmar" },
@@ -34,7 +36,7 @@ const STEPS: { key: Step; label: string }[] = [
 ];
 
 const STEP_DESCRIPTIONS: Record<Step, string> = {
-  upload: "Sube el PDF correcto y valida que el parser reconoció la estructura del extracto.",
+  upload: "Sube tu extracto PDF o captura de pantalla y valida que el parser reconoció la estructura.",
   review: "Confirma a qué cuenta pertenece cada extracto y ajusta monedas cuando haga falta.",
   destinatarios: "Enseña quién es quién para acelerar decisiones y futuras categorizaciones.",
   confirm: "Revisa transacciones, categorías y el paquete real que entrará a la base.",
@@ -46,10 +48,12 @@ export function ImportWizard({
   accounts,
   categories,
   destinatarioRules,
+  initialFile,
 }: {
   accounts: Account[];
   categories: CategoryWithChildren[];
   destinatarioRules: DestinatarioRule[];
+  initialFile?: File | null;
 }) {
   const [step, setStep] = useState<Step>("upload");
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
@@ -65,6 +69,23 @@ export function ImportWizard({
   const currentIndex = STEPS.findIndex((s) => s.key === step);
   const currentStep = STEPS[currentIndex];
   const progressValue = ((currentIndex + 1) / STEPS.length) * 100;
+
+  // Check for screenshot file from FAB
+  const searchParams = useSearchParams();
+  const screenshotFileRef = useRef<File | null>(null);
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("mode") === "screenshot" && !screenshotFileRef.current) {
+      const file = getPendingScreenshotFile();
+      if (file) {
+        screenshotFileRef.current = file;
+        setScreenshotFile(file);
+      }
+    }
+  }, [searchParams]);
+
+  const resolvedInitialFile = initialFile ?? screenshotFile;
 
   useEffect(() => {
     void trackClientEvent({
@@ -265,7 +286,7 @@ export function ImportWizard({
 
       <section className="rounded-[28px] border border-white/6 bg-z-surface-2/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-6">
         {/* Step content */}
-        {step === "upload" && <StepUpload onParsed={handleParsed} />}
+        {step === "upload" && <StepUpload onParsed={handleParsed} initialFile={resolvedInitialFile} />}
         {step === "review" && parseResult && (
           <StepReview
             parseResult={parseResult}

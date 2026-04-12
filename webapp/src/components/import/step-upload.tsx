@@ -1,15 +1,35 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ParseResponse } from "@/types/import";
 import { trackClientEvent } from "@/lib/utils/analytics";
 
+const PDF_EXTENSIONS = new Set([".pdf"]);
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
+const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20 MB
+
+function getFileExtension(name: string): string {
+  const dotIndex = name.lastIndexOf(".");
+  return dotIndex !== -1 ? name.toLowerCase().slice(dotIndex) : "";
+}
+
+function isImageFile(name: string): boolean {
+  return IMAGE_EXTENSIONS.has(getFileExtension(name));
+}
+
+function isPdfFile(name: string): boolean {
+  return PDF_EXTENSIONS.has(getFileExtension(name));
+}
+
 export function StepUpload({
   onParsed,
+  initialFile,
 }: {
   onParsed: (data: ParseResponse) => void;
+  initialFile?: File | null;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
@@ -20,6 +40,7 @@ export function StepUpload({
   const [savingForSupport, setSavingForSupport] = useState(false);
   const [savedForSupport, setSavedForSupport] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const initialFileProcessed = useRef(false);
 
   async function handleSaveForSupport() {
     if (!unsupportedFile) return;
@@ -38,12 +59,17 @@ export function StepUpload({
     setError("");
     setUnsupportedFile(null);
     setSavedForSupport(false);
-    if (!f.name.toLowerCase().endsWith(".pdf")) {
-      setError("El archivo debe ser un PDF");
+
+    const isImage = isImageFile(f.name);
+    const isPdf = isPdfFile(f.name);
+
+    if (!isImage && !isPdf) {
+      setError("Formato no soportado. Se aceptan PDF, PNG, JPG o WEBP.");
       return;
     }
-    if (f.size > 10 * 1024 * 1024) {
-      setError("El archivo excede el tamaño máximo de 10MB");
+    const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_PDF_SIZE;
+    if (f.size > maxSize) {
+      setError(`El archivo excede el tamaño máximo de ${maxSize / (1024 * 1024)}MB`);
       return;
     }
     setFile(f);
@@ -56,18 +82,31 @@ export function StepUpload({
       metadata: {
         filename: f.name,
         file_size_bytes: f.size,
+        file_type: isImage ? "image" : "pdf",
       },
     });
   }
+
+  // Handle initialFile from FAB screenshot flow
+  useEffect(() => {
+    if (initialFile && !initialFileProcessed.current) {
+      initialFileProcessed.current = true;
+      handleFile(initialFile);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFile]);
 
   async function handleUpload() {
     if (!file) return;
     setLoading(true);
     setError("");
 
+    const isImage = isImageFile(file.name);
+    const endpoint = isImage ? "/api/parse-image" : "/api/parse-statement";
+
     const formData = new FormData();
     formData.append("file", file);
-    if (password) {
+    if (!isImage && password) {
       formData.append("password", password);
     }
 
@@ -78,10 +117,10 @@ export function StepUpload({
         step: "parse",
         entry_point: "cta",
         success: true,
-        metadata: { has_password: !!password },
+        metadata: { has_password: !isImage && !!password, file_type: isImage ? "image" : "pdf" },
       });
 
-      const res = await fetch("/api/parse-statement", {
+      const res = await fetch(endpoint, {
         method: "POST",
         body: formData,
       });
@@ -109,7 +148,7 @@ export function StepUpload({
             success: false,
             error_code: "parse_api_error",
           });
-          setError(data.error || "Error procesando el PDF");
+          setError(data.error || (isImage ? "Error procesando la imagen" : "Error procesando el PDF"));
         }
         setLoading(false);
         return;
@@ -134,7 +173,9 @@ export function StepUpload({
           error_code: "empty_parse_result",
         });
         setError(
-          "No se encontraron transacciones ni metadatos en este PDF. Verifica que sea un extracto bancario de un formato compatible."
+          isImage
+            ? "No se encontraron transacciones en esta imagen. Verifica que sea una captura de movimientos bancarios de un formato compatible."
+            : "No se encontraron transacciones ni metadatos en este PDF. Verifica que sea un extracto bancario de un formato compatible."
         );
         setLoading(false);
         return;
@@ -191,10 +232,10 @@ export function StepUpload({
         <Upload className="h-10 w-10 text-muted-foreground" />
         <div className="text-center">
           <p className="text-sm font-medium">
-            Arrastra tu extracto bancario aquí
+            Arrastra tu extracto o captura de pantalla
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            o haz clic para seleccionar un archivo PDF (máx. 10MB)
+            PDF (máx. 10MB) o imagen PNG/JPG (máx. 20MB)
           </p>
         </div>
         <Button
@@ -207,7 +248,7 @@ export function StepUpload({
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf"
+          accept=".pdf,.png,.jpg,.jpeg,.webp"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -219,7 +260,11 @@ export function StepUpload({
       {file && (
         <div className="space-y-3">
           <div className="flex items-center gap-3 rounded-md border p-3">
-            <FileText className="h-5 w-5 text-muted-foreground" />
+            {isImageFile(file.name) ? (
+              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <FileText className="h-5 w-5 text-muted-foreground" />
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{file.name}</p>
               <p className="text-xs text-muted-foreground">
@@ -233,26 +278,30 @@ export function StepUpload({
                   Procesando...
                 </>
               ) : (
-                "Procesar extracto"
+                "Procesar"
               )}
             </Button>
           </div>
-          <div className="flex items-center gap-3 rounded-md border p-3">
-            <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              <input
-                type="password"
-                placeholder="Contraseña del PDF (opcional)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                autoComplete="off"
-              />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Algunos extractos están protegidos con contraseña (ej. número de cédula).
-          </p>
+          {!isImageFile(file.name) && (
+            <>
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="password"
+                    placeholder="Contraseña del PDF (opcional)"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Algunos extractos están protegidos con contraseña (ej. número de cédula).
+              </p>
+            </>
+          )}
         </div>
       )}
 
