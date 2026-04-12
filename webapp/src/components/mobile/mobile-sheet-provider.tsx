@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { useState, useMemo, useCallback, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CalendarPlus, Landmark } from "lucide-react";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/drawer";
 import { FabMenu, type FabAction, type ContextAction } from "./fab-menu";
 import { MobileTransactionForm } from "./mobile-transaction-form";
+import { MobileQuickCaptureSheet } from "./mobile-quick-capture-sheet";
 import { RecurringForm } from "@/components/recurring/recurring-form";
 import { SpecializedAccountForm } from "@/components/accounts/specialized-account-form";
 import { VoiceCaptureSheet } from "./voice-capture-sheet";
@@ -50,9 +51,19 @@ function getContextActions(pathname: string): ContextAction[] {
 
 function getSheetTitle(action: FabAction): string {
   if (action === "voice") return "Captura por voz";
+  if (action === "quick-capture") return "Captura rápida";
   if (action === "new-recurring") return "Nueva transaccion recurrente";
   if (action === "new-account") return "Nueva cuenta";
   return TRANSACTION_ACTIONS[action as keyof typeof TRANSACTION_ACTIONS]?.title ?? "";
+}
+
+/** Module-level ref to hold the screenshot file picked from the FAB */
+let pendingScreenshotFile: File | null = null;
+
+export function getPendingScreenshotFile(): File | null {
+  const file = pendingScreenshotFile;
+  pendingScreenshotFile = null;
+  return file;
 }
 
 export function MobileSheetProvider({
@@ -62,6 +73,8 @@ export function MobileSheetProvider({
 }: MobileSheetProviderProps) {
   const [activeAction, setActiveAction] = useState<FabAction | null>(null);
   const pathname = usePathname();
+  const router = useRouter();
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
 
   const contextActions = useMemo(() => getContextActions(pathname), [pathname]);
 
@@ -70,15 +83,53 @@ export function MobileSheetProvider({
     toast.success("Guardado");
   }, []);
 
+  const handleFabAction = useCallback(
+    (action: FabAction) => {
+      if (action === "screenshot") {
+        // Trigger native file picker for images, then navigate to import
+        screenshotInputRef.current?.click();
+        return;
+      }
+      setActiveAction(action);
+    },
+    [],
+  );
+
+  const handleScreenshotFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        pendingScreenshotFile = file;
+        router.push("/import?mode=screenshot");
+      }
+      // Reset input so the same file can be re-selected
+      e.target.value = "";
+    },
+    [router],
+  );
+
+  // Determine if the drawer should be open (not for screenshot action)
+  const drawerOpen = activeAction !== null && activeAction !== "screenshot";
+
   return (
     <>
       {children}
 
-      <FabMenu onAction={setActiveAction} contextActions={contextActions} />
+      <FabMenu onAction={handleFabAction} contextActions={contextActions} />
+
+      {/* Hidden file input for screenshot capture */}
+      <input
+        ref={screenshotInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleScreenshotFileChange}
+      />
 
       <Drawer
         fixed
-        open={activeAction !== null}
+        open={drawerOpen}
         onOpenChange={(open) => {
           if (!open) setActiveAction(null);
         }}
@@ -102,6 +153,14 @@ export function MobileSheetProvider({
 
             {activeAction === "voice" && (
               <VoiceCaptureSheet
+                accounts={accounts}
+                categories={categories}
+                onSuccess={handleSuccess}
+              />
+            )}
+
+            {activeAction === "quick-capture" && (
+              <MobileQuickCaptureSheet
                 accounts={accounts}
                 categories={categories}
                 onSuccess={handleSuccess}

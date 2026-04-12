@@ -2,11 +2,11 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Mic } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Mic, Camera, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 
-export type FabAction = "expense" | "income" | "transfer" | "voice" | "new-recurring" | "new-account";
+export type FabAction = "expense" | "income" | "transfer" | "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
 
 export interface ContextAction {
   id: FabAction;
@@ -113,6 +113,46 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
                 </p>
               </div>
             </button>
+
+            {/* Capture options */}
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleAction("screenshot")}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/4 px-3 py-3",
+                  "transition-colors active:bg-white/8",
+                )}
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+                  <Camera className="size-4" strokeWidth={2} />
+                </span>
+                <div className="min-w-0 text-left">
+                  <span className="text-xs font-semibold leading-tight">Captura de pantalla</span>
+                  <p className="text-[10px] leading-tight text-muted-foreground">
+                    Sube un pantallazo
+                  </p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAction("quick-capture")}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/4 px-3 py-3",
+                  "transition-colors active:bg-white/8",
+                )}
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+                  <Sparkles className="size-4" strokeWidth={2} />
+                </span>
+                <div className="min-w-0 text-left">
+                  <span className="text-xs font-semibold leading-tight">Captura rápida</span>
+                  <p className="text-[10px] leading-tight text-muted-foreground">
+                    Escribe el gasto
+                  </p>
+                </div>
+              </button>
+            </div>
 
             {/* Section 1: Acciones rápidas */}
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">

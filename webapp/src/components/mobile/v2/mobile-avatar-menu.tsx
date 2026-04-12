@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import {
-  BellDot,
   ChevronRight,
   Contact,
   Inbox,
@@ -53,10 +52,7 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
 
   const resolvedName = name ?? shell?.name ?? null;
   const resolvedEmail = email ?? shell?.email ?? null;
-  const attentionCount = shell?.attentionCount ?? 0;
-  const attentionSummary = shell?.attentionSummary ?? "Todo en orden por ahora";
   const initials = getInitials(resolvedName, resolvedEmail);
-  const attentionBadge = attentionCount > 9 ? "9+" : `${attentionCount}`;
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -69,11 +65,6 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
           aria-label="Menú de perfil"
         >
           {initials}
-          {attentionCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-z-brass px-1 text-[9px] font-bold leading-none text-z-ink">
-              {attentionBadge}
-            </span>
-          )}
         </button>
       </PopoverTrigger>
 
@@ -96,29 +87,22 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
         <Separator className="bg-white/6" />
 
         <Link
-          href="/gestionar"
+          href="/import"
           onClick={close}
           className="mx-2 my-2 flex items-start gap-3 rounded-2xl border border-z-brass/20 bg-z-brass/8 px-3.5 py-3 transition-colors hover:bg-z-brass/12"
         >
           <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-z-brass/12 text-z-brass">
-            <BellDot className="size-4" />
+            <Upload className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
-                Atención
-              </p>
-              {attentionCount > 0 && (
-                <span className="rounded-full bg-z-brass px-1.5 py-0.5 text-[10px] font-semibold text-z-ink">
-                  {attentionBadge}
-                </span>
-              )}
-            </div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+              Importar
+            </p>
             <p className="mt-1 text-sm leading-tight text-foreground">
-              {attentionSummary}
+              Sube un extracto PDF o captura de pantalla
             </p>
             <p className="mt-1 text-[11px] text-z-brass">
-              Ir a gestionar
+              Ir a importar
             </p>
           </div>
           <ChevronRight className="mt-0.5 size-4 shrink-0 text-z-brass/70" />
@@ -150,14 +134,6 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
           >
             <Wallet className="size-3.5 shrink-0 text-muted-foreground" />
             Cuentas
-          </Link>
-          <Link
-            href="/import"
-            onClick={close}
-            className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-foreground/80 transition-colors hover:bg-white/4 hover:text-foreground"
-          >
-            <Upload className="size-3.5 shrink-0 text-muted-foreground" />
-            Importar extracto
           </Link>
           <Link
             href="/settings"
