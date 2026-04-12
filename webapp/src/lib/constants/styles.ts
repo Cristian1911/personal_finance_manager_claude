@@ -47,6 +47,13 @@ export const MOBILE_BG_CLASS = "bg-background";
 /** Mobile v2 eyebrow label */
 export const MOBILE_EYEBROW_CLASS = SECTION_EYEBROW_CLASS;
 
+/** Height of the mobile tab bar — mirrors --z-mobile-tab-bar-h in globals.css */
+export const MOBILE_TAB_BAR_HEIGHT = "3.5rem";
+
+/** Bottom padding that clears the mobile tab bar + safe area */
+export const MOBILE_TAB_BAR_CLEARANCE_CLASS =
+  "pb-[calc(var(--z-mobile-tab-bar-h)_+_env(safe-area-inset-bottom))]";
+
 /** Mobile v2 action button (brass ghost) */
 export const MOBILE_ACTION_BUTTON_CLASS =
   "rounded-lg border border-z-brass/20 bg-z-brass/8 px-2.5 py-1 text-[10px] font-semibold text-z-brass";

@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Mic, Camera, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 
 export type FabAction = "expense" | "income" | "transfer" | "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
@@ -48,7 +49,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent>
           <DrawerTitle className="sr-only">Acciones</DrawerTitle>
-          <div className="px-4 pb-[calc(4rem_+_env(safe-area-inset-bottom))]">
+          <div className={cn("px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
             {/* Voice capture — prominent */}
             <button
               type="button"
