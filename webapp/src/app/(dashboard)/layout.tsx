@@ -103,7 +103,7 @@ export default async function DashboardLayout({
             }}
           >
             <AppDataProvider data={appData}>
-              <MobileSheetProvider accounts={accounts} categories={categories}>
+              <MobileSheetProvider>
                 <main className="flex-1 overflow-x-hidden p-4 pb-20 lg:p-6 lg:pb-6">
                   {profile.demo_mode && <DemoBanner />}
                   <PageTransition>

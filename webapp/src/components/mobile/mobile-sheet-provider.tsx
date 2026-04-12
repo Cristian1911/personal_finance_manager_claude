@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useMemo, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CalendarPlus, Landmark } from "lucide-react";
@@ -10,17 +11,30 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { useAccounts, useCategories } from "@/components/providers/app-data-provider";
 import { FabMenu, type FabAction, type ContextAction } from "./fab-menu";
-import { MobileTransactionForm } from "./mobile-transaction-form";
-import { MobileQuickCaptureSheet } from "./mobile-quick-capture-sheet";
-import { RecurringForm } from "@/components/recurring/recurring-form";
-import { SpecializedAccountForm } from "@/components/accounts/specialized-account-form";
-import { VoiceCaptureSheet } from "./voice-capture-sheet";
-import type {
-  Account,
-  CategoryWithChildren,
-  TransactionDirection,
-} from "@/types/domain";
+import type { TransactionDirection } from "@/types/domain";
+
+const MobileTransactionForm = dynamic(
+  () => import("./mobile-transaction-form").then((m) => ({ default: m.MobileTransactionForm })),
+  { ssr: false },
+);
+const MobileQuickCaptureSheet = dynamic(
+  () => import("./mobile-quick-capture-sheet").then((m) => ({ default: m.MobileQuickCaptureSheet })),
+  { ssr: false },
+);
+const RecurringForm = dynamic(
+  () => import("@/components/recurring/recurring-form").then((m) => ({ default: m.RecurringForm })),
+  { ssr: false },
+);
+const SpecializedAccountForm = dynamic(
+  () => import("@/components/accounts/specialized-account-form").then((m) => ({ default: m.SpecializedAccountForm })),
+  { ssr: false },
+);
+const VoiceCaptureSheet = dynamic(
+  () => import("./voice-capture-sheet").then((m) => ({ default: m.VoiceCaptureSheet })),
+  { ssr: false },
+);
 
 // ── Context for opening the action menu from anywhere (e.g. tab bar) ────────
 const MobileActionContext = createContext<{ openActionMenu: () => void }>({
@@ -32,8 +46,6 @@ export function useMobileActionMenu() {
 }
 
 interface MobileSheetProviderProps {
-  accounts: Account[];
-  categories: CategoryWithChildren[];
   children: React.ReactNode;
 }
 
@@ -75,11 +87,9 @@ export function getPendingScreenshotFile(): File | null {
   return file;
 }
 
-export function MobileSheetProvider({
-  accounts,
-  categories,
-  children,
-}: MobileSheetProviderProps) {
+export function MobileSheetProvider({ children }: MobileSheetProviderProps) {
+  const accounts = useAccounts();
+  const categories = useCategories();
   const [fabOpen, setFabOpen] = useState(false);
   const [activeAction, setActiveAction] = useState<FabAction | null>(null);
   const pathname = usePathname();
