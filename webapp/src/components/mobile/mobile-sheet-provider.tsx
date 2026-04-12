@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { createContext, useContext, useState, useMemo, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CalendarPlus, Landmark } from "lucide-react";
@@ -21,6 +21,15 @@ import type {
   CategoryWithChildren,
   TransactionDirection,
 } from "@/types/domain";
+
+// ── Context for opening the action menu from anywhere (e.g. tab bar) ────────
+const MobileActionContext = createContext<{ openActionMenu: () => void }>({
+  openActionMenu: () => {},
+});
+
+export function useMobileActionMenu() {
+  return useContext(MobileActionContext);
+}
 
 interface MobileSheetProviderProps {
   accounts: Account[];
@@ -71,12 +80,16 @@ export function MobileSheetProvider({
   categories,
   children,
 }: MobileSheetProviderProps) {
+  const [fabOpen, setFabOpen] = useState(false);
   const [activeAction, setActiveAction] = useState<FabAction | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const screenshotInputRef = useRef<HTMLInputElement>(null);
 
   const contextActions = useMemo(() => getContextActions(pathname), [pathname]);
+
+  const openActionMenu = useCallback(() => setFabOpen(true), []);
+  const contextValue = useMemo(() => ({ openActionMenu }), [openActionMenu]);
 
   const handleSuccess = useCallback(() => {
     setActiveAction(null);
@@ -112,10 +125,10 @@ export function MobileSheetProvider({
   const drawerOpen = activeAction !== null && activeAction !== "screenshot";
 
   return (
-    <>
+    <MobileActionContext value={contextValue}>
       {children}
 
-      <FabMenu onAction={handleFabAction} contextActions={contextActions} />
+      <FabMenu open={fabOpen} onOpenChange={setFabOpen} onAction={handleFabAction} contextActions={contextActions} />
 
       {/* Hidden file input for screenshot capture */}
       <input
@@ -183,6 +196,6 @@ export function MobileSheetProvider({
           </div>
         </DrawerContent>
       </Drawer>
-    </>
+    </MobileActionContext>
   );
 }
