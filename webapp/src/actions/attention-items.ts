@@ -127,7 +127,7 @@ async function getAttentionItemsCached(
       const parsed = e.parsed_data as Record<string, unknown> | null;
       return {
         id: e.id,
-        merchant: (parsed?.merchant as string) ?? "Desconocido",
+        merchant: (parsed?.merchant as string) || (parsed?.destination as string) || "Desconocido",
         amount: (parsed?.amount as number) ?? 0,
         direction:
           (parsed?.direction as "INFLOW" | "OUTFLOW") ?? "OUTFLOW",

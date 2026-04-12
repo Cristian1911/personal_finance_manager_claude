@@ -940,6 +940,7 @@ export async function dismissEmailTransaction(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("email-ingest", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: null };
 }
 
