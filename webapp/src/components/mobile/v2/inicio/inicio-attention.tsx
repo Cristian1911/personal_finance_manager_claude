@@ -352,7 +352,7 @@ function VencidosDetail({
           {items.length} de {totalCount}
         </p>
         <Link
-          href="/pendientes"
+          href="/gestionar"
           className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-400"
         >
           Ir a pendientes

@@ -2,7 +2,15 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { BellDot, ChevronRight, Menu, Settings, Upload } from "lucide-react";
+import {
+  BellDot,
+  ChevronRight,
+  Contact,
+  Inbox,
+  Settings,
+  Upload,
+  Wallet,
+} from "lucide-react";
 import { useCloseOnNavigate } from "@/hooks/use-close-on-navigate";
 import {
   Popover,
@@ -50,6 +58,8 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
   const initials = getInitials(resolvedName, resolvedEmail);
   const attentionBadge = attentionCount > 9 ? "9+" : `${attentionCount}`;
 
+  const close = useCallback(() => setOpen(false), []);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -87,6 +97,7 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
 
         <Link
           href="/gestionar"
+          onClick={close}
           className="mx-2 my-2 flex items-start gap-3 rounded-2xl border border-z-brass/20 bg-z-brass/8 px-3.5 py-3 transition-colors hover:bg-z-brass/12"
         >
           <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-z-brass/12 text-z-brass">
@@ -117,30 +128,44 @@ export function MobileAvatarMenu({ name, email }: MobileAvatarMenuProps) {
 
         <div className="py-1.5">
           <Link
-            href="/settings"
+            href="/destinatarios"
+            onClick={close}
             className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-foreground/80 transition-colors hover:bg-white/4 hover:text-foreground"
           >
-            <Settings className="size-3.5 shrink-0 text-muted-foreground" />
-            Ajustes
+            <Contact className="size-3.5 shrink-0 text-muted-foreground" />
+            Destinatarios
+          </Link>
+          <Link
+            href="/categorizar"
+            onClick={close}
+            className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-foreground/80 transition-colors hover:bg-white/4 hover:text-foreground"
+          >
+            <Inbox className="size-3.5 shrink-0 text-muted-foreground" />
+            Categorizar
+          </Link>
+          <Link
+            href="/accounts"
+            onClick={close}
+            className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-foreground/80 transition-colors hover:bg-white/4 hover:text-foreground"
+          >
+            <Wallet className="size-3.5 shrink-0 text-muted-foreground" />
+            Cuentas
           </Link>
           <Link
             href="/import"
+            onClick={close}
             className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-foreground/80 transition-colors hover:bg-white/4 hover:text-foreground"
           >
             <Upload className="size-3.5 shrink-0 text-muted-foreground" />
             Importar extracto
           </Link>
-        </div>
-
-        <Separator className="bg-white/6" />
-
-        <div className="py-1.5">
           <Link
-            href="/menu"
-            className="flex items-center gap-2.5 px-3.5 py-2 text-sm font-medium text-z-brass transition-colors hover:bg-z-brass/8"
+            href="/settings"
+            onClick={close}
+            className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-foreground/80 transition-colors hover:bg-white/4 hover:text-foreground"
           >
-            <Menu className="size-3.5 shrink-0" />
-            Ver todo
+            <Settings className="size-3.5 shrink-0 text-muted-foreground" />
+            Ajustes
           </Link>
         </div>
       </PopoverContent>
