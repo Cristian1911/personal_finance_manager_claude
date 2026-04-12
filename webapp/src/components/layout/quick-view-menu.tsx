@@ -10,6 +10,7 @@ import {
   ListChecks,
   Loader2,
   ArrowRight,
+  Contact,
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { getQuickViewData, type QuickViewData } from "@/actions/quick-view";
@@ -233,8 +234,20 @@ function QuickViewContent({
         ) : null}
       </div>
 
-      {/* Footer: Settings + Sign out */}
-      <div className="border-t px-4 py-2 flex items-center justify-between">
+      {/* Footer: Destinatarios + Settings + Sign out */}
+      <div className="border-t px-4 py-2 flex items-center gap-1">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="h-8 text-xs gap-1.5"
+          onClick={onClose}
+        >
+          <Link href="/destinatarios">
+            <Contact className="h-3.5 w-3.5" />
+            Destinatarios
+          </Link>
+        </Button>
         <Button
           asChild
           variant="ghost"
@@ -244,9 +257,10 @@ function QuickViewContent({
         >
           <Link href="/settings">
             <Settings className="h-3.5 w-3.5" />
-            Configuración
+            Ajustes
           </Link>
         </Button>
+        <div className="flex-1" />
         <Button
           variant="ghost"
           size="sm"
@@ -292,7 +306,7 @@ function QuickReminders({
           Pendientes
         </div>
         <Link
-          href="/pendientes"
+          href="/gestionar"
           onClick={onClose}
           className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
         >
