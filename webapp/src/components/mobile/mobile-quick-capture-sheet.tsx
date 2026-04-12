@@ -6,7 +6,9 @@ import { autoCategorize, parseQuickCaptureText } from "@zeta/shared";
 import { Wand2 } from "lucide-react";
 import { createQuickCaptureTransaction } from "@/actions/transactions";
 import { trackClientEvent } from "@/lib/utils/analytics";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -133,7 +135,7 @@ export function MobileQuickCaptureSheet({
         {parseError && (
           <p className="text-xs text-destructive">{parseError}</p>
         )}
-        <Button type="button" onClick={handleParse} disabled={!input.trim()} className="w-full">
+        <Button type="button" onClick={handleParse} disabled={!input.trim()} className={cn("w-full", BRASS_BUTTON_CLASS)}>
           <Wand2 className="mr-2 size-4" />
           Interpretar
         </Button>
@@ -245,7 +247,7 @@ export function MobileQuickCaptureSheet({
       <input type="hidden" name="capture_input_text" value={preview.capture_input_text} />
       <input type="hidden" name="notes" value="" />
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className={cn("w-full", BRASS_BUTTON_CLASS)} disabled={pending}>
         {pending ? "Guardando..." : "Guardar"}
       </Button>
     </form>

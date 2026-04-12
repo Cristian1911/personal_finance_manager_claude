@@ -120,7 +120,7 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
                 type="button"
                 onClick={() => handleAction("screenshot")}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/4 px-3 py-3",
+                  "flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3",
                   "transition-colors active:bg-white/8",
                 )}
               >
@@ -138,7 +138,7 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
                 type="button"
                 onClick={() => handleAction("quick-capture")}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/4 px-3 py-3",
+                  "flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3",
                   "transition-colors active:bg-white/8",
                 )}
               >
@@ -171,7 +171,7 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
                 >
                   <span
                     className={cn(
-                      "flex size-10 items-center justify-center rounded-full text-white",
+                      "flex size-10 items-center justify-center rounded-full text-z-white",
                       action.bg,
                     )}
                   >
@@ -201,7 +201,7 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
                     >
                       <span
                         className={cn(
-                          "flex size-8 items-center justify-center rounded-full text-white",
+                          "flex size-8 items-center justify-center rounded-full text-z-white",
                           action.bg,
                         )}
                       >
