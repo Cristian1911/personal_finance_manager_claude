@@ -23,6 +23,7 @@ import {
   removeAllowedSender,
   type AllowedSender,
 } from "@/actions/email-ingest";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { Account, EmailIngestAddress } from "@/types/domain";
@@ -119,6 +120,8 @@ export function EmailIngestCard({ accounts, initialAddress, initialAllowedSender
       if (result.success) {
         setAllowedSenders((prev) => [...prev, result.data]);
         setNewSenderEmail("");
+      } else {
+        toast.error(result.error);
       }
     });
   }
@@ -330,6 +333,8 @@ export function EmailIngestCard({ accounts, initialAddress, initialAllowedSender
                             const result = await removeAllowedSender(sender.id);
                             if (result.success) {
                               setAllowedSenders((prev) => prev.filter((s) => s.id !== sender.id));
+                            } else {
+                              toast.error(result.error);
                             }
                           });
                         }}

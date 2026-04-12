@@ -374,10 +374,14 @@ async function processEmail(ctx: {
   // Check user-configured allowed senders
   let isUserConfiguredSender = false;
   if (!isBankSender && !isAllowedSender && !isSelfSender) {
-    const { data: userSenders } = await admin
+    const { data: userSenders, error: userSendersError } = await admin
       .from("email_ingest_allowed_senders")
       .select("sender_email")
       .eq("user_id", userId);
+
+    if (userSendersError) {
+      console.error(`[email-ingest][${emailId}] Failed to fetch user allowed senders:`, userSendersError.message);
+    }
 
     isUserConfiguredSender = (userSenders ?? []).some(
       (s) => fromEmail === s.sender_email.toLowerCase()
