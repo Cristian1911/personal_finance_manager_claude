@@ -139,6 +139,9 @@
   --z-space-2xl: 40px;
   --z-space-3xl: 64px;
 
+  /* Mobile layout */
+  --z-mobile-tab-bar-h: 3.5rem;  /* ≈56px — matches tab bar rendered height */
+
   /* shadcn/ui variable mapping — dark mode first */
   --radius: 0.75rem;
   --background: var(--z-ink);
