@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Mic, Camera, Sparkles } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Mic, Camera, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 
@@ -16,6 +16,8 @@ export interface ContextAction {
 }
 
 interface FabMenuProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onAction: (action: FabAction) => void;
   contextActions?: ContextAction[];
 }
@@ -26,71 +28,24 @@ const SUB_ACTIONS: ContextAction[] = [
   { id: "transfer", label: "Transferencia", icon: ArrowLeftRight, bg: "bg-z-sage-dark" },
 ];
 
-/**
- * Tracks virtual keyboard height via visualViewport API.
- * Uses transform (GPU-composited) to move the FAB without layout thrashing.
- * Resets synchronously on focusout so the FAB never stays floating.
- */
-function useFabKeyboardOffset(ref: React.RefObject<HTMLButtonElement | null>) {
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof window === "undefined" || !window.visualViewport) return;
 
-    const vv = window.visualViewport;
-
-    function getOffset() {
-      return Math.max(0, window.innerHeight - vv!.height - vv!.offsetTop);
-    }
-
-    let rafId = 0;
-    function sync() {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        el!.style.transform = `translate(-50%, -${getOffset()}px)`;
-      });
-    }
-
-    // Reset immediately when any input loses focus (keyboard closing)
-    function onFocusOut() {
-      cancelAnimationFrame(rafId);
-      el!.style.transform = "translate(-50%, 0px)";
-    }
-
-    sync();
-    vv.addEventListener("resize", sync);
-    vv.addEventListener("scroll", sync);
-    document.addEventListener("focusout", onFocusOut);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      vv.removeEventListener("resize", sync);
-      vv.removeEventListener("scroll", sync);
-      document.removeEventListener("focusout", onFocusOut);
-    };
-  }, [ref]);
-}
-
-export function FabMenu({ onAction, contextActions }: FabMenuProps) {
-  const [open, setOpen] = useState(false);
+export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMenuProps) {
   const pathname = usePathname();
-  const fabRef = useRef<HTMLButtonElement>(null);
-
-  useFabKeyboardOffset(fabRef);
 
   // Close on route change
-  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => onOpenChange(false), [pathname, onOpenChange]);
 
   const handleAction = useCallback(
     (action: FabAction) => {
-      setOpen(false);
+      onOpenChange(false);
       onAction(action);
     },
-    [onAction],
+    [onAction, onOpenChange],
   );
 
   return (
     <div className="lg:hidden">
-      <Drawer open={open} onOpenChange={setOpen}>
+      <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent>
           <DrawerTitle className="sr-only">Acciones</DrawerTitle>
           <div className="px-4 pb-4">
@@ -218,20 +173,6 @@ export function FabMenu({ onAction, contextActions }: FabMenuProps) {
           </div>
         </DrawerContent>
       </Drawer>
-
-      {/* Main FAB — floats above keyboard via GPU transform, snaps back on close */}
-      {!open && (
-        <button
-          ref={fabRef}
-          type="button"
-          onClick={() => setOpen(true)}
-          className="fixed bottom-5 left-1/2 z-50 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-z-white text-z-ink shadow-lg will-change-transform mb-[env(safe-area-inset-bottom)]"
-          aria-label="Abrir menu de acciones"
-          data-testid="fab-button"
-        >
-          <Plus className="size-7" strokeWidth={2.5} />
-        </button>
-      )}
     </div>
   );
 }

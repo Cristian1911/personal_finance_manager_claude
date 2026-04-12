@@ -14,6 +14,7 @@ import { getTagGroups } from "@/actions/tags";
 import { AppDataProvider } from "@/components/providers/app-data-provider";
 import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
 import { MobileShellProvider } from "@/components/mobile/v2/mobile-shell-provider";
+import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
 import { DemoBanner } from "@/components/dashboard/demo-banner";
@@ -102,14 +103,16 @@ export default async function DashboardLayout({
             }}
           >
             <AppDataProvider data={appData}>
-              <main className="flex-1 overflow-x-hidden p-4 pb-20 lg:p-6 lg:pb-6">
-                {profile.demo_mode && <DemoBanner />}
-                <PageTransition>
-                  {children}
-                </PageTransition>
-              </main>
+              <MobileSheetProvider>
+                <main className="flex-1 overflow-x-hidden p-4 pb-20 lg:p-6 lg:pb-6">
+                  {profile.demo_mode && <DemoBanner />}
+                  <PageTransition>
+                    {children}
+                  </PageTransition>
+                </main>
 
-              <MobileTabBar accounts={accounts} categories={categories} />
+                <MobileTabBar />
+              </MobileSheetProvider>
             </AppDataProvider>
           </MobileShellProvider>
         </KeyboardInsetProvider>
