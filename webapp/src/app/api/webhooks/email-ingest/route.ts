@@ -380,7 +380,7 @@ async function processEmail(ctx: {
       .eq("user_id", userId);
 
     isUserConfiguredSender = (userSenders ?? []).some(
-      (s) => fromEmail.includes(s.sender_email.toLowerCase())
+      (s) => fromEmail === s.sender_email.toLowerCase()
     );
   }
 

@@ -24,7 +24,7 @@ import {
   type AllowedSender,
 } from "@/actions/email-ingest";
 import { cn } from "@/lib/utils";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { Account, EmailIngestAddress } from "@/types/domain";
 
 const EMAIL_DOMAIN =
@@ -107,6 +107,18 @@ export function EmailIngestCard({ accounts, initialAddress, initialAllowedSender
       });
       if (result.success) {
         setAddress(result.data);
+      }
+    });
+  }
+
+  function handleAddSender() {
+    const email = newSenderEmail.trim();
+    if (!email) return;
+    startTransition(async () => {
+      const result = await addAllowedSender(email);
+      if (result.success) {
+        setAllowedSenders((prev) => [...prev, result.data]);
+        setNewSenderEmail("");
       }
     });
   }
@@ -310,6 +322,7 @@ export function EmailIngestCard({ accounts, initialAddress, initialAllowedSender
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-label="Eliminar remitente"
                         className="h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-destructive"
                         disabled={isPending}
                         onClick={() => {
@@ -339,34 +352,14 @@ export function EmailIngestCard({ accounts, initialAddress, initialAllowedSender
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      const email = newSenderEmail.trim();
-                      if (!email) return;
-                      startTransition(async () => {
-                        const result = await addAllowedSender(email);
-                        if (result.success) {
-                          setAllowedSenders((prev) => [...prev, result.data]);
-                          setNewSenderEmail("");
-                        }
-                      });
+                      handleAddSender();
                     }
                   }}
                 />
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1 px-2.5 text-xs"
+                  className={cn(GHOST_BUTTON_CLASS, "h-8 gap-1 px-2.5 text-xs")}
                   disabled={isPending || !newSenderEmail.trim()}
-                  onClick={() => {
-                    const email = newSenderEmail.trim();
-                    if (!email) return;
-                    startTransition(async () => {
-                      const result = await addAllowedSender(email);
-                      if (result.success) {
-                        setAllowedSenders((prev) => [...prev, result.data]);
-                        setNewSenderEmail("");
-                      }
-                    });
-                  }}
+                  onClick={handleAddSender}
                 >
                   <Plus className="size-3.5" />
                   Agregar
