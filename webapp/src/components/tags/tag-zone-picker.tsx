@@ -10,6 +10,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -22,6 +28,7 @@ import {
   addTagToEntity,
   removeTagFromEntity,
   getTagsForEntity,
+  getRecentTags,
 } from "@/actions/tags";
 import { useTagGroups } from "@/components/providers/app-data-provider";
 import { UNGROUPED_TAG_GROUP_ID } from "@/lib/constants/tags";
@@ -36,7 +43,7 @@ interface TagZonePickerProps {
   triggerClassName?: string;
   /** Render as a small icon button instead of a combobox */
   compact?: boolean;
-  variant?: "popover" | "dialog";
+  variant?: "popover" | "dialog" | "drawer";
 }
 
 export function TagZonePicker({
@@ -49,12 +56,13 @@ export function TagZonePicker({
 }: TagZonePickerProps) {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const variant = variantProp ?? (isDesktop ? "popover" : "dialog");
+  const variant = variantProp ?? (isDesktop ? "popover" : "drawer");
 
   const contextTagGroups = useTagGroups();
   const [currentTags, setCurrentTags] = useState<Tag[]>([]);
   const [tagGroups, setTagGroups] = useState<TagGroupWithTags[]>(contextTagGroups);
   const [search, setSearch] = useState("");
+  const [recentTags, setRecentTags] = useState<Array<{ id: string; name: string; color: string | null }>>([]);
   const [isPending, startTransition] = useTransition();
 
   // Sync from context when it changes (e.g. after revalidation)
@@ -62,13 +70,14 @@ export function TagZonePicker({
     setTagGroups(contextTagGroups);
   }, [contextTagGroups]);
 
-  // Load per-entity tags on open
+  // Load per-entity tags and recents on open
   useEffect(() => {
     if (!open) {
       setSearch("");
       return;
     }
     getTagsForEntity(entityType, entityId).then((tags) => setCurrentTags(tags));
+    getRecentTags(5).then(setRecentTags);
   }, [open, entityType, entityId]);
 
   const allTags = useMemo(
@@ -244,6 +253,32 @@ export function TagZonePicker({
         </div>
       )}
 
+      {/* Recent tags — collapse when searching */}
+      {recentTags.length > 0 && !search && (
+        <div className="px-3 pb-1">
+          <div className="text-[0.6rem] uppercase tracking-wider text-muted-foreground/60 mb-1">Recientes</div>
+          <div className="flex flex-wrap gap-1">
+            {recentTags
+              .filter((rt) => !currentTagIds.has(rt.id))
+              .slice(0, 5)
+              .map((rt) => (
+                <button
+                  key={rt.id}
+                  type="button"
+                  onClick={() => {
+                    const fullTag = allTags.find((t) => t.id === rt.id);
+                    if (fullTag) handleAdd(fullTag);
+                  }}
+                  disabled={isPending}
+                  className="rounded-full border border-white/8 bg-white/[0.03] px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.06]"
+                >
+                  {rt.name}
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Search */}
       <div className="p-3 pt-2">
         <input
@@ -267,8 +302,13 @@ export function TagZonePicker({
       <div className="max-h-[50dvh] overflow-y-auto px-1 pb-2">
         {[...grouped.entries()].map(([groupName, groupTags]) => (
           <div key={groupName}>
-            <div className="px-3 py-1.5 text-[0.65rem] uppercase tracking-wider text-muted-foreground">
-              {groupName}
+            <div className="flex items-center justify-between px-3 py-1.5">
+              <span className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+                {groupName}
+              </span>
+              <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[0.6rem] tabular-nums text-muted-foreground/60">
+                {groupTags.length}
+              </span>
             </div>
             {groupTags.map((tag) => (
               <button
@@ -276,9 +316,13 @@ export function TagZonePicker({
                 type="button"
                 onClick={() => handleAdd(tag)}
                 disabled={isPending}
-                className="w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/5"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-white/5"
               >
-                {tag.name}
+                <span
+                  className="size-2 rounded-full shrink-0"
+                  style={{ backgroundColor: tag.groupColor ?? tag.color ?? "rgba(255,255,255,0.15)" }}
+                />
+                <span>{tag.name}</span>
               </button>
             ))}
           </div>
@@ -298,9 +342,12 @@ export function TagZonePicker({
         )}
 
         {filtered.length === 0 && !canCreate && (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            {search ? "Sin resultados" : "No hay etiquetas disponibles"}
-          </p>
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <Hash className="size-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              {search ? "Sin resultados" : "No hay etiquetas disponibles"}
+            </p>
+          </div>
         )}
       </div>
     </div>
@@ -319,22 +366,44 @@ export function TagZonePicker({
     );
   }
 
+  if (variant === "dialog") {
+    return (
+      <>
+        {triggerButton}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="flex max-h-[70vh] w-full max-w-sm flex-col gap-0 overflow-hidden p-0">
+            <DialogHeader className="border-b px-4 py-3">
+              <DialogTitle className="flex items-center gap-2">
+                <Hash className="size-4 text-z-brass" />
+                Etiquetas
+              </DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {body}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  // variant === "drawer"
   return (
     <>
       {triggerButton}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex max-h-[70vh] w-full max-w-sm flex-col gap-0 overflow-hidden p-0">
-          <DialogHeader className="border-b px-4 py-3">
-            <DialogTitle className="flex items-center gap-2">
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle className="flex items-center gap-2">
               <Hash className="size-4 text-z-brass" />
               Etiquetas
-            </DialogTitle>
-          </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-y-auto px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             {body}
           </div>
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }
