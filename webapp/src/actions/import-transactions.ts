@@ -811,7 +811,7 @@ export async function importTransactions(
   let manualMerged = 0;
   let leftAsSeparate = 0;
   const details: string[] = [];
-  const importedTxs: TransactionToImport[] = [];
+  const balanceDeltaTxs: TransactionToImport[] = [];
 
   for (const [txIndex, tx] of transactions.entries()) {
     // Use original_amount (full purchase price) for idempotency when available,
@@ -875,8 +875,7 @@ export async function importTransactions(
       ? decisionMap.get(tx.import_key)
       : decisionMap.get(buildDecisionKey(-1, txIndex));
     if (!decision || decision.decision === "KEEP_BOTH") {
-      // Not reconciled — this tx introduces a new balance delta
-      importedTxs.push(tx);
+      balanceDeltaTxs.push(tx);
       leftAsSeparate++;
       continue;
     }
@@ -897,14 +896,13 @@ export async function importTransactions(
     }
 
     if (!manualTx) {
-      // Candidate gone — treat as unmatched, balance delta applies
-      importedTxs.push(tx);
+      balanceDeltaTxs.push(tx);
       leftAsSeparate++;
       continue;
     }
 
     // Reconciled (AUTO_MERGE / MERGE): manual tx already applied its balance
-    // delta when it was created, so do NOT add to importedTxs to avoid double-counting.
+    // delta when it was created, so do NOT add to balanceDeltaTxs to avoid double-counting.
     const merged = mergeTransactionMetadata(manualTx as ReconciliationCandidate, {
       category_id: insertedTx.category_id,
       notes: insertedTx.notes,
@@ -983,10 +981,8 @@ export async function importTransactions(
     details,
   });
 
-  // For accounts that didn't get an authoritative balance from statement metadata
-  // (e.g. screenshot imports with no credit_card_metadata/summary), apply per-tx
-  // balance deltas — same logic as manual transaction creation.
-  if (importedTxs.length > 0) {
+  // Screenshot imports lack statement metadata — fall back to per-tx balance deltas.
+  if (balanceDeltaTxs.length > 0) {
     const accountsWithMetaBalance = new Set<string>();
     for (const meta of normalizedStatementMeta ?? []) {
       if (meta.creditCardMetadata || meta.loanMetadata || meta.summary?.final_balance != null) {
@@ -994,9 +990,8 @@ export async function importTransactions(
       }
     }
 
-    // Group imported txs by account, only for accounts without authoritative metadata
     const txsByAccount = new Map<string, TransactionToImport[]>();
-    for (const tx of importedTxs) {
+    for (const tx of balanceDeltaTxs) {
       if (accountsWithMetaBalance.has(tx.account_id)) continue;
       const list = txsByAccount.get(tx.account_id) ?? [];
       list.push(tx);
@@ -1029,7 +1024,6 @@ export async function importTransactions(
           });
         }
 
-        // Patch currency_balances JSONB to stay consistent with scalar current_balance
         const existingBalances =
           account.currency_balances &&
           typeof account.currency_balances === "object" &&
