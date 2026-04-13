@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronsUpDown, Search, X, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,6 +120,8 @@ export function CategoryZonePicker({
   );
   // Track locally-created categories so they appear instantly before server re-renders
   const [locallyCreated, setLocallyCreated] = useState<CreatedCategoryInfo[]>([]);
+  // Increment on every open to remount PickerBody (resets expandedZone, search, etc.)
+  const [sessionId, setSessionId] = useState(0);
 
   const handleCategoryCreated = useCallback(
     (cat: CreatedCategoryInfo) => {
@@ -211,6 +213,7 @@ export function CategoryZonePicker({
         ) as HTMLElement | null,
       );
     }
+    if (nextOpen) setSessionId((s) => s + 1);
     setOpen(nextOpen);
     if (nextOpen) {
       void trackClientEvent({
@@ -279,6 +282,7 @@ export function CategoryZonePicker({
 
   const pickerContent = (
     <CategoryPickerBody
+      key={sessionId}
       categories={filtered}
       value={value}
       onSelect={handleSelect}
@@ -384,6 +388,14 @@ export function CategoryPickerBody({
     return parent?.id ?? null;
   });
   const [showInlineCreate, setShowInlineCreate] = useState(false);
+  const expandedRowRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll expanded zone row to top of scrollable area
+  useEffect(() => {
+    if (expandedZoneId && expandedRowRef.current) {
+      expandedRowRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [expandedZoneId]);
 
   const query = search.trim().toLowerCase();
 
@@ -585,7 +597,10 @@ export function CategoryPickerBody({
                     (z) => z.id === expandedZoneId,
                   );
                   return (
-                    <div key={rowIdx}>
+                    <div
+                      key={rowIdx}
+                      ref={pair.some((z) => z.id === expandedZoneId) ? expandedRowRef : undefined}
+                    >
                       <div className="grid grid-cols-2 gap-2">
                         {pair.map((zone) => (
                           <ZoneTile

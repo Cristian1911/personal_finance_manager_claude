@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -457,26 +457,44 @@ function EmailsDetail({
   currency: CurrencyCode;
 }) {
   const [isPending, startTransition] = useTransition();
-  const items = emails.slice(0, MAX_ITEMS);
-  const totalCount = emails.length;
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  // Filter out optimistically removed items. Stale IDs in the set are
+  // harmless no-ops once the server removes them from the emails prop.
+  const visibleEmails = emails.filter((e) => !dismissedIds.has(e.id));
+  const items = visibleEmails.slice(0, MAX_ITEMS);
+  const totalCount = visibleEmails.length;
 
   function handleApprove(id: string) {
+    setDismissedIds((prev) => new Set(prev).add(id));
     startTransition(async () => {
       const result = await approveEmailTransaction(id);
       if (result.success) {
         toast.success("Importada");
       } else {
+        // Rollback optimistic removal on failure
+        setDismissedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         toast.error(result.error ?? "Error al importar");
       }
     });
   }
 
   function handleDismiss(id: string) {
+    setDismissedIds((prev) => new Set(prev).add(id));
     startTransition(async () => {
       const result = await dismissEmailTransaction(id);
       if (result.success) {
         toast.success("Descartada");
       } else {
+        setDismissedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         toast.error(result.error ?? "Error al descartar");
       }
     });
