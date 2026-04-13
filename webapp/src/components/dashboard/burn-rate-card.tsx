@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -123,15 +124,26 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
 
         {/* Subtitle */}
         <p className="text-sm text-muted-foreground mb-4">
-          {runwayDateFormatted && (
+          {data.nextIncomeDate ? (
             <>
-              Al ritmo actual, {runwayDateFormatted} ·{" "}
+              Margen hasta{" "}
+              <span className="text-foreground font-medium">
+                {formatDate(data.nextIncomeDate, "d 'de' MMMM")}
+              </span>
+              {" · Promedio diario: "}
+              <span className="text-foreground">
+                {formatCurrency(result.dailyAverage, data.currency)}
+              </span>
+            </>
+          ) : (
+            <>
+              {runwayDateFormatted && <>Al ritmo actual, {runwayDateFormatted} · </>}
+              Promedio diario:{" "}
+              <span className="text-foreground">
+                {formatCurrency(result.dailyAverage, data.currency)}
+              </span>
             </>
           )}
-          Promedio diario:{" "}
-          <span className="text-foreground">
-            {formatCurrency(result.dailyAverage, data.currency)}
-          </span>
           {result.monthsOfData <= 1 && (
             <span className="text-xs text-muted-foreground/60 ml-1">
               · Basado en {result.monthsOfData} mes de datos
@@ -185,9 +197,29 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
                 connectNulls={false}
                 isAnimationActive={false}
               />
+              {data.obligations.map((ob) => (
+                <ReferenceLine
+                  key={ob.date}
+                  x={ob.date}
+                  stroke="var(--z-expense)"
+                  strokeOpacity={0.3}
+                  strokeDasharray="2 2"
+                  label={{
+                    value: ob.name,
+                    position: "top",
+                    fontSize: 9,
+                    fill: "var(--z-sage-dark)",
+                  }}
+                />
+              ))}
             </AreaChart>
           </ChartContainer>
         )}
+        <div className="mt-3 text-center">
+          <Link href="/plan" className="text-xs font-medium text-z-brass hover:text-z-brass/80 transition-colors">
+            Ver plan mensual completo →
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );

@@ -28,7 +28,11 @@ export function BurndownExpandable({
     now.getMonth() + 1,
     0
   ).getDate();
-  const daysRemaining = daysInMonth - dayOfMonth;
+  const daysRemaining = data.nextIncomeDate
+    ? Math.max(1, Math.ceil(
+        (new Date(data.nextIncomeDate + "T12:00:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      ))
+    : daysInMonth - dayOfMonth;
   const isCritical = runwayDays < daysRemaining * 0.5;
   const isWarning = runwayDays < daysRemaining;
 
@@ -96,6 +100,8 @@ export function BurndownExpandable({
               runwayDays={runwayDays}
               dayOfMonth={dayOfMonth}
               daysInMonth={daysInMonth}
+              obligations={data.obligations}
+              nextIncomeDate={data.nextIncomeDate ?? null}
             />
 
             {/* Explanation */}
@@ -111,7 +117,7 @@ export function BurndownExpandable({
                     )}
                     /día
                   </span>{" "}
-                  para llegar al día {daysInMonth}.
+                  para llegar{data.nextIncomeDate ? " al próximo ingreso" : ` al día ${daysInMonth}`}.
                 </>
               ) : isWarning ? (
                 <>
@@ -122,7 +128,7 @@ export function BurndownExpandable({
                   al ritmo actual.
                 </>
               ) : (
-                <>Vas bien — llegas al cierre del mes con margen.</>
+                <>Vas bien — llegas {data.nextIncomeDate ? "al próximo ingreso" : "al cierre del mes"} con margen.</>
               )}
             </p>
 
@@ -162,11 +168,15 @@ function RunwayMiniChart({
   runwayDays,
   dayOfMonth,
   daysInMonth,
+  obligations,
+  nextIncomeDate,
 }: {
   dataPoints: { date: string; balance: number }[];
   runwayDays: number;
   dayOfMonth: number;
   daysInMonth: number;
+  obligations?: { date: string; name: string; amount: number }[];
+  nextIncomeDate: string | null;
 }) {
   const W = 280;
   const H = 64;
@@ -243,6 +253,34 @@ function RunwayMiniChart({
             strokeDasharray="3,2"
           />
         )}
+        {obligations?.map((ob) => {
+          const obDay = parseInt(ob.date.split("-")[2], 10);
+          if (obDay <= dayOfMonth) return null;
+          return (
+            <circle
+              key={ob.date}
+              cx={scaleX(obDay)}
+              cy={scaleY(maxBalance * 0.1)}
+              r="2"
+              fill="var(--z-expense)"
+              opacity={0.6}
+            />
+          );
+        })}
+        {nextIncomeDate && (() => {
+          const incomeDay = parseInt(nextIncomeDate.split("-")[2], 10);
+          if (incomeDay <= dayOfMonth || incomeDay > daysInMonth) return null;
+          return (
+            <circle
+              key="next-income"
+              cx={scaleX(incomeDay)}
+              cy={scaleY(maxBalance * 0.9)}
+              r="2.5"
+              fill="var(--z-sage-light)"
+              opacity={0.7}
+            />
+          );
+        })()}
         <text
           x={PAD.left}
           y={H - 2}

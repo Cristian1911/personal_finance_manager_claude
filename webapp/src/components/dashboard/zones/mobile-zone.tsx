@@ -109,6 +109,10 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           availableTotal: heroData.availableToSpend,
           daysRemaining,
           currency,
+          nextIncomeDate: heroData.nextIncomeDate,
+          nextIncomeAmount: heroData.nextIncomeAmount,
+          nextIncomeName: heroData.nextIncomeName,
+          incomeConfigured: heroData.incomeConfigured,
           breakdown: {
             totalLiquid: heroData.monthlyIncome,
             fixedExpenses: heroData.totalPending,
