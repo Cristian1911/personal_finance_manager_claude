@@ -68,6 +68,7 @@ export function SpendingPulseHero({
                 strokeWidth={1.5}
                 fill="url(#spendingPulseFill)"
                 dot={false}
+                isAnimationActive={false}
               />
             </AreaChart>
           </ResponsiveContainer>

@@ -104,6 +104,7 @@ export function BalanceGraphHero({
                 fill={`url(#${gradientId})`}
                 dot={false}
                 activeDot={{ r: 3, fill: strokeColor }}
+                isAnimationActive={false}
               />
             </AreaChart>
           </ResponsiveContainer>

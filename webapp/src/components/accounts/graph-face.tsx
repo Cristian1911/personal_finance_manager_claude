@@ -103,6 +103,7 @@ export function GraphFace({ data, currencyCode, range, trendPercent }: GraphFace
               fill="url(#graphFaceFill)"
               dot={false}
               activeDot={{ r: 3, fill: "var(--z-brass)" }}
+              isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>

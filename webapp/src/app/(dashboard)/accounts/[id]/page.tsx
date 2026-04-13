@@ -27,22 +27,22 @@ export default async function AccountDetailPage({
   await connection();
   const { id } = await params;
 
-  // First: fetch account + all accounts (needed for quick actions)
-  const [accountResult, allAccountsResult] = await Promise.all([
+  // First batch: account + all accounts + transactions (all independent)
+  const [accountResult, allAccountsResult, txResult] = await Promise.all([
     getAccount(id),
     getAccounts(),
+    getAccountTransactions(id, { limit: 10 }),
   ]);
 
   if (!accountResult.success || !accountResult.data) return notFound();
   const account = accountResult.data;
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
 
-  // Then: conditional parallel fetches based on account type
-  const [snapshotsResult, txResult, spendingPulse] = await Promise.all([
+  // Second batch: type-conditional fetches
+  const [snapshotsResult, spendingPulse] = await Promise.all([
     TYPES_WITH_HISTORY.has(account.account_type)
       ? getStatementSnapshots(id)
       : Promise.resolve({ success: true as const, data: [] as StatementSnapshot[] }),
-    getAccountTransactions(id, { limit: 10 }),
     SPENDING_PULSE_TYPES.has(account.account_type) ||
     (account.account_type === "CHECKING" && !account.debit_card_mask)
       ? getAccountSpendingPulse(id)

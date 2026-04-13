@@ -1,10 +1,18 @@
+import dynamic from "next/dynamic";
 import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
-import { FlipZone } from "./flip-zone";
-import { SpendingPulseHero } from "./spending-pulse-hero";
-import { BalanceGraphHero } from "./balance-graph-hero";
 import type { Account } from "@/types/domain";
 import type { SnapshotPoint, DailyPoint } from "./account-detail-types";
+
+const FlipZone = dynamic(() =>
+  import("./flip-zone").then((m) => ({ default: m.FlipZone })),
+);
+const SpendingPulseHero = dynamic(() =>
+  import("./spending-pulse-hero").then((m) => ({ default: m.SpendingPulseHero })),
+);
+const BalanceGraphHero = dynamic(() =>
+  import("./balance-graph-hero").then((m) => ({ default: m.BalanceGraphHero })),
+);
 
 interface AccountHeroProps {
   account: Account;
