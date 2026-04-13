@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,19 +22,17 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
   const [localCategories, setLocalCategories] = useState(categories);
   const [addingToParent, setAddingToParent] = useState<string | null>(null);
   const [newSubName, setNewSubName] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalCategories(categories);
   }, [categories]);
 
-  async function handleAddSubcategory(parentId: string) {
+  function handleAddSubcategory(parentId: string) {
     if (!newSubName.trim()) return;
-    setIsSaving(true);
     setError(null);
-
-    try {
+    startTransition(async () => {
       const parent = localCategories.find((c) => c.id === parentId);
       const formData = new FormData();
       formData.append("name", newSubName.trim());
@@ -60,28 +58,43 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
       } else {
         setError(result.error ?? "Error al crear subcategoría");
       }
-    } finally {
-      setIsSaving(false);
-    }
+    });
   }
 
-  async function handleDeleteSubcategory(id: string) {
-    setLocalCategories(prev => prev.filter(c => c.id !== id));
-    const result = await deleteCategory(id);
-    if (!result.success) {
-      setLocalCategories(categories);
-      toast.error("Error al eliminar");
-    }
+  function handleDeleteSubcategory(id: string) {
+    setLocalCategories(prev => prev
+      .filter(c => c.id !== id)
+      .map(parent => ({
+        ...parent,
+        children: parent.children.filter(child => child.id !== id),
+      }))
+    );
+    startTransition(async () => {
+      const result = await deleteCategory(id);
+      if (!result.success) {
+        setLocalCategories(categories);
+        toast.error("Error al eliminar");
+      }
+    });
   }
 
-  async function handleToggleActive(id: string, currentlyActive: boolean) {
+  function handleToggleActive(id: string, currentlyActive: boolean) {
     setLocalCategories(prev => prev.map(c =>
-      c.id === id ? { ...c, is_active: !currentlyActive } : c
+      c.id === id
+        ? { ...c, is_active: !currentlyActive }
+        : {
+            ...c,
+            children: c.children.map(child =>
+              child.id === id ? { ...child, is_active: !currentlyActive } : child
+            ),
+          }
     ));
-    const result = await toggleCategoryActive(id, !currentlyActive);
-    if (!result.success) {
-      setLocalCategories(categories);
-    }
+    startTransition(async () => {
+      const result = await toggleCategoryActive(id, !currentlyActive);
+      if (!result.success) {
+        setLocalCategories(categories);
+      }
+    });
   }
 
   return (

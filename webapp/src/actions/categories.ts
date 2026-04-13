@@ -1,6 +1,7 @@
 "use server";
 
 import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { categorySchema } from "@/lib/validators/category";
@@ -549,11 +550,8 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
 
   if (error) return { success: false, error: error.message };
 
+  revalidateFinancialViews();
   revalidateTag("categories", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -590,6 +588,7 @@ export async function updateCategoryOrder(
   revalidateTag("budgets", "zeta");
   revalidateTag("dashboard:charts", "zeta");
   revalidateTag("dashboard:budgets", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -645,11 +644,8 @@ export async function reassignAndDeleteCategory(
 
   if (deleteError) return { success: false, error: deleteError.message };
 
+  revalidateFinancialViews();
   revalidateTag("categories", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
