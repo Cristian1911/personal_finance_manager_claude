@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { PANEL_INSET_CLASS, MOBILE_ACTION_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 
