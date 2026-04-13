@@ -36,9 +36,9 @@ export function AccountHero({
     <div className={cn(PANEL_SURFACE_CLASS, "p-5")}>
       {/* Account name + subtitle */}
       <div className="mb-4">
-        <h1 className="text-lg font-semibold text-white">{account.name}</h1>
+        <h1 className="text-lg font-semibold text-z-white">{account.name}</h1>
         {account.institution_name && (
-          <p className="text-xs text-z-muted mt-0.5">
+          <p className="text-xs text-z-sage-dark mt-0.5">
             {account.institution_name}
           </p>
         )}

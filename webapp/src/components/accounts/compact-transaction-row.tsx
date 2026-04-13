@@ -34,17 +34,17 @@ export function CompactTransactionRow({
     >
       {/* Left: description + meta */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-white/90">
+        <p className="truncate text-sm font-medium text-z-white/90">
           {description}
         </p>
-        <p className="mt-0.5 text-xs text-z-muted">
+        <p className="mt-0.5 text-xs text-z-sage-dark">
           {transaction.transaction_date
             ? formatDate(transaction.transaction_date, "dd MMM")
             : ""}
           {categoryName && (
             <>
               {" · "}
-              <span className="text-z-muted">{categoryName}</span>
+              <span className="text-z-sage-dark">{categoryName}</span>
             </>
           )}
         </p>
@@ -54,7 +54,7 @@ export function CompactTransactionRow({
       <span
         className={cn(
           "ml-3 shrink-0 text-sm font-semibold tabular-nums",
-          isInflow ? "text-z-income" : "text-white/80"
+          isInflow ? "text-z-income" : "text-z-white/80"
         )}
       >
         {isInflow ? "+" : ""}

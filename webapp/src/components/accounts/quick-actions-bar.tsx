@@ -101,7 +101,7 @@ function ActionButton({
     return (
       <div className="flex flex-col items-center gap-1">
         {children}
-        <span className="text-[10px] text-z-muted">{label}</span>
+        <span className="text-[10px] text-z-sage-dark">{label}</span>
       </div>
     );
   }
@@ -112,17 +112,17 @@ function ActionButton({
       onClick={onClick}
       className="flex flex-col items-center gap-1"
     >
-      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-white/80 transition-colors hover:bg-white/[0.1]">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-z-white/80 transition-colors hover:bg-white/[0.1]">
         <Icon className="h-4 w-4" />
       </span>
-      <span className="text-[10px] text-z-muted">{label}</span>
+      <span className="text-[10px] text-z-sage-dark">{label}</span>
     </button>
   );
 }
 
 function TriggerIcon({ icon: Icon }: { icon: React.ElementType }) {
   return (
-    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-white/80 transition-colors hover:bg-white/[0.1] cursor-pointer">
+    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-z-white/80 transition-colors hover:bg-white/[0.1] cursor-pointer">
       <Icon className="h-4 w-4" />
     </span>
   );
@@ -212,7 +212,7 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
           <div key={action.key} className="flex flex-col items-center gap-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-white/80 transition-colors hover:bg-white/[0.1] cursor-pointer">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-z-white/80 transition-colors hover:bg-white/[0.1] cursor-pointer">
                   <Ellipsis className="h-4 w-4" />
                 </span>
               </DropdownMenuTrigger>
@@ -230,7 +230,7 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <span className="text-[10px] text-z-muted">{action.label}</span>
+            <span className="text-[10px] text-z-sage-dark">{action.label}</span>
           </div>
         );
     }

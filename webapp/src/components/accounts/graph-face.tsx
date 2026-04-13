@@ -37,9 +37,9 @@ function ChartTooltip({
   if (!active || !payload?.[0]) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-lg border border-white/10 bg-z-surface-2 px-3 py-2 text-xs shadow-lg">
-      <p className="text-z-muted">{formatDate(point.date, "dd MMM yyyy")}</p>
-      <p className="font-semibold text-white">
+    <div className="rounded-lg border border-white/6 bg-z-surface-2 px-3 py-2 text-xs shadow-lg">
+      <p className="text-z-sage-dark">{formatDate(point.date, "dd MMM yyyy")}</p>
+      <p className="font-semibold text-z-white">
         {formatCurrency(point.balance, currencyCode as CurrencyCode)}
       </p>
     </div>
@@ -53,7 +53,7 @@ export function GraphFace({ data, currencyCode, range, trendPercent }: GraphFace
   if (filtered.length < 2) {
     return (
       <div className="aspect-[85.6/53.98] w-full rounded-xl bg-z-surface-2/80 border border-white/6 flex items-center justify-center">
-        <span className="text-sm text-z-muted">Sin datos suficientes</span>
+        <span className="text-sm text-z-sage-dark">Sin datos suficientes</span>
       </div>
     );
   }
@@ -63,7 +63,7 @@ export function GraphFace({ data, currencyCode, range, trendPercent }: GraphFace
       {/* Top: balance + trend */}
       <div className="flex items-baseline gap-2 mb-1">
         {latestBalance !== null && (
-          <span className="text-lg font-bold text-white tracking-tight">
+          <span className="text-lg font-bold text-z-white tracking-tight tabular-nums">
             {formatCurrency(latestBalance, currencyCode as CurrencyCode)}
           </span>
         )}
@@ -72,7 +72,7 @@ export function GraphFace({ data, currencyCode, range, trendPercent }: GraphFace
             className={cn(
               "text-xs font-semibold rounded-full px-1.5 py-0.5",
               trendPercent > 0
-                ? "bg-emerald-500/15 text-emerald-400"
+                ? "bg-emerald-500/15 text-z-income"
                 : "bg-red-500/15 text-red-400"
             )}
           >

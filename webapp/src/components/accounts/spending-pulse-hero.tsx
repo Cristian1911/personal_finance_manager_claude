@@ -30,10 +30,10 @@ export function SpendingPulseHero({
       {/* Balance row */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-2xl font-bold text-white tracking-tight">
+          <p className="text-2xl font-bold text-z-white tracking-tight tabular-nums">
             {formatCurrency(account.current_balance ?? 0, cc)}
           </p>
-          <p className="text-xs text-z-muted mt-0.5">
+          <p className="text-xs text-z-sage-dark mt-0.5">
             {account.institution_name ?? ""}{" "}
             {account.mask ? `• ${account.mask}` : ""}
           </p>
@@ -41,10 +41,10 @@ export function SpendingPulseHero({
 
         {/* Monthly spend badge */}
         <div className="rounded-xl border border-z-brass/20 bg-z-brass/8 px-3 py-1.5 text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-z-brass/70">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass/70">
             Este mes
           </p>
-          <p className="text-sm font-bold text-z-brass">
+          <p className="text-sm font-bold text-z-brass tabular-nums">
             {formatCurrency(monthlySpent, cc)}
           </p>
         </div>

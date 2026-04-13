@@ -36,9 +36,9 @@ function ChartTooltip({
   if (!active || !payload?.[0]) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-lg border border-white/10 bg-z-surface-2 px-3 py-2 text-xs shadow-lg">
-      <p className="text-z-muted">{formatDate(point.date, "dd MMM yyyy")}</p>
-      <p className="font-semibold text-white">
+    <div className="rounded-lg border border-white/6 bg-z-surface-2 px-3 py-2 text-xs shadow-lg">
+      <p className="text-z-sage-dark">{formatDate(point.date, "dd MMM yyyy")}</p>
+      <p className="font-semibold text-z-white">
         {formatCurrency(point.balance, currencyCode as CurrencyCode)}
       </p>
     </div>
@@ -62,7 +62,7 @@ export function BalanceGraphHero({
       {/* Top row: balance + trend / range pills */}
       <div className="flex items-start justify-between">
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-white tracking-tight">
+          <span className="text-2xl font-bold text-z-white tracking-tight tabular-nums">
             {formatCurrency(account.current_balance ?? 0, cc)}
           </span>
           {trendPercent !== undefined && trendPercent !== 0 && (
@@ -70,7 +70,7 @@ export function BalanceGraphHero({
               className={cn(
                 "text-xs font-semibold rounded-full px-1.5 py-0.5",
                 trendPercent > 0
-                  ? "bg-emerald-500/15 text-emerald-400"
+                  ? "bg-emerald-500/15 text-z-income"
                   : "bg-red-500/15 text-red-400"
               )}
             >
@@ -110,7 +110,7 @@ export function BalanceGraphHero({
         </div>
       ) : (
         <div className="h-[120px] flex items-center justify-center rounded-xl border border-white/6 bg-z-surface-2/50">
-          <span className="text-sm text-z-muted">Sin datos suficientes</span>
+          <span className="text-sm text-z-sage-dark">Sin datos suficientes</span>
         </div>
       )}
     </div>

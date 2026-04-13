@@ -43,7 +43,7 @@ export function RecentTransactions({
     <div>
       {/* Header */}
       <div className="flex items-center justify-between px-4 pb-2">
-        <h2 className="text-sm font-semibold text-white">Transacciones</h2>
+        <h2 className="text-sm font-semibold text-z-white">Transacciones</h2>
         <Link
           href={`/transactions?account=${accountId}`}
           className="text-xs text-z-brass hover:underline"
@@ -61,7 +61,7 @@ export function RecentTransactions({
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3 py-8 text-center">
-          <p className="text-sm text-z-muted">
+          <p className="text-sm text-z-sage-dark">
             No hay transacciones en esta cuenta
           </p>
           <Link
@@ -84,7 +84,7 @@ export function RecentTransactions({
             onClick={loadMore}
             disabled={isPending}
             className={cn(
-              "w-full rounded-lg py-2 text-xs font-medium text-z-muted transition-colors hover:bg-white/[0.04]",
+              "w-full rounded-lg py-2 text-xs font-medium text-z-sage-dark transition-colors hover:bg-white/[0.04]",
               isPending && "opacity-50"
             )}
           >

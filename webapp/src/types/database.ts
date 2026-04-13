@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
           available_balance: number | null
+          card_brand: string | null
           color: string | null
           connection_status: Database["public"]["Enums"]["connection_status"]
           created_at: string
@@ -58,6 +59,7 @@ export type Database = {
         Insert: {
           account_type: Database["public"]["Enums"]["account_type"]
           available_balance?: number | null
+          card_brand?: string | null
           color?: string | null
           connection_status?: Database["public"]["Enums"]["connection_status"]
           created_at?: string
@@ -98,6 +100,7 @@ export type Database = {
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
           available_balance?: number | null
+          card_brand?: string | null
           color?: string | null
           connection_status?: Database["public"]["Enums"]["connection_status"]
           created_at?: string
@@ -156,6 +159,7 @@ export type Database = {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
           available_balance: number | null
+          card_brand: string | null
           color: string | null
           connection_status: Database["public"]["Enums"]["connection_status"]
           created_at: string
@@ -196,6 +200,7 @@ export type Database = {
         Insert: {
           account_type: Database["public"]["Enums"]["account_type"]
           available_balance?: number | null
+          card_brand?: string | null
           color?: string | null
           connection_status?: Database["public"]["Enums"]["connection_status"]
           created_at?: string
@@ -236,6 +241,7 @@ export type Database = {
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
           available_balance?: number | null
+          card_brand?: string | null
           color?: string | null
           connection_status?: Database["public"]["Enums"]["connection_status"]
           created_at?: string
@@ -2549,6 +2555,7 @@ export type Database = {
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[] | null
           transaction_date: string
+          transfer_group_id: string | null
           updated_at: string
           user_id: string
         }
@@ -2593,6 +2600,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           transaction_date: string
+          transfer_group_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2637,6 +2645,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           transaction_date?: string
+          transfer_group_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2755,6 +2764,7 @@ export type Database = {
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[] | null
           transaction_date: string
+          transfer_group_id: string | null
           updated_at: string
           user_id: string
         }
@@ -2799,6 +2809,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           transaction_date: string
+          transfer_group_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2843,6 +2854,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           transaction_date?: string
+          transfer_group_id?: string | null
           updated_at?: string
           user_id?: string
         }

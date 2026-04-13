@@ -595,6 +595,7 @@ export async function getAccountSpendingPulse(
     .eq("user_id", user.id)
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
     .gte("transaction_date", firstOfMonth);
 
   const monthlySpent = (monthlyData ?? []).reduce((sum, r) => sum + (r.amount ?? 0), 0);
@@ -607,6 +608,7 @@ export async function getAccountSpendingPulse(
     .eq("user_id", user.id)
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
     .gte("transaction_date", thirtyDaysAgoStr)
     .order("transaction_date", { ascending: true });
 
@@ -647,7 +649,7 @@ async function getAccountTransactionsCached(
   const { data, error, count } = await supabase
     .from("transactions")
     .select(
-      `*, account:accounts!inner(id, name, icon, color), category:categories(id, name, name_es, icon, color), destinatario:destinatarios(id, name)`,
+      `*, account:accounts!transactions_account_id_fkey!inner(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color), destinatario:destinatarios!transactions_destinatario_id_fkey(id, name)`,
       { count: "exact" }
     )
     .eq("account_id", accountId)

@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { transferSchema } from "@/lib/validators/transfer";
 import { computeIdempotencyKey } from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
@@ -183,12 +183,7 @@ export async function createTransfer(
   ]);
 
   // 7. Revalidate caches
-  revalidateTag("transactions", "zeta");
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
+  revalidateFinancialViews();
 
   return {
     success: true,

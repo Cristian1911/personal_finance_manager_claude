@@ -80,7 +80,7 @@ export default async function AccountDetailPage({
         <div className="hidden md:block">
           <Link
             href="/accounts"
-            className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60"
+            className="inline-flex items-center gap-1.5 text-xs text-z-white/40 hover:text-z-white/60"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Cuentas
           </Link>

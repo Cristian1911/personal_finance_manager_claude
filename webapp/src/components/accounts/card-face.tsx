@@ -67,7 +67,7 @@ export function CardFace({ account }: CardFaceProps) {
 
       {/* Center balance */}
       <div className="flex-1 flex items-center">
-        <span className="text-xl font-bold text-white tracking-tight">
+        <span className="text-xl font-bold text-white tracking-tight tabular-nums">
           {formatCurrency(
             account.current_balance ?? 0,
             (account.currency_code ?? "COP") as CurrencyCode

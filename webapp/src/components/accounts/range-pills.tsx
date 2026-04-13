@@ -29,7 +29,7 @@ export function RangePills({ value, onChange, className }: RangePillsProps) {
             "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
             value === r.value
               ? "bg-z-brass text-z-ink"
-              : "bg-white/[0.04] text-z-muted hover:bg-white/[0.08]"
+              : "bg-white/[0.04] text-z-sage-dark hover:bg-white/[0.08]"
           )}
         >
           {r.label}
