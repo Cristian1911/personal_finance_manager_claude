@@ -25,6 +25,7 @@ import type {
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
 import { linkTransactionToOccurrence } from "@/actions/occurrences";
+import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 
 type DebtKind = "credit_card" | "loan";
 type CurrencyCode = Database["public"]["Enums"]["currency_code"];
@@ -810,6 +811,7 @@ export async function importTransactions(
   let manualMerged = 0;
   let leftAsSeparate = 0;
   const details: string[] = [];
+  const importedTxs: TransactionToImport[] = [];
 
   for (const [txIndex, tx] of transactions.entries()) {
     // Use original_amount (full purchase price) for idempotency when available,
@@ -863,6 +865,7 @@ export async function importTransactions(
     }
 
     imported++;
+    importedTxs.push(tx);
 
     await linkTransactionToOccurrence(
       tx.account_id, tx.transaction_date,
@@ -974,6 +977,57 @@ export async function importTransactions(
     statementMeta: normalizedStatementMeta,
     details,
   });
+
+  // For accounts that didn't get an authoritative balance from statement metadata
+  // (e.g. screenshot imports with no credit_card_metadata/summary), apply per-tx
+  // balance deltas — same logic as manual transaction creation.
+  if (importedTxs.length > 0) {
+    const accountsWithMetaBalance = new Set<string>();
+    for (const meta of normalizedStatementMeta ?? []) {
+      if (meta.creditCardMetadata || meta.loanMetadata || meta.summary?.final_balance != null) {
+        accountsWithMetaBalance.add(meta.accountId);
+      }
+    }
+
+    // Group imported txs by account, only for accounts without authoritative metadata
+    const txsByAccount = new Map<string, TransactionToImport[]>();
+    for (const tx of importedTxs) {
+      if (accountsWithMetaBalance.has(tx.account_id)) continue;
+      const list = txsByAccount.get(tx.account_id) ?? [];
+      list.push(tx);
+      txsByAccount.set(tx.account_id, list);
+    }
+
+    if (txsByAccount.size > 0) {
+      const accountIds = [...txsByAccount.keys()];
+      const { data: balanceAccounts } = await supabase
+        .from("accounts")
+        .select("id, account_type, current_balance")
+        .eq("user_id", user.id)
+        .in("id", accountIds);
+
+      for (const account of balanceAccounts ?? []) {
+        const txs = txsByAccount.get(account.id);
+        if (!txs) continue;
+
+        let balance = Number(account.current_balance ?? 0);
+        for (const tx of txs) {
+          balance = applyAccountBalanceDelta({
+            currentBalance: balance,
+            accountType: account.account_type,
+            direction: tx.direction,
+            amount: tx.amount,
+          });
+        }
+
+        await supabase
+          .from("accounts")
+          .update({ current_balance: balance })
+          .eq("user_id", user.id)
+          .eq("id", account.id);
+      }
+    }
+  }
 
   revalidateFinancialViews();
   revalidateTag("snapshots", "zeta");
