@@ -865,7 +865,6 @@ export async function importTransactions(
     }
 
     imported++;
-    importedTxs.push(tx);
 
     await linkTransactionToOccurrence(
       tx.account_id, tx.transaction_date,
@@ -876,6 +875,8 @@ export async function importTransactions(
       ? decisionMap.get(tx.import_key)
       : decisionMap.get(buildDecisionKey(-1, txIndex));
     if (!decision || decision.decision === "KEEP_BOTH") {
+      // Not reconciled — this tx introduces a new balance delta
+      importedTxs.push(tx);
       leftAsSeparate++;
       continue;
     }
@@ -896,10 +897,14 @@ export async function importTransactions(
     }
 
     if (!manualTx) {
+      // Candidate gone — treat as unmatched, balance delta applies
+      importedTxs.push(tx);
       leftAsSeparate++;
       continue;
     }
 
+    // Reconciled (AUTO_MERGE / MERGE): manual tx already applied its balance
+    // delta when it was created, so do NOT add to importedTxs to avoid double-counting.
     const merged = mergeTransactionMetadata(manualTx as ReconciliationCandidate, {
       category_id: insertedTx.category_id,
       notes: insertedTx.notes,
@@ -1000,11 +1005,15 @@ export async function importTransactions(
 
     if (txsByAccount.size > 0) {
       const accountIds = [...txsByAccount.keys()];
-      const { data: balanceAccounts } = await supabase
+      const { data: balanceAccounts, error: balanceError } = await supabase
         .from("accounts")
-        .select("id, account_type, current_balance")
+        .select("id, account_type, current_balance, currency_code, currency_balances")
         .eq("user_id", user.id)
         .in("id", accountIds);
+
+      if (balanceError) {
+        console.error("Failed to fetch accounts for balance delta:", balanceError.message);
+      }
 
       for (const account of balanceAccounts ?? []) {
         const txs = txsByAccount.get(account.id);
@@ -1020,11 +1029,31 @@ export async function importTransactions(
           });
         }
 
-        await supabase
+        // Patch currency_balances JSONB to stay consistent with scalar current_balance
+        const existingBalances =
+          account.currency_balances &&
+          typeof account.currency_balances === "object" &&
+          !Array.isArray(account.currency_balances)
+            ? (account.currency_balances as Record<string, Record<string, number | null>>)
+            : {};
+        const currencyKey = account.currency_code ?? txs[0].currency_code;
+        existingBalances[currencyKey] = {
+          ...existingBalances[currencyKey],
+          current_balance: balance,
+        };
+
+        const { error: updateError } = await supabase
           .from("accounts")
-          .update({ current_balance: balance })
+          .update({
+            current_balance: balance,
+            currency_balances: existingBalances,
+          })
           .eq("user_id", user.id)
           .eq("id", account.id);
+
+        if (updateError) {
+          console.error("Failed to update balance for account", account.id, updateError.message);
+        }
       }
     }
   }
