@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { Drawer as DrawerPrimitive } from "vaul";
 import { ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Mic, Camera, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
-import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
+import { Drawer, DrawerPortal, DrawerOverlay, DrawerTitle } from "@/components/ui/drawer";
 
 export type FabAction = "expense" | "income" | "transfer" | "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
 
@@ -36,6 +37,15 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
   // Close on route change
   useEffect(() => onOpenChange(false), [pathname, onOpenChange]);
 
+  // Lock body scroll while the non-modal drawer is open
+  useEffect(() => {
+    if (open) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [open]);
+
   const handleAction = useCallback(
     (action: FabAction) => {
       onOpenChange(false);
@@ -46,133 +56,142 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
 
   return (
     <div className="lg:hidden">
+      {/* modal={false} keeps the tab-bar FAB button interactive so it can toggle close */}
       <Drawer open={open} onOpenChange={onOpenChange} modal={false}>
-        <DrawerContent>
-          <DrawerTitle className="sr-only">Acciones</DrawerTitle>
-          <div className={cn("px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
-            {/* Voice capture — prominent */}
-            <button
-              type="button"
-              onClick={() => handleAction("voice")}
-              className={cn(
-                "mb-4 flex w-full items-center gap-3 rounded-xl border border-z-brass/30 bg-z-brass/10 px-4 py-3",
-                "transition-colors active:bg-z-brass/20",
-              )}
-            >
-              <span className="flex size-10 items-center justify-center rounded-full bg-z-brass text-z-ink">
-                <Mic className="size-5" strokeWidth={2} />
-              </span>
-              <div className="text-left">
-                <span className="text-sm font-semibold">Captura por voz</span>
-                <p className="text-xs text-muted-foreground">
-                  Di tu gasto y Zeta lo interpreta
-                </p>
-              </div>
-            </button>
-
-            {/* Capture options */}
-            <div className="mb-4 grid grid-cols-2 gap-3">
+        <DrawerPortal>
+          {/* Render overlay manually so we can attach onClick (vaul disables it when modal=false) */}
+          <DrawerOverlay onClick={() => onOpenChange(false)} />
+          <DrawerPrimitive.Content
+            data-slot="drawer-content"
+            className="bg-background fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[85dvh] flex-col rounded-t-2xl border-t"
+          >
+            <div className="mx-auto mt-3 mb-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
+            <DrawerTitle className="sr-only">Acciones</DrawerTitle>
+            <div className={cn("px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
+              {/* Voice capture — prominent */}
               <button
                 type="button"
-                onClick={() => handleAction("screenshot")}
+                onClick={() => handleAction("voice")}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3",
-                  "transition-colors active:bg-white/8",
+                  "mb-4 flex w-full items-center gap-3 rounded-xl border border-z-brass/30 bg-z-brass/10 px-4 py-3",
+                  "transition-colors active:bg-z-brass/20",
                 )}
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
-                  <Camera className="size-4" strokeWidth={2} />
+                <span className="flex size-10 items-center justify-center rounded-full bg-z-brass text-z-ink">
+                  <Mic className="size-5" strokeWidth={2} />
                 </span>
-                <div className="min-w-0 text-left">
-                  <span className="text-xs font-semibold leading-tight">Captura de pantalla</span>
-                  <p className="text-[10px] leading-tight text-muted-foreground">
-                    Sube un pantallazo
+                <div className="text-left">
+                  <span className="text-sm font-semibold">Captura por voz</span>
+                  <p className="text-xs text-muted-foreground">
+                    Di tu gasto y Zeta lo interpreta
                   </p>
                 </div>
               </button>
-              <button
-                type="button"
-                onClick={() => handleAction("quick-capture")}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3",
-                  "transition-colors active:bg-white/8",
-                )}
-              >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
-                  <Sparkles className="size-4" strokeWidth={2} />
-                </span>
-                <div className="min-w-0 text-left">
-                  <span className="text-xs font-semibold leading-tight">Captura rápida</span>
-                  <p className="text-[10px] leading-tight text-muted-foreground">
-                    Escribe el gasto
-                  </p>
-                </div>
-              </button>
-            </div>
 
-            {/* Section 1: Acciones rápidas */}
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Acciones rápidas
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              {SUB_ACTIONS.map((action) => (
+              {/* Capture options */}
+              <div className="mb-4 grid grid-cols-2 gap-3">
                 <button
-                  key={action.id}
                   type="button"
-                  onClick={() => handleAction(action.id)}
+                  onClick={() => handleAction("screenshot")}
                   className={cn(
-                    "flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4",
-                    "transition-colors active:bg-accent",
+                    "flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3",
+                    "transition-colors active:bg-white/8",
                   )}
                 >
-                  <span
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+                    <Camera className="size-4" strokeWidth={2} />
+                  </span>
+                  <div className="min-w-0 text-left">
+                    <span className="text-xs font-semibold leading-tight">Captura de pantalla</span>
+                    <p className="text-[10px] leading-tight text-muted-foreground">
+                      Sube un pantallazo
+                    </p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAction("quick-capture")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3",
+                    "transition-colors active:bg-white/8",
+                  )}
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+                    <Sparkles className="size-4" strokeWidth={2} />
+                  </span>
+                  <div className="min-w-0 text-left">
+                    <span className="text-xs font-semibold leading-tight">Captura rápida</span>
+                    <p className="text-[10px] leading-tight text-muted-foreground">
+                      Escribe el gasto
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Section 1: Acciones rápidas */}
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Acciones rápidas
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {SUB_ACTIONS.map((action) => (
+                  <button
+                    key={action.id}
+                    type="button"
+                    onClick={() => handleAction(action.id)}
                     className={cn(
-                      "flex size-10 items-center justify-center rounded-full text-z-white",
-                      action.bg,
+                      "flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4",
+                      "transition-colors active:bg-accent",
                     )}
                   >
-                    <action.icon className="size-5" strokeWidth={2} />
-                  </span>
-                  <span className="text-sm font-medium">{action.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Section 2: En esta página */}
-            {contextActions && contextActions.length > 0 && (
-              <>
-                <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  En esta página
-                </p>
-                <div className="space-y-1">
-                  {contextActions.map((action) => (
-                    <button
-                      key={action.id}
-                      type="button"
-                      onClick={() => handleAction(action.id)}
+                    <span
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-lg px-3 py-3",
-                        "transition-colors active:bg-accent",
+                        "flex size-10 items-center justify-center rounded-full text-z-white",
+                        action.bg,
                       )}
                     >
-                      <span
+                      <action.icon className="size-5" strokeWidth={2} />
+                    </span>
+                    <span className="text-sm font-medium">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Section 2: En esta página */}
+              {contextActions && contextActions.length > 0 && (
+                <>
+                  <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    En esta página
+                  </p>
+                  <div className="space-y-1">
+                    {contextActions.map((action) => (
+                      <button
+                        key={action.id}
+                        type="button"
+                        onClick={() => handleAction(action.id)}
                         className={cn(
-                          "flex size-8 items-center justify-center rounded-full text-z-white",
-                          action.bg,
+                          "flex w-full items-center gap-3 rounded-lg px-3 py-3",
+                          "transition-colors active:bg-accent",
                         )}
                       >
-                        <action.icon className="size-4" strokeWidth={2} />
-                      </span>
-                      <span className="text-sm font-medium">
-                        {action.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </DrawerContent>
+                        <span
+                          className={cn(
+                            "flex size-8 items-center justify-center rounded-full text-z-white",
+                            action.bg,
+                          )}
+                        >
+                          <action.icon className="size-4" strokeWidth={2} />
+                        </span>
+                        <span className="text-sm font-medium">
+                          {action.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </DrawerPrimitive.Content>
+        </DrawerPortal>
       </Drawer>
     </div>
   );
