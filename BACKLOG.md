@@ -30,6 +30,7 @@
 - **Options:** Long-press action sheet on each item, or a "manage" link navigating to a detail view with admin actions.
 - **Found:** Visual testing, 2026-04-13
 
+
 ### Tag system broader reach
 - **Priority:** Medium
 - **What:** Tags during destinatario rule imports, nómina variants
