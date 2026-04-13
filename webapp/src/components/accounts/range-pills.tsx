@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /** Days to look back. 0 = show all data. */
@@ -22,18 +23,40 @@ interface RangePillsProps {
 }
 
 export function RangePills({ value, onChange, className }: RangePillsProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLButtonElement>(null);
+
+  // Scroll active pill into view on mount and when value changes
+  useEffect(() => {
+    if (activeRef.current && scrollRef.current) {
+      activeRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [value]);
+
   return (
-    <div className={cn("flex gap-1", className)}>
+    <div
+      ref={scrollRef}
+      className={cn(
+        "max-w-[140px] overflow-x-auto scrollbar-none",
+        "flex snap-x snap-mandatory gap-1",
+        className,
+      )}
+    >
       {RANGES.map((r) => (
         <button
           key={r.value}
+          ref={r.value === value ? activeRef : undefined}
           type="button"
           onClick={() => onChange(r.value)}
           className={cn(
-            "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+            "shrink-0 snap-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
             value === r.value
               ? "bg-z-brass text-z-ink"
-              : "bg-white/[0.04] text-z-sage-dark hover:bg-white/[0.08]"
+              : "bg-white/[0.04] text-z-sage-dark hover:bg-white/[0.08]",
           )}
         >
           {r.label}
