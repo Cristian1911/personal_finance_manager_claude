@@ -14,7 +14,7 @@ function fingerprint(d: LiveDashboardData): string {
   const emailIds = d.attention.pendingEmails.map(e => e.id).sort().join(",");
   const reminderIds = d.attention.overdueReminders.map(r => r.id).sort().join(",");
   const paymentIds = d.attention.upcomingPayments.map(p => p.templateId + p.occurrenceDate).sort().join(",");
-  return `${emailIds}:${reminderIds}:${paymentIds}:${d.hero.availableTotal}:${d.metrics.spentToday}`;
+  return `${emailIds}:${reminderIds}:${paymentIds}:${d.hero.availableTotal}:${d.metrics.spentToday}:${d.hero.daysRemaining}:${d.hero.nextIncomeDate}`;
 }
 
 /**

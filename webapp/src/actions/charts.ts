@@ -3,9 +3,11 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
-import { toColombiaDateString } from "@/lib/utils/date";
+import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import { getAccounts } from "@/actions/accounts";
-import { getPendingOccurrences } from "@/actions/occurrences";
+import { getPendingOccurrences, getNextIncomeOccurrence } from "@/actions/occurrences";
+import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
+import type { NextIncomeInfo } from "@/actions/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import {
@@ -698,6 +700,13 @@ export interface DashboardHeroData {
   oldestUpdate: string | null;
   currency: string;
   hasOtherCurrencies: boolean;
+  // Pay-cycle fields
+  nextIncomeDate: string | null;
+  nextIncomeAmount: number;
+  nextIncomeName: string | null;
+  daysUntilIncome: number;
+  windowObligations: number;
+  incomeConfigured: boolean;
 }
 
 export async function getDashboardHeroData(
@@ -719,14 +728,21 @@ export async function getDashboardHeroData(
       oldestUpdate: null,
       currency: "COP",
       hasOtherCurrencies: false,
+      nextIncomeDate: null,
+      nextIncomeAmount: 0,
+      nextIncomeName: null,
+      daysUntilIncome: 1,
+      windowObligations: 0,
+      incomeConfigured: false,
     };
   }
 
   const baseCurrency = currency ?? "COP";
 
-  const [accountsResult, monthMetrics] = await Promise.all([
+  const [accountsResult, monthMetrics, nextIncome] = await Promise.all([
     getAccounts(),
     getMonthMetrics(month, currency),
+    getNextIncomeOccurrence(baseCurrency).catch(() => null),
   ]);
 
   // 1. Process accounts
@@ -762,11 +778,35 @@ export async function getDashboardHeroData(
     : null;
   const freshness = getFreshnessLevel(oldestUpdate);
 
-  // 3. Get pending recurring obligations from materialized occurrences
-  const pendingResult = await getPendingOccurrences(14, baseCurrency);
+  // 3. Compute pay-cycle window
+  const incomeConfigured = nextIncome !== null;
+
+  const now = new Date();
+  const colombiaToday = toColombiaDateString(now);
+  let daysUntilIncome: number;
+  let windowEndDate: string;
+
+  if (nextIncome) {
+    daysUntilIncome = nextIncome.daysUntil;
+    windowEndDate = nextIncome.date;
+  } else {
+    const colombiaDay = getColombiaDayOfMonth(now);
+    const [yearStr, monthStr] = colombiaToday.split("-");
+    const daysInMonth = new Date(Number(yearStr), Number(monthStr), 0).getDate();
+    daysUntilIncome = Math.max(daysInMonth - colombiaDay, 1);
+    windowEndDate = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
+  }
+
+  // Use PAY_CYCLE_LOOKAHEAD_DAYS for cache-aligned fetch, filter in JS
+  const pendingResult = await getPendingOccurrences(PAY_CYCLE_LOOKAHEAD_DAYS, baseCurrency);
   const pendingOccurrences = pendingResult.success ? pendingResult.data : [];
 
-  const recurringObligations: PendingObligation[] = pendingOccurrences
+  // Filter to pay-cycle window
+  const windowOccurrences = pendingOccurrences.filter(
+    (o) => o.occurrence_date >= colombiaToday && o.occurrence_date <= windowEndDate
+  );
+
+  const recurringObligations: PendingObligation[] = windowOccurrences
     .filter((o) => o.direction === "OUTFLOW")
     .map((o) => ({
       id: o.id,
@@ -776,22 +816,22 @@ export async function getDashboardHeroData(
       due_date: o.occurrence_date,
     }));
 
-  const recurringObligationsForAvailable = pendingOccurrences
+  const windowObligationsTotal = windowOccurrences
     .filter((o) => o.direction === "OUTFLOW" && o.account_type !== "CREDIT_CARD")
     .reduce((sum, o) => sum + o.expected_amount, 0);
 
-  // 4. Pending INFLOW occurrences (expected income, NOT added to availableToSpend)
-  const pendingInflowOccurrences = pendingOccurrences
+  // 4. Pending INFLOW occurrences within window (expected income, NOT added to availableToSpend)
+  const pendingInflowOccurrences = windowOccurrences
     .filter((o) => o.direction === "INFLOW" && o.account_type !== "CREDIT_CARD" && o.account_type !== "LOAN");
   const pendingIncome = pendingInflowOccurrences.reduce((sum, o) => sum + o.expected_amount, 0);
   const pendingIncomeCount = pendingInflowOccurrences.length;
 
   // 5. Sort by due date
-  const allObligations = recurringObligations
-    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const allObligations = recurringObligations.sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   const totalPending = allObligations.reduce((sum, o) => sum + o.amount, 0);
-  const availableToSpend = totalLiquid - recurringObligationsForAvailable;
+  const availableToSpend = totalLiquid - windowObligationsTotal;
+
   return {
     totalLiquid,
     pendingObligations: allObligations,
@@ -805,6 +845,12 @@ export async function getDashboardHeroData(
     oldestUpdate,
     currency: baseCurrency,
     hasOtherCurrencies,
+    nextIncomeDate: nextIncome?.date ?? null,
+    nextIncomeAmount: nextIncome?.amount ?? 0,
+    nextIncomeName: nextIncome?.name ?? null,
+    daysUntilIncome,
+    windowObligations: windowObligationsTotal,
+    incomeConfigured,
   };
 }
 

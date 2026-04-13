@@ -19,6 +19,11 @@ export interface InicioRootProps {
     availableTotal: number;
     daysRemaining: number;
     currency: CurrencyCode;
+    // Pay-cycle fields (optional for backward compatibility)
+    nextIncomeDate?: string | null;
+    nextIncomeAmount?: number;
+    nextIncomeName?: string | null;
+    incomeConfigured?: boolean;
     breakdown?: {
       totalLiquid: number;
       fixedExpenses: number;
@@ -83,6 +88,10 @@ export function InicioRoot({
         availablePerDay: hero.availablePerDay,
         availableTotal: hero.availableTotal,
         daysRemaining: hero.daysRemaining,
+        nextIncomeDate: hero.nextIncomeDate ?? null,
+        nextIncomeAmount: hero.nextIncomeAmount ?? 0,
+        nextIncomeName: hero.nextIncomeName ?? null,
+        incomeConfigured: hero.incomeConfigured ?? false,
         breakdown: hero.breakdown ?? { totalLiquid: 0, fixedExpenses: 0, alreadySpent: 0 },
       },
       metrics: {
