@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/popover";
 import { TagChip } from "./tag-chip";
 import { cn } from "@/lib/utils";
+import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   createTag,
@@ -256,7 +257,7 @@ export function TagZonePicker({
       {/* Recent tags — collapse when searching */}
       {recentTags.length > 0 && !search && (
         <div className="px-3 pb-1">
-          <div className="text-[0.6rem] uppercase tracking-wider text-muted-foreground/60 mb-1">Recientes</div>
+          <div className={cn(SECTION_EYEBROW_CLASS, "mb-1")}>Recientes</div>
           <div className="flex flex-wrap gap-1">
             {recentTags
               .filter((rt) => !currentTagIds.has(rt.id))

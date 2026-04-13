@@ -3,12 +3,20 @@
 import { useState, useTransition } from "react";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Pencil, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
-import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
-import { TagZonePicker } from "@/components/tags/tag-zone-picker";
+
+const DestinatarioZonePicker = dynamic(
+  () => import("@/components/destinatarios/destinatario-zone-picker").then(m => ({ default: m.DestinatarioZonePicker })),
+  { ssr: false }
+);
+const TagZonePicker = dynamic(
+  () => import("@/components/tags/tag-zone-picker").then(m => ({ default: m.TagZonePicker })),
+  { ssr: false }
+);
 import { TagChip } from "@/components/tags/tag-chip";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { categorizeTransaction, assignDestinatario, removeDestinatarioFromTransaction } from "@/actions/categorize";

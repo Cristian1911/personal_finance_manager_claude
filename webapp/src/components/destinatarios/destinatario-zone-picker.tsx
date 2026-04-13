@@ -21,6 +21,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { GHOST_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { createDestinatario, getRecentDestinatarios } from "@/actions/destinatarios";
@@ -269,13 +270,13 @@ export function DestinatarioZonePicker({
               <button
                 type="button"
                 onClick={() => setCreating(false)}
-                className="flex-1 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-white/5"
+                className={cn(GHOST_BUTTON_CLASS, "flex-1 rounded-lg px-2.5 py-1.5 text-xs")}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="flex-1 rounded-lg bg-z-brass/15 px-2.5 py-1.5 text-xs font-medium text-z-brass transition-colors hover:bg-z-brass/25"
+                className={cn(BRASS_GHOST_BUTTON_CLASS, "flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium")}
               >
                 Crear
               </button>

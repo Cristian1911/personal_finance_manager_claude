@@ -85,10 +85,12 @@ async function getRecentTagsCached(
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
+  // Query through transactions (has user_id + transaction_date) for defense-in-depth
   const { data } = await supabase
-    .from("transaction_tags")
-    .select("tag_id, tags!inner(id, name, color)")
-    .order("created_at", { ascending: false })
+    .from("transactions")
+    .select("transaction_date, transaction_tags!inner(tag_id, tags!inner(id, name, color))")
+    .eq("user_id", userId)
+    .order("transaction_date", { ascending: false })
     .limit(50);
 
   if (!data) return [];
@@ -96,11 +98,15 @@ async function getRecentTagsCached(
   const seen = new Set<string>();
   const result: Array<{ id: string; name: string; color: string | null }> = [];
   for (const row of data) {
-    const tag = row.tags as unknown as { id: string; name: string; color: string | null } | null;
-    if (!tag || seen.has(tag.id)) continue;
-    seen.add(tag.id);
-    result.push({ id: tag.id, name: tag.name, color: tag.color });
-    if (result.length >= limit) break;
+    const tagJoins = row.transaction_tags as unknown as Array<{ tags: { id: string; name: string; color: string | null } }>;
+    if (!tagJoins) continue;
+    for (const tj of tagJoins) {
+      const tag = tj.tags;
+      if (!tag || seen.has(tag.id)) continue;
+      seen.add(tag.id);
+      result.push({ id: tag.id, name: tag.name, color: tag.color });
+      if (result.length >= limit) return result;
+    }
   }
   return result;
 }
