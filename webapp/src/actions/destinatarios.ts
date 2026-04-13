@@ -138,6 +138,46 @@ export async function fetchDestinatarioRules(
   return rules;
 }
 
+async function getRecentDestinatariosCached(
+  userId: string,
+  accessToken: string,
+  limit: number
+): Promise<Array<{ id: string; name: string }>> {
+  "use cache";
+  cacheTag("destinatarios");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  const { data } = await supabase
+    .from("transactions")
+    .select("destinatario_id, destinatarios!transactions_destinatario_id_fkey(id, name)")
+    .eq("user_id", userId)
+    .not("destinatario_id", "is", null)
+    .order("transaction_date", { ascending: false })
+    .limit(50);
+
+  if (!data) return [];
+
+  const seen = new Set<string>();
+  const result: Array<{ id: string; name: string }> = [];
+  for (const row of data) {
+    const dest = row.destinatarios as unknown as { id: string; name: string } | null;
+    if (!dest || seen.has(dest.id)) continue;
+    seen.add(dest.id);
+    result.push({ id: dest.id, name: dest.name });
+    if (result.length >= limit) break;
+  }
+  return result;
+}
+
+export async function getRecentDestinatarios(
+  limit = 3
+): Promise<Array<{ id: string; name: string }>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+  return getRecentDestinatariosCached(user.id, accessToken, limit);
+}
+
 /**
  * Shared pipeline: fetch user's destinatario rules, match text against them.
  * Used by all transaction creation flows before falling back to autoCategorize().

@@ -75,6 +75,42 @@ async function getAllTagsCached(userId: string, accessToken: string): Promise<Ta
   return data ?? [];
 }
 
+async function getRecentTagsCached(
+  userId: string,
+  accessToken: string,
+  limit: number
+): Promise<Array<{ id: string; name: string; color: string | null }>> {
+  "use cache";
+  cacheTag("tags");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  // Query through transactions (has user_id + transaction_date) for defense-in-depth
+  const { data } = await supabase
+    .from("transactions")
+    .select("transaction_date, transaction_tags!inner(tag_id, tags!inner(id, name, color))")
+    .eq("user_id", userId)
+    .order("transaction_date", { ascending: false })
+    .limit(50);
+
+  if (!data) return [];
+
+  const seen = new Set<string>();
+  const result: Array<{ id: string; name: string; color: string | null }> = [];
+  for (const row of data) {
+    const tagJoins = row.transaction_tags as unknown as Array<{ tags: { id: string; name: string; color: string | null } }>;
+    if (!tagJoins) continue;
+    for (const tj of tagJoins) {
+      const tag = tj.tags;
+      if (!tag || seen.has(tag.id)) continue;
+      seen.add(tag.id);
+      result.push({ id: tag.id, name: tag.name, color: tag.color });
+      if (result.length >= limit) return result;
+    }
+  }
+  return result;
+}
+
 // ── Public wrappers ──────────────────────────────────────
 
 export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTags[]>> => {
@@ -147,6 +183,14 @@ export const getAllTags = cache(async (): Promise<Tag[]> => {
     return [];
   }
 });
+
+export async function getRecentTags(
+  limit = 5
+): Promise<Array<{ id: string; name: string; color: string | null }>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+  return getRecentTagsCached(user.id, accessToken, limit);
+}
 
 // ── Tag Group Mutations ───────────────────────────────────
 
