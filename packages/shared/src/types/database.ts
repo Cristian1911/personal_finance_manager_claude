@@ -780,6 +780,7 @@ export type Database = {
         | "OCR_BATCH"
         | "OCR_SINGLE"
         | "EMAIL_IMPORT"
+        | "EMAIL_PDF_IMPORT"
       recurrence_frequency:
         | "WEEKLY"
         | "BIWEEKLY"

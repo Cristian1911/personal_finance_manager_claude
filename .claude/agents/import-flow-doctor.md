@@ -51,7 +51,8 @@ You are a specialist for Zeta's transaction import system — the 4-step wizard 
 - `webapp/src/lib/utils/idempotency.ts` — `computeIdempotencyKey()` function
 - `services/pdf_parser/parsers/` — bank-specific PDF parsers
 - `services/pdf_parser/models.py` — `ParsedStatement`, `ParsedTransaction` models
-- `packages/shared/src/reconciliation.ts` — reconciliation logic
+- `packages/shared/src/utils/reconciliation.ts` — reconciliation logic
+- `packages/shared/src/utils/capture-hierarchy.ts` — capture method authority tiers
 
 ## Import Flow Overview
 
@@ -104,14 +105,26 @@ if (error.code === "23505") {
 }
 ```
 
-### 3. Reconciliation
+### 3. Reconciliation & Capture Hierarchy
 
-Before import, `previewImportReconciliation()` checks for existing manual transactions that match imported ones:
+Before import, `previewImportReconciliation()` checks for existing transactions that match imported ones. **Reconciliation fetches ALL existing transactions regardless of `capture_method`** — no filtering by source.
 
-- **AUTO_MERGE** — manual transaction linked automatically (high confidence match). Sets `reconciled_into_transaction_id` on the manual tx.
+- **AUTO_MERGE** — existing transaction linked automatically (high confidence match). Sets `reconciled_into_transaction_id` on the existing tx.
 - **REVIEW** — user decides per-transaction: merge or keep both.
 
 Reconciliation uses `findReconciliationCandidates()` and `mergeTransactionMetadata()` from `@zeta/shared`.
+
+**Capture Method Authority Hierarchy** (`capture-hierarchy.ts`):
+
+| Tier | Methods | Authority |
+|------|---------|-----------|
+| 1 | `PDF_IMPORT` | Bank-verified (structured statement + metadata) |
+| 2 | `EMAIL_IMPORT`, `EMAIL_PDF_IMPORT`, `OCR_BATCH`, `OCR_SINGLE` | Semi-structured |
+| 3 | `MANUAL_FORM`, `TEXT_QUICK_CAPTURE` | User-entered |
+
+**Merge direction**: Higher authority wins for `capture_method` on the surviving transaction. Lower authority's user-set enrichments (USER_CREATED/USER_OVERRIDE category, notes) are preserved.
+
+**Re-import dedup**: When the same statement is re-imported, reconciliation finds the existing transactions (any capture method), and idempotency keys catch exact duplicates at insert time (23505 → skip).
 
 ### 4. Account Matching
 
@@ -196,10 +209,13 @@ POST /api/parse-statement (Next.js route handler)
 - [ ] `original_amount` = full purchase price (nullable)
 - [ ] Cuota extracted directly from PDF, never calculated by division
 
-### Reconciliation
+### Reconciliation & Capture Hierarchy
 - [ ] `previewImportReconciliation()` called before import
 - [ ] AUTO_MERGE and REVIEW states handled correctly
-- [ ] `reconciled_into_transaction_id` set on merged manual transactions
+- [ ] `reconciled_into_transaction_id` set on merged existing transactions
+- [ ] `fetchReconciliationCandidates` has NO `capture_method` filter — matches ALL sources
+- [ ] `mergeTransactionMetadata()` receives `capture_method` from both sides for hierarchy-aware merge
+- [ ] New capture methods added to `CAPTURE_TIER` in `capture-hierarchy.ts`
 
 ### Cache
 - [ ] `revalidateFinancialViews()` called after import

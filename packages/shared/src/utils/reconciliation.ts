@@ -1,5 +1,6 @@
 import { differenceInCalendarDays } from "date-fns";
 import type { CategorizationSource, TransactionCaptureMethod, TransactionDirection } from "../types/domain";
+import { getCaptureTier, isSameTier } from "./capture-hierarchy";
 
 export type ReconciliationCandidate = {
   id: string;
@@ -15,6 +16,7 @@ export type ReconciliationCandidate = {
   categorization_source?: CategorizationSource;
   notes?: string | null;
   reconciled_into_transaction_id?: string | null;
+  capture_method?: TransactionCaptureMethod | null;
 };
 
 export type ImportTransactionForReconciliation = {
@@ -25,6 +27,7 @@ export type ImportTransactionForReconciliation = {
   raw_description: string;
   category_id?: string | null;
   notes?: string | null;
+  capture_method?: TransactionCaptureMethod | null;
 };
 
 export type ReconciliationDecision = "AUTO_MERGE" | "REVIEW" | "NO_MATCH";
@@ -154,12 +157,23 @@ export function findReconciliationCandidates(
   return { bestMatch: best, ranked };
 }
 
+/**
+ * Merges metadata when reconciling two transactions.
+ *
+ * Uses the capture hierarchy to decide merge direction:
+ *   - The higher-authority source wins for capture_method
+ *   - User-set enrichments (category, notes) from the lower-authority
+ *     source are preserved when the higher-authority source lacks them
+ *
+ * @param existingTx - The transaction already in the database
+ * @param incomingTx - The transaction being imported now
+ */
 export function mergeTransactionMetadata(
-  manualTx: Pick<
+  existingTx: Pick<
     ReconciliationCandidate,
-    "category_id" | "categorization_source" | "notes"
+    "category_id" | "categorization_source" | "notes" | "capture_method"
   >,
-  pdfTx: {
+  incomingTx: {
     category_id?: string | null;
     notes?: string | null;
     capture_method?: TransactionCaptureMethod;
@@ -169,15 +183,28 @@ export function mergeTransactionMetadata(
   notes?: string | null;
   capture_method: TransactionCaptureMethod;
 } {
-  const shouldCarryCategory =
-    !pdfTx.category_id &&
-    !!manualTx.category_id &&
-    (manualTx.categorization_source === "USER_CREATED" ||
-      manualTx.categorization_source === "USER_OVERRIDE");
+  const incomingMethod = incomingTx.capture_method ?? "PDF_IMPORT";
+  const existingMethod = existingTx.capture_method ?? "MANUAL_FORM";
+
+  // Higher authority (lower tier number) wins for capture_method
+  const incomingTier = getCaptureTier(incomingMethod);
+  const existingTier = getCaptureTier(existingMethod);
+  const winnerMethod = incomingTier <= existingTier ? incomingMethod : existingMethod;
+
+  // For category: preserve user-set category from either side when the other lacks one
+  const existingHasUserCategory =
+    !!existingTx.category_id &&
+    (existingTx.categorization_source === "USER_CREATED" ||
+      existingTx.categorization_source === "USER_OVERRIDE");
+
+  const shouldCarryExistingCategory =
+    !incomingTx.category_id && existingHasUserCategory;
 
   return {
-    category_id: shouldCarryCategory ? manualTx.category_id ?? null : pdfTx.category_id ?? null,
-    notes: pdfTx.notes ?? manualTx.notes ?? null,
-    capture_method: pdfTx.capture_method ?? "PDF_IMPORT",
+    category_id: shouldCarryExistingCategory
+      ? existingTx.category_id ?? null
+      : incomingTx.category_id ?? null,
+    notes: incomingTx.notes ?? existingTx.notes ?? null,
+    capture_method: winnerMethod,
   };
 }

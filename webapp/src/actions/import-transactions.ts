@@ -382,7 +382,6 @@ async function fetchReconciliationCandidates(
     )
     .eq("user_id", userId)
     .in("account_id", accountIds)
-    .in("capture_method", ["MANUAL_FORM", "TEXT_QUICK_CAPTURE"])
     .gte("transaction_date", from)
     .lte("transaction_date", to)
     .is("reconciled_into_transaction_id", null);
@@ -883,7 +882,7 @@ export async function importTransactions(
     const { data: manualTx, error: manualTxError } = await supabase
       .from("transactions")
       .select(
-        "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id"
+        "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
       )
       .eq("id", decision.candidateTransactionId)
       .eq("user_id", user.id)
@@ -906,6 +905,7 @@ export async function importTransactions(
     const merged = mergeTransactionMetadata(manualTx as ReconciliationCandidate, {
       category_id: insertedTx.category_id,
       notes: insertedTx.notes,
+      capture_method: "PDF_IMPORT",
     });
 
     await supabase

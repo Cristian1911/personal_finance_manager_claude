@@ -216,7 +216,30 @@ revalidateTag("budgets", "zeta");
 
 ---
 
-## Check 6: Income/Metrics Rules (HIGH)
+## Check 6: Capture Hierarchy & Reconciliation (HIGH)
+
+Any action that creates transactions or performs reconciliation must respect the capture hierarchy from `@zeta/shared` → `capture-hierarchy.ts`:
+
+- **Tier 1** (bank-verified): `PDF_IMPORT`
+- **Tier 2** (semi-structured): `EMAIL_IMPORT`, `EMAIL_PDF_IMPORT`, `OCR_BATCH`, `OCR_SINGLE`
+- **Tier 3** (user-entered): `MANUAL_FORM`, `TEXT_QUICK_CAPTURE`
+
+Rules:
+- Reconciliation candidate queries must NOT filter by `capture_method` — all sources are candidates
+- `mergeTransactionMetadata()` must receive `capture_method` from both sides (existing + incoming)
+- Higher authority source wins for `capture_method` on the surviving transaction
+- Lower authority's user-set enrichments (category, notes) are preserved
+- Idempotency uses `computeIdempotencyKey()` — same formula for all sources
+
+**Flag as HIGH:**
+- Reconciliation query filtering by `capture_method` (`.in("capture_method", [...])`)
+- `mergeTransactionMetadata()` called without `capture_method` on either side
+- Transaction creation path missing `capture_method` field
+- New capture method not added to `CAPTURE_TIER` in `capture-hierarchy.ts`
+
+---
+
+## Check 7: Income/Metrics Rules (HIGH)
 
 Any action that calculates income, ingresos, or cashflow MUST exclude debt inflows:
 
@@ -239,7 +262,7 @@ Reference implementation: `getMonthlyCashflowCached()` in `webapp/src/actions/ch
 
 ---
 
-## Check 7: PostgREST Joins (MEDIUM)
+## Check 8: PostgREST Joins (MEDIUM)
 
 Joins through encrypted views require explicit FK hints:
 
