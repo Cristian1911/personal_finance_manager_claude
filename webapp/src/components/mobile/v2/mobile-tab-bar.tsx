@@ -38,7 +38,7 @@ function TabLinks({ tabs, pathname }: { tabs: typeof MOBILE_TABS; pathname: stri
 
 export function MobileTabBar() {
   const pathname = usePathname();
-  const { openActionMenu } = useMobileActionMenu();
+  const { openActionMenu, isFabOpen } = useMobileActionMenu();
   const keyboardInset = useKeyboardInset();
 
   // Hide tab bar when virtual keyboard is open to avoid overlapping input
@@ -62,9 +62,9 @@ export function MobileTabBar() {
             type="button"
             onClick={openActionMenu}
             className="flex size-12 -mt-4 items-center justify-center rounded-full bg-z-brass text-z-ink shadow-[0_0_16px_rgba(184,148,79,0.4)] transition-transform active:scale-95"
-            aria-label="Abrir menu de acciones"
+            aria-label={isFabOpen ? "Cerrar menu de acciones" : "Abrir menu de acciones"}
           >
-            <Plus className="size-5 stroke-[2.5]" />
+            <Plus className={cn("size-5 stroke-[2.5] transition-transform duration-200", isFabOpen && "rotate-45")} />
           </button>
         </div>
 

@@ -37,8 +37,9 @@ const VoiceCaptureSheet = dynamic(
 );
 
 // ── Context for opening the action menu from anywhere (e.g. tab bar) ────────
-const MobileActionContext = createContext<{ openActionMenu: () => void }>({
+const MobileActionContext = createContext<{ openActionMenu: () => void; isFabOpen: boolean }>({
   openActionMenu: () => {},
+  isFabOpen: false,
 });
 
 export function useMobileActionMenu() {
@@ -99,7 +100,7 @@ export function MobileSheetProvider({ children }: MobileSheetProviderProps) {
   const contextActions = useMemo(() => getContextActions(pathname), [pathname]);
 
   const openActionMenu = useCallback(() => setFabOpen((prev) => !prev), []);
-  const contextValue = useMemo(() => ({ openActionMenu }), [openActionMenu]);
+  const contextValue = useMemo(() => ({ openActionMenu, isFabOpen: fabOpen }), [openActionMenu, fabOpen]);
 
   const handleSuccess = useCallback(() => {
     setActiveAction(null);

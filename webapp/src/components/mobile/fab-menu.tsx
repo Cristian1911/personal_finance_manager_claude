@@ -46,7 +46,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
 
   return (
     <div className="lg:hidden">
-      <Drawer open={open} onOpenChange={onOpenChange}>
+      <Drawer open={open} onOpenChange={onOpenChange} modal={false}>
         <DrawerContent>
           <DrawerTitle className="sr-only">Acciones</DrawerTitle>
           <div className={cn("px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
