@@ -62,7 +62,13 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
   }
 
   function handleDeleteSubcategory(id: string) {
-    setLocalCategories(prev => prev.filter(c => c.id !== id));
+    setLocalCategories(prev => prev
+      .filter(c => c.id !== id)
+      .map(parent => ({
+        ...parent,
+        children: parent.children.filter(child => child.id !== id),
+      }))
+    );
     startTransition(async () => {
       const result = await deleteCategory(id);
       if (!result.success) {
@@ -74,7 +80,14 @@ export function CategoryManageList({ categories }: CategoryManageListProps) {
 
   function handleToggleActive(id: string, currentlyActive: boolean) {
     setLocalCategories(prev => prev.map(c =>
-      c.id === id ? { ...c, is_active: !currentlyActive } : c
+      c.id === id
+        ? { ...c, is_active: !currentlyActive }
+        : {
+            ...c,
+            children: c.children.map(child =>
+              child.id === id ? { ...child, is_active: !currentlyActive } : child
+            ),
+          }
     ));
     startTransition(async () => {
       const result = await toggleCategoryActive(id, !currentlyActive);
