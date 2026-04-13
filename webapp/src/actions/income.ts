@@ -74,13 +74,14 @@ async function getEstimatedIncomeCached(
     };
   }
 
-  // Priority 3: Recurring INFLOW templates (active, non-debt accounts)
+  // Priority 3: Recurring INFLOW templates (active, non-debt accounts, same currency)
   const { data: inflowTemplates } = await supabase
     .from("recurring_transaction_templates")
-    .select("amount, frequency, account:accounts!recurring_transaction_templates_account_id_fkey(account_type)")
+    .select("amount, frequency, currency_code, account:accounts!recurring_transaction_templates_account_id_fkey(account_type)")
     .eq("user_id", userId)
     .eq("is_active", true)
-    .eq("direction", "INFLOW");
+    .eq("direction", "INFLOW")
+    .eq("currency_code", baseCurrency);
 
   if (inflowTemplates && inflowTemplates.length > 0) {
     let recurringMonthlyIncome = 0;

@@ -5,7 +5,6 @@ import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { transferSchema } from "@/lib/validators/transfer";
 import { computeIdempotencyKey } from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
-import type { CurrencyCode } from "@/types/domain";
 
 /**
  * Create a transfer between two accounts.
@@ -34,7 +33,7 @@ export async function createTransfer(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const { fromAccountId, toAccountId, amount, currencyCode, date, notes } = parsed.data;
+  const { fromAccountId, toAccountId, amount, date, notes } = parsed.data;
 
   // 2. Fetch both accounts (validate ownership + get balances)
   const [fromRes, toRes] = await Promise.all([
@@ -61,6 +60,15 @@ export async function createTransfer(
 
   const fromAccount = fromRes.data;
   const toAccount = toRes.data;
+
+  // Reject cross-currency transfers (no FX support yet)
+  if (fromAccount.currency_code !== toAccount.currency_code) {
+    return {
+      success: false,
+      error: "No se pueden hacer transferencias entre cuentas con diferente moneda. Ambas deben ser " + fromAccount.currency_code + ".",
+    };
+  }
+
   const now = new Date().toISOString();
   const transferGroupId = crypto.randomUUID();
 
@@ -68,18 +76,19 @@ export async function createTransfer(
   const outflowDescription = `Transferencia a ${toAccount.name}`;
   const inflowDescription = `Transferencia desde ${fromAccount.name}`;
 
+  // Include account IDs + transferGroupId so two legitimate same-day transfers don't collide
   const [outflowKey, inflowKey] = await Promise.all([
     computeIdempotencyKey({
       provider: "MANUAL",
       transactionDate: date,
       amount,
-      rawDescription: outflowDescription,
+      rawDescription: `${outflowDescription}|${fromAccountId}→${toAccountId}|${transferGroupId}`,
     }),
     computeIdempotencyKey({
       provider: "MANUAL",
       transactionDate: date,
       amount,
-      rawDescription: inflowDescription,
+      rawDescription: `${inflowDescription}|${fromAccountId}→${toAccountId}|${transferGroupId}`,
     }),
   ]);
 
@@ -90,7 +99,7 @@ export async function createTransfer(
       user_id: user.id,
       account_id: fromAccountId,
       amount,
-      currency_code: currencyCode as CurrencyCode,
+      currency_code: fromAccount.currency_code,
       direction: "OUTFLOW",
       transaction_date: date,
       raw_description: outflowDescription,
@@ -121,7 +130,7 @@ export async function createTransfer(
       user_id: user.id,
       account_id: toAccountId,
       amount,
-      currency_code: currencyCode as CurrencyCode,
+      currency_code: fromAccount.currency_code,
       direction: "INFLOW",
       transaction_date: date,
       raw_description: inflowDescription,
@@ -177,10 +186,19 @@ export async function createTransfer(
     toUpdate.available_balance = toAccount.credit_limit - newToBalance;
   }
 
-  await Promise.all([
+  const [fromBalRes, toBalRes] = await Promise.all([
     supabase.from("accounts").update(fromUpdate).eq("id", fromAccountId).eq("user_id", user.id),
     supabase.from("accounts").update(toUpdate).eq("id", toAccountId).eq("user_id", user.id),
   ]);
+
+  if (fromBalRes.error || toBalRes.error) {
+    // Transactions exist but balances may be inconsistent — log for investigation
+    console.error("Balance update failed after transfer", {
+      transferGroupId,
+      fromError: fromBalRes.error,
+      toError: toBalRes.error,
+    });
+  }
 
   // 7. Revalidate caches
   revalidateFinancialViews();
