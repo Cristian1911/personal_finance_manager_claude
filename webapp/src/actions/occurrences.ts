@@ -3,6 +3,8 @@
 import "server-only";
 import { revalidateTag, cacheTag, cacheLife } from "next/cache";
 import { addDays, startOfMonth, endOfMonth } from "date-fns";
+import { toColombiaDateString } from "@/lib/utils/date";
+import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
@@ -14,6 +16,13 @@ import type { ActionResult } from "@/types/actions";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type OccurrenceStatus = "pending" | "paid" | "skipped";
+
+export interface NextIncomeInfo {
+  date: string;           // ISO date "YYYY-MM-DD"
+  amount: number;         // Expected amount
+  name: string;           // Merchant/description
+  daysUntil: number;      // Days from today (1 = today or tomorrow)
+}
 
 export interface RecurringOccurrence {
   id: string;
@@ -129,7 +138,7 @@ async function getOccurrencesForMonthCached(
     .filter((r): r is RecurringOccurrence => r !== null);
 }
 
-async function getPendingOccurrencesCached(
+export async function getPendingOccurrencesCached(
   userId: string,
   rangeStart: string,
   rangeEnd: string,
@@ -155,6 +164,96 @@ async function getPendingOccurrencesCached(
   return (data ?? [])
     .map((row) => mapOccurrenceRow(row as RawOccurrenceRow))
     .filter((r): r is RecurringOccurrence => r !== null);
+}
+
+// ─── Next income occurrence ──────────────────────────────────────────────────
+
+export async function getNextIncomeOccurrenceCached(
+  userId: string,
+  todayStr: string,
+  currency: string,
+  accessToken: string,
+): Promise<NextIncomeInfo | null> {
+  "use cache";
+  cacheTag("occurrences");
+  cacheTag("recurring");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  const { data, error } = await supabase
+    .from("recurring_occurrences")
+    .select(`
+      occurrence_date,
+      expected_amount,
+      recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner (
+        merchant_name,
+        description,
+        direction,
+        currency_code,
+        accounts!recurring_transaction_templates_account_id_fkey (
+          account_type
+        )
+      )
+    `)
+    .eq("user_id", userId)
+    .eq("status", "pending")
+    .gte("occurrence_date", todayStr)
+    .order("occurrence_date", { ascending: true })
+    .limit(50);
+
+  if (error || !data || data.length === 0) return null;
+
+  for (const row of data) {
+    const tpl = row.recurring_transaction_templates as {
+      merchant_name: string | null;
+      description: string | null;
+      direction: string;
+      currency_code: string;
+      accounts: { account_type: string } | null;
+    };
+    if (tpl.direction !== "INFLOW") continue;
+    if (tpl.currency_code !== currency) continue;
+    const acctType = tpl.accounts?.account_type;
+    if (acctType === "CREDIT_CARD" || acctType === "LOAN") continue;
+
+    const occDate = new Date(row.occurrence_date + "T12:00:00");
+    const today = new Date(todayStr + "T12:00:00");
+    const daysUntil = Math.max(
+      1,
+      Math.ceil((occDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    );
+
+    return {
+      date: row.occurrence_date,
+      amount: row.expected_amount,
+      name: tpl.merchant_name ?? tpl.description ?? "Ingreso",
+      daysUntil,
+    };
+  }
+
+  return null;
+}
+
+export async function getNextIncomeOccurrence(
+  currency?: string,
+): Promise<NextIncomeInfo | null> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return null;
+
+  try {
+    const now = new Date();
+    await ensureOccurrencesForRange(
+      startOfMonth(now),
+      addDays(now, PAY_CYCLE_LOOKAHEAD_DAYS),
+    );
+
+    const todayStr = toColombiaDateString(now);
+    return getNextIncomeOccurrenceCached(user.id, todayStr, currency ?? "COP", accessToken);
+  } catch (error) {
+    console.error("Error loading next income occurrence:", error);
+    return null;
+  }
 }
 
 // ─── Public actions ───────────────────────────────────────────────────────────
