@@ -115,6 +115,7 @@ function buildAccountInsertData(formData: FormData) {
     initial_investment: formData.get("initial_investment") || undefined,
     expected_return_rate: formData.get("expected_return_rate") || undefined,
     maturity_date: combineDateFields(formData, "maturity_month", "maturity_year"),
+    card_brand: formData.get("card_brand") || undefined,
     color: formData.get("color") || undefined,
     icon: formData.get("icon") || undefined,
     mask: formData.get("mask") || undefined,
@@ -570,6 +571,57 @@ export async function registerPayment(
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
   return { success: true, data: null };
+}
+
+// ─── Spending Pulse (uncached — volatile, per-render) ────────────────────────
+
+export async function getAccountSpendingPulse(
+  accountId: string
+): Promise<{ monthlySpent: number; dailyActivity: { date: string; amount: number }[] }> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { monthlySpent: 0, dailyActivity: [] };
+
+  const now = new Date();
+  const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().slice(0, 10);
+
+  // Monthly outflow total
+  const { data: monthlyData } = await supabase
+    .from("transactions")
+    .select("amount")
+    .eq("account_id", accountId)
+    .eq("user_id", user.id)
+    .eq("direction", "OUTFLOW")
+    .eq("is_excluded", false)
+    .gte("transaction_date", firstOfMonth);
+
+  const monthlySpent = (monthlyData ?? []).reduce((sum, r) => sum + (r.amount ?? 0), 0);
+
+  // Daily activity (last 30 days)
+  const { data: dailyData } = await supabase
+    .from("transactions")
+    .select("transaction_date, amount")
+    .eq("account_id", accountId)
+    .eq("user_id", user.id)
+    .eq("direction", "OUTFLOW")
+    .eq("is_excluded", false)
+    .gte("transaction_date", thirtyDaysAgoStr)
+    .order("transaction_date", { ascending: true });
+
+  const dailyMap = new Map<string, number>();
+  for (const row of dailyData ?? []) {
+    const d = row.transaction_date;
+    dailyMap.set(d, (dailyMap.get(d) ?? 0) + (row.amount ?? 0));
+  }
+
+  const dailyActivity = Array.from(dailyMap.entries()).map(([date, amount]) => ({
+    date,
+    amount,
+  }));
+
+  return { monthlySpent, dailyActivity };
 }
 
 // ─── Account Transactions ───────────────────────────────────────────────────

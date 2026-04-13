@@ -1,34 +1,23 @@
 import { connection } from "next/server";
-import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import { ArrowLeft, DatabaseZap, History } from "lucide-react";
-import { getAccount, getAccounts } from "@/actions/accounts";
-import { getStatementSnapshots } from "@/actions/statement-snapshots";
-import { QuickPaymentDialog } from "@/components/accounts/quick-payment-dialog";
-import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
-import { DeleteAccountButton } from "@/components/accounts/delete-account-button";
-import { ReconcileBalanceDialog } from "@/components/accounts/reconcile-balance-dialog";
-import { StatementHistoryTimeline } from "@/components/accounts/statement-history-timeline";
+import { ArrowLeft } from "lucide-react";
+import {
+  getAccount,
+  getAccounts,
+  getAccountTransactions,
+  getAccountSpendingPulse,
+} from "@/actions/accounts";
+import { getStatementSnapshots, type StatementSnapshot } from "@/actions/statement-snapshots";
+import { AccountHero } from "@/components/accounts/account-hero";
+import { QuickActionsBar } from "@/components/accounts/quick-actions-bar";
+import { RecentTransactions } from "@/components/accounts/recent-transactions";
+import { StatementSnapshotsCard } from "@/components/accounts/statement-snapshots-card";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate } from "@/lib/utils/date";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { PageHero } from "@/components/ui/page-hero";
-import { StatCard } from "@/components/ui/stat-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ACCOUNT_TYPE_LABELS } from "@/lib/constants/account-types";
-import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 
-// Server Component — chart component is already "use client", no ssr: false needed
-const BalanceHistoryChart = dynamic(
-  () => import("@/components/charts/balance-history-chart").then((m) => ({ default: m.BalanceHistoryChart })),
-  { loading: () => <div className="h-[300px] w-full rounded-xl bg-muted animate-pulse" /> }
-);
-
-const TYPES_WITH_HISTORY = ["CREDIT_CARD", "LOAN", "SAVINGS"];
+const TYPES_WITH_HISTORY = new Set(["CREDIT_CARD", "LOAN", "SAVINGS"]);
+const SPENDING_PULSE_TYPES = new Set(["CHECKING", "CASH", "OTHER"]);
 
 export default async function AccountDetailPage({
   params,
@@ -38,149 +27,98 @@ export default async function AccountDetailPage({
   await connection();
   const { id } = await params;
 
-  // Fetch account, snapshots, and all accounts in parallel
-  const [result, snapshotsResult, allAccountsResult] = await Promise.all([
+  // First: fetch account + all accounts (needed for quick actions)
+  const [accountResult, allAccountsResult] = await Promise.all([
     getAccount(id),
-    getStatementSnapshots(id),
     getAccounts(),
   ]);
 
-  if (!result.success) notFound();
-
-  const account = result.data;
+  if (!accountResult.success || !accountResult.data) return notFound();
+  const account = accountResult.data;
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
-  const showHistory = TYPES_WITH_HISTORY.includes(account.account_type);
-  const snapshots = showHistory && snapshotsResult?.success ? snapshotsResult.data : [];
-  const latestSnapshot = snapshots[0] ?? null;
+
+  // Then: conditional parallel fetches based on account type
+  const [snapshotsResult, txResult, spendingPulse] = await Promise.all([
+    TYPES_WITH_HISTORY.has(account.account_type)
+      ? getStatementSnapshots(id)
+      : Promise.resolve({ success: true as const, data: [] as StatementSnapshot[] }),
+    getAccountTransactions(id, { limit: 10 }),
+    SPENDING_PULSE_TYPES.has(account.account_type) ||
+    (account.account_type === "CHECKING" && !account.debit_card_mask)
+      ? getAccountSpendingPulse(id)
+      : Promise.resolve({ monthlySpent: 0, dailyActivity: [] }),
+  ]);
+
+  // Transform snapshots to chart data
+  const snapshots = snapshotsResult.success ? (snapshotsResult.data ?? []) : [];
+  const snapshotData = snapshots
+    .filter((s) => s.period_to && s.final_balance != null)
+    .map((s) => ({ date: s.period_to!, balance: s.final_balance! }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Trend: compare last 2 snapshots
+  let trendPercent: number | undefined;
+  if (snapshotData.length >= 2) {
+    const prev = snapshotData[snapshotData.length - 2].balance;
+    const curr = snapshotData[snapshotData.length - 1].balance;
+    if (prev !== 0) trendPercent = ((curr - prev) / Math.abs(prev)) * 100;
+  }
+
+  // Most recent snapshot (snapshots are sorted period_to DESC from the action)
+  const lastSnapshot = snapshots[0];
+
+  // Transaction data
+  const txData = txResult.success
+    ? txResult.data
+    : { transactions: [], hasMore: false };
 
   return (
-    <div className="space-y-6 lg:space-y-8">
+    <>
       <MobileHeader variant="sub" title={account.name} backHref="/accounts" />
-      <PageHero
-        pills={<>
+      <div className={PAGE_STACK_CLASS}>
+        {/* Desktop back link */}
+        <div className="hidden md:block">
           <Link
             href="/accounts"
-            className="inline-flex items-center gap-2 rounded-full border border-white/6 bg-black/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-light hover:bg-white/5"
+            className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60"
           >
-            <ArrowLeft className="size-3.5" />
-            Volver a Cuentas
+            <ArrowLeft className="h-3.5 w-3.5" /> Cuentas
           </Link>
-          <Badge className="border-z-brass/30 bg-z-brass/10 text-z-brass hover:bg-z-brass/10">
-            {ACCOUNT_TYPE_LABELS[account.account_type]}
-          </Badge>
-          {account.show_in_dashboard ? (
-            <Badge className="border-z-olive-deep/40 bg-z-olive-deep/20 text-z-sage-light hover:bg-z-olive-deep/20">
-              Visible en Inicio
-            </Badge>
-          ) : null}
-        </>}
-        title={account.name}
-        description={account.institution_name
-          ? `${account.institution_name}${account.mask ? ` · ••${account.mask}` : ""}`
-          : "Cuenta sin institución explícita"}
-        actions={<>
-          <QuickPaymentDialog
-            accountId={account.id}
-            accountName={account.name}
-            accountType={account.account_type}
-            currentBalance={account.current_balance}
-            currencyCode={account.currency_code}
-            accounts={allAccounts}
-          />
-          <ReconcileBalanceDialog
-            accountId={account.id}
-            accountName={account.name}
-            accountType={account.account_type}
-            currentBalance={account.current_balance}
-            currencyBalances={account.currency_balances}
-            currencyCode={account.currency_code}
-          />
-          <AccountFormDialog account={account} />
-          <DeleteAccountButton accountId={account.id} />
-        </>}
-      >
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Saldo actual"
-            value={<span className="text-z-sage-light">{formatCurrency(account.current_balance, account.currency_code)}</span>}
-            description="La cifra base que hoy sostiene esta cuenta dentro del sistema."
-          />
-          <StatCard
-            label="Moneda"
-            value={account.currency_code}
-            description="Unidad usada para leer el balance y su historial."
-          />
-          <StatCard
-            label={<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark"><History className="size-4 text-z-brass" />Extractos guardados</div>}
-            value={showHistory ? snapshots.length : 0}
-            description={showHistory
-              ? latestSnapshot
-                ? `Último corte: ${formatDate((latestSnapshot.period_to ?? latestSnapshot.created_at).slice(0, 10), "dd MMM yyyy")}`
-                : "Aún no hay cortes guardados"
-              : "Este tipo de cuenta no usa historial de extractos"}
-          />
-          <StatCard
-            label={<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark"><DatabaseZap className="size-4 text-z-brass" />Qué puedes hacer aquí</div>}
-            value=""
-            description="Ajustar saldo, editar la cuenta y revisar cómo han evolucionado sus cortes."
-          />
         </div>
-      </PageHero>
 
-      {showHistory ? (
-        <div className="space-y-6">
-          <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-            <CardHeader>
-              <CardTitle>Historial de balance</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Úsalo para entender tendencia y detectar cuándo la base dejó de estar fresca.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <Suspense fallback={<Card className="h-64 animate-pulse border-white/6 bg-black/10"><CardContent className="flex items-center justify-center h-full"><div className="h-4 w-32 rounded bg-muted" /></CardContent></Card>}>
-                <BalanceHistoryChart snapshots={snapshots} currency={account.currency_code} />
-              </Suspense>
-            </CardContent>
-          </Card>
+        <AccountHero
+          account={account}
+          snapshotData={snapshotData}
+          trendPercent={trendPercent}
+          monthlySpent={spendingPulse.monthlySpent}
+          dailyActivity={spendingPulse.dailyActivity}
+        />
 
-          <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-            <CardHeader>
-              <CardTitle>Historial de extractos</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Referencia rápida de cortes, periodos y consistencia del historial importado.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <StatementHistoryTimeline
-                snapshots={snapshots}
-                currency={account.currency_code}
-                accountType={account.account_type}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-          <CardHeader>
-            <CardTitle>Esta cuenta no usa historial de extractos</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Puedes seguir ajustando saldo manualmente y volver al sistema principal para revisar su impacto.
+        <QuickActionsBar account={account} allAccounts={allAccounts} />
+
+        {/* Missing debit card banner */}
+        {account.account_type === "CHECKING" && !account.debit_card_mask && (
+          <div className="rounded-lg border border-z-brass/20 bg-z-brass/5 px-4 py-3 text-center">
+            <p className="text-xs text-z-brass">
+              Agrega tu tarjeta débito para ver la vista de tarjeta
             </p>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            <Button asChild className={BRASS_BUTTON_CLASS}>
-              <Link href="/accounts">Volver a cuentas</Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className={GHOST_BUTTON_CLASS}
-            >
-              <Link href="/dashboard">Ver impacto en Inicio</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </div>
+        )}
+
+        <RecentTransactions
+          accountId={id}
+          initialTransactions={txData.transactions}
+          initialHasMore={txData.hasMore}
+        />
+
+        {TYPES_WITH_HISTORY.has(account.account_type) && (
+          <StatementSnapshotsCard
+            accountId={id}
+            count={snapshots.length}
+            lastPeriod={lastSnapshot?.period_to ?? undefined}
+          />
+        )}
+      </div>
+    </>
   );
 }
