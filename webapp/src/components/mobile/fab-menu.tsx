@@ -58,7 +58,9 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
       // If closed by non-back means (overlay tap, FAB toggle, swipe), pop the dummy entry
       if (!closedViaBackRef.current) {
         closedViaBackRef.current = true; // prevent double-fire if late popstate leaks
-        history.back();
+        if (history.state?.fabMenu) {
+          history.back();
+        }
       }
     };
   }, [open, onOpenChange]);
@@ -88,7 +90,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
       {/* Custom backdrop — rendered outside vaul so pointer-events are never suppressed */}
       {open && (
         <div
-          className="fixed inset-0 z-50 bg-black/50 transition-opacity"
+          className="fixed inset-0 z-50 bg-black/50"
           onClick={() => onOpenChange(false)}
           aria-hidden="true"
         />

@@ -88,7 +88,8 @@ export function VoiceCaptureSheet({
   // Scroll to bottom on new messages (deferred to avoid forced reflow mid-render)
   useEffect(() => {
     const id = requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      const el = scrollRef.current;
+      if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     });
     return () => cancelAnimationFrame(id);
   }, [messages]);
