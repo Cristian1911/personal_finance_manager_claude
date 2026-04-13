@@ -8,6 +8,7 @@ import {
   destinatarioSchema,
   destinatarioRuleSchema,
 } from "@/lib/validators/destinatario";
+import { uuidStr } from "@/lib/validators/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Database } from "@/types/database";
 import {
@@ -1094,34 +1095,38 @@ export type RuleImpactPreview = {
 export async function previewDestinatarioRuleImpact(
   destinatarioId: string
 ): Promise<ActionResult<RuleImpactPreview>> {
+  if (!uuidStr().safeParse(destinatarioId).success) {
+    return { success: false, error: "ID inválido" };
+  }
+
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Fetch rules for this destinatario
-  const { data: rules, error: rulesError } = await supabase
-    .from("destinatario_rules")
-    .select("pattern, match_type")
-    .eq("user_id", user.id)
-    .eq("destinatario_id", destinatarioId);
+  // Fetch rules + unmatched transactions in parallel
+  const [rulesResult, txsResult] = await Promise.all([
+    supabase
+      .from("destinatario_rules")
+      .select("pattern, match_type")
+      .eq("user_id", user.id)
+      .eq("destinatario_id", destinatarioId),
+    supabase
+      .from("transactions")
+      .select("id, raw_description, clean_description, transaction_date, amount, currency_code")
+      .eq("user_id", user.id)
+      .is("destinatario_id", null)
+      .eq("is_excluded", false)
+      .is("reconciled_into_transaction_id", null)
+      .not("raw_description", "is", null)
+      .limit(2000),
+  ]);
 
-  if (rulesError) return { success: false, error: rulesError.message };
-  if (!rules || rules.length === 0) {
-    return { success: true, data: { matchCount: 0, sampleTransactions: [] } };
-  }
+  if (rulesResult.error) return { success: false, error: rulesResult.error.message };
+  if (txsResult.error) return { success: false, error: txsResult.error.message };
 
-  // Fetch unmatched transactions
-  const { data: txs, error: txsError } = await supabase
-    .from("transactions")
-    .select("id, raw_description, clean_description, transaction_date, amount, currency_code")
-    .eq("user_id", user.id)
-    .is("destinatario_id", null)
-    .eq("is_excluded", false)
-    .is("reconciled_into_transaction_id", null)
-    .not("raw_description", "is", null)
-    .limit(2000);
+  const rules = rulesResult.data;
+  const txs = txsResult.data;
 
-  if (txsError) return { success: false, error: txsError.message };
-  if (!txs || txs.length === 0) {
+  if (!rules?.length || !txs?.length) {
     return { success: true, data: { matchCount: 0, sampleTransactions: [] } };
   }
 
@@ -1152,34 +1157,40 @@ export async function previewDestinatarioRuleImpact(
 export async function applyDestinatarioRules(
   destinatarioId: string
 ): Promise<ActionResult<{ linked: number; categorized: number }>> {
+  if (!uuidStr().safeParse(destinatarioId).success) {
+    return { success: false, error: "ID inválido" };
+  }
+
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  // Fetch destinatario name + default_category_id
-  const { data: dest, error: destError } = await supabase
-    .from("destinatarios")
-    .select("name, default_category_id")
-    .eq("user_id", user.id)
-    .eq("id", destinatarioId)
-    .single();
+  // Fetch destinatario + rules in parallel
+  const [destResult, rulesResult] = await Promise.all([
+    supabase
+      .from("destinatarios")
+      .select("name, default_category_id")
+      .eq("user_id", user.id)
+      .eq("id", destinatarioId)
+      .single(),
+    supabase
+      .from("destinatario_rules")
+      .select("pattern, match_type")
+      .eq("user_id", user.id)
+      .eq("destinatario_id", destinatarioId),
+  ]);
 
-  if (destError || !dest) {
+  if (destResult.error || !destResult.data) {
     return { success: false, error: "Destinatario no encontrado" };
   }
+  if (rulesResult.error) return { success: false, error: rulesResult.error.message };
 
-  // Fetch rules
-  const { data: rules, error: rulesError } = await supabase
-    .from("destinatario_rules")
-    .select("pattern, match_type")
-    .eq("user_id", user.id)
-    .eq("destinatario_id", destinatarioId);
-
-  if (rulesError) return { success: false, error: rulesError.message };
-  if (!rules || rules.length === 0) {
+  const dest = destResult.data;
+  const rules = rulesResult.data;
+  if (!rules?.length) {
     return { success: true, data: { linked: 0, categorized: 0 } };
   }
 
-  // Fetch unmatched transactions
+  // Fetch unmatched transactions (only after confirming rules exist)
   const { data: txs, error: txsError } = await supabase
     .from("transactions")
     .select("id, raw_description, category_id")
@@ -1191,7 +1202,7 @@ export async function applyDestinatarioRules(
     .limit(2000);
 
   if (txsError) return { success: false, error: txsError.message };
-  if (!txs || txs.length === 0) {
+  if (!txs?.length) {
     return { success: true, data: { linked: 0, categorized: 0 } };
   }
 
