@@ -550,11 +550,8 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
 
   if (error) return { success: false, error: error.message };
 
+  revalidateFinancialViews();
   revalidateTag("categories", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -649,7 +646,6 @@ export async function reassignAndDeleteCategory(
 
   revalidateFinancialViews();
   revalidateTag("categories", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 

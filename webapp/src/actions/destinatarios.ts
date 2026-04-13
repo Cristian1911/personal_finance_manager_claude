@@ -586,7 +586,6 @@ export async function mergeDestinatarios(
 
   revalidateFinancialViews();
   revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
