@@ -4,6 +4,7 @@ import { KPIWidget } from "@/components/ui/kpi-widget";
 import { Button } from "@/components/ui/button";
 import { StatusHeadline } from "./status-headline";
 import {
+  ArrowDownLeft,
   Banknote,
   CalendarClock,
   FileUp,
@@ -23,7 +24,7 @@ interface DashboardHeroProps {
 }
 
 export function DashboardHero({ data, allocationData, debtFreeBanner }: DashboardHeroProps) {
-  const { totalLiquid, totalPending, availableToSpend, freshness, pendingObligations, currency, hasOtherCurrencies } = data;
+  const { totalLiquid, totalPending, availableToSpend, pendingIncome, pendingIncomeCount, freshness, pendingObligations, currency, hasOtherCurrencies } = data;
   const f = freshnessMap[freshness];
   const code = currency as CurrencyCode;
   const hasPendingObligations = pendingObligations.length > 0;
@@ -123,7 +124,7 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className={`grid grid-cols-1 gap-3 ${pendingIncome > 0 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
         <KPIWidget
           label="Saldo total"
           value={formatCurrency(totalLiquid, code)}
@@ -139,6 +140,16 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
           semanticColor="expense"
           className="bg-black/15 ring-1 ring-white/5"
         />
+        {pendingIncome > 0 && (
+          <KPIWidget
+            label="Ingresos esperados"
+            value={`+${formatCurrency(pendingIncome, code)}`}
+            trend={{ direction: "flat", text: `${pendingIncomeCount} ${pendingIncomeCount === 1 ? "pago" : "pagos"} próximos` }}
+            icon={<ArrowDownLeft className="size-4" />}
+            semanticColor="income"
+            className="bg-black/15 ring-1 ring-white/5"
+          />
+        )}
         <KPIWidget
           label="Libre"
           value={formatCurrency(availableToSpend, code)}

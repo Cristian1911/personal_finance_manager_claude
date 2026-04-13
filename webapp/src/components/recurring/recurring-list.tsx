@@ -27,6 +27,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { RecurringFormDialog } from "./recurring-form-dialog";
+import { RecurringImpactDialog } from "./recurring-impact-dialog";
 import type {
   Account,
   CategoryWithChildren,
@@ -91,16 +92,18 @@ function RecurringCard({
     template.end_date
   );
 
-  const handleToggle = () => {
+  const handleActivate = () => {
     startTransition(() => {
-      toggleRecurringTemplate(template.id, !template.is_active);
+      toggleRecurringTemplate(template.id, true);
     });
   };
 
-  const handleDelete = () => {
-    startTransition(() => {
-      deleteRecurringTemplate(template.id);
-    });
+  const handlePauseConfirm = () => {
+    toggleRecurringTemplate(template.id, false);
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteRecurringTemplate(template.id);
   };
 
   return (
@@ -109,12 +112,12 @@ function RecurringCard({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             {isIncome ? (
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <ArrowDownLeft className="h-5 w-5 text-green-600" />
+              <div className="p-2 rounded-lg bg-z-income/10">
+                <ArrowDownLeft className="h-5 w-5 text-z-income" />
               </div>
             ) : (
-              <div className="p-2 rounded-lg bg-orange-500/10">
-                <ArrowUpRight className="h-5 w-5 text-orange-600" />
+              <div className="p-2 rounded-lg bg-z-expense/10">
+                <ArrowUpRight className="h-5 w-5 text-z-expense" />
               </div>
             )}
             <div>
@@ -143,26 +146,42 @@ function RecurringCard({
                   </DropdownMenuItem>
                 }
               />
-              <DropdownMenuItem onClick={handleToggle}>
-                {template.is_active ? (
-                  <>
-                    <Pause className="h-4 w-4 mr-2" />
-                    Pausar
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4 mr-2" />
-                    Activar
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Eliminar
-              </DropdownMenuItem>
+              {template.is_active ? (
+                <RecurringImpactDialog
+                  templateId={template.id}
+                  templateName={template.merchant_name ?? "Recurrente"}
+                  currencyCode={(template.currency_code ?? "COP") as CurrencyCode}
+                  action="pause"
+                  onConfirm={handlePauseConfirm}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <Pause className="h-4 w-4 mr-2" />
+                      Pausar
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuItem onClick={handleActivate}>
+                  <Play className="h-4 w-4 mr-2" />
+                  Activar
+                </DropdownMenuItem>
+              )}
+              <RecurringImpactDialog
+                templateId={template.id}
+                templateName={template.merchant_name ?? "Recurrente"}
+                currencyCode={(template.currency_code ?? "COP") as CurrencyCode}
+                action="delete"
+                onConfirm={handleDeleteConfirm}
+                trigger={
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar
+                  </DropdownMenuItem>
+                }
+              />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -170,7 +189,7 @@ function RecurringCard({
         <div className="mt-4 flex items-baseline justify-between">
           <span
             className={`text-xl font-bold ${
-              template.direction === "INFLOW" ? "text-green-600" : ""
+              template.direction === "INFLOW" ? "text-z-income" : ""
             }`}
           >
             {isIncome ? "+" : "-"}

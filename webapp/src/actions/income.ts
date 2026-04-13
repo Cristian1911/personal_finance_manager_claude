@@ -5,6 +5,8 @@ import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
+import { toMonthlyAmount } from "@/lib/utils/recurring";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import type { CurrencyCode } from "@zeta/shared";
 
 export interface IncomeEstimate {
@@ -12,7 +14,7 @@ export interface IncomeEstimate {
   currency: CurrencyCode;
   monthsOfData: number;
   totalIncome: number;
-  source: "profile" | "transactions"; // where the income figure came from
+  source: "profile" | "recurring" | "transactions";
   recentTransactions: {
     id: string;
     description: string;
@@ -32,6 +34,7 @@ async function getEstimatedIncomeCached(
   "use cache";
   cacheTag("debt");
   cacheTag("profile");
+  cacheTag("recurring");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
@@ -69,6 +72,33 @@ async function getEstimatedIncomeCached(
       source: "profile" as const,
       recentTransactions: [],
     };
+  }
+
+  // Priority 3: Recurring INFLOW templates (active, non-debt accounts)
+  const { data: inflowTemplates } = await supabase
+    .from("recurring_transaction_templates")
+    .select("amount, frequency, account:accounts!recurring_transaction_templates_account_id_fkey(account_type)")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .eq("direction", "INFLOW");
+
+  if (inflowTemplates && inflowTemplates.length > 0) {
+    let recurringMonthlyIncome = 0;
+    for (const t of inflowTemplates) {
+      const acctType = (t.account as { account_type?: string } | null)?.account_type;
+      if (acctType && isDebtAccountType(acctType)) continue;
+      recurringMonthlyIncome += toMonthlyAmount(t.amount, t.frequency);
+    }
+    if (recurringMonthlyIncome > 0) {
+      return {
+        monthlyAverage: recurringMonthlyIncome,
+        currency: baseCurrency,
+        monthsOfData: 0,
+        totalIncome: 0,
+        source: "recurring" as const,
+        recentTransactions: [],
+      };
+    }
   }
 
   const liquidAccountIds = liquidAccounts?.map((a) => a.id) ?? [];
@@ -132,14 +162,6 @@ async function getEstimatedIncomeCached(
 
 // ─── Public wrapper ───────────────────────────────────────────────────────────
 
-/**
- * Estimate monthly income from INFLOW transactions.
- * Queries all income transactions in the user's preferred currency,
- * groups by month, and returns the average.
- *
- * Excludes debt account inflows (credit card payments received, etc.)
- * by filtering to only checking/savings accounts.
- */
 export async function getEstimatedIncome(
   currency?: CurrencyCode,
   month?: string // "YYYY-MM" — if provided, return income for that specific month

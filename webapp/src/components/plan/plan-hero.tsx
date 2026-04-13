@@ -104,7 +104,9 @@ export function PlanHero({
                 {incomeEstimate
                   ? incomeEstimate.source === "profile"
                     ? "Tomado de tu perfil"
-                    : `Estimado con ${incomeEstimate.monthsOfData} ${incomeEstimate.monthsOfData === 1 ? "mes" : "meses"} de movimientos`
+                    : incomeEstimate.source === "recurring"
+                      ? "Basado en tus ingresos recurrentes"
+                      : `Estimado con ${incomeEstimate.monthsOfData} ${incomeEstimate.monthsOfData === 1 ? "mes" : "meses"} de movimientos`
                   : "Configura o detecta ingresos para afinar el plan"}
               </span>
             }

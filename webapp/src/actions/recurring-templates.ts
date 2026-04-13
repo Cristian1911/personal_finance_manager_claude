@@ -8,9 +8,11 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { toMonthlyAmount } from "@/lib/utils/recurring";
 import { ensureCurrentOccurrences } from "@/actions/occurrences";
 import {
   getOccurrencesBetween,
+  getNextOccurrence,
   DEBT_PAYMENT_CATEGORY_ID,
   TRANSFER_CATEGORY_ID,
 } from "@zeta/shared";
@@ -926,23 +928,96 @@ export async function getRecurringSummary(): Promise<{
   return getRecurringSummaryCached(user.id, accessToken);
 }
 
-function toMonthlyAmount(
-  amount: number,
-  frequency: string
-): number {
-  switch (frequency) {
-    case "WEEKLY":
-      return amount * 4.33;
-    case "BIWEEKLY":
-      return amount * 2.17;
-    case "MONTHLY":
-      return amount;
-    case "QUARTERLY":
-      return amount / 3;
-    case "ANNUAL":
-      return amount / 12;
-    default:
-      return amount;
+// ─── Impact preview ──────────────────────────────────────────────────────────
+
+export interface TemplateImpact {
+  pendingCount: number;
+  pendingTotal: number;
+  within14Days: { count: number; total: number };
+  planningEntriesCount: number;
+  nextOccurrenceDate: string | null;
+  monthlyAmount: number;
+  direction: "INFLOW" | "OUTFLOW";
+  templateName: string;
+}
+
+export async function getRecurringTemplateImpact(
+  templateId: string
+): Promise<ActionResult<TemplateImpact>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const idCheck = uuidStr("ID de plantilla inválido").safeParse(templateId);
+  if (!idCheck.success) return { success: false, error: idCheck.error.issues[0].message };
+
+  try {
+    const now = new Date();
+    const today = toISODateString(now);
+    const in14Days = toISODateString(addDays(now, 14));
+
+    const [templateRes, occurrencesRes, planningRes] = await Promise.all([
+      supabase
+        .from("recurring_transaction_templates")
+        .select("id, merchant_name, description, amount, direction, frequency, start_date, end_date, account:accounts!recurring_transaction_templates_account_id_fkey(account_type)")
+        .eq("id", templateId)
+        .eq("user_id", user.id)
+        .single(),
+      supabase
+        .from("recurring_occurrences")
+        .select("id, occurrence_date, expected_amount")
+        .eq("template_id", templateId)
+        .eq("user_id", user.id)
+        .eq("status", "pending"),
+      supabase
+        .from("planning_entries")
+        .select("id")
+        .eq("recurring_template_id", templateId)
+        .eq("user_id", user.id),
+    ]);
+
+    if (templateRes.error || !templateRes.data) {
+      return { success: false, error: "No se encontró la plantilla." };
+    }
+
+    const template = templateRes.data;
+    const occurrences = occurrencesRes.data ?? [];
+    const planningEntries = planningRes.data ?? [];
+
+    const pendingCount = occurrences.length;
+    const pendingTotal = occurrences.reduce((sum, o) => sum + o.expected_amount, 0);
+
+    const near = occurrences.filter(
+      (o) => o.occurrence_date >= today && o.occurrence_date <= in14Days
+    );
+
+    // Resolve effective direction (debt accounts = INFLOW template but behaves as OUTFLOW obligation)
+    const accountType = (template.account as { account_type?: string } | null)?.account_type;
+    const isDebtPayment = !!accountType && DEBT_ACCOUNT_TYPES.has(accountType);
+    const effectiveDirection: "INFLOW" | "OUTFLOW" = isDebtPayment ? "OUTFLOW" : template.direction;
+
+    const nextDate = getNextOccurrence(
+      template.start_date,
+      template.frequency,
+      template.end_date
+    ) ?? null;
+
+    return {
+      success: true,
+      data: {
+        pendingCount,
+        pendingTotal,
+        within14Days: { count: near.length, total: near.reduce((s, o) => s + o.expected_amount, 0) },
+        planningEntriesCount: planningEntries.length,
+        nextOccurrenceDate: nextDate,
+        monthlyAmount: toMonthlyAmount(template.amount, template.frequency),
+        direction: effectiveDirection,
+        templateName: template.merchant_name ?? template.description ?? "Recurrente",
+      },
+    };
+  } catch (error) {
+    console.error("Error calculating template impact:", error);
+    return { success: false, error: "Error al calcular el impacto de la plantilla." };
   }
 }
+
 

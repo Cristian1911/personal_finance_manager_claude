@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CalendarClock, Repeat2 } from "lucide-react";
+import { ArrowDownLeft, ArrowRight, CalendarClock, Repeat2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -28,11 +28,17 @@ export function PlanRecurringSection({
         <CardTitle className="text-xl">Lo que ya viene en camino y no deberías olvidar</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className={`grid gap-3 ${recurring.totalMonthlyIncome > 0 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
           <PlanStatCard
             label="Fijos mensuales"
             value={formatCurrency(recurring.totalMonthlyExpenses, currency)}
           />
+          {recurring.totalMonthlyIncome > 0 && (
+            <PlanStatCard
+              label="Ingresos recurrentes"
+              value={`+${formatCurrency(recurring.totalMonthlyIncome, currency)}`}
+            />
+          )}
           <PlanStatCard
             label="Próximos eventos"
             value={recurring.dueSoonCount}
@@ -74,6 +80,33 @@ export function PlanRecurringSection({
             </div>
           )}
         </div>
+
+        {recurring.upcomingIncome.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <ArrowDownLeft className="size-4 text-z-income" />
+              Ingresos esperados
+            </div>
+            <div className="space-y-2">
+              {recurring.upcomingIncome.map((entry) => (
+                <div
+                  key={`${entry.template.id}-${entry.next_date}`}
+                  className="flex items-center justify-between rounded-2xl border border-white/6 bg-z-income/5 px-4 py-3"
+                >
+                  <div className="space-y-1">
+                    <p className="font-medium">{entry.template.merchant_name ?? "Ingreso"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(entry.next_date, "dd MMM")} · {entry.template.account.name}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-z-income">
+                    +{formatCurrency(entry.template.amount, currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
           <Button asChild className={BRASS_BUTTON_CLASS}>
