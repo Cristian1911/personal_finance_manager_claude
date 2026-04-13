@@ -5,6 +5,8 @@ import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { toISODateString } from "@/lib/utils/date";
+import { toMonthlyAmount } from "@/lib/utils/recurring";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import type { CurrencyCode } from "@zeta/shared";
 
 export interface IncomeEstimate {
@@ -19,17 +21,6 @@ export interface IncomeEstimate {
     amount: number;
     date: string;
   }[];
-}
-
-function toMonthlyAmount(amount: number, frequency: string): number {
-  switch (frequency) {
-    case "WEEKLY": return amount * 4.33;
-    case "BIWEEKLY": return amount * 2.17;
-    case "MONTHLY": return amount;
-    case "QUARTERLY": return amount / 3;
-    case "ANNUAL": return amount / 12;
-    default: return amount;
-  }
 }
 
 // ─── Cached inner function ────────────────────────────────────────────────────
@@ -92,11 +83,10 @@ async function getEstimatedIncomeCached(
     .eq("direction", "INFLOW");
 
   if (inflowTemplates && inflowTemplates.length > 0) {
-    const DEBT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
     let recurringMonthlyIncome = 0;
     for (const t of inflowTemplates) {
       const acctType = (t.account as { account_type?: string } | null)?.account_type;
-      if (acctType && DEBT_TYPES.has(acctType)) continue; // debt inflows are NOT income
+      if (acctType && isDebtAccountType(acctType)) continue;
       recurringMonthlyIncome += toMonthlyAmount(t.amount, t.frequency);
     }
     if (recurringMonthlyIncome > 0) {

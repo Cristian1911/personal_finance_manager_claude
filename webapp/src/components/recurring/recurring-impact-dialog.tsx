@@ -48,11 +48,14 @@ export function RecurringImpactDialog({
       setImpact(null);
       return;
     }
+    let stale = false;
     setLoading(true);
     getRecurringTemplateImpact(templateId).then((result) => {
+      if (stale) return;
       if (result.success) setImpact(result.data);
       setLoading(false);
     });
+    return () => { stale = true; };
   }, [open, templateId]);
 
   const isDelete = action === "delete";
@@ -60,6 +63,8 @@ export function RecurringImpactDialog({
   const title = isDelete
     ? `Eliminar "${templateName}"`
     : `Pausar "${templateName}"`;
+  const confirmLabel = isDelete ? "Eliminar definitivamente" : "Pausar plantilla";
+  const pendingLabel = isDelete ? "Eliminando..." : "Pausando...";
 
   function handleConfirm() {
     startTransition(() => {
@@ -111,13 +116,7 @@ export function RecurringImpactDialog({
             disabled={loading || isPending}
             className={BRASS_BUTTON_CLASS}
           >
-            {isPending
-              ? isDelete
-                ? "Eliminando..."
-                : "Pausando..."
-              : isDelete
-                ? "Eliminar definitivamente"
-                : "Pausar plantilla"}
+            {isPending ? pendingLabel : confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
