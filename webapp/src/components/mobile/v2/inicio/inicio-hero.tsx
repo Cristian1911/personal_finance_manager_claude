@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatDate, toColombiaDateString } from "@/lib/utils/date";
 import { ChevronRight } from "lucide-react";
 import {
   PANEL_SURFACE_SUBTLE_CLASS,
@@ -16,6 +17,10 @@ interface InicioHeroProps {
   availableTotal: number;
   daysRemaining: number;
   currency: CurrencyCode;
+  nextIncomeDate: string | null;
+  nextIncomeAmount: number;
+  nextIncomeName: string | null;
+  incomeConfigured: boolean;
   breakdown?: {
     totalLiquid: number;
     fixedExpenses: number;
@@ -37,6 +42,10 @@ export function InicioHero({
   availableTotal,
   daysRemaining,
   currency,
+  nextIncomeDate,
+  nextIncomeAmount,
+  nextIncomeName,
+  incomeConfigured,
   breakdown,
   primaryAccount,
   expanded = false,
@@ -67,8 +76,10 @@ export function InicioHero({
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
-        = {formatCurrency(availableTotal, currency)} este mes · {daysRemaining}{" "}
-        días restantes
+        {nextIncomeDate
+          ? <>{`= ${formatCurrency(availableTotal, currency)} · `}{nextIncomeDate === toColombiaDateString(new Date()) ? "hoy" : `${daysRemaining} días`}{` hasta ${formatDate(nextIncomeDate, "d MMM")}`}</>
+          : <>{`= ${formatCurrency(availableTotal, currency)} · ${daysRemaining} días restantes`}</>
+        }
       </p>
 
       {/* Expandable math breakdown */}
@@ -94,11 +105,11 @@ export function InicioHero({
                   Cómo se calcula
                 </p>
                 <div className="flex justify-between text-xs text-z-sage-light">
-                  <span>Ingresos del mes</span>
+                  <span>Saldo líquido</span>
                   <span>{formatCurrency(breakdown.totalLiquid, currency)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-z-sage-light">
-                  <span>− Gastos fijos pendientes</span>
+                  <span>− Obligaciones pendientes</span>
                   <span className="text-z-expense">
                     −{formatCurrency(breakdown.fixedExpenses, currency)}
                   </span>
@@ -114,9 +125,26 @@ export function InicioHero({
                   <span>{formatCurrency(availableTotal, currency)}</span>
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  ÷ {daysRemaining} días = {formatCurrency(availablePerDay, currency)}/día
+                  ÷ {daysRemaining} días{nextIncomeDate ? ` (hasta ${formatDate(nextIncomeDate, "d MMM")})` : ""} = {formatCurrency(availablePerDay, currency)}/día
                 </p>
+                {nextIncomeDate && (
+                  <div className="border-t border-white/8 pt-1.5 flex justify-between text-xs text-z-income">
+                    <span>Próximo ingreso: {nextIncomeName}</span>
+                    <span>+{formatCurrency(nextIncomeAmount, currency)} el {formatDate(nextIncomeDate, "d MMM")}</span>
+                  </div>
+                )}
               </div>
+            )}
+
+            {!incomeConfigured && (
+              <Link
+                href="/plan?tab=recurrentes"
+                onClick={(e) => e.stopPropagation()}
+                className={cn(PANEL_INSET_CLASS, "mt-2 flex items-center justify-between border-z-brass/20 bg-z-brass/5 p-3 transition-colors hover:bg-z-brass/10")}
+              >
+                <p className="text-[11px] text-z-brass">Configura tus ingresos recurrentes para un presupuesto diario más preciso</p>
+                <ChevronRight className="size-3.5 shrink-0 text-z-brass/50" />
+              </Link>
             )}
 
             {primaryAccount && (

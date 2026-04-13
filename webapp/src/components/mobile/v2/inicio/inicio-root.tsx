@@ -119,6 +119,10 @@ export function InicioRoot({
         availableTotal={live.hero.availableTotal}
         daysRemaining={live.hero.daysRemaining}
         currency={hero.currency}
+        nextIncomeDate={live.hero.nextIncomeDate ?? hero.nextIncomeDate ?? null}
+        nextIncomeAmount={live.hero.nextIncomeAmount ?? hero.nextIncomeAmount ?? 0}
+        nextIncomeName={live.hero.nextIncomeName ?? hero.nextIncomeName ?? null}
+        incomeConfigured={live.hero.incomeConfigured ?? hero.incomeConfigured ?? false}
         breakdown={live.hero.breakdown}
         primaryAccount={hero.primaryAccount}
         expanded={activeZone === "hero"}
