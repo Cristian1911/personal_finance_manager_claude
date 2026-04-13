@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { GHOST_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
-import { createDestinatario, getRecentDestinatarios } from "@/actions/destinatarios";
+import { createDestinatario, getRecentDestinatarios, addDestinatarioRule } from "@/actions/destinatarios";
 import { toast } from "sonner";
 
 type DestinatarioOption = {
@@ -93,32 +93,13 @@ export function DestinatarioZonePicker({
     setOpen(false);
   }
 
-  function handleCreate(name: string) {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    startCreateTransition(async () => {
-      const fd = new FormData();
-      fd.set("name", trimmed);
-      const result = await createDestinatario({ success: false, error: "" }, fd);
-      if (result.success) {
-        onValueChange(result.data.id, result.data.name);
-        setOpen(false);
-        setCreating(false);
-        toast.success(`Destinatario "${trimmed}" creado`);
-      } else {
-        toast.error(result.error || "Error al crear destinatario");
-      }
-    });
-  }
-
-  function handleCreateWithDetails(name: string, pattern: string | null) {
+  function handleCreate(name: string, pattern: string | null = null) {
     startCreateTransition(async () => {
       const fd = new FormData();
       fd.set("name", name);
       const result = await createDestinatario({ success: false, error: "" }, fd);
       if (result.success) {
         if (pattern?.trim()) {
-          const { addDestinatarioRule } = await import("@/actions/destinatarios");
           const ruleFd = new FormData();
           ruleFd.set("pattern", pattern.trim());
           ruleFd.set("match_type", "contains");
@@ -249,7 +230,7 @@ export function DestinatarioZonePicker({
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
               const name = fd.get("create_name") as string;
-              if (name?.trim()) handleCreateWithDetails(name.trim(), fd.get("create_pattern") as string | null);
+              if (name?.trim()) handleCreate(name.trim(), fd.get("create_pattern") as string | null);
             }}
           >
             <input

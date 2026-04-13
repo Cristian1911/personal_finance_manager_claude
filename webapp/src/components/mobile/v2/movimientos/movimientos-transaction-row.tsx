@@ -8,6 +8,11 @@ import { Pencil, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { TagChip } from "@/components/tags/tag-chip";
+import { CategoryIcon } from "@/components/categories/category-icon";
+import { categorizeTransaction, assignDestinatario, removeDestinatarioFromTransaction } from "@/actions/categorize";
+import { toast } from "sonner";
+import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
 
 const DestinatarioZonePicker = dynamic(
   () => import("@/components/destinatarios/destinatario-zone-picker").then(m => ({ default: m.DestinatarioZonePicker })),
@@ -17,11 +22,6 @@ const TagZonePicker = dynamic(
   () => import("@/components/tags/tag-zone-picker").then(m => ({ default: m.TagZonePicker })),
   { ssr: false }
 );
-import { TagChip } from "@/components/tags/tag-chip";
-import { CategoryIcon } from "@/components/categories/category-icon";
-import { categorizeTransaction, assignDestinatario, removeDestinatarioFromTransaction } from "@/actions/categorize";
-import { toast } from "sonner";
-import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
 
 interface MovimientosTransactionRowProps {
   transaction: TransactionWithAccount;

@@ -261,7 +261,6 @@ export function TagZonePicker({
           <div className="flex flex-wrap gap-1">
             {recentTags
               .filter((rt) => !currentTagIds.has(rt.id))
-              .slice(0, 5)
               .map((rt) => (
                 <button
                   key={rt.id}
