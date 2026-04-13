@@ -685,6 +685,8 @@ export interface DashboardHeroData {
   pendingObligations: PendingObligation[];
   totalPending: number;
   availableToSpend: number;
+  pendingIncome: number;
+  pendingIncomeCount: number;
   monthlyIncome: number;
   monthlySpent: number;
   freshness: "fresh" | "stale" | "outdated";
@@ -704,6 +706,8 @@ export async function getDashboardHeroData(
       pendingObligations: [],
       totalPending: 0,
       availableToSpend: 0,
+      pendingIncome: 0,
+      pendingIncomeCount: 0,
       monthlyIncome: 0,
       monthlySpent: 0,
       freshness: "outdated",
@@ -771,6 +775,12 @@ export async function getDashboardHeroData(
     .filter((o) => o.direction === "OUTFLOW" && o.account_type !== "CREDIT_CARD")
     .reduce((sum, o) => sum + o.expected_amount, 0);
 
+  // 4. Pending INFLOW occurrences (expected income, NOT added to availableToSpend)
+  const pendingInflowOccurrences = pendingOccurrences
+    .filter((o) => o.direction === "INFLOW" && o.account_type !== "CREDIT_CARD" && o.account_type !== "LOAN");
+  const pendingIncome = pendingInflowOccurrences.reduce((sum, o) => sum + o.expected_amount, 0);
+  const pendingIncomeCount = pendingInflowOccurrences.length;
+
   // 5. Sort by due date
   const allObligations = recurringObligations
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -782,6 +792,8 @@ export async function getDashboardHeroData(
     pendingObligations: allObligations,
     totalPending,
     availableToSpend,
+    pendingIncome,
+    pendingIncomeCount,
     monthlyIncome: monthMetrics.income,
     monthlySpent: monthMetrics.expenses,
     freshness,

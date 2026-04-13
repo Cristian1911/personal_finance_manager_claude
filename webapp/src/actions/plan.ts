@@ -84,10 +84,14 @@ function buildHeroSummary({
     };
   }
 
+  const hasUpcomingIncome = heroData.pendingIncome > 0;
   return {
-    headline: "Tu plan está claro y bajo control",
-    guidance:
-      "El margen actual te permite decidir con calma. Usa esta vista para ajustar presupuesto y prioridades sin perder el hilo.",
+    headline: hasUpcomingIncome
+      ? "Tu plan está claro y hay ingresos en camino"
+      : "Tu plan está claro y bajo control",
+    guidance: hasUpcomingIncome
+      ? "El margen actual es estable y esperas ingresos próximos. Buen momento para revisar presupuesto y prioridades."
+      : "El margen actual te permite decidir con calma. Usa esta vista para ajustar presupuesto y prioridades sin perder el hilo.",
     recommendedAction: {
       href: "/categories",
       label: "Ver presupuesto",
@@ -139,15 +143,25 @@ export const getPlanPageData = cache(
       (a, b) => (b.interestRate ?? 0) - (a.interestRate ?? 0)
     )[0];
 
-    const dueSoon = upcomingRecurrences
+    const currencyFiltered = upcomingRecurrences
+      .filter((entry) => (entry.template.currency_code ?? baseCurrency) === baseCurrency);
+
+    const dueSoon = currencyFiltered
       .filter((entry) =>
         entry.template.direction === "OUTFLOW" ||
         entry.template.account.account_type === "CREDIT_CARD" ||
         entry.template.account.account_type === "LOAN"
       )
-      .filter((entry) => (entry.template.currency_code ?? baseCurrency) === baseCurrency)
       .slice(0, 6);
     const dueSoonTotal = dueSoon.reduce((sum, entry) => sum + entry.template.amount, 0);
+
+    const upcomingIncome = currencyFiltered
+      .filter((entry) =>
+        entry.template.direction === "INFLOW" &&
+        entry.template.account.account_type !== "CREDIT_CARD" &&
+        entry.template.account.account_type !== "LOAN"
+      )
+      .slice(0, 4);
 
     return {
       currency: baseCurrency,
@@ -176,6 +190,7 @@ export const getPlanPageData = cache(
       },
       recurring: {
         upcoming: dueSoon,
+        upcomingIncome,
         totalMonthlyExpenses: recurringSummary.totalMonthlyExpenses,
         totalMonthlyIncome: recurringSummary.totalMonthlyIncome,
         activeCount: recurringSummary.activeCount,

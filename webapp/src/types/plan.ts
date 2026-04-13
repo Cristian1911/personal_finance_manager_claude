@@ -42,6 +42,7 @@ export interface PlanDebtSummary {
 
 export interface PlanRecurringSummary {
   upcoming: UpcomingRecurrence[];
+  upcomingIncome: UpcomingRecurrence[];
   totalMonthlyExpenses: number;
   totalMonthlyIncome: number;
   activeCount: number;
