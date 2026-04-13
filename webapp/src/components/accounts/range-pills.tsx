@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /** Days to look back. 0 = show all data. */
@@ -25,10 +25,28 @@ interface RangePillsProps {
 export function RangePills({ value, onChange, className }: RangePillsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLButtonElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // Scroll active pill into view on mount and when value changes
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
+  }, []);
+
+  // Track scroll position for fade hints
   useEffect(() => {
-    if (activeRef.current && scrollRef.current) {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateScrollState();
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    return () => el.removeEventListener("scroll", updateScrollState);
+  }, [updateScrollState]);
+
+  // Scroll active pill into view on mount and value change
+  useEffect(() => {
+    if (activeRef.current) {
       activeRef.current.scrollIntoView({
         behavior: "smooth",
         block: "nearest",
@@ -38,30 +56,45 @@ export function RangePills({ value, onChange, className }: RangePillsProps) {
   }, [value]);
 
   return (
-    <div
-      ref={scrollRef}
-      className={cn(
-        "max-w-[140px] overflow-x-auto scrollbar-none",
-        "flex snap-x snap-mandatory gap-1",
-        className,
-      )}
-    >
-      {RANGES.map((r) => (
-        <button
-          key={r.value}
-          ref={r.value === value ? activeRef : undefined}
-          type="button"
-          onClick={() => onChange(r.value)}
-          className={cn(
-            "shrink-0 snap-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
-            value === r.value
-              ? "bg-z-brass text-z-ink"
-              : "bg-white/[0.04] text-z-sage-dark hover:bg-white/[0.08]",
-          )}
-        >
-          {r.label}
-        </button>
-      ))}
+    <div className={cn("relative max-w-[140px]", className)}>
+      {/* Left fade hint */}
+      <div
+        className={cn(
+          "pointer-events-none absolute left-0 top-0 z-10 h-full w-5 bg-gradient-to-r from-z-surface-2 to-transparent transition-opacity duration-200",
+          canScrollLeft ? "opacity-100" : "opacity-0",
+        )}
+      />
+
+      {/* Scrollable pills */}
+      <div
+        ref={scrollRef}
+        className="flex snap-x snap-mandatory gap-1 overflow-x-auto scrollbar-none"
+      >
+        {RANGES.map((r) => (
+          <button
+            key={r.value}
+            ref={r.value === value ? activeRef : undefined}
+            type="button"
+            onClick={() => onChange(r.value)}
+            className={cn(
+              "shrink-0 snap-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+              value === r.value
+                ? "bg-z-brass text-z-ink"
+                : "bg-white/[0.04] text-z-sage-dark hover:bg-white/[0.08]",
+            )}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Right fade hint */}
+      <div
+        className={cn(
+          "pointer-events-none absolute right-0 top-0 z-10 h-full w-5 bg-gradient-to-l from-z-surface-2 to-transparent transition-opacity duration-200",
+          canScrollRight ? "opacity-100" : "opacity-0",
+        )}
+      />
     </div>
   );
 }
