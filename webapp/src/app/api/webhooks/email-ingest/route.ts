@@ -298,6 +298,7 @@ async function processEmail(ctx: {
       id: string; user_id: string; account_id: string | null;
       auto_import: boolean; allowed_sender: string | null;
       pdf_import_enabled: boolean; address_key: string;
+      allowed_senders: string[];
     } | null; error: { message: string; code?: string } | null };
 
   if (lookupError) {
@@ -325,6 +326,7 @@ async function processEmail(ctx: {
     auto_import: autoImport,
     allowed_sender: allowedSender,
     pdf_import_enabled: pdfImportEnabled,
+    allowed_senders: userAllowedSenders,
   } = ingestAddress;
 
   // 5. Detect Gmail forwarding verification emails
@@ -371,22 +373,10 @@ async function processEmail(ctx: {
   // Match full local-part + "@" to prevent substring spoofing.
   const isSelfSender = fromEmail.startsWith(`${addressKey.toLowerCase()}@`);
 
-  // Check user-configured allowed senders
-  let isUserConfiguredSender = false;
-  if (!isBankSender && !isAllowedSender && !isSelfSender) {
-    const { data: userSenders, error: userSendersError } = await admin
-      .from("email_ingest_allowed_senders")
-      .select("sender_email")
-      .eq("user_id", userId);
-
-    if (userSendersError) {
-      console.error(`[email-ingest][${emailId}] Failed to fetch user allowed senders:`, userSendersError.message);
-    }
-
-    isUserConfiguredSender = (userSenders ?? []).some(
-      (s) => fromEmail === s.sender_email.toLowerCase()
-    );
-  }
+  // Check user-configured allowed senders (loaded from RPC, no extra round-trip)
+  const isUserConfiguredSender = (userAllowedSenders ?? []).some(
+    (s) => fromEmail === s.toLowerCase()
+  );
 
   if (!isBankSender && !isAllowedSender && !isSelfSender && !isUserConfiguredSender) {
     console.log(`[email-ingest][${emailId}] Sender rejected: "${from}" (allowed_sender=${allowedSender ?? "none"})`);
