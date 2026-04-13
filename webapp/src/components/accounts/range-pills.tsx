@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Days to look back. 0 = show all data. */
@@ -35,7 +36,6 @@ export function RangePills({ value, onChange, className }: RangePillsProps) {
     setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
   }, []);
 
-  // Track scroll position for fade hints
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -55,20 +55,30 @@ export function RangePills({ value, onChange, className }: RangePillsProps) {
     }
   }, [value]);
 
+  function scrollBy(dir: -1 | 1) {
+    scrollRef.current?.scrollBy({ left: dir * 80, behavior: "smooth" });
+  }
+
   return (
-    <div className={cn("relative max-w-[140px]", className)}>
-      {/* Left fade hint */}
-      <div
+    <div className={cn("flex items-center gap-1", className)}>
+      {/* Left arrow */}
+      <button
+        type="button"
+        onClick={() => scrollBy(-1)}
         className={cn(
-          "pointer-events-none absolute left-0 top-0 z-10 h-full w-5 bg-gradient-to-r from-z-surface-2 to-transparent transition-opacity duration-200",
-          canScrollLeft ? "opacity-100" : "opacity-0",
+          "shrink-0 text-z-sage-dark/50 transition-opacity hover:text-z-sage-dark",
+          canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
-      />
+        tabIndex={-1}
+        aria-label="Anterior"
+      >
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </button>
 
       {/* Scrollable pills */}
       <div
         ref={scrollRef}
-        className="flex snap-x snap-mandatory gap-1 overflow-x-auto scrollbar-none"
+        className="max-w-[120px] flex snap-x snap-mandatory gap-1 overflow-x-auto scrollbar-none"
       >
         {RANGES.map((r) => (
           <button
@@ -88,13 +98,19 @@ export function RangePills({ value, onChange, className }: RangePillsProps) {
         ))}
       </div>
 
-      {/* Right fade hint */}
-      <div
+      {/* Right arrow */}
+      <button
+        type="button"
+        onClick={() => scrollBy(1)}
         className={cn(
-          "pointer-events-none absolute right-0 top-0 z-10 h-full w-5 bg-gradient-to-l from-z-surface-2 to-transparent transition-opacity duration-200",
-          canScrollRight ? "opacity-100" : "opacity-0",
+          "shrink-0 text-z-sage-dark/50 transition-opacity hover:text-z-sage-dark",
+          canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
-      />
+        tabIndex={-1}
+        aria-label="Siguiente"
+      >
+        <ChevronRight className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }
