@@ -588,7 +588,11 @@ export async function bulkApplyDestinatarioMatches(
         .update(payload)
         .in("id", group.txIds)
         .eq("user_id", user.id);
-      return error ? 0 : group.txIds.length;
+      if (error) {
+        console.error("Error in bulkApplyDestinatarioMatches batch:", error);
+        return 0;
+      }
+      return group.txIds.length;
     })
   );
 
