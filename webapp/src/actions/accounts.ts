@@ -579,34 +579,56 @@ interface AccountTransactionsResult {
   hasMore: boolean;
 }
 
+async function getAccountTransactionsCached(
+  userId: string,
+  accessToken: string,
+  accountId: string,
+  limit: number,
+  offset: number
+): Promise<AccountTransactionsResult> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  const { data, error, count } = await supabase
+    .from("transactions")
+    .select(
+      `*, account:accounts!inner(id, name, icon, color), category:categories(id, name, name_es, icon, color), destinatario:destinatarios(id, name)`,
+      { count: "exact" }
+    )
+    .eq("account_id", accountId)
+    .eq("user_id", userId)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+
+  return {
+    transactions: (data ?? []) as unknown as TransactionWithAccount[],
+    hasMore: (count ?? 0) > offset + limit,
+  };
+}
+
 export async function getAccountTransactions(
   accountId: string,
   opts: { offset?: number; limit?: number } = {}
 ): Promise<ActionResult<AccountTransactionsResult>> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+
   const offset = opts.offset ?? 0;
   const limit = opts.limit ?? 20;
 
-  const { data, error } = await supabase
-    .from("transactions")
-    .select(
-      `*, account:accounts!inner(id, name, icon, color), category:categories(id, name, name_es, icon, color), destinatario:destinatarios(id, name)`
-    )
-    .eq("account_id", accountId)
-    .eq("user_id", user.id)
-    .order("transaction_date", { ascending: false })
-    .range(offset, offset + limit);
-
-  if (error) {
-    return { success: false, error: error.message };
+  try {
+    const data = await getAccountTransactionsCached(user.id, accessToken, accountId, limit, offset);
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error loading account transactions:", error);
+    return { success: false, error: "Error al cargar las transacciones" };
   }
-
-  return {
-    success: true,
-    data: {
-      transactions: (data ?? []) as unknown as TransactionWithAccount[],
-      hasMore: (data?.length ?? 0) > limit,
-    },
-  };
 }
