@@ -12,6 +12,12 @@ import type { ActionResult } from "@/types/actions";
 import type { TransactionWithAccount } from "@/types/domain";
 import type { UserRule } from "@zeta/shared";
 
+type DestinatarioSuggestionMap = Record<string, {
+  destinatario_id: string;
+  destinatario_name: string;
+  category_id: string | null;
+}>;
+
 const bulkMatchSchema = z.array(z.object({
   transactionId: uuidStr(),
   destinatarioId: uuidStr(),
@@ -503,7 +509,7 @@ export async function assignDestinatario(
 async function computeDestinatarioSuggestionsCached(
   userId: string,
   accessToken: string
-): Promise<Record<string, { destinatario_id: string; destinatario_name: string; category_id: string | null }>> {
+): Promise<DestinatarioSuggestionMap> {
   "use cache";
   cacheTag("categorize");
   cacheTag("destinatarios");
@@ -518,7 +524,7 @@ async function computeDestinatarioSuggestionsCached(
   if (rules.length === 0 || transactions.length === 0) return {};
 
   const prepared = prepareDestinatarioRules(rules);
-  const suggestions: Record<string, { destinatario_id: string; destinatario_name: string; category_id: string | null }> = {};
+  const suggestions: DestinatarioSuggestionMap = {};
 
   for (const tx of transactions) {
     const text = tx.merchant_name ?? tx.clean_description ?? tx.raw_description ?? "";
@@ -541,9 +547,7 @@ async function computeDestinatarioSuggestionsCached(
  * Return a map of transaction ID → destinatario match for all uncategorized
  * transactions. Used to surface the "Aplicar todos" banner in the inbox.
  */
-export async function getDestinatarioSuggestionsForInbox(): Promise<
-  Record<string, { destinatario_id: string; destinatario_name: string; category_id: string | null }>
-> {
+export async function getDestinatarioSuggestionsForInbox(): Promise<DestinatarioSuggestionMap> {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return {};
   return computeDestinatarioSuggestionsCached(user.id, accessToken);
@@ -572,11 +576,13 @@ export async function bulkApplyDestinatarioMatches(
 
   const results = await Promise.all(
     Array.from(groups.values()).map(async (group) => {
-      const payload: Record<string, unknown> = { destinatario_id: group.destinatarioId };
-      if (group.categoryId) {
-        payload.category_id = group.categoryId;
-        payload.categorization_source = "USER_LEARNED";
-      }
+      const payload = group.categoryId
+        ? {
+            destinatario_id: group.destinatarioId,
+            category_id: group.categoryId,
+            categorization_source: "USER_LEARNED" as const,
+          }
+        : { destinatario_id: group.destinatarioId };
       const { error } = await supabase
         .from("transactions")
         .update(payload)

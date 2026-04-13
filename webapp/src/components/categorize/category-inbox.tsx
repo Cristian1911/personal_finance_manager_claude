@@ -620,7 +620,7 @@ export function CategoryInbox({
               </div>
 
               {/* Destinatario suggestions banner */}
-              {activeTab === "uncategorized" && activeDestSuggestionCount > 0 && (
+              {activeDestSuggestionCount > 0 && (
                 <div className="flex items-center justify-between rounded-xl border border-z-brass/20 bg-z-brass/5 px-4 py-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Sparkles className="size-4 text-z-brass" />
