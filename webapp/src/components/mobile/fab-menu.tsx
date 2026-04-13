@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Plus, Mic, Sparkles, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
-import { Drawer, DrawerPortal, DrawerOverlay, DrawerTitle } from "@/components/ui/drawer";
+import { Drawer, DrawerPortal, DrawerTitle } from "@/components/ui/drawer";
 
 export type FabAction = "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
 
@@ -27,6 +27,7 @@ interface FabMenuProps {
 export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const closedViaBackRef = useRef(false);
 
   // Close on route change
   useEffect(() => onOpenChange(false), [pathname, onOpenChange]);
@@ -39,6 +40,27 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
       return () => { document.body.style.overflow = prev; };
     }
   }, [open]);
+
+  // Back button closes the menu instead of navigating away
+  useEffect(() => {
+    if (!open) return;
+    closedViaBackRef.current = false;
+    history.pushState({ fabMenu: true }, "");
+
+    function handlePopState() {
+      closedViaBackRef.current = true;
+      onOpenChange(false);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      // If closed by non-back means (overlay tap, FAB toggle, swipe), pop the dummy entry
+      if (!closedViaBackRef.current) {
+        history.back();
+      }
+    };
+  }, [open, onOpenChange]);
 
   // Prefetch the transaction page when the drawer opens
   useEffect(() => {
@@ -62,11 +84,18 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
 
   return (
     <div className="lg:hidden">
+      {/* Custom backdrop — rendered outside vaul so pointer-events are never suppressed */}
+      {open && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 transition-opacity"
+          onClick={() => onOpenChange(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* modal={false} keeps the tab-bar FAB button interactive so it can toggle close */}
       <Drawer open={open} onOpenChange={onOpenChange} modal={false}>
         <DrawerPortal>
-          {/* Render overlay manually so we can attach onClick (vaul disables it when modal=false) */}
-          <DrawerOverlay onClick={() => onOpenChange(false)} />
           <DrawerPrimitive.Content
             data-slot="drawer-content"
             className="bg-background fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[85dvh] flex-col rounded-t-2xl border-t"

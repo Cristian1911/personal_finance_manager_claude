@@ -148,7 +148,7 @@ export function MobileSheetProvider({ children }: MobileSheetProviderProps) {
             <DrawerTitle>{activeAction ? getSheetTitle(activeAction) : ""}</DrawerTitle>
           </DrawerHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(var(--z-mobile-tab-bar-h)_+_1rem_+_env(safe-area-inset-bottom))]">
             {activeAction === "voice" && (
               <VoiceCaptureSheet
                 accounts={accounts}

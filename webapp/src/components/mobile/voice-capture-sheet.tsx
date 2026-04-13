@@ -287,7 +287,7 @@ export function VoiceCaptureSheet({
   // ── Render ──
 
   return (
-    <div className="flex flex-col" style={{ height: "min(60dvh, 28rem)" }}>
+    <div className="flex flex-col">
       {/* Account chip — tappable */}
       {selectedAccountId && !showAccountPicker && (
         <button
@@ -335,7 +335,7 @@ export function VoiceCaptureSheet({
       {/* Chat messages */}
       {!showAccountPicker && (
         <>
-          <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-3">
+          <div ref={scrollRef} className="space-y-3 overflow-y-auto overscroll-contain pb-3" style={{ maxHeight: "min(45dvh, 22rem)" }}>
             {messages.map((msg, i) => {
               if (msg.role === "user") {
                 return (
