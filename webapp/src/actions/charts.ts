@@ -7,7 +7,6 @@ import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import { getAccounts } from "@/actions/accounts";
 import { getPendingOccurrences, getNextIncomeOccurrence } from "@/actions/occurrences";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
-import type { NextIncomeInfo } from "@/actions/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import {
