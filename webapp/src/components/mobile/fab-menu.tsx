@@ -6,7 +6,6 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { Plus, Mic, Sparkles, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
-import { Drawer, DrawerPortal, DrawerTitle } from "@/components/ui/drawer";
 
 export type FabAction = "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
 
@@ -24,28 +23,27 @@ interface FabMenuProps {
   contextActions?: ContextAction[];
 }
 
+/** z-index above the tab bar (z-[9999]) so the modal overlay covers everything. */
+const FAB_MENU_Z = "z-[10000]";
+
 export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
   const closedViaBackRef = useRef(false);
 
   // Close on route change
-  useEffect(() => onOpenChange(false), [pathname, onOpenChange]);
-
-  // Lock body scroll while the non-modal drawer is open
   useEffect(() => {
-    if (open) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = prev; };
-    }
-  }, [open]);
+    closedViaBackRef.current = true;
+    onOpenChange(false);
+  }, [pathname, onOpenChange]);
 
   // Back button closes the menu instead of navigating away
   useEffect(() => {
     if (!open) return;
     closedViaBackRef.current = false;
-    history.pushState({ fabMenu: true }, "");
+    if (!history.state?.fabMenu) {
+      history.pushState({ fabMenu: true }, "");
+    }
 
     function handlePopState() {
       closedViaBackRef.current = true;
@@ -55,9 +53,8 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
     window.addEventListener("popstate", handlePopState);
     return () => {
       window.removeEventListener("popstate", handlePopState);
-      // If closed by non-back means (overlay tap, FAB toggle, swipe), pop the dummy entry
       if (!closedViaBackRef.current) {
-        closedViaBackRef.current = true; // prevent double-fire if late popstate leaks
+        closedViaBackRef.current = true;
         if (history.state?.fabMenu) {
           history.back();
         }
@@ -65,11 +62,9 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
     };
   }, [open, onOpenChange]);
 
-  // Prefetch the transaction page when the drawer opens
+  // Prefetch the transaction page when the menu opens
   useEffect(() => {
-    if (open) {
-      router.prefetch("/transactions/new");
-    }
+    if (open) router.prefetch("/transactions/new");
   }, [open, router]);
 
   const handleAction = useCallback(
@@ -87,26 +82,26 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
 
   return (
     <div className="lg:hidden">
-      {/* Custom backdrop — rendered outside vaul so pointer-events are never suppressed */}
-      {open && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50"
-          onClick={() => onOpenChange(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* modal={false} keeps the tab-bar FAB button interactive so it can toggle close */}
-      <Drawer open={open} onOpenChange={onOpenChange} modal={false}>
-        <DrawerPortal>
+      {/* modal={true} gives us: overlay click-to-close, swipe-to-close,
+          escape-to-close, focus trapping, body scroll lock — all built-in.
+          z-[10000] on overlay + content ensures they sit above the tab bar. */}
+      <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange}>
+        <DrawerPrimitive.Portal>
+          <DrawerPrimitive.Overlay
+            className={cn("fixed inset-0 bg-black/50", FAB_MENU_Z)}
+          />
           <DrawerPrimitive.Content
             data-slot="drawer-content"
-            className="bg-background fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[85dvh] flex-col rounded-t-2xl border-t"
+            className={cn(
+              "fixed inset-x-0 bottom-0 flex max-h-[85dvh] flex-col rounded-t-2xl border-t bg-background",
+              FAB_MENU_Z,
+            )}
           >
             <div className="mx-auto mt-3 mb-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
-            <DrawerTitle className="sr-only">Acciones</DrawerTitle>
-            <div className={cn("px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
-              {/* Primary: Nueva transacción — navigates to full page */}
+            <DrawerPrimitive.Title className="sr-only">Acciones</DrawerPrimitive.Title>
+
+            <div className={cn("min-h-0 flex-1 overflow-y-auto px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
+              {/* Primary: Nueva transacción */}
               <button
                 type="button"
                 onClick={handleNewTransaction}
@@ -166,7 +161,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
                 </button>
               </div>
 
-              {/* Image import — gallery + camera */}
+              {/* Image import */}
               <button
                 type="button"
                 onClick={() => handleAction("screenshot")}
@@ -221,8 +216,8 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
               )}
             </div>
           </DrawerPrimitive.Content>
-        </DrawerPortal>
-      </Drawer>
+        </DrawerPrimitive.Portal>
+      </DrawerPrimitive.Root>
     </div>
   );
 }

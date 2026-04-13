@@ -46,6 +46,7 @@ export function MobileTabBar() {
 
   return (
     <nav
+      data-fab-bar
       className="fixed bottom-0 left-0 right-0 z-[9999] lg:hidden"
       style={SAFE_AREA_BOTTOM_STYLE}
     >
