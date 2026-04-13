@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { createTagGroup, deleteTagGroup, createTag, deleteTag } from "@/actions/tags";
 import { TagChip } from "./tag-chip";
@@ -19,7 +18,6 @@ interface TagManagerProps {
 }
 
 export function TagManager({ tagGroups }: TagManagerProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [newGroupName, setNewGroupName] = useState("");
   const [newTagInputs, setNewTagInputs] = useState<Record<string, string>>({});
@@ -34,14 +32,12 @@ export function TagManager({ tagGroups }: TagManagerProps) {
     startTransition(async () => {
       await createTagGroup(fd);
       setNewGroupName("");
-      router.refresh();
     });
   }
 
   function handleDeleteGroup(id: string) {
     startTransition(async () => {
       await deleteTagGroup(id);
-      router.refresh();
     });
   }
 
@@ -55,14 +51,12 @@ export function TagManager({ tagGroups }: TagManagerProps) {
     startTransition(async () => {
       await createTag(fd);
       setNewTagInputs((prev) => ({ ...prev, [key]: "" }));
-      router.refresh();
     });
   }
 
   function handleDeleteTag(id: string) {
     startTransition(async () => {
       await deleteTag(id);
-      router.refresh();
     });
   }
 

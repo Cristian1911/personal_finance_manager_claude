@@ -359,7 +359,10 @@ export async function addTagToEntity(
   }
 
   revalidateTag("tags", "zeta");
-  if (entityType === "transaction") revalidateTag("categorize", "zeta");
+  if (entityType === "transaction") {
+    revalidateTag("categorize", "zeta");
+    revalidateTag("transactions", "zeta");
+  }
   if (entityType === "destinatario") revalidateTag("destinatarios", "zeta");
   if (entityType === "category") revalidateTag("categories", "zeta");
   return { success: true, data: null };
@@ -389,7 +392,10 @@ export async function removeTagFromEntity(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("tags", "zeta");
-  if (entityType === "transaction") revalidateTag("categorize", "zeta");
+  if (entityType === "transaction") {
+    revalidateTag("categorize", "zeta");
+    revalidateTag("transactions", "zeta");
+  }
   if (entityType === "destinatario") revalidateTag("destinatarios", "zeta");
   if (entityType === "category") revalidateTag("categories", "zeta");
   return { success: true, data: null };
@@ -412,5 +418,6 @@ export async function bulkTagTransactions(
 
   revalidateTag("tags", "zeta");
   revalidateTag("categorize", "zeta");
+  revalidateTag("transactions", "zeta");
   return { success: true, data: { tagged: transactionIds.length } };
 }

@@ -518,6 +518,7 @@ export async function patchDestinatario(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: null };
 }
 
@@ -583,7 +584,9 @@ export async function mergeDestinatarios(
 
   if (deleteError) return { success: false, error: deleteError.message };
 
+  revalidateFinancialViews();
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
@@ -665,6 +668,7 @@ export async function removeDestinatarioRule(
   if (error) return { success: false, error: error.message };
 
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: undefined };
 }
 
