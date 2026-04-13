@@ -951,8 +951,9 @@ export async function getRecurringTemplateImpact(
   if (!idCheck.success) return { success: false, error: idCheck.error.issues[0].message };
 
   try {
-    const today = toISODateString(new Date());
-    const in14Days = toISODateString(addDays(new Date(), 14));
+    const now = new Date();
+    const today = toISODateString(now);
+    const in14Days = toISODateString(addDays(now, 14));
 
     const [templateRes, occurrencesRes, planningRes] = await Promise.all([
       supabase
