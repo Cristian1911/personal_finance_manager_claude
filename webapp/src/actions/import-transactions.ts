@@ -850,7 +850,7 @@ export async function importTransactions(
         destinatario_id: tx.destinatario_id ?? null,
         merchant_name: tx.merchant_name ?? null,
       })
-      .select("id, category_id, notes")
+      .select("id, category_id, categorization_source, notes")
       .single();
 
     if (error) {
@@ -879,7 +879,7 @@ export async function importTransactions(
       continue;
     }
 
-    const { data: manualTx, error: manualTxError } = await supabase
+    const { data: existingTx, error: existingTxError } = await supabase
       .from("transactions")
       .select(
         "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
@@ -888,22 +888,23 @@ export async function importTransactions(
       .eq("user_id", user.id)
       .is("reconciled_into_transaction_id", null)
       .maybeSingle();
-    if (manualTxError) {
+    if (existingTxError) {
       errors++;
-      details.push(`Reconciliación: ${tx.raw_description}: ${manualTxError.message}`);
+      details.push(`Reconciliación: ${tx.raw_description}: ${existingTxError.message}`);
       continue;
     }
 
-    if (!manualTx) {
+    if (!existingTx) {
       balanceDeltaTxs.push(tx);
       leftAsSeparate++;
       continue;
     }
 
-    // Reconciled (AUTO_MERGE / MERGE): manual tx already applied its balance
-    // delta when it was created, so do NOT add to balanceDeltaTxs to avoid double-counting.
-    const merged = mergeTransactionMetadata(manualTx as ReconciliationCandidate, {
+    // Reconciled: existing tx already applied its balance delta, so do NOT
+    // add to balanceDeltaTxs to avoid double-counting.
+    const merged = mergeTransactionMetadata(existingTx as ReconciliationCandidate, {
       category_id: insertedTx.category_id,
+      categorization_source: insertedTx.categorization_source,
       notes: insertedTx.notes,
       capture_method: "PDF_IMPORT",
     });
@@ -925,7 +926,7 @@ export async function importTransactions(
         reconciliation_score: decision.score,
       })
       .eq("user_id", user.id)
-      .eq("id", manualTx.id);
+      .eq("id", existingTx.id);
 
     if (decision.decision === "AUTO_MERGE") autoMerged++;
     else manualMerged++;

@@ -1,6 +1,6 @@
 import { differenceInCalendarDays } from "date-fns";
 import type { CategorizationSource, TransactionCaptureMethod, TransactionDirection } from "../types/domain";
-import { getCaptureTier, isSameTier } from "./capture-hierarchy";
+import { resolveAuthorityWinner } from "./capture-hierarchy";
 
 export type ReconciliationCandidate = {
   id: string;
@@ -157,17 +157,7 @@ export function findReconciliationCandidates(
   return { bestMatch: best, ranked };
 }
 
-/**
- * Merges metadata when reconciling two transactions.
- *
- * Uses the capture hierarchy to decide merge direction:
- *   - The higher-authority source wins for capture_method
- *   - User-set enrichments (category, notes) from the lower-authority
- *     source are preserved when the higher-authority source lacks them
- *
- * @param existingTx - The transaction already in the database
- * @param incomingTx - The transaction being imported now
- */
+/** Higher-authority capture_method wins; lower authority's user-set enrichments are preserved. */
 export function mergeTransactionMetadata(
   existingTx: Pick<
     ReconciliationCandidate,
@@ -175,6 +165,7 @@ export function mergeTransactionMetadata(
   >,
   incomingTx: {
     category_id?: string | null;
+    categorization_source?: CategorizationSource;
     notes?: string | null;
     capture_method?: TransactionCaptureMethod;
   }
@@ -183,22 +174,26 @@ export function mergeTransactionMetadata(
   notes?: string | null;
   capture_method: TransactionCaptureMethod;
 } {
-  const incomingMethod = incomingTx.capture_method ?? "PDF_IMPORT";
+  const incomingMethod = incomingTx.capture_method ?? "MANUAL_FORM";
   const existingMethod = existingTx.capture_method ?? "MANUAL_FORM";
+  const winner = resolveAuthorityWinner(incomingMethod, existingMethod);
+  const winnerMethod = winner === "incoming" ? incomingMethod : existingMethod;
 
-  // Higher authority (lower tier number) wins for capture_method
-  const incomingTier = getCaptureTier(incomingMethod);
-  const existingTier = getCaptureTier(existingMethod);
-  const winnerMethod = incomingTier <= existingTier ? incomingMethod : existingMethod;
-
-  // For category: preserve user-set category from either side when the other lacks one
   const existingHasUserCategory =
     !!existingTx.category_id &&
     (existingTx.categorization_source === "USER_CREATED" ||
       existingTx.categorization_source === "USER_OVERRIDE");
 
+  const incomingHasUserCategory =
+    !!incomingTx.category_id &&
+    (incomingTx.categorization_source === "USER_CREATED" ||
+      incomingTx.categorization_source === "USER_OVERRIDE");
+
+  // User-set categories are always preserved over system-generated ones.
+  // When both sides have user-set categories, authority hierarchy breaks the tie.
   const shouldCarryExistingCategory =
-    !incomingTx.category_id && existingHasUserCategory;
+    existingHasUserCategory &&
+    (!incomingHasUserCategory || winner === "existing");
 
   return {
     category_id: shouldCarryExistingCategory

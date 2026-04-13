@@ -717,7 +717,7 @@ export async function approveEmailTransaction(
       is_subscription: false,
       status: "POSTED",
     })
-    .select("id, category_id, notes")
+    .select("id, category_id, categorization_source, notes")
     .single();
 
   if (insertError) {
@@ -759,6 +759,7 @@ export async function approveEmailTransaction(
         manualTx as ReconciliationCandidate,
         {
           category_id: insertedTx.category_id,
+          categorization_source: insertedTx.categorization_source,
           notes: insertedTx.notes,
           capture_method: "EMAIL_IMPORT",
         }
