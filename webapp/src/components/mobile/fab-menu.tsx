@@ -1,19 +1,19 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Drawer as DrawerPrimitive } from "vaul";
-import { ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Mic, Camera, Sparkles } from "lucide-react";
+import { Plus, Mic, Sparkles, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import { Drawer, DrawerPortal, DrawerOverlay, DrawerTitle } from "@/components/ui/drawer";
 
-export type FabAction = "expense" | "income" | "transfer" | "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
+export type FabAction = "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
 
 export interface ContextAction {
   id: FabAction;
   label: string;
-  icon: typeof ArrowUpRight;
+  icon: typeof Plus;
   bg: string;
 }
 
@@ -24,15 +24,9 @@ interface FabMenuProps {
   contextActions?: ContextAction[];
 }
 
-const SUB_ACTIONS: ContextAction[] = [
-  { id: "expense", label: "Gasto rápido", icon: ArrowUpRight, bg: "bg-z-expense" },
-  { id: "income", label: "Ingreso", icon: ArrowDownLeft, bg: "bg-z-income" },
-  { id: "transfer", label: "Transferencia", icon: ArrowLeftRight, bg: "bg-z-sage-dark" },
-];
-
-
 export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMenuProps) {
   const pathname = usePathname();
+  const router = useRouter();
 
   // Close on route change
   useEffect(() => onOpenChange(false), [pathname, onOpenChange]);
@@ -46,6 +40,13 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
     }
   }, [open]);
 
+  // Prefetch the transaction page when the drawer opens
+  useEffect(() => {
+    if (open) {
+      router.prefetch("/transactions/new");
+    }
+  }, [open, router]);
+
   const handleAction = useCallback(
     (action: FabAction) => {
       onOpenChange(false);
@@ -53,6 +54,11 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
     },
     [onAction, onOpenChange],
   );
+
+  const handleNewTransaction = useCallback(() => {
+    onOpenChange(false);
+    router.push("/transactions/new");
+  }, [onOpenChange, router]);
 
   return (
     <div className="lg:hidden">
@@ -68,43 +74,43 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
             <div className="mx-auto mt-3 mb-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
             <DrawerTitle className="sr-only">Acciones</DrawerTitle>
             <div className={cn("px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
-              {/* Voice capture — prominent */}
+              {/* Primary: Nueva transacción — navigates to full page */}
               <button
                 type="button"
-                onClick={() => handleAction("voice")}
+                onClick={handleNewTransaction}
                 className={cn(
                   "mb-4 flex w-full items-center gap-3 rounded-xl border border-z-brass/30 bg-z-brass/10 px-4 py-3",
                   "transition-colors active:bg-z-brass/20",
                 )}
               >
                 <span className="flex size-10 items-center justify-center rounded-full bg-z-brass text-z-ink">
-                  <Mic className="size-5" strokeWidth={2} />
+                  <Plus className="size-5" strokeWidth={2} />
                 </span>
                 <div className="text-left">
-                  <span className="text-sm font-semibold">Captura por voz</span>
+                  <span className="text-sm font-semibold">Nueva transacción</span>
                   <p className="text-xs text-muted-foreground">
-                    Di tu gasto y Zeta lo interpreta
+                    Gasto, ingreso o transferencia
                   </p>
                 </div>
               </button>
 
-              {/* Capture options */}
+              {/* Capture options — voice + quick text */}
               <div className="mb-4 grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => handleAction("screenshot")}
+                  onClick={() => handleAction("voice")}
                   className={cn(
                     "flex items-center gap-2.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3",
                     "transition-colors active:bg-white/8",
                   )}
                 >
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
-                    <Camera className="size-4" strokeWidth={2} />
+                    <Mic className="size-4" strokeWidth={2} />
                   </span>
                   <div className="min-w-0 text-left">
-                    <span className="text-xs font-semibold leading-tight">Captura de pantalla</span>
+                    <span className="text-xs font-semibold leading-tight">Captura por voz</span>
                     <p className="text-[10px] leading-tight text-muted-foreground">
-                      Sube un pantallazo
+                      Di tu gasto
                     </p>
                   </div>
                 </button>
@@ -128,38 +134,30 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
                 </button>
               </div>
 
-              {/* Section 1: Acciones rápidas */}
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Acciones rápidas
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                {SUB_ACTIONS.map((action) => (
-                  <button
-                    key={action.id}
-                    type="button"
-                    onClick={() => handleAction(action.id)}
-                    className={cn(
-                      "flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4",
-                      "transition-colors active:bg-accent",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex size-10 items-center justify-center rounded-full text-z-white",
-                        action.bg,
-                      )}
-                    >
-                      <action.icon className="size-5" strokeWidth={2} />
-                    </span>
-                    <span className="text-sm font-medium">{action.label}</span>
-                  </button>
-                ))}
-              </div>
+              {/* Image import — gallery + camera */}
+              <button
+                type="button"
+                onClick={() => handleAction("screenshot")}
+                className={cn(
+                  "mb-4 flex w-full items-center gap-2.5 rounded-xl border border-white/6 bg-white/4 px-4 py-3",
+                  "transition-colors active:bg-white/8",
+                )}
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+                  <Image className="size-4" strokeWidth={2} />
+                </span>
+                <div className="min-w-0 text-left">
+                  <span className="text-xs font-semibold leading-tight">Importar pantallazo</span>
+                  <p className="text-[10px] leading-tight text-muted-foreground">
+                    Sube una imagen de tu app bancaria
+                  </p>
+                </div>
+              </button>
 
-              {/* Section 2: En esta página */}
+              {/* Context actions — page-specific */}
               {contextActions && contextActions.length > 0 && (
                 <>
-                  <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     En esta página
                   </p>
                   <div className="space-y-1">
