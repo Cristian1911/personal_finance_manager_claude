@@ -98,7 +98,7 @@ export function MobileSheetProvider({ children }: MobileSheetProviderProps) {
 
   const contextActions = useMemo(() => getContextActions(pathname), [pathname]);
 
-  const openActionMenu = useCallback(() => setFabOpen(true), []);
+  const openActionMenu = useCallback(() => setFabOpen((prev) => !prev), []);
   const contextValue = useMemo(() => ({ openActionMenu }), [openActionMenu]);
 
   const handleSuccess = useCallback(() => {

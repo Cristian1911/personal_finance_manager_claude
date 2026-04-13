@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Mail, Copy, Check, PowerOff, Loader2, ExternalLink, ShieldCheck } from "lucide-react";
+import { Mail, Copy, Check, PowerOff, Loader2, ExternalLink, ShieldCheck, Plus, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,13 @@ import {
   updateIngestSettings,
   deactivateIngestAddress,
   clearGmailVerification,
+  addAllowedSender,
+  removeAllowedSender,
+  type AllowedSender,
 } from "@/actions/email-ingest";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { Account, EmailIngestAddress } from "@/types/domain";
 
 const EMAIL_DOMAIN =
@@ -30,12 +34,15 @@ const EMAIL_DOMAIN =
 interface EmailIngestCardProps {
   accounts: Account[];
   initialAddress: EmailIngestAddress | null;
+  initialAllowedSenders: AllowedSender[];
 }
 
-export function EmailIngestCard({ accounts, initialAddress }: EmailIngestCardProps) {
+export function EmailIngestCard({ accounts, initialAddress, initialAllowedSenders }: EmailIngestCardProps) {
   const [address, setAddress] = useState(initialAddress);
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
+  const [allowedSenders, setAllowedSenders] = useState(initialAllowedSenders);
+  const [newSenderEmail, setNewSenderEmail] = useState("");
 
   const fullEmail = address ? `${address.address_key}@${EMAIL_DOMAIN}` : null;
 
@@ -101,6 +108,20 @@ export function EmailIngestCard({ accounts, initialAddress }: EmailIngestCardPro
       });
       if (result.success) {
         setAddress(result.data);
+      }
+    });
+  }
+
+  function handleAddSender() {
+    const email = newSenderEmail.trim();
+    if (!email) return;
+    startTransition(async () => {
+      const result = await addAllowedSender(email);
+      if (result.success) {
+        setAllowedSenders((prev) => [...prev, result.data]);
+        setNewSenderEmail("");
+      } else {
+        toast.error(result.error);
       }
     });
   }
@@ -281,6 +302,74 @@ export function EmailIngestCard({ accounts, initialAddress }: EmailIngestCardPro
               <p className="text-xs text-muted-foreground">
                 Si reenvías los correos de tu banco desde tu correo personal, ingresa esa dirección aquí para que Zeta los acepte.
               </p>
+            </div>
+
+            {/* Allowed bank senders */}
+            <div className="space-y-2">
+              <Label className="text-xs">Remitentes bancarios permitidos</Label>
+              <p className="text-xs text-muted-foreground">
+                Agrega las direcciones de correo de tu banco para que Zeta las acepte. Los remitentes de Bancolombia se incluyen por defecto.
+              </p>
+
+              {allowedSenders.length > 0 && (
+                <div className="space-y-1.5">
+                  {allowedSenders.map((sender) => (
+                    <div
+                      key={sender.id}
+                      className="flex items-center gap-2 rounded-md border border-border/40 bg-muted/10 px-2.5 py-1.5"
+                    >
+                      <code className="flex-1 truncate text-xs">{sender.sender_email}</code>
+                      {sender.label && (
+                        <span className="shrink-0 text-xs text-muted-foreground">{sender.label}</span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Eliminar remitente"
+                        className="h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                        disabled={isPending}
+                        onClick={() => {
+                          startTransition(async () => {
+                            const result = await removeAllowedSender(sender.id);
+                            if (result.success) {
+                              setAllowedSenders((prev) => prev.filter((s) => s.id !== sender.id));
+                            } else {
+                              toast.error(result.error);
+                            }
+                          });
+                        }}
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="alertas@banco.com"
+                  value={newSenderEmail}
+                  onChange={(e) => setNewSenderEmail(e.target.value)}
+                  className="h-8 flex-1 text-xs"
+                  disabled={isPending}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddSender();
+                    }
+                  }}
+                />
+                <Button
+                  className={cn(GHOST_BUTTON_CLASS, "h-8 gap-1 px-2.5 text-xs")}
+                  disabled={isPending || !newSenderEmail.trim()}
+                  onClick={handleAddSender}
+                >
+                  <Plus className="size-3.5" />
+                  Agregar
+                </Button>
+              </div>
             </div>
 
             {/* Auto-import toggle */}
