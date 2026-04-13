@@ -28,7 +28,6 @@ import { getAccountsWithSparklineData } from "@/actions/charts";
 import { getAccounts } from "@/actions/accounts";
 import { getRecentTransactions } from "@/actions/transactions";
 import { getDashboardConfigWithPurpose } from "@/actions/dashboard-config";
-import { isMobileRequest } from "@/lib/utils/device";
 import {
   AccountsOverview,
 } from "@/components/dashboard/accounts-overview";
@@ -114,8 +113,6 @@ export default async function DashboardPage({
   const { user } = await getAuthenticatedClient();
 
   if (!user) return null;
-
-  const isMobile = await isMobileRequest();
 
   // Shell fetches — all cached, ~0ms on cache hit
   const [preferredCurrency, allAccountsResult, dashboardConfigData, recentTx] =
@@ -240,14 +237,12 @@ export default async function DashboardPage({
 
   return (
     <>
-      {/* Mobile dashboard — skip server render on desktop to avoid 6 wasted data fetches */}
-      {isMobile && (
-        <div className="lg:hidden">
-          <Suspense fallback={<MobileZoneSkeleton />}>
-            <MobileZone month={month} currency={currency as CurrencyCode} recentTx={recentTx} />
-          </Suspense>
-        </div>
-      )}
+      {/* Mobile dashboard — CSS handles visibility, both zones always render */}
+      <div className="lg:hidden">
+        <Suspense fallback={<MobileZoneSkeleton />}>
+          <MobileZone month={month} currency={currency as CurrencyCode} recentTx={recentTx} />
+        </Suspense>
+      </div>
 
       {/* Desktop dashboard — section-based layout */}
       <div className="hidden lg:block">
