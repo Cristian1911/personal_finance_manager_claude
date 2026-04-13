@@ -7,9 +7,11 @@ import { Pencil, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
+import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import { TagChip } from "@/components/tags/tag-chip";
 import { CategoryIcon } from "@/components/categories/category-icon";
-import { categorizeTransaction } from "@/actions/categorize";
+import { categorizeTransaction, assignDestinatario, removeDestinatarioFromTransaction } from "@/actions/categorize";
 import { toast } from "sonner";
 import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
 
@@ -32,6 +34,7 @@ export function MovimientosTransactionRow({
 
   // Optimistic local state
   const [localCategory, setLocalCategory] = useState(tx.category);
+  const [localDestinatario, setLocalDestinatario] = useState(tx.destinatario);
 
   const description =
     tx.merchant_name ||
@@ -58,6 +61,28 @@ export function MovimientosTransactionRow({
         onCategorized?.(tx.id, categoryId);
       }
     });
+  }
+
+  function handleDestinatarioChange(id: string | null, name: string | null) {
+    if (id) {
+      setLocalDestinatario({ id, name: name ?? "" });
+      startTransition(async () => {
+        const result = await assignDestinatario(tx.id, id);
+        if (!result.success) {
+          setLocalDestinatario(tx.destinatario);
+          toast.error("Error al asignar destinatario");
+        }
+      });
+    } else {
+      setLocalDestinatario(null);
+      startTransition(async () => {
+        const result = await removeDestinatarioFromTransaction(tx.id);
+        if (!result.success) {
+          setLocalDestinatario(tx.destinatario);
+          toast.error("Error al quitar destinatario");
+        }
+      });
+    }
   }
 
   return (
@@ -127,13 +152,19 @@ export function MovimientosTransactionRow({
         </div>
       )}
 
-      {/* Expanded: inline pickers + edit link */}
+      {/* Expanded: action chips */}
       {expanded && (
-        <div className="flex items-center gap-1.5 px-2 pb-2.5 pt-0.5">
+        <div className="flex flex-wrap items-center gap-1.5 px-2 pb-2.5 pt-0.5">
+          {/* Category chip or picker */}
           {categoryName ? (
-            <span className="rounded-lg bg-z-brass/10 px-2.5 py-1 text-[10px] font-semibold text-z-brass">
-              {categoryName}
-            </span>
+            <CategoryZonePicker
+              categories={categories}
+              value={localCategory?.id ?? null}
+              onValueChange={handleCategorize}
+              direction={tx.direction === "OUTFLOW" ? "OUTFLOW" : undefined}
+              variant="drawer"
+              triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-full border border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12 font-medium"
+            />
           ) : (
             <CategoryZonePicker
               categories={categories}
@@ -142,15 +173,43 @@ export function MovimientosTransactionRow({
               direction={tx.direction === "OUTFLOW" ? "OUTFLOW" : undefined}
               placeholder="Categoría"
               variant="drawer"
-              triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-lg border border-white/6 bg-white/[0.03] text-z-brass hover:bg-white/[0.06]"
+              triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-full border border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
             />
           )}
+
+          {/* Destinatario chip */}
+          <DestinatarioZonePicker
+            value={localDestinatario?.id ?? null}
+            onValueChange={handleDestinatarioChange}
+            selectedName={localDestinatario?.name}
+            variant="drawer"
+            compact
+            triggerClassName={cn(
+              "rounded-full text-[10px] h-auto py-1 px-2.5 font-medium",
+              localDestinatario
+                ? "border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12"
+                : "border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
+            )}
+          />
+
+          {/* Tag chip */}
+          <TagZonePicker
+            entityType="transaction"
+            entityId={tx.id}
+            variant="drawer"
+            compact
+            triggerClassName="rounded-full text-[10px] h-auto py-1 px-2.5"
+          />
+
           <div className="flex-1" />
+
+          {/* Edit link */}
           <Link
             href={`/transactions/${tx.id}`}
-            className="inline-flex items-center justify-center rounded-lg border border-white/6 bg-white/[0.03] p-1.5 text-muted-foreground transition-colors hover:bg-white/[0.06]"
+            className="inline-flex items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-white/[0.06]"
           >
-            <Pencil className="size-3" />
+            <Pencil className="size-2.5" />
+            Editar
           </Link>
         </div>
       )}
