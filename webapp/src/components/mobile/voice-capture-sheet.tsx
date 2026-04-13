@@ -85,13 +85,10 @@ export function VoiceCaptureSheet({
   const [submitting, setSubmitting] = useState(false);
   const [textInput, setTextInput] = useState("");
 
-  // Scroll to bottom on new messages (deferred to avoid forced reflow mid-render)
+  // Scroll to bottom on new messages
   useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      const el = scrollRef.current;
-      if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    });
-    return () => cancelAnimationFrame(id);
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   // ── Account selection ──
