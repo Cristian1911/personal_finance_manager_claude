@@ -56,8 +56,8 @@ export function FlipZone({ account, snapshotData, trendPercent }: FlipZoneProps)
         </div>
       </div>
 
-      {/* Controls row: dots + range pills */}
-      <div className="flex items-center justify-between px-1">
+      {/* Controls row: dots centered, range pills centered below or beside */}
+      <div className="flex flex-col items-center gap-2">
         {/* Dot indicators */}
         <div className="flex gap-1.5">
           <span

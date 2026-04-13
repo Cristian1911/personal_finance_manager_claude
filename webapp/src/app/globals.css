@@ -238,3 +238,10 @@
 .animate-page-enter {
   animation: page-enter 0.1s ease-out;
 }
+
+/* Hide scrollbar — Tailwind v4 has no built-in scrollbar-none */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
