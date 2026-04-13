@@ -573,57 +573,57 @@ export async function registerPayment(
   return { success: true, data: null };
 }
 
-// ─── Spending Pulse (uncached — volatile, per-render) ────────────────────────
+// ─── Spending Pulse (cached, single query) ──────────────────────────────────
 
-export async function getAccountSpendingPulse(
-  accountId: string
+async function getAccountSpendingPulseCached(
+  userId: string,
+  accessToken: string,
+  accountId: string,
 ): Promise<{ monthlySpent: number; dailyActivity: { date: string; amount: number }[] }> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { monthlySpent: 0, dailyActivity: [] };
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
 
+  const supabase = createCachedClient(accessToken);
   const now = new Date();
   const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().slice(0, 10);
 
-  // Monthly outflow total
-  const { data: monthlyData } = await supabase
-    .from("transactions")
-    .select("amount")
-    .eq("account_id", accountId)
-    .eq("user_id", user.id)
-    .eq("direction", "OUTFLOW")
-    .eq("is_excluded", false)
-    .is("reconciled_into_transaction_id", null)
-    .gte("transaction_date", firstOfMonth);
-
-  const monthlySpent = (monthlyData ?? []).reduce((sum, r) => sum + (r.amount ?? 0), 0);
-
-  // Daily activity (last 30 days)
-  const { data: dailyData } = await supabase
+  // Single query: all outflows in last 30 days
+  const { data } = await supabase
     .from("transactions")
     .select("transaction_date, amount")
     .eq("account_id", accountId)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("direction", "OUTFLOW")
     .eq("is_excluded", false)
     .is("reconciled_into_transaction_id", null)
     .gte("transaction_date", thirtyDaysAgoStr)
     .order("transaction_date", { ascending: true });
 
+  let monthlySpent = 0;
   const dailyMap = new Map<string, number>();
-  for (const row of dailyData ?? []) {
-    const d = row.transaction_date;
-    dailyMap.set(d, (dailyMap.get(d) ?? 0) + (row.amount ?? 0));
+
+  for (const row of data ?? []) {
+    const amt = row.amount ?? 0;
+    dailyMap.set(row.transaction_date, (dailyMap.get(row.transaction_date) ?? 0) + amt);
+    if (row.transaction_date >= firstOfMonth) {
+      monthlySpent += amt;
+    }
   }
 
-  const dailyActivity = Array.from(dailyMap.entries()).map(([date, amount]) => ({
-    date,
-    amount,
-  }));
-
+  const dailyActivity = Array.from(dailyMap, ([date, amount]) => ({ date, amount }));
   return { monthlySpent, dailyActivity };
+}
+
+export async function getAccountSpendingPulse(
+  accountId: string,
+): Promise<{ monthlySpent: number; dailyActivity: { date: string; amount: number }[] }> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { monthlySpent: 0, dailyActivity: [] };
+  return getAccountSpendingPulseCached(user.id, accessToken, accountId);
 }
 
 // ─── Account Transactions ───────────────────────────────────────────────────

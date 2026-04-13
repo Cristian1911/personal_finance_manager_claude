@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { uuidStr } from "./shared";
 
 export const transferSchema = z
   .object({
-    fromAccountId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "ID inválido"),
-    toAccountId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "ID inválido"),
+    fromAccountId: uuidStr("ID inválido"),
+    toAccountId: uuidStr("ID inválido"),
     amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
     currencyCode: z.string().min(3).max(3),
     date: z.string().min(1, "La fecha es requerida"),

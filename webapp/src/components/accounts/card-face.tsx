@@ -1,7 +1,6 @@
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils";
-import type { Account } from "@/types/domain";
-import type { CurrencyCode } from "@/types/domain";
+import type { Account, CurrencyCode } from "@/types/domain";
 
 const INSTITUTION_GRADIENTS: Record<string, string> = {
   bancolombia:

@@ -15,6 +15,7 @@ interface RecentTransactionsProps {
 }
 
 const PAGE_SIZE = 20;
+const MAX_LOADED = 200;
 
 export function RecentTransactions({
   accountId,
@@ -27,6 +28,7 @@ export function RecentTransactions({
   const [isPending, startTransition] = useTransition();
 
   function loadMore() {
+    if (transactions.length >= MAX_LOADED) return;
     startTransition(async () => {
       const result = await getAccountTransactions(accountId, {
         offset: transactions.length,
@@ -77,7 +79,7 @@ export function RecentTransactions({
       )}
 
       {/* Load more */}
-      {hasMore && (
+      {hasMore && transactions.length < MAX_LOADED && (
         <div className="px-4 pt-2 pb-1">
           <button
             type="button"
