@@ -679,6 +679,19 @@ export function CategoryInbox({
                           onCategorize={(categoryId, includeSimilarIds) =>
                             handleCategorize(tx, categoryId, includeSimilarIds)
                           }
+                          onAcceptDestinatario={(match) => {
+                            startTransition(async () => {
+                              const result = await bulkApplyDestinatarioMatches([{
+                                transactionId: tx.id,
+                                destinatarioId: match.destinatarioId,
+                                categoryId: match.categoryId,
+                              }]);
+                              if (result.success) {
+                                toast.success("Destinatario aplicado");
+                                setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+                              }
+                            });
+                          }}
                           isPending={isPending}
                           destinatarioSuggestion={destinatarioSuggestions[tx.id] ?? null}
                         />

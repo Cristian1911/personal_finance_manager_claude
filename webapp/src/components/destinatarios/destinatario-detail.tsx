@@ -42,6 +42,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import {
   updateDestinatario,
   deleteDestinatario,
   addDestinatarioRule,
@@ -151,8 +162,25 @@ function EditForm({
   categoryMap: Record<string, string>;
 }) {
   const [isActive, setIsActive] = useState(destinatario.is_active);
+  const [ruleImpact, setRuleImpact] = useState<{ matchCount: number } | null>(null);
+  const [applyingRules, startApplyTransition] = useTransition();
 
   const boundUpdate = updateDestinatario.bind(null, destinatario.id);
+
+  const handleApplyRules = () => {
+    startApplyTransition(async () => {
+      const applyResult = await applyDestinatarioRules(destinatario.id);
+      setRuleImpact(null);
+      if (applyResult.success) {
+        const { linked, categorized } = applyResult.data;
+        toast.success(
+          `${linked} transacciones vinculadas${categorized > 0 ? `, ${categorized} categorizadas` : ""}`
+        );
+      } else {
+        toast.error(applyResult.error);
+      }
+    });
+  };
 
   const [state, formAction, pending] = useActionState<
     ActionResult<Destinatario>,
@@ -166,23 +194,9 @@ function EditForm({
       const result = await boundUpdate(prevState, formData);
       if (result.success) {
         toast.success("Destinatario actualizado");
-        // Check if any unmatched transactions would be affected by existing rules
         const preview = await previewDestinatarioRuleImpact(destinatario.id);
         if (preview.success && preview.data.matchCount > 0) {
-          const confirmed = window.confirm(
-            `Esta regla aplica a ${preview.data.matchCount} transacciones sin destinatario. ¿Vincular automáticamente?`
-          );
-          if (confirmed) {
-            const applyResult = await applyDestinatarioRules(destinatario.id);
-            if (applyResult.success) {
-              const { linked, categorized } = applyResult.data;
-              toast.success(
-                `${linked} transacciones vinculadas${categorized > 0 ? `, ${categorized} categorizadas` : ""}`
-              );
-            } else {
-              toast.error(applyResult.error);
-            }
-          }
+          setRuleImpact({ matchCount: preview.data.matchCount });
         }
       } else {
         toast.error(result.error);
@@ -288,6 +302,29 @@ function EditForm({
           </Button>
         </form>
       </CardContent>
+
+      <AlertDialog open={!!ruleImpact} onOpenChange={(open) => !open && setRuleImpact(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vincular transacciones</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta regla aplica a {ruleImpact?.matchCount ?? 0} transacciones sin destinatario. ¿Vincular automáticamente?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className={GHOST_BUTTON_CLASS}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={BRASS_BUTTON_CLASS}
+              onClick={handleApplyRules}
+              disabled={applyingRules}
+            >
+              {applyingRules ? "Vinculando..." : "Vincular"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

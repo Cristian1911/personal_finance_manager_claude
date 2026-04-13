@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import { TagPicker } from "@/components/tags/tag-picker";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -47,6 +49,7 @@ interface InboxTransactionRowProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onCategorize: (categoryId: string, includeSimilarIds?: string[]) => void;
+  onAcceptDestinatario?: (match: { destinatarioId: string; categoryId: string | null }) => void;
   isPending: boolean;
   destinatarioSuggestion?: {
     destinatario_id: string;
@@ -64,6 +67,7 @@ export function InboxTransactionRow({
   isSelected,
   onToggleSelect,
   onCategorize,
+  onAcceptDestinatario,
   isPending,
   destinatarioSuggestion = null,
 }: InboxTransactionRowProps) {
@@ -317,8 +321,29 @@ export function InboxTransactionRow({
         {/* Suggestion or manual pick */}
         <div className="flex items-center gap-2 flex-wrap">
           {destinatarioSuggestion && (
-            <div className="flex items-center gap-1.5 rounded-full border border-z-brass/20 bg-z-brass/8 px-2.5 py-1 text-[11px] font-medium text-z-brass">
-              Destinatario: {destinatarioSuggestion.destinatario_name}
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-z-brass/20 bg-z-brass/8 px-2.5 py-1 text-[11px] font-medium text-z-brass">
+                {destinatarioSuggestion.destinatario_name}
+                {destinatarioSuggestion.category_id && (
+                  <span className="opacity-70">
+                    → {findCategoryName(categories, destinatarioSuggestion.category_id)}
+                  </span>
+                )}
+              </span>
+              {onAcceptDestinatario && (
+                <Button
+                  size="sm"
+                  className={cn(BRASS_GHOST_BUTTON_CLASS, "h-7 px-2.5 text-xs gap-1")}
+                  onClick={() => onAcceptDestinatario({
+                    destinatarioId: destinatarioSuggestion.destinatario_id,
+                    categoryId: destinatarioSuggestion.category_id,
+                  })}
+                  disabled={isPending}
+                >
+                  <Check className="h-3 w-3" />
+                  Aceptar
+                </Button>
+              )}
             </div>
           )}
           {suggestion && !showPicker ? (
