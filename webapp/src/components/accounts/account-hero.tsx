@@ -52,30 +52,32 @@ export function AccountHero({
         )}
       </div>
 
-      {/* Hero variant */}
-      {variant === "flip" && (
-        <FlipZone
-          account={account}
-          snapshotData={snapshotData}
-          trendPercent={trendPercent}
-        />
-      )}
+      {/* Hero variant — constrained width on desktop */}
+      <div className="mx-auto md:mx-0 md:max-w-sm">
+        {variant === "flip" && (
+          <FlipZone
+            account={account}
+            snapshotData={snapshotData}
+            trendPercent={trendPercent}
+          />
+        )}
 
-      {variant === "pulse" && (
-        <SpendingPulseHero
-          account={account}
-          monthlySpent={monthlySpent ?? 0}
-          dailyActivity={dailyActivity ?? []}
-        />
-      )}
+        {variant === "pulse" && (
+          <SpendingPulseHero
+            account={account}
+            monthlySpent={monthlySpent ?? 0}
+            dailyActivity={dailyActivity ?? []}
+          />
+        )}
 
-      {variant === "graph" && (
-        <BalanceGraphHero
-          account={account}
-          snapshotData={snapshotData}
-          trendPercent={trendPercent}
-        />
-      )}
+        {variant === "graph" && (
+          <BalanceGraphHero
+            account={account}
+            snapshotData={snapshotData}
+            trendPercent={trendPercent}
+          />
+        )}
+      </div>
     </div>
   );
 }

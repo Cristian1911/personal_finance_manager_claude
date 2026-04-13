@@ -686,3 +686,76 @@ export async function getAccountTransactions(
     return { success: false, error: "Error al cargar las transacciones" };
   }
 }
+
+// ─── Account Balance History (transaction-based running balance) ─────────────
+
+async function getAccountBalanceHistoryCached(
+  userId: string,
+  accessToken: string,
+  accountId: string,
+  currentBalance: number,
+): Promise<{ date: string; balance: number }[]> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  // Fetch up to 1 year of transactions for this account
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+  const { data } = await supabase
+    .from("transactions")
+    .select("transaction_date, amount, direction")
+    .eq("account_id", accountId)
+    .eq("user_id", userId)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .gte("transaction_date", oneYearAgo.toISOString().substring(0, 10))
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (!data || data.length === 0) {
+    return [{ date: new Date().toISOString().substring(0, 10), balance: currentBalance }];
+  }
+
+  // Compute running balance backwards from current balance
+  // data is sorted newest-first
+  const points: { date: string; balance: number }[] = [];
+  let runningBalance = currentBalance;
+
+  // First point: current balance at today
+  points.push({ date: new Date().toISOString().substring(0, 10), balance: runningBalance });
+
+  // Walk backwards through transactions, reversing each effect
+  for (const tx of data) {
+    if (tx.direction === "OUTFLOW") {
+      runningBalance += tx.amount; // add back what was spent
+    } else {
+      runningBalance -= tx.amount; // remove what was received
+    }
+    points.push({ date: tx.transaction_date, balance: runningBalance });
+  }
+
+  // Reverse to get chronological order
+  points.reverse();
+
+  // Deduplicate by date (keep last balance per day for cleaner chart)
+  const dailyMap = new Map<string, number>();
+  for (const p of points) {
+    dailyMap.set(p.date, p.balance);
+  }
+
+  return Array.from(dailyMap, ([date, balance]) => ({ date, balance }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export async function getAccountBalanceHistory(
+  accountId: string,
+  currentBalance: number,
+): Promise<{ date: string; balance: number }[]> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+  return getAccountBalanceHistoryCached(user.id, accessToken, accountId, currentBalance);
+}

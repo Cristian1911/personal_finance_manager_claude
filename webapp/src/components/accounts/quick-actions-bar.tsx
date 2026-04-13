@@ -238,7 +238,7 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
 
   return (
     <>
-      <div className="flex items-start justify-center gap-6">
+      <div className="flex items-start justify-center gap-6 md:flex-col md:gap-3">
         {actions.map(renderAction)}
       </div>
 

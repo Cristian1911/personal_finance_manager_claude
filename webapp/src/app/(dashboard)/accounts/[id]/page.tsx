@@ -7,6 +7,7 @@ import {
   getAccounts,
   getAccountTransactions,
   getAccountSpendingPulse,
+  getAccountBalanceHistory,
 } from "@/actions/accounts";
 import { getStatementSnapshots, type StatementSnapshot } from "@/actions/statement-snapshots";
 import { AccountHero } from "@/components/accounts/account-hero";
@@ -38,8 +39,8 @@ export default async function AccountDetailPage({
   const account = accountResult.data;
   const allAccounts = allAccountsResult.success ? allAccountsResult.data : [];
 
-  // Second batch: type-conditional fetches
-  const [snapshotsResult, spendingPulse] = await Promise.all([
+  // Second batch: type-conditional fetches + transaction-based balance history
+  const [snapshotsResult, spendingPulse, balanceHistory] = await Promise.all([
     TYPES_WITH_HISTORY.has(account.account_type)
       ? getStatementSnapshots(id)
       : Promise.resolve({ success: true as const, data: [] as StatementSnapshot[] }),
@@ -47,21 +48,18 @@ export default async function AccountDetailPage({
     (account.account_type === "CHECKING" && !account.debit_card_mask)
       ? getAccountSpendingPulse(id)
       : Promise.resolve({ monthlySpent: 0, dailyActivity: [] }),
+    getAccountBalanceHistory(id, account.current_balance ?? 0),
   ]);
 
-  // Transform snapshots to chart data
+  // Snapshots still needed for StatementSnapshotsCard
   const snapshots = snapshotsResult.success ? (snapshotsResult.data ?? []) : [];
-  const snapshotData = snapshots
-    .filter((s) => s.period_to && s.final_balance != null)
-    .map((s) => ({ date: s.period_to!, balance: s.final_balance! }))
-    .sort((a, b) => a.date.localeCompare(b.date));
 
-  // Trend: compare last 2 snapshots
+  // Trend: compare first and last points of transaction-based balance history
   let trendPercent: number | undefined;
-  if (snapshotData.length >= 2) {
-    const prev = snapshotData[snapshotData.length - 2].balance;
-    const curr = snapshotData[snapshotData.length - 1].balance;
-    if (prev !== 0) trendPercent = ((curr - prev) / Math.abs(prev)) * 100;
+  if (balanceHistory.length >= 2) {
+    const first = balanceHistory[0].balance;
+    const last = balanceHistory[balanceHistory.length - 1].balance;
+    if (first !== 0) trendPercent = ((last - first) / Math.abs(first)) * 100;
   }
 
   // Most recent snapshot (snapshots are sorted period_to DESC from the action)
@@ -86,15 +84,21 @@ export default async function AccountDetailPage({
           </Link>
         </div>
 
-        <AccountHero
-          account={account}
-          snapshotData={snapshotData}
-          trendPercent={trendPercent}
-          monthlySpent={spendingPulse.monthlySpent}
-          dailyActivity={spendingPulse.dailyActivity}
-        />
-
-        <QuickActionsBar account={account} allAccounts={allAccounts} />
+        {/* Hero + Quick Actions: side-by-side on desktop, stacked on mobile */}
+        <div className="flex flex-col md:flex-row md:items-start md:gap-6">
+          <div className="flex-1 min-w-0">
+            <AccountHero
+              account={account}
+              snapshotData={balanceHistory}
+              trendPercent={trendPercent}
+              monthlySpent={spendingPulse.monthlySpent}
+              dailyActivity={spendingPulse.dailyActivity}
+            />
+          </div>
+          <div className="mt-4 md:mt-0">
+            <QuickActionsBar account={account} allAccounts={allAccounts} />
+          </div>
+        </div>
 
         {/* Missing debit card banner */}
         {account.account_type === "CHECKING" && !account.debit_card_mask && (
