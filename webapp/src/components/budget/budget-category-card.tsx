@@ -6,32 +6,12 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Home,
-  Utensils,
-  Car,
-  HeartPulse,
-  Sparkles,
-  Shield,
-  Briefcase,
-  PlusCircle,
-  Tag,
   ChevronDown,
   ChevronRight,
   Repeat,
 } from "lucide-react";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import type { CategoryBudgetData } from "@/types/domain";
-
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  home: Home,
-  utensils: Utensils,
-  car: Car,
-  "heart-pulse": HeartPulse,
-  sparkles: Sparkles,
-  shield: Shield,
-  briefcase: Briefcase,
-  "plus-circle": PlusCircle,
-  tag: Tag,
-};
 
 interface BudgetCategoryCardProps {
   category: CategoryBudgetData;
@@ -45,8 +25,6 @@ export function BudgetCategoryCard({
   const [expanded, setExpanded] = useState(false);
   const hasBudget = category.budget !== null && category.budget > 0;
   const hasRecurring = category.committedRecurring > 0;
-  const IconComp = ICON_MAP[category.icon] ?? Tag;
-
   const recurringPercent =
     hasBudget && category.budget! > 0
       ? (category.committedRecurring / category.budget!) * 100
@@ -78,7 +56,7 @@ export function BudgetCategoryCard({
               className="flex size-7 items-center justify-center rounded-md"
               style={{ backgroundColor: `${category.color}20`, color: category.color }}
             >
-              <IconComp className="size-4" />
+              <CategoryIcon icon={category.icon} className="size-4" />
             </span>
             <CardTitle className="text-sm">
               {category.name_es ?? category.name}

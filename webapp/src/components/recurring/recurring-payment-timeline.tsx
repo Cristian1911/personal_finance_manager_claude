@@ -1,16 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Home,
-  Utensils,
-  Car,
-  HeartPulse,
-  Sparkles,
-  Shield,
-  Briefcase,
-  Tag,
-} from "lucide-react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
@@ -44,31 +34,7 @@ interface PaymentTimelineProps {
   onSkip: (item: OccurrenceItem) => void;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Icon map                                                           */
-/* ------------------------------------------------------------------ */
-
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  home: Home,
-  utensils: Utensils,
-  car: Car,
-  "heart-pulse": HeartPulse,
-  sparkles: Sparkles,
-  shield: Shield,
-  briefcase: Briefcase,
-  tag: Tag,
-};
-
-function CategoryIcon({
-  icon,
-  className,
-}: {
-  icon: string;
-  className?: string;
-}) {
-  const Icon = ICON_MAP[icon] ?? Tag;
-  return <Icon className={className} />;
-}
+import { CategoryIcon } from "@/components/categories/category-icon";
 
 /* ------------------------------------------------------------------ */
 /*  Date group styling                                                 */
