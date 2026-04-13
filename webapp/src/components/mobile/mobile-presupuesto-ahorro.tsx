@@ -4,33 +4,13 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import {
   AlertTriangle,
-  Briefcase,
-  Car,
   Flame,
-  HeartPulse,
-  Home,
   PiggyBank,
-  PlusCircle,
-  Shield,
-  Sparkles,
-  Tag,
   TrendingDown,
-  Utensils,
 } from "lucide-react";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { FadeIn, StaggerItem, StaggerList } from "./motion";
 import type { CategoryBudgetData, CurrencyCode } from "@/types/domain";
-
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  home: Home,
-  utensils: Utensils,
-  car: Car,
-  "heart-pulse": HeartPulse,
-  sparkles: Sparkles,
-  shield: Shield,
-  briefcase: Briefcase,
-  "plus-circle": PlusCircle,
-  tag: Tag,
-};
 
 export interface MobilePresupuestoAhorroProps {
   availableToSave: number;
@@ -229,7 +209,7 @@ function BudgetRow({
   category: CategoryBudgetData;
   currencyCode: CurrencyCode;
 }) {
-  const IconComp = ICON_MAP[category.icon] ?? Tag;
+
   const percent = category.percentUsed;
 
   const barColor =
@@ -250,7 +230,7 @@ function BudgetRow({
               color: category.color,
             }}
           >
-            <IconComp className="size-3.5" />
+            <CategoryIcon icon={category.icon} className="size-3.5" />
           </span>
           <span className="text-sm font-medium truncate">
             {category.name_es ?? category.name}
@@ -283,7 +263,7 @@ function UnbudgetedAlertRow({
   category: CategoryBudgetData;
   currencyCode: CurrencyCode;
 }) {
-  const IconComp = ICON_MAP[category.icon] ?? Tag;
+
 
   return (
     <div className="flex items-center justify-between">
@@ -295,7 +275,7 @@ function UnbudgetedAlertRow({
             color: category.color,
           }}
         >
-          <IconComp className="size-3.5" />
+          <CategoryIcon icon={category.icon} className="size-3.5" />
         </span>
         <span className="text-sm font-medium truncate">
           {category.name_es ?? category.name}

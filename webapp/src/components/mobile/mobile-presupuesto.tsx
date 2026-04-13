@@ -13,30 +13,10 @@ import {
   ArrowUpRight,
   ChevronDown,
   ChevronRight,
-  Home,
-  Utensils,
-  Car,
-  HeartPulse,
-  Sparkles,
-  Shield,
-  Briefcase,
-  PlusCircle,
-  Tag,
 } from "lucide-react";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { StaggerList, StaggerItem } from "./motion";
 import type { CategoryBudgetData, CategoryWithChildren, TransactionWithRelations } from "@/types/domain";
-
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  home: Home,
-  utensils: Utensils,
-  car: Car,
-  "heart-pulse": HeartPulse,
-  sparkles: Sparkles,
-  shield: Shield,
-  briefcase: Briefcase,
-  "plus-circle": PlusCircle,
-  tag: Tag,
-};
 
 export interface MobilePresupuestoProps {
   uncategorizedTransactions: TransactionWithRelations[];
@@ -282,7 +262,7 @@ function InboxRow({
 }
 
 function UnbudgetedRow({ category }: { category: CategoryBudgetData }) {
-  const IconComp = ICON_MAP[category.icon] ?? Tag;
+
 
   return (
     <div className="flex items-center justify-between">
@@ -291,7 +271,7 @@ function UnbudgetedRow({ category }: { category: CategoryBudgetData }) {
           className="flex size-6 shrink-0 items-center justify-center rounded-md"
           style={{ backgroundColor: `${category.color}20`, color: category.color }}
         >
-          <IconComp className="size-3.5" />
+          <CategoryIcon icon={category.icon} className="size-3.5" />
         </span>
         <span className="text-sm font-medium truncate">
           {category.name_es ?? category.name}
@@ -305,7 +285,7 @@ function UnbudgetedRow({ category }: { category: CategoryBudgetData }) {
 }
 
 function BudgetRow({ category }: { category: CategoryBudgetData }) {
-  const IconComp = ICON_MAP[category.icon] ?? Tag;
+
   const percent = category.percentUsed;
 
   const barColor =
@@ -323,7 +303,7 @@ function BudgetRow({ category }: { category: CategoryBudgetData }) {
             className="flex size-6 shrink-0 items-center justify-center rounded-md"
             style={{ backgroundColor: `${category.color}20`, color: category.color }}
           >
-            <IconComp className="size-3.5" />
+            <CategoryIcon icon={category.icon} className="size-3.5" />
           </span>
           <span className="text-sm font-medium truncate">
             {category.name_es ?? category.name}

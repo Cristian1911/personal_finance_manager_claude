@@ -164,7 +164,6 @@ export function DestinatarioZonePicker({
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar destinatario..."
           className="w-full rounded-lg border border-white/6 bg-white/[0.03] px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-z-brass/40"
-          autoFocus
         />
       </div>
       {recents.length > 0 && !search && (

@@ -103,6 +103,17 @@ export function matchesWordBoundary(
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Parent zone filter — system rules currently map to 8 parent zones
+// but the UI expects subcategories. Skip until rules are remapped.
+// ─────────────────────────────────────────────────────────────────
+
+const PARENT_ZONE_IDS = new Set([
+  CATEGORY_HOGAR, CATEGORY_ALIMENTACION, CATEGORY_TRANSPORTE,
+  CATEGORY_SALUD, CATEGORY_ESTILO_DE_VIDA, CATEGORY_OBLIGACIONES,
+  CATEGORY_INGRESOS, CATEGORY_OTROS_INGRESOS,
+]);
+
+// ─────────────────────────────────────────────────────────────────
 // CAT-03: Regex Rules (pre-compiled, run against normalized description)
 // ─────────────────────────────────────────────────────────────────
 
@@ -304,9 +315,12 @@ export function autoCategorize(
     }
   }
 
-  // 2. Check regex rules (new — fires before keyword rules)
+  // System rules (regex + keywords) currently all map to parent zone IDs
+  // via SEED_CATEGORY_IDS, but the UI expects subcategory IDs. Skip until
+  // rules are remapped to subcategories.
+  // TODO: remap SEED_CATEGORY_IDS to subcategory UUIDs, then remove this early return
   for (const rule of REGEX_RULES) {
-    if (rule.pattern.test(normalized)) {
+    if (rule.pattern.test(normalized) && !PARENT_ZONE_IDS.has(rule.categoryId)) {
       return {
         category_id: rule.categoryId,
         categorization_source: "SYSTEM_DEFAULT",
@@ -315,8 +329,8 @@ export function autoCategorize(
     }
   }
 
-  // 3. Fall back to system keyword rules (word-boundary matched)
   for (const rule of KEYWORD_RULES) {
+    if (PARENT_ZONE_IDS.has(rule.categoryId)) continue;
     for (const keyword of rule.keywords) {
       if (matchesWordBoundary(normalized, keyword)) {
         return {
