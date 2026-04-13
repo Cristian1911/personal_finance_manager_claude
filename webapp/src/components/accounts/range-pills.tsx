@@ -2,12 +2,16 @@
 
 import { cn } from "@/lib/utils";
 
-export type RangeValue = 0 | 3 | 6 | 12;
+/** Days to look back. 0 = show all data. */
+export type RangeValue = 0 | 7 | 14 | 30 | 90 | 180 | 365;
 
 const RANGES: { label: string; value: RangeValue }[] = [
-  { label: "3M", value: 3 },
-  { label: "6M", value: 6 },
-  { label: "1A", value: 12 },
+  { label: "1S", value: 7 },
+  { label: "2S", value: 14 },
+  { label: "1M", value: 30 },
+  { label: "3M", value: 90 },
+  { label: "6M", value: 180 },
+  { label: "1A", value: 365 },
   { label: "Todo", value: 0 },
 ];
 

@@ -16,7 +16,7 @@ interface FlipZoneProps {
 
 export function FlipZone({ account, snapshotData, trendPercent }: FlipZoneProps) {
   const [flipped, setFlipped] = useState(false);
-  const [range, setRange] = useState<RangeValue>(3);
+  const [range, setRange] = useState<RangeValue>(90);
 
   return (
     <div className="space-y-3">

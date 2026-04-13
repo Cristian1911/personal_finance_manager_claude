@@ -714,7 +714,8 @@ async function getAccountBalanceHistoryCached(
     .is("reconciled_into_transaction_id", null)
     .gte("transaction_date", oneYearAgo.toISOString().substring(0, 10))
     .order("transaction_date", { ascending: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(5000);
 
   if (!data || data.length === 0) {
     return [{ date: new Date().toISOString().substring(0, 10), balance: currentBalance }];

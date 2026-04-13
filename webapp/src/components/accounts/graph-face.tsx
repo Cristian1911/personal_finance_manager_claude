@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import {
   AreaChart,
   Area,
+  XAxis,
+  YAxis,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
@@ -21,12 +23,23 @@ interface GraphFaceProps {
   trendPercent?: number;
 }
 
-function filterByRange(data: SnapshotPoint[], range: RangeValue): SnapshotPoint[] {
-  if (range === 0 || data.length === 0) return data;
+function filterByRange(data: SnapshotPoint[], days: RangeValue): SnapshotPoint[] {
+  if (days === 0 || data.length === 0) return data;
   const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - range);
+  cutoff.setDate(cutoff.getDate() - days);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
   return data.filter((d) => d.date >= cutoffStr);
+}
+
+function formatAxisDate(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return d.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+}
+
+function formatAxisAmount(value: number): string {
+  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
+  return value.toFixed(0);
 }
 
 function ChartTooltip({
@@ -84,13 +97,30 @@ export function GraphFace({ data, currencyCode, range, trendPercent }: GraphFace
       {/* Chart */}
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={filtered} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+          <AreaChart data={filtered} margin={{ top: 4, right: 4, bottom: 16, left: 4 }}>
             <defs>
               <linearGradient id="graphFaceFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--z-brass)" stopOpacity={0.3} />
                 <stop offset="100%" stopColor="var(--z-brass)" stopOpacity={0} />
               </linearGradient>
             </defs>
+            <XAxis
+              dataKey="date"
+              tickFormatter={formatAxisDate}
+              tick={{ fontSize: 9, fill: "var(--z-sage-dark)" }}
+              axisLine={false}
+              tickLine={false}
+              interval="preserveStartEnd"
+              minTickGap={40}
+            />
+            <YAxis
+              tickFormatter={formatAxisAmount}
+              tick={{ fontSize: 9, fill: "var(--z-sage-dark)" }}
+              axisLine={false}
+              tickLine={false}
+              width={32}
+              domain={["dataMin", "dataMax"]}
+            />
             <Tooltip
               content={<ChartTooltip currencyCode={currencyCode} />}
               cursor={{ stroke: "rgba(255,255,255,0.1)" }}
