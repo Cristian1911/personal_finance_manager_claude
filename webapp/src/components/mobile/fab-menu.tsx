@@ -57,6 +57,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
       window.removeEventListener("popstate", handlePopState);
       // If closed by non-back means (overlay tap, FAB toggle, swipe), pop the dummy entry
       if (!closedViaBackRef.current) {
+        closedViaBackRef.current = true; // prevent double-fire if late popstate leaks
         history.back();
       }
     };

@@ -85,9 +85,12 @@ export function VoiceCaptureSheet({
   const [submitting, setSubmitting] = useState(false);
   const [textInput, setTextInput] = useState("");
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages (deferred to avoid forced reflow mid-render)
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    const id = requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(id);
   }, [messages]);
 
   // ── Account selection ──
@@ -335,7 +338,7 @@ export function VoiceCaptureSheet({
       {/* Chat messages */}
       {!showAccountPicker && (
         <>
-          <div ref={scrollRef} className="space-y-3 overflow-y-auto overscroll-contain pb-3" style={{ maxHeight: "min(45dvh, 22rem)" }}>
+          <div ref={scrollRef} className="max-h-[min(45dvh,22rem)] space-y-3 overflow-y-auto overscroll-contain pb-3">
             {messages.map((msg, i) => {
               if (msg.role === "user") {
                 return (
