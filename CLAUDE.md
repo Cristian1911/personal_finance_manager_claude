@@ -21,6 +21,22 @@
 - Dates: Spanish locale via `formatDate()` from `src/lib/utils/date.ts`
 - Idempotency: `computeIdempotencyKey()` from `src/lib/utils/idempotency.ts` for dedup
 
+## Capture Method Hierarchy
+Every transaction has a `capture_method` indicating how it was created. These form an authority hierarchy that governs reconciliation, merge direction, and balance updates.
+
+| Tier | Authority | Methods | Examples |
+|------|-----------|---------|----------|
+| 1 | Bank-verified | `PDF_IMPORT`, `EMAIL_PDF_IMPORT` | Structured PDF statement with metadata (balances, credit limits) |
+| 2 | Semi-structured | `EMAIL_IMPORT`, `OCR_BATCH`, `OCR_SINGLE` | Email text notifications, OCR screenshots |
+| 3 | User-entered | `MANUAL_FORM`, `TEXT_QUICK_CAPTURE` | Manual form, quick capture, voice, Telegram |
+
+**Rules** (defined in `@zeta/shared` → `capture-hierarchy.ts`):
+- **Reconciliation**: Fetches ALL existing transactions regardless of `capture_method` — no filtering. The scoring algorithm + idempotency key handle dedup.
+- **Merge direction**: Higher authority wins for `capture_method` on the surviving transaction. Lower authority's user-set enrichments (category, notes) are preserved via `mergeTransactionMetadata()`.
+- **Balance updates**: Tier 1 with statement metadata sets balance directly. Tier 2/3 use `applyAccountBalanceDelta()` per-transaction.
+- **Idempotency**: Same `computeIdempotencyKey()` for all sources — `SHA256(provider|providerTransactionId|date|amount|description|installment)`. DB unique constraint catches duplicates (`error.code === "23505"` → skip).
+- **New capture methods**: Add to `CAPTURE_TIER` in `capture-hierarchy.ts` + DB enum migration. Spawn `import-flow-doctor` for review.
+
 ## Agents
 
 Spawn these specialized agents for domain-specific review and diagnosis. Each has embedded Zeta knowledge — no orientation reads needed.

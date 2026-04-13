@@ -103,12 +103,14 @@ This uses `ON CONFLICT DO NOTHING` — safe to call multiple times. Existing sta
 
 ### 2. Auto-Linking Transactions to Occurrences
 
-ALL transaction creation paths MUST auto-link to pending occurrences:
+ALL transaction creation paths MUST auto-link to pending occurrences, regardless of capture method tier:
 
-- FAB (quick-add)
-- Email import
-- PDF import
+- **Tier 1**: PDF import (`PDF_IMPORT`, `EMAIL_PDF_IMPORT`)
+- **Tier 2**: Email text import (`EMAIL_IMPORT`), OCR (`OCR_BATCH`, `OCR_SINGLE`)
+- **Tier 3**: FAB/quick-add (`TEXT_QUICK_CAPTURE`), manual form (`MANUAL_FORM`)
 - Recurring confirm (mark as paid)
+
+See `capture-hierarchy.ts` in `@zeta/shared` for the full authority hierarchy.
 
 Use `linkTransactionToOccurrence()` from `@/actions/occurrences.ts` or `findMatchingOccurrence()` to find and link the correct pending occurrence.
 

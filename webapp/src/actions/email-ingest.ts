@@ -717,7 +717,7 @@ export async function approveEmailTransaction(
       is_subscription: false,
       status: "POSTED",
     })
-    .select("id, category_id, notes")
+    .select("id, category_id, categorization_source, notes")
     .single();
 
   if (insertError) {
@@ -747,7 +747,7 @@ export async function approveEmailTransaction(
     const { data: manualTx } = await supabase
       .from("transactions")
       .select(
-        "id, category_id, categorization_source, notes, reconciled_into_transaction_id"
+        "id, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
       )
       .eq("id", reconcileWithTransactionId)
       .eq("user_id", user.id)
@@ -759,6 +759,7 @@ export async function approveEmailTransaction(
         manualTx as ReconciliationCandidate,
         {
           category_id: insertedTx.category_id,
+          categorization_source: insertedTx.categorization_source,
           notes: insertedTx.notes,
           capture_method: "EMAIL_IMPORT",
         }
@@ -871,15 +872,14 @@ export async function checkEmailReconciliation(
   const from = toISODateString(fromDate);
   const to = toISODateString(toDate);
 
-  // Fetch manual transactions that could be duplicates
+  // Fetch existing transactions that could be duplicates (any capture method)
   const { data: candidates, error: candError } = await supabase
     .from("transactions")
     .select(
-      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id"
+      "id, user_id, account_id, amount, direction, transaction_date, raw_description, merchant_name, clean_description, category_id, categorization_source, notes, reconciled_into_transaction_id, capture_method"
     )
     .eq("account_id", accountId)
     .eq("user_id", user.id)
-    .in("capture_method", ["MANUAL_FORM", "TEXT_QUICK_CAPTURE"])
     .gte("transaction_date", from)
     .lte("transaction_date", to)
     .is("reconciled_into_transaction_id", null);

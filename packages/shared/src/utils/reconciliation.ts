@@ -1,5 +1,6 @@
 import { differenceInCalendarDays } from "date-fns";
 import type { CategorizationSource, TransactionCaptureMethod, TransactionDirection } from "../types/domain";
+import { resolveAuthorityWinner } from "./capture-hierarchy";
 
 export type ReconciliationCandidate = {
   id: string;
@@ -15,6 +16,7 @@ export type ReconciliationCandidate = {
   categorization_source?: CategorizationSource;
   notes?: string | null;
   reconciled_into_transaction_id?: string | null;
+  capture_method?: TransactionCaptureMethod | null;
 };
 
 export type ImportTransactionForReconciliation = {
@@ -25,6 +27,7 @@ export type ImportTransactionForReconciliation = {
   raw_description: string;
   category_id?: string | null;
   notes?: string | null;
+  capture_method?: TransactionCaptureMethod | null;
 };
 
 export type ReconciliationDecision = "AUTO_MERGE" | "REVIEW" | "NO_MATCH";
@@ -154,13 +157,15 @@ export function findReconciliationCandidates(
   return { bestMatch: best, ranked };
 }
 
+/** Higher-authority capture_method wins; lower authority's user-set enrichments are preserved. */
 export function mergeTransactionMetadata(
-  manualTx: Pick<
+  existingTx: Pick<
     ReconciliationCandidate,
-    "category_id" | "categorization_source" | "notes"
+    "category_id" | "categorization_source" | "notes" | "capture_method"
   >,
-  pdfTx: {
+  incomingTx: {
     category_id?: string | null;
+    categorization_source?: CategorizationSource;
     notes?: string | null;
     capture_method?: TransactionCaptureMethod;
   }
@@ -169,15 +174,32 @@ export function mergeTransactionMetadata(
   notes?: string | null;
   capture_method: TransactionCaptureMethod;
 } {
-  const shouldCarryCategory =
-    !pdfTx.category_id &&
-    !!manualTx.category_id &&
-    (manualTx.categorization_source === "USER_CREATED" ||
-      manualTx.categorization_source === "USER_OVERRIDE");
+  const incomingMethod = incomingTx.capture_method ?? "MANUAL_FORM";
+  const existingMethod = existingTx.capture_method ?? "MANUAL_FORM";
+  const winner = resolveAuthorityWinner(incomingMethod, existingMethod);
+  const winnerMethod = winner === "incoming" ? incomingMethod : existingMethod;
+
+  const existingHasUserCategory =
+    !!existingTx.category_id &&
+    (existingTx.categorization_source === "USER_CREATED" ||
+      existingTx.categorization_source === "USER_OVERRIDE");
+
+  const incomingHasUserCategory =
+    !!incomingTx.category_id &&
+    (incomingTx.categorization_source === "USER_CREATED" ||
+      incomingTx.categorization_source === "USER_OVERRIDE");
+
+  // User-set categories are always preserved over system-generated ones.
+  // When both sides have user-set categories, authority hierarchy breaks the tie.
+  const shouldCarryExistingCategory =
+    existingHasUserCategory &&
+    (!incomingHasUserCategory || winner === "existing");
 
   return {
-    category_id: shouldCarryCategory ? manualTx.category_id ?? null : pdfTx.category_id ?? null,
-    notes: pdfTx.notes ?? manualTx.notes ?? null,
-    capture_method: pdfTx.capture_method ?? "PDF_IMPORT",
+    category_id: shouldCarryExistingCategory
+      ? existingTx.category_id ?? null
+      : incomingTx.category_id ?? null,
+    notes: incomingTx.notes ?? existingTx.notes ?? null,
+    capture_method: winnerMethod,
   };
 }
