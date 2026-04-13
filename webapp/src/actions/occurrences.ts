@@ -348,8 +348,8 @@ export async function getPendingOccurrences(
   if (!user || !accessToken) return { success: false, error: "No autenticado" };
 
   const today = new Date();
-  const rangeStart = today.toISOString().split("T")[0];
-  const rangeEnd = addDays(today, daysAhead).toISOString().split("T")[0];
+  const rangeStart = toColombiaDateString(today);
+  const rangeEnd = toColombiaDateString(addDays(today, daysAhead));
 
   try {
     let data = await getPendingOccurrencesCached(user.id, rangeStart, rangeEnd, accessToken);

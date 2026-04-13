@@ -168,7 +168,7 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
           <div className="flex items-center gap-2 rounded-xl border border-z-income/15 bg-z-income/5 px-4 py-2.5">
             <ArrowDownLeft className="size-4 text-z-income" />
             <p className="text-sm text-z-sage-light">
-              Próximo ingreso: <span className="font-semibold text-z-income">+{formatCurrency(nextIncomeAmount, code)}</span> el {formatDate(nextIncomeDate, "d MMM")}
+              Próximo ingreso: <span className="font-semibold tabular-nums text-z-income">+{formatCurrency(nextIncomeAmount, code)}</span> el {formatDate(nextIncomeDate, "d MMM")}
               {nextIncomeName && <span className="text-muted-foreground"> · {nextIncomeName}</span>}
             </p>
           </div>

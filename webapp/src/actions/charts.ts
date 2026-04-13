@@ -3,9 +3,10 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
+import { addDays } from "date-fns";
 import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import { getAccounts } from "@/actions/accounts";
-import { getPendingOccurrences, getNextIncomeOccurrence } from "@/actions/occurrences";
+import { getPendingOccurrencesCached, getNextIncomeOccurrenceCached } from "@/actions/occurrences";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
@@ -712,8 +713,8 @@ export async function getDashboardHeroData(
   month?: string,
   currency?: CurrencyCode
 ): Promise<DashboardHeroData> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) {
     return {
       totalLiquid: 0,
       pendingObligations: [],
@@ -738,10 +739,17 @@ export async function getDashboardHeroData(
 
   const baseCurrency = currency ?? "COP";
 
-  const [accountsResult, monthMetrics, nextIncome] = await Promise.all([
+  // Compute date strings before Promise.all (synchronous)
+  const now = new Date();
+  const colombiaToday = toColombiaDateString(now);
+  const rangeEnd = toColombiaDateString(addDays(now, PAY_CYCLE_LOOKAHEAD_DAYS));
+
+  // All 4 fetches in parallel — no sequential waterfall
+  const [accountsResult, monthMetrics, nextIncome, pendingOccurrences] = await Promise.all([
     getAccounts(),
     getMonthMetrics(month, currency),
-    getNextIncomeOccurrence(baseCurrency).catch(() => null),
+    getNextIncomeOccurrenceCached(user.id, colombiaToday, baseCurrency, accessToken).catch(() => null),
+    getPendingOccurrencesCached(user.id, colombiaToday, rangeEnd, accessToken).catch(() => [] as never[]),
   ]);
 
   // 1. Process accounts
@@ -779,9 +787,6 @@ export async function getDashboardHeroData(
 
   // 3. Compute pay-cycle window
   const incomeConfigured = nextIncome !== null;
-
-  const now = new Date();
-  const colombiaToday = toColombiaDateString(now);
   let daysUntilIncome: number;
   let windowEndDate: string;
 
@@ -796,11 +801,7 @@ export async function getDashboardHeroData(
     windowEndDate = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
   }
 
-  // Use PAY_CYCLE_LOOKAHEAD_DAYS for cache-aligned fetch, filter in JS
-  const pendingResult = await getPendingOccurrences(PAY_CYCLE_LOOKAHEAD_DAYS, baseCurrency);
-  const pendingOccurrences = pendingResult.success ? pendingResult.data : [];
-
-  // Filter to pay-cycle window
+  // Filter cached occurrences to pay-cycle window
   const windowOccurrences = pendingOccurrences.filter(
     (o) => o.occurrence_date >= colombiaToday && o.occurrence_date <= windowEndDate
   );

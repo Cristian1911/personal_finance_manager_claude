@@ -52,6 +52,7 @@ async function getBurnRateCached(
   cacheTag("dashboard:hero");
   cacheTag("accounts");
   cacheTag("recurring");
+  cacheTag("occurrences");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
@@ -60,7 +61,7 @@ async function getBurnRateCached(
   const today = new Date();
   const todayStr = toColombiaDateString(today);
   const threeMonthsAgo = toColombiaDateString(subMonths(today, 3));
-  const rangeEnd = addDays(today, PAY_CYCLE_LOOKAHEAD_DAYS).toISOString().split("T")[0];
+  const rangeEnd = toColombiaDateString(addDays(today, PAY_CYCLE_LOOKAHEAD_DAYS));
 
   const [
     { data: templates },
@@ -96,8 +97,10 @@ async function getBurnRateCached(
   if (nextIncome) {
     windowEndDate = nextIncome.date;
   } else {
-    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    windowEndDate = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+    // Use Colombia timezone for month-end fallback
+    const [yearStr, monthStr] = todayStr.split("-");
+    const daysInMonth = new Date(Number(yearStr), Number(monthStr), 0).getDate();
+    windowEndDate = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
   }
 
   const obligationMarkers: ObligationMarker[] = (pendingOccurrences ?? [])
@@ -150,7 +153,12 @@ export async function getBurnRate(
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return null;
 
-  return getBurnRateCached(accessToken, user.id, currency ?? "COP");
+  try {
+    return await getBurnRateCached(accessToken, user.id, currency ?? "COP");
+  } catch (error) {
+    console.error("Error loading burn rate:", error);
+    return null;
+  }
 }
 
 function computeBurnRate(

@@ -197,9 +197,9 @@ export function BurnRateCard({ data }: BurnRateCardProps) {
                 connectNulls={false}
                 isAnimationActive={false}
               />
-              {data.obligations.map((ob) => (
+              {data.obligations.map((ob, i) => (
                 <ReferenceLine
-                  key={ob.date}
+                  key={`${ob.date}-${ob.name}-${i}`}
                   x={ob.date}
                   stroke="var(--z-expense)"
                   strokeOpacity={0.3}

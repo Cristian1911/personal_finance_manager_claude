@@ -130,7 +130,7 @@ export function InicioHero({
                 {nextIncomeDate && (
                   <div className="border-t border-white/8 pt-1.5 flex justify-between text-xs text-z-income">
                     <span>Próximo ingreso: {nextIncomeName}</span>
-                    <span>+{formatCurrency(nextIncomeAmount, currency)} el {formatDate(nextIncomeDate, "d MMM")}</span>
+                    <span className="tabular-nums">+{formatCurrency(nextIncomeAmount, currency)} el {formatDate(nextIncomeDate, "d MMM")}</span>
                   </div>
                 )}
               </div>

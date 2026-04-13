@@ -7,7 +7,7 @@ import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import type { RecentTransaction } from "@/actions/transactions";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
+import { toColombiaDateString } from "@/lib/utils/date";
 import { subDays, differenceInDays } from "date-fns";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -62,11 +62,10 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     })),
   }));
 
-  const colombiaDay = getColombiaDayOfMonth(now);
   const todayStr = toColombiaDateString(now);
   const [yearStr, monthStr] = todayStr.split("-");
   const daysInMonth = new Date(Number(yearStr), Number(monthStr), 0).getDate();
-  const daysRemaining = Math.max(daysInMonth - colombiaDay, 1);
+  const daysRemaining = heroData.daysUntilIncome;
 
   // Primary account lookup
   const primaryAccount = (() => {
@@ -114,8 +113,8 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           nextIncomeName: heroData.nextIncomeName,
           incomeConfigured: heroData.incomeConfigured,
           breakdown: {
-            totalLiquid: heroData.monthlyIncome,
-            fixedExpenses: heroData.totalPending,
+            totalLiquid: heroData.totalLiquid,
+            fixedExpenses: heroData.windowObligations,
             alreadySpent: heroData.monthlySpent,
           },
           primaryAccount,
