@@ -13,12 +13,7 @@ import {
 } from "@/components/ui/drawer";
 import { useAccounts, useCategories } from "@/components/providers/app-data-provider";
 import { FabMenu, type FabAction, type ContextAction } from "./fab-menu";
-import type { TransactionDirection } from "@/types/domain";
 
-const MobileTransactionForm = dynamic(
-  () => import("./mobile-transaction-form").then((m) => ({ default: m.MobileTransactionForm })),
-  { ssr: false },
-);
 const MobileQuickCaptureSheet = dynamic(
   () => import("./mobile-quick-capture-sheet").then((m) => ({ default: m.MobileQuickCaptureSheet })),
   { ssr: false },
@@ -37,8 +32,9 @@ const VoiceCaptureSheet = dynamic(
 );
 
 // ── Context for opening the action menu from anywhere (e.g. tab bar) ────────
-const MobileActionContext = createContext<{ openActionMenu: () => void }>({
+const MobileActionContext = createContext<{ openActionMenu: () => void; isFabOpen: boolean }>({
   openActionMenu: () => {},
+  isFabOpen: false,
 });
 
 export function useMobileActionMenu() {
@@ -48,15 +44,6 @@ export function useMobileActionMenu() {
 interface MobileSheetProviderProps {
   children: React.ReactNode;
 }
-
-const TRANSACTION_ACTIONS: Record<
-  "expense" | "income" | "transfer",
-  { title: string; direction: TransactionDirection }
-> = {
-  expense: { title: "Gasto rápido", direction: "OUTFLOW" },
-  income: { title: "Ingreso", direction: "INFLOW" },
-  transfer: { title: "Transferencia", direction: "OUTFLOW" },
-};
 
 function getContextActions(pathname: string): ContextAction[] {
   // startsWith: no sub-routes for recurrentes
@@ -73,9 +60,9 @@ function getContextActions(pathname: string): ContextAction[] {
 function getSheetTitle(action: FabAction): string {
   if (action === "voice") return "Captura por voz";
   if (action === "quick-capture") return "Captura rápida";
-  if (action === "new-recurring") return "Nueva transaccion recurrente";
+  if (action === "new-recurring") return "Nueva transacción recurrente";
   if (action === "new-account") return "Nueva cuenta";
-  return TRANSACTION_ACTIONS[action as keyof typeof TRANSACTION_ACTIONS]?.title ?? "";
+  return "";
 }
 
 /** Module-level ref to hold the screenshot file picked from the FAB */
@@ -99,7 +86,7 @@ export function MobileSheetProvider({ children }: MobileSheetProviderProps) {
   const contextActions = useMemo(() => getContextActions(pathname), [pathname]);
 
   const openActionMenu = useCallback(() => setFabOpen((prev) => !prev), []);
-  const contextValue = useMemo(() => ({ openActionMenu }), [openActionMenu]);
+  const contextValue = useMemo(() => ({ openActionMenu, isFabOpen: fabOpen }), [openActionMenu, fabOpen]);
 
   const handleSuccess = useCallback(() => {
     setActiveAction(null);
@@ -145,7 +132,6 @@ export function MobileSheetProvider({ children }: MobileSheetProviderProps) {
         ref={screenshotInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleScreenshotFileChange}
       />
@@ -163,17 +149,6 @@ export function MobileSheetProvider({ children }: MobileSheetProviderProps) {
           </DrawerHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            {activeAction && activeAction in TRANSACTION_ACTIONS && (
-              <MobileTransactionForm
-                key={activeAction}
-                accounts={accounts}
-                categories={categories}
-                defaultDirection={TRANSACTION_ACTIONS[activeAction as keyof typeof TRANSACTION_ACTIONS].direction}
-                isTransfer={activeAction === "transfer"}
-                onSuccess={handleSuccess}
-              />
-            )}
-
             {activeAction === "voice" && (
               <VoiceCaptureSheet
                 accounts={accounts}
