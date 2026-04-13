@@ -14,7 +14,7 @@ import {
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
 import { getIsDemoFilter } from "@/lib/demo-filter";
-import type { Account, AccountRow, CurrencyCode, TransactionDirection } from "@/types/domain";
+import type { Account, AccountRow, CurrencyCode, TransactionDirection, TransactionWithAccount } from "@/types/domain";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -570,4 +570,43 @@ export async function registerPayment(
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
   return { success: true, data: null };
+}
+
+// ─── Account Transactions ───────────────────────────────────────────────────
+
+interface AccountTransactionsResult {
+  transactions: TransactionWithAccount[];
+  hasMore: boolean;
+}
+
+export async function getAccountTransactions(
+  accountId: string,
+  opts: { offset?: number; limit?: number } = {}
+): Promise<ActionResult<AccountTransactionsResult>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  const offset = opts.offset ?? 0;
+  const limit = opts.limit ?? 20;
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      `*, account:accounts!inner(id, name, icon, color), category:categories(id, name, name_es, icon, color), destinatario:destinatarios(id, name)`
+    )
+    .eq("account_id", accountId)
+    .eq("user_id", user.id)
+    .order("transaction_date", { ascending: false })
+    .range(offset, offset + limit);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return {
+    success: true,
+    data: {
+      transactions: (data ?? []) as unknown as TransactionWithAccount[],
+      hasMore: (data?.length ?? 0) > limit,
+    },
+  };
 }
