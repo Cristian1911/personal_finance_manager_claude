@@ -11,9 +11,9 @@ import type { CurrencyCode } from "@/types/domain";
  * detect that fresh props arrived and clear the stale mount-time override.
  */
 function fingerprint(d: LiveDashboardData): string {
-  const emailIds = d.attention.pendingEmails.map(e => e.id).join(",");
-  const reminderIds = d.attention.overdueReminders.map(r => r.id).join(",");
-  const paymentIds = d.attention.upcomingPayments.map(p => p.templateId + p.occurrenceDate).join(",");
+  const emailIds = d.attention.pendingEmails.map(e => e.id).sort().join(",");
+  const reminderIds = d.attention.overdueReminders.map(r => r.id).sort().join(",");
+  const paymentIds = d.attention.upcomingPayments.map(p => p.templateId + p.occurrenceDate).sort().join(",");
   return `${emailIds}:${reminderIds}:${paymentIds}:${d.hero.availableTotal}:${d.metrics.spentToday}`;
 }
 
