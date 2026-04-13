@@ -25,6 +25,7 @@ import type {
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
 import { linkTransactionToOccurrence } from "@/actions/occurrences";
+import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 
 type DebtKind = "credit_card" | "loan";
 type CurrencyCode = Database["public"]["Enums"]["currency_code"];
@@ -810,6 +811,7 @@ export async function importTransactions(
   let manualMerged = 0;
   let leftAsSeparate = 0;
   const details: string[] = [];
+  const balanceDeltaTxs: TransactionToImport[] = [];
 
   for (const [txIndex, tx] of transactions.entries()) {
     // Use original_amount (full purchase price) for idempotency when available,
@@ -873,6 +875,7 @@ export async function importTransactions(
       ? decisionMap.get(tx.import_key)
       : decisionMap.get(buildDecisionKey(-1, txIndex));
     if (!decision || decision.decision === "KEEP_BOTH") {
+      balanceDeltaTxs.push(tx);
       leftAsSeparate++;
       continue;
     }
@@ -893,10 +896,13 @@ export async function importTransactions(
     }
 
     if (!manualTx) {
+      balanceDeltaTxs.push(tx);
       leftAsSeparate++;
       continue;
     }
 
+    // Reconciled (AUTO_MERGE / MERGE): manual tx already applied its balance
+    // delta when it was created, so do NOT add to balanceDeltaTxs to avoid double-counting.
     const merged = mergeTransactionMetadata(manualTx as ReconciliationCandidate, {
       category_id: insertedTx.category_id,
       notes: insertedTx.notes,
@@ -974,6 +980,77 @@ export async function importTransactions(
     statementMeta: normalizedStatementMeta,
     details,
   });
+
+  // Screenshot imports lack statement metadata — fall back to per-tx balance deltas.
+  if (balanceDeltaTxs.length > 0) {
+    const accountsWithMetaBalance = new Set<string>();
+    for (const meta of normalizedStatementMeta ?? []) {
+      if (meta.creditCardMetadata || meta.loanMetadata || meta.summary?.final_balance != null) {
+        accountsWithMetaBalance.add(meta.accountId);
+      }
+    }
+
+    const txsByAccount = new Map<string, TransactionToImport[]>();
+    for (const tx of balanceDeltaTxs) {
+      if (accountsWithMetaBalance.has(tx.account_id)) continue;
+      const list = txsByAccount.get(tx.account_id) ?? [];
+      list.push(tx);
+      txsByAccount.set(tx.account_id, list);
+    }
+
+    if (txsByAccount.size > 0) {
+      const accountIds = [...txsByAccount.keys()];
+      const { data: balanceAccounts, error: balanceError } = await supabase
+        .from("accounts")
+        .select("id, account_type, current_balance, currency_code, currency_balances")
+        .eq("user_id", user.id)
+        .in("id", accountIds);
+
+      if (balanceError) {
+        console.error("Failed to fetch accounts for balance delta:", balanceError.message);
+      }
+
+      for (const account of balanceAccounts ?? []) {
+        const txs = txsByAccount.get(account.id);
+        if (!txs) continue;
+
+        let balance = Number(account.current_balance ?? 0);
+        for (const tx of txs) {
+          balance = applyAccountBalanceDelta({
+            currentBalance: balance,
+            accountType: account.account_type,
+            direction: tx.direction,
+            amount: tx.amount,
+          });
+        }
+
+        const existingBalances =
+          account.currency_balances &&
+          typeof account.currency_balances === "object" &&
+          !Array.isArray(account.currency_balances)
+            ? (account.currency_balances as Record<string, Record<string, number | null>>)
+            : {};
+        const currencyKey = account.currency_code ?? txs[0].currency_code;
+        existingBalances[currencyKey] = {
+          ...existingBalances[currencyKey],
+          current_balance: balance,
+        };
+
+        const { error: updateError } = await supabase
+          .from("accounts")
+          .update({
+            current_balance: balance,
+            currency_balances: existingBalances,
+          })
+          .eq("user_id", user.id)
+          .eq("id", account.id);
+
+        if (updateError) {
+          console.error("Failed to update balance for account", account.id, updateError.message);
+        }
+      }
+    }
+  }
 
   revalidateFinancialViews();
   revalidateTag("snapshots", "zeta");
