@@ -310,10 +310,12 @@ function IncomeCard({
       style={{ borderLeftColor: color.hex }}
     >
       {/* Main card content — tap to expand */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
-        className="w-full p-3.5 text-left space-y-2"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onToggle(); }}
+        className="w-full p-3.5 text-left space-y-2 cursor-pointer"
       >
         {/* Name + status + amount */}
         <div className="flex items-start justify-between gap-2">
@@ -379,7 +381,7 @@ function IncomeCard({
             )}
           />
         </div>
-      </button>
+      </div>
 
       {/* Expanded: assignments list + actions */}
       {isExpanded && (
