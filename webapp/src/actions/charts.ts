@@ -77,7 +77,8 @@ async function getCategorySpendingCached(
       .eq("currency_code", currency ?? "COP")
       .gte("transaction_date", monthStartStr(target))
       .lte("transaction_date", monthEndStr(target))
-      .is("reconciled_into_transaction_id", null),
+      .is("reconciled_into_transaction_id", null)
+      .is("transfer_group_id", null),
 
     supabase
       .from("budgets")
@@ -165,7 +166,8 @@ async function getMonthlyCashflowCached(
     .gte("transaction_date", monthsBeforeStart(target, 5))
     .lte("transaction_date", monthEndStr(target))
     .order("transaction_date")
-    .is("reconciled_into_transaction_id", null);
+    .is("reconciled_into_transaction_id", null)
+    .is("transfer_group_id", null);
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
@@ -230,7 +232,8 @@ async function getDailySpendingCached(
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target))
     .order("transaction_date")
-    .is("reconciled_into_transaction_id", null);
+    .is("reconciled_into_transaction_id", null)
+    .is("transfer_group_id", null);
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
@@ -291,7 +294,8 @@ async function getMonthMetricsCached(
     .eq("is_excluded", false)
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target))
-    .is("reconciled_into_transaction_id", null);
+    .is("reconciled_into_transaction_id", null)
+    .is("transfer_group_id", null);
 
   if (error) throw error;
   if (!transactions) return { income: 0, expenses: 0 };
@@ -342,7 +346,8 @@ async function getDailyCashflowCached(
     .gte("transaction_date", startStr)
     .lte("transaction_date", endStr)
     .order("transaction_date")
-    .is("reconciled_into_transaction_id", null);
+    .is("reconciled_into_transaction_id", null)
+    .is("transfer_group_id", null);
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];

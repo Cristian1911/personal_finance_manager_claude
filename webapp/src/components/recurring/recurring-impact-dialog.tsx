@@ -26,7 +26,7 @@ interface RecurringImpactDialogProps {
   templateName: string;
   currencyCode: CurrencyCode;
   action: "delete" | "pause";
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   trigger: React.ReactNode;
 }
 
@@ -67,8 +67,8 @@ export function RecurringImpactDialog({
   const pendingLabel = isDelete ? "Eliminando..." : "Pausando...";
 
   function handleConfirm() {
-    startTransition(() => {
-      onConfirm();
+    startTransition(async () => {
+      await onConfirm();
       setOpen(false);
     });
   }

@@ -15,9 +15,27 @@
 | PR | Description | Branch |
 |---|---|---|
 | #130 | Inline drawer pickers + picker improvements | `feat/inline-drawer-pickers` |
-| — | Recurring impact preview + recurring income | `feat/recurring-impact-income` |
+| — | Recurring impact preview + recurring income + account detail redesign | `feat/recurring-impact-income` |
 
 ## Features
+
+### Account detail page — deferred items
+- **Priority:** Medium
+- **What:** Statement snapshots visual redesign, auto-populate `card_brand` from PDF parsers, composite `(account_id, user_id, transaction_date)` index, use `useAccounts()` hook instead of server-side `getAccounts()` in QuickActionsBar
+- **Context:** Shipped card hero, flip-to-graph, transaction-based balance history, transfer dialog, quick actions. Deferred items noted by perf-auditor and design reviews.
+
+### Mobile recurring admin actions
+- **Priority:** Medium
+- **What:** Add pause/delete/edit actions for recurring templates on mobile. Currently mobile view (`MobileRecurrentesView`) only supports pay/skip — no way to manage templates without switching to desktop.
+- **Options:** Long-press action sheet on each item, or a "manage" link navigating to a detail view with admin actions.
+- **Found:** Visual testing, 2026-04-13
+
+
+### Income-aware runway & daily budget
+- **Priority:** High
+- **What:** Dashboard "gasto diario" and runway metrics should factor in upcoming recurring income. Two options: (A) count until end of month but add next income to available balance, or (B) count until next income date instead of end of month. Currently both metrics assume no more money coming in — overly pessimistic when income is configured.
+- **Context:** Recurring income is now first-class. These metrics should reflect it. Affects mobile dashboard hero and gasto diario calculation.
+- **Found:** Visual testing, 2026-04-13
 
 ### Tag system broader reach
 - **Priority:** Medium

@@ -57,13 +57,12 @@ export function RecurringForm({
     { success: false, error: "" }
   );
 
-  const defaultAccount = accounts[0];
   const defaultStartDate = new Date().toISOString().split("T")[0];
   const [direction, setDirection] = useState<TransactionDirection>(
     template?.direction ?? "OUTFLOW"
   );
   const [accountId, setAccountId] = useState<string>(
-    template?.account_id ?? defaultAccount?.id ?? ""
+    template?.account_id ?? ""
   );
   const [startDate, setStartDate] = useState<string>(
     template?.start_date ?? defaultStartDate

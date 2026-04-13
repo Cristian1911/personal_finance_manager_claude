@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,7 @@ function RecurringCard({
   categories: CategoryWithChildren[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const [menuOpen, setMenuOpen] = useState(false);
   const isDebtPayment =
     template.account.account_type === "CREDIT_CARD" ||
     template.account.account_type === "LOAN";
@@ -98,12 +99,14 @@ function RecurringCard({
     });
   };
 
-  const handlePauseConfirm = () => {
-    toggleRecurringTemplate(template.id, false);
+  const handlePauseConfirm = async () => {
+    setMenuOpen(false);
+    await toggleRecurringTemplate(template.id, false);
   };
 
-  const handleDeleteConfirm = () => {
-    deleteRecurringTemplate(template.id);
+  const handleDeleteConfirm = async () => {
+    setMenuOpen(false);
+    await deleteRecurringTemplate(template.id);
   };
 
   return (
@@ -128,7 +131,7 @@ function RecurringCard({
             </div>
           </div>
 
-          <DropdownMenu>
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isPending}>
                 <MoreVertical className="h-4 w-4" />

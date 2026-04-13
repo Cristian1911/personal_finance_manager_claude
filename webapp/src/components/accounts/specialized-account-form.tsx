@@ -437,6 +437,25 @@ export function SpecializedAccountForm({ account, defaultValues, onSuccess }: Pr
           <InvestmentFields account={account} defaults={dv} />
         )}
 
+        {(selectedType === "CREDIT_CARD" || selectedType === "SAVINGS" || selectedType === "CHECKING") && (
+          <div className="space-y-2">
+            <Label>Red de tarjeta</Label>
+            <Select name="card_brand" defaultValue={account?.card_brand ?? ""}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sin especificar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Sin especificar</SelectItem>
+                <SelectItem value="VISA">Visa</SelectItem>
+                <SelectItem value="MASTERCARD">Mastercard</SelectItem>
+                <SelectItem value="AMEX">American Express</SelectItem>
+                <SelectItem value="DINERS">Diners Club</SelectItem>
+                <SelectItem value="DISCOVER">Discover</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="color">Color de la cuenta</Label>
           <div className="flex items-center gap-3">

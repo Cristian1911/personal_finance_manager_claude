@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense } from "react";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { PlanNetHero } from "./plan-net-hero";
 import { PlanExpandableChips } from "./plan-expandable-chips";
@@ -31,16 +31,8 @@ export function PlanRoot({
   periodoSummary,
   wishlistCount,
 }: PlanRootProps) {
-  const { incomes, payments } = useMemo(() => {
-    const DEBT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
-    const upcoming = planData.recurring.upcoming;
-    return {
-      incomes: upcoming.filter(
-        (u) => u.template.direction === "INFLOW" && !DEBT_TYPES.has(u.template.account.account_type)
-      ),
-      payments: upcoming.filter((u) => u.template.direction === "OUTFLOW"),
-    };
-  }, [planData.recurring.upcoming]);
+  const incomes = planData.recurring.upcomingIncome;
+  const payments = planData.recurring.upcoming;
 
   return (
     <div className="space-y-2 pb-20">

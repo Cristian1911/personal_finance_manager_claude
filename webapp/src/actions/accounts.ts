@@ -6,6 +6,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { accountSchema } from "@/lib/validators/account";
 import { computeIdempotencyKey } from "@zeta/shared";
 import { getDirectionForBalanceDelta } from "@/lib/utils/account-balance";
+import { toColombiaDateString } from "@/lib/utils/date";
 import {
   parseCurrencyBalanceMap,
   resolveCurrencyBalanceCurrentValue,
@@ -14,7 +15,7 @@ import {
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/types/actions";
 import { getIsDemoFilter } from "@/lib/demo-filter";
-import type { Account, AccountRow, CurrencyCode, TransactionDirection } from "@/types/domain";
+import type { Account, AccountRow, CurrencyCode, TransactionDirection, TransactionWithAccount } from "@/types/domain";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,7 @@ function buildAccountInsertData(formData: FormData) {
     initial_investment: formData.get("initial_investment") || undefined,
     expected_return_rate: formData.get("expected_return_rate") || undefined,
     maturity_date: combineDateFields(formData, "maturity_month", "maturity_year"),
+    card_brand: formData.get("card_brand") || undefined,
     color: formData.get("color") || undefined,
     icon: formData.get("icon") || undefined,
     mask: formData.get("mask") || undefined,
@@ -570,4 +572,194 @@ export async function registerPayment(
   revalidateTag("dashboard:hero", "zeta");
   revalidateTag("debt", "zeta");
   return { success: true, data: null };
+}
+
+// ─── Spending Pulse (cached, single query) ──────────────────────────────────
+
+async function getAccountSpendingPulseCached(
+  userId: string,
+  accessToken: string,
+  accountId: string,
+): Promise<{ monthlySpent: number; dailyActivity: { date: string; amount: number }[] }> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  const now = new Date();
+  const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().slice(0, 10);
+
+  // Single query: all outflows in last 30 days
+  const { data } = await supabase
+    .from("transactions")
+    .select("transaction_date, amount")
+    .eq("account_id", accountId)
+    .eq("user_id", userId)
+    .eq("direction", "OUTFLOW")
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .gte("transaction_date", thirtyDaysAgoStr)
+    .order("transaction_date", { ascending: true });
+
+  let monthlySpent = 0;
+  const dailyMap = new Map<string, number>();
+
+  for (const row of data ?? []) {
+    const amt = row.amount ?? 0;
+    dailyMap.set(row.transaction_date, (dailyMap.get(row.transaction_date) ?? 0) + amt);
+    if (row.transaction_date >= firstOfMonth) {
+      monthlySpent += amt;
+    }
+  }
+
+  const dailyActivity = Array.from(dailyMap, ([date, amount]) => ({ date, amount }));
+  return { monthlySpent, dailyActivity };
+}
+
+export async function getAccountSpendingPulse(
+  accountId: string,
+): Promise<{ monthlySpent: number; dailyActivity: { date: string; amount: number }[] }> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { monthlySpent: 0, dailyActivity: [] };
+  return getAccountSpendingPulseCached(user.id, accessToken, accountId);
+}
+
+// ─── Account Transactions ───────────────────────────────────────────────────
+
+interface AccountTransactionsResult {
+  transactions: TransactionWithAccount[];
+  hasMore: boolean;
+}
+
+async function getAccountTransactionsCached(
+  userId: string,
+  accessToken: string,
+  accountId: string,
+  limit: number,
+  offset: number
+): Promise<AccountTransactionsResult> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  const { data, error, count } = await supabase
+    .from("transactions")
+    .select(
+      `*, account:accounts!transactions_account_id_fkey!inner(id, name, icon, color), category:categories!transactions_category_id_fkey(id, name, name_es, icon, color), destinatario:destinatarios!transactions_destinatario_id_fkey(id, name)`,
+      { count: "exact" }
+    )
+    .eq("account_id", accountId)
+    .eq("user_id", userId)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+
+  return {
+    transactions: (data ?? []) as unknown as TransactionWithAccount[],
+    hasMore: (count ?? 0) > offset + limit,
+  };
+}
+
+export async function getAccountTransactions(
+  accountId: string,
+  opts: { offset?: number; limit?: number } = {}
+): Promise<ActionResult<AccountTransactionsResult>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+
+  const offset = opts.offset ?? 0;
+  const limit = opts.limit ?? 20;
+
+  try {
+    const data = await getAccountTransactionsCached(user.id, accessToken, accountId, limit, offset);
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error loading account transactions:", error);
+    return { success: false, error: "Error al cargar las transacciones" };
+  }
+}
+
+// ─── Account Balance History (transaction-based running balance) ─────────────
+
+async function getAccountBalanceHistoryCached(
+  userId: string,
+  accessToken: string,
+  accountId: string,
+  currentBalance: number,
+): Promise<{ date: string; balance: number }[]> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  // Fetch up to 1 year of transactions for this account (Colombia timezone)
+  const now = new Date();
+  const oneYearAgo = new Date(now);
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const cutoffDate = toColombiaDateString(oneYearAgo);
+
+  const { data } = await supabase
+    .from("transactions")
+    .select("transaction_date, amount, direction")
+    .eq("account_id", accountId)
+    .eq("user_id", userId)
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .gte("transaction_date", cutoffDate)
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(5000);
+
+  if (!data || data.length === 0) {
+    return [{ date: new Date().toISOString().substring(0, 10), balance: currentBalance }];
+  }
+
+  // Compute running balance backwards from current balance
+  // data is sorted newest-first
+  const points: { date: string; balance: number }[] = [];
+  let runningBalance = currentBalance;
+
+  // First point: current balance at today (Colombia timezone)
+  points.push({ date: toColombiaDateString(new Date()), balance: runningBalance });
+
+  // Walk backwards through transactions, reversing each effect
+  for (const tx of data) {
+    if (tx.direction === "OUTFLOW") {
+      runningBalance += tx.amount; // add back what was spent
+    } else {
+      runningBalance -= tx.amount; // remove what was received
+    }
+    points.push({ date: tx.transaction_date, balance: runningBalance });
+  }
+
+  // Reverse to get chronological order
+  points.reverse();
+
+  // Deduplicate by date (keep last balance per day for cleaner chart)
+  const dailyMap = new Map<string, number>();
+  for (const p of points) {
+    dailyMap.set(p.date, p.balance);
+  }
+
+  return Array.from(dailyMap, ([date, balance]) => ({ date, balance }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export async function getAccountBalanceHistory(
+  accountId: string,
+  currentBalance: number,
+): Promise<{ date: string; balance: number }[]> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+  return getAccountBalanceHistoryCached(user.id, accessToken, accountId, currentBalance);
 }

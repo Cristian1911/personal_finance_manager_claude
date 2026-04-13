@@ -25,6 +25,7 @@ export const accountSchema = z.object({
   initial_investment: z.coerce.number().min(0).optional().nullable(),
   expected_return_rate: z.coerce.number().min(0).max(100).optional().nullable(),
   maturity_date: z.string().optional().nullable(),
+  card_brand: z.enum(["VISA", "MASTERCARD", "AMEX", "DINERS", "DISCOVER"]).optional().nullable(),
   color: z.string().optional(),
   icon: z.string().optional(),
   mask: z.string().max(4).optional(),
