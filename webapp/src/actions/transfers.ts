@@ -166,7 +166,7 @@ export async function createTransfer(
 
   // TO account: INFLOW → debt decreases balance, non-debt increases balance
   const newToBalance = isToDebt
-    ? Math.max(0, toAccount.current_balance - amount)
+    ? toAccount.current_balance - amount
     : toAccount.current_balance + amount;
 
   const toUpdate: Record<string, unknown> = {

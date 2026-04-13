@@ -57,7 +57,7 @@ export function CompactTransactionRow({
           isInflow ? "text-z-income" : "text-z-white/80"
         )}
       >
-        {isInflow ? "+" : ""}
+        {isInflow ? "+" : "-"}
         {formatCurrency(
           transaction.amount ?? 0,
           (transaction.currency_code ?? "COP") as CurrencyCode

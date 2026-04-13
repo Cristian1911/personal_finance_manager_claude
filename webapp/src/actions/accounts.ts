@@ -6,6 +6,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { accountSchema } from "@/lib/validators/account";
 import { computeIdempotencyKey } from "@zeta/shared";
 import { getDirectionForBalanceDelta } from "@/lib/utils/account-balance";
+import { toColombiaDateString } from "@/lib/utils/date";
 import {
   parseCurrencyBalanceMap,
   resolveCurrencyBalanceCurrentValue,
@@ -701,9 +702,11 @@ async function getAccountBalanceHistoryCached(
 
   const supabase = createCachedClient(accessToken);
 
-  // Fetch up to 1 year of transactions for this account
-  const oneYearAgo = new Date();
+  // Fetch up to 1 year of transactions for this account (Colombia timezone)
+  const now = new Date();
+  const oneYearAgo = new Date(now);
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const cutoffDate = toColombiaDateString(oneYearAgo);
 
   const { data } = await supabase
     .from("transactions")
@@ -712,7 +715,7 @@ async function getAccountBalanceHistoryCached(
     .eq("user_id", userId)
     .eq("is_excluded", false)
     .is("reconciled_into_transaction_id", null)
-    .gte("transaction_date", oneYearAgo.toISOString().substring(0, 10))
+    .gte("transaction_date", cutoffDate)
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(5000);
@@ -726,8 +729,8 @@ async function getAccountBalanceHistoryCached(
   const points: { date: string; balance: number }[] = [];
   let runningBalance = currentBalance;
 
-  // First point: current balance at today
-  points.push({ date: new Date().toISOString().substring(0, 10), balance: runningBalance });
+  // First point: current balance at today (Colombia timezone)
+  points.push({ date: toColombiaDateString(new Date()), balance: runningBalance });
 
   // Walk backwards through transactions, reversing each effect
   for (const tx of data) {

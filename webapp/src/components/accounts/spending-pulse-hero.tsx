@@ -45,7 +45,7 @@ export function SpendingPulseHero({
             Este mes
           </p>
           <p className="text-sm font-bold text-z-brass tabular-nums">
-            {formatCurrency(monthlySpent, cc)}
+            -{formatCurrency(monthlySpent, cc)}
           </p>
         </div>
       </div>
