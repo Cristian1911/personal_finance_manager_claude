@@ -8,10 +8,10 @@ import type { TransactionCaptureMethod } from "../types/domain";
  *
  * Tier 1 — Bank-verified (structured PDF statements with metadata):
  *   PDF_IMPORT: Full statement parse with balances, credit limits, dates
+ *   EMAIL_PDF_IMPORT: Same structured parse, delivered via email attachment
  *
  * Tier 2 — Semi-structured (machine-extracted, partial metadata):
- *   EMAIL_IMPORT: Parsed from notification emails
- *   EMAIL_PDF_IMPORT: PDF attached to email, parsed automatically
+ *   EMAIL_IMPORT: Parsed from notification emails (text, not PDF)
  *   OCR_BATCH: Batch OCR from screenshots
  *   OCR_SINGLE: Single transaction OCR
  *
@@ -29,7 +29,7 @@ import type { TransactionCaptureMethod } from "../types/domain";
 
 const CAPTURE_TIER: Record<TransactionCaptureMethod, 1 | 2 | 3> = {
   PDF_IMPORT: 1,
-  EMAIL_PDF_IMPORT: 2,
+  EMAIL_PDF_IMPORT: 1,
   EMAIL_IMPORT: 2,
   OCR_BATCH: 2,
   OCR_SINGLE: 2,

@@ -26,8 +26,8 @@ Every transaction has a `capture_method` indicating how it was created. These fo
 
 | Tier | Authority | Methods | Examples |
 |------|-----------|---------|----------|
-| 1 | Bank-verified | `PDF_IMPORT` | Structured PDF statement with metadata (balances, credit limits) |
-| 2 | Semi-structured | `EMAIL_IMPORT`, `EMAIL_PDF_IMPORT`, `OCR_BATCH`, `OCR_SINGLE` | Email notifications, OCR screenshots |
+| 1 | Bank-verified | `PDF_IMPORT`, `EMAIL_PDF_IMPORT` | Structured PDF statement with metadata (balances, credit limits) |
+| 2 | Semi-structured | `EMAIL_IMPORT`, `OCR_BATCH`, `OCR_SINGLE` | Email text notifications, OCR screenshots |
 | 3 | User-entered | `MANUAL_FORM`, `TEXT_QUICK_CAPTURE` | Manual form, quick capture, voice, Telegram |
 
 **Rules** (defined in `@zeta/shared` → `capture-hierarchy.ts`):

@@ -105,8 +105,8 @@ This uses `ON CONFLICT DO NOTHING` — safe to call multiple times. Existing sta
 
 ALL transaction creation paths MUST auto-link to pending occurrences, regardless of capture method tier:
 
-- **Tier 1**: PDF import (`PDF_IMPORT`)
-- **Tier 2**: Email import (`EMAIL_IMPORT`, `EMAIL_PDF_IMPORT`), OCR (`OCR_BATCH`, `OCR_SINGLE`)
+- **Tier 1**: PDF import (`PDF_IMPORT`, `EMAIL_PDF_IMPORT`)
+- **Tier 2**: Email text import (`EMAIL_IMPORT`), OCR (`OCR_BATCH`, `OCR_SINGLE`)
 - **Tier 3**: FAB/quick-add (`TEXT_QUICK_CAPTURE`), manual form (`MANUAL_FORM`)
 - Recurring confirm (mark as paid)
 

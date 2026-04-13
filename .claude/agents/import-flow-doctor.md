@@ -118,8 +118,8 @@ Reconciliation uses `findReconciliationCandidates()` and `mergeTransactionMetada
 
 | Tier | Methods | Authority |
 |------|---------|-----------|
-| 1 | `PDF_IMPORT` | Bank-verified (structured statement + metadata) |
-| 2 | `EMAIL_IMPORT`, `EMAIL_PDF_IMPORT`, `OCR_BATCH`, `OCR_SINGLE` | Semi-structured |
+| 1 | `PDF_IMPORT`, `EMAIL_PDF_IMPORT` | Bank-verified (structured statement + metadata) |
+| 2 | `EMAIL_IMPORT`, `OCR_BATCH`, `OCR_SINGLE` | Semi-structured |
 | 3 | `MANUAL_FORM`, `TEXT_QUICK_CAPTURE` | User-entered |
 
 **Merge direction**: Higher authority wins for `capture_method` on the surviving transaction. Lower authority's user-set enrichments (USER_CREATED/USER_OVERRIDE category, notes) are preserved.

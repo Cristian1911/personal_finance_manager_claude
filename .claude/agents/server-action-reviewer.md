@@ -220,8 +220,8 @@ revalidateTag("budgets", "zeta");
 
 Any action that creates transactions or performs reconciliation must respect the capture hierarchy from `@zeta/shared` → `capture-hierarchy.ts`:
 
-- **Tier 1** (bank-verified): `PDF_IMPORT`
-- **Tier 2** (semi-structured): `EMAIL_IMPORT`, `EMAIL_PDF_IMPORT`, `OCR_BATCH`, `OCR_SINGLE`
+- **Tier 1** (bank-verified): `PDF_IMPORT`, `EMAIL_PDF_IMPORT`
+- **Tier 2** (semi-structured): `EMAIL_IMPORT`, `OCR_BATCH`, `OCR_SINGLE`
 - **Tier 3** (user-entered): `MANUAL_FORM`, `TEXT_QUICK_CAPTURE`
 
 Rules:
