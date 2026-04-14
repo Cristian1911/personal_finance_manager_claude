@@ -36,7 +36,7 @@ function dotStyle(status: EffectiveStatus) {
     case "today":
       return "bg-z-alert shadow-[0_0_8px_rgba(245,158,11,0.4)]";
     case "future":
-      return "border-2 border-white/15 bg-transparent";
+      return "border-2 border-white/6 bg-transparent";
     case "paid":
       return "bg-z-income shadow-[0_0_6px_rgba(74,222,128,0.3)]";
   }
@@ -150,7 +150,7 @@ export function RecurringTimeline({
             {/* Dot */}
             <div className={cn("absolute -left-6 top-0.5 size-3 rounded-full", dotStyle(status))} />
             {/* Date label */}
-            <p className={cn("mb-2 text-[10px] font-semibold uppercase tracking-[0.1em]", dateColor(status))}>
+            <p className={cn("mb-2 text-[10px] font-semibold uppercase tracking-[0.18em]", dateColor(status))}>
               {dateLabel(status)}
               {formatDate(date, "EEEE d MMM")}
             </p>
@@ -186,7 +186,7 @@ export function RecurringTimeline({
       }).length > 0 && (
         <div className="relative mb-5">
           <div className="absolute -left-6 top-0.5 size-3 rounded-full bg-z-income shadow-[0_0_6px_rgba(74,222,128,0.3)]" />
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-z-income">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-income">
             Completados
           </p>
           <div className="space-y-2">
@@ -218,8 +218,8 @@ export function RecurringTimeline({
       {/* Paused templates */}
       {pausedTemplates.length > 0 && (
         <div className="relative mb-5 mt-6">
-          <div className="absolute -left-6 top-0.5 size-3 rounded-full border-2 border-dashed border-white/15" />
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/50">
+          <div className="absolute -left-6 top-0.5 size-3 rounded-full border-2 border-dashed border-white/6" />
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
             Pausados
           </p>
           <div className="space-y-2">
@@ -271,7 +271,7 @@ function PausedTemplateCard({
 
   return (
     <div className={cn(
-      "overflow-hidden rounded-xl border border-dashed border-white/8 bg-white/[0.02] transition-all",
+      "overflow-hidden rounded-xl border border-dashed border-white/6 bg-white/[0.02] transition-all",
       isExpanded && "border-z-brass/20 border-solid opacity-100",
       !isExpanded && "opacity-50"
     )}>

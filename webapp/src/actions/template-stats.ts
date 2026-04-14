@@ -3,6 +3,7 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { startOfYear } from "date-fns";
 import type { ActionResult } from "@/types/actions";
 
@@ -30,7 +31,7 @@ async function getTemplateStatsCached(
   accessToken: string
 ): Promise<TemplateStats> {
   "use cache";
-  cacheTag("recurring");
+  cacheTag("recurring", "occurrences");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
@@ -105,12 +106,16 @@ async function getTemplateStatsCached(
   if (template.frequency === "ONCE") {
     const { data: incomeTemplates } = await supabase
       .from("recurring_transaction_templates")
-      .select("amount, frequency")
+      .select("amount, frequency, account:accounts!recurring_transaction_templates_account_id_fkey(account_type)")
       .eq("user_id", userId)
       .eq("direction", "INFLOW")
       .eq("is_active", true);
 
-    const monthlyIncome = (incomeTemplates ?? []).reduce((sum, t) => {
+    // Filter out debt payments (INFLOW to CREDIT_CARD/LOAN = payment, not income)
+    const realIncome = (incomeTemplates ?? []).filter(
+      (t) => !isDebtAccountType((t.account as { account_type: string } | null)?.account_type ?? "")
+    );
+    const monthlyIncome = realIncome.reduce((sum, t) => {
       const m = FREQUENCY_MULTIPLIER[t.frequency] ?? 12;
       return sum + (Number(t.amount) * m) / 12;
     }, 0);

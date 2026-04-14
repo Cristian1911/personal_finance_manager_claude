@@ -80,8 +80,8 @@ export function RecurringTemplateCard({
         <span
           className="flex size-7 shrink-0 items-center justify-center rounded-lg"
           style={{
-            backgroundColor: (template.category?.color ?? "#888") + "20",
-            color: template.category?.color ?? "#888",
+            backgroundColor: (template.category?.color ?? "hsl(var(--z-sage-dark))") + "20",
+            color: template.category?.color ?? "hsl(var(--z-sage-dark))",
           }}
         >
           {template.category?.icon ? (
@@ -96,7 +96,7 @@ export function RecurringTemplateCard({
           <div className="flex items-center gap-1.5">
             <p className="truncate text-xs font-semibold">{template.merchant_name}</p>
             {isOnce && (
-              <span className="shrink-0 rounded bg-purple-500/20 px-1.5 py-px text-[8px] font-semibold text-purple-400">
+              <span className="shrink-0 rounded bg-z-brass/15 px-1.5 py-px text-[8px] font-semibold text-z-brass">
                 UNA VEZ
               </span>
             )}
@@ -124,7 +124,7 @@ export function RecurringTemplateCard({
 
       {/* Expanded section */}
       {isExpanded && (
-        <div className="space-y-3 border-t border-white/5 px-3 py-3">
+        <div className="space-y-3 border-t border-white/6 px-3 py-3">
           {/* Stats chips */}
           <div className="grid grid-cols-3 gap-1">
             {loadingStats ? (
@@ -189,7 +189,7 @@ export function RecurringTemplateCard({
 function StatChip({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="rounded-lg bg-white/[0.03] px-2 py-2 text-center">
-      <p className="text-[8px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+      <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className="mt-0.5 text-sm font-bold tabular-nums">{value}</p>
       {note && <p className="text-[8px] text-z-income">{note}</p>}
     </div>

@@ -62,7 +62,7 @@ export function RecurringHeroCompact({
             style={{ width: `${expensePercent}%` }}
           />
           <div
-            className="rounded-r-full bg-gradient-to-r from-z-income to-emerald-500"
+            className="rounded-r-full bg-gradient-to-r from-z-income to-z-income/70"
             style={{ width: `${100 - expensePercent}%` }}
           />
         </div>
@@ -70,7 +70,7 @@ export function RecurringHeroCompact({
         {/* Three numbers */}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-z-debt">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-z-debt">
               Gastos
             </p>
             <p className="text-base font-bold tabular-nums">
@@ -78,7 +78,7 @@ export function RecurringHeroCompact({
             </p>
           </div>
           <div className="px-2 text-center">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Neto
             </p>
             <p
@@ -92,7 +92,7 @@ export function RecurringHeroCompact({
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-z-income">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-z-income">
               Ingresos
             </p>
             <p className="text-base font-bold tabular-nums">

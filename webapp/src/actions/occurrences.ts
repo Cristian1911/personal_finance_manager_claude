@@ -355,12 +355,13 @@ async function deactivateOnceTemplateIfNeeded(
     .single();
 
   if (tmpl?.frequency === "ONCE") {
-    await supabase
+    const { error: deactivateErr } = await supabase
       .from("recurring_transaction_templates")
       .update({ is_active: false })
       .eq("id", templateId)
       .eq("user_id", userId);
 
+    if (deactivateErr) console.error("Failed to deactivate ONCE template:", deactivateErr.message);
     revalidateTag("recurring", "zeta");
   }
 }
@@ -558,11 +559,13 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
       .single();
 
     if (tmpl?.frequency === "ONCE" && !tmpl.is_active) {
-      await supabase
+      const { error: reactivateErr } = await supabase
         .from("recurring_transaction_templates")
         .update({ is_active: true })
         .eq("id", occurrence.template_id)
         .eq("user_id", user.id);
+
+      if (reactivateErr) console.error("Failed to reactivate ONCE template:", reactivateErr.message);
     }
   }
 
