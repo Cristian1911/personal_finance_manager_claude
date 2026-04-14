@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Pause, Trash2, Check } from "lucide-react";
+import { Pencil, Pause, Trash2, Check, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { CategoryIcon } from "@/components/categories/category-icon";
 import { getTemplateStats, type TemplateStats } from "@/actions/template-stats";
 import type { CurrencyCode, RecurringTemplateWithRelations } from "@/types/domain";
 
@@ -75,15 +76,20 @@ export function RecurringTemplateCard({
         onClick={handleExpand}
         className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left active:bg-white/[0.02]"
       >
-        {/* Category dot */}
-        {template.category && (
-          <span
-            className="flex size-7 shrink-0 items-center justify-center rounded-lg text-xs"
-            style={{ backgroundColor: template.category.color + "20", color: template.category.color }}
-          >
-            {template.category.icon ?? "•"}
-          </span>
-        )}
+        {/* Category icon */}
+        <span
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg"
+          style={{
+            backgroundColor: (template.category?.color ?? "#888") + "20",
+            color: template.category?.color ?? "#888",
+          }}
+        >
+          {template.category?.icon ? (
+            <CategoryIcon icon={template.category.icon} className="size-3.5" />
+          ) : (
+            <Tag className="size-3.5" />
+          )}
+        </span>
 
         {/* Info */}
         <div className="min-w-0 flex-1">
