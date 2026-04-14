@@ -136,6 +136,7 @@ export function InicioMetricsGrid({
                   daysInMonth={daysInMonth}
                   obligations={burnRateData.obligations}
                   nextIncomeDate={burnRateData.nextIncomeDate}
+                  currency={currency}
                 />
                 <div className="flex items-baseline justify-between text-[11px]">
                   <span className="text-muted-foreground">Promedio diario</span>

@@ -103,6 +103,7 @@ export function BurndownExpandable({
               daysInMonth={daysInMonth}
               obligations={data.obligations}
               nextIncomeDate={data.nextIncomeDate ?? null}
+              compact
             />
 
             {/* Explanation */}
