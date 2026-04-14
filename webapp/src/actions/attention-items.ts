@@ -62,6 +62,7 @@ async function getAttentionItemsCached(
   "use cache";
   cacheTag("attention");
   cacheTag("occurrences");
+  cacheTag("recurring");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
