@@ -167,10 +167,10 @@ export function LandingHero() {
       <div className="grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(24rem,0.9fr)] lg:items-center">
         {/* Left column — copy */}
         <div className="space-y-8">
-          <Badge className="rounded-full bg-primary/14 px-4 py-1.5 text-xs font-medium text-z-sage-light">
+          <p className="rounded-2xl bg-primary/14 px-4 py-2 text-xs font-medium leading-5 text-z-sage-light sm:rounded-full sm:w-fit">
             Zeta te ayuda a responder una sola pregunta: ¿vas bien o necesitas
             ajustar hoy?
-          </Badge>
+          </p>
 
           <div className="space-y-6">
             <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-7xl">

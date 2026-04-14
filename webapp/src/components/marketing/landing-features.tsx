@@ -70,7 +70,7 @@ const AUDIENCE_PROFILES = [
 
 export function LandingAudience() {
   return (
-    <section className="py-16">
+    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         {/* Para quién encaja */}
         <Card className="border-white/8 bg-white/[0.03] shadow-2xl shadow-black/10">
@@ -151,7 +151,7 @@ export function LandingAudience() {
 
 export function LandingHowItWorks() {
   return (
-    <section id="como-funciona" className="space-y-12 py-16 sm:py-24">
+    <section id="como-funciona" className="mx-auto max-w-7xl space-y-12 px-4 py-16 sm:px-6 sm:py-24">
       <SectionHeading
         eyebrow="Proceso"
         title="Tres pasos para tener claridad financiera"
@@ -187,7 +187,7 @@ export function LandingHowItWorks() {
 
 export function LandingFAQ() {
   return (
-    <section id="faq" className="space-y-12 py-16 sm:py-24">
+    <section id="faq" className="mx-auto max-w-7xl space-y-12 px-4 py-16 sm:px-6 sm:py-24">
       <SectionHeading
         eyebrow="Preguntas frecuentes"
         title="Lo que más nos preguntan"
