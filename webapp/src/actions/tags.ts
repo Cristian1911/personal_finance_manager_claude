@@ -126,51 +126,69 @@ export const getTagGroups = cache(async (): Promise<ActionResult<TagGroupWithTag
   }
 });
 
-export const getTagsForEntity = cache(
-  async (entityType: TaggableEntity, entityId: string): Promise<Tag[]> => {
-    const { supabase, user } = await getAuthenticatedClient();
-    if (!user) return [];
+async function getTagsForEntityCached(
+  userId: string,
+  accessToken: string,
+  entityType: TaggableEntity,
+  entityId: string,
+): Promise<Tag[]> {
+  "use cache";
+  cacheTag("tags");
+  cacheTag("transactions");
+  cacheLife("zeta");
 
-    // Ownership check — verify entity belongs to calling user
-    if (entityType === "transaction") {
-      const { data: tx } = await supabase
-        .from("transactions")
-        .select("id")
-        .eq("id", entityId)
-        .eq("user_id", user.id)
-        .single();
-      if (!tx) return [];
-    } else if (entityType === "destinatario") {
-      const { data: dest } = await supabase
-        .from("destinatarios")
-        .select("id")
-        .eq("id", entityId)
-        .eq("user_id", user.id)
-        .single();
-      if (!dest) return [];
-    }
-    // categories can be system-owned — skip ownership check
+  const supabase = createCachedClient(accessToken);
 
-    const tableName = `${entityType}_tags` as const;
-    const idColumn = `${entityType}_id` as const;
-
-    const { data } = await supabase
-      .from(tableName)
-      .select("tag_id")
-      .eq(idColumn, entityId);
-
-    if (!data || data.length === 0) return [];
-
-    const tagIds = data.map((r: { tag_id: string }) => r.tag_id);
-    const { data: tags } = await supabase
-      .from("tags")
-      .select("*")
-      .in("id", tagIds)
-      .order("display_order");
-
-    return tags ?? [];
+  // Ownership check — verify entity belongs to calling user
+  if (entityType === "transaction") {
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("id")
+      .eq("id", entityId)
+      .eq("user_id", userId)
+      .single();
+    if (!tx) return [];
+  } else if (entityType === "destinatario") {
+    const { data: dest } = await supabase
+      .from("destinatarios")
+      .select("id")
+      .eq("id", entityId)
+      .eq("user_id", userId)
+      .single();
+    if (!dest) return [];
   }
-);
+  // categories can be system-owned — skip ownership check
+
+  const tableName = `${entityType}_tags` as const;
+  const idColumn = `${entityType}_id` as const;
+
+  const { data } = await supabase
+    .from(tableName)
+    .select("tag_id")
+    .eq(idColumn, entityId);
+
+  if (!data || data.length === 0) return [];
+
+  const tagIds = data.map((r: { tag_id: string }) => r.tag_id);
+  const { data: tags } = await supabase
+    .from("tags")
+    .select("*")
+    .in("id", tagIds)
+    .or(`user_id.eq.${userId},user_id.is.null`)
+    .order("display_order");
+
+  return tags ?? [];
+}
+
+export async function getTagsForEntity(
+  entityType: TaggableEntity,
+  entityId: string,
+): Promise<Tag[]> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+
+  return getTagsForEntityCached(user.id, accessToken, entityType, entityId);
+}
 
 export const getAllTags = cache(async (): Promise<Tag[]> => {
   const { user, accessToken } = await getAuthenticatedClient();
@@ -451,6 +469,25 @@ export async function bulkTagTransactions(
 ): Promise<ActionResult<{ tagged: number }>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  // Defense-in-depth: verify tag belongs to user (or is system tag)
+  const { data: tag } = await supabase
+    .from("tags")
+    .select("id")
+    .eq("id", tagId)
+    .or(`user_id.eq.${user.id},user_id.is.null`)
+    .single();
+  if (!tag) return { success: false, error: "Etiqueta no encontrada" };
+
+  // Defense-in-depth: verify all transactions belong to user
+  const { count } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .in("id", transactionIds);
+  if (count !== transactionIds.length) {
+    return { success: false, error: "Transacciones no encontradas" };
+  }
 
   const rows = transactionIds.map((id) => ({ transaction_id: id, tag_id: tagId }));
 

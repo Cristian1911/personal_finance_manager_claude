@@ -137,7 +137,7 @@ async function getAttentionItemsCached(
     .slice(0, 5)
     .map((o) => ({
       templateId: o.template_id,
-      name: o.merchant_name ?? o.description ?? "Pago recurrente",
+      name: o.merchant_name ?? o.description ?? (o.direction === "INFLOW" ? "Ingreso recurrente" : "Pago recurrente"),
       amount: o.expected_amount,
       next_date: o.occurrence_date,
       direction: o.direction,

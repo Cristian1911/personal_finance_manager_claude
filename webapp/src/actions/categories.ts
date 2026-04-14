@@ -743,6 +743,7 @@ export async function getCategoriesByRhythm(
       supabase
         .from("transactions")
         .select("amount, category_id")
+        .eq("user_id", user.id)
         .eq("direction", "OUTFLOW")
         .eq("is_excluded", false)
         .eq("currency_code", baseCurrency)
