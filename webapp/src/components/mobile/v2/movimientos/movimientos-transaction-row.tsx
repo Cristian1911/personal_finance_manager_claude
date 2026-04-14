@@ -4,15 +4,23 @@ import { useState, useTransition } from "react";
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { Pencil, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Pencil, ArrowDownLeft, ArrowUpRight, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatDate } from "@/lib/utils/date";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { TagChip } from "@/components/tags/tag-chip";
 import { CategoryIcon } from "@/components/categories/category-icon";
+import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
+import { MOBILE_ACTION_BUTTON_CLASS } from "@/lib/constants/styles";
 import { categorizeTransaction, assignDestinatario, removeDestinatarioFromTransaction } from "@/actions/categorize";
+import {
+  getCandidateOccurrencesForTransaction,
+  linkExistingTransactionToOccurrence,
+} from "@/actions/occurrences";
+import type { CandidateOccurrence } from "@/actions/occurrences";
 import { toast } from "sonner";
-import type { TransactionWithAccount, CategoryWithChildren } from "@/types/domain";
+import type { TransactionWithAccount, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
 const DestinatarioZonePicker = dynamic(
   () => import("@/components/destinatarios/destinatario-zone-picker").then(m => ({ default: m.DestinatarioZonePicker })),
@@ -27,6 +35,8 @@ interface MovimientosTransactionRowProps {
   transaction: TransactionWithAccount;
   categories: CategoryWithChildren[];
   tags?: Array<{ id: string; name: string; color: string | null; group_color: string | null }>;
+  /** Account IDs that have pending recurring occurrences — enables "Vincular a recurrente" button */
+  linkableAccountIds?: Set<string>;
   /** Called after a successful category assignment — used by categorizar to remove from list / prompt bulk apply */
   onCategorized?: (txId: string, categoryId: string) => void;
 }
@@ -35,10 +45,42 @@ export function MovimientosTransactionRow({
   transaction: tx,
   categories,
   tags = [],
+  linkableAccountIds,
   onCategorized,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
+
+  // Link to recurring state
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [occurrenceCandidates, setOccurrenceCandidates] = useState<CandidateOccurrence[]>([]);
+  const [isLinking, startLinkTransition] = useTransition();
+
+  const canLink = linkableAccountIds?.has(tx.account_id) && !tx.recurrence_group_id;
+
+  function handleOpenLinkPicker() {
+    setLinkPickerOpen(true);
+    getCandidateOccurrencesForTransaction(tx.id).then((result) => {
+      if (result.success) {
+        setOccurrenceCandidates(result.data);
+      } else {
+        toast.error(result.error ?? "Error al buscar recurrentes");
+        setLinkPickerOpen(false);
+      }
+    });
+  }
+
+  function handleConfirmLink(occurrenceId: string) {
+    setLinkPickerOpen(false);
+    startLinkTransition(async () => {
+      const result = await linkExistingTransactionToOccurrence(occurrenceId, tx.id);
+      if (result.success) {
+        toast.success("Transacción vinculada a recurrente");
+      } else {
+        toast.error(result.error ?? "No se pudo vincular");
+      }
+    });
+  }
 
   // Optimistic local state
   const [localCategory, setLocalCategory] = useState(tx.category);
@@ -211,6 +253,19 @@ export function MovimientosTransactionRow({
 
           <div className="flex-1" />
 
+          {/* Link to recurring */}
+          {canLink && (
+            <button
+              type="button"
+              onClick={handleOpenLinkPicker}
+              disabled={isLinking}
+              className={cn(MOBILE_ACTION_BUTTON_CLASS, "inline-flex items-center gap-1 rounded-full hover:bg-z-brass/12")}
+            >
+              <Link2 className="size-2.5" />
+              Vincular
+            </button>
+          )}
+
           {/* Edit link */}
           <Link
             href={`/transactions/${tx.id}`}
@@ -220,6 +275,27 @@ export function MovimientosTransactionRow({
             Editar
           </Link>
         </div>
+      )}
+
+      {/* Link to recurring picker sheet */}
+      {linkPickerOpen && (
+        <LinkPickerSheet
+          open={linkPickerOpen}
+          onOpenChange={setLinkPickerOpen}
+          title="Vincular a recurrente"
+          subtitle={`${description} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}`}
+          candidates={occurrenceCandidates.map((o) => ({
+            id: o.id,
+            label: o.merchant,
+            sublabel: `${formatDate(o.occurrenceDate)} · ${formatCurrency(o.expectedAmount, o.currencyCode as CurrencyCode)} esperado`,
+            amount: o.expectedAmount,
+            currencyCode: o.currencyCode,
+            direction: tx.direction,
+            matchScore: o.matchScore,
+          }))}
+          onConfirm={handleConfirmLink}
+          isPending={isLinking}
+        />
       )}
     </div>
   );

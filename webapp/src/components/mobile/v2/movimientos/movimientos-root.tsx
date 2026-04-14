@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/date";
 import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
@@ -11,6 +11,7 @@ import { MovimientosLectura } from "./movimientos-lectura";
 import { MovimientosHerramientas } from "./movimientos-herramientas";
 import { MovimientosUtilidades } from "./movimientos-utilidades";
 import { MovimientosTransactionRow } from "./movimientos-transaction-row";
+import { getAccountIdsWithPendingOccurrences } from "@/actions/occurrences";
 import type {
   TransactionWithAccount,
   PendingEmailTransaction,
@@ -47,6 +48,12 @@ export function MovimientosRoot({
 }: MovimientosRootProps) {
   /** Page-level accordion — one expanded section at a time */
   const { activeZone, toggle } = useExpandableZone<string>();
+
+  /* ---- Linkable account IDs for "Vincular a recurrente" ---- */
+  const [linkableAccountIds, setLinkableAccountIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    getAccountIdsWithPendingOccurrences().then((ids) => setLinkableAccountIds(new Set(ids)));
+  }, []);
 
   const debtAccountIds = useMemo(
     () =>
@@ -163,7 +170,7 @@ export function MovimientosRoot({
               </p>
               <div className="space-y-0.5">
                 {txs.map((tx) => (
-                  <MovimientosTransactionRow key={tx.id} transaction={tx} categories={outflowCategories} tags={tagsByTxId.get(tx.id)} />
+                  <MovimientosTransactionRow key={tx.id} transaction={tx} categories={outflowCategories} tags={tagsByTxId.get(tx.id)} linkableAccountIds={linkableAccountIds} />
                 ))}
               </div>
             </div>

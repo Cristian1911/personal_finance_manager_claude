@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   addMonths,
   endOfMonth,
@@ -90,7 +89,7 @@ export function useRecurringMonth(
   accounts: Account[],
   initialOccurrences?: RecurringOccurrence[]
 ) {
-  const router = useRouter();
+  const [, startTransition] = useTransition();
 
   /* ---- month cursor ---- */
   const [monthCursor, setMonthCursor] = useState(() => new Date());
@@ -211,7 +210,7 @@ export function useRecurringMonth(
 
   /* ---- confirm payment ---- */
   const confirmPayment = useCallback(
-    async (
+    (
       item: OccurrenceItem,
       overrides?: {
         actualAmount?: number;
@@ -246,50 +245,51 @@ export function useRecurringMonth(
 
       setBusyItems((prev) => ({ ...prev, [item.key]: true }));
 
-      const result = await recordRecurringOccurrencePayment({
-        templateId: item.templateId,
-        occurrenceDate: item.date,
-        paymentDate,
-        actualAmount,
-        sourceAccountId,
+      startTransition(async () => {
+        const result = await recordRecurringOccurrencePayment({
+          templateId: item.templateId,
+          occurrenceDate: item.date,
+          paymentDate,
+          actualAmount,
+          sourceAccountId,
+        });
+
+        setBusyItems((prev) => ({ ...prev, [item.key]: false }));
+
+        if (!result.success) {
+          toast.error(result.error ?? "No se pudo registrar el pago recurrente.");
+          return;
+        }
+
+        // Optimistically mark as paid in local state
+        setOccurrences((prev) =>
+          prev.map((o) =>
+            o.id === item.occurrenceId ? { ...o, status: "paid" as const } : o
+          )
+        );
+
+        const created = result.data?.created ?? 0;
+        const duplicates = result.data?.alreadyRecorded ?? 0;
+
+        if (created > 0) {
+          const msg = item.isDebtPayment
+            ? "Pago registrado como transferencia + abono a deuda"
+            : item.direction === "INFLOW"
+              ? "Ingreso recurrente registrado"
+              : "Pago recurrente registrado";
+
+          toast.success(msg);
+        } else if (duplicates > 0) {
+          toast.info("Este pago ya estaba registrado anteriormente.");
+        }
       });
-
-      setBusyItems((prev) => ({ ...prev, [item.key]: false }));
-
-      if (!result.success) {
-        toast.error(result.error ?? "No se pudo registrar el pago recurrente.");
-        return;
-      }
-
-      // Optimistically mark as paid in local state
-      setOccurrences((prev) =>
-        prev.map((o) =>
-          o.id === item.occurrenceId ? { ...o, status: "paid" as const } : o
-        )
-      );
-
-      const created = result.data?.created ?? 0;
-      const duplicates = result.data?.alreadyRecorded ?? 0;
-
-      if (created > 0) {
-        const msg = item.isDebtPayment
-          ? "Pago registrado como transferencia + abono a deuda"
-          : item.direction === "INFLOW"
-            ? "Ingreso recurrente registrado"
-            : "Pago recurrente registrado";
-
-        toast.success(msg);
-        router.refresh();
-      } else if (duplicates > 0) {
-        toast.info("Este pago ya estaba registrado anteriormente.");
-      }
     },
-    [todayStr, router]
+    [todayStr, startTransition]
   );
 
   /* ---- skip payment ---- */
   const skipPayment = useCallback(
-    async (item: OccurrenceItem) => {
+    (item: OccurrenceItem) => {
       // Optimistic update
       setOccurrences((prev) =>
         prev.map((o) =>
@@ -298,56 +298,57 @@ export function useRecurringMonth(
       );
       toast.success("Marcado como completado");
 
-      const result = await skipOccurrence(item.occurrenceId);
-      if (!result.success) {
-        // Revert on failure
-        setOccurrences((prev) =>
-          prev.map((o) =>
-            o.id === item.occurrenceId
-              ? { ...o, status: "pending" as const }
-              : o
-          )
-        );
-        toast.error("No se pudo guardar. Intenta de nuevo.");
-      } else {
-        router.refresh();
-      }
+      startTransition(async () => {
+        const result = await skipOccurrence(item.occurrenceId);
+        if (!result.success) {
+          // Revert on failure
+          setOccurrences((prev) =>
+            prev.map((o) =>
+              o.id === item.occurrenceId
+                ? { ...o, status: "pending" as const }
+                : o
+            )
+          );
+          toast.error("No se pudo guardar. Intenta de nuevo.");
+        }
+      });
     },
-    [router]
+    [startTransition]
   );
 
   /* ---- link existing transaction ---- */
   const linkExisting = useCallback(
-    async (item: OccurrenceItem, transactionId: string) => {
+    (item: OccurrenceItem, transactionId: string) => {
       setBusyItems((prev) => ({ ...prev, [item.key]: true }));
 
-      const result = await linkExistingTransactionToOccurrence(
-        item.occurrenceId,
-        transactionId,
-      );
+      startTransition(async () => {
+        const result = await linkExistingTransactionToOccurrence(
+          item.occurrenceId,
+          transactionId,
+        );
 
-      setBusyItems((prev) => ({ ...prev, [item.key]: false }));
+        setBusyItems((prev) => ({ ...prev, [item.key]: false }));
 
-      if (!result.success) {
-        toast.error(result.error ?? "No se pudo vincular la transacción.");
-        return;
-      }
+        if (!result.success) {
+          toast.error(result.error ?? "No se pudo vincular la transacción.");
+          return;
+        }
 
-      setOccurrences((prev) =>
-        prev.map((o) =>
-          o.id === item.occurrenceId ? { ...o, status: "paid" as const } : o
-        )
-      );
+        setOccurrences((prev) =>
+          prev.map((o) =>
+            o.id === item.occurrenceId ? { ...o, status: "paid" as const } : o
+          )
+        );
 
-      const isIncome = item.direction === "INFLOW" && !item.isDebtPayment;
-      toast.success(
-        isIncome
-          ? "Ingreso vinculado a recurrente"
-          : "Transacción vinculada a recurrente"
-      );
-      router.refresh();
+        const isIncome = item.direction === "INFLOW" && !item.isDebtPayment;
+        toast.success(
+          isIncome
+            ? "Ingreso vinculado a recurrente"
+            : "Transacción vinculada a recurrente"
+        );
+      });
     },
-    [router]
+    [startTransition]
   );
 
   /* ---- optimistic revert (for undo UI) ---- */

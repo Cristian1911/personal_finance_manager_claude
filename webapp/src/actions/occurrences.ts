@@ -2,7 +2,7 @@
 
 import "server-only";
 import { revalidateTag, cacheTag, cacheLife } from "next/cache";
-import { addDays, startOfMonth, endOfMonth } from "date-fns";
+import { addDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
@@ -28,8 +28,8 @@ function computeMatchScore(
   referenceDate: string,
   referenceAmount: number,
 ): number {
-  const cDate = new Date(`${candidateDate}T12:00:00`);
-  const rDate = new Date(`${referenceDate}T12:00:00`);
+  const cDate = parseISO(candidateDate);
+  const rDate = parseISO(referenceDate);
   const daysDiff = Math.abs(
     Math.round((cDate.getTime() - rDate.getTime()) / (1000 * 60 * 60 * 24))
   );
@@ -151,7 +151,7 @@ async function getOccurrencesForMonthCached(
 
   const supabase = createCachedClient(accessToken);
   const monthStart = `${month}-01`;
-  const monthDate = new Date(`${month}-01T12:00:00`);
+  const monthDate = parseISO(`${month}-01`);
   const monthEnd = endOfMonth(monthDate).toISOString().split("T")[0];
 
   const { data, error } = await supabase
@@ -212,7 +212,7 @@ export async function getNextIncomeOccurrenceCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const rangeEnd = toColombiaDateString(addDays(new Date(todayStr + "T12:00:00"), PAY_CYCLE_LOOKAHEAD_DAYS));
+  const rangeEnd = toColombiaDateString(addDays(parseISO(todayStr + "T12:00:00"), PAY_CYCLE_LOOKAHEAD_DAYS));
   const occurrences = await getPendingOccurrencesCached(userId, todayStr, rangeEnd, accessToken);
 
   const match = occurrences.find(
@@ -223,8 +223,8 @@ export async function getNextIncomeOccurrenceCached(
   );
   if (!match) return null;
 
-  const occDate = new Date(match.occurrence_date + "T12:00:00");
-  const today = new Date(todayStr + "T12:00:00");
+  const occDate = parseISO(match.occurrence_date);
+  const today = parseISO(todayStr);
   const daysUntil = Math.max(
     1,
     Math.ceil((occDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
@@ -641,7 +641,7 @@ export async function findMatchingOccurrence(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return null;
 
-  const baseDateObj = new Date(`${transactionDate}T12:00:00`);
+  const baseDateObj = parseISO(transactionDate + "T12:00:00");
   const rangeStart = toColombiaDateString(addDays(baseDateObj, -3));
   const rangeEnd = toColombiaDateString(addDays(baseDateObj, 3));
 
@@ -845,7 +845,7 @@ export async function getCandidateTransactionsForOccurrence(
     .limit(50);
 
   if (!showAll) {
-    const baseDateObj = new Date(`${occurrence.occurrence_date}T12:00:00`);
+    const baseDateObj = parseISO(occurrence.occurrence_date + "T12:00:00");
     const rangeStart = toColombiaDateString(addDays(baseDateObj, -30));
     const rangeEnd = toColombiaDateString(addDays(baseDateObj, 30));
     query = query.gte("transaction_date", rangeStart).lte("transaction_date", rangeEnd);
@@ -911,7 +911,7 @@ export async function getCandidateOccurrencesForTransaction(
     return { success: false, error: "Transacción no encontrada" };
   }
 
-  const baseDateObj = new Date(`${tx.transaction_date}T12:00:00`);
+  const baseDateObj = parseISO(tx.transaction_date + "T12:00:00");
   const rangeStart = toColombiaDateString(addDays(baseDateObj, -30));
   const rangeEnd = toColombiaDateString(addDays(baseDateObj, 30));
 
