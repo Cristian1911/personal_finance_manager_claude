@@ -43,10 +43,16 @@
 - **What:** MoreVertical (⋮) button on each occurrence row opens bottom Sheet with Edit, Pause/Activate, Delete. Reuses RecurringFormDialog and RecurringImpactDialog from desktop.
 - **Remaining:** Edit dialog opens behind the action sheet (nested Radix portal). Needs to close Sheet first, then open Dialog sequentially. Full recurring form also needs mobile redesign.
 
-### Recurring form mobile redesign
+### Manual transaction-to-recurring matching
 - **Priority:** Medium
-- **What:** RecurringFormDialog was designed for desktop. On mobile it opens as a Dialog over the action Sheet, causing layering issues. Needs a mobile-native form — either a full-page drawer or a dedicated route.
-- **Found:** Visual testing, 2026-04-13
+- **What:** Allow users to manually link any transaction (manual, email, OCR, PDF import) to a pending recurring occurrence. Use case: nómina arrives via email notification, user wants to link it to the mapped recurring income template before importing the statement.
+- **Context:** Currently auto-linking works via `findMatchingOccurrence()` (date ±3 days, amount ±1%, account match). Manual override needed when auto-match fails or user wants to link proactively.
+- **Found:** User feedback, 2026-04-14
+
+### Audit effectiveDirection usage across app
+- **Priority:** Low
+- **What:** The recurring manager introduced `effectiveDirection()` (INFLOW to debt account = expense, not income). Audit the whole app for places that classify by raw `template.direction` without checking account type — dashboards, budget calculations, income metrics, etc.
+- **Found:** Bug fix during recurring manager development, 2026-04-14
 
 
 ### Income-aware runway & daily budget
