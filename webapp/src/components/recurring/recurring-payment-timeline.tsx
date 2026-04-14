@@ -32,6 +32,7 @@ interface PaymentTimelineProps {
   selectedDate: string | null;
   sourceAccounts: SourceAccount[];
   onSkip: (item: OccurrenceItem) => void;
+  onLinkExisting?: (item: OccurrenceItem) => void;
 }
 
 import { CategoryIcon } from "@/components/categories/category-icon";
@@ -86,6 +87,7 @@ export function PaymentTimeline({
   selectedDate,
   sourceAccounts,
   onSkip,
+  onLinkExisting,
 }: PaymentTimelineProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
@@ -210,6 +212,10 @@ export function PaymentTimeline({
                           setExpandedKey(null);
                         }}
                         onCancel={() => setExpandedKey(null)}
+                        onLinkExisting={onLinkExisting ? () => {
+                          setExpandedKey(null);
+                          onLinkExisting(item);
+                        } : undefined}
                         isPending={!!busyItems[item.key]}
                         sourceAccounts={sourceAccounts}
                       />

@@ -28,6 +28,7 @@ interface RecurringConfirmInlineProps {
   onConfirm: (amount: number, date: string, sourceAccountId?: string) => void;
   onSkip: () => void;
   onCancel: () => void;
+  onLinkExisting?: () => void;
   isPending: boolean;
   sourceAccounts?: SourceAccount[];
 }
@@ -41,6 +42,7 @@ export function RecurringConfirmInline({
   onConfirm,
   onSkip,
   onCancel,
+  onLinkExisting,
   isPending,
   sourceAccounts,
 }: RecurringConfirmInlineProps) {
@@ -123,7 +125,7 @@ export function RecurringConfirmInline({
         </div>
 
         {/* Actions row */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="submit" size="sm" disabled={isPending}>
             {isPending ? "Registrando..." : isIncome ? "Confirmar ingreso" : "Confirmar pago"}
           </Button>
@@ -136,6 +138,17 @@ export function RecurringConfirmInline({
           >
             {isIncome ? "Ya recibí" : "Ya pagué"}
           </Button>
+          {onLinkExisting && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onLinkExisting}
+              disabled={isPending}
+            >
+              Vincular existente
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"

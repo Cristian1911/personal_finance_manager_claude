@@ -14,7 +14,6 @@
 
 | PR | Description | Branch |
 |---|---|---|
-| #130 | Inline drawer pickers + picker improvements | `feat/inline-drawer-pickers` |
 | — | Recurring impact preview + recurring income + account detail redesign | `feat/recurring-impact-income` |
 
 ## Features
@@ -44,10 +43,9 @@
 - **Remaining:** Edit dialog opens behind the action sheet (nested Radix portal). Needs to close Sheet first, then open Dialog sequentially. Full recurring form also needs mobile redesign.
 
 ### Manual transaction-to-recurring matching
-- **Priority:** Medium
-- **What:** Allow users to manually link any transaction (manual, email, OCR, PDF import) to a pending recurring occurrence. Use case: nómina arrives via email notification, user wants to link it to the mapped recurring income template before importing the statement.
-- **Context:** Currently auto-linking works via `findMatchingOccurrence()` (date ±3 days, amount ±1%, account match). Manual override needed when auto-match fails or user wants to link proactively.
-- **Found:** User feedback, 2026-04-14
+- **Priority:** Done (this branch)
+- **What:** Manual link from both sides: occurrence → transaction picker, transaction → occurrence picker. Smart undo via `linked_manually` flag. Bottom drawer with ranked match scoring.
+- **Spec:** `docs/superpowers/specs/2026-04-14-manual-tx-recurring-linking.md`
 
 ### Recurring stats — historical backfill
 - **Priority:** Medium
@@ -55,10 +53,32 @@
 - **Context:** `getTemplateStats()` in `actions/template-stats.ts` only queries `recurring_occurrences`. New templates have no occurrences yet even if the user has been paying for months.
 - **Found:** User feedback, 2026-04-14
 
+### Email import — stale transaction lists after import
+- **Priority:** Medium
+- **What:** Importing pending email transactions removes them from queue but transaction lists (movimientos + dashboard) don't update. Desktop "Pendientes por correo" card also stays stale. Need page refresh.
+- **Context:** Revalidation from email import action may not cover all transaction list cache tags.
+- **Found:** User testing, 2026-04-14
+
+### "Vincular a recurrente" in movimientos expanded view
+- **Priority:** Medium
+- **What:** The "Vincular a recurrente" action was added to inicio-activity (dashboard) but not to the movimientos (transactions) mobile expanded view. Need to add it there too.
+- **Found:** User testing, 2026-04-14
+
+### Merge recurrentes pages into one
+- **Priority:** Medium
+- **What:** Two separate recurrentes views (plan tab + standalone page) is confusing. They offer different things. Unify into a single page with all features (checklist + admin actions + templates).
+- **Found:** User feedback, 2026-04-14
+
 ### Plan page mobile — grid navigation instead of list
 - **Priority:** Medium
 - **What:** The "Ir a" section on the plan page mobile view shows Presupuesto, Periodo, Recurrentes, Deseos as a vertical list of link cards. Replace with a 2x2 grid of buttons for better visual density and scannability.
 - **Found:** User feedback, 2026-04-14
+
+### Dashboard ritmo/burn-rate stale after income received
+- **Priority:** Medium
+- **What:** After linking a nómina (income) to a recurring occurrence, the dashboard ritmo card and burn-rate chart don't update to reflect the new pay-cycle window. "Próximo ingreso" still shows the just-received income instead of advancing to the next one. "día 14 de 30" doesn't shift. Need page refresh.
+- **Context:** `linkExistingTransactionToOccurrence` calls `revalidateFinancialViews()` which should invalidate `dashboard:hero` and `burn-rate` tags. The issue is likely that `useLiveDashboard` or the Route Cache doesn't pick up the change until a full page refresh.
+- **Found:** User testing, 2026-04-14
 
 ### Recurring checklist — unify inline expand + action drawer
 - **Priority:** Medium
@@ -108,6 +128,12 @@
 - **Context:** PR #130 only covers mobile. Desktop table still uses inline category popover only.
 - **Blocked by:** PR #130 merge
 
+### Mobile app — Apple compliance (pre-submission)
+- **Priority:** High (blocks App Store submission)
+- **What:** Privacy Policy (ES + EN, hosted on webapp domain), Terms of Service, update `PrivacyInfo.xcprivacy` with accurate data types (app collects financial data, user IDs — currently declares empty), add `NSPhotoLibraryUsageDescription` + `NSCameraUsageDescription` to `app.json`, add in-app financial disclaimer ("Zeta no es un asesor financiero"), remove `NSAllowsLocalNetworking` from production builds.
+- **Context:** 2 new guardrail agents (`mobile-sync-doctor`, `mobile-webapp-parity`) are in place. Compliance is the remaining blocker before TestFlight/App Store submission.
+- **Found:** Mobile pages session, 2026-04-14
+
 ### Mobile v2 redesign — Phase 3
 - **Priority:** Low (deferred)
 - **What:** Full root redesign with zone-based layouts, custom heroes, Zeta-branded visualizations
@@ -126,6 +152,21 @@
 ### Uncached server action
 - **Priority:** Done (this branch)
 - **What:** `getTagsForEntity` extracted to `"use cache"` inner with `cacheTag("tags")` + `cacheLife("zeta")`.
+
+### `useRecurringMonth` callbacks use `router.refresh()` instead of `startTransition`
+- **Priority:** Medium
+- **What:** All three callbacks in `use-recurring-month.ts` (`confirmPayment`, `skipPayment`, `linkExisting`) call `router.refresh()` after the server action. Should wrap in `startTransition` instead — `router.refresh()` is a redundant network round-trip.
+- **Found:** cache-doctor review, 2026-04-14
+
+### `inicio-activity.tsx` non-token colors
+- **Priority:** Low
+- **What:** `bg-green-500/12` and `bg-orange-500/12` should be `bg-z-income/12` and `bg-z-expense/12`. Also eyebrow uses `text-[9px] font-bold` instead of `SECTION_EYEBROW_CLASS`.
+- **Found:** zetas-front-guy review, 2026-04-14
+
+### `recurring-confirm-inline.tsx` surface token
+- **Priority:** Low
+- **What:** Uses `bg-muted/50` (shadcn token) instead of Zeta surface tier token (`bg-z-surface-3/60` or `bg-black/20`).
+- **Found:** zetas-front-guy review, 2026-04-14
 
 ### `transaction_tags` table missing columns
 - **What:** No `created_at` or `user_id` columns. Recents query works around this by joining through `transactions`. Adding these columns would:

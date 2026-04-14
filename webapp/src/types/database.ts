@@ -1834,6 +1834,7 @@ export type Database = {
           created_at: string
           expected_amount: number
           id: string
+          linked_manually: boolean
           occurrence_date: string
           paid_at: string | null
           skipped_at: string | null
@@ -1846,6 +1847,7 @@ export type Database = {
           created_at?: string
           expected_amount: number
           id?: string
+          linked_manually?: boolean
           occurrence_date: string
           paid_at?: string | null
           skipped_at?: string | null
@@ -1858,6 +1860,7 @@ export type Database = {
           created_at?: string
           expected_amount?: number
           id?: string
+          linked_manually?: boolean
           occurrence_date?: string
           paid_at?: string | null
           skipped_at?: string | null

@@ -37,7 +37,7 @@ const TEMPLATE_SELECT = `
   transfer_source_account:accounts!recurring_transaction_templates_transfer_source_account_id_fkey(id, name, account_type, currency_code)
 `;
 
-async function computeRecurringGroupUuid(templateId: string, occurrenceDate: string) {
+export async function computeRecurringGroupUuid(templateId: string, occurrenceDate: string) {
   const payload = `${templateId}|${occurrenceDate}`;
   const data = new TextEncoder().encode(payload);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);

@@ -109,6 +109,9 @@ function simulate(
   const interestPaid = accounts.map(() => 0);
   let month = 0;
 
+  // Track freed minimums from paid-off debts (snowball/avalanche cascade)
+  let freedMinimums = 0;
+
   while (balances.some((b, i) => !paidOff[i] && b > 0) && month < MAX_MONTHS) {
     month++;
 
@@ -130,11 +133,13 @@ function simulate(
         balances[i] = 0;
         paidOff[i] = true;
         payoffMonths[i] = month;
+        // Freed minimum rolls into the extra pool for remaining debts
+        freedMinimums += accounts[i].monthlyPayment;
       }
     }
 
-    // 3. Apply extra cash to first non-paid-off account (priority order)
-    let remaining = extraCash;
+    // 3. Apply extra cash + freed minimums to priority-order debts
+    let remaining = extraCash + freedMinimums;
     for (let i = 0; i < accounts.length; i++) {
       if (paidOff[i] || remaining <= 0) continue;
       const payment = Math.min(remaining, balances[i]);
@@ -144,11 +149,9 @@ function simulate(
         balances[i] = 0;
         paidOff[i] = true;
         payoffMonths[i] = month;
+        freedMinimums += accounts[i].monthlyPayment;
       }
     }
-
-    // 4. If an account just got paid off, its minimum payment becomes extra for the next month
-    // (debt snowball/avalanche cascade happens naturally next iteration)
   }
 
   // Handle accounts that couldn't be paid off within the cap
