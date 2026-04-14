@@ -1,6 +1,8 @@
 "use server";
 
+import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { startOfYear } from "date-fns";
 import type { ActionResult } from "@/types/actions";
 
@@ -22,21 +24,26 @@ const FREQUENCY_MULTIPLIER: Record<string, number> = {
   ONCE: 1,
 };
 
-export async function getTemplateStats(
-  templateId: string
-): Promise<ActionResult<TemplateStats>> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+async function getTemplateStatsCached(
+  userId: string,
+  templateId: string,
+  accessToken: string
+): Promise<TemplateStats> {
+  "use cache";
+  cacheTag("recurring");
+  cacheLife("zeta");
 
-  const { data: template, error: tErr } = await supabase
+  const supabase = createCachedClient(accessToken);
+
+  const { data: template } = await supabase
     .from("recurring_transaction_templates")
     .select("id, amount, frequency, direction, account_id")
     .eq("id", templateId)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .single();
 
-  if (tErr || !template) {
-    return { success: false, error: "Plantilla no encontrada" };
+  if (!template) {
+    return { ytdTotal: 0, annualEstimate: 0, streak: 0, isConsistent: false, impactPercent: null, marginAfter: null };
   }
 
   // Paid occurrences this year
@@ -45,7 +52,7 @@ export async function getTemplateStats(
     .from("recurring_occurrences")
     .select("occurrence_date, expected_amount, paid_at")
     .eq("template_id", templateId)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("status", "paid")
     .gte("occurrence_date", yearStart)
     .order("occurrence_date", { ascending: false });
@@ -99,7 +106,7 @@ export async function getTemplateStats(
     const { data: incomeTemplates } = await supabase
       .from("recurring_transaction_templates")
       .select("amount, frequency")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("direction", "INFLOW")
       .eq("is_active", true);
 
@@ -115,7 +122,7 @@ export async function getTemplateStats(
     const { data: expenseTemplates } = await supabase
       .from("recurring_transaction_templates")
       .select("amount, frequency")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("direction", "OUTFLOW")
       .eq("is_active", true)
       .neq("id", templateId);
@@ -129,14 +136,24 @@ export async function getTemplateStats(
   }
 
   return {
-    success: true,
-    data: {
-      ytdTotal,
-      annualEstimate,
-      streak,
-      isConsistent,
-      impactPercent,
-      marginAfter,
-    },
+    ytdTotal,
+    annualEstimate,
+    streak,
+    isConsistent,
+    impactPercent,
+    marginAfter,
   };
+}
+
+export async function getTemplateStats(
+  templateId: string
+): Promise<ActionResult<TemplateStats>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getTemplateStatsCached(user.id, templateId, accessToken);
+    return { success: true, data };
+  } catch {
+    return { success: false, error: "Error al cargar estadísticas" };
+  }
 }
