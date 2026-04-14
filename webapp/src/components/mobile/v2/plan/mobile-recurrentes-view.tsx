@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
-import { Check, ChevronLeft, ChevronRight, MoreVertical, Pause, Pencil, Play, Tag, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Check, ChevronLeft, ChevronRight, Plus, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { PANEL_INSET_CLASS, HERO_CARD_GRADIENT_CLASS, MOBILE_ACTION_BUTTON_CLASS, MOBILE_EYEBROW_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import {
+  PANEL_INSET_CLASS,
+  HERO_CARD_GRADIENT_CLASS,
+  MOBILE_EYEBROW_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE_CLASS,
+} from "@/lib/constants/styles";
 import { useRecurringMonth, type OccurrenceItem, type DateStatus } from "@/components/recurring/use-recurring-month";
 import type { RecurringOccurrence } from "@/actions/occurrences";
-import { RecurringConfirmInline } from "@/components/recurring/recurring-confirm-inline";
+import { OccurrenceActions } from "@/components/recurring/occurrence-actions";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
 import { RecurringImpactDialog } from "@/components/recurring/recurring-impact-dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useCategories } from "@/components/providers/app-data-provider";
 import {
   deleteRecurringTemplate,
@@ -36,7 +40,7 @@ interface MobileRecurrentesViewProps {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Status styling                                                     */
+/*  Status helpers                                                     */
 /* ------------------------------------------------------------------ */
 
 function statusAccent(status: DateStatus) {
@@ -75,19 +79,19 @@ export function MobileRecurrentesView({
 }: MobileRecurrentesViewProps) {
   const hook = useRecurringMonth(templates, accounts, initialOccurrences);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const [actionItem, setActionItem] = useState<OccurrenceItem | null>(null);
   const categories = useCategories();
 
   const templateMap = useMemo(
     () => new Map(templates.map((t) => [t.id, t])),
-    [templates]
+    [templates],
   );
 
   const sourceAccounts = useMemo(
-    () => accounts
-      .filter((a) => a.account_type === "CHECKING" || a.account_type === "SAVINGS")
-      .map((a) => ({ id: a.id, name: a.name })),
-    [accounts]
+    () =>
+      accounts
+        .filter((a) => a.account_type === "CHECKING" || a.account_type === "SAVINGS")
+        .map((a) => ({ id: a.id, name: a.name })),
+    [accounts],
   );
 
   /* ---- Link existing transaction flow ---- */
@@ -108,22 +112,106 @@ export function MobileRecurrentesView({
     }
   };
 
+  /* ---- Impact dialog state (pause/delete) ---- */
+  const [impactAction, setImpactAction] = useState<{
+    item: OccurrenceItem;
+    template: RecurringTemplateWithRelations;
+    action: "pause" | "delete";
+  } | null>(null);
+
+  /* ---- Edit dialog state ---- */
+  const [editTemplate, setEditTemplate] = useState<RecurringTemplateWithRelations | null>(null);
+
+  const handleImpactConfirm = async () => {
+    if (!impactAction) return;
+    const { template, action } = impactAction;
+    const result = action === "pause"
+      ? await toggleRecurringTemplate(template.id, false)
+      : await deleteRecurringTemplate(template.id);
+
+    if (result.success) {
+      await hook.refreshOccurrences();
+      setImpactAction(null);
+      setExpandedKey(null);
+    } else {
+      toast.error(result.error ?? "Error al procesar la acción");
+    }
+  };
+
   const sortedDates = useMemo(
-    () => Array.from(hook.pendingByDate.keys())
-      .map((date) => ({ date, order: STATUS_ORDER[hook.getDateStatus(date)] }))
-      .sort((a, b) => a.order - b.order || a.date.localeCompare(b.date))
-      .map(({ date }) => date),
-    [hook.pendingByDate, hook.getDateStatus]
+    () =>
+      Array.from(hook.pendingByDate.keys())
+        .map((date) => ({ date, order: STATUS_ORDER[hook.getDateStatus(date)] }))
+        .sort((a, b) => a.order - b.order || a.date.localeCompare(b.date))
+        .map(({ date }) => date),
+    [hook.pendingByDate, hook.getDateStatus],
   );
 
+  /* ---- Shared action handlers ---- */
+  function makeActions(item: OccurrenceItem) {
+    const template = templateMap.get(item.templateId) ?? null;
+    return {
+      template,
+      onConfirm: (amount: number, paymentDate: string, sourceId?: string) => {
+        hook.confirmPayment(item, {
+          actualAmount: amount,
+          paymentDate,
+          sourceAccountId: sourceId ?? null,
+        });
+        setExpandedKey(null);
+      },
+      onSkip: () => {
+        hook.skipPayment(item);
+        setExpandedKey(null);
+      },
+      onLinkExisting: () => {
+        setExpandedKey(null);
+        handleOpenLinkPicker(item);
+      },
+      onEdit: template
+        ? () => {
+            setExpandedKey(null);
+            setEditTemplate(template);
+          }
+        : undefined,
+      onPause: template
+        ? () => {
+            setExpandedKey(null);
+            setImpactAction({ item, template, action: "pause" });
+          }
+        : undefined,
+      onResume: template
+        ? async () => {
+            const result = await toggleRecurringTemplate(template.id, true);
+            if (result.success) {
+              setExpandedKey(null);
+              await hook.refreshOccurrences();
+            } else {
+              toast.error(result.error ?? "Error al activar la plantilla");
+            }
+          }
+        : undefined,
+      onDelete: template
+        ? () => {
+            setExpandedKey(null);
+            setImpactAction({ item, template, action: "delete" });
+          }
+        : undefined,
+    };
+  }
+
+  function handleRowTap(item: OccurrenceItem) {
+    setExpandedKey(expandedKey === item.key ? null : item.key);
+  }
+
   return (
-    <div className="space-y-3 pb-20">
+    <div className={cn("space-y-3", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
       {/* Hero card */}
       <div className={cn("rounded-2xl border border-white/6 p-4", HERO_CARD_GRADIENT_CLASS)}>
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
           Compromiso mensual
         </p>
-        <p className="mt-1 text-3xl font-bold">
+        <p className="mt-1 text-3xl font-bold tabular-nums">
           {formatCurrency(hook.totalPlanned, currency)}
         </p>
 
@@ -154,7 +242,7 @@ export function MobileRecurrentesView({
             <p className="text-[10px] text-z-alert">Pendientes</p>
             <p className="text-lg font-semibold text-z-alert">{hook.pending.length}</p>
           </div>
-          <div className="h-8 w-px bg-white/6 self-center" />
+          <div className="h-8 w-px self-center bg-white/6" />
           <div className="flex-1">
             <p className="text-[10px] text-z-income">Completados</p>
             <p className="text-lg font-semibold text-z-income">{hook.completed.length}</p>
@@ -164,7 +252,7 @@ export function MobileRecurrentesView({
 
       {/* Loading state */}
       {!hook.isHydrated && (
-        <div className="py-8 text-center text-sm text-muted-foreground animate-pulse">
+        <div className="animate-pulse py-8 text-center text-sm text-muted-foreground">
           Verificando estado de pagos...
         </div>
       )}
@@ -172,9 +260,7 @@ export function MobileRecurrentesView({
       {/* Pending payments grouped by date */}
       {hook.isHydrated && sortedDates.length > 0 && (
         <div className="space-y-2">
-          <p className={MOBILE_EYEBROW_CLASS}>
-            Pendientes
-          </p>
+          <p className={MOBILE_EYEBROW_CLASS}>Pendientes</p>
           {sortedDates.map((date) => {
             const items = hook.pendingByDate.get(date)!;
             const status = hook.getDateStatus(date);
@@ -186,7 +272,12 @@ export function MobileRecurrentesView({
               >
                 {/* Date header */}
                 <div className="px-3 py-1.5">
-                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.18em]", statusLabel(status))}>
+                  <span
+                    className={cn(
+                      "text-[10px] font-semibold uppercase tracking-[0.18em]",
+                      statusLabel(status),
+                    )}
+                  >
                     {status === "today" && "Hoy — "}
                     {formatDate(date, "EEEE d MMM")}
                   </span>
@@ -200,87 +291,45 @@ export function MobileRecurrentesView({
 
                     return (
                       <div key={item.key}>
-                        {/* Payment row — tap to expand, ⋮ for admin */}
-                        <div
+                        {/* Payment row */}
+                        <button
+                          type="button"
+                          onClick={() => handleRowTap(item)}
                           className={cn(
-                            "flex w-full items-center gap-2 px-3 py-2.5",
-                            isBusy && "opacity-50 pointer-events-none"
+                            "flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors active:bg-white/[0.03]",
+                            isBusy && "pointer-events-none opacity-50",
                           )}
                         >
-                          {/* Tap area for expand/collapse */}
-                          <button
-                            type="button"
-                            onClick={() => setExpandedKey(isExpanded ? null : item.key)}
-                            className="flex min-w-0 flex-1 items-center gap-2 text-left active:bg-white/[0.03]"
+                          {/* Category dot */}
+                          <span
+                            className="flex size-6 shrink-0 items-center justify-center rounded-md"
+                            style={{ backgroundColor: item.categoryColor + "20" }}
                           >
-                            {/* Category dot */}
-                            <span
-                              className="flex size-6 shrink-0 items-center justify-center rounded-md"
-                              style={{ backgroundColor: item.categoryColor + "20" }}
-                            >
-                              <Tag className="size-3" style={{ color: item.categoryColor }} />
-                            </span>
+                            <Tag className="size-3" style={{ color: item.categoryColor }} />
+                          </span>
 
-                            {/* Merchant + account */}
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-medium">{item.merchant}</p>
-                              <p className="truncate text-[10px] text-muted-foreground">
-                                {item.accountName}
-                              </p>
-                            </div>
-                          </button>
+                          {/* Merchant + account */}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium">{item.merchant}</p>
+                            <p className="truncate text-[10px] text-muted-foreground">
+                              {item.accountName}
+                            </p>
+                          </div>
 
                           {/* Amount */}
                           <span className="shrink-0 text-xs font-semibold tabular-nums">
                             {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
                           </span>
+                        </button>
 
-                          {/* Action hint */}
-                          <button
-                            type="button"
-                            onClick={() => setExpandedKey(isExpanded ? null : item.key)}
-                            className={cn("shrink-0", MOBILE_ACTION_BUTTON_CLASS)}
-                          >
-                            {isExpanded ? "Cerrar" : "Pagar"}
-                          </button>
-
-                          {/* Admin actions */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActionItem(item);
-                            }}
-                            className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-white/10"
-                          >
-                            <MoreVertical className="size-3.5" />
-                          </button>
-                        </div>
-
-                        {/* Inline confirm panel */}
+                        {/* Option A: Inline expand */}
                         {isExpanded && (
                           <div className="border-t border-white/5 bg-black/20 px-3 py-3">
-                            <RecurringConfirmInline
+                            <OccurrenceActions
                               item={item}
-                              onConfirm={(amount, paymentDate, sourceId) => {
-                                hook.confirmPayment(item, {
-                                  actualAmount: amount,
-                                  paymentDate,
-                                  sourceAccountId: sourceId ?? null,
-                                });
-                                setExpandedKey(null);
-                              }}
-                              onSkip={() => {
-                                hook.skipPayment(item);
-                                setExpandedKey(null);
-                              }}
-                              onCancel={() => setExpandedKey(null)}
-                              onLinkExisting={() => {
-                                setExpandedKey(null);
-                                handleOpenLinkPicker(item);
-                              }}
                               isPending={isBusy}
                               sourceAccounts={sourceAccounts}
+                              {...makeActions(item)}
                             />
                           </div>
                         )}
@@ -301,13 +350,14 @@ export function MobileRecurrentesView({
         </div>
       )}
 
-      {/* No pending state */}
+      {/* All done state */}
       {hook.isHydrated && sortedDates.length === 0 && hook.completed.length > 0 && (
         <div className={cn(PANEL_INSET_CLASS, "py-6 text-center")}>
           <Check className="mx-auto size-6 text-z-income" />
           <p className="mt-2 text-xs font-medium text-z-income">Todo al día</p>
           <p className="mt-0.5 text-[10px] text-muted-foreground">
-            {hook.completed.length} pago{hook.completed.length !== 1 ? "s" : ""} completado{hook.completed.length !== 1 ? "s" : ""}
+            {hook.completed.length} pago{hook.completed.length !== 1 ? "s" : ""} completado
+            {hook.completed.length !== 1 ? "s" : ""}
           </p>
         </div>
       )}
@@ -326,12 +376,29 @@ export function MobileRecurrentesView({
         />
       )}
 
+      {/* Templates section — admin for non-checklist management */}
+      {hook.isHydrated && (
+        <TemplatesSection
+          templates={templates}
+          accounts={accounts}
+          categories={categories}
+          currency={currency}
+          onMutate={hook.refreshOccurrences}
+        />
+      )}
+
       {/* Link existing transaction sheet */}
       <LinkPickerSheet
         open={!!linkingItem}
-        onOpenChange={(open) => { if (!open) setLinkingItem(null); }}
+        onOpenChange={(open) => {
+          if (!open) setLinkingItem(null);
+        }}
         title="Vincular transacción"
-        subtitle={linkingItem ? `${linkingItem.merchant} · ${formatCurrency(linkingItem.plannedAmount, linkingItem.currencyCode as CurrencyCode)} esperado · ${formatDate(linkingItem.date)}` : ""}
+        subtitle={
+          linkingItem
+            ? `${linkingItem.merchant} · ${formatCurrency(linkingItem.plannedAmount, linkingItem.currencyCode as CurrencyCode)} esperado · ${formatDate(linkingItem.date)}`
+            : ""
+        }
         candidates={linkCandidates.map((c) => ({
           id: c.id,
           label: c.description,
@@ -352,166 +419,46 @@ export function MobileRecurrentesView({
         onShowAll={async () => {
           if (!linkingItem) return;
           setIsLoadingCandidates(true);
-          const result = await getCandidateTransactionsForOccurrence(linkingItem.occurrenceId, true);
+          const result = await getCandidateTransactionsForOccurrence(
+            linkingItem.occurrenceId,
+            true,
+          );
           setIsLoadingCandidates(false);
           if (result.success) setLinkCandidates(result.data);
         }}
         isLoadingAll={isLoadingCandidates}
       />
 
-      {/* Admin action sheet */}
-      <TemplateActionSheet
-        item={actionItem}
-        template={actionItem ? templateMap.get(actionItem.templateId) ?? null : null}
-        accounts={accounts}
-        categories={categories}
-        onClose={() => setActionItem(null)}
-        onMutate={hook.refreshOccurrences}
-      />
+      {/* Edit dialog (controlled, opens AFTER sheet closes to avoid z-index bug) */}
+      {editTemplate && (
+        <RecurringFormDialog
+          template={editTemplate}
+          accounts={accounts}
+          categories={categories}
+          trigger={null}
+          controlledOpen
+          onClose={() => {
+            setEditTemplate(null);
+            hook.refreshOccurrences();
+          }}
+        />
+      )}
+
+      {/* Impact dialog (pause/delete) */}
+      {impactAction && (
+        <RecurringImpactDialog
+          templateId={impactAction.template.id}
+          templateName={impactAction.template.merchant_name ?? "Recurrente"}
+          currencyCode={(impactAction.template.currency_code ?? "COP") as CurrencyCode}
+          action={impactAction.action}
+          onConfirm={handleImpactConfirm}
+          open={!!impactAction}
+          onOpenChange={(open) => {
+            if (!open) setImpactAction(null);
+          }}
+        />
+      )}
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Template Action Sheet                                              */
-/* ------------------------------------------------------------------ */
-
-const SHEET_CHIP_CLASS =
-  "flex flex-col items-center gap-1.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3 active:bg-white/8 disabled:opacity-50";
-
-function TemplateActionSheet({
-  item,
-  template,
-  accounts,
-  categories,
-  onClose,
-  onMutate,
-}: {
-  item: OccurrenceItem | null;
-  template: RecurringTemplateWithRelations | null;
-  accounts: Account[];
-  categories: CategoryWithChildren[];
-  onClose: () => void;
-  onMutate: () => Promise<void>;
-}) {
-  const [isPending, startTransition] = useTransition();
-
-  const open = !!item && !!template;
-
-  const handleActivate = () => {
-    if (!template) return;
-    startTransition(async () => {
-      await toggleRecurringTemplate(template.id, true);
-      await onMutate();
-      onClose();
-    });
-  };
-
-  const handlePauseConfirm = () => {
-    if (!template) return;
-    startTransition(async () => {
-      await toggleRecurringTemplate(template.id, false);
-      await onMutate();
-      onClose();
-    });
-  };
-
-  const handleDeleteConfirm = () => {
-    if (!template) return;
-    startTransition(async () => {
-      await deleteRecurringTemplate(template.id);
-      await onMutate();
-      onClose();
-    });
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="bottom" className={cn("rounded-t-2xl", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
-        <SheetHeader>
-          <SheetTitle className="text-left">{template?.merchant_name}</SheetTitle>
-        </SheetHeader>
-
-        {template && (
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {/* Edit */}
-            <RecurringFormDialog
-              template={template ?? undefined}
-              accounts={accounts}
-              categories={categories}
-              trigger={
-                <button
-                  type="button"
-                  disabled={isPending}
-                  className={SHEET_CHIP_CLASS}
-                >
-                  <span className="flex size-8 items-center justify-center rounded-full bg-z-brass/15">
-                    <Pencil className="size-4 text-z-brass" />
-                  </span>
-                  <span className="text-xs">Editar</span>
-                </button>
-              }
-            />
-
-            {/* Pause / Activate */}
-            {template.is_active ? (
-              <RecurringImpactDialog
-                templateId={template.id}
-                templateName={template.merchant_name ?? "Recurrente"}
-                currencyCode={(template.currency_code ?? "COP") as CurrencyCode}
-                action="pause"
-                onConfirm={handlePauseConfirm}
-                trigger={
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    className={SHEET_CHIP_CLASS}
-                  >
-                    <span className="flex size-8 items-center justify-center rounded-full bg-z-alert/15">
-                      <Pause className="size-4 text-z-alert" />
-                    </span>
-                    <span className="text-xs">Pausar</span>
-                  </button>
-                }
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={handleActivate}
-                disabled={isPending}
-                className={SHEET_CHIP_CLASS}
-              >
-                <span className="flex size-8 items-center justify-center rounded-full bg-z-income/15">
-                  <Play className="size-4 text-z-income" />
-                </span>
-                <span className="text-xs">{isPending ? "..." : "Activar"}</span>
-              </button>
-            )}
-
-            {/* Delete */}
-            <RecurringImpactDialog
-              templateId={template.id}
-              templateName={template.merchant_name ?? "Recurrente"}
-              currencyCode={(template.currency_code ?? "COP") as CurrencyCode}
-              action="delete"
-              onConfirm={handleDeleteConfirm}
-              trigger={
-                <button
-                  type="button"
-                  disabled={isPending}
-                  className={SHEET_CHIP_CLASS}
-                >
-                  <span className="flex size-8 items-center justify-center rounded-full bg-z-debt/15">
-                    <Trash2 className="size-4 text-z-debt" />
-                  </span>
-                  <span className="text-xs text-z-debt">Eliminar</span>
-                </button>
-              }
-            />
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
   );
 }
 
@@ -558,14 +505,19 @@ function CompletedSection({
           {completed.map((item) => {
             const isReverting = revertingId === item.occurrenceId;
             return (
-              <div key={item.key} className={cn(
-                "flex items-center gap-2 px-3 py-2.5 opacity-60",
-                isReverting && "opacity-30 pointer-events-none"
-              )}>
+              <div
+                key={item.key}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2.5 opacity-60",
+                  isReverting && "pointer-events-none opacity-30",
+                )}
+              >
                 <Check className="size-4 shrink-0 text-z-income" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs">{item.merchant}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatDate(item.date, "dd MMM")}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {formatDate(item.date, "dd MMM")}
+                  </p>
                 </div>
                 <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
@@ -584,7 +536,108 @@ function CompletedSection({
           })}
         </div>
       )}
+    </div>
+  );
+}
 
+/* ------------------------------------------------------------------ */
+/*  Templates section (admin — create, see all, manage paused)         */
+/* ------------------------------------------------------------------ */
+
+function TemplatesSection({
+  templates,
+  accounts,
+  categories,
+  currency,
+  onMutate,
+}: {
+  templates: RecurringTemplateWithRelations[];
+  accounts: Account[];
+  categories: CategoryWithChildren[];
+  currency: CurrencyCode;
+  onMutate: () => Promise<void>;
+}) {
+  const [show, setShow] = useState(false);
+
+  let activeCount = 0;
+  let pausedCount = 0;
+  for (const t of templates) {
+    if (t.is_active) activeCount++;
+    else pausedCount++;
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setShow((prev) => !prev)}
+        className={cn("flex w-full items-center justify-between py-2", MOBILE_EYEBROW_CLASS)}
+      >
+        <span>
+          Mis plantillas ({activeCount} activas{pausedCount > 0 ? ` · ${pausedCount} pausadas` : ""})
+        </span>
+        <span>{show ? "Ocultar ↑" : "Ver ↓"}</span>
+      </button>
+
+      {show && (
+        <div className="space-y-2">
+          {/* Create new */}
+          <RecurringFormDialog
+            accounts={accounts}
+            categories={categories}
+            onClose={onMutate}
+            trigger={
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-z-brass/20 py-3 text-xs font-semibold text-z-brass active:bg-z-brass/5",
+                )}
+              >
+                <Plus className="size-3.5" />
+                Nueva plantilla
+              </button>
+            }
+          />
+
+          {/* Template list */}
+          <div className={cn(PANEL_INSET_CLASS, "divide-y divide-white/5")}>
+            {templates.map((t) => (
+              <div
+                key={t.id}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2.5",
+                  !t.is_active && "opacity-50",
+                )}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium">{t.merchant_name}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {t.account?.name ?? "—"} · {t.frequency ?? "mensual"}
+                    {!t.is_active && " · Pausada"}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs font-semibold tabular-nums">
+                  {formatCurrency(Number(t.amount), currency)}
+                </span>
+                <RecurringFormDialog
+                  template={t}
+                  accounts={accounts}
+                  categories={categories}
+                  onClose={onMutate}
+                  trigger={
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-md px-2 py-0.5 text-[10px] text-z-brass active:bg-white/5"
+                    >
+                      Editar
+                    </button>
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

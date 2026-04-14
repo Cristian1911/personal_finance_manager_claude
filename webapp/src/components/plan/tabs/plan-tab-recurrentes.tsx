@@ -1,5 +1,4 @@
 import { getAccounts } from "@/actions/accounts";
-import { getCategories } from "@/actions/categories";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getAttentionSnapshot } from "@/actions/attention";
 import {
@@ -7,8 +6,6 @@ import {
   getRecurringSummary,
 } from "@/actions/recurring-templates";
 import { getOccurrencesForMonth } from "@/actions/occurrences";
-import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
 import { RecurringList } from "@/components/recurring/recurring-list";
 import { RecurringTimelineView } from "@/components/recurring/recurring-timeline-view";
@@ -17,6 +14,7 @@ import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { DesktopOnly } from "@/components/ui/responsive-render";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
+import { getCategories } from "@/actions/categories";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -39,25 +37,9 @@ export async function PlanTabRecurrentes() {
 
   return (
     <div className="space-y-6">
-      {/* Mobile — checklist + link to manager */}
+      {/* Mobile — unified checklist + templates */}
       <div className="lg:hidden">
         <MobileHeader variant="sub" title="Recurrentes" backHref="/plan" />
-        {/* Link to template manager */}
-        <div className="px-4 pb-3">
-          <Link
-            href="/recurrentes"
-            className="flex items-center justify-between rounded-xl border border-z-brass/20 bg-z-brass/5 px-4 py-2.5"
-          >
-            <div>
-              <p className="text-xs font-semibold text-z-brass">Administrar plantillas</p>
-              <p className="text-[10px] text-muted-foreground">
-                {summary.activeCount} activos · {formatCurrency(summary.totalMonthlyExpenses + summary.totalMonthlyIncome, currency as CurrencyCode)}/mes
-              </p>
-            </div>
-            <ChevronRight className="size-4 text-z-brass/60" />
-          </Link>
-        </div>
-        {/* Payment checklist */}
         <MobileRecurrentesView
           templates={templates}
           accounts={accounts}
@@ -66,7 +48,7 @@ export async function PlanTabRecurrentes() {
         />
       </div>
 
-      {/* Desktop — only mounted on desktop viewports */}
+      {/* Desktop */}
       <DesktopOnly>
         <div className="flex items-center justify-between gap-4">
           <div>

@@ -15,7 +15,7 @@ export default async function NewRecurrentePage() {
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <MobileHeader variant="sub" title="Nueva recurrente" backHref="/recurrentes" />
+      <MobileHeader variant="sub" title="Nueva recurrente" backHref="/plan?tab=recurrentes" />
       <div className="px-4 pb-20">
         <RecurringForm
           accounts={accounts}

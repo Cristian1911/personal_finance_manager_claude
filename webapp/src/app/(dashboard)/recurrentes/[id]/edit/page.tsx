@@ -29,7 +29,7 @@ export default async function EditRecurrentePage({
       <MobileHeader
         variant="sub"
         title={`Editar ${template.merchant_name}`}
-        backHref="/recurrentes"
+        backHref="/plan?tab=recurrentes"
       />
       <div className="px-4 pb-20">
         <RecurringForm

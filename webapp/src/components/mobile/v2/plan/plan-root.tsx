@@ -6,6 +6,8 @@ import { PlanNetHero } from "./plan-net-hero";
 import { PlanExpandableChips } from "./plan-expandable-chips";
 import { PlanDrillCards } from "./plan-drill-cards";
 import { MonthSelector } from "@/components/month-selector";
+import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import type { PlanPageData } from "@/types/plan";
 import type { PlanTimelineData } from "@/actions/plan-timeline";
 import type { CurrencyCode } from "@/types/domain";
@@ -17,7 +19,7 @@ interface PlanRootProps {
   monthLabel: string;
   dayOfMonth: number;
   daysInMonth: number;
-  periodoSummary: { hasActive: boolean; percentAssigned: number } | null;
+  periodoSummary: { hasActive: boolean; percentAssigned: number; unassignedCount?: number } | null;
   wishlistCount: number;
 }
 
@@ -31,11 +33,12 @@ export function PlanRoot({
   periodoSummary,
   wishlistCount,
 }: PlanRootProps) {
+  const { activeZone, toggle } = useExpandableZone<string>();
   const incomes = planData.recurring.upcomingIncome;
   const payments = planData.recurring.upcoming;
 
   return (
-    <div className="space-y-2 pb-20">
+    <div className={`space-y-2 ${MOBILE_TAB_BAR_CLEARANCE_CLASS}`}>
       <MobileHeader
         variant="main"
         title="Plan"
@@ -63,6 +66,8 @@ export function PlanRoot({
         incomes={incomes}
         payments={payments}
         currency={currency}
+        expanded={activeZone}
+        onToggle={toggle}
       />
 
       {/* Drill cards — navigate to Presupuesto, Periodo, Recurrentes, Deseos */}
@@ -72,6 +77,8 @@ export function PlanRoot({
         periodoSummary={periodoSummary}
         wishlistCount={wishlistCount}
         currency={currency}
+        expanded={activeZone}
+        onToggle={toggle}
       />
 
       {/* Scenarios — only when stable */}

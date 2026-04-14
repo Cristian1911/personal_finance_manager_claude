@@ -18,24 +18,36 @@ export function RecurringFormDialog({
   accounts,
   categories,
   trigger,
+  controlledOpen,
+  onClose,
 }: {
   template?: RecurringTemplate;
   accounts: Account[];
   categories: CategoryWithChildren[];
   trigger?: React.ReactNode;
+  /** When true, dialog opens immediately without a trigger */
+  controlledOpen?: boolean;
+  onClose?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    if (!v && onClose) onClose();
+    setInternalOpen(v);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva recurrente
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger !== null && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva recurrente
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
