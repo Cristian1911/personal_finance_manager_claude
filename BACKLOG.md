@@ -65,6 +65,12 @@
 - **What:** The plan tab checklist has two disconnected interaction patterns: (1) tap row → inline payment form with flat buttons, (2) tap ⋮ → bottom Sheet with chip-style admin actions. They look like different apps. Unify into a single cohesive pattern — either improve inline to match chip style with small confirmation Sheet, or merge both into one bottom drawer per-item.
 - **Found:** Visual testing, 2026-04-14
 
+### Debt payment category — distinguish CREDIT_CARD vs LOAN
+- **Priority:** Medium
+- **What:** All debt payments auto-assign `CATEGORY_OBLIGACIONES` (parent). Should distinguish: CREDIT_CARD → "Pago tarjeta" subcategory, LOAN → "Cuota crédito" subcategory. Three changes needed: (1) add seed subcategories for "Pago tarjeta" and "Cuota crédito" under Obligaciones if they don't exist, (2) allow category picker in RecurringForm for debt accounts (pre-select correct subcategory based on `account_type`), (3) update `recordRecurringOccurrencePayment` to use template's `category_id` instead of hardcoded `DEBT_PAYMENT_CATEGORY_ID`.
+- **Context:** Currently `category_id` is forced to `null` on template create (lines 277/351 in recurring-templates.ts), and payment recording hardcodes `DEBT_PAYMENT_CATEGORY_ID` (line 650). User already has manual subcategories mapped correctly.
+- **Found:** User feedback, 2026-04-14
+
 ### Audit effectiveDirection usage across app
 - **Priority:** Low
 - **What:** The recurring manager introduced `effectiveDirection()` (INFLOW to debt account = expense, not income). Audit the whole app for places that classify by raw `template.direction` without checking account type — dashboards, budget calculations, income metrics, etc.
