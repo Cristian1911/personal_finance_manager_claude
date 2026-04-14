@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Pencil, Play, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -18,6 +20,7 @@ interface RecurringTimelineProps {
   onToggleExpand: (templateId: string) => void;
   onPauseRequest: (template: RecurringTemplateWithRelations) => void;
   onDeleteRequest: (template: RecurringTemplateWithRelations) => void;
+  onResumeRequest: (template: RecurringTemplateWithRelations) => void;
   getDateStatus: (date: string) => DateStatus;
   getEffectiveDirection: (template: RecurringTemplateWithRelations) => "OUTFLOW" | "INFLOW";
 }
@@ -73,6 +76,7 @@ export function RecurringTimeline({
   onToggleExpand,
   onPauseRequest,
   onDeleteRequest,
+  onResumeRequest,
   getDateStatus,
   getEffectiveDirection,
 }: RecurringTimelineProps) {
@@ -220,20 +224,15 @@ export function RecurringTimeline({
           </p>
           <div className="space-y-2">
             {pausedTemplates.map((tmpl) => (
-              <div
+              <PausedTemplateCard
                 key={tmpl.id}
-                className="rounded-xl border border-dashed border-white/8 bg-white/[0.02] px-3 py-2.5 opacity-45"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold">{tmpl.merchant_name}</p>
-                    <p className="text-[10px] text-muted-foreground">Pausado</p>
-                  </div>
-                  <p className="text-xs font-bold tabular-nums opacity-50 line-through">
-                    {formatCurrency(Number(tmpl.amount), currency)}
-                  </p>
-                </div>
-              </div>
+                template={tmpl}
+                currency={currency}
+                isExpanded={expandedId === tmpl.id}
+                onToggleExpand={() => onToggleExpand(tmpl.id)}
+                onResumeRequest={onResumeRequest}
+                onDeleteRequest={onDeleteRequest}
+              />
             ))}
           </div>
         </div>
@@ -243,6 +242,79 @@ export function RecurringTimeline({
       {sortedDates.length === 0 && pausedTemplates.length === 0 && (
         <div className="py-8 text-center text-xs text-muted-foreground">
           No hay {direction === "OUTFLOW" ? "gastos" : "ingresos"} recurrentes
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Paused template card — expandable with Resume/Edit/Delete          */
+/* ------------------------------------------------------------------ */
+
+function PausedTemplateCard({
+  template,
+  currency,
+  isExpanded,
+  onToggleExpand,
+  onResumeRequest,
+  onDeleteRequest,
+}: {
+  template: RecurringTemplateWithRelations;
+  currency: CurrencyCode;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onResumeRequest: (template: RecurringTemplateWithRelations) => void;
+  onDeleteRequest: (template: RecurringTemplateWithRelations) => void;
+}) {
+  const router = useRouter();
+
+  return (
+    <div className={cn(
+      "overflow-hidden rounded-xl border border-dashed border-white/8 bg-white/[0.02] transition-all",
+      isExpanded && "border-z-brass/20 border-solid opacity-100",
+      !isExpanded && "opacity-50"
+    )}>
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left active:bg-white/[0.02]"
+      >
+        <div>
+          <p className="text-xs font-semibold">{template.merchant_name}</p>
+          <p className="text-[10px] text-muted-foreground">Pausado</p>
+        </div>
+        <p className="text-xs font-bold tabular-nums opacity-50 line-through">
+          {formatCurrency(Number(template.amount), currency)}
+        </p>
+      </button>
+
+      {isExpanded && (
+        <div className="grid grid-cols-3 gap-1.5 border-t border-white/5 px-3 py-3">
+          <button
+            type="button"
+            onClick={() => onResumeRequest(template)}
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-z-income/20 bg-z-income/10 py-2.5 text-[11px] font-semibold text-z-income active:opacity-70"
+          >
+            <Play className="size-3.5" />
+            Activar
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/recurrentes/${template.id}/edit`)}
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-z-brass/20 bg-z-brass/10 py-2.5 text-[11px] font-semibold text-z-brass active:opacity-70"
+          >
+            <Pencil className="size-3.5" />
+            Editar
+          </button>
+          <button
+            type="button"
+            onClick={() => onDeleteRequest(template)}
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-z-debt/15 bg-z-debt/8 py-2.5 text-[11px] font-semibold text-z-debt active:opacity-70"
+          >
+            <Trash2 className="size-3.5" />
+            Eliminar
+          </button>
         </div>
       )}
     </div>

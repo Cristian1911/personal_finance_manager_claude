@@ -73,6 +73,11 @@ export function MobileRecurringManager({
     setImpactAction({ template, action: "delete" });
   };
 
+  const handleResumeRequest = async (template: RecurringTemplateWithRelations) => {
+    await toggleRecurringTemplate(template.id, true);
+    await hook.refreshOccurrences();
+  };
+
   const handleImpactConfirm = async () => {
     if (!impactAction) return;
     const { template, action } = impactAction;
@@ -145,6 +150,7 @@ export function MobileRecurringManager({
           onToggleExpand={(id) => setExpandedId(expandedId === id ? null : id)}
           onPauseRequest={handlePauseRequest}
           onDeleteRequest={handleDeleteRequest}
+          onResumeRequest={handleResumeRequest}
           getDateStatus={hook.getDateStatus}
           getEffectiveDirection={effectiveDirection}
         />
