@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   addMonths,
@@ -86,7 +86,8 @@ function mapToOccurrenceItem(
 
 export function useRecurringMonth(
   _templates: RecurringTemplateWithRelations[], // kept for caller signature compat
-  accounts: Account[]
+  accounts: Account[],
+  initialOccurrences?: RecurringOccurrence[]
 ) {
   const router = useRouter();
 
@@ -109,11 +110,23 @@ export function useRecurringMonth(
   );
 
   /* ---- DB-backed occurrences state ---- */
-  const [occurrences, setOccurrences] = useState<RecurringOccurrence[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [occurrences, setOccurrences] = useState<RecurringOccurrence[]>(initialOccurrences ?? []);
+  const [isHydrated, setIsHydrated] = useState(!!initialOccurrences);
 
-  /* ---- Load occurrences from DB on mount and month change ---- */
+  /* ---- Track previous monthKey to detect actual changes ---- */
+  const prevMonthKey = useRef(monthKey);
+  const hadInitialData = useRef(!!initialOccurrences);
+
+  /* ---- Load occurrences from DB on month change ---- */
   useEffect(() => {
+    const monthChanged = prevMonthKey.current !== monthKey;
+    prevMonthKey.current = monthKey;
+
+    // On mount: skip if server provided initial data
+    if (!monthChanged && hadInitialData.current) return;
+    // After first real navigation, always fetch (even if returning to initial month)
+    if (monthChanged) hadInitialData.current = false;
+
     setIsHydrated(false);
     let cancelled = false;
 

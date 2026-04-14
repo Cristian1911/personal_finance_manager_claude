@@ -10,7 +10,7 @@ export const recurringTemplateSchema = z.object({
   amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
   currency_code: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
   direction: z.enum(["INFLOW", "OUTFLOW"]),
-  frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "ANNUAL"]),
+  frequency: z.enum(["ONCE", "WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "ANNUAL"]),
   merchant_name: z.string().min(1, "El nombre es requerido"),
   description: z.string().optional(),
   category_id: z.preprocess(

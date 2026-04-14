@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { PANEL_INSET_CLASS, HERO_CARD_GRADIENT_CLASS, MOBILE_ACTION_BUTTON_CLASS, MOBILE_EYEBROW_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import { useRecurringMonth, type OccurrenceItem, type DateStatus } from "@/components/recurring/use-recurring-month";
+import type { RecurringOccurrence } from "@/actions/occurrences";
 import { RecurringConfirmInline } from "@/components/recurring/recurring-confirm-inline";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
 import { RecurringImpactDialog } from "@/components/recurring/recurring-impact-dialog";
@@ -29,6 +30,7 @@ interface MobileRecurrentesViewProps {
   templates: RecurringTemplateWithRelations[];
   accounts: Account[];
   currency: CurrencyCode;
+  initialOccurrences?: RecurringOccurrence[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -67,8 +69,9 @@ export function MobileRecurrentesView({
   templates,
   accounts,
   currency,
+  initialOccurrences,
 }: MobileRecurrentesViewProps) {
-  const hook = useRecurringMonth(templates, accounts);
+  const hook = useRecurringMonth(templates, accounts, initialOccurrences);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [actionItem, setActionItem] = useState<OccurrenceItem | null>(null);
   const categories = useCategories();

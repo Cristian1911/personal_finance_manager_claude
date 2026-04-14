@@ -43,10 +43,38 @@
 - **What:** MoreVertical (⋮) button on each occurrence row opens bottom Sheet with Edit, Pause/Activate, Delete. Reuses RecurringFormDialog and RecurringImpactDialog from desktop.
 - **Remaining:** Edit dialog opens behind the action sheet (nested Radix portal). Needs to close Sheet first, then open Dialog sequentially. Full recurring form also needs mobile redesign.
 
-### Recurring form mobile redesign
+### Manual transaction-to-recurring matching
 - **Priority:** Medium
-- **What:** RecurringFormDialog was designed for desktop. On mobile it opens as a Dialog over the action Sheet, causing layering issues. Needs a mobile-native form — either a full-page drawer or a dedicated route.
-- **Found:** Visual testing, 2026-04-13
+- **What:** Allow users to manually link any transaction (manual, email, OCR, PDF import) to a pending recurring occurrence. Use case: nómina arrives via email notification, user wants to link it to the mapped recurring income template before importing the statement.
+- **Context:** Currently auto-linking works via `findMatchingOccurrence()` (date ±3 days, amount ±1%, account match). Manual override needed when auto-match fails or user wants to link proactively.
+- **Found:** User feedback, 2026-04-14
+
+### Recurring stats — historical backfill
+- **Priority:** Medium
+- **What:** Template stats (YTD, streak, annual estimate) are empty for newly created templates. Options: (1) backfill from `statement_snapshots` minimum payments or balance changes, (2) when creating a recurring template, auto-create historical occurrences as "paid" based on matching past transactions, (3) use snapshot history alongside occurrence history for the metrics.
+- **Context:** `getTemplateStats()` in `actions/template-stats.ts` only queries `recurring_occurrences`. New templates have no occurrences yet even if the user has been paying for months.
+- **Found:** User feedback, 2026-04-14
+
+### Plan page mobile — grid navigation instead of list
+- **Priority:** Medium
+- **What:** The "Ir a" section on the plan page mobile view shows Presupuesto, Periodo, Recurrentes, Deseos as a vertical list of link cards. Replace with a 2x2 grid of buttons for better visual density and scannability.
+- **Found:** User feedback, 2026-04-14
+
+### Recurring checklist — unify inline expand + action drawer
+- **Priority:** Medium
+- **What:** The plan tab checklist has two disconnected interaction patterns: (1) tap row → inline payment form with flat buttons, (2) tap ⋮ → bottom Sheet with chip-style admin actions. They look like different apps. Unify into a single cohesive pattern — either improve inline to match chip style with small confirmation Sheet, or merge both into one bottom drawer per-item.
+- **Found:** Visual testing, 2026-04-14
+
+### Debt payment category — distinguish CREDIT_CARD vs LOAN
+- **Priority:** Medium
+- **What:** All debt payments auto-assign `CATEGORY_OBLIGACIONES` (parent). Should distinguish: CREDIT_CARD → "Pago tarjeta" subcategory, LOAN → "Cuota crédito" subcategory. Three changes needed: (1) add seed subcategories for "Pago tarjeta" and "Cuota crédito" under Obligaciones if they don't exist, (2) allow category picker in RecurringForm for debt accounts (pre-select correct subcategory based on `account_type`), (3) update `recordRecurringOccurrencePayment` to use template's `category_id` instead of hardcoded `DEBT_PAYMENT_CATEGORY_ID`.
+- **Context:** Currently `category_id` is forced to `null` on template create (lines 277/351 in recurring-templates.ts), and payment recording hardcodes `DEBT_PAYMENT_CATEGORY_ID` (line 650). User already has manual subcategories mapped correctly.
+- **Found:** User feedback, 2026-04-14
+
+### Audit effectiveDirection usage across app
+- **Priority:** Low
+- **What:** The recurring manager introduced `effectiveDirection()` (INFLOW to debt account = expense, not income). Audit the whole app for places that classify by raw `template.direction` without checking account type — dashboards, budget calculations, income metrics, etc.
+- **Found:** Bug fix during recurring manager development, 2026-04-14
 
 
 ### Income-aware runway & daily budget

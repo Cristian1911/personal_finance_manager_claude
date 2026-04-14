@@ -3387,6 +3387,7 @@ export type Database = {
         | "MONTHLY"
         | "QUARTERLY"
         | "ANNUAL"
+        | "ONCE"
       transaction_capture_method:
         | "MANUAL_FORM"
         | "TEXT_QUICK_CAPTURE"
@@ -3561,6 +3562,7 @@ export const Constants = {
         "MONTHLY",
         "QUARTERLY",
         "ANNUAL",
+        "ONCE",
       ],
       transaction_capture_method: [
         "MANUAL_FORM",
