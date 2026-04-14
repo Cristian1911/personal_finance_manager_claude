@@ -1,0 +1,210 @@
+"use client";
+
+import { useState } from "react";
+import { Link2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from "@/components/ui/drawer";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/currency";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import type { CurrencyCode } from "@/types/domain";
+
+export interface LinkCandidate {
+  id: string;
+  label: string;
+  sublabel: string;
+  amount: number;
+  currencyCode: string;
+  direction: "INFLOW" | "OUTFLOW";
+  matchScore: number;
+}
+
+interface LinkPickerSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  subtitle: string;
+  candidates: LinkCandidate[];
+  onConfirm: (selectedId: string) => void;
+  isPending: boolean;
+  showAllLabel?: string;
+  onShowAll?: () => void;
+  isLoadingAll?: boolean;
+}
+
+export function LinkPickerSheet({
+  open,
+  onOpenChange,
+  title,
+  subtitle,
+  candidates,
+  onConfirm,
+  isPending,
+  showAllLabel,
+  onShowAll,
+  isLoadingAll,
+}: LinkPickerSheetProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      setSelectedId(null);
+      setSearch("");
+    }
+    onOpenChange(next);
+  };
+
+  const filtered = search
+    ? candidates.filter((c) =>
+        c.label.toLowerCase().includes(search.toLowerCase())
+      )
+    : candidates;
+
+  const bestMatch = filtered.length > 0 ? filtered[0] : null;
+  const rest = filtered.slice(1);
+
+  return (
+    <Drawer open={open} onOpenChange={handleOpenChange}>
+      <DrawerContent className={MOBILE_TAB_BAR_CLEARANCE_CLASS}>
+        <DrawerHeader className="text-left">
+          <DrawerTitle>{title}</DrawerTitle>
+          <DrawerDescription>{subtitle}</DrawerDescription>
+        </DrawerHeader>
+
+        <div className="px-4 pb-2">
+          <Input
+            placeholder="Buscar..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9"
+          />
+        </div>
+
+        <div className="max-h-[50vh] overflow-y-auto px-4">
+          {filtered.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No se encontraron coincidencias
+            </p>
+          )}
+
+          {bestMatch && (
+            <>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-z-income">
+                Mejor coincidencia
+              </p>
+              <CandidateRow
+                candidate={bestMatch}
+                isSelected={selectedId === bestMatch.id}
+                isBest
+                onSelect={() =>
+                  setSelectedId(selectedId === bestMatch.id ? null : bestMatch.id)
+                }
+              />
+            </>
+          )}
+
+          {rest.length > 0 && (
+            <>
+              <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Otras opciones
+              </p>
+              {rest.map((c) => (
+                <CandidateRow
+                  key={c.id}
+                  candidate={c}
+                  isSelected={selectedId === c.id}
+                  isBest={false}
+                  onSelect={() =>
+                    setSelectedId(selectedId === c.id ? null : c.id)
+                  }
+                />
+              ))}
+            </>
+          )}
+
+          {onShowAll && showAllLabel && (
+            <button
+              type="button"
+              onClick={onShowAll}
+              disabled={isLoadingAll}
+              className="mt-3 w-full py-2 text-center text-xs font-semibold text-z-brass"
+            >
+              {isLoadingAll ? "Cargando..." : showAllLabel}
+            </button>
+          )}
+        </div>
+
+        <DrawerFooter>
+          <Button
+            onClick={() => selectedId && onConfirm(selectedId)}
+            disabled={!selectedId || isPending}
+            className="w-full"
+          >
+            <Link2 className="mr-2 size-4" />
+            {isPending ? "Vinculando..." : "Vincular"}
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function CandidateRow({
+  candidate,
+  isSelected,
+  isBest,
+  onSelect,
+}: {
+  candidate: LinkCandidate;
+  isSelected: boolean;
+  isBest: boolean;
+  onSelect: () => void;
+}) {
+  const scorePercent = Math.round(candidate.matchScore * 100);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
+        isSelected
+          ? "bg-z-brass/10 ring-1 ring-z-brass/30"
+          : "hover:bg-white/[0.03]",
+        isBest && !isSelected && "border-l-2 border-l-z-income bg-z-income/[0.04]"
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{candidate.label}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {candidate.sublabel}
+        </p>
+      </div>
+      <div className="shrink-0 text-right">
+        <p
+          className={cn(
+            "text-sm font-semibold tabular-nums",
+            candidate.direction === "INFLOW" && "text-z-income"
+          )}
+        >
+          {candidate.direction === "INFLOW" ? "+" : "-"}
+          {formatCurrency(candidate.amount, candidate.currencyCode as CurrencyCode)}
+        </p>
+        {isBest && scorePercent > 0 && (
+          <p className="text-[10px] font-medium text-z-income">
+            {scorePercent}% match
+          </p>
+        )}
+      </div>
+    </button>
+  );
+}
