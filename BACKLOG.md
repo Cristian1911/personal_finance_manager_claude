@@ -25,9 +25,9 @@
 - **Context:** Shipped card hero, flip-to-graph, transaction-based balance history, transfer dialog, quick actions. Deferred items noted by perf-auditor and design reviews.
 
 ### Income occurrence UX — different actions from expenses
-- **Priority:** Medium
-- **What:** Income occurrences show "Confirmar pago" / "Ya pagué" — should say "Confirmar ingreso" / "Ya recibí". Actions, labels, and possibly the color accent should be contextual based on `direction` (INFLOW vs OUTFLOW). Also needs a "skip" or "delete" option for occurrences the user wants to clear without marking as received.
-- **Found:** Visual testing, 2026-04-13
+- **Priority:** Done (this branch)
+- **What:** Direction-aware labels: "Confirmar ingreso" / "Ya recibí" for INFLOW, "Confirmar pago" / "Ya pagué" for OUTFLOW. Covers confirm inline, timeline, toasts, and attention fallback labels.
+- **Remaining:** Skip/delete option for clearing occurrences without marking received — deferred.
 
 ### Template active state — query-side filtering
 - **Priority:** Done (implemented in this branch)
@@ -81,17 +81,16 @@
 ## Tech Debt
 
 ### Defense-in-depth gaps
-- **`getCategoriesByRhythm`** (`categories.ts`) — transactions query missing `.eq("user_id", user.id)`. Relies solely on RLS.
-- **`bulkTagTransactions`** (`tags.ts`) — upserts into `transaction_tags` without verifying transaction ownership. RLS covers it but violates defense-in-depth convention.
-- **Found:** Server action reviewer, 2026-04-13
+- **Priority:** Done (this branch)
+- **What:** Added `.eq("user_id")` to `getCategoriesByRhythm` transactions query. Added ownership verification to `bulkTagTransactions`.
 
 ### Missing revalidation
-- **`createDestinatario` with `link_matching_transactions`** (`destinatarios.ts`) — manually lists 5 tags instead of calling `revalidateFinancialViews()`. Misses `"transactions"`, `"accounts"`, `"debt"`, `"recurring"`, `"occurrences"`.
-- **Found:** Server action reviewer, 2026-04-13
+- **Priority:** Done (this branch)
+- **What:** `createDestinatario` with `link_matching_transactions` now calls `revalidateFinancialViews()`.
 
 ### Uncached server action
-- **`getTagsForEntity`** (`tags.ts`) — called on every tag picker open with no `"use cache"`. Uses React `cache()` which only deduplicates within a single server render, not across client-side calls. 3 sequential DB queries each time.
-- **Found:** Efficiency review, 2026-04-13
+- **Priority:** Done (this branch)
+- **What:** `getTagsForEntity` extracted to `"use cache"` inner with `cacheTag("tags")` + `cacheLife("zeta")`.
 
 ### `transaction_tags` table missing columns
 - **What:** No `created_at` or `user_id` columns. Recents query works around this by joining through `transactions`. Adding these columns would:

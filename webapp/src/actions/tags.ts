@@ -134,6 +134,7 @@ async function getTagsForEntityCached(
 ): Promise<Tag[]> {
   "use cache";
   cacheTag("tags");
+  cacheTag("transactions");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
