@@ -184,63 +184,30 @@ export async function getNextIncomeOccurrenceCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const supabase = createCachedClient(accessToken);
+  const rangeEnd = toColombiaDateString(addDays(new Date(todayStr + "T12:00:00"), PAY_CYCLE_LOOKAHEAD_DAYS));
+  const occurrences = await getPendingOccurrencesCached(userId, todayStr, rangeEnd, accessToken);
 
-  const { data, error } = await supabase
-    .from("recurring_occurrences")
-    .select(`
-      occurrence_date,
-      expected_amount,
-      recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner (
-        merchant_name,
-        description,
-        direction,
-        currency_code,
-        is_active,
-        accounts!recurring_transaction_templates_account_id_fkey (
-          account_type
-        )
-      )
-    `)
-    .eq("user_id", userId)
-    .eq("status", "pending")
-    .gte("occurrence_date", todayStr)
-    .order("occurrence_date", { ascending: true })
-    .limit(500);
+  const match = occurrences.find(
+    (o) =>
+      o.direction === "INFLOW" &&
+      o.currency_code === currency &&
+      !isDebtAccountType(o.account_type),
+  );
+  if (!match) return null;
 
-  if (error || !data || data.length === 0) return null;
+  const occDate = new Date(match.occurrence_date + "T12:00:00");
+  const today = new Date(todayStr + "T12:00:00");
+  const daysUntil = Math.max(
+    1,
+    Math.ceil((occDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+  );
 
-  for (const row of data) {
-    const tpl = row.recurring_transaction_templates as {
-      merchant_name: string | null;
-      description: string | null;
-      direction: string;
-      currency_code: string;
-      is_active: boolean;
-      accounts: { account_type: string } | null;
-    };
-    if (!tpl.is_active) continue;
-    if (tpl.direction !== "INFLOW") continue;
-    if (tpl.currency_code !== currency) continue;
-    const acctType = tpl.accounts?.account_type;
-    if (acctType && isDebtAccountType(acctType)) continue;
-
-    const occDate = new Date(row.occurrence_date + "T12:00:00");
-    const today = new Date(todayStr + "T12:00:00");
-    const daysUntil = Math.max(
-      1,
-      Math.ceil((occDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    );
-
-    return {
-      date: row.occurrence_date,
-      amount: row.expected_amount,
-      name: tpl.merchant_name ?? tpl.description ?? "Ingreso",
-      daysUntil,
-    };
-  }
-
-  return null;
+  return {
+    date: match.occurrence_date,
+    amount: match.expected_amount,
+    name: match.merchant_name ?? match.description ?? "Ingreso",
+    daysUntil,
+  };
 }
 
 export async function getNextIncomeOccurrence(
@@ -437,42 +404,26 @@ export async function findMatchingOccurrence(
   amount: number,
   direction: "INFLOW" | "OUTFLOW",
 ): Promise<string | null> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return null;
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return null;
 
   // Look within ±3 days of the transaction date to account for payment timing
   const baseDateObj = new Date(`${transactionDate}T12:00:00`);
-  const windowStart = addDays(baseDateObj, -3).toISOString().split("T")[0];
-  const windowEnd = addDays(baseDateObj, 3).toISOString().split("T")[0];
+  const rangeStart = toColombiaDateString(addDays(baseDateObj, -3));
+  const rangeEnd = toColombiaDateString(addDays(baseDateObj, 3));
 
-  const { data, error } = await supabase
-    .from("recurring_occurrences")
-    .select(
-      `id, expected_amount,
-       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
-         account_id, direction, is_active
-       )`
-    )
-    .eq("user_id", user.id)
-    .eq("status", "pending")
-    .eq("template.account_id", accountId)
-    .eq("template.direction", direction)
-    .gte("occurrence_date", windowStart)
-    .lte("occurrence_date", windowEnd);
+  const occurrences = await getPendingOccurrencesCached(user.id, rangeStart, rangeEnd, accessToken);
 
-  if (error || !data) return null;
-
-  // Match by amount (1% tolerance), skip paused templates
+  // Match by account, direction, and amount (1% tolerance)
   const tolerance = amount * 0.01;
-  for (const row of data) {
-    const tmpl = row.template as { account_id: string; direction: string; is_active: boolean };
-    if (!tmpl.is_active) continue;
-    if (Math.abs(row.expected_amount - amount) <= tolerance) {
-      return row.id;
-    }
-  }
+  const match = occurrences.find(
+    (o) =>
+      o.account_id === accountId &&
+      o.direction === direction &&
+      Math.abs(o.expected_amount - amount) <= tolerance,
+  );
 
-  return null;
+  return match?.id ?? null;
 }
 
 /**
