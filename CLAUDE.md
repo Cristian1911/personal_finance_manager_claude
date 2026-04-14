@@ -75,6 +75,9 @@ Spawn these specialized agents for domain-specific review and diagnosis. Each ha
 - **No hardcoded styles**: Prefer existing utility patterns and component props from established components.
 - **Reuse existing components**: Check `webapp/src/components/ui/` (41 stories) before building new cards, badges, stat displays, or layout patterns.
 - **Button variants**: Only `BRASS_BUTTON_CLASS`, `GHOST_BUTTON_CLASS`, `BRASS_GHOST_BUTTON_CLASS` from `@/lib/constants/styles.ts`.
+- **Mobile bottom sheets/drawers**: Always add `MOBILE_TAB_BAR_CLEARANCE_CLASS` from `@/lib/constants/styles.ts` to `SheetContent` bottom padding. Without it, sheet content is hidden behind the tab bar.
+- **Date parsing**: Never use `new Date("YYYY-MM-DD")` — it parses as midnight UTC (wrong day in Colombia UTC-5). Pass ISO date strings directly to `formatDate()` (uses `parseISO`), or append `T12:00:00` if `Date` object is needed.
+- **Debt account direction**: INFLOW to CREDIT_CARD/LOAN accounts is a payment, not income. Use `isDebtAccountType()` from `@/lib/utils/account-balance` or `item.isDebtPayment` to distinguish. Never treat raw `direction === "INFLOW"` as income without checking account type.
 - Spawn `zetas-front-guy` after any TSX/CSS change. Spawn `frontend-auditor` for comprehensive reviews.
 
 ## Supabase

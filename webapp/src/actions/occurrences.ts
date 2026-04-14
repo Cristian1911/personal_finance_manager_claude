@@ -8,7 +8,7 @@ import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
-import { isDebtAccountType } from "@/lib/utils/account-balance";
+import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/account-balance";
 import {
   generateOccurrenceRowsBatch,
 } from "@/lib/utils/occurrence-generator";
@@ -389,6 +389,97 @@ export async function skipOccurrence(occurrenceId: string): Promise<ActionResult
 
   revalidateFinancialViews();
   revalidateTag("occurrences", "zeta");
+  return { success: true, data: undefined };
+}
+
+/**
+ * Revert a completed occurrence (paid or skipped) back to pending.
+ * For paid occurrences: deletes the created transaction(s) and reverses balance deltas.
+ * For skipped occurrences: simply resets status.
+ */
+export async function revertOccurrence(occurrenceId: string): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Fetch occurrence with its current state
+  const { data: occurrence, error: fetchError } = await supabase
+    .from("recurring_occurrences")
+    .select("id, status, transaction_id, template_id, occurrence_date")
+    .eq("id", occurrenceId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (fetchError || !occurrence) {
+    return { success: false, error: "Ocurrencia no encontrada" };
+  }
+
+  if (occurrence.status === "pending") {
+    return { success: false, error: "Esta ocurrencia ya está pendiente" };
+  }
+
+  // For paid occurrences: delete created transactions and reverse balances
+  if (occurrence.status === "paid" && occurrence.transaction_id) {
+    // Find all transactions in the same recurrence group (payment + transfer pair)
+    const { data: primaryTx } = await supabase
+      .from("transactions")
+      .select("recurrence_group_id")
+      .eq("id", occurrence.transaction_id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (primaryTx?.recurrence_group_id) {
+      // Get all transactions in the group to reverse balances
+      const { data: groupTxs } = await supabase
+        .from("transactions")
+        .select("id, amount, direction, account_id, accounts!account_id(account_type, current_balance)")
+        .eq("recurrence_group_id", primaryTx.recurrence_group_id)
+        .eq("user_id", user.id);
+
+      // Reverse balance deltas for each transaction
+      for (const tx of groupTxs ?? []) {
+        const account = tx.accounts as { account_type: string; current_balance: number } | null;
+        if (!account) continue;
+
+        const newBalance = reverseAccountBalanceDelta({
+          currentBalance: account.current_balance,
+          accountType: account.account_type,
+          direction: tx.direction as "INFLOW" | "OUTFLOW",
+          amount: tx.amount,
+        });
+
+        await supabase
+          .from("accounts")
+          .update({ current_balance: newBalance })
+          .eq("user_id", user.id)
+          .eq("id", tx.account_id);
+      }
+
+      // Delete all transactions in the recurrence group
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("recurrence_group_id", primaryTx.recurrence_group_id)
+        .eq("user_id", user.id);
+    }
+  }
+
+  // Reset occurrence to pending
+  const { error: updateError } = await supabase
+    .from("recurring_occurrences")
+    .update({
+      status: "pending" as const,
+      transaction_id: null,
+      paid_at: null,
+      skipped_at: null,
+    })
+    .eq("id", occurrenceId)
+    .eq("user_id", user.id);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  revalidateFinancialViews();
+  revalidateTag("occurrences", "zeta");
+  revalidateTag("recurring", "zeta");
   return { success: true, data: undefined };
 }
 
