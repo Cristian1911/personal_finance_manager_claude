@@ -801,9 +801,9 @@ export async function getDashboardHeroData(
     windowEndDate = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
   }
 
-  // Filter cached occurrences to pay-cycle window
+  // Filter cached occurrences to pay-cycle window + base currency
   const windowOccurrences = pendingOccurrences.filter(
-    (o) => o.occurrence_date >= colombiaToday && o.occurrence_date <= windowEndDate
+    (o) => o.occurrence_date >= colombiaToday && o.occurrence_date <= windowEndDate && o.currency_code === baseCurrency
   );
 
   const recurringObligations: PendingObligation[] = windowOccurrences

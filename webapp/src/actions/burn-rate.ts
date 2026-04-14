@@ -64,15 +64,11 @@ async function getBurnRateCached(
   const rangeEnd = toColombiaDateString(addDays(today, PAY_CYCLE_LOOKAHEAD_DAYS));
 
   const [
-    { data: templates },
     { data: accounts, error: accountsError },
     { data: transactions, error: txError },
     nextIncome,
     pendingOccurrences,
   ] = await Promise.all([
-    supabase.from("recurring_transaction_templates")
-      .select("amount, direction, currency_code")
-      .eq("user_id", userId).eq("is_active", true),
     supabase.from("accounts")
       .select("id, current_balance, currency_code, account_type")
       .eq("user_id", userId).eq("is_active", true)
@@ -111,10 +107,11 @@ async function getBurnRateCached(
       amount: o.expected_amount,
     }));
 
-  // Compute disponible using active recurring templates (OUTFLOW only)
-  const totalPending = (templates ?? [])
-    .filter(t => t.direction === "OUTFLOW" && (t.currency_code ?? "COP") === baseCurrency)
-    .reduce((sum, t) => sum + t.amount, 0);
+  // Compute disponible using window-scoped pending occurrences (same window as chart)
+  const windowOutflows = (pendingOccurrences ?? [])
+    .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
+      && o.currency_code === baseCurrency && o.account_type !== "CREDIT_CARD");
+  const totalPending = windowOutflows.reduce((sum, o) => sum + o.expected_amount, 0);
 
   const liquidAccounts = accounts.filter(
     (a) => a.currency_code === baseCurrency
