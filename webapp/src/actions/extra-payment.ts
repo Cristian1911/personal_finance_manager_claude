@@ -3,8 +3,8 @@
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   TRANSFER_CATEGORY_ID,
-  DEBT_PAYMENT_CATEGORY_ID,
   computeIdempotencyKey,
+  getDebtPaymentCategoryId,
 } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
@@ -183,7 +183,7 @@ export async function applyExtraDebtPayment(
         raw_description: inflowDescription,
         clean_description: inflowDescription,
         merchant_name: debtAccountName,
-        category_id: DEBT_PAYMENT_CATEGORY_ID,
+        category_id: getDebtPaymentCategoryId(debtAccount.account_type),
         categorization_source: "SYSTEM_DEFAULT",
         provider: "MANUAL",
         capture_method: "MANUAL_FORM",

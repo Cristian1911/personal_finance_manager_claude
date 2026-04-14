@@ -15,6 +15,7 @@ import {
   getNextOccurrence,
   DEBT_PAYMENT_CATEGORY_ID,
   TRANSFER_CATEGORY_ID,
+  getDebtPaymentCategoryId,
 } from "@zeta/shared";
 import { addDays } from "date-fns";
 import { toISODateString } from "@/lib/utils/date";
@@ -274,7 +275,7 @@ export async function createRecurringTemplate(
 
   if (DEBT_ACCOUNT_TYPES.has(account.account_type)) {
     payload.direction = "INFLOW";
-    payload.category_id = null;
+    payload.category_id = payload.category_id ?? getDebtPaymentCategoryId(account.account_type);
     if (!payload.transfer_source_account_id) {
       return { success: false, error: "Selecciona la cuenta origen para el pago de deuda." };
     }
@@ -348,7 +349,7 @@ export async function updateRecurringTemplate(
 
   if (DEBT_ACCOUNT_TYPES.has(account.account_type)) {
     payload.direction = "INFLOW";
-    payload.category_id = null;
+    payload.category_id = payload.category_id ?? getDebtPaymentCategoryId(account.account_type);
     if (!payload.transfer_source_account_id) {
       return { success: false, error: "Selecciona la cuenta origen para el pago de deuda." };
     }
@@ -647,7 +648,7 @@ function buildRecurringPaymentTransactions(params: {
           direction: "INFLOW",
           raw_description: `Abono deuda desde ${sourceAccount.name} - ${baseLabel}`,
           merchant_name: baseLabel,
-          category_id: DEBT_PAYMENT_CATEGORY_ID,
+          category_id: params.template.category_id ?? DEBT_PAYMENT_CATEGORY_ID,
           notes: "Abono de deuda marcado desde checklist recurrente",
         },
       ],

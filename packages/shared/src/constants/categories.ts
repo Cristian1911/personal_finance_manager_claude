@@ -14,10 +14,24 @@ export const CATEGORY_OBLIGACIONES = "b0000001-0001-4000-8000-000000000006";
 export const CATEGORY_INGRESOS = "b0000001-0001-4000-8000-000000000007";
 export const CATEGORY_OTROS_INGRESOS = "b0000001-0001-4000-8000-000000000008";
 
+// ── Obligaciones subcategories ──────────────────────────────────────
+export const SUBCATEGORY_CUOTA_CREDITO = "c0000001-0006-4000-8000-000000000001";
+export const SUBCATEGORY_PAGO_TARJETA = "c0000001-0006-4000-8000-000000000002";
+
 // Convenience aliases for common usage patterns
 export const DEBT_PAYMENT_CATEGORY_ID = CATEGORY_OBLIGACIONES;
 export const TRANSFER_CATEGORY_ID = CATEGORY_OBLIGACIONES;
 export const SUBSCRIPTIONS_CATEGORY_ID = CATEGORY_OBLIGACIONES;
+
+/**
+ * Returns the appropriate debt payment subcategory based on account type.
+ * CREDIT_CARD → "Pago tarjeta", LOAN → "Cuota crédito", fallback → parent Obligaciones.
+ */
+export function getDebtPaymentCategoryId(accountType: string): string {
+  if (accountType === "CREDIT_CARD") return SUBCATEGORY_PAGO_TARJETA;
+  if (accountType === "LOAN") return SUBCATEGORY_CUOTA_CREDITO;
+  return DEBT_PAYMENT_CATEGORY_ID;
+}
 
 // Map object for auto-categorize engine (preserves existing CAT shape).
 // Old fine-grained names map to the 8 parent categories.

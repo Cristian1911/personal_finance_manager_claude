@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SUBCATEGORY_PAGO_TARJETA, SUBCATEGORY_CUOTA_CREDITO } from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, RecurringTemplate, TransactionDirection } from "@/types/domain";
 
@@ -92,6 +93,15 @@ export function RecurringForm({
       setDirection("INFLOW");
     }
   }, [isDebtAccount, direction]);
+
+  useEffect(() => {
+    if (isDebtAccount && !categoryId) {
+      const defaultCat = selectedAccount?.account_type === "CREDIT_CARD"
+        ? SUBCATEGORY_PAGO_TARJETA
+        : SUBCATEGORY_CUOTA_CREDITO;
+      setCategoryId(defaultCat);
+    }
+  }, [isDebtAccount, categoryId, selectedAccount?.account_type]);
 
   function nextOccurrenceForDay(dayOfMonth: number): string {
     const now = new Date();
@@ -308,26 +318,22 @@ export function RecurringForm({
         )}
       </div>
 
-      {isDebtAccount ? (
-        <div className="space-y-2">
-          <Label>Categoría</Label>
-          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-            Se asignará automáticamente como abono de deuda al registrar cada pago.
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <Label>Categoría</Label>
-          <CategoryZonePicker
-            variant="popover"
-            categories={categories}
-            value={categoryId}
-            onValueChange={setCategoryId}
-            direction={direction}
-            name="category_id"
-          />
-        </div>
-      )}
+      <div className="space-y-2">
+        <Label>Categoría</Label>
+        <CategoryZonePicker
+          variant="popover"
+          categories={categories}
+          value={categoryId}
+          onValueChange={setCategoryId}
+          direction={direction}
+          name="category_id"
+        />
+        {isDebtAccount && (
+          <p className="text-xs text-muted-foreground">
+            Pre-seleccionada según tipo de cuenta. Puedes cambiarla si lo necesitas.
+          </p>
+        )}
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="description">Notas</Label>

@@ -24,7 +24,11 @@ export function NewTransactionPageContent() {
 
   const handleSuccess = useCallback(() => {
     toast.success("Guardado");
-    router.back();
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/dashboard");
+    }
   }, [router]);
 
   return (
