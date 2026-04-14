@@ -59,9 +59,9 @@ export function PlanDrillCards({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Gastado</span>
-            <span className="font-medium">{formatCurrency(budget.totalSpent, currency)} de {formatCurrency(budget.totalBudgeted, currency)}</span>
+            <span className="font-medium tabular-nums">{formatCurrency(budget.totalSpent, currency)} de {formatCurrency(budget.totalBudgeted, currency)}</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div
               className={cn("h-full rounded-full", budgetPct > 100 ? "bg-z-debt" : "bg-z-income")}
               style={{ width: `${Math.min(budgetPct, 100)}%` }}
@@ -88,7 +88,7 @@ export function PlanDrillCards({
             <span className="text-muted-foreground">Asignado</span>
             <span className="font-medium">{periodoSummary.percentAssigned}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-z-income" style={{ width: `${Math.min(periodoSummary.percentAssigned, 100)}%` }} />
           </div>
           {(periodoSummary.unassignedCount ?? 0) > 0 && (

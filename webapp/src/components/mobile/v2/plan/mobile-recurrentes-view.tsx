@@ -9,6 +9,7 @@ import {
   PANEL_INSET_CLASS,
   HERO_CARD_GRADIENT_CLASS,
   MOBILE_EYEBROW_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE_CLASS,
 } from "@/lib/constants/styles";
 import { useRecurringMonth, type OccurrenceItem, type DateStatus } from "@/components/recurring/use-recurring-month";
 import type { RecurringOccurrence } from "@/actions/occurrences";
@@ -176,6 +177,13 @@ export function MobileRecurrentesView({
             setImpactAction({ item, template, action: "pause" });
           }
         : undefined,
+      onResume: template
+        ? async () => {
+            setExpandedKey(null);
+            await toggleRecurringTemplate(template.id, true);
+            await hook.refreshOccurrences();
+          }
+        : undefined,
       onDelete: template
         ? () => {
             setExpandedKey(null);
@@ -190,13 +198,13 @@ export function MobileRecurrentesView({
   }
 
   return (
-    <div className="space-y-3 pb-20">
+    <div className={cn("space-y-3", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
       {/* Hero card */}
       <div className={cn("rounded-2xl border border-white/6 p-4", HERO_CARD_GRADIENT_CLASS)}>
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
           Compromiso mensual
         </p>
-        <p className="mt-1 text-3xl font-bold">
+        <p className="mt-1 text-3xl font-bold tabular-nums">
           {formatCurrency(hook.totalPlanned, currency)}
         </p>
 
@@ -534,6 +542,7 @@ function TemplatesSection({
   accounts,
   categories,
   currency,
+  onMutate,
 }: {
   templates: RecurringTemplateWithRelations[];
   accounts: Account[];
@@ -543,8 +552,12 @@ function TemplatesSection({
 }) {
   const [show, setShow] = useState(false);
 
-  const activeCount = templates.filter((t) => t.is_active).length;
-  const pausedCount = templates.filter((t) => !t.is_active).length;
+  let activeCount = 0;
+  let pausedCount = 0;
+  for (const t of templates) {
+    if (t.is_active) activeCount++;
+    else pausedCount++;
+  }
 
   return (
     <div>
@@ -565,6 +578,7 @@ function TemplatesSection({
           <RecurringFormDialog
             accounts={accounts}
             categories={categories}
+            onClose={onMutate}
             trigger={
               <button
                 type="button"
@@ -602,6 +616,7 @@ function TemplatesSection({
                   template={t}
                   accounts={accounts}
                   categories={categories}
+                  onClose={onMutate}
                   trigger={
                     <button
                       type="button"

@@ -25,13 +25,13 @@ const CHIP_CONFIG = {
     emptyHint: "Agrega un ingreso recurrente",
     expandedLabel: "Ingresos esperados",
     emptyMessage: "No tienes ingresos recurrentes configurados",
-    text: "text-emerald-400",
-    textMuted: "text-emerald-400/80",
-    textEmpty: "text-emerald-400/60",
-    borderActive: "border-emerald-500/50 bg-emerald-950/30",
-    borderInactive: "border-white/6 bg-emerald-950/20",
-    panelBorder: "border-emerald-500/20 bg-emerald-950/20",
-    ctaBg: "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30",
+    text: "text-z-income",
+    textMuted: "text-z-income/80",
+    textEmpty: "text-z-income/60",
+    borderActive: "border-z-income/50 bg-z-income/10",
+    borderInactive: "border-white/6 bg-z-income/5",
+    panelBorder: "border-z-income/20 bg-z-income/5",
+    ctaBg: "bg-z-income/15 text-z-income hover:bg-z-income/20",
   },
   payment: {
     label: "Próximo pago",
@@ -39,17 +39,18 @@ const CHIP_CONFIG = {
     emptyHint: "Agrega un pago recurrente",
     expandedLabel: "Pagos programados",
     emptyMessage: "No tienes pagos recurrentes configurados",
-    text: "text-red-400",
-    textMuted: "text-red-400/80",
-    textEmpty: "text-red-400/60",
-    borderActive: "border-red-500/50 bg-red-950/30",
-    borderInactive: "border-white/6 bg-red-950/20",
-    panelBorder: "border-red-500/20 bg-red-950/20",
-    ctaBg: "bg-red-500/20 text-red-400 hover:bg-red-500/30",
+    text: "text-z-debt",
+    textMuted: "text-z-debt/80",
+    textEmpty: "text-z-debt/60",
+    borderActive: "border-z-debt/50 bg-z-debt/10",
+    borderInactive: "border-white/6 bg-z-debt/5",
+    panelBorder: "border-z-debt/20 bg-z-debt/5",
+    ctaBg: "bg-z-debt/15 text-z-debt hover:bg-z-debt/20",
   },
 } as const;
 
 const OPPOSITE: Record<"income" | "payment", ChipType> = { income: "payment", payment: "income" };
+const CHIP_KEYS = { income: "chip-income", payment: "chip-payment" } as const;
 
 export function PlanExpandableChips({
   incomes,
@@ -61,15 +62,14 @@ export function PlanExpandableChips({
   const [internalExpanded, setInternalExpanded] = useState<ChipType>(null);
 
   // Use external zone if provided, otherwise internal state
-  const chipKeys = { income: "chip-income", payment: "chip-payment" } as const;
   const activeChip: ChipType = externalExpanded
-    ? (externalExpanded === chipKeys.income ? "income" : externalExpanded === chipKeys.payment ? "payment" : null)
+    ? (externalExpanded === CHIP_KEYS.income ? "income" : externalExpanded === CHIP_KEYS.payment ? "payment" : null)
     : internalExpanded;
 
   const items = { income: incomes, payment: payments } as const;
   const toggle = (type: ChipType) => {
     if (type && externalToggle) {
-      externalToggle(chipKeys[type]);
+      externalToggle(CHIP_KEYS[type]);
     } else {
       setInternalExpanded((prev) => (prev === type ? null : type));
     }
@@ -97,7 +97,7 @@ export function PlanExpandableChips({
             >
               {next ? (
                 <>
-                  <p className={cn("text-lg font-bold", c.text)}>
+                  <p className={cn("text-lg font-bold tabular-nums", c.text)}>
                     {formatCurrency(next.template.amount ?? 0, currency)}
                   </p>
                   <p className={cn("text-[10px]", c.textMuted)}>{c.label}</p>
@@ -121,7 +121,7 @@ export function PlanExpandableChips({
 
       {activeChip && config && (
         <div className={cn("rounded-xl border p-3", config.panelBorder)}>
-          <p className={cn("text-[10px] font-semibold uppercase tracking-widest mb-2", config.text)}>
+          <p className={cn("text-[10px] font-semibold uppercase tracking-[0.18em] mb-2", config.text)}>
             {config.expandedLabel}
           </p>
           {expandedList.length > 0 ? (
@@ -136,7 +136,7 @@ export function PlanExpandableChips({
                         {item.template.account && ` · ${item.template.account.name}`}
                       </p>
                     </div>
-                    <p className={cn("text-sm font-semibold", config.text)}>
+                    <p className={cn("text-sm font-semibold tabular-nums", config.text)}>
                       {formatCurrency(item.template.amount ?? 0, currency)}
                     </p>
                   </div>
@@ -144,7 +144,7 @@ export function PlanExpandableChips({
               </div>
               <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2 text-xs">
                 <span className="text-muted-foreground">Total</span>
-                <span className={cn("font-bold", config.text)}>
+                <span className={cn("font-bold tabular-nums", config.text)}>
                   {formatCurrency(
                     expandedList.reduce((sum, item) => sum + (item.template.amount ?? 0), 0),
                     currency

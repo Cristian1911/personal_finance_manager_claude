@@ -7,6 +7,7 @@ import { PlanExpandableChips } from "./plan-expandable-chips";
 import { PlanDrillCards } from "./plan-drill-cards";
 import { MonthSelector } from "@/components/month-selector";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import type { PlanPageData } from "@/types/plan";
 import type { PlanTimelineData } from "@/actions/plan-timeline";
 import type { CurrencyCode } from "@/types/domain";
@@ -37,7 +38,7 @@ export function PlanRoot({
   const payments = planData.recurring.upcoming;
 
   return (
-    <div className="space-y-2 pb-20">
+    <div className={`space-y-2 ${MOBILE_TAB_BAR_CLEARANCE_CLASS}`}>
       <MobileHeader
         variant="main"
         title="Plan"

@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { OccurrenceItem } from "./use-recurring-month";
 import type { RecurringTemplateWithRelations } from "@/types/domain";
 
@@ -50,6 +50,12 @@ export interface OccurrenceActionsProps {
 const CHIP_CLASS =
   "flex items-center justify-center gap-1.5 rounded-lg border px-4 py-2.5 text-xs font-semibold transition-colors active:opacity-70 disabled:opacity-40";
 
+const CHIP_VARIANT = {
+  default: "border-white/8 bg-white/[0.04] text-foreground",
+  danger: "border-z-debt/20 bg-z-debt/8 text-z-debt",
+  income: "border-z-income/20 bg-z-income/8 text-z-income",
+} as const;
+
 function ActionChip({
   icon,
   label,
@@ -59,22 +65,17 @@ function ActionChip({
 }: {
   icon: React.ReactNode;
   label: string;
-  variant?: "default" | "danger" | "income";
+  variant?: keyof typeof CHIP_VARIANT;
   onClick?: () => void;
   disabled?: boolean;
 }) {
-  const colorMap = {
-    default: "border-white/8 bg-white/[0.04] text-foreground",
-    danger: "border-z-debt/20 bg-z-debt/8 text-z-debt",
-    income: "border-z-income/20 bg-z-income/8 text-z-income",
-  };
 
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={cn(CHIP_CLASS, colorMap[variant])}
+      className={cn(CHIP_CLASS, CHIP_VARIANT[variant])}
     >
       {icon}
       {label}
@@ -116,7 +117,7 @@ function TabBar({
         className={cn(
           TAB_BASE,
           active === "administrar"
-            ? "border border-white/10 bg-white/[0.06] text-foreground"
+            ? "border border-white/6 bg-white/[0.06] text-foreground"
             : "text-muted-foreground",
         )}
       >
@@ -320,7 +321,7 @@ export function OccurrenceActions({
           type="button"
           onClick={() => setPhase("actions")}
           disabled={isPending}
-          className="rounded-lg border border-white/8 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-muted-foreground"
+          className={cn("rounded-lg px-4 py-2 text-xs font-semibold", GHOST_BUTTON_CLASS)}
         >
           Atrás
         </button>
