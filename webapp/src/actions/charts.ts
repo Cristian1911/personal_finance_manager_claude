@@ -7,6 +7,7 @@ import { addDays } from "date-fns";
 import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import { getAccounts } from "@/actions/accounts";
 import { getPendingOccurrencesCached, getNextIncomeOccurrenceCached } from "@/actions/occurrences";
+import { getRatesForCurrencies } from "@/actions/exchange-rate";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
@@ -621,15 +622,31 @@ export async function getNetWorthHistory(month?: string, currency?: CurrencyCode
   // If no accounts, return early
   if (!accounts || accounts.length === 0) return [];
 
-  const currencyAccounts = accounts.filter((a) => a.currency_code === baseCurrency);
+  // Convert all accounts to base currency
+  const otherCurrencies = [...new Set(
+    accounts.map((a) => a.currency_code).filter((c) => c !== baseCurrency)
+  )] as CurrencyCode[];
+  const nwRates = otherCurrencies.length > 0
+    ? await getRatesForCurrencies(otherCurrencies, baseCurrency)
+    : new Map<CurrencyCode, number>();
+  const toBase = (amount: number, currency: string) => {
+    if (currency === baseCurrency) return amount;
+    const rate = nwRates.get(currency as CurrencyCode);
+    return rate ? amount * rate : 0; // skip if no rate
+  };
+  const nwConvertible = (a: { currency_code: string }) =>
+    a.currency_code === baseCurrency || nwRates.has(a.currency_code as CurrencyCode);
 
-  const totalAssets = currencyAccounts
-    .filter((a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN")
-    .reduce((sum, a) => sum + a.current_balance, 0);
+  const totalAssets = accounts
+    .filter((a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN" && nwConvertible(a))
+    .reduce((sum, a) => sum + toBase(a.current_balance, a.currency_code as CurrencyCode), 0);
 
-  const totalLiabilities = currencyAccounts
-    .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
-    .reduce((sum, a) => sum + computeDebtBalance(a as Parameters<typeof computeDebtBalance>[0]), 0);
+  const totalLiabilities = accounts
+    .filter((a) => (a.account_type === "CREDIT_CARD" || a.account_type === "LOAN") && nwConvertible(a))
+    .reduce((sum, a) => sum + toBase(
+      computeDebtBalance(a as Parameters<typeof computeDebtBalance>[0]),
+      a.currency_code as CurrencyCode
+    ), 0);
 
   const currentNetWorth = totalAssets - totalLiabilities;
 
@@ -700,6 +717,8 @@ export interface DashboardHeroData {
   oldestUpdate: string | null;
   currency: string;
   hasOtherCurrencies: boolean;
+  includesConvertedAmounts: boolean;
+  hasUnconvertibleCurrencies: boolean;
   // Pay-cycle fields
   nextIncomeDate: string | null;
   nextIncomeAmount: number;
@@ -728,6 +747,8 @@ export async function getDashboardHeroData(
       oldestUpdate: null,
       currency: "COP",
       hasOtherCurrencies: false,
+      includesConvertedAmounts: false,
+      hasUnconvertibleCurrencies: false,
       nextIncomeDate: null,
       nextIncomeAmount: 0,
       nextIncomeName: null,
@@ -752,29 +773,46 @@ export async function getDashboardHeroData(
     getPendingOccurrencesCached(user.id, colombiaToday, rangeEnd, accessToken).catch(() => [] as never[]),
   ]);
 
-  // 1. Process accounts
+  // 1. Process accounts (all currencies, converted to base)
   const dashboardAccounts = accountsResult.success
     ? accountsResult.data.map((a) => ({
         id: a.id,
         name: a.name,
         account_type: a.account_type,
         current_balance: a.current_balance,
-        currency_code: a.currency_code,
+        currency_code: a.currency_code as CurrencyCode,
         updated_at: a.updated_at,
       }))
     : [];
 
-  const currencyAccounts = dashboardAccounts.filter((a) => a.currency_code === baseCurrency);
-  const liquidAccounts = currencyAccounts.filter(
-    (account) => account.account_type !== "CREDIT_CARD" && account.account_type !== "LOAN"
+  const otherCurrencies = [...new Set(
+    dashboardAccounts.map((a) => a.currency_code).filter((c) => c !== baseCurrency)
+  )] as CurrencyCode[];
+  const rates = otherCurrencies.length > 0
+    ? await getRatesForCurrencies(otherCurrencies, baseCurrency)
+    : new Map<CurrencyCode, number>();
+  const toBase = (amount: number, currency: CurrencyCode) => {
+    if (currency === baseCurrency) return amount;
+    const rate = rates.get(currency);
+    return rate ? amount * rate : 0; // skip if no rate — never mix raw foreign amounts
+  };
+
+  // Filter out accounts with unconvertible currencies
+  const convertible = (a: { currency_code: CurrencyCode }) =>
+    a.currency_code === baseCurrency || rates.has(a.currency_code);
+
+  const liquidAccounts = dashboardAccounts.filter(
+    (account) => account.account_type !== "CREDIT_CARD" && account.account_type !== "LOAN" && convertible(account)
   );
-  const creditCardAccounts = currencyAccounts.filter(
-    (account) => account.account_type === "CREDIT_CARD"
+  const creditCardAccounts = dashboardAccounts.filter(
+    (account) => account.account_type === "CREDIT_CARD" && convertible(account)
   );
   const trackedFreshnessAccounts = [...liquidAccounts, ...creditCardAccounts];
-  const hasOtherCurrencies = dashboardAccounts.some((a) => a.currency_code !== baseCurrency);
+  const hasOtherCurrencies = otherCurrencies.length > 0;
+  const includesConvertedAmounts = hasOtherCurrencies && rates.size > 0;
+  const hasUnconvertibleCurrencies = hasOtherCurrencies && rates.size < otherCurrencies.length;
   const totalLiquid = liquidAccounts.reduce(
-    (sum, account) => sum + (account.current_balance ?? 0),
+    (sum, account) => sum + toBase(account.current_balance ?? 0, account.currency_code),
     0
   );
 
@@ -801,9 +839,9 @@ export async function getDashboardHeroData(
     windowEndDate = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
   }
 
-  // Filter cached occurrences to pay-cycle window + base currency
+  // Filter cached occurrences to pay-cycle window (all currencies, converted to base)
   const windowOccurrences = pendingOccurrences.filter(
-    (o) => o.occurrence_date >= colombiaToday && o.occurrence_date <= windowEndDate && o.currency_code === baseCurrency
+    (o) => o.occurrence_date >= colombiaToday && o.occurrence_date <= windowEndDate
   );
 
   const recurringObligations: PendingObligation[] = windowOccurrences
@@ -811,19 +849,21 @@ export async function getDashboardHeroData(
     .map((o) => ({
       id: o.id,
       name: o.merchant_name ?? o.description ?? "Recurrente",
-      amount: o.expected_amount,
+      amount: toBase(o.expected_amount, o.currency_code as CurrencyCode),
       currency_code: o.currency_code,
       due_date: o.occurrence_date,
     }));
 
   const windowObligationsTotal = windowOccurrences
     .filter((o) => o.direction === "OUTFLOW" && o.account_type !== "CREDIT_CARD")
-    .reduce((sum, o) => sum + o.expected_amount, 0);
+    .reduce((sum, o) => sum + toBase(o.expected_amount, o.currency_code as CurrencyCode), 0);
 
   // 4. Pending INFLOW occurrences within window (expected income, NOT added to availableToSpend)
   const pendingInflowOccurrences = windowOccurrences
     .filter((o) => o.direction === "INFLOW" && o.account_type !== "CREDIT_CARD" && o.account_type !== "LOAN");
-  const pendingIncome = pendingInflowOccurrences.reduce((sum, o) => sum + o.expected_amount, 0);
+  const pendingIncome = pendingInflowOccurrences.reduce(
+    (sum, o) => sum + toBase(o.expected_amount, o.currency_code as CurrencyCode), 0
+  );
   const pendingIncomeCount = pendingInflowOccurrences.length;
 
   // 5. Sort by due date
@@ -845,6 +885,8 @@ export async function getDashboardHeroData(
     oldestUpdate,
     currency: baseCurrency,
     hasOtherCurrencies,
+    includesConvertedAmounts,
+    hasUnconvertibleCurrencies,
     nextIncomeDate: nextIncome?.date ?? null,
     nextIncomeAmount: nextIncome?.amount ?? 0,
     nextIncomeName: nextIncome?.name ?? null,

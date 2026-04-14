@@ -74,6 +74,31 @@ export async function getExchangeRate(
   }
 }
 
+/**
+ * Fetch exchange rates for multiple currencies → base in parallel.
+ * Returns a map: map.get("USD") = how many baseCurrency units per 1 USD.
+ * Missing or failed rates are omitted from the map.
+ */
+export async function getRatesForCurrencies(
+  currencies: CurrencyCode[],
+  baseCurrency: CurrencyCode
+): Promise<Map<CurrencyCode, number>> {
+  const unique = [...new Set(currencies.filter((c) => c !== baseCurrency))];
+  const rates = new Map<CurrencyCode, number>();
+
+  if (unique.length === 0) return rates;
+
+  const results = await Promise.all(
+    unique.map((c) => getExchangeRate(c, baseCurrency).then((r) => [c, r] as const))
+  );
+
+  for (const [currency, result] of results) {
+    if (result?.rate) rates.set(currency, result.rate);
+  }
+
+  return rates;
+}
+
 function formatCached(cached: ExchangeRateCacheRow, pair: string): ExchangeRateResult {
   const rate = Number(cached.rate);
   const avg30d = cached.avg_30d ? Number(cached.avg_30d) : null;
