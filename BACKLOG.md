@@ -74,6 +74,12 @@
 - **What:** The "Ir a" section on the plan page mobile view shows Presupuesto, Periodo, Recurrentes, Deseos as a vertical list of link cards. Replace with a 2x2 grid of buttons for better visual density and scannability.
 - **Found:** User feedback, 2026-04-14
 
+### Dashboard ritmo/burn-rate stale after income received
+- **Priority:** Medium
+- **What:** After linking a nómina (income) to a recurring occurrence, the dashboard ritmo card and burn-rate chart don't update to reflect the new pay-cycle window. "Próximo ingreso" still shows the just-received income instead of advancing to the next one. "día 14 de 30" doesn't shift. Need page refresh.
+- **Context:** `linkExistingTransactionToOccurrence` calls `revalidateFinancialViews()` which should invalidate `dashboard:hero` and `burn-rate` tags. The issue is likely that `useLiveDashboard` or the Route Cache doesn't pick up the change until a full page refresh.
+- **Found:** User testing, 2026-04-14
+
 ### Recurring checklist — unify inline expand + action drawer
 - **Priority:** Medium
 - **What:** The plan tab checklist has two disconnected interaction patterns: (1) tap row → inline payment form with flat buttons, (2) tap ⋮ → bottom Sheet with chip-style admin actions. They look like different apps. Unify into a single cohesive pattern — either improve inline to match chip style with small confirmation Sheet, or merge both into one bottom drawer per-item.
