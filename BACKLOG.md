@@ -35,10 +35,8 @@
 - **Found:** Visual testing, 2026-04-13
 
 ### Mobile recurring admin actions
-- **Priority:** Medium
-- **What:** Add pause/delete/edit actions for recurring templates on mobile. Currently mobile view (`MobileRecurrentesView`) only supports pay/skip — no way to manage templates without switching to desktop.
-- **Options:** Long-press action sheet on each item, or a "manage" link navigating to a detail view with admin actions.
-- **Found:** Visual testing, 2026-04-13
+- **Priority:** Done (this branch)
+- **What:** MoreVertical (⋮) button on each occurrence row opens bottom Sheet with Edit, Pause/Activate, Delete. Reuses RecurringFormDialog and RecurringImpactDialog from desktop.
 
 
 ### Income-aware runway & daily budget
@@ -52,9 +50,9 @@
 - **Known limitation:** Net worth history steps backward using single-currency cashflow, so the foreign portion floats as a constant — acceptable approximation for now.
 
 ### Tag system broader reach
-- **Priority:** Medium
-- **What:** Tags during destinatario rule imports, nómina variants
-- **Context:** Tags exist but are only usable from transaction detail and categorization inbox. Should be available during import flow and when creating recurring templates.
+- **Priority:** Partial (this branch)
+- **What:** Auto-tag from destinatario during import — transactions inherit their matched destinatario's tags. Reconciliation merges also preserve existing tags. Batched for performance.
+- **Remaining:** Tags on recurring templates (needs `recurring_template_tags` migration + form changes + occurrence-to-tx tag copy). Nómina tag variants.
 
 ### Categorization view enhancements
 - **Priority:** Medium

@@ -9,6 +9,7 @@ import type { CurrencyCode } from "@/types/domain";
 import { getNextIncomeOccurrenceCached, getPendingOccurrencesCached } from "@/actions/occurrences";
 import { getRatesForCurrencies } from "@/actions/exchange-rate";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 
 export interface BurnRateDataPoint {
   date: string;       // "YYYY-MM-DD"
@@ -112,8 +113,13 @@ async function getBurnRateCached(
     return rate ? amount * rate : 0; // skip if no rate
   };
 
+  // Debt INFLOW (payment into loan/credit card) is an effective outflow for the user
+  const isEffectiveOutflow = (o: { direction: string; account_type: string }) =>
+    o.direction === "OUTFLOW" ||
+    (o.direction === "INFLOW" && isDebtAccountType(o.account_type));
+
   const obligationMarkers: ObligationMarker[] = (pendingOccurrences ?? [])
-    .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
+    .filter((o) => isEffectiveOutflow(o) && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
       && (o.currency_code === baseCurrency || rates.has(o.currency_code as CurrencyCode)))
     .map((o) => ({
       date: o.occurrence_date,
@@ -122,8 +128,9 @@ async function getBurnRateCached(
     }));
 
   // Compute disponible using window-scoped pending occurrences (convertible currencies only)
+  // Exclude credit card obligations from disponible (they don't reduce liquid balance)
   const windowOutflows = (pendingOccurrences ?? [])
-    .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
+    .filter((o) => isEffectiveOutflow(o) && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
       && o.account_type !== "CREDIT_CARD"
       && (o.currency_code === baseCurrency || rates.has(o.currency_code as CurrencyCode)));
   const totalPending = windowOutflows.reduce((sum, o) => sum + toBase(o.expected_amount, o.currency_code), 0);

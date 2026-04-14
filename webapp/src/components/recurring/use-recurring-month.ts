@@ -137,6 +137,12 @@ export function useRecurringMonth(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthKey]);
 
+  /* ---- Manual refresh (for admin actions that change template state) ---- */
+  const refreshOccurrences = useCallback(async () => {
+    const result = await getOccurrencesForMonth(monthKey);
+    if (result.success) setOccurrences(result.data);
+  }, [monthKey]);
+
   /* ---- pending / completed splits ---- */
   const pending = useMemo(
     () =>
@@ -338,5 +344,6 @@ export function useRecurringMonth(
     // Helpers
     getDateStatus,
     totalPlanned,
+    refreshOccurrences,
   };
 }

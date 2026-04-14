@@ -8,6 +8,7 @@ import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import { getAccounts } from "@/actions/accounts";
 import { getPendingOccurrencesCached, getNextIncomeOccurrenceCached } from "@/actions/occurrences";
 import { getRatesForCurrencies } from "@/actions/exchange-rate";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
@@ -846,8 +847,13 @@ export async function getDashboardHeroData(
       && (o.currency_code === baseCurrency || rates.has(o.currency_code as CurrencyCode))
   );
 
+  // Debt INFLOW (payment into loan/credit card) is an effective outflow for the user
+  const isEffectiveOutflow = (o: { direction: string; account_type: string }) =>
+    o.direction === "OUTFLOW" ||
+    (o.direction === "INFLOW" && isDebtAccountType(o.account_type));
+
   const recurringObligations: PendingObligation[] = windowOccurrences
-    .filter((o) => o.direction === "OUTFLOW")
+    .filter((o) => isEffectiveOutflow(o))
     .map((o) => ({
       id: o.id,
       name: o.merchant_name ?? o.description ?? "Recurrente",
@@ -856,8 +862,9 @@ export async function getDashboardHeroData(
       due_date: o.occurrence_date,
     }));
 
+  // Exclude credit card obligations from disponible (they don't reduce liquid balance)
   const windowObligationsTotal = windowOccurrences
-    .filter((o) => o.direction === "OUTFLOW" && o.account_type !== "CREDIT_CARD")
+    .filter((o) => isEffectiveOutflow(o) && o.account_type !== "CREDIT_CARD")
     .reduce((sum, o) => sum + toBase(o.expected_amount, o.currency_code as CurrencyCode), 0);
 
   // 4. Pending INFLOW occurrences within window (expected income, NOT added to availableToSpend)

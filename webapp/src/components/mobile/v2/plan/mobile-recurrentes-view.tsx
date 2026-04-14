@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Check, ChevronLeft, ChevronRight, Tag } from "lucide-react";
+import { useState, useMemo, useTransition } from "react";
+import { Check, ChevronLeft, ChevronRight, MoreVertical, Pause, Pencil, Play, Tag, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { PANEL_INSET_CLASS, HERO_CARD_GRADIENT_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, HERO_CARD_GRADIENT_CLASS, MOBILE_ACTION_BUTTON_CLASS, MOBILE_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { useRecurringMonth, type OccurrenceItem, type DateStatus } from "@/components/recurring/use-recurring-month";
 import { RecurringConfirmInline } from "@/components/recurring/recurring-confirm-inline";
-import type { CurrencyCode, RecurringTemplateWithRelations, Account } from "@/types/domain";
+import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
+import { RecurringImpactDialog } from "@/components/recurring/recurring-impact-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useCategories } from "@/components/providers/app-data-provider";
+import {
+  deleteRecurringTemplate,
+  toggleRecurringTemplate,
+} from "@/actions/recurring-templates";
+import type { CategoryWithChildren, CurrencyCode, RecurringTemplateWithRelations, Account } from "@/types/domain";
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -59,6 +67,13 @@ export function MobileRecurrentesView({
 }: MobileRecurrentesViewProps) {
   const hook = useRecurringMonth(templates, accounts);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [actionItem, setActionItem] = useState<OccurrenceItem | null>(null);
+  const categories = useCategories();
+
+  const templateMap = useMemo(
+    () => new Map(templates.map((t) => [t.id, t])),
+    [templates]
+  );
 
   const sourceAccounts = useMemo(
     () => accounts
@@ -91,7 +106,7 @@ export function MobileRecurrentesView({
           <button
             type="button"
             onClick={hook.goPrevMonth}
-            className="flex size-7 items-center justify-center rounded-full border border-white/10 text-muted-foreground active:bg-white/5"
+            className="flex size-7 items-center justify-center rounded-full border border-white/6 text-muted-foreground active:bg-white/5"
           >
             <ChevronLeft className="size-3.5" />
           </button>
@@ -101,7 +116,7 @@ export function MobileRecurrentesView({
           <button
             type="button"
             onClick={hook.goNextMonth}
-            className="flex size-7 items-center justify-center rounded-full border border-white/10 text-muted-foreground active:bg-white/5"
+            className="flex size-7 items-center justify-center rounded-full border border-white/6 text-muted-foreground active:bg-white/5"
           >
             <ChevronRight className="size-3.5" />
           </button>
@@ -110,13 +125,13 @@ export function MobileRecurrentesView({
         {/* Summary chips */}
         <div className="mt-3 flex gap-3 text-center">
           <div className="flex-1">
-            <p className="text-[10px] text-amber-400">Pendientes</p>
-            <p className="text-lg font-semibold text-amber-400">{hook.pending.length}</p>
+            <p className="text-[10px] text-z-alert">Pendientes</p>
+            <p className="text-lg font-semibold text-z-alert">{hook.pending.length}</p>
           </div>
           <div className="h-8 w-px bg-white/6 self-center" />
           <div className="flex-1">
-            <p className="text-[10px] text-emerald-400">Completados</p>
-            <p className="text-lg font-semibold text-emerald-400">{hook.completed.length}</p>
+            <p className="text-[10px] text-z-income">Completados</p>
+            <p className="text-lg font-semibold text-z-income">{hook.completed.length}</p>
           </div>
         </div>
       </div>
@@ -131,7 +146,7 @@ export function MobileRecurrentesView({
       {/* Pending payments grouped by date */}
       {hook.isHydrated && sortedDates.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p className={MOBILE_EYEBROW_CLASS}>
             Pendientes
           </p>
           {sortedDates.map((date) => {
@@ -159,41 +174,62 @@ export function MobileRecurrentesView({
 
                     return (
                       <div key={item.key}>
-                        {/* Payment row */}
-                        <button
-                          type="button"
-                          onClick={() => setExpandedKey(isExpanded ? null : item.key)}
+                        {/* Payment row — split into tap area + action button */}
+                        <div
                           className={cn(
-                            "flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors active:bg-white/[0.03]",
+                            "flex w-full items-center gap-2.5 px-3 py-2.5",
                             isBusy && "opacity-50 pointer-events-none"
                           )}
                         >
-                          {/* Category dot */}
-                          <span
-                            className="flex size-7 shrink-0 items-center justify-center rounded-lg"
-                            style={{ backgroundColor: item.categoryColor + "20" }}
+                          {/* Tap area for expand/collapse */}
+                          <button
+                            type="button"
+                            onClick={() => setExpandedKey(isExpanded ? null : item.key)}
+                            className="flex flex-1 items-center gap-2.5 text-left transition-colors active:bg-white/[0.03]"
                           >
-                            <Tag className="size-3" style={{ color: item.categoryColor }} />
-                          </span>
+                            {/* Category dot */}
+                            <span
+                              className="flex size-7 shrink-0 items-center justify-center rounded-lg"
+                              style={{ backgroundColor: item.categoryColor + "20" }}
+                            >
+                              <Tag className="size-3" style={{ color: item.categoryColor }} />
+                            </span>
 
-                          {/* Merchant + account */}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-medium">{item.merchant}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {item.accountName}
-                            </p>
-                          </div>
+                            {/* Merchant + account */}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-medium">{item.merchant}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {item.accountName}
+                              </p>
+                            </div>
 
-                          {/* Amount */}
-                          <span className="shrink-0 text-xs font-semibold tabular-nums">
-                            {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
-                          </span>
+                            {/* Amount */}
+                            <span className="shrink-0 text-xs font-semibold tabular-nums">
+                              {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
+                            </span>
+                          </button>
 
                           {/* Action hint */}
-                          <span className="shrink-0 rounded-md bg-z-brass/10 px-2 py-0.5 text-[10px] text-z-brass">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedKey(isExpanded ? null : item.key)}
+                            className={cn("shrink-0", MOBILE_ACTION_BUTTON_CLASS)}
+                          >
                             {isExpanded ? "Cerrar" : "Pagar"}
-                          </span>
-                        </button>
+                          </button>
+
+                          {/* Admin actions */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionItem(item);
+                            }}
+                            className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-white/10"
+                          >
+                            <MoreVertical className="size-3.5" />
+                          </button>
+                        </div>
 
                         {/* Inline confirm panel */}
                         {isExpanded && (
@@ -238,8 +274,8 @@ export function MobileRecurrentesView({
       {/* No pending state */}
       {hook.isHydrated && sortedDates.length === 0 && hook.completed.length > 0 && (
         <div className={cn(PANEL_INSET_CLASS, "py-6 text-center")}>
-          <Check className="mx-auto size-6 text-emerald-400" />
-          <p className="mt-2 text-xs font-medium text-emerald-400">Todo al día</p>
+          <Check className="mx-auto size-6 text-z-income" />
+          <p className="mt-2 text-xs font-medium text-z-income">Todo al día</p>
           <p className="mt-0.5 text-[10px] text-muted-foreground">
             {hook.completed.length} pago{hook.completed.length !== 1 ? "s" : ""} completado{hook.completed.length !== 1 ? "s" : ""}
           </p>
@@ -250,7 +286,149 @@ export function MobileRecurrentesView({
       {hook.isHydrated && hook.completed.length > 0 && (
         <CompletedSection completed={hook.completed} />
       )}
+
+      {/* Admin action sheet */}
+      <TemplateActionSheet
+        item={actionItem}
+        template={actionItem ? templateMap.get(actionItem.templateId) ?? null : null}
+        accounts={accounts}
+        categories={categories}
+        onClose={() => setActionItem(null)}
+        onMutate={hook.refreshOccurrences}
+      />
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Template Action Sheet                                              */
+/* ------------------------------------------------------------------ */
+
+function TemplateActionSheet({
+  item,
+  template,
+  accounts,
+  categories,
+  onClose,
+  onMutate,
+}: {
+  item: OccurrenceItem | null;
+  template: RecurringTemplateWithRelations | null;
+  accounts: Account[];
+  categories: CategoryWithChildren[];
+  onClose: () => void;
+  onMutate: () => Promise<void>;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  const open = !!item && !!template;
+
+  const handleActivate = () => {
+    if (!template) return;
+    startTransition(async () => {
+      await toggleRecurringTemplate(template.id, true);
+      await onMutate();
+      onClose();
+    });
+  };
+
+  const handlePauseConfirm = () => {
+    if (!template) return;
+    startTransition(async () => {
+      await toggleRecurringTemplate(template.id, false);
+      await onMutate();
+      onClose();
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!template) return;
+    startTransition(async () => {
+      await deleteRecurringTemplate(template.id);
+      await onMutate();
+      onClose();
+    });
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+        <SheetHeader>
+          <SheetTitle className="text-left">{template?.merchant_name}</SheetTitle>
+        </SheetHeader>
+
+        {template && (
+          <div className="mt-4 space-y-1">
+            {/* Edit */}
+            <RecurringFormDialog
+              template={template ?? undefined}
+              accounts={accounts}
+              categories={categories}
+              trigger={
+                <button
+                  type="button"
+                  disabled={isPending}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left active:bg-white/5 disabled:opacity-50"
+                >
+                  <Pencil className="size-4 text-muted-foreground" />
+                  <span className="text-sm">Editar</span>
+                </button>
+              }
+            />
+
+            {/* Pause / Activate */}
+            {template.is_active ? (
+              <RecurringImpactDialog
+                templateId={template.id}
+                templateName={template.merchant_name ?? "Recurrente"}
+                currencyCode={(template.currency_code ?? "COP") as CurrencyCode}
+                action="pause"
+                onConfirm={handlePauseConfirm}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left active:bg-white/5"
+                    disabled={isPending}
+                  >
+                    <Pause className="size-4 text-muted-foreground" />
+                    <span className="text-sm">Pausar</span>
+                  </button>
+                }
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={handleActivate}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left active:bg-white/5"
+                disabled={isPending}
+              >
+                <Play className="size-4 text-muted-foreground" />
+                <span className="text-sm">{isPending ? "Activando..." : "Activar"}</span>
+              </button>
+            )}
+
+            {/* Delete */}
+            <RecurringImpactDialog
+              templateId={template.id}
+              templateName={template.merchant_name ?? "Recurrente"}
+              currencyCode={(template.currency_code ?? "COP") as CurrencyCode}
+              action="delete"
+              onConfirm={handleDeleteConfirm}
+              trigger={
+                <button
+                  type="button"
+                  disabled={isPending}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-z-debt active:bg-white/5 disabled:opacity-50"
+                >
+                  <Trash2 className="size-4" />
+                  <span className="text-sm">Eliminar</span>
+                </button>
+              }
+            />
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -279,7 +457,7 @@ function CompletedSection({
         <div className={cn(PANEL_INSET_CLASS, "divide-y divide-white/5")}>
           {completed.map((item) => (
             <div key={item.key} className="flex items-center gap-2.5 px-3 py-2.5 opacity-60">
-              <Check className="size-4 shrink-0 text-emerald-400" />
+              <Check className="size-4 shrink-0 text-z-income" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs">{item.merchant}</p>
                 <p className="text-[10px] text-muted-foreground">{formatDate(item.date, "dd MMM")}</p>

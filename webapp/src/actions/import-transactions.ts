@@ -803,6 +803,40 @@ export async function importTransactions(
     ])
   );
 
+  // Pre-fetch destinatario → tag mappings to auto-tag imported transactions
+  const destIds = [...new Set(
+    transactions.filter((tx) => tx.destinatario_id).map((tx) => tx.destinatario_id!)
+  )];
+  const destTagMap = new Map<string, string[]>();
+  if (destIds.length > 0) {
+    const { data: destTags } = await supabase
+      .from("destinatario_tags")
+      .select("destinatario_id, tag_id")
+      .in("destinatario_id", destIds);
+    for (const dt of destTags ?? []) {
+      const existing = destTagMap.get(dt.destinatario_id) ?? [];
+      existing.push(dt.tag_id);
+      destTagMap.set(dt.destinatario_id, existing);
+    }
+  }
+
+  // Pre-fetch tags for reconciliation candidates (avoid N+1 inside loop)
+  const candidateIds = reconciliationDecisions
+    .filter((d) => d.decision !== "KEEP_BOTH")
+    .map((d) => d.candidateTransactionId);
+  const existingTagMap = new Map<string, string[]>();
+  if (candidateIds.length > 0) {
+    const { data: candidateTags } = await supabase
+      .from("transaction_tags")
+      .select("transaction_id, tag_id")
+      .in("transaction_id", candidateIds);
+    for (const ct of candidateTags ?? []) {
+      const existing = existingTagMap.get(ct.transaction_id) ?? [];
+      existing.push(ct.tag_id);
+      existingTagMap.set(ct.transaction_id, existing);
+    }
+  }
+
   let imported = 0;
   let skipped = 0;
   let errors = 0;
@@ -811,6 +845,7 @@ export async function importTransactions(
   let leftAsSeparate = 0;
   const details: string[] = [];
   const balanceDeltaTxs: TransactionToImport[] = [];
+  const pendingTagInserts: { transaction_id: string; tag_id: string }[] = [];
 
   for (const [txIndex, tx] of transactions.entries()) {
     // Use original_amount (full purchase price) for idempotency when available,
@@ -864,6 +899,14 @@ export async function importTransactions(
     }
 
     imported++;
+
+    // Accumulate auto-tags from destinatario (batched after loop)
+    const tagIds = tx.destinatario_id ? destTagMap.get(tx.destinatario_id) : undefined;
+    if (tagIds) {
+      for (const tag_id of tagIds) {
+        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id });
+      }
+    }
 
     await linkTransactionToOccurrence(
       tx.account_id, tx.transaction_date,
@@ -927,6 +970,14 @@ export async function importTransactions(
       })
       .eq("user_id", user.id)
       .eq("id", existingTx.id);
+
+    // Copy existing transaction's tags to surviving (imported) transaction (pre-fetched)
+    const existingTags = existingTagMap.get(existingTx.id);
+    if (existingTags) {
+      for (const tag_id of existingTags) {
+        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id });
+      }
+    }
 
     if (decision.decision === "AUTO_MERGE") autoMerged++;
     else manualMerged++;
@@ -1053,9 +1104,21 @@ export async function importTransactions(
     }
   }
 
+  // Batch-insert all accumulated transaction tags
+  if (pendingTagInserts.length > 0) {
+    const { error: tagError } = await supabase
+      .from("transaction_tags")
+      .upsert(pendingTagInserts, { onConflict: "transaction_id,tag_id", ignoreDuplicates: true });
+    if (tagError) {
+      console.error("Failed to auto-tag imported transactions:", tagError.message);
+      details.push(`Auto-etiquetado parcial: ${tagError.message}`);
+    }
+  }
+
   revalidateFinancialViews();
   revalidateTag("snapshots", "zeta");
   revalidateTag("impact", "zeta");
+  revalidateTag("tags", "zeta");
 
   await trackProductEvent({
     event_name: "import_completed",

@@ -44,7 +44,7 @@ export function RecurringConfirmInline({
   isPending,
   sourceAccounts,
 }: RecurringConfirmInlineProps) {
-  const isIncome = item.direction === "INFLOW";
+  const isIncome = item.direction === "INFLOW" && !item.isDebtPayment;
   const [amount, setAmount] = useState<string>(String(item.plannedAmount));
   const [paymentDate, setPaymentDate] = useState<string>(
     format(new Date(), "yyyy-MM-dd")
