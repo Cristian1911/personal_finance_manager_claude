@@ -2,6 +2,7 @@
 
 import { revalidateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { parsePdfBuffer } from "@/lib/email-ingest/pdf-handler";
 import { parseStatementFilename, matchAccountByLast4 } from "@/lib/email-ingest/statement-filename";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -199,6 +200,7 @@ export async function markEmailPdfStatementImported(
     await admin.storage.from("email-pdfs").remove([row.storage_path]);
   }
 
+  revalidateFinancialViews();
   revalidateTag("email-ingest", "zeta");
   return { success: true, data: null };
 }
