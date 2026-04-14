@@ -17,7 +17,8 @@ interface InicioMetricsGridProps {
   currency: CurrencyCode;
   /** Burndown data — shown as expanded view of Ritmo chip */
   burnRateData: BurnRateResponse | null;
-  totalBudget: number;
+  /** @deprecated No longer used after budget-pace chart removal. Kept for caller compat. */
+  totalBudget?: number;
   /** Controlled from parent */
   expanded: string | null;
   onToggle: (id: string) => void;

@@ -51,6 +51,8 @@ export function InicioHero({
   expanded = false,
   onToggle,
 }: InicioHeroProps) {
+  const todayStr = toColombiaDateString(new Date());
+  const isPayday = nextIncomeDate === todayStr;
 
   return (
     <button
@@ -77,7 +79,7 @@ export function InicioHero({
 
       <p className="mt-2 text-xs text-muted-foreground">
         {nextIncomeDate
-          ? <>{`= ${formatCurrency(availableTotal, currency)} · `}{nextIncomeDate === toColombiaDateString(new Date()) ? "hoy" : `${daysRemaining} días`}{` hasta ${formatDate(nextIncomeDate, "d MMM")}`}</>
+          ? <>{`= ${formatCurrency(availableTotal, currency)} · `}{isPayday ? "hoy" : `${daysRemaining} días`}{` hasta ${formatDate(nextIncomeDate, "d MMM")}`}</>
           : <>{`= ${formatCurrency(availableTotal, currency)} · ${daysRemaining} días restantes`}</>
         }
       </p>

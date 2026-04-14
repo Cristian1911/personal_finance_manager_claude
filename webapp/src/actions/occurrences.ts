@@ -8,6 +8,7 @@ import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import {
   generateOccurrenceRowsBatch,
 } from "@/lib/utils/occurrence-generator";
@@ -222,7 +223,7 @@ export async function getNextIncomeOccurrenceCached(
     if (tpl.direction !== "INFLOW") continue;
     if (tpl.currency_code !== currency) continue;
     const acctType = tpl.accounts?.account_type;
-    if (acctType === "CREDIT_CARD" || acctType === "LOAN") continue;
+    if (acctType && isDebtAccountType(acctType)) continue;
 
     const occDate = new Date(row.occurrence_date + "T12:00:00");
     const today = new Date(todayStr + "T12:00:00");
