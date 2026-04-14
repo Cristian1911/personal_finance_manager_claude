@@ -13,7 +13,6 @@ import { ensureCurrentOccurrences } from "@/actions/occurrences";
 import {
   getOccurrencesBetween,
   getNextOccurrence,
-  DEBT_PAYMENT_CATEGORY_ID,
   TRANSFER_CATEGORY_ID,
   getDebtPaymentCategoryId,
 } from "@zeta/shared";
@@ -648,7 +647,7 @@ function buildRecurringPaymentTransactions(params: {
           direction: "INFLOW",
           raw_description: `Abono deuda desde ${sourceAccount.name} - ${baseLabel}`,
           merchant_name: baseLabel,
-          category_id: params.template.category_id ?? DEBT_PAYMENT_CATEGORY_ID,
+          category_id: params.template.category_id ?? getDebtPaymentCategoryId(params.targetAccount.account_type),
           notes: "Abono de deuda marcado desde checklist recurrente",
         },
       ],

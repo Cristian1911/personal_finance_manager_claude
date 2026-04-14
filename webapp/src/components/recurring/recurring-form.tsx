@@ -101,7 +101,10 @@ export function RecurringForm({
         : SUBCATEGORY_CUOTA_CREDITO;
       setCategoryId(defaultCat);
     }
-  }, [isDebtAccount, categoryId, selectedAccount?.account_type]);
+    // categoryId intentionally omitted — only fire when account changes,
+    // not on every user category selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDebtAccount, selectedAccount?.account_type]);
 
   function nextOccurrenceForDay(dayOfMonth: number): string {
     const now = new Date();
