@@ -17,7 +17,9 @@ import {
   deleteRecurringTemplate,
   toggleRecurringTemplate,
 } from "@/actions/recurring-templates";
-import { revertOccurrence } from "@/actions/occurrences";
+import { revertOccurrence, getCandidateTransactionsForOccurrence } from "@/actions/occurrences";
+import type { CandidateTransaction } from "@/actions/occurrences";
+import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
 import { toast } from "sonner";
 import type { ActionResult } from "@/types/actions";
 import type { CategoryWithChildren, CurrencyCode, RecurringTemplateWithRelations, Account } from "@/types/domain";
@@ -87,6 +89,24 @@ export function MobileRecurrentesView({
       .map((a) => ({ id: a.id, name: a.name })),
     [accounts]
   );
+
+  /* ---- Link existing transaction flow ---- */
+  const [linkingItem, setLinkingItem] = useState<OccurrenceItem | null>(null);
+  const [linkCandidates, setLinkCandidates] = useState<CandidateTransaction[]>([]);
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
+
+  const handleOpenLinkPicker = async (item: OccurrenceItem) => {
+    setLinkingItem(item);
+    setIsLoadingCandidates(true);
+    const result = await getCandidateTransactionsForOccurrence(item.occurrenceId);
+    setIsLoadingCandidates(false);
+    if (result.success) {
+      setLinkCandidates(result.data);
+    } else {
+      toast.error(result.error ?? "Error al buscar transacciones");
+      setLinkingItem(null);
+    }
+  };
 
   const sortedDates = useMemo(
     () => Array.from(hook.pendingByDate.keys())
@@ -255,6 +275,10 @@ export function MobileRecurrentesView({
                                 setExpandedKey(null);
                               }}
                               onCancel={() => setExpandedKey(null)}
+                              onLinkExisting={() => {
+                                setExpandedKey(null);
+                                handleOpenLinkPicker(item);
+                              }}
                               isPending={isBusy}
                               sourceAccounts={sourceAccounts}
                             />
@@ -525,6 +549,39 @@ function CompletedSection({
           })}
         </div>
       )}
+
+      {/* Link existing transaction sheet */}
+      <LinkPickerSheet
+        open={!!linkingItem}
+        onOpenChange={(open) => { if (!open) setLinkingItem(null); }}
+        title="Vincular transacción"
+        subtitle={linkingItem ? `${linkingItem.merchant} · ${formatCurrency(linkingItem.plannedAmount, linkingItem.currencyCode as CurrencyCode)} esperado · ${formatDate(linkingItem.date)}` : ""}
+        candidates={linkCandidates.map((c) => ({
+          id: c.id,
+          label: c.description,
+          sublabel: `${formatDate(c.transaction_date)} · ${c.provider ?? "Manual"}`,
+          amount: c.amount,
+          currencyCode: c.currency_code,
+          direction: linkingItem?.direction ?? "OUTFLOW",
+          matchScore: c.matchScore,
+        }))}
+        onConfirm={(txId) => {
+          if (linkingItem) {
+            hook.linkExisting(linkingItem, txId);
+            setLinkingItem(null);
+          }
+        }}
+        isPending={hook.busyItems[linkingItem?.key ?? ""] ?? false}
+        showAllLabel="Mostrar todas las transacciones →"
+        onShowAll={async () => {
+          if (!linkingItem) return;
+          setIsLoadingCandidates(true);
+          const result = await getCandidateTransactionsForOccurrence(linkingItem.occurrenceId, true);
+          setIsLoadingCandidates(false);
+          if (result.success) setLinkCandidates(result.data);
+        }}
+        isLoadingAll={isLoadingCandidates}
+      />
     </div>
   );
 }

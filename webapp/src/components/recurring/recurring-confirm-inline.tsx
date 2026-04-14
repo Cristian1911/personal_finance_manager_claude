@@ -28,6 +28,7 @@ interface RecurringConfirmInlineProps {
   onConfirm: (amount: number, date: string, sourceAccountId?: string) => void;
   onSkip: () => void;
   onCancel: () => void;
+  onLinkExisting?: () => void;
   isPending: boolean;
   sourceAccounts?: SourceAccount[];
 }
@@ -41,6 +42,7 @@ export function RecurringConfirmInline({
   onConfirm,
   onSkip,
   onCancel,
+  onLinkExisting,
   isPending,
   sourceAccounts,
 }: RecurringConfirmInlineProps) {
@@ -136,6 +138,17 @@ export function RecurringConfirmInline({
           >
             {isIncome ? "Ya recibí" : "Ya pagué"}
           </Button>
+          {onLinkExisting && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onLinkExisting}
+              disabled={isPending}
+            >
+              Vincular existente
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"

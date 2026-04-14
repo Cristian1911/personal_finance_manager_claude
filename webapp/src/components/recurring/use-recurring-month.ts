@@ -17,6 +17,7 @@ import {
   getOccurrencesForMonth,
   skipOccurrence,
   ensureOccurrencesForRange,
+  linkExistingTransactionToOccurrence,
 } from "@/actions/occurrences";
 import { toast } from "sonner";
 import type {
@@ -315,6 +316,40 @@ export function useRecurringMonth(
     [router]
   );
 
+  /* ---- link existing transaction ---- */
+  const linkExisting = useCallback(
+    async (item: OccurrenceItem, transactionId: string) => {
+      setBusyItems((prev) => ({ ...prev, [item.key]: true }));
+
+      const result = await linkExistingTransactionToOccurrence(
+        item.occurrenceId,
+        transactionId,
+      );
+
+      setBusyItems((prev) => ({ ...prev, [item.key]: false }));
+
+      if (!result.success) {
+        toast.error(result.error ?? "No se pudo vincular la transacción.");
+        return;
+      }
+
+      setOccurrences((prev) =>
+        prev.map((o) =>
+          o.id === item.occurrenceId ? { ...o, status: "paid" as const } : o
+        )
+      );
+
+      const isIncome = item.direction === "INFLOW" && !item.isDebtPayment;
+      toast.success(
+        isIncome
+          ? "Ingreso vinculado a recurrente"
+          : "Transacción vinculada a recurrente"
+      );
+      router.refresh();
+    },
+    [router]
+  );
+
   /* ---- totals ---- */
   const totalPlanned = useMemo(
     () =>
@@ -352,6 +387,7 @@ export function useRecurringMonth(
     // Actions
     confirmPayment,
     skipPayment,
+    linkExisting,
     busyItems,
 
     // Helpers
