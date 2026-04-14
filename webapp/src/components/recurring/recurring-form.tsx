@@ -23,6 +23,7 @@ import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, RecurringTemplate, TransactionDirection } from "@/types/domain";
 
 const FREQUENCY_OPTIONS = [
+  { value: "ONCE", label: "Una vez" },
   { value: "WEEKLY", label: "Semanal" },
   { value: "BIWEEKLY", label: "Quincenal" },
   { value: "MONTHLY", label: "Mensual" },
@@ -72,6 +73,9 @@ export function RecurringForm({
   );
   const [categoryId, setCategoryId] = useState<string | null>(
     template?.category_id ?? null
+  );
+  const [frequency, setFrequency] = useState<string>(
+    template?.frequency ?? "MONTHLY"
   );
   const [transferSourceAccountId, setTransferSourceAccountId] = useState<string>(
     template?.transfer_source_account_id ?? ""
@@ -192,7 +196,8 @@ export function RecurringForm({
           <Label htmlFor="frequency">Frecuencia</Label>
           <Select
             name="frequency"
-            defaultValue={template?.frequency ?? "MONTHLY"}
+            value={frequency}
+            onValueChange={setFrequency}
           >
             <SelectTrigger>
               <SelectValue />
@@ -279,26 +284,28 @@ export function RecurringForm({
         value={selectedAccount?.currency_code ?? template?.currency_code ?? "COP"}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${frequency === "ONCE" ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
         <div className="space-y-2">
-          <Label htmlFor="start_date">Fecha de inicio</Label>
+          <Label htmlFor="start_date">{frequency === "ONCE" ? "Fecha de pago" : "Fecha de inicio"}</Label>
           <DatePicker
             value={startDate}
             onChange={(v) => setStartDate(v ?? defaultStartDate)}
             name="start_date"
-            placeholder="Fecha de inicio"
+            placeholder={frequency === "ONCE" ? "Fecha de pago" : "Fecha de inicio"}
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="end_date">Fecha fin (opcional)</Label>
-          <DatePicker
-            value={endDate}
-            onChange={setEndDate}
-            name="end_date"
-            placeholder="Sin fecha fin"
-          />
-        </div>
+        {frequency !== "ONCE" && (
+          <div className="space-y-2">
+            <Label htmlFor="end_date">Fecha fin (opcional)</Label>
+            <DatePicker
+              value={endDate}
+              onChange={setEndDate}
+              name="end_date"
+              placeholder="Sin fecha fin"
+            />
+          </div>
+        )}
       </div>
 
       {isDebtAccount ? (
