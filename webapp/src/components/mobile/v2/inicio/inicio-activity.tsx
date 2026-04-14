@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, ArrowRight, Pencil } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ArrowRight, Link2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatDate } from "@/lib/utils/date";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { TagChip } from "@/components/tags/tag-chip";
+import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import {
+  getCandidateOccurrencesForTransaction,
+  linkExistingTransactionToOccurrence,
+  getAccountIdsWithPendingOccurrences,
+} from "@/actions/occurrences";
+import type { CandidateOccurrence } from "@/actions/occurrences";
+import { toast } from "sonner";
 import type { CurrencyCode } from "@/types/domain";
 
 interface RecentTransactionMobile {
@@ -16,10 +25,12 @@ interface RecentTransactionMobile {
   amount: number;
   currency_code: string;
   direction: "INFLOW" | "OUTFLOW";
+  account_id: string;
   account_name: string;
   account_color: string | null;
   category_name: string | null;
   category_icon: string | null;
+  recurrence_group_id: string | null;
   tags: Array<{ id: string; name: string; color: string | null; group_color: string | null }>;
 }
 
@@ -29,6 +40,42 @@ interface InicioActivityProps {
 
 export function InicioActivity({ transactions }: InicioActivityProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  /* ---- Linkable account IDs (loaded client-side) ---- */
+  const [linkableAccountIds, setLinkableAccountIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    getAccountIdsWithPendingOccurrences().then((ids) => setLinkableAccountIds(new Set(ids)));
+  }, []);
+
+  /* ---- Link to recurring flow ---- */
+  const [linkingTxId, setLinkingTxId] = useState<string | null>(null);
+  const [occurrenceCandidates, setOccurrenceCandidates] = useState<CandidateOccurrence[]>([]);
+  const [isLinking, startLinkTransition] = useTransition();
+
+  const handleOpenLinkPicker = async (txId: string) => {
+    setLinkingTxId(txId);
+    const result = await getCandidateOccurrencesForTransaction(txId);
+    if (result.success) {
+      setOccurrenceCandidates(result.data);
+    } else {
+      toast.error(result.error ?? "Error al buscar recurrentes");
+      setLinkingTxId(null);
+    }
+  };
+
+  const handleConfirmLink = (occurrenceId: string) => {
+    if (!linkingTxId) return;
+    const txId = linkingTxId;
+    setLinkingTxId(null);
+    startLinkTransition(async () => {
+      const result = await linkExistingTransactionToOccurrence(occurrenceId, txId);
+      if (result.success) {
+        toast.success("Transacción vinculada a recurrente");
+      } else {
+        toast.error(result.error ?? "No se pudo vincular");
+      }
+    });
+  };
 
   if (transactions.length === 0) return null;
 
@@ -125,13 +172,28 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                       <span className="text-[11px] text-muted-foreground">
                         {tx.direction === "INFLOW" ? "Ingreso" : "Gasto"} &middot; {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
                       </span>
-                      <Link
-                        href={`/transactions/${tx.id}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
-                      >
-                        <Pencil className="size-2.5" />
-                        Ver detalle
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        {linkableAccountIds?.has(tx.account_id) && !tx.recurrence_group_id && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleOpenLinkPicker(tx.id);
+                            }}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
+                          >
+                            <Link2 className="size-2.5" />
+                            Vincular
+                          </button>
+                        )}
+                        <Link
+                          href={`/transactions/${tx.id}`}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
+                        >
+                          <Pencil className="size-2.5" />
+                          Ver detalle
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -148,6 +210,30 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
         Ver todos
         <ArrowRight className="size-3" />
       </Link>
+
+      {/* Link to recurring sheet */}
+      {linkingTxId && (
+        <LinkPickerSheet
+          open={!!linkingTxId}
+          onOpenChange={(open) => { if (!open) setLinkingTxId(null); }}
+          title="Vincular a recurrente"
+          subtitle={(() => {
+            const tx = transactions.find((t) => t.id === linkingTxId);
+            return tx ? `${tx.description} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}` : "";
+          })()}
+          candidates={occurrenceCandidates.map((o) => ({
+            id: o.id,
+            label: o.merchant,
+            sublabel: `${formatDate(o.occurrenceDate)} · ${formatCurrency(o.expectedAmount, o.currencyCode as CurrencyCode)} esperado`,
+            amount: o.expectedAmount,
+            currencyCode: o.currencyCode,
+            direction: transactions.find((t) => t.id === linkingTxId)?.direction ?? "OUTFLOW",
+            matchScore: o.matchScore,
+          }))}
+          onConfirm={handleConfirmLink}
+          isPending={isLinking}
+        />
+      )}
     </div>
   );
 }
