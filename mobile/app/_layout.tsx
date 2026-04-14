@@ -275,6 +275,22 @@ function RootLayoutNav() {
               name="menu"
               options={{ presentation: "card", headerShown: false }}
             />
+            <Stack.Screen
+              name="categorizar"
+              options={{ presentation: "card", headerShown: false }}
+            />
+            <Stack.Screen
+              name="recurrentes"
+              options={{ presentation: "card", headerShown: false }}
+            />
+            <Stack.Screen
+              name="deudas/planificador"
+              options={{ presentation: "card", headerShown: false }}
+            />
+            <Stack.Screen
+              name="deseos"
+              options={{ presentation: "card", headerShown: false }}
+            />
           </Stack>
         </BugReportViewShot>
         <BugFAB />

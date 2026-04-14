@@ -6,6 +6,7 @@ import { useSync } from "../../lib/sync/hooks";
 import { getTransactions } from "../../lib/repositories/transactions";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { getBudgetProgress, type BudgetProgressRow } from "../../lib/repositories/budgets";
+import { getRecurringSummary } from "../../lib/repositories/recurring";
 import { computeCashflow } from "../../lib/utils/cashflow";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileHeader } from "../ui/MobileHeader";
@@ -14,6 +15,8 @@ import { useExpandableZone } from "../ui/useExpandableZone";
 import { MonthSelector } from "../common/MonthSelector";
 import { PlanNetHero } from "./PlanNetHero";
 import { PlanDrillCards } from "./PlanDrillCards";
+import { PlanBudgetSection } from "./PlanBudgetSection";
+import { PlanRecurringSummary } from "./PlanRecurringSummary";
 
 interface PlanState {
   ingresos: number;
@@ -21,10 +24,14 @@ interface PlanState {
   budgetItems: BudgetProgressRow[];
   recurringCount: number;
   daysRemaining: number;
+  recurringTotal: number;
+  recurringPending: number;
+  recurringPaid: number;
 }
 
 const INITIAL: PlanState = {
   ingresos: 0, gastos: 0, budgetItems: [], recurringCount: 0, daysRemaining: 0,
+  recurringTotal: 0, recurringPending: 0, recurringPaid: 0,
 };
 
 export function PlanRoot() {
@@ -45,10 +52,11 @@ export function PlanRoot() {
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const daysRemaining = daysInMonth - now.getDate();
 
-      const [txs, accounts, budgets] = await Promise.all([
+      const [txs, accounts, budgets, recSummary] = await Promise.all([
         getTransactions({ month: currentMonth, limit: 500 }) as Promise<any[]>,
         getAllAccounts(),
         getBudgetProgress(currentMonth),
+        getRecurringSummary(currentMonth),
       ]);
 
       const { totalInflow, totalOutflow } = computeCashflow(txs, accounts);
@@ -61,8 +69,11 @@ export function PlanRoot() {
         ingresos: totalInflow,
         gastos: totalOutflow,
         budgetItems: budgets,
-        recurringCount: recurring,
+        recurringCount: recurring + recSummary.pending_count + recSummary.paid_count,
         daysRemaining,
+        recurringTotal: recSummary.total_expected,
+        recurringPending: recSummary.pending_count,
+        recurringPaid: recSummary.paid_count,
       });
     } catch (error) {
       console.error("Failed to load plan data:", error);
@@ -116,6 +127,20 @@ export function PlanRoot() {
           daysRemaining={data.daysRemaining}
           expanded={activeZone === "hero"}
           onToggle={() => toggle("hero")}
+        />
+
+        {data.recurringTotal > 0 && (
+          <PlanRecurringSummary
+            totalExpected={data.recurringTotal}
+            pendingCount={data.recurringPending}
+            paidCount={data.recurringPaid}
+            currency={currency}
+          />
+        )}
+
+        <PlanBudgetSection
+          budgetItems={data.budgetItems}
+          currency={currency}
         />
 
         <PlanDrillCards

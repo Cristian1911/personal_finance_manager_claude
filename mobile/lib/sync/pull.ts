@@ -7,7 +7,14 @@ const SYNC_TABLES = [
   "accounts",
   "categories",
   "budgets",
+  "tag_groups",
+  "tags",
+  "destinatarios",
+  "destinatario_rules",
+  "recurring_transaction_templates",
+  "recurring_occurrences",
   "transactions",
+  "transaction_tags",
   "statement_snapshots",
 ] as const;
 
@@ -21,6 +28,10 @@ const BOOLEAN_FIELDS: Record<string, string[]> = {
   profiles: ["onboarding_completed"],
   categories: ["is_system"],
   transactions: ["is_excluded"],
+  recurring_transaction_templates: ["is_active"],
+  destinatarios: ["is_active"],
+  tag_groups: ["is_system"],
+  tags: ["is_system"],
 };
 
 /** JSON fields per table that need stringification for SQLite */
@@ -59,15 +70,26 @@ async function getTableColumns(
   const rows = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(${table})`
   );
-  const columns = new Set(rows.map((row) => row.name));
+  const columns = new Set<string>(rows.map((row: { name: string }) => row.name));
   TABLE_COLUMNS_CACHE.set(table, columns);
   return columns;
 }
+
+/** Tables with no updated_at — always full-replace on every sync */
+const FULL_REPLACE_TABLES = new Set<string>([
+  "tag_groups",
+  "tags",
+  "destinatario_rules",
+  "recurring_occurrences",
+  "transaction_tags",
+]);
 
 async function pullTable(
   db: Awaited<ReturnType<typeof getDatabase>>,
   table: SyncTable
 ): Promise<number> {
+  const isFullReplace = FULL_REPLACE_TABLES.has(table);
+
   // Read last sync timestamp
   const meta = await db.getFirstAsync<{ last_synced_at: string | null }>(
     "SELECT last_synced_at FROM sync_metadata WHERE table_name = ?",
@@ -76,14 +98,24 @@ async function pullTable(
   const lastSyncedAt = meta?.last_synced_at;
 
   // Query Supabase for new/updated rows
-  let query: any = supabase.from(table).select("*");
-  if (lastSyncedAt) {
+  // Cast to any — mobile types file may not include all tables
+  let query: any = (supabase as any).from(table).select("*");
+  if (!isFullReplace && lastSyncedAt) {
     query = query.gt("updated_at", lastSyncedAt);
   }
 
-  const { data, error } = await query.order("created_at", { ascending: true });
+  // Junction tables have no created_at — skip ordering
+  if (!isFullReplace) {
+    query = query.order("created_at", { ascending: true });
+  }
+  const { data, error } = await query;
   if (error) throw new Error(`Pull ${table} failed: ${error.message}`);
   if (!data || data.length === 0) return 0;
+
+  // For full-replace junction tables, clear existing rows first
+  if (isFullReplace) {
+    await db.runAsync(`DELETE FROM ${table}`);
+  }
 
   // Upsert each row into SQLite (skip only invalid rows, don't fail whole sync)
   let upserted = 0;

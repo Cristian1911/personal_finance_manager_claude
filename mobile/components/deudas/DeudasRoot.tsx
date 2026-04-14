@@ -4,6 +4,7 @@ import { useFocusEffect } from "expo-router";
 import type { CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { getDebtOverview, type DebtOverviewData } from "../../lib/repositories/debt";
+import { getDatabase } from "../../lib/db/database";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
@@ -11,6 +12,16 @@ import { useExpandableZone } from "../ui/useExpandableZone";
 import { DeudasHero } from "./DeudasHero";
 import { DeudasGrid } from "./DeudasGrid";
 import { DeudasAccountsAccordion } from "./DeudasAccountsAccordion";
+import { DeudasSalaryBar } from "./DeudasSalaryBar";
+import { DeudasPlanificadorLink } from "./DeudasPlanificadorLink";
+
+async function getMonthlyIncome(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ estimated_monthly_income: number | null }>(
+    "SELECT estimated_monthly_income FROM profiles LIMIT 1"
+  );
+  return row?.estimated_monthly_income ?? 0;
+}
 
 export function DeudasRoot() {
   const { sync } = useSync();
@@ -18,13 +29,18 @@ export function DeudasRoot() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<DebtOverviewData | null>(null);
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
 
   const currency: CurrencyCode = "COP";
 
   const loadData = useCallback(async () => {
     try {
-      const overview = await getDebtOverview();
+      const [overview, income] = await Promise.all([
+        getDebtOverview(),
+        getMonthlyIncome(),
+      ]);
       setData(overview);
+      setMonthlyIncome(income);
     } catch (error) {
       console.error("Failed to load debt data:", error);
     }
@@ -86,10 +102,18 @@ export function DeudasRoot() {
               />
             )}
 
+            <DeudasSalaryBar
+              monthlyIncome={monthlyIncome}
+              totalDebtPayment={data.totalMonthlyPayment}
+              currency={currency}
+            />
+
             <DeudasAccountsAccordion
               accounts={data.accounts}
               currency={currency}
             />
+
+            <DeudasPlanificadorLink accountCount={data.accounts.length} />
           </>
         )}
       </ScrollView>

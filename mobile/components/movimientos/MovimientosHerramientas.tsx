@@ -18,7 +18,10 @@ export function MovimientosHerramientas({
     <MobileZone eyebrow="HERRAMIENTAS">
       <View className="flex-row gap-1.5">
         {/* Categorize chip */}
-        <View className={`${PANEL_INSET_CLASS} flex-1 items-center p-3`}>
+        <Pressable
+          onPress={() => router.push("/categorizar" as any)}
+          className={`${PANEL_INSET_CLASS} flex-1 items-center p-3`}
+        >
           <View className="h-8 w-8 items-center justify-center rounded-xl bg-z-brass-10 mb-1.5">
             <Tag size={16} color={COLORS.brass} />
           </View>
@@ -32,7 +35,7 @@ export function MovimientosHerramientas({
               </Text>
             </View>
           )}
-        </View>
+        </Pressable>
 
         {/* Import chip */}
         <Pressable
