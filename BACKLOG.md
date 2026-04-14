@@ -47,6 +47,12 @@
 - **Context:** Recurring income is now first-class. These metrics should reflect it. Affects mobile dashboard hero and gasto diario calculation.
 - **Found:** Visual testing, 2026-04-13
 
+### Multi-currency aggregation in dashboard metrics
+- **Priority:** Medium
+- **What:** Dashboard hero, burn rate, and runway currently filter obligations/balances to `baseCurrency` only. Users with accounts in multiple currencies (e.g., USD savings + COP recurring) see incomplete totals. Should convert all currencies to base using `exchange_rate_cache` (frankfurter.app, cached 24h). Affects `getDashboardHeroData`, `getBurnRateCached`, and `RunwayMiniChart`.
+- **Context:** Pre-existing limitation (old code also filtered by currency). Not a regression from income-aware runway.
+- **Found:** Codex adversarial review, 2026-04-13
+
 ### Tag system broader reach
 - **Priority:** Medium
 - **What:** Tags during destinatario rule imports, nómina variants
