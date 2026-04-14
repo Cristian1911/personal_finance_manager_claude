@@ -33,8 +33,8 @@ const BLURBS = [
 
 export function LandingCTA() {
   return (
-    <section className="py-16 sm:py-24">
-      <Card className="overflow-hidden border-white/8 bg-gradient-to-br from-white/[0.06] via-background to-z-income/[0.04] shadow-2xl shadow-black/10">
+    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24">
+      <Card className="overflow-hidden border-white/6 bg-gradient-to-br from-white/[0.06] via-background to-z-income/[0.04] shadow-2xl shadow-black/10">
         <CardContent className="p-8 sm:p-12">
           <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             {/* Left: headline + CTAs */}
@@ -42,7 +42,7 @@ export function LandingCTA() {
               <div className="space-y-4">
                 <Badge
                   variant="outline"
-                  className="border-white/10 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-z-sage-light"
+                  className="border-white/6 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-z-sage-light"
                 >
                   Empieza hoy
                 </Badge>
@@ -62,7 +62,7 @@ export function LandingCTA() {
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="border-white/10 bg-white/[0.03]">
+                <Button asChild size="lg" variant="outline" className="border-white/6 bg-white/[0.03]">
                   <Link href="#como-funciona">Ver cómo funciona</Link>
                 </Button>
               </div>
@@ -73,7 +73,7 @@ export function LandingCTA() {
               {BLURBS.map(({ icon: Icon, title, description }) => (
                 <div
                   key={title}
-                  className="rounded-xl border border-white/8 bg-white/[0.03] p-4 space-y-2"
+                  className="rounded-xl border border-white/6 bg-white/[0.03] p-4 space-y-2"
                 >
                   <div className="flex items-center gap-2">
                     <Icon className="size-4 text-z-sage-light" />
