@@ -709,7 +709,7 @@ export async function linkExistingTransactionToOccurrence(
   // Fetch occurrence — must be pending
   const { data: occurrence, error: occErr } = await supabase
     .from("recurring_occurrences")
-    .select("id, template_id, occurrence_date, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(account_id, direction, frequency)")
+    .select("id, template_id, occurrence_date, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(account_id, direction, frequency, category_id)")
     .eq("id", occurrenceId)
     .eq("user_id", user.id)
     .eq("status", "pending")
@@ -719,13 +719,13 @@ export async function linkExistingTransactionToOccurrence(
     return { success: false, error: "Ocurrencia no encontrada o ya no está pendiente" };
   }
 
-  const template = occurrence.template as { account_id: string; direction: "INFLOW" | "OUTFLOW"; frequency: string } | null;
+  const template = occurrence.template as { account_id: string; direction: "INFLOW" | "OUTFLOW"; frequency: string; category_id: string | null } | null;
   if (!template) return { success: false, error: "Plantilla no encontrada" };
 
   // Fetch transaction — must exist and match account + direction
   const { data: tx, error: txErr } = await supabase
     .from("transactions")
-    .select("id, account_id, direction")
+    .select("id, account_id, direction, category_id")
     .eq("id", transactionId)
     .eq("user_id", user.id)
     .single();
@@ -745,10 +745,15 @@ export async function linkExistingTransactionToOccurrence(
     occurrence.occurrence_date,
   );
 
-  // Stamp recurrence_group_id on the transaction
+  // Stamp recurrence_group_id + enrich with template's category if tx has none
+  const txEnrichment: Record<string, unknown> = { recurrence_group_id: recurrenceGroupId };
+  if (!tx.category_id && template.category_id) {
+    txEnrichment.category_id = template.category_id;
+    txEnrichment.categorization_source = "RECURRING_TEMPLATE";
+  }
   const { error: txUpdateErr } = await supabase
     .from("transactions")
-    .update({ recurrence_group_id: recurrenceGroupId })
+    .update(txEnrichment)
     .eq("id", transactionId)
     .eq("user_id", user.id);
 

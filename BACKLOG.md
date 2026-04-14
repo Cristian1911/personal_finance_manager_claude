@@ -53,6 +53,22 @@
 - **Context:** `getTemplateStats()` in `actions/template-stats.ts` only queries `recurring_occurrences`. New templates have no occurrences yet even if the user has been paying for months.
 - **Found:** User feedback, 2026-04-14
 
+### Email import — stale transaction lists after import
+- **Priority:** Medium
+- **What:** Importing pending email transactions removes them from queue but transaction lists (movimientos + dashboard) don't update. Desktop "Pendientes por correo" card also stays stale. Need page refresh.
+- **Context:** Revalidation from email import action may not cover all transaction list cache tags.
+- **Found:** User testing, 2026-04-14
+
+### "Vincular a recurrente" in movimientos expanded view
+- **Priority:** Medium
+- **What:** The "Vincular a recurrente" action was added to inicio-activity (dashboard) but not to the movimientos (transactions) mobile expanded view. Need to add it there too.
+- **Found:** User testing, 2026-04-14
+
+### Merge recurrentes pages into one
+- **Priority:** Medium
+- **What:** Two separate recurrentes views (plan tab + standalone page) is confusing. They offer different things. Unify into a single page with all features (checklist + admin actions + templates).
+- **Found:** User feedback, 2026-04-14
+
 ### Plan page mobile — grid navigation instead of list
 - **Priority:** Medium
 - **What:** The "Ir a" section on the plan page mobile view shows Presupuesto, Periodo, Recurrentes, Deseos as a vertical list of link cards. Replace with a 2x2 grid of buttons for better visual density and scannability.

@@ -350,6 +350,15 @@ export function useRecurringMonth(
     [router]
   );
 
+  /* ---- optimistic revert (for undo UI) ---- */
+  const optimisticRevert = useCallback((occurrenceId: string) => {
+    setOccurrences((prev) =>
+      prev.map((o) =>
+        o.id === occurrenceId ? { ...o, status: "pending" as const, transaction_id: null } : o
+      )
+    );
+  }, []);
+
   /* ---- totals ---- */
   const totalPlanned = useMemo(
     () =>
@@ -388,6 +397,7 @@ export function useRecurringMonth(
     confirmPayment,
     skipPayment,
     linkExisting,
+    optimisticRevert,
     busyItems,
 
     // Helpers

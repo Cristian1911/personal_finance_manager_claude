@@ -318,7 +318,9 @@ export function MobileRecurrentesView({
           completed={hook.completed}
           onRevert={async (occurrenceId) => {
             const result = await revertOccurrence(occurrenceId);
-            if (result.success) await hook.refreshOccurrences();
+            if (result.success) {
+              hook.optimisticRevert(occurrenceId);
+            }
             return result;
           }}
         />

@@ -125,7 +125,7 @@ export function RecurringConfirmInline({
         </div>
 
         {/* Actions row */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="submit" size="sm" disabled={isPending}>
             {isPending ? "Registrando..." : isIncome ? "Confirmar ingreso" : "Confirmar pago"}
           </Button>
