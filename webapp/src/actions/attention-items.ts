@@ -7,6 +7,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { getPendingOccurrencesCached } from "@/actions/occurrences";
+import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -60,14 +61,16 @@ async function getAttentionItemsCached(
 ): Promise<AttentionItems> {
   "use cache";
   cacheTag("attention");
+  cacheTag("occurrences");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
   const today = new Date();
   const todayStr = toColombiaDateString(today);
   const in7DaysStr = toColombiaDateString(addDays(today, 7));
+  const rangeEnd = toColombiaDateString(addDays(today, PAY_CYCLE_LOOKAHEAD_DAYS));
 
-  const [remindersRes, emailsRes, pendingOccurrences] = await Promise.all([
+  const [remindersRes, emailsRes, allOccurrences] = await Promise.all([
     // 1. Overdue reminders
     supabase
       .from("financial_reminders")
@@ -87,9 +90,15 @@ async function getAttentionItemsCached(
       .order("created_at", { ascending: false })
       .limit(5),
 
-    // 3. Pending recurring occurrences (next 7 days) — shared cached source
-    getPendingOccurrencesCached(userId, todayStr, in7DaysStr, accessToken),
+    // 3. Pending recurring occurrences — canonical 45-day range aligns cache key
+    //    with dashboard queries, avoiding a redundant DB hit on cold loads.
+    getPendingOccurrencesCached(userId, todayStr, rangeEnd, accessToken),
   ]);
+
+  // Filter to 7-day window for attention display
+  const pendingOccurrences = allOccurrences.filter(
+    (o) => o.occurrence_date <= in7DaysStr,
+  );
 
   // ── Map overdue reminders ──────────────────────────────────────────────────
 

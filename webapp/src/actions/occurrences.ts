@@ -404,25 +404,37 @@ export async function findMatchingOccurrence(
   amount: number,
   direction: "INFLOW" | "OUTFLOW",
 ): Promise<string | null> {
-  const { user, accessToken } = await getAuthenticatedClient();
-  if (!user || !accessToken) return null;
+  // Direct query — not cached. This runs on mutation paths (tx creation)
+  // where fresh data is required to avoid double-linking in batch imports.
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return null;
 
-  // Look within ±3 days of the transaction date to account for payment timing
   const baseDateObj = new Date(`${transactionDate}T12:00:00`);
   const rangeStart = toColombiaDateString(addDays(baseDateObj, -3));
   const rangeEnd = toColombiaDateString(addDays(baseDateObj, 3));
 
-  const occurrences = await getPendingOccurrencesCached(user.id, rangeStart, rangeEnd, accessToken);
+  const { data, error } = await supabase
+    .from("recurring_occurrences")
+    .select(
+      `id, expected_amount,
+       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
+         account_id, direction, is_active
+       )`
+    )
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .eq("template.account_id", accountId)
+    .eq("template.direction", direction)
+    .eq("template.is_active", true)
+    .gte("occurrence_date", rangeStart)
+    .lte("occurrence_date", rangeEnd);
 
-  // Match by account, direction, and amount (1% tolerance)
+  if (error || !data) return null;
+
   const tolerance = amount * 0.01;
-  const match = occurrences.find(
-    (o) =>
-      o.account_id === accountId &&
-      o.direction === direction &&
-      Math.abs(o.expected_amount - amount) <= tolerance,
+  const match = data.find(
+    (row) => Math.abs(row.expected_amount - amount) <= tolerance,
   );
-
   return match?.id ?? null;
 }
 
