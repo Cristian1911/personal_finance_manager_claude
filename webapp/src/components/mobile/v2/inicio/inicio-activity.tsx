@@ -71,6 +71,8 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
       const result = await linkExistingTransactionToOccurrence(occurrenceId, txId);
       if (result.success) {
         toast.success("Transacción vinculada a recurrente");
+        // Refresh linkable accounts — some may no longer have pending occurrences
+        getAccountIdsWithPendingOccurrences().then((ids) => setLinkableAccountIds(new Set(ids)));
       } else {
         toast.error(result.error ?? "No se pudo vincular");
       }

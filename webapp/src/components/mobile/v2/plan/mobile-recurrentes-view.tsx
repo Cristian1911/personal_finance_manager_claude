@@ -324,6 +324,39 @@ export function MobileRecurrentesView({
         />
       )}
 
+      {/* Link existing transaction sheet */}
+      <LinkPickerSheet
+        open={!!linkingItem}
+        onOpenChange={(open) => { if (!open) setLinkingItem(null); }}
+        title="Vincular transacción"
+        subtitle={linkingItem ? `${linkingItem.merchant} · ${formatCurrency(linkingItem.plannedAmount, linkingItem.currencyCode as CurrencyCode)} esperado · ${formatDate(linkingItem.date)}` : ""}
+        candidates={linkCandidates.map((c) => ({
+          id: c.id,
+          label: c.description,
+          sublabel: `${formatDate(c.transaction_date)} · ${c.provider ?? "Manual"}`,
+          amount: c.amount,
+          currencyCode: c.currency_code,
+          direction: linkingItem?.direction ?? "OUTFLOW",
+          matchScore: c.matchScore,
+        }))}
+        onConfirm={(txId) => {
+          if (linkingItem) {
+            hook.linkExisting(linkingItem, txId);
+            setLinkingItem(null);
+          }
+        }}
+        isPending={hook.busyItems[linkingItem?.key ?? ""] ?? false}
+        showAllLabel="Mostrar todas las transacciones →"
+        onShowAll={async () => {
+          if (!linkingItem) return;
+          setIsLoadingCandidates(true);
+          const result = await getCandidateTransactionsForOccurrence(linkingItem.occurrenceId, true);
+          setIsLoadingCandidates(false);
+          if (result.success) setLinkCandidates(result.data);
+        }}
+        isLoadingAll={isLoadingCandidates}
+      />
+
       {/* Admin action sheet */}
       <TemplateActionSheet
         item={actionItem}
@@ -550,38 +583,6 @@ function CompletedSection({
         </div>
       )}
 
-      {/* Link existing transaction sheet */}
-      <LinkPickerSheet
-        open={!!linkingItem}
-        onOpenChange={(open) => { if (!open) setLinkingItem(null); }}
-        title="Vincular transacción"
-        subtitle={linkingItem ? `${linkingItem.merchant} · ${formatCurrency(linkingItem.plannedAmount, linkingItem.currencyCode as CurrencyCode)} esperado · ${formatDate(linkingItem.date)}` : ""}
-        candidates={linkCandidates.map((c) => ({
-          id: c.id,
-          label: c.description,
-          sublabel: `${formatDate(c.transaction_date)} · ${c.provider ?? "Manual"}`,
-          amount: c.amount,
-          currencyCode: c.currency_code,
-          direction: linkingItem?.direction ?? "OUTFLOW",
-          matchScore: c.matchScore,
-        }))}
-        onConfirm={(txId) => {
-          if (linkingItem) {
-            hook.linkExisting(linkingItem, txId);
-            setLinkingItem(null);
-          }
-        }}
-        isPending={hook.busyItems[linkingItem?.key ?? ""] ?? false}
-        showAllLabel="Mostrar todas las transacciones →"
-        onShowAll={async () => {
-          if (!linkingItem) return;
-          setIsLoadingCandidates(true);
-          const result = await getCandidateTransactionsForOccurrence(linkingItem.occurrenceId, true);
-          setIsLoadingCandidates(false);
-          if (result.success) setLinkCandidates(result.data);
-        }}
-        isLoadingAll={isLoadingCandidates}
-      />
     </div>
   );
 }

@@ -14,7 +14,6 @@
 
 | PR | Description | Branch |
 |---|---|---|
-| #130 | Inline drawer pickers + picker improvements | `feat/inline-drawer-pickers` |
 | — | Recurring impact preview + recurring income + account detail redesign | `feat/recurring-impact-income` |
 
 ## Features
@@ -44,10 +43,9 @@
 - **Remaining:** Edit dialog opens behind the action sheet (nested Radix portal). Needs to close Sheet first, then open Dialog sequentially. Full recurring form also needs mobile redesign.
 
 ### Manual transaction-to-recurring matching
-- **Priority:** Medium
-- **What:** Allow users to manually link any transaction (manual, email, OCR, PDF import) to a pending recurring occurrence. Use case: nómina arrives via email notification, user wants to link it to the mapped recurring income template before importing the statement.
-- **Context:** Currently auto-linking works via `findMatchingOccurrence()` (date ±3 days, amount ±1%, account match). Manual override needed when auto-match fails or user wants to link proactively.
-- **Found:** User feedback, 2026-04-14
+- **Priority:** Done (this branch)
+- **What:** Manual link from both sides: occurrence → transaction picker, transaction → occurrence picker. Smart undo via `linked_manually` flag. Bottom drawer with ranked match scoring.
+- **Spec:** `docs/superpowers/specs/2026-04-14-manual-tx-recurring-linking.md`
 
 ### Recurring stats — historical backfill
 - **Priority:** Medium
@@ -132,6 +130,21 @@
 ### Uncached server action
 - **Priority:** Done (this branch)
 - **What:** `getTagsForEntity` extracted to `"use cache"` inner with `cacheTag("tags")` + `cacheLife("zeta")`.
+
+### `useRecurringMonth` callbacks use `router.refresh()` instead of `startTransition`
+- **Priority:** Medium
+- **What:** All three callbacks in `use-recurring-month.ts` (`confirmPayment`, `skipPayment`, `linkExisting`) call `router.refresh()` after the server action. Should wrap in `startTransition` instead — `router.refresh()` is a redundant network round-trip.
+- **Found:** cache-doctor review, 2026-04-14
+
+### `inicio-activity.tsx` non-token colors
+- **Priority:** Low
+- **What:** `bg-green-500/12` and `bg-orange-500/12` should be `bg-z-income/12` and `bg-z-expense/12`. Also eyebrow uses `text-[9px] font-bold` instead of `SECTION_EYEBROW_CLASS`.
+- **Found:** zetas-front-guy review, 2026-04-14
+
+### `recurring-confirm-inline.tsx` surface token
+- **Priority:** Low
+- **What:** Uses `bg-muted/50` (shadcn token) instead of Zeta surface tier token (`bg-z-surface-3/60` or `bg-black/20`).
+- **Found:** zetas-front-guy review, 2026-04-14
 
 ### `transaction_tags` table missing columns
 - **What:** No `created_at` or `user_id` columns. Recents query works around this by joining through `transactions`. Adding these columns would:

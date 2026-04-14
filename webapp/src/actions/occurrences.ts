@@ -399,6 +399,10 @@ export async function markOccurrencePaid(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
+  if (!UUID_RE.test(occurrenceId) || !UUID_RE.test(transactionId)) {
+    return { success: false, error: "ID inválido" };
+  }
+
   const { data: occurrence, error } = await supabase
     .from("recurring_occurrences")
     .update({
@@ -432,6 +436,10 @@ export async function markOccurrencePaid(
 export async function skipOccurrence(occurrenceId: string): Promise<ActionResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  if (!UUID_RE.test(occurrenceId)) {
+    return { success: false, error: "ID inválido" };
+  }
 
   const { data: occurrence, error } = await supabase
     .from("recurring_occurrences")
@@ -499,11 +507,14 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
         .single();
 
       if (primaryTx?.recurrence_group_id) {
-        await supabase
+        const { error: unlinkErr } = await supabase
           .from("transactions")
           .update({ recurrence_group_id: null })
           .eq("recurrence_group_id", primaryTx.recurrence_group_id)
           .eq("user_id", user.id);
+        if (unlinkErr) {
+          return { success: false, error: `Error al desvincular transacción: ${unlinkErr.message}` };
+        }
       }
     } else {
       // System-created: delete transactions and reverse balances
@@ -772,8 +783,6 @@ export async function linkExistingTransactionToOccurrence(
   }
 
   revalidateFinancialViews();
-  revalidateTag("occurrences", "zeta");
-  revalidateTag("recurring", "zeta");
   return { success: true, data: undefined };
 }
 

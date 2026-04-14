@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS, BRASS_BUTTON_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
 export interface LinkCandidate {
@@ -98,7 +98,7 @@ export function LinkPickerSheet({
 
           {bestMatch && (
             <>
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-z-income">
+              <p className={cn(SECTION_EYEBROW_CLASS, "mb-1 text-z-income")}>
                 Mejor coincidencia
               </p>
               <CandidateRow
@@ -114,7 +114,7 @@ export function LinkPickerSheet({
 
           {rest.length > 0 && (
             <>
-              <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <p className={cn(SECTION_EYEBROW_CLASS, "mb-1 mt-3")}>
                 Otras opciones
               </p>
               {rest.map((c) => (
@@ -132,14 +132,16 @@ export function LinkPickerSheet({
           )}
 
           {onShowAll && showAllLabel && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={onShowAll}
               disabled={isLoadingAll}
-              className="mt-3 w-full py-2 text-center text-xs font-semibold text-z-brass"
+              className="mt-3 w-full text-z-brass"
             >
               {isLoadingAll ? "Cargando..." : showAllLabel}
-            </button>
+            </Button>
           )}
         </div>
 
@@ -147,7 +149,7 @@ export function LinkPickerSheet({
           <Button
             onClick={() => selectedId && onConfirm(selectedId)}
             disabled={!selectedId || isPending}
-            className="w-full"
+            className={cn(BRASS_BUTTON_CLASS, "w-full")}
           >
             <Link2 className="mr-2 size-4" />
             {isPending ? "Vinculando..." : "Vincular"}
@@ -201,7 +203,7 @@ function CandidateRow({
         </p>
         {isBest && scorePercent > 0 && (
           <p className="text-[10px] font-medium text-z-income">
-            {scorePercent}% match
+            {scorePercent}% coincidencia
           </p>
         )}
       </div>
