@@ -24,6 +24,7 @@ type SyncTableName =
   | "tag_groups"
   | "tags"
   | "transaction_tags"
+  | "wishlist_items"
   | "statement_snapshots"
   | "transactions";
 

@@ -50,6 +50,7 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
 export async function clearDatabase(): Promise<void> {
   const database = await getDatabase();
   await database.execAsync(`
+    DELETE FROM wishlist_items;
     DELETE FROM transaction_tags;
     DELETE FROM recurring_occurrences;
     DELETE FROM recurring_transaction_templates;

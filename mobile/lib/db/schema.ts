@@ -253,6 +253,44 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_transactions_destinatario ON transactions(destinatario_id)`,
     ],
   },
+  {
+    version: 5,
+    statements: [
+      // ── Wishlist items (encrypted in Supabase, plaintext in SQLite) ────
+      `CREATE TABLE IF NOT EXISTS wishlist_items (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency_code TEXT NOT NULL DEFAULT 'COP',
+        status TEXT NOT NULL DEFAULT 'WANT',
+        desire_type TEXT,
+        urgency TEXT,
+        why TEXT,
+        url TEXT,
+        image_url TEXT,
+        funding_type TEXT,
+        installments INTEGER,
+        account_id TEXT,
+        category_id TEXT,
+        transaction_id TEXT,
+        last_score REAL,
+        last_scored_at TEXT,
+        last_verdict TEXT,
+        last_nudge_dismissed_at TEXT,
+        enriched INTEGER NOT NULL DEFAULT 0,
+        enriched_at TEXT,
+        ready_at TEXT,
+        bought_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (account_id) REFERENCES accounts(id),
+        FOREIGN KEY (category_id) REFERENCES categories(id),
+        FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_wishlist_user_status ON wishlist_items(user_id, status)`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

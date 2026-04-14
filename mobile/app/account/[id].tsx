@@ -15,9 +15,11 @@ import {
   type AccountRow,
 } from "../../lib/repositories/accounts";
 import { getTransactions } from "../../lib/repositories/transactions";
+import { getDatabase } from "../../lib/db/database";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { isDebtInflow } from "../../lib/transaction-semantics";
+import { AccountBalanceCard } from "../../components/accounts/AccountBalanceCard";
 
 type TransactionRow = {
   id: string;
@@ -63,18 +65,35 @@ export default function AccountDetailScreen() {
   const router = useRouter();
   const [account, setAccount] = useState<AccountRow | null>(null);
   const [recentTx, setRecentTx] = useState<TransactionRow[]>([]);
+  const [spendingSummary, setSpendingSummary] = useState<{
+    total_out: number;
+    total_in: number;
+    tx_count: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       try {
-        const [acc, txs] = await Promise.all([
+        const month = new Date().toISOString().slice(0, 7);
+        const db = await getDatabase();
+        const [acc, txs, summary] = await Promise.all([
           getAccountById(id),
           getTransactions({ accountId: id, limit: 10 }),
+          db.getFirstAsync<{ total_out: number; total_in: number; tx_count: number }>(
+            `SELECT
+              COALESCE(SUM(CASE WHEN direction = 'OUTFLOW' THEN amount ELSE 0 END), 0) as total_out,
+              COALESCE(SUM(CASE WHEN direction = 'INFLOW' THEN amount ELSE 0 END), 0) as total_in,
+              COUNT(*) as tx_count
+            FROM transactions
+            WHERE account_id = ? AND transaction_date LIKE ? AND is_excluded = 0`,
+            [id, `${month}%`]
+          ),
         ]);
         setAccount(acc);
         setRecentTx(txs as TransactionRow[]);
+        setSpendingSummary(summary);
       } catch (error) {
         console.error("Failed to load account:", error);
       } finally {
@@ -196,18 +215,40 @@ export default function AccountDetailScreen() {
           </View>
         </View>
 
-        {/* 3 info cards */}
-        <View className="flex-row gap-3 mx-4 mt-4">
-          <InfoCard
-            label="Balance"
-            value={formatCurrency(account.current_balance, currency)}
-          />
-          <InfoCard
-            label="Tipo"
-            value={typeDef?.shortLabel ?? account.account_type}
-          />
-          <InfoCard label="Moneda" value={account.currency_code} />
+        {/* Balance card with utilization */}
+        <View className="mx-4 mt-4">
+          <AccountBalanceCard account={account} />
         </View>
+
+        {/* Monthly spending summary */}
+        {spendingSummary && spendingSummary.tx_count > 0 && (
+          <View className="mx-4 mt-4">
+            <Text className="text-gray-500 font-inter-semibold text-xs uppercase mb-2">
+              Resumen del mes
+            </Text>
+            <View className="flex-row gap-3">
+              <View className="flex-1 bg-white rounded-xl p-4 border border-gray-100 items-center">
+                <Text className="text-gray-400 font-inter text-xs mb-1">
+                  Gastos del mes
+                </Text>
+                <Text className="text-gray-900 font-inter-semibold text-sm">
+                  {formatCurrency(spendingSummary.total_out, currency)}
+                </Text>
+              </View>
+              <View className="flex-1 bg-white rounded-xl p-4 border border-gray-100 items-center">
+                <Text className="text-gray-400 font-inter text-xs mb-1">
+                  Ingresos del mes
+                </Text>
+                <Text className="text-green-600 font-inter-semibold text-sm">
+                  {formatCurrency(spendingSummary.total_in, currency)}
+                </Text>
+              </View>
+            </View>
+            <Text className="text-gray-400 font-inter text-xs mt-1.5 text-center">
+              {spendingSummary.tx_count} transacciones este mes
+            </Text>
+          </View>
+        )}
 
         {/* Type-specific details */}
         {(account.account_type === "CREDIT_CARD" ||

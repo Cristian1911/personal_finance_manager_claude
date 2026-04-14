@@ -15,6 +15,7 @@ const SYNC_TABLES = [
   "recurring_occurrences",
   "transactions",
   "transaction_tags",
+  "wishlist_items",
   "statement_snapshots",
 ] as const;
 
@@ -32,6 +33,7 @@ const BOOLEAN_FIELDS: Record<string, string[]> = {
   destinatarios: ["is_active"],
   tag_groups: ["is_system"],
   tags: ["is_system"],
+  wishlist_items: ["enriched"],
 };
 
 /** JSON fields per table that need stringification for SQLite */

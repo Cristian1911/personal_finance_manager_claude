@@ -22,9 +22,14 @@ import {
 } from "../../lib/repositories/transactions";
 import { getAllCategories } from "../../lib/repositories/categories";
 import {
+  getTagsForTransaction,
+  saveTransactionTags,
+} from "../../lib/repositories/tags";
+import {
   CategoryPicker,
   type CategoryRow,
 } from "../../components/transactions/CategoryPicker";
+import { TagSelector } from "../../components/transactions/TagSelector";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import {
   DEBT_PAYMENT_CATEGORY_ID,
@@ -133,13 +138,21 @@ export default function TransactionDetailScreen() {
   const [editCategoryName, setEditCategoryName] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState("");
   const [editIsExcluded, setEditIsExcluded] = useState(false);
+  const [editTagIds, setEditTagIds] = useState<string[]>([]);
+
+  // Read-only tag names for detail view
+  const [transactionTagNames, setTransactionTagNames] = useState<string[]>([]);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       try {
-        const result = (await getTransactionById(id)) as TransactionDetail;
+        const [result, tags] = await Promise.all([
+          getTransactionById(id) as Promise<TransactionDetail>,
+          getTagsForTransaction(id),
+        ]);
         setTransaction(result);
+        setTransactionTagNames(tags.map((t) => t.name));
       } catch (err) {
         console.error("Failed to load transaction:", err);
       } finally {
@@ -169,8 +182,8 @@ export default function TransactionDetailScreen() {
     successTimer.current = setTimeout(() => setSuccessVisible(false), 3000);
   };
 
-  const enterEditMode = () => {
-    if (!transaction) return;
+  const enterEditMode = async () => {
+    if (!transaction || !id) return;
     const txIsDebtPayment = isDebtInflow({
       direction: transaction.direction,
       accountType: transaction.account_type,
@@ -191,6 +204,15 @@ export default function TransactionDetailScreen() {
     );
     setEditNotes(transaction.notes ?? "");
     setEditIsExcluded(!!transaction.is_excluded);
+
+    // Load existing tags for edit form
+    try {
+      const existingTags = await getTagsForTransaction(id);
+      setEditTagIds(existingTags.map((t) => t.id));
+    } catch {
+      setEditTagIds([]);
+    }
+
     setIsEditing(true);
     if (categories.length === 0) loadCategories();
   };

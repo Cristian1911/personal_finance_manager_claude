@@ -59,3 +59,39 @@ export async function getTagsForTransaction(
     [transactionId]
   );
 }
+
+/**
+ * Replace all tags for a transaction.
+ * Deletes existing junction rows and re-inserts the given tagIds.
+ * Also enqueues a sync operation.
+ */
+export async function saveTransactionTags(
+  transactionId: string,
+  tagIds: string[]
+): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+
+  await db.withTransactionAsync(async () => {
+    // Remove existing tags
+    await db.runAsync(
+      "DELETE FROM transaction_tags WHERE transaction_id = ?",
+      [transactionId]
+    );
+
+    // Insert new tags
+    for (const tagId of tagIds) {
+      await db.runAsync(
+        "INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)",
+        [transactionId, tagId]
+      );
+    }
+
+    // Enqueue sync — send tag_ids array as payload for the syncer to handle
+    await db.runAsync(
+      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+       VALUES ('transaction_tags', ?, 'REPLACE', ?, ?)`,
+      [transactionId, JSON.stringify({ transaction_id: transactionId, tag_ids: tagIds }), now]
+    );
+  });
+}
