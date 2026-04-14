@@ -803,6 +803,23 @@ export async function importTransactions(
     ])
   );
 
+  // Pre-fetch destinatario → tag mappings to auto-tag imported transactions
+  const destIds = [...new Set(
+    transactions.filter((tx) => tx.destinatario_id).map((tx) => tx.destinatario_id!)
+  )];
+  const destTagMap = new Map<string, string[]>();
+  if (destIds.length > 0) {
+    const { data: destTags } = await supabase
+      .from("destinatario_tags")
+      .select("destinatario_id, tag_id")
+      .in("destinatario_id", destIds);
+    for (const dt of destTags ?? []) {
+      const existing = destTagMap.get(dt.destinatario_id) ?? [];
+      existing.push(dt.tag_id);
+      destTagMap.set(dt.destinatario_id, existing);
+    }
+  }
+
   let imported = 0;
   let skipped = 0;
   let errors = 0;
@@ -811,6 +828,7 @@ export async function importTransactions(
   let leftAsSeparate = 0;
   const details: string[] = [];
   const balanceDeltaTxs: TransactionToImport[] = [];
+  const pendingTagInserts: { transaction_id: string; tag_id: string }[] = [];
 
   for (const [txIndex, tx] of transactions.entries()) {
     // Use original_amount (full purchase price) for idempotency when available,
@@ -864,6 +882,14 @@ export async function importTransactions(
     }
 
     imported++;
+
+    // Accumulate auto-tags from destinatario (batched after loop)
+    const tagIds = tx.destinatario_id ? destTagMap.get(tx.destinatario_id) : undefined;
+    if (tagIds) {
+      for (const tag_id of tagIds) {
+        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id });
+      }
+    }
 
     await linkTransactionToOccurrence(
       tx.account_id, tx.transaction_date,
@@ -927,6 +953,17 @@ export async function importTransactions(
       })
       .eq("user_id", user.id)
       .eq("id", existingTx.id);
+
+    // Accumulate existing transaction's tags for the surviving (imported) transaction
+    const { data: existingTags } = await supabase
+      .from("transaction_tags")
+      .select("tag_id")
+      .eq("transaction_id", existingTx.id);
+    if (existingTags) {
+      for (const t of existingTags) {
+        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id: t.tag_id });
+      }
+    }
 
     if (decision.decision === "AUTO_MERGE") autoMerged++;
     else manualMerged++;
@@ -1053,9 +1090,17 @@ export async function importTransactions(
     }
   }
 
+  // Batch-insert all accumulated transaction tags
+  if (pendingTagInserts.length > 0) {
+    await supabase
+      .from("transaction_tags")
+      .upsert(pendingTagInserts, { onConflict: "transaction_id,tag_id", ignoreDuplicates: true });
+  }
+
   revalidateFinancialViews();
   revalidateTag("snapshots", "zeta");
   revalidateTag("impact", "zeta");
+  revalidateTag("tags", "zeta");
 
   await trackProductEvent({
     event_name: "import_completed",

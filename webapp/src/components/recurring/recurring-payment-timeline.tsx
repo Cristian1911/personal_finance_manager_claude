@@ -189,7 +189,7 @@ export function PaymentTimeline({
 
                       {/* Confirm indicator */}
                       <span className="shrink-0 text-xs text-muted-foreground">
-                        {isExpanded ? "Cerrar" : item.direction === "INFLOW" ? "Confirmar ingreso ▸" : "Confirmar ▸"}
+                        {isExpanded ? "Cerrar" : (item.direction === "INFLOW" && !item.isDebtPayment) ? "Confirmar ingreso ▸" : "Confirmar ▸"}
                       </span>
                     </div>
 

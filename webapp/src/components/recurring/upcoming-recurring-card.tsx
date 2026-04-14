@@ -33,16 +33,20 @@ export function UpcomingRecurringCard({
           </p>
         ) : (
           <div className="space-y-3">
-            {upcoming.slice(0, 5).map((item, i) => (
+            {upcoming.slice(0, 5).map((item, i) => {
+              const acctType = item.template.account?.account_type;
+              const isDebtPayment = acctType === "CREDIT_CARD" || acctType === "LOAN";
+              const isIncome = item.template.direction === "INFLOW" && !isDebtPayment;
+              return (
               <div
                 key={`${item.template.id}-${item.next_date}-${i}`}
                 className="flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  {item.template.direction === "INFLOW" ? (
-                    <ArrowDownLeft className="h-4 w-4 text-green-500" />
+                  {isIncome ? (
+                    <ArrowDownLeft className="h-4 w-4 text-z-income" />
                   ) : (
-                    <ArrowUpRight className="h-4 w-4 text-orange-500" />
+                    <ArrowUpRight className="h-4 w-4 text-z-expense" />
                   )}
                   <div>
                     <p className="text-sm font-medium">
@@ -56,17 +60,18 @@ export function UpcomingRecurringCard({
                 </div>
                 <span
                   className={`text-sm font-medium ${
-                    item.template.direction === "INFLOW" ? "text-green-600" : ""
+                    isIncome ? "text-z-income" : ""
                   }`}
                 >
-                  {item.template.direction === "INFLOW" ? "+" : "-"}
+                  {isIncome ? "+" : "-"}
                   {formatCurrency(
                     item.template.amount,
                     item.template.currency_code as CurrencyCode
                   )}
                 </span>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
