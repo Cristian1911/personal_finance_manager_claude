@@ -4,6 +4,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { RunwayMiniChart } from "@/components/dashboard/runway-mini-chart";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -125,32 +126,26 @@ export function InicioMetricsGrid({
       >
         <div className="overflow-hidden">
           <div className={cn("mt-1.5 transition-opacity duration-150", hasActive ? "opacity-100 delay-75" : "opacity-0")}>
-            {/* Ritmo expanded → runway summary */}
+            {/* Ritmo expanded → runway chart */}
             {isRitmoActive && burnRateData && (
               <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3 space-y-2")}>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[11px] text-muted-foreground">Margen</span>
-                  <span className="text-sm font-semibold tabular-nums">
-                    {burnRateData.discretionary.runwayDays >= 999 ? "∞" : `${burnRateData.discretionary.runwayDays}d`}
+                <RunwayMiniChart
+                  dataPoints={burnRateData.discretionary.dataPoints}
+                  runwayDays={burnRateData.discretionary.runwayDays}
+                  dayOfMonth={dayOfMonth}
+                  daysInMonth={daysInMonth}
+                  obligations={burnRateData.obligations}
+                  nextIncomeDate={burnRateData.nextIncomeDate}
+                />
+                <div className="flex items-baseline justify-between text-[11px]">
+                  <span className="text-muted-foreground">Promedio diario</span>
+                  <span className="font-semibold tabular-nums">
+                    {formatCurrency(burnRateData.discretionary.dailyAverage, currency)}/día
                   </span>
                 </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[11px] text-muted-foreground">Promedio diario</span>
-                  <span className="text-sm font-semibold tabular-nums">
-                    {formatCurrency(burnRateData.discretionary.dailyAverage, currency)}
-                  </span>
-                </div>
-                {burnRateData.nextIncomeDate && (
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-[11px] text-muted-foreground">Próximo ingreso</span>
-                    <span className="text-sm font-semibold tabular-nums text-z-income">
-                      +{formatCurrency(burnRateData.nextIncomeAmount, currency)}
-                    </span>
-                  </div>
-                )}
                 <Link
                   href="/plan"
-                  className="mt-1 block rounded-xl bg-z-brass/8 border border-z-brass/20 px-3 py-2 text-center text-[11px] font-semibold text-z-brass transition-colors active:bg-z-brass/15"
+                  className="block rounded-xl bg-z-brass/8 border border-z-brass/20 px-3 py-2 text-center text-[11px] font-semibold text-z-brass transition-colors active:bg-z-brass/15"
                 >
                   Ver plan completo
                 </Link>
