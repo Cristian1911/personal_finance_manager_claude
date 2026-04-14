@@ -9,6 +9,7 @@ import type { CurrencyCode } from "@/types/domain";
 import { getNextIncomeOccurrenceCached, getPendingOccurrencesCached } from "@/actions/occurrences";
 import { getRatesForCurrencies } from "@/actions/exchange-rate";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 
 export interface BurnRateDataPoint {
   date: string;       // "YYYY-MM-DD"
@@ -115,7 +116,7 @@ async function getBurnRateCached(
   // Debt INFLOW (payment into loan/credit card) is an effective outflow for the user
   const isEffectiveOutflow = (o: { direction: string; account_type: string }) =>
     o.direction === "OUTFLOW" ||
-    (o.direction === "INFLOW" && (o.account_type === "CREDIT_CARD" || o.account_type === "LOAN"));
+    (o.direction === "INFLOW" && isDebtAccountType(o.account_type));
 
   const obligationMarkers: ObligationMarker[] = (pendingOccurrences ?? [])
     .filter((o) => isEffectiveOutflow(o) && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate

@@ -8,6 +8,7 @@ import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
 import { getAccounts } from "@/actions/accounts";
 import { getPendingOccurrencesCached, getNextIncomeOccurrenceCached } from "@/actions/occurrences";
 import { getRatesForCurrencies } from "@/actions/exchange-rate";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 import { getFreshnessLevel } from "@/lib/utils/dashboard";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
@@ -849,7 +850,7 @@ export async function getDashboardHeroData(
   // Debt INFLOW (payment into loan/credit card) is an effective outflow for the user
   const isEffectiveOutflow = (o: { direction: string; account_type: string }) =>
     o.direction === "OUTFLOW" ||
-    (o.direction === "INFLOW" && (o.account_type === "CREDIT_CARD" || o.account_type === "LOAN"));
+    (o.direction === "INFLOW" && isDebtAccountType(o.account_type));
 
   const recurringObligations: PendingObligation[] = windowOccurrences
     .filter((o) => isEffectiveOutflow(o))
