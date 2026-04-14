@@ -328,16 +328,20 @@ function TemplateActionSheet({
     });
   };
 
-  const handlePauseConfirm = async () => {
+  const handlePauseConfirm = () => {
     if (!template) return;
-    await toggleRecurringTemplate(template.id, false);
-    onClose();
+    startTransition(async () => {
+      await toggleRecurringTemplate(template.id, false);
+      onClose();
+    });
   };
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = () => {
     if (!template) return;
-    await deleteRecurringTemplate(template.id);
-    onClose();
+    startTransition(async () => {
+      await deleteRecurringTemplate(template.id);
+      onClose();
+    });
   };
 
   return (
@@ -357,7 +361,8 @@ function TemplateActionSheet({
               trigger={
                 <button
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left active:bg-white/5"
+                  disabled={isPending}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left active:bg-white/5 disabled:opacity-50"
                 >
                   <Pencil className="size-4 text-muted-foreground" />
                   <span className="text-sm">Editar</span>
@@ -406,7 +411,8 @@ function TemplateActionSheet({
               trigger={
                 <button
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-z-debt active:bg-white/5"
+                  disabled={isPending}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-z-debt active:bg-white/5 disabled:opacity-50"
                 >
                   <Trash2 className="size-4" />
                   <span className="text-sm">Eliminar</span>

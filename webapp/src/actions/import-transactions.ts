@@ -820,6 +820,23 @@ export async function importTransactions(
     }
   }
 
+  // Pre-fetch tags for reconciliation candidates (avoid N+1 inside loop)
+  const candidateIds = reconciliationDecisions
+    .filter((d) => d.decision !== "KEEP_BOTH")
+    .map((d) => d.candidateTransactionId);
+  const existingTagMap = new Map<string, string[]>();
+  if (candidateIds.length > 0) {
+    const { data: candidateTags } = await supabase
+      .from("transaction_tags")
+      .select("transaction_id, tag_id")
+      .in("transaction_id", candidateIds);
+    for (const ct of candidateTags ?? []) {
+      const existing = existingTagMap.get(ct.transaction_id) ?? [];
+      existing.push(ct.tag_id);
+      existingTagMap.set(ct.transaction_id, existing);
+    }
+  }
+
   let imported = 0;
   let skipped = 0;
   let errors = 0;
@@ -954,14 +971,11 @@ export async function importTransactions(
       .eq("user_id", user.id)
       .eq("id", existingTx.id);
 
-    // Accumulate existing transaction's tags for the surviving (imported) transaction
-    const { data: existingTags } = await supabase
-      .from("transaction_tags")
-      .select("tag_id")
-      .eq("transaction_id", existingTx.id);
+    // Copy existing transaction's tags to surviving (imported) transaction (pre-fetched)
+    const existingTags = existingTagMap.get(existingTx.id);
     if (existingTags) {
-      for (const t of existingTags) {
-        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id: t.tag_id });
+      for (const tag_id of existingTags) {
+        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id });
       }
     }
 
