@@ -639,7 +639,7 @@ export async function getNetWorthHistory(month?: string, currency?: CurrencyCode
 
   const totalAssets = accounts
     .filter((a) => a.account_type !== "CREDIT_CARD" && a.account_type !== "LOAN" && nwConvertible(a))
-    .reduce((sum, a) => sum + toBase(a.current_balance, a.currency_code as CurrencyCode), 0);
+    .reduce((sum, a) => sum + toBase(a.current_balance ?? 0, a.currency_code as CurrencyCode), 0);
 
   const totalLiabilities = accounts
     .filter((a) => (a.account_type === "CREDIT_CARD" || a.account_type === "LOAN") && nwConvertible(a))
@@ -785,9 +785,10 @@ export async function getDashboardHeroData(
       }))
     : [];
 
-  const otherCurrencies = [...new Set(
-    dashboardAccounts.map((a) => a.currency_code).filter((c) => c !== baseCurrency)
-  )] as CurrencyCode[];
+  const otherCurrencies = [...new Set([
+    ...dashboardAccounts.map((a) => a.currency_code),
+    ...(pendingOccurrences ?? []).map((o) => o.currency_code as CurrencyCode),
+  ].filter((c) => c !== baseCurrency))] as CurrencyCode[];
   const rates = otherCurrencies.length > 0
     ? await getRatesForCurrencies(otherCurrencies, baseCurrency)
     : new Map<CurrencyCode, number>();
@@ -839,9 +840,10 @@ export async function getDashboardHeroData(
     windowEndDate = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
   }
 
-  // Filter cached occurrences to pay-cycle window (all currencies, converted to base)
+  // Filter cached occurrences to pay-cycle window (convertible currencies only)
   const windowOccurrences = pendingOccurrences.filter(
     (o) => o.occurrence_date >= colombiaToday && o.occurrence_date <= windowEndDate
+      && (o.currency_code === baseCurrency || rates.has(o.currency_code as CurrencyCode))
   );
 
   const recurringObligations: PendingObligation[] = windowOccurrences

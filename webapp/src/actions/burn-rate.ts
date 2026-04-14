@@ -113,17 +113,19 @@ async function getBurnRateCached(
   };
 
   const obligationMarkers: ObligationMarker[] = (pendingOccurrences ?? [])
-    .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate)
+    .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
+      && (o.currency_code === baseCurrency || rates.has(o.currency_code as CurrencyCode)))
     .map((o) => ({
       date: o.occurrence_date,
       name: o.merchant_name ?? o.description ?? "Recurrente",
       amount: toBase(o.expected_amount, o.currency_code),
     }));
 
-  // Compute disponible using window-scoped pending occurrences (all currencies, converted)
+  // Compute disponible using window-scoped pending occurrences (convertible currencies only)
   const windowOutflows = (pendingOccurrences ?? [])
     .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
-      && o.account_type !== "CREDIT_CARD");
+      && o.account_type !== "CREDIT_CARD"
+      && (o.currency_code === baseCurrency || rates.has(o.currency_code as CurrencyCode)));
   const totalPending = windowOutflows.reduce((sum, o) => sum + toBase(o.expected_amount, o.currency_code), 0);
 
   // Include all liquid accounts with convertible currencies
@@ -163,17 +165,19 @@ export async function getBurnRate(
   try {
     const baseCurrency = (currency ?? "COP") as CurrencyCode;
 
-    // Fetch account currencies outside cache boundary (side-effecting rate lookups)
-    const { data: acctCurrencies } = await supabase
-      .from("accounts")
-      .select("currency_code")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .in("account_type", ["CHECKING", "SAVINGS"]);
+    // Fetch account + obligation currencies outside cache boundary (side-effecting rate lookups)
+    const [{ data: acctCurrencies }, { data: templateCurrencies }] = await Promise.all([
+      supabase.from("accounts").select("currency_code")
+        .eq("user_id", user.id).eq("is_active", true)
+        .in("account_type", ["CHECKING", "SAVINGS"]),
+      supabase.from("recurring_transaction_templates").select("currency_code")
+        .eq("user_id", user.id).eq("is_active", true),
+    ]);
 
-    const uniqueCurrencies = [...new Set(
-      (acctCurrencies ?? []).map((a) => a.currency_code)
-    )] as CurrencyCode[];
+    const uniqueCurrencies = [...new Set([
+      ...(acctCurrencies ?? []).map((a) => a.currency_code),
+      ...(templateCurrencies ?? []).map((t) => t.currency_code),
+    ])] as CurrencyCode[];
     const rates = uniqueCurrencies.some((c) => c !== baseCurrency)
       ? await getRatesForCurrencies(uniqueCurrencies, baseCurrency)
       : new Map<CurrencyCode, number>();
