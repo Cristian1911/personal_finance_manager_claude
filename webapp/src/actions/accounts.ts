@@ -171,13 +171,16 @@ export async function createAccount(
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id);
 
+  // Cast needed: accounts is an encrypted view; type gen marks some columns as never-writable
+  // but the INSTEAD OF trigger handles them correctly
   const { data: result, error } = await supabase
     .from("accounts")
     .insert({
       user_id: user.id,
       ...parsed.data,
       display_order: (count ?? 0) + 1,
-    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
     .select()
     .single();
 
@@ -210,7 +213,8 @@ export async function updateAccount(
 
   const { data: result, error } = await supabase
     .from("accounts")
-    .update(parsed.data)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- encrypted view type gen mismatch
+    .update(parsed.data as any)
     .eq("user_id", user.id)
     .eq("id", id)
     .select()
@@ -289,7 +293,7 @@ export async function reconcileBalance(
     input.currencyBalances && Object.keys(input.currencyBalances).length > 0
       ? input.currencyBalances
       : input.currentBalance != null
-        ? { [account.currency_code]: input.currentBalance }
+        ? { [account.currency_code as string]: input.currentBalance }
         : {};
 
   const currencyDeltas: Record<string, number> = {};
@@ -298,7 +302,7 @@ export async function reconcileBalance(
     account.currency_balances !== null ||
     Object.keys(requestedBalances).some((currency) => currency !== account.currency_code);
   const now = new Date().toISOString();
-  const adjustmentRows: Database["public"]["Tables"]["transactions"]["Insert"][] = [];
+  const adjustmentRows: Database["public"]["Views"]["transactions"]["Insert"][] = [];
 
   for (const [currency, newBalance] of Object.entries(requestedBalances)) {
     if (!Number.isFinite(newBalance) || newBalance < 0) {

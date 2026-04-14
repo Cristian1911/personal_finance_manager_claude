@@ -15,6 +15,33 @@ import {
 } from "@/lib/utils/occurrence-generator";
 import type { ActionResult } from "@/types/actions";
 
+// ─── Match Score ──────────────────────────────────────────────────────────────
+
+/**
+ * Composite match score for ranking candidates.
+ * Date proximity (weight 0.6) + amount proximity (weight 0.4).
+ * Returns 0-1 where 1 = perfect match.
+ */
+function computeMatchScore(
+  candidateDate: string,
+  candidateAmount: number,
+  referenceDate: string,
+  referenceAmount: number,
+): number {
+  const cDate = new Date(`${candidateDate}T12:00:00`);
+  const rDate = new Date(`${referenceDate}T12:00:00`);
+  const daysDiff = Math.abs(
+    Math.round((cDate.getTime() - rDate.getTime()) / (1000 * 60 * 60 * 24))
+  );
+  const dateScore = Math.max(0, 1 - daysDiff / 30);
+
+  const amountDiff = Math.abs(candidateAmount - referenceAmount);
+  const amountScore =
+    referenceAmount > 0 ? Math.max(0, 1 - amountDiff / referenceAmount) : 0;
+
+  return dateScore * 0.6 + amountScore * 0.4;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type OccurrenceStatus = "pending" | "paid" | "skipped";
@@ -447,7 +474,7 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
   // Fetch occurrence with its current state
   const { data: occurrence, error: fetchError } = await supabase
     .from("recurring_occurrences")
-    .select("id, status, transaction_id, template_id, occurrence_date")
+    .select("id, status, transaction_id, template_id, occurrence_date, linked_manually")
     .eq("id", occurrenceId)
     .eq("user_id", user.id)
     .single();
@@ -460,74 +487,87 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
     return { success: false, error: "Esta ocurrencia ya está pendiente" };
   }
 
-  // For paid occurrences: delete created transactions and reverse balances
+  // For paid occurrences with a linked transaction
   if (occurrence.status === "paid" && occurrence.transaction_id) {
-    // Single query: get recurrence_group_id via FK join (avoids extra round trip)
-    const { data: primaryTx } = await supabase
-      .from("transactions")
-      .select("recurrence_group_id")
-      .eq("id", occurrence.transaction_id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (primaryTx?.recurrence_group_id) {
-      // Get all transactions in the group
-      const { data: groupTxs } = await supabase
+    if (occurrence.linked_manually) {
+      // Manual link: just clear recurrence_group_id — don't delete the transaction
+      const { data: primaryTx } = await supabase
         .from("transactions")
-        .select("id, amount, direction, account_id, accounts!transactions_account_id_fkey(account_type, current_balance)")
-        .eq("recurrence_group_id", primaryTx.recurrence_group_id)
-        .eq("user_id", user.id);
+        .select("recurrence_group_id")
+        .eq("id", occurrence.transaction_id)
+        .eq("user_id", user.id)
+        .single();
 
-      const txIds = (groupTxs ?? []).map((tx) => tx.id);
-
-      // Guard: block revert if any transaction was reconciled into by another
-      if (txIds.length > 0) {
-        const { count: reconciledRefs } = await supabase
+      if (primaryTx?.recurrence_group_id) {
+        await supabase
           .from("transactions")
-          .select("id", { count: "exact", head: true })
-          .in("reconciled_into_transaction_id", txIds)
+          .update({ recurrence_group_id: null })
+          .eq("recurrence_group_id", primaryTx.recurrence_group_id)
           .eq("user_id", user.id);
-        if (reconciledRefs && reconciledRefs > 0) {
-          return { success: false, error: "No se puede revertir: hay una transacción importada vinculada a este pago." };
-        }
       }
-
-      // Reverse balance deltas in parallel — safe because each tx in a
-      // recurrence group targets a different account (source ≠ destination)
-      const balanceResults = await Promise.all(
-        (groupTxs ?? []).map((tx) => {
-          const account = tx.accounts as { account_type: string; current_balance: number } | null;
-          if (!account) return Promise.resolve(null);
-
-          const newBalance = reverseAccountBalanceDelta({
-            currentBalance: account.current_balance,
-            accountType: account.account_type,
-            direction: tx.direction as "INFLOW" | "OUTFLOW",
-            amount: tx.amount,
-          });
-
-          return supabase
-            .from("accounts")
-            .update({ current_balance: newBalance })
-            .eq("user_id", user.id)
-            .eq("id", tx.account_id);
-        })
-      );
-
-      const balanceError = balanceResults.find((r) => r && "error" in r && r.error);
-      if (balanceError && "error" in balanceError && balanceError.error) {
-        return { success: false, error: `Error al revertir saldo: ${balanceError.error.message}` };
-      }
-
-      // Delete all transactions in the recurrence group
-      const { error: deleteError } = await supabase
+    } else {
+      // System-created: delete transactions and reverse balances
+      const { data: primaryTx } = await supabase
         .from("transactions")
-        .delete()
-        .eq("recurrence_group_id", primaryTx.recurrence_group_id)
-        .eq("user_id", user.id);
+        .select("recurrence_group_id")
+        .eq("id", occurrence.transaction_id)
+        .eq("user_id", user.id)
+        .single();
 
-      if (deleteError) {
-        return { success: false, error: `Error al eliminar transacciones: ${deleteError.message}` };
+      if (primaryTx?.recurrence_group_id) {
+        const { data: groupTxs } = await supabase
+          .from("transactions")
+          .select("id, amount, direction, account_id, accounts!transactions_account_id_fkey(account_type, current_balance)")
+          .eq("recurrence_group_id", primaryTx.recurrence_group_id)
+          .eq("user_id", user.id);
+
+        const txIds = (groupTxs ?? []).map((tx) => tx.id);
+
+        if (txIds.length > 0) {
+          const { count: reconciledRefs } = await supabase
+            .from("transactions")
+            .select("id", { count: "exact", head: true })
+            .in("reconciled_into_transaction_id", txIds)
+            .eq("user_id", user.id);
+          if (reconciledRefs && reconciledRefs > 0) {
+            return { success: false, error: "No se puede revertir: hay una transacción importada vinculada a este pago." };
+          }
+        }
+
+        const balanceResults = await Promise.all(
+          (groupTxs ?? []).map((tx) => {
+            const account = tx.accounts as { account_type: string; current_balance: number } | null;
+            if (!account) return Promise.resolve(null);
+
+            const newBalance = reverseAccountBalanceDelta({
+              currentBalance: account.current_balance,
+              accountType: account.account_type,
+              direction: tx.direction as "INFLOW" | "OUTFLOW",
+              amount: tx.amount,
+            });
+
+            return supabase
+              .from("accounts")
+              .update({ current_balance: newBalance })
+              .eq("user_id", user.id)
+              .eq("id", tx.account_id);
+          })
+        );
+
+        const balanceError = balanceResults.find((r) => r && "error" in r && r.error);
+        if (balanceError && "error" in balanceError && balanceError.error) {
+          return { success: false, error: `Error al revertir saldo: ${balanceError.error.message}` };
+        }
+
+        const { error: deleteError } = await supabase
+          .from("transactions")
+          .delete()
+          .eq("recurrence_group_id", primaryTx.recurrence_group_id)
+          .eq("user_id", user.id);
+
+        if (deleteError) {
+          return { success: false, error: `Error al eliminar transacciones: ${deleteError.message}` };
+        }
       }
     }
   }
@@ -540,6 +580,7 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
       transaction_id: null,
       paid_at: null,
       skipped_at: null,
+      linked_manually: false,
     })
     .eq("id", occurrenceId)
     .eq("user_id", user.id);
@@ -633,4 +674,315 @@ export async function linkTransactionToOccurrence(
   if (matchId) {
     await markOccurrencePaid(matchId, transactionId);
   }
+}
+
+// ─── Manual Linking ───────────────────────────────────────────────────────────
+
+/**
+ * Manually link an existing transaction to a pending occurrence.
+ * Unlike recordRecurringOccurrencePayment (which creates a new tx), this connects
+ * an already-existing transaction. No balance changes — the tx already impacted balances.
+ * Sets linked_manually=true so revertOccurrence knows to unlink instead of delete.
+ */
+export async function linkExistingTransactionToOccurrence(
+  occurrenceId: string,
+  transactionId: string,
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!UUID_RE.test(occurrenceId) || !UUID_RE.test(transactionId)) {
+    return { success: false, error: "ID inválido" };
+  }
+
+  // Fetch occurrence — must be pending
+  const { data: occurrence, error: occErr } = await supabase
+    .from("recurring_occurrences")
+    .select("id, template_id, occurrence_date, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(account_id, direction, frequency)")
+    .eq("id", occurrenceId)
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .single();
+
+  if (occErr || !occurrence) {
+    return { success: false, error: "Ocurrencia no encontrada o ya no está pendiente" };
+  }
+
+  const template = occurrence.template as { account_id: string; direction: "INFLOW" | "OUTFLOW"; frequency: string } | null;
+  if (!template) return { success: false, error: "Plantilla no encontrada" };
+
+  // Fetch transaction — must exist and match account + direction
+  const { data: tx, error: txErr } = await supabase
+    .from("transactions")
+    .select("id, account_id, direction")
+    .eq("id", transactionId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (txErr || !tx) {
+    return { success: false, error: "Transacción no encontrada" };
+  }
+
+  if (tx.account_id !== template.account_id || tx.direction !== template.direction) {
+    return { success: false, error: "La transacción no coincide con la cuenta o dirección de la plantilla" };
+  }
+
+  // Compute recurrence_group_id for consistency with system-created payments
+  const { computeRecurringGroupUuid } = await import("@/actions/recurring-templates");
+  const recurrenceGroupId = await computeRecurringGroupUuid(
+    occurrence.template_id,
+    occurrence.occurrence_date,
+  );
+
+  // Stamp recurrence_group_id on the transaction
+  const { error: txUpdateErr } = await supabase
+    .from("transactions")
+    .update({ recurrence_group_id: recurrenceGroupId })
+    .eq("id", transactionId)
+    .eq("user_id", user.id);
+
+  if (txUpdateErr) {
+    return { success: false, error: `Error al actualizar transacción: ${txUpdateErr.message}` };
+  }
+
+  // Mark occurrence as paid with linked_manually=true
+  const { error: occUpdateErr } = await supabase
+    .from("recurring_occurrences")
+    .update({
+      status: "paid" as const,
+      transaction_id: transactionId,
+      paid_at: new Date().toISOString(),
+      linked_manually: true,
+    })
+    .eq("id", occurrenceId)
+    .eq("user_id", user.id)
+    .eq("status", "pending");
+
+  if (occUpdateErr) {
+    return { success: false, error: `Error al vincular: ${occUpdateErr.message}` };
+  }
+
+  // Auto-deactivate ONCE templates
+  if (template.frequency === "ONCE") {
+    await supabase
+      .from("recurring_transaction_templates")
+      .update({ is_active: false })
+      .eq("id", occurrence.template_id)
+      .eq("user_id", user.id);
+  }
+
+  revalidateFinancialViews();
+  revalidateTag("occurrences", "zeta");
+  revalidateTag("recurring", "zeta");
+  return { success: true, data: undefined };
+}
+
+// ─── Candidate Queries ────────────────────────────────────────────────────────
+
+export interface CandidateTransaction {
+  id: string;
+  description: string;
+  amount: number;
+  currency_code: string;
+  transaction_date: string;
+  provider: string | null;
+  matchScore: number;
+}
+
+/**
+ * Fetch candidate transactions to link to a pending occurrence.
+ * Pre-filtered: same account, same direction, ±30 days (or all if showAll=true).
+ * Sorted by match score (date proximity 0.6 + amount proximity 0.4).
+ */
+export async function getCandidateTransactionsForOccurrence(
+  occurrenceId: string,
+  showAll = false,
+): Promise<ActionResult<CandidateTransaction[]>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!UUID_RE.test(occurrenceId)) {
+    return { success: false, error: "ID inválido" };
+  }
+
+  const { data: occurrence, error: occErr } = await supabase
+    .from("recurring_occurrences")
+    .select("id, occurrence_date, expected_amount, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(account_id, direction)")
+    .eq("id", occurrenceId)
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .single();
+
+  if (occErr || !occurrence) {
+    return { success: false, error: "Ocurrencia no encontrada" };
+  }
+
+  const template = occurrence.template as { account_id: string; direction: "INFLOW" | "OUTFLOW" } | null;
+  if (!template) return { success: false, error: "Plantilla no encontrada" };
+
+  let query = supabase
+    .from("transactions")
+    .select("id, clean_description, merchant_name, raw_description, amount, currency_code, transaction_date, provider")
+    .eq("user_id", user.id)
+    .eq("account_id", template.account_id)
+    .eq("direction", template.direction)
+    .is("recurrence_group_id", null)
+    .order("transaction_date", { ascending: false })
+    .limit(50);
+
+  if (!showAll) {
+    const baseDateObj = new Date(`${occurrence.occurrence_date}T12:00:00`);
+    const rangeStart = toColombiaDateString(addDays(baseDateObj, -30));
+    const rangeEnd = toColombiaDateString(addDays(baseDateObj, 30));
+    query = query.gte("transaction_date", rangeStart).lte("transaction_date", rangeEnd);
+  }
+
+  const { data, error } = await query;
+  if (error) return { success: false, error: error.message };
+
+  const candidates: CandidateTransaction[] = (data ?? []).map((tx) => ({
+    id: tx.id,
+    description: tx.clean_description ?? tx.merchant_name ?? tx.raw_description ?? "Sin descripción",
+    amount: tx.amount,
+    currency_code: tx.currency_code,
+    transaction_date: tx.transaction_date,
+    provider: tx.provider,
+    matchScore: computeMatchScore(
+      tx.transaction_date,
+      tx.amount,
+      occurrence.occurrence_date,
+      occurrence.expected_amount,
+    ),
+  }));
+
+  candidates.sort((a, b) => b.matchScore - a.matchScore);
+  return { success: true, data: candidates };
+}
+
+export interface CandidateOccurrence {
+  id: string;
+  templateId: string;
+  merchant: string;
+  occurrenceDate: string;
+  expectedAmount: number;
+  currencyCode: string;
+  matchScore: number;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+}
+
+/**
+ * Fetch candidate pending occurrences to link a transaction to.
+ * Pre-filtered: same account, same direction, ±30 days.
+ * Sorted by match score.
+ */
+export async function getCandidateOccurrencesForTransaction(
+  transactionId: string,
+): Promise<ActionResult<CandidateOccurrence[]>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  if (!UUID_RE.test(transactionId)) {
+    return { success: false, error: "ID inválido" };
+  }
+
+  const { data: tx, error: txErr } = await supabase
+    .from("transactions")
+    .select("id, account_id, direction, transaction_date, amount")
+    .eq("id", transactionId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (txErr || !tx) {
+    return { success: false, error: "Transacción no encontrada" };
+  }
+
+  const baseDateObj = new Date(`${tx.transaction_date}T12:00:00`);
+  const rangeStart = toColombiaDateString(addDays(baseDateObj, -30));
+  const rangeEnd = toColombiaDateString(addDays(baseDateObj, 30));
+
+  const { data, error } = await supabase
+    .from("recurring_occurrences")
+    .select(`
+      id, template_id, occurrence_date, expected_amount,
+      template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
+        merchant_name, description, direction, currency_code, account_id,
+        category:categories!recurring_transaction_templates_category_id_fkey(icon, color)
+      )
+    `)
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .gte("occurrence_date", rangeStart)
+    .lte("occurrence_date", rangeEnd);
+
+  if (error) return { success: false, error: error.message };
+
+  // Filter by account + direction (nested join filter not reliable in Supabase)
+  const filtered = (data ?? []).filter((o) => {
+    const t = o.template as { account_id: string; direction: string } | null;
+    return t && t.account_id === tx.account_id && t.direction === tx.direction;
+  });
+
+  const candidates: CandidateOccurrence[] = filtered.map((o) => {
+    const t = o.template as {
+      merchant_name: string | null;
+      description: string | null;
+      currency_code: string;
+      category: { icon: string | null; color: string | null } | null;
+    };
+    return {
+      id: o.id,
+      templateId: o.template_id,
+      merchant: t.merchant_name ?? t.description ?? "Recurrente",
+      occurrenceDate: o.occurrence_date,
+      expectedAmount: o.expected_amount,
+      currencyCode: t.currency_code,
+      matchScore: computeMatchScore(
+        tx.transaction_date,
+        tx.amount,
+        o.occurrence_date,
+        o.expected_amount,
+      ),
+      categoryIcon: t.category?.icon ?? null,
+      categoryColor: t.category?.color ?? null,
+    };
+  });
+
+  candidates.sort((a, b) => b.matchScore - a.matchScore);
+  return { success: true, data: candidates };
+}
+
+// ─── Visibility Helper ────────────────────────────────────────────────────────
+
+/**
+ * Returns account IDs that have at least one pending occurrence.
+ * Used to conditionally show "Vincular a recurrente" on transaction rows.
+ */
+async function getAccountIdsWithPendingOccurrencesCached(
+  userId: string,
+  accessToken: string,
+): Promise<string[]> {
+  "use cache";
+  cacheTag("occurrences");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  const { data } = await supabase
+    .from("recurring_occurrences")
+    .select("template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(account_id)")
+    .eq("user_id", userId)
+    .eq("status", "pending");
+
+  const ids = new Set<string>();
+  for (const row of data ?? []) {
+    const t = row.template as { account_id: string } | null;
+    if (t) ids.add(t.account_id);
+  }
+  return Array.from(ids);
+}
+
+export async function getAccountIdsWithPendingOccurrences(): Promise<string[]> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+  return getAccountIdsWithPendingOccurrencesCached(user.id, accessToken);
 }
