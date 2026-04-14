@@ -1,11 +1,13 @@
 "use server";
 
-import { subMonths } from "date-fns";
+import { subMonths, addDays } from "date-fns";
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { toColombiaDateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
+import { getNextIncomeOccurrenceCached, getPendingOccurrencesCached } from "@/actions/occurrences";
+import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 
 export interface BurnRateDataPoint {
   date: string;       // "YYYY-MM-DD"
@@ -22,12 +24,21 @@ export interface BurnRateResult {
   monthsOfData: number;
 }
 
+export interface ObligationMarker {
+  date: string;
+  name: string;
+  amount: number;
+}
+
 export interface BurnRateResponse {
   total: BurnRateResult;
   discretionary: BurnRateResult;
   liquidBalance: number;
   disponible: number;
   currency: CurrencyCode;
+  nextIncomeDate: string | null;
+  nextIncomeAmount: number;
+  obligations: ObligationMarker[];
 }
 
 // ─── Cached inner function ────────────────────────────────────────────────────
@@ -41,32 +52,66 @@ async function getBurnRateCached(
   cacheTag("dashboard:hero");
   cacheTag("accounts");
   cacheTag("recurring");
+  cacheTag("occurrences");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
   const baseCurrency = currency as CurrencyCode;
 
-  // 0. Compute pending obligations from active recurring templates (OUTFLOW only)
-  const { data: templates } = await supabase
-    .from("recurring_transaction_templates")
-    .select("amount, direction, currency_code")
-    .eq("user_id", userId)
-    .eq("is_active", true);
+  const today = new Date();
+  const todayStr = toColombiaDateString(today);
+  const threeMonthsAgo = toColombiaDateString(subMonths(today, 3));
+  const rangeEnd = toColombiaDateString(addDays(today, PAY_CYCLE_LOOKAHEAD_DAYS));
 
-  const totalPending = (templates ?? [])
-    .filter(t => t.direction === "OUTFLOW" && (t.currency_code ?? "COP") === baseCurrency)
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // 1. Fetch liquid accounts (checking + savings, not credit cards or loans)
-  const { data: accounts, error: accountsError } = await supabase
-    .from("accounts")
-    .select("id, current_balance, currency_code, account_type")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .in("account_type", ["CHECKING", "SAVINGS"]);
+  const [
+    { data: accounts, error: accountsError },
+    { data: transactions, error: txError },
+    nextIncome,
+    pendingOccurrences,
+  ] = await Promise.all([
+    supabase.from("accounts")
+      .select("id, current_balance, currency_code, account_type")
+      .eq("user_id", userId).eq("is_active", true)
+      .in("account_type", ["CHECKING", "SAVINGS"]),
+    supabase.from("transactions")
+      .select("id, amount, transaction_date, direction, is_recurring")
+      .eq("user_id", userId).eq("direction", "OUTFLOW")
+      .eq("is_excluded", false).is("reconciled_into_transaction_id", null)
+      .eq("currency_code", baseCurrency).gte("transaction_date", threeMonthsAgo)
+      .order("transaction_date", { ascending: true }),
+    getNextIncomeOccurrenceCached(userId, todayStr, baseCurrency, accessToken),
+    getPendingOccurrencesCached(userId, todayStr, rangeEnd, accessToken),
+  ]);
 
   if (accountsError) throw accountsError;
   if (!accounts || accounts.length === 0) return null;
+  if (txError) throw txError;
+  if (!transactions || transactions.length === 0) return null;
+
+  // Window end for obligation scoping
+  let windowEndDate: string;
+  if (nextIncome) {
+    windowEndDate = nextIncome.date;
+  } else {
+    // Use Colombia timezone for month-end fallback
+    const [yearStr, monthStr] = todayStr.split("-");
+    const daysInMonth = new Date(Number(yearStr), Number(monthStr), 0).getDate();
+    windowEndDate = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
+  }
+
+  const obligationMarkers: ObligationMarker[] = (pendingOccurrences ?? [])
+    .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate)
+    .map((o) => ({
+      date: o.occurrence_date,
+      name: o.merchant_name ?? o.description ?? "Recurrente",
+      amount: o.expected_amount,
+    }));
+
+  // Compute disponible using window-scoped pending occurrences (same window as chart)
+  const windowOutflows = (pendingOccurrences ?? [])
+    .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
+      && o.currency_code === baseCurrency && o.account_type !== "CREDIT_CARD");
+  const totalPending = windowOutflows.reduce((sum, o) => sum + o.expected_amount, 0);
 
   const liquidAccounts = accounts.filter(
     (a) => a.currency_code === baseCurrency
@@ -75,40 +120,26 @@ async function getBurnRateCached(
     (sum, a) => sum + (a.current_balance ?? 0),
     0
   );
-
-  // 2. Fetch outflow transactions (last 3 months — enough for stable average + chart)
-  const threeMonthsAgo = toColombiaDateString(subMonths(new Date(), 3));
-  const { data: transactions, error: txError } = await supabase
-    .from("transactions")
-    .select("id, amount, transaction_date, direction, is_recurring")
-    .eq("user_id", userId)
-    .eq("direction", "OUTFLOW")
-    .eq("is_excluded", false)
-    .is("reconciled_into_transaction_id", null)
-    .eq("currency_code", baseCurrency)
-    .gte("transaction_date", threeMonthsAgo)
-    .order("transaction_date", { ascending: true });
-
-  if (txError) throw txError;
-  if (!transactions || transactions.length === 0) return null;
-
-  // 3. Compute disponible using pre-fetched pending obligations
   const disponible = liquidBalance - totalPending;
 
-  // 4. Split transactions into total vs discretionary using is_recurring flag
+  // Split transactions into total vs discretionary using is_recurring flag
   const discretionaryOutflows = transactions.filter((t) => !t.is_recurring);
 
-  // 5. Compute both modes
-  const today = new Date();
-  const total = computeBurnRate(transactions, liquidBalance, today, "total");
+  const total = computeBurnRate(transactions, liquidBalance, today, "total", windowEndDate);
   const discretionary = computeBurnRate(
     discretionaryOutflows,
     Math.max(disponible, 0),
     today,
-    "discretionary"
+    "discretionary",
+    windowEndDate,
   );
 
-  return { total, discretionary, liquidBalance, disponible, currency: baseCurrency };
+  return {
+    total, discretionary, liquidBalance, disponible, currency: baseCurrency,
+    nextIncomeDate: nextIncome?.date ?? null,
+    nextIncomeAmount: nextIncome?.amount ?? 0,
+    obligations: obligationMarkers,
+  };
 }
 
 // ─── Public wrapper ───────────────────────────────────────────────────────────
@@ -119,14 +150,20 @@ export async function getBurnRate(
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return null;
 
-  return getBurnRateCached(accessToken, user.id, currency ?? "COP");
+  try {
+    return await getBurnRateCached(accessToken, user.id, currency ?? "COP");
+  } catch (error) {
+    console.error("Error loading burn rate:", error);
+    return null;
+  }
 }
 
 function computeBurnRate(
   transactions: { amount: number; transaction_date: string }[],
   balance: number,
   today: Date,
-  mode: "total" | "discretionary"
+  mode: "total" | "discretionary",
+  windowEndDate: string,
 ): BurnRateResult {
   if (transactions.length === 0) {
     return {
@@ -229,12 +266,13 @@ function computeBurnRate(
     balance: balances.get(date) ?? balance,
   }));
 
-  // Add projected point at zero
-  if (runwayDays < 999 && runwayDays > 0) {
-    dataPoints.push({
-      date: toColombiaDateString(runwayDate),
-      balance: 0,
-    });
+  // Add projected point at window end (next income or month end)
+  if (windowEndDate > todayStr) {
+    const daysToEnd = Math.max(1, Math.ceil(
+      (new Date(windowEndDate + "T12:00:00").getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    ));
+    const projectedBalance = Math.max(0, balance - dailyAverage * daysToEnd);
+    dataPoints.push({ date: windowEndDate, balance: projectedBalance });
   }
 
   return {

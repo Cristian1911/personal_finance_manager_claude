@@ -4,9 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { PANEL_INSET_CLASS, MOBILE_ACTION_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { BurnRateResponse } from "@/actions/burn-rate";
+import { RunwayMiniChart } from "./runway-mini-chart";
 
 interface BurndownExpandableProps {
   data: BurnRateResponse;
@@ -28,7 +29,11 @@ export function BurndownExpandable({
     now.getMonth() + 1,
     0
   ).getDate();
-  const daysRemaining = daysInMonth - dayOfMonth;
+  const daysRemaining = data.nextIncomeDate
+    ? Math.max(1, Math.ceil(
+        (new Date(data.nextIncomeDate + "T12:00:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      ))
+    : daysInMonth - dayOfMonth;
   const isCritical = runwayDays < daysRemaining * 0.5;
   const isWarning = runwayDays < daysRemaining;
 
@@ -96,6 +101,9 @@ export function BurndownExpandable({
               runwayDays={runwayDays}
               dayOfMonth={dayOfMonth}
               daysInMonth={daysInMonth}
+              obligations={data.obligations}
+              nextIncomeDate={data.nextIncomeDate ?? null}
+              compact
             />
 
             {/* Explanation */}
@@ -111,7 +119,7 @@ export function BurndownExpandable({
                     )}
                     /día
                   </span>{" "}
-                  para llegar al día {daysInMonth}.
+                  para llegar{data.nextIncomeDate ? " al próximo ingreso" : ` al día ${daysInMonth}`}.
                 </>
               ) : isWarning ? (
                 <>
@@ -122,7 +130,7 @@ export function BurndownExpandable({
                   al ritmo actual.
                 </>
               ) : (
-                <>Vas bien — llegas al cierre del mes con margen.</>
+                <>Vas bien — llegas {data.nextIncomeDate ? "al próximo ingreso" : "al cierre del mes"} con margen.</>
               )}
             </p>
 
@@ -155,124 +163,3 @@ export function BurndownExpandable({
   );
 }
 
-// ─── Mini chart (reused pattern from SpendingPaceTile) ───────────────────────
-
-function RunwayMiniChart({
-  dataPoints,
-  runwayDays,
-  dayOfMonth,
-  daysInMonth,
-}: {
-  dataPoints: { date: string; balance: number }[];
-  runwayDays: number;
-  dayOfMonth: number;
-  daysInMonth: number;
-}) {
-  const W = 280;
-  const H = 64;
-  const PAD = { top: 6, right: 10, bottom: 16, left: 10 };
-  const plotW = W - PAD.left - PAD.right;
-  const plotH = H - PAD.top - PAD.bottom;
-
-  const parseDay = (date: string) => parseInt(date.split("-")[2], 10);
-  const monthPoints = dataPoints.filter(
-    (dp) => parseDay(dp.date) <= dayOfMonth
-  );
-
-  if (monthPoints.length < 2) {
-    return (
-      <div className="flex h-10 items-center justify-center rounded-lg border border-white/8 bg-black/20 text-[11px] text-muted-foreground">
-        Datos insuficientes
-      </div>
-    );
-  }
-
-  const maxBalance = Math.max(...monthPoints.map((p) => p.balance));
-  const scaleX = (day: number) =>
-    PAD.left + (day / daysInMonth) * plotW;
-  const scaleY = (val: number) =>
-    PAD.top + plotH - (val / ((maxBalance || 1) * 1.1)) * plotH;
-
-  const actualPath = monthPoints
-    .map(
-      (p, i) =>
-        `${i === 0 ? "M" : "L"}${scaleX(parseDay(p.date))},${scaleY(p.balance)}`
-    )
-    .join(" ");
-
-  const lastPoint = monthPoints[monthPoints.length - 1];
-  const lastDay = parseDay(lastPoint.date);
-  const cx = scaleX(lastDay);
-  const cy = scaleY(lastPoint.balance);
-  const projectedEndDay = Math.min(
-    lastDay + runwayDays,
-    daysInMonth + 2
-  );
-  const daysRemaining = daysInMonth - dayOfMonth;
-
-  return (
-    <div className="rounded-lg border border-white/8 bg-black/20 p-1.5">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        aria-label="Proyección de gasto"
-      >
-        <line
-          x1={scaleX(1)}
-          y1={scaleY(maxBalance)}
-          x2={scaleX(daysInMonth)}
-          y2={scaleY(0)}
-          stroke="var(--z-olive-deep)"
-          strokeWidth="1"
-          strokeDasharray="4,3"
-        />
-        <path
-          d={actualPath}
-          fill="none"
-          stroke="var(--z-brass)"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-        <circle cx={cx} cy={cy} r="2.5" fill="var(--z-brass)" />
-        {runwayDays < daysRemaining && (
-          <path
-            d={`M${cx},${cy} L${scaleX(projectedEndDay)},${scaleY(0)}`}
-            fill="none"
-            stroke="var(--z-debt)"
-            strokeWidth="1"
-            strokeDasharray="3,2"
-          />
-        )}
-        <text
-          x={PAD.left}
-          y={H - 2}
-          fill="var(--z-sage-dark)"
-          fontSize="8"
-          fontFamily="system-ui"
-        >
-          1
-        </text>
-        <text
-          x={scaleX(dayOfMonth)}
-          y={H - 2}
-          fill="var(--z-sage-light)"
-          fontSize="8"
-          fontFamily="system-ui"
-          textAnchor="middle"
-        >
-          Hoy
-        </text>
-        <text
-          x={W - PAD.right}
-          y={H - 2}
-          fill="var(--z-sage-dark)"
-          fontSize="8"
-          fontFamily="system-ui"
-          textAnchor="end"
-        >
-          {daysInMonth}
-        </text>
-      </svg>
-    </div>
-  );
-}

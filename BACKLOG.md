@@ -24,6 +24,16 @@
 - **What:** Statement snapshots visual redesign, auto-populate `card_brand` from PDF parsers, composite `(account_id, user_id, transaction_date)` index, use `useAccounts()` hook instead of server-side `getAccounts()` in QuickActionsBar
 - **Context:** Shipped card hero, flip-to-graph, transaction-based balance history, transfer dialog, quick actions. Deferred items noted by perf-auditor and design reviews.
 
+### Income occurrence UX — different actions from expenses
+- **Priority:** Medium
+- **What:** Income occurrences show "Confirmar pago" / "Ya pagué" — should say "Confirmar ingreso" / "Ya recibí". Actions, labels, and possibly the color accent should be contextual based on `direction` (INFLOW vs OUTFLOW). Also needs a "skip" or "delete" option for occurrences the user wants to clear without marking as received.
+- **Found:** Visual testing, 2026-04-13
+
+### Template active state — query-side filtering
+- **Priority:** Done (implemented in this branch)
+- **What:** Paused template occurrences are filtered at query time via `is_active` check in `getPendingOccurrencesCached` and `getNextIncomeOccurrenceCached`. No destructive status changes — occurrences stay `pending`, just invisible when template is paused. Reactivating brings them back automatically.
+- **Found:** Visual testing, 2026-04-13
+
 ### Mobile recurring admin actions
 - **Priority:** Medium
 - **What:** Add pause/delete/edit actions for recurring templates on mobile. Currently mobile view (`MobileRecurrentesView`) only supports pay/skip — no way to manage templates without switching to desktop.
@@ -36,6 +46,12 @@
 - **What:** Dashboard "gasto diario" and runway metrics should factor in upcoming recurring income. Two options: (A) count until end of month but add next income to available balance, or (B) count until next income date instead of end of month. Currently both metrics assume no more money coming in — overly pessimistic when income is configured.
 - **Context:** Recurring income is now first-class. These metrics should reflect it. Affects mobile dashboard hero and gasto diario calculation.
 - **Found:** Visual testing, 2026-04-13
+
+### Multi-currency aggregation in dashboard metrics
+- **Priority:** Medium
+- **What:** Dashboard hero, burn rate, and runway currently filter obligations/balances to `baseCurrency` only. Users with accounts in multiple currencies (e.g., USD savings + COP recurring) see incomplete totals. Should convert all currencies to base using `exchange_rate_cache` (frankfurter.app, cached 24h). Affects `getDashboardHeroData`, `getBurnRateCached`, and `RunwayMiniChart`.
+- **Context:** Pre-existing limitation (old code also filtered by currency). Not a regression from income-aware runway.
+- **Found:** Codex adversarial review, 2026-04-13
 
 ### Tag system broader reach
 - **Priority:** Medium

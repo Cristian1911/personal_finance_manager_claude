@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatDate } from "@/lib/utils/date";
 import { freshnessMap } from "@/lib/utils/dashboard";
 import { KPIWidget } from "@/components/ui/kpi-widget";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,14 @@ interface DashboardHeroProps {
 }
 
 export function DashboardHero({ data, allocationData, debtFreeBanner }: DashboardHeroProps) {
-  const { totalLiquid, totalPending, availableToSpend, pendingIncome, pendingIncomeCount, freshness, pendingObligations, currency, hasOtherCurrencies } = data;
+  const { totalLiquid, totalPending, availableToSpend, pendingIncome, pendingIncomeCount, freshness, pendingObligations, currency, hasOtherCurrencies, nextIncomeDate, nextIncomeAmount, nextIncomeName, incomeConfigured } = data;
   const f = freshnessMap[freshness];
   const code = currency as CurrencyCode;
   const hasPendingObligations = pendingObligations.length > 0;
+
+  const windowLabel = nextIncomeDate
+    ? `hasta el ${formatDate(nextIncomeDate, "d 'de' MMMM")}`
+    : "de este mes";
 
   const freshnessStyles = {
     fresh: { label: "Base al día", badge: "border-z-income/30 bg-z-income/10 text-z-income" },
@@ -37,12 +42,12 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
   const fs = freshnessStyles[freshness];
 
   const guidanceCopy = hasPendingObligations
-    ? `Tienes ${pendingObligations.length} ${pendingObligations.length === 1 ? "pago" : "pagos"} por ${formatCurrency(totalPending, code)} que pueden mover tu margen antes de cerrar el mes.`
+    ? `Tienes ${pendingObligations.length} ${pendingObligations.length === 1 ? "pago" : "pagos"} por ${formatCurrency(totalPending, code)} ${windowLabel}.`
     : freshness === "outdated"
-      ? "Tu foto actual ya no es lo bastante confiable para decidir con seguridad. Actualiza saldos o importa un extracto antes de tomar decisiones grandes."
+      ? "Tu foto actual ya no es lo bastante confiable para decidir con seguridad."
       : freshness === "stale"
-        ? "Tu margen se ve estable, pero conviene revisar saldos antes de mover presupuesto o tomar una compra relevante."
-        : "Tu margen está listo para ayudarte a decidir el siguiente paso sin perderte entre métricas.";
+        ? "Tu margen se ve estable, pero conviene revisar saldos."
+        : "Tu margen está listo para ayudarte a decidir el siguiente paso.";
 
   const primaryAction = hasPendingObligations
     ? {
@@ -86,7 +91,7 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
         <div className="space-y-4">
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Disponible para gastar en {data.currency}
+              Disponible {windowLabel}
             </p>
             <p className={`text-4xl font-bold tracking-tight md:text-5xl ${availableToSpend < 0 ? "text-z-debt" : "text-z-sage-light"}`}>
               {formatCurrency(availableToSpend, code)}
@@ -158,6 +163,24 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
           className="bg-black/15 ring-1 ring-white/5"
         />
         </div>
+
+        {nextIncomeDate && (
+          <div className="flex items-center gap-2 rounded-xl border border-z-income/15 bg-z-income/5 px-4 py-2.5">
+            <ArrowDownLeft className="size-4 text-z-income" />
+            <p className="text-sm text-z-sage-light">
+              Próximo ingreso: <span className="font-semibold tabular-nums text-z-income">+{formatCurrency(nextIncomeAmount, code)}</span> el {formatDate(nextIncomeDate, "d MMM")}
+              {nextIncomeName && <span className="text-muted-foreground"> · {nextIncomeName}</span>}
+            </p>
+          </div>
+        )}
+
+        {!incomeConfigured && (
+          <Link href="/plan?tab=recurrentes"
+            className="flex items-center gap-2 rounded-xl border border-z-brass/15 bg-z-brass/5 px-4 py-2.5 transition-colors hover:bg-z-brass/10">
+            <CalendarClock className="size-4 text-z-brass" />
+            <p className="text-sm text-z-brass">Configura tus ingresos recurrentes para un presupuesto diario más preciso</p>
+          </Link>
+        )}
 
         <div className="space-y-3">
           <StatusHeadline allocationData={allocationData} />

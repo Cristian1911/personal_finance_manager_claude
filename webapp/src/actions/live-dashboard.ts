@@ -2,7 +2,7 @@
 
 import { getDashboardHeroData, getDailySpending } from "@/actions/charts";
 import { getAttentionItems } from "@/actions/attention-items";
-import { toColombiaDateString, getColombiaDayOfMonth } from "@/lib/utils/date";
+import { toColombiaDateString } from "@/lib/utils/date";
 import { subDays } from "date-fns";
 import type { CurrencyCode } from "@/types/domain";
 import type {
@@ -16,6 +16,10 @@ export interface LiveDashboardData {
     availablePerDay: number;
     availableTotal: number;
     daysRemaining: number;
+    nextIncomeDate: string | null;
+    nextIncomeAmount: number;
+    nextIncomeName: string | null;
+    incomeConfigured: boolean;
     breakdown: {
       totalLiquid: number;
       fixedExpenses: number;
@@ -48,14 +52,10 @@ export async function getLiveDashboardData(
     getAttentionItems(),
   ]);
 
-  const now = new Date();
-  const colombiaDay = getColombiaDayOfMonth(now);
-  const todayStr = toColombiaDateString(now);
-  // Derive daysInMonth from the Colombia date to avoid UTC mismatch at month boundaries
-  const [yearStr, monthStr] = todayStr.split("-");
-  const daysInMonth = new Date(Number(yearStr), Number(monthStr), 0).getDate();
-  const daysRemaining = Math.max(daysInMonth - colombiaDay, 1);
+  const daysRemaining = heroData.daysUntilIncome;
 
+  const now = new Date();
+  const todayStr = toColombiaDateString(now);
   const yesterdayStr = toColombiaDateString(subDays(now, 1));
   const sevenDaysAgo = toColombiaDateString(subDays(now, 7));
 
@@ -71,9 +71,13 @@ export async function getLiveDashboardData(
       availablePerDay: heroData.availableToSpend / daysRemaining,
       availableTotal: heroData.availableToSpend,
       daysRemaining,
+      nextIncomeDate: heroData.nextIncomeDate,
+      nextIncomeAmount: heroData.nextIncomeAmount,
+      nextIncomeName: heroData.nextIncomeName,
+      incomeConfigured: heroData.incomeConfigured,
       breakdown: {
-        totalLiquid: heroData.monthlyIncome,
-        fixedExpenses: heroData.totalPending,
+        totalLiquid: heroData.totalLiquid,
+        fixedExpenses: heroData.windowObligations,
         alreadySpent: heroData.monthlySpent,
       },
     },
