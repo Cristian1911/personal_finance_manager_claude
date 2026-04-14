@@ -174,6 +174,7 @@ async function getTagsForEntityCached(
     .from("tags")
     .select("*")
     .in("id", tagIds)
+    .or(`user_id.eq.${userId},user_id.is.null`)
     .order("display_order");
 
   return tags ?? [];
@@ -468,6 +469,15 @@ export async function bulkTagTransactions(
 ): Promise<ActionResult<{ tagged: number }>> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
+
+  // Defense-in-depth: verify tag belongs to user (or is system tag)
+  const { data: tag } = await supabase
+    .from("tags")
+    .select("id")
+    .eq("id", tagId)
+    .or(`user_id.eq.${user.id},user_id.is.null`)
+    .single();
+  if (!tag) return { success: false, error: "Etiqueta no encontrada" };
 
   // Defense-in-depth: verify all transactions belong to user
   const { count } = await supabase

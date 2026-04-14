@@ -496,6 +496,7 @@ export async function createDestinatario(
   }
 
   revalidateTag("destinatarios", "zeta");
+  revalidateTag("attention", "zeta");
   return { success: true, data: { ...data, linked_count: linkedCount } };
 }
 
