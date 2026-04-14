@@ -340,6 +340,32 @@ export async function getPendingOccurrences(
 }
 
 /**
+ * If the template has frequency ONCE, deactivate it after its occurrence is resolved.
+ */
+async function deactivateOnceTemplateIfNeeded(
+  supabase: Awaited<ReturnType<typeof getAuthenticatedClient>>["supabase"],
+  templateId: string,
+  userId: string,
+) {
+  const { data: tmpl } = await supabase
+    .from("recurring_transaction_templates")
+    .select("frequency")
+    .eq("id", templateId)
+    .eq("user_id", userId)
+    .single();
+
+  if (tmpl?.frequency === "ONCE") {
+    await supabase
+      .from("recurring_transaction_templates")
+      .update({ is_active: false })
+      .eq("id", templateId)
+      .eq("user_id", userId);
+
+    revalidateTag("recurring", "zeta");
+  }
+}
+
+/**
  * Mark an occurrence as paid and link it to the created transaction.
  * Only transitions from 'pending'.
  */
@@ -350,7 +376,7 @@ export async function markOccurrencePaid(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const { error } = await supabase
+  const { data: occurrence, error } = await supabase
     .from("recurring_occurrences")
     .update({
       status: "paid",
@@ -359,9 +385,16 @@ export async function markOccurrencePaid(
     })
     .eq("id", occurrenceId)
     .eq("user_id", user.id)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("template_id")
+    .single();
 
   if (error) return { success: false, error: error.message };
+
+  // Auto-deactivate ONCE templates after their single occurrence is resolved
+  if (occurrence?.template_id) {
+    await deactivateOnceTemplateIfNeeded(supabase, occurrence.template_id, user.id);
+  }
 
   revalidateFinancialViews();
   revalidateTag("occurrences", "zeta");
@@ -376,7 +409,7 @@ export async function skipOccurrence(occurrenceId: string): Promise<ActionResult
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const { error } = await supabase
+  const { data: occurrence, error } = await supabase
     .from("recurring_occurrences")
     .update({
       status: "skipped",
@@ -384,9 +417,16 @@ export async function skipOccurrence(occurrenceId: string): Promise<ActionResult
     })
     .eq("id", occurrenceId)
     .eq("user_id", user.id)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("template_id")
+    .single();
 
   if (error) return { success: false, error: error.message };
+
+  // Auto-deactivate ONCE templates after their single occurrence is resolved
+  if (occurrence?.template_id) {
+    await deactivateOnceTemplateIfNeeded(supabase, occurrence.template_id, user.id);
+  }
 
   revalidateFinancialViews();
   revalidateTag("occurrences", "zeta");
@@ -507,6 +547,24 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
     .eq("user_id", user.id);
 
   if (updateError) return { success: false, error: updateError.message };
+
+  // Re-activate ONCE templates so the reverted occurrence becomes visible
+  if (occurrence.template_id) {
+    const { data: tmpl } = await supabase
+      .from("recurring_transaction_templates")
+      .select("frequency, is_active")
+      .eq("id", occurrence.template_id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (tmpl?.frequency === "ONCE" && !tmpl.is_active) {
+      await supabase
+        .from("recurring_transaction_templates")
+        .update({ is_active: true })
+        .eq("id", occurrence.template_id)
+        .eq("user_id", user.id);
+    }
+  }
 
   revalidateFinancialViews();
   revalidateTag("occurrences", "zeta");
