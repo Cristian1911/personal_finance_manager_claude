@@ -212,7 +212,7 @@ export async function getNextIncomeOccurrenceCached(
   cacheTag("recurring");
   cacheLife("zeta");
 
-  const rangeEnd = toColombiaDateString(addDays(parseISO(todayStr), PAY_CYCLE_LOOKAHEAD_DAYS));
+  const rangeEnd = toColombiaDateString(addDays(parseISO(todayStr + "T12:00:00"), PAY_CYCLE_LOOKAHEAD_DAYS));
   const occurrences = await getPendingOccurrencesCached(userId, todayStr, rangeEnd, accessToken);
 
   const match = occurrences.find(
@@ -641,7 +641,7 @@ export async function findMatchingOccurrence(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return null;
 
-  const baseDateObj = parseISO(transactionDate);
+  const baseDateObj = parseISO(transactionDate + "T12:00:00");
   const rangeStart = toColombiaDateString(addDays(baseDateObj, -3));
   const rangeEnd = toColombiaDateString(addDays(baseDateObj, 3));
 
@@ -845,7 +845,7 @@ export async function getCandidateTransactionsForOccurrence(
     .limit(50);
 
   if (!showAll) {
-    const baseDateObj = parseISO(occurrence.occurrence_date);
+    const baseDateObj = parseISO(occurrence.occurrence_date + "T12:00:00");
     const rangeStart = toColombiaDateString(addDays(baseDateObj, -30));
     const rangeEnd = toColombiaDateString(addDays(baseDateObj, 30));
     query = query.gte("transaction_date", rangeStart).lte("transaction_date", rangeEnd);
@@ -911,7 +911,7 @@ export async function getCandidateOccurrencesForTransaction(
     return { success: false, error: "Transacción no encontrada" };
   }
 
-  const baseDateObj = parseISO(tx.transaction_date);
+  const baseDateObj = parseISO(tx.transaction_date + "T12:00:00");
   const rangeStart = toColombiaDateString(addDays(baseDateObj, -30));
   const rangeEnd = toColombiaDateString(addDays(baseDateObj, 30));
 
