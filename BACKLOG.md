@@ -55,6 +55,11 @@
 - **Context:** `getTemplateStats()` in `actions/template-stats.ts` only queries `recurring_occurrences`. New templates have no occurrences yet even if the user has been paying for months.
 - **Found:** User feedback, 2026-04-14
 
+### Recurring checklist — unify inline expand + action drawer
+- **Priority:** Medium
+- **What:** The plan tab checklist has two disconnected interaction patterns: (1) tap row → inline payment form with flat buttons, (2) tap ⋮ → bottom Sheet with chip-style admin actions. They look like different apps. Unify into a single cohesive pattern — either improve inline to match chip style with small confirmation Sheet, or merge both into one bottom drawer per-item.
+- **Found:** Visual testing, 2026-04-14
+
 ### Audit effectiveDirection usage across app
 - **Priority:** Low
 - **What:** The recurring manager introduced `effectiveDirection()` (INFLOW to debt account = expense, not income). Audit the whole app for places that classify by raw `template.direction` without checking account type — dashboards, budget calculations, income metrics, etc.
