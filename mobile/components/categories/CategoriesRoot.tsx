@@ -156,8 +156,8 @@ export function CategoriesRoot() {
           // UPDATE existing category
           const slug = generateSlug(data.name);
           await db.runAsync(
-            "UPDATE categories SET name = ?, name_es = ?, slug = ?, color = ?, parent_id = ? WHERE id = ?",
-            [data.name, data.nameEs, slug, data.color, data.parentId, data.id]
+            "UPDATE categories SET name = ?, name_es = ?, slug = ?, color = ?, parent_id = ?, updated_at = ? WHERE id = ?",
+            [data.name, data.nameEs, slug, data.color, data.parentId, now, data.id]
           );
           await db.runAsync(
             `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,
@@ -171,6 +171,7 @@ export function CategoriesRoot() {
                 slug,
                 color: data.color,
                 parent_id: data.parentId,
+                updated_at: now,
               }),
               now,
             ]
@@ -180,9 +181,9 @@ export function CategoriesRoot() {
           const id = Crypto.randomUUID();
           const slug = generateSlug(data.name);
           await db.runAsync(
-            `INSERT INTO categories (id, user_id, name, name_es, slug, color, parent_id, is_system, display_order, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 0, 999, ?)`,
-            [id, userId, data.name, data.nameEs, slug, data.color, data.parentId, now]
+            `INSERT INTO categories (id, user_id, name, name_es, slug, color, parent_id, is_system, display_order, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0, 999, ?, ?)`,
+            [id, userId, data.name, data.nameEs, slug, data.color, data.parentId, now, now]
           );
           await db.runAsync(
             `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,

@@ -81,8 +81,6 @@ export async function getOccurrencesForMonth(
   month: string
 ): Promise<OccurrenceWithTemplate[]> {
   const db = await getDatabase();
-  const startDate = `${month}-01`;
-  const endDate = `${month}-31`;
 
   return db.getAllAsync<OccurrenceWithTemplate>(
     `SELECT
@@ -97,9 +95,9 @@ export async function getOccurrencesForMonth(
       t.is_active AS template_is_active
     FROM recurring_occurrences o
     JOIN recurring_transaction_templates t ON o.template_id = t.id
-    WHERE o.occurrence_date BETWEEN ? AND ?
+    WHERE o.occurrence_date LIKE ?
     ORDER BY o.occurrence_date ASC, t.merchant_name ASC`,
-    [startDate, endDate]
+    [`${month}%`]
   );
 }
 
@@ -125,8 +123,6 @@ export async function getPendingOccurrences(): Promise<OccurrenceWithTemplate[]>
 
 export async function getRecurringSummary(month: string) {
   const db = await getDatabase();
-  const startDate = `${month}-01`;
-  const endDate = `${month}-31`;
 
   const row = await db.getFirstAsync<{
     total_expected: number;
@@ -140,8 +136,8 @@ export async function getRecurringSummary(month: string) {
       COALESCE(SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END), 0) AS paid_count,
       COALESCE(SUM(CASE WHEN o.status = 'skipped' THEN 1 ELSE 0 END), 0) AS skipped_count
     FROM recurring_occurrences o
-    WHERE o.occurrence_date BETWEEN ? AND ?`,
-    [startDate, endDate]
+    WHERE o.occurrence_date LIKE ?`,
+    [`${month}%`]
   );
 
   return row ?? { total_expected: 0, pending_count: 0, paid_count: 0, skipped_count: 0 };
@@ -156,12 +152,13 @@ export async function confirmOccurrence(occurrenceId: string): Promise<void> {
     [now, occurrenceId]
   );
   await db.runAsync(
-    `INSERT INTO sync_queue (table_name, record_id, operation, payload) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,
     [
       "recurring_occurrences",
       occurrenceId,
       "UPDATE",
       JSON.stringify({ status: "paid", paid_at: now }),
+      now,
     ]
   );
 }
@@ -175,12 +172,13 @@ export async function skipOccurrence(occurrenceId: string): Promise<void> {
     [now, occurrenceId]
   );
   await db.runAsync(
-    `INSERT INTO sync_queue (table_name, record_id, operation, payload) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,
     [
       "recurring_occurrences",
       occurrenceId,
       "UPDATE",
       JSON.stringify({ status: "skipped", skipped_at: now }),
+      now,
     ]
   );
 }

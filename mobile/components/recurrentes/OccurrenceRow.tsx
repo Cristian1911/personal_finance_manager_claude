@@ -11,9 +11,10 @@ interface OccurrenceRowProps {
   onSkip: (occurrenceId: string) => void;
 }
 
-/** String comparison for YYYY-MM-DD dates — avoids UTC timezone trap. */
+/** String comparison for YYYY-MM-DD dates — uses local date to avoid UTC timezone trap. */
 function getDateColoring(occurrenceDate: string): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   if (occurrenceDate < today) return "text-z-debt";
   if (occurrenceDate === today) return "text-z-alert";
   return "text-muted-foreground";

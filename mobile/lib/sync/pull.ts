@@ -114,29 +114,45 @@ async function pullTable(
   if (error) throw new Error(`Pull ${table} failed: ${error.message}`);
   if (!data || data.length === 0) return 0;
 
-  // For full-replace junction tables, clear existing rows first
-  if (isFullReplace) {
-    await db.runAsync(`DELETE FROM ${table}`);
-  }
-
   // Upsert each row into SQLite (skip only invalid rows, don't fail whole sync)
   let upserted = 0;
   let failed = 0;
   let firstError: unknown = null;
-  for (const row of data) {
-    try {
-      await upsertRow(db, table, row);
-      upserted++;
-    } catch (error) {
-      failed++;
-      if (!firstError) {
-        firstError = error;
+
+  if (isFullReplace) {
+    // Wrap full-replace in a transaction for atomicity — if interrupted,
+    // the old data is preserved rather than leaving the table empty.
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(`DELETE FROM ${table}`);
+      for (const row of data) {
+        try {
+          await upsertRow(db, table, row);
+          upserted++;
+        } catch (error) {
+          failed++;
+          if (!firstError) firstError = error;
+          console.warn(
+            `Skipping invalid ${table} row during pull:`,
+            (row as { id?: string }).id ?? "<no-id>",
+            error
+          );
+        }
       }
-      console.warn(
-        `Skipping invalid ${table} row during pull:`,
-        (row as { id?: string }).id ?? "<no-id>",
-        error
-      );
+    });
+  } else {
+    for (const row of data) {
+      try {
+        await upsertRow(db, table, row);
+        upserted++;
+      } catch (error) {
+        failed++;
+        if (!firstError) firstError = error;
+        console.warn(
+          `Skipping invalid ${table} row during pull:`,
+          (row as { id?: string }).id ?? "<no-id>",
+          error
+        );
+      }
     }
   }
 
