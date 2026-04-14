@@ -27,7 +27,7 @@ function SectionHeading({
     <div className="max-w-3xl space-y-4">
       <Badge
         variant="outline"
-        className="border-white/10 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-z-sage-light"
+        className="border-white/6 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-z-sage-light"
       >
         {eyebrow}
       </Badge>
@@ -70,14 +70,14 @@ const AUDIENCE_PROFILES = [
 
 export function LandingAudience() {
   return (
-    <section className="py-16">
+    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24">
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         {/* Para quién encaja */}
-        <Card className="border-white/8 bg-white/[0.03] shadow-2xl shadow-black/10">
+        <Card className="border-white/6 bg-white/[0.03] shadow-2xl shadow-black/10">
           <CardHeader className="pb-4">
             <Badge
               variant="outline"
-              className="w-fit border-white/10 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-z-sage-light"
+              className="w-fit border-white/6 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-z-sage-light"
             >
               Audiencia
             </Badge>
@@ -92,7 +92,7 @@ export function LandingAudience() {
               {AUDIENCE_PROFILES.map((profile) => (
                 <div
                   key={profile.name}
-                  className="rounded-xl border border-white/8 bg-white/[0.03] p-4 space-y-1"
+                  className="rounded-xl border border-white/6 bg-white/[0.03] p-4 space-y-1"
                 >
                   <p className="text-sm font-medium text-foreground">
                     {profile.name}
@@ -109,12 +109,12 @@ export function LandingAudience() {
         {/* Hecho para Colombia */}
         <Card
           id="colombia"
-          className="border-white/8 bg-white/[0.03] shadow-2xl shadow-black/10"
+          className="border-white/6 bg-white/[0.03] shadow-2xl shadow-black/10"
         >
           <CardHeader className="pb-4">
             <Badge
               variant="outline"
-              className="w-fit border-white/10 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-z-sage-light"
+              className="w-fit border-white/6 bg-white/4 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-z-sage-light"
             >
               Colombia
             </Badge>
@@ -129,7 +129,7 @@ export function LandingAudience() {
               {LANDING_INSTITUTIONS.map((institution) => (
                 <span
                   key={institution}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-z-sage-light"
+                  className="rounded-full border border-white/6 bg-white/[0.04] px-3 py-1 text-xs font-medium text-z-sage-light"
                 >
                   {institution}
                 </span>
@@ -151,7 +151,7 @@ export function LandingAudience() {
 
 export function LandingHowItWorks() {
   return (
-    <section id="como-funciona" className="space-y-12 py-16 sm:py-24">
+    <section id="como-funciona" className="mx-auto max-w-7xl space-y-12 px-4 py-16 sm:px-6 sm:py-24">
       <SectionHeading
         eyebrow="Proceso"
         title="Tres pasos para tener claridad financiera"
@@ -161,10 +161,10 @@ export function LandingHowItWorks() {
         {LANDING_WORKFLOW.map((item) => (
           <Card
             key={item.step}
-            className="border-white/8 bg-white/[0.03] shadow-2xl shadow-black/10"
+            className="border-white/6 bg-white/[0.03] shadow-2xl shadow-black/10"
           >
             <CardHeader className="gap-4">
-              <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-black/20">
+              <div className="flex size-12 items-center justify-center rounded-2xl border border-white/6 bg-black/20">
                 <span className="font-mono text-sm font-semibold text-z-sage-light">
                   {item.step}
                 </span>
@@ -187,7 +187,7 @@ export function LandingHowItWorks() {
 
 export function LandingFAQ() {
   return (
-    <section id="faq" className="space-y-12 py-16 sm:py-24">
+    <section id="faq" className="mx-auto max-w-7xl space-y-12 px-4 py-16 sm:px-6 sm:py-24">
       <SectionHeading
         eyebrow="Preguntas frecuentes"
         title="Lo que más nos preguntan"
@@ -197,7 +197,7 @@ export function LandingFAQ() {
         {LANDING_FAQS.map((faq) => (
           <Card
             key={faq.question}
-            className="border-white/8 bg-white/[0.03] shadow-2xl shadow-black/10"
+            className="border-white/6 bg-white/[0.03] shadow-2xl shadow-black/10"
           >
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-medium">
