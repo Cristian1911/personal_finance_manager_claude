@@ -9,6 +9,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { UUID_RE } from "@/lib/validators/shared";
 import {
   generateOccurrenceRowsBatch,
 } from "@/lib/utils/occurrence-generator";
@@ -401,6 +402,10 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
+  if (!UUID_RE.test(occurrenceId)) {
+    return { success: false, error: "ID inválido" };
+  }
+
   // Fetch occurrence with its current state
   const { data: occurrence, error: fetchError } = await supabase
     .from("recurring_occurrences")
@@ -419,7 +424,7 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
 
   // For paid occurrences: delete created transactions and reverse balances
   if (occurrence.status === "paid" && occurrence.transaction_id) {
-    // Find all transactions in the same recurrence group (payment + transfer pair)
+    // Single query: get recurrence_group_id via FK join (avoids extra round trip)
     const { data: primaryTx } = await supabase
       .from("transactions")
       .select("recurrence_group_id")
@@ -428,38 +433,64 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
       .single();
 
     if (primaryTx?.recurrence_group_id) {
-      // Get all transactions in the group to reverse balances
+      // Get all transactions in the group
       const { data: groupTxs } = await supabase
         .from("transactions")
-        .select("id, amount, direction, account_id, accounts!account_id(account_type, current_balance)")
+        .select("id, amount, direction, account_id, accounts!transactions_account_id_fkey(account_type, current_balance)")
         .eq("recurrence_group_id", primaryTx.recurrence_group_id)
         .eq("user_id", user.id);
 
-      // Reverse balance deltas for each transaction
-      for (const tx of groupTxs ?? []) {
-        const account = tx.accounts as { account_type: string; current_balance: number } | null;
-        if (!account) continue;
+      const txIds = (groupTxs ?? []).map((tx) => tx.id);
 
-        const newBalance = reverseAccountBalanceDelta({
-          currentBalance: account.current_balance,
-          accountType: account.account_type,
-          direction: tx.direction as "INFLOW" | "OUTFLOW",
-          amount: tx.amount,
-        });
+      // Guard: block revert if any transaction was reconciled into by another
+      if (txIds.length > 0) {
+        const { count: reconciledRefs } = await supabase
+          .from("transactions")
+          .select("id", { count: "exact", head: true })
+          .in("reconciled_into_transaction_id", txIds)
+          .eq("user_id", user.id);
+        if (reconciledRefs && reconciledRefs > 0) {
+          return { success: false, error: "No se puede revertir: hay una transacción importada vinculada a este pago." };
+        }
+      }
 
-        await supabase
-          .from("accounts")
-          .update({ current_balance: newBalance })
-          .eq("user_id", user.id)
-          .eq("id", tx.account_id);
+      // Reverse balance deltas in parallel — safe because each tx in a
+      // recurrence group targets a different account (source ≠ destination)
+      const balanceResults = await Promise.all(
+        (groupTxs ?? []).map((tx) => {
+          const account = tx.accounts as { account_type: string; current_balance: number } | null;
+          if (!account) return Promise.resolve(null);
+
+          const newBalance = reverseAccountBalanceDelta({
+            currentBalance: account.current_balance,
+            accountType: account.account_type,
+            direction: tx.direction as "INFLOW" | "OUTFLOW",
+            amount: tx.amount,
+          });
+
+          return supabase
+            .from("accounts")
+            .update({ current_balance: newBalance })
+            .eq("user_id", user.id)
+            .eq("id", tx.account_id);
+        })
+      );
+
+      const balanceError = balanceResults.find((r) => r && "error" in r && r.error);
+      if (balanceError && "error" in balanceError && balanceError.error) {
+        return { success: false, error: `Error al revertir saldo: ${balanceError.error.message}` };
       }
 
       // Delete all transactions in the recurrence group
-      await supabase
+      const { error: deleteError } = await supabase
         .from("transactions")
         .delete()
         .eq("recurrence_group_id", primaryTx.recurrence_group_id)
         .eq("user_id", user.id);
+
+      if (deleteError) {
+        return { success: false, error: `Error al eliminar transacciones: ${deleteError.message}` };
+      }
     }
   }
 
@@ -467,7 +498,7 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
   const { error: updateError } = await supabase
     .from("recurring_occurrences")
     .update({
-      status: "pending" as const,
+      status: "pending",
       transaction_id: null,
       paid_at: null,
       skipped_at: null,

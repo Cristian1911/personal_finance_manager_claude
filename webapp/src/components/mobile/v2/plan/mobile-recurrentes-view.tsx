@@ -163,7 +163,7 @@ export function MobileRecurrentesView({
               >
                 {/* Date header */}
                 <div className="px-3 py-1.5">
-                  <span className={cn("text-[10px] font-semibold uppercase tracking-wide", statusLabel(status))}>
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.18em]", statusLabel(status))}>
                     {status === "today" && "Hoy — "}
                     {formatDate(date, "EEEE d MMM")}
                   </span>
@@ -314,6 +314,9 @@ export function MobileRecurrentesView({
 /*  Template Action Sheet                                              */
 /* ------------------------------------------------------------------ */
 
+const SHEET_CHIP_CLASS =
+  "flex flex-col items-center gap-1.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3 active:bg-white/8 disabled:opacity-50";
+
 function TemplateActionSheet({
   item,
   template,
@@ -378,7 +381,7 @@ function TemplateActionSheet({
                 <button
                   type="button"
                   disabled={isPending}
-                  className="flex flex-col items-center gap-1.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3 active:bg-white/8 disabled:opacity-50"
+                  className={SHEET_CHIP_CLASS}
                 >
                   <span className="flex size-8 items-center justify-center rounded-full bg-z-brass/15">
                     <Pencil className="size-4 text-z-brass" />
@@ -400,7 +403,7 @@ function TemplateActionSheet({
                   <button
                     type="button"
                     disabled={isPending}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3 active:bg-white/8 disabled:opacity-50"
+                    className={SHEET_CHIP_CLASS}
                   >
                     <span className="flex size-8 items-center justify-center rounded-full bg-z-alert/15">
                       <Pause className="size-4 text-z-alert" />
@@ -414,7 +417,7 @@ function TemplateActionSheet({
                 type="button"
                 onClick={handleActivate}
                 disabled={isPending}
-                className="flex flex-col items-center gap-1.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3 active:bg-white/8 disabled:opacity-50"
+                className={SHEET_CHIP_CLASS}
               >
                 <span className="flex size-8 items-center justify-center rounded-full bg-z-income/15">
                   <Play className="size-4 text-z-income" />
@@ -434,7 +437,7 @@ function TemplateActionSheet({
                 <button
                   type="button"
                   disabled={isPending}
-                  className="flex flex-col items-center gap-1.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3 active:bg-white/8 disabled:opacity-50"
+                  className={SHEET_CHIP_CLASS}
                 >
                   <span className="flex size-8 items-center justify-center rounded-full bg-z-debt/15">
                     <Trash2 className="size-4 text-z-debt" />
@@ -466,13 +469,16 @@ function CompletedSection({
 
   async function handleRevert(item: OccurrenceItem) {
     setRevertingId(item.occurrenceId);
-    const result = await onRevert(item.occurrenceId);
-    if (!result.success) {
-      toast.error(result.error ?? "Error al deshacer");
-    } else {
-      toast.success("Movido a pendientes");
+    try {
+      const result = await onRevert(item.occurrenceId);
+      if (!result.success) {
+        toast.error(result.error ?? "Error al deshacer");
+      } else {
+        toast.success("Movido a pendientes");
+      }
+    } finally {
+      setRevertingId(null);
     }
-    setRevertingId(null);
   }
 
   return (
@@ -506,6 +512,7 @@ function CompletedSection({
                   type="button"
                   onClick={() => handleRevert(item)}
                   disabled={isReverting}
+                  aria-label={`Deshacer ${item.merchant}`}
                   className="shrink-0 rounded-md px-2 py-0.5 text-[10px] text-z-sage-dark active:bg-white/5"
                 >
                   Deshacer
