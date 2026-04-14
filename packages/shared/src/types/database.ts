@@ -787,6 +787,7 @@ export type Database = {
         | "MONTHLY"
         | "QUARTERLY"
         | "ANNUAL"
+        | "ONCE"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
     }
@@ -949,6 +950,7 @@ export const Constants = {
         "MONTHLY",
         "QUARTERLY",
         "ANNUAL",
+        "ONCE",
       ],
       transaction_direction: ["INFLOW", "OUTFLOW"],
       transaction_status: ["PENDING", "POSTED", "CANCELLED"],

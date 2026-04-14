@@ -1,4 +1,4 @@
-import { addDays, addWeeks, addMonths, addYears, parseISO, isBefore, isAfter, startOfDay } from "date-fns";
+import { addWeeks, addMonths, addYears, parseISO, isBefore, isAfter, startOfDay } from "date-fns";
 import type { RecurrenceFrequency } from "@/types/domain";
 
 /**
@@ -16,6 +16,8 @@ function advanceByFrequency(date: Date, frequency: RecurrenceFrequency): Date {
       return addMonths(date, 3);
     case "ANNUAL":
       return addYears(date, 1);
+    case "ONCE":
+      return date;
   }
 }
 
@@ -35,6 +37,12 @@ export function getNextOccurrence(
 
   // If end date has passed, no more occurrences
   if (end && isBefore(end, from)) return null;
+
+  // ONCE: single occurrence at start_date
+  if (frequency === "ONCE") {
+    if (isBefore(start, from)) return null;
+    return start.toISOString().split("T")[0];
+  }
 
   let current = start;
 
@@ -65,6 +73,16 @@ export function getOccurrencesBetween(
   const from = startOfDay(rangeStart);
   const to = startOfDay(rangeEnd);
 
+  // ONCE: single occurrence at start_date if within range
+  if (frequency === "ONCE") {
+    if (!isAfter(start, to) && !isBefore(start, from)) {
+      if (!end || !isAfter(start, end)) {
+        dates.push(start.toISOString().split("T")[0]);
+      }
+    }
+    return dates;
+  }
+
   let current = start;
 
   // Advance to first occurrence on or after rangeStart
@@ -87,6 +105,7 @@ export function getOccurrencesBetween(
  */
 export function frequencyLabel(frequency: RecurrenceFrequency): string {
   const labels: Record<RecurrenceFrequency, string> = {
+    ONCE: "Una vez",
     WEEKLY: "Semanal",
     BIWEEKLY: "Quincenal",
     MONTHLY: "Mensual",
