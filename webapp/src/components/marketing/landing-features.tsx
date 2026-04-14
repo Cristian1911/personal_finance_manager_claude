@@ -70,7 +70,7 @@ const AUDIENCE_PROFILES = [
 
 export function LandingAudience() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24">
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         {/* Para quién encaja */}
         <Card className="border-white/6 bg-white/[0.03] shadow-2xl shadow-black/10">
