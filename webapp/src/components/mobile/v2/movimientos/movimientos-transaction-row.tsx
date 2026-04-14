@@ -12,6 +12,7 @@ import { CategoryZonePicker } from "@/components/categories/category-zone-picker
 import { TagChip } from "@/components/tags/tag-chip";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
+import { MOBILE_ACTION_BUTTON_CLASS } from "@/lib/constants/styles";
 import { categorizeTransaction, assignDestinatario, removeDestinatarioFromTransaction } from "@/actions/categorize";
 import {
   getCandidateOccurrencesForTransaction,
@@ -258,7 +259,7 @@ export function MovimientosTransactionRow({
               type="button"
               onClick={handleOpenLinkPicker}
               disabled={isLinking}
-              className="inline-flex items-center gap-1 rounded-full border border-z-brass/20 bg-z-brass/8 px-2.5 py-1 text-[10px] font-medium text-z-brass transition-colors hover:bg-z-brass/12"
+              className={cn(MOBILE_ACTION_BUTTON_CLASS, "inline-flex items-center gap-1 rounded-full hover:bg-z-brass/12")}
             >
               <Link2 className="size-2.5" />
               Vincular
