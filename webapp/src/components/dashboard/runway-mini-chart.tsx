@@ -87,7 +87,7 @@ export function RunwayMiniChart({
   // Y-axis ticks
   const yMid = Math.round(maxBalance / 2);
 
-  function handleTap(e: React.MouseEvent<SVGSVGElement>) {
+  function handlePointer(e: React.MouseEvent<SVGSVGElement>) {
     const svg = e.currentTarget;
     const rect = svg.getBoundingClientRect();
     const svgX = ((e.clientX - rect.left) / rect.width) * W;
@@ -113,7 +113,10 @@ export function RunwayMiniChart({
         viewBox={`0 0 ${W} ${H}`}
         className="w-full"
         aria-label="Proyección de gasto"
-        onClick={compact ? undefined : handleTap}
+        onMouseMove={compact ? undefined : handlePointer}
+        onMouseLeave={compact ? undefined : () => setTooltip(null)}
+        onClick={compact ? undefined : handlePointer}
+        style={compact ? undefined : { cursor: "crosshair" }}
       >
         {/* Y-axis labels (full mode) */}
         {!compact && (
