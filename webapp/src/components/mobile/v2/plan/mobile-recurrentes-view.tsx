@@ -294,6 +294,7 @@ export function MobileRecurrentesView({
         accounts={accounts}
         categories={categories}
         onClose={() => setActionItem(null)}
+        onMutate={hook.refreshOccurrences}
       />
     </div>
   );
@@ -309,12 +310,14 @@ function TemplateActionSheet({
   accounts,
   categories,
   onClose,
+  onMutate,
 }: {
   item: OccurrenceItem | null;
   template: RecurringTemplateWithRelations | null;
   accounts: Account[];
   categories: CategoryWithChildren[];
   onClose: () => void;
+  onMutate: () => Promise<void>;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -324,6 +327,7 @@ function TemplateActionSheet({
     if (!template) return;
     startTransition(async () => {
       await toggleRecurringTemplate(template.id, true);
+      await onMutate();
       onClose();
     });
   };
@@ -332,6 +336,7 @@ function TemplateActionSheet({
     if (!template) return;
     startTransition(async () => {
       await toggleRecurringTemplate(template.id, false);
+      await onMutate();
       onClose();
     });
   };
@@ -340,6 +345,7 @@ function TemplateActionSheet({
     if (!template) return;
     startTransition(async () => {
       await deleteRecurringTemplate(template.id);
+      await onMutate();
       onClose();
     });
   };

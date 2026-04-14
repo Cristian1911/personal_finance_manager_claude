@@ -1106,9 +1106,13 @@ export async function importTransactions(
 
   // Batch-insert all accumulated transaction tags
   if (pendingTagInserts.length > 0) {
-    await supabase
+    const { error: tagError } = await supabase
       .from("transaction_tags")
       .upsert(pendingTagInserts, { onConflict: "transaction_id,tag_id", ignoreDuplicates: true });
+    if (tagError) {
+      console.error("Failed to auto-tag imported transactions:", tagError.message);
+      details.push(`Auto-etiquetado parcial: ${tagError.message}`);
+    }
   }
 
   revalidateFinancialViews();
