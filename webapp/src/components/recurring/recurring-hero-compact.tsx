@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/utils/currency";
+import { formatCurrencyCompact } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 
 interface RecurringHeroCompactProps {
@@ -74,7 +74,7 @@ export function RecurringHeroCompact({
               Gastos
             </p>
             <p className="text-base font-bold tabular-nums">
-              {formatCurrency(totalExpenses, currency)}
+              {formatCurrencyCompact(totalExpenses, currency)}
             </p>
           </div>
           <div className="px-2 text-center">
@@ -88,7 +88,7 @@ export function RecurringHeroCompact({
               )}
             >
               {isPositive ? "+" : ""}
-              {formatCurrency(Math.abs(net), currency)}
+              {formatCurrencyCompact(Math.abs(net), currency)}
             </p>
           </div>
           <div className="text-right">
@@ -96,7 +96,7 @@ export function RecurringHeroCompact({
               Ingresos
             </p>
             <p className="text-base font-bold tabular-nums">
-              {formatCurrency(totalIncome, currency)}
+              {formatCurrencyCompact(totalIncome, currency)}
             </p>
           </div>
         </div>

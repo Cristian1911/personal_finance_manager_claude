@@ -27,6 +27,31 @@ export function formatCurrency(
   }).format(amount);
 }
 
+/**
+ * Abbreviated currency format: $3.76M, $178K, $500.
+ * Uses K for thousands, M for millions. Keeps 1-2 significant digits after abbreviation.
+ */
+export function formatCurrencyCompact(
+  amount: number,
+  currencyCode: CurrencyCode = "COP"
+): string {
+  const config = CURRENCY_CONFIG[currencyCode];
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? "-" : "";
+
+  if (abs >= 1_000_000) {
+    const val = abs / 1_000_000;
+    const formatted = val >= 10 ? val.toFixed(1).replace(/\.0$/, "") : val.toFixed(2).replace(/0$/, "").replace(/\.$/, "");
+    return `${sign}${config.symbol} ${formatted}M`;
+  }
+  if (abs >= 1_000) {
+    const val = abs / 1_000;
+    const formatted = val >= 100 ? Math.round(val).toString() : val.toFixed(1).replace(/\.0$/, "");
+    return `${sign}${config.symbol} ${formatted}K`;
+  }
+  return formatCurrency(amount, currencyCode);
+}
+
 export function getCurrencySymbol(currencyCode: CurrencyCode): string {
   return CURRENCY_CONFIG[currencyCode].symbol;
 }
