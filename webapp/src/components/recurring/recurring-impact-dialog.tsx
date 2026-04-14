@@ -27,7 +27,9 @@ interface RecurringImpactDialogProps {
   currencyCode: CurrencyCode;
   action: "delete" | "pause";
   onConfirm: () => void | Promise<void>;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function RecurringImpactDialog({
@@ -37,8 +39,12 @@ export function RecurringImpactDialog({
   action,
   onConfirm,
   trigger,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: RecurringImpactDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [impact, setImpact] = useState<TemplateImpact | null>(null);
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -75,7 +81,7 @@ export function RecurringImpactDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex items-center gap-3">
