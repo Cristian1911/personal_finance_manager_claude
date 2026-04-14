@@ -24,6 +24,11 @@
 - **What:** Statement snapshots visual redesign, auto-populate `card_brand` from PDF parsers, composite `(account_id, user_id, transaction_date)` index, use `useAccounts()` hook instead of server-side `getAccounts()` in QuickActionsBar
 - **Context:** Shipped card hero, flip-to-graph, transaction-based balance history, transfer dialog, quick actions. Deferred items noted by perf-auditor and design reviews.
 
+### Income occurrence UX — different actions from expenses
+- **Priority:** Medium
+- **What:** Income occurrences show "Confirmar pago" / "Ya pagué" — should say "Confirmar ingreso" / "Ya recibí". Actions, labels, and possibly the color accent should be contextual based on `direction` (INFLOW vs OUTFLOW). Also needs a "skip" or "delete" option for occurrences the user wants to clear without marking as received.
+- **Found:** Visual testing, 2026-04-13
+
 ### Mobile recurring admin actions
 - **Priority:** Medium
 - **What:** Add pause/delete/edit actions for recurring templates on mobile. Currently mobile view (`MobileRecurrentesView`) only supports pay/skip — no way to manage templates without switching to desktop.
