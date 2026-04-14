@@ -97,7 +97,8 @@ async function getAttentionItemsCached(
         template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
           merchant_name,
           description,
-          direction
+          direction,
+          is_active
         )
       `)
       .eq("user_id", userId)
@@ -140,7 +141,9 @@ async function getAttentionItemsCached(
 
   // ── Map upcoming payments from materialized occurrences ───────────────────
 
-  const upcomingPayments: AttentionUpcomingPayment[] = (occurrencesRes.data ?? []).map((o) => {
+  const upcomingPayments: AttentionUpcomingPayment[] = (occurrencesRes.data ?? [])
+    .filter((o) => (o.template as { is_active?: boolean } | null)?.is_active !== false)
+    .map((o) => {
     const tmpl = o.template as { merchant_name: string | null; description: string | null; direction: string };
     return {
       templateId: o.template_id,

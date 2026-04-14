@@ -449,7 +449,7 @@ export async function findMatchingOccurrence(
     .select(
       `id, expected_amount,
        template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
-         account_id, direction
+         account_id, direction, is_active
        )`
     )
     .eq("user_id", user.id)
@@ -461,9 +461,11 @@ export async function findMatchingOccurrence(
 
   if (error || !data) return null;
 
-  // Match by amount (1% tolerance)
+  // Match by amount (1% tolerance), skip paused templates
   const tolerance = amount * 0.01;
   for (const row of data) {
+    const tmpl = row.template as { account_id: string; direction: string; is_active: boolean };
+    if (!tmpl.is_active) continue;
     if (Math.abs(row.expected_amount - amount) <= tolerance) {
       return row.id;
     }
