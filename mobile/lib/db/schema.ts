@@ -133,6 +133,164 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE accounts ADD COLUMN monthly_payment REAL`,
     ],
   },
+  {
+    version: 4,
+    statements: [
+      // ── Recurring transaction templates ───────────────────────────────
+      `CREATE TABLE IF NOT EXISTS recurring_transaction_templates (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        account_id TEXT NOT NULL,
+        category_id TEXT,
+        amount REAL NOT NULL,
+        currency_code TEXT NOT NULL DEFAULT 'COP',
+        direction TEXT NOT NULL,
+        frequency TEXT NOT NULL,
+        day_of_month INTEGER,
+        day_of_week INTEGER,
+        start_date TEXT NOT NULL,
+        end_date TEXT,
+        merchant_name TEXT,
+        description TEXT,
+        transfer_source_account_id TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (account_id) REFERENCES accounts(id),
+        FOREIGN KEY (category_id) REFERENCES categories(id)
+      )`,
+
+      // ── Recurring occurrences ─────────────────────────────────────────
+      `CREATE TABLE IF NOT EXISTS recurring_occurrences (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        template_id TEXT NOT NULL,
+        occurrence_date TEXT NOT NULL,
+        expected_amount REAL NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        transaction_id TEXT,
+        paid_at TEXT,
+        skipped_at TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (template_id) REFERENCES recurring_transaction_templates(id),
+        FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+      )`,
+
+      // ── Destinatarios ─────────────────────────────────────────────────
+      `CREATE TABLE IF NOT EXISTS destinatarios (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        name_hmac TEXT,
+        default_category_id TEXT,
+        notes TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (default_category_id) REFERENCES categories(id)
+      )`,
+
+      // ── Destinatario rules ────────────────────────────────────────────
+      `CREATE TABLE IF NOT EXISTS destinatario_rules (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        destinatario_id TEXT NOT NULL,
+        pattern TEXT NOT NULL,
+        match_type TEXT NOT NULL,
+        priority INTEGER NOT NULL DEFAULT 0,
+        match_count INTEGER NOT NULL DEFAULT 0,
+        last_matched_at TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (destinatario_id) REFERENCES destinatarios(id)
+      )`,
+
+      // ── Tag groups ────────────────────────────────────────────────────
+      `CREATE TABLE IF NOT EXISTS tag_groups (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        name TEXT NOT NULL,
+        color TEXT,
+        display_order INTEGER NOT NULL DEFAULT 0,
+        is_system INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )`,
+
+      // ── Tags ──────────────────────────────────────────────────────────
+      `CREATE TABLE IF NOT EXISTS tags (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        color TEXT,
+        group_id TEXT,
+        display_order INTEGER NOT NULL DEFAULT 0,
+        is_system INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (group_id) REFERENCES tag_groups(id)
+      )`,
+
+      // ── Transaction tags (junction table) ─────────────────────────────
+      `CREATE TABLE IF NOT EXISTS transaction_tags (
+        transaction_id TEXT NOT NULL,
+        tag_id TEXT NOT NULL,
+        PRIMARY KEY (transaction_id, tag_id),
+        FOREIGN KEY (transaction_id) REFERENCES transactions(id),
+        FOREIGN KEY (tag_id) REFERENCES tags(id)
+      )`,
+
+      // ── Add destinatario_id to transactions ───────────────────────────
+      `ALTER TABLE transactions ADD COLUMN destinatario_id TEXT`,
+
+      // ── Indexes ───────────────────────────────────────────────────────
+      `CREATE INDEX IF NOT EXISTS idx_recurring_templates_user ON recurring_transaction_templates(user_id, is_active)`,
+      `CREATE INDEX IF NOT EXISTS idx_recurring_occurrences_template ON recurring_occurrences(template_id, occurrence_date)`,
+      `CREATE INDEX IF NOT EXISTS idx_recurring_occurrences_status ON recurring_occurrences(status, occurrence_date)`,
+      `CREATE INDEX IF NOT EXISTS idx_destinatarios_user ON destinatarios(user_id, is_active)`,
+      `CREATE INDEX IF NOT EXISTS idx_destinatario_rules_dest ON destinatario_rules(destinatario_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_tags_group ON tags(group_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_transaction_tags_tx ON transaction_tags(transaction_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_transaction_tags_tag ON transaction_tags(tag_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_transactions_destinatario ON transactions(destinatario_id)`,
+    ],
+  },
+  {
+    version: 5,
+    statements: [
+      // ── Wishlist items (encrypted in Supabase, plaintext in SQLite) ────
+      `CREATE TABLE IF NOT EXISTS wishlist_items (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency_code TEXT NOT NULL DEFAULT 'COP',
+        status TEXT NOT NULL DEFAULT 'WANT',
+        desire_type TEXT,
+        urgency TEXT,
+        why TEXT,
+        url TEXT,
+        image_url TEXT,
+        funding_type TEXT,
+        installments INTEGER,
+        account_id TEXT,
+        category_id TEXT,
+        transaction_id TEXT,
+        last_score REAL,
+        last_scored_at TEXT,
+        last_verdict TEXT,
+        last_nudge_dismissed_at TEXT,
+        enriched INTEGER NOT NULL DEFAULT 0,
+        enriched_at TEXT,
+        ready_at TEXT,
+        bought_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (account_id) REFERENCES accounts(id),
+        FOREIGN KEY (category_id) REFERENCES categories(id),
+        FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_wishlist_user_status ON wishlist_items(user_id, status)`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

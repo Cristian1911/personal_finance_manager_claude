@@ -18,6 +18,13 @@ type SyncTableName =
   | "budgets"
   | "category_rules"
   | "recurring_transaction_templates"
+  | "recurring_occurrences"
+  | "destinatarios"
+  | "destinatario_rules"
+  | "tag_groups"
+  | "tags"
+  | "transaction_tags"
+  | "wishlist_items"
   | "statement_snapshots"
   | "transactions";
 
@@ -41,16 +48,19 @@ export async function pushPendingChanges(): Promise<number> {
       const payload = JSON.parse(item.payload);
       const tableName = item.table_name as SyncTableName;
 
+      // Cast to any — mobile types file may not include all tables
+      const sb = supabase as any;
+
       switch (item.operation) {
         case "INSERT": {
-          const { error } = await supabase
+          const { error } = await sb
             .from(tableName)
             .insert(payload);
           if (error) throw error;
           break;
         }
         case "UPDATE": {
-          const { error } = await supabase
+          const { error } = await sb
             .from(tableName)
             .update(payload)
             .eq("id", item.record_id);
@@ -58,7 +68,7 @@ export async function pushPendingChanges(): Promise<number> {
           break;
         }
         case "DELETE": {
-          const { error } = await supabase
+          const { error } = await sb
             .from(tableName)
             .delete()
             .eq("id", item.record_id);

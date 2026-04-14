@@ -53,11 +53,15 @@ Spawn these specialized agents for domain-specific review and diagnosis. Each ha
 | `import-flow-doctor` | PDF/email import flow, reconciliation, idempotency, installments. |
 | `pdf-parser-creator` | Adding support for a new bank's PDF statements. |
 | `ux-analyst` | "Review the app experience", UX cohesion, interaction inconsistencies, navigation logic, flow gaps. Spawn when asked to audit UX or review the overall experience. |
+| `mobile-sync-doctor` | Mobile SQLite ↔ Supabase sync. Encryption alignment, column drift, boolean/JSON mapping, push payload safety. Spawn when adding synced tables or debugging mobile data issues. |
+| `mobile-webapp-parity` | **Cross-platform gate.** Before any mobile change that writes to Supabase or needs schema changes. Prevents mobile-only tables, enum drift, missing side effects. |
 
 **Review gates** (enforced before shipping, same priority as `pnpm build`):
 1. `perf-auditor` — every feature
 2. `zetas-front-guy` — every TSX/CSS change
 3. `server-action-reviewer` — every new/modified server action
+4. `mobile-sync-doctor` — every new synced table or mobile push mutation
+5. `mobile-webapp-parity` — every mobile feature that touches Supabase
 
 ## Performance Rules
 - **Cache all data reads**: `"use cache"` + `cacheTag()` + `cacheLife("zeta")`. Never add an uncached DB query to a render path.

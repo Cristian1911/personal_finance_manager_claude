@@ -194,6 +194,7 @@ export async function createQuickCaptureTransaction(
 export async function getTransactions(options?: {
   accountId?: string;
   categoryId?: string;
+  uncategorizedOnly?: boolean;
   search?: string;
   month?: string;
   limit?: number;
@@ -208,7 +209,10 @@ export async function getTransactions(options?: {
     conditions.push("t.account_id = ?");
     params.push(options.accountId);
   }
-  if (options?.categoryId) {
+  if (options?.uncategorizedOnly) {
+    conditions.push("t.category_id IS NULL");
+    conditions.push("t.is_excluded = 0");
+  } else if (options?.categoryId) {
     conditions.push("t.category_id = ?");
     params.push(options.categoryId);
   }
