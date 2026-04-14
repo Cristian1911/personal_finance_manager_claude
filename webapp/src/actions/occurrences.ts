@@ -205,7 +205,7 @@ export async function getNextIncomeOccurrenceCached(
     .eq("status", "pending")
     .gte("occurrence_date", todayStr)
     .order("occurrence_date", { ascending: true })
-    .limit(50);
+    .limit(500);
 
   if (error || !data || data.length === 0) return null;
 
