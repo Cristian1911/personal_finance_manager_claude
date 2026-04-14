@@ -6,11 +6,11 @@ import {
   getRecurringTemplates,
   getRecurringSummary,
 } from "@/actions/recurring-templates";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
 import { RecurringList } from "@/components/recurring/recurring-list";
 import { RecurringTimelineView } from "@/components/recurring/recurring-timeline-view";
-import { MobileRecurrentesView } from "@/components/mobile/v2/plan/mobile-recurrentes-view";
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { DesktopOnly } from "@/components/ui/responsive-render";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
@@ -34,14 +34,20 @@ export async function PlanTabRecurrentes() {
 
   return (
     <div className="space-y-6">
-      {/* Mobile view */}
+      {/* Mobile — link to dedicated manager */}
       <div className="lg:hidden">
-        <MobileHeader variant="sub" title="Recurrentes" backHref="/plan" />
-        <MobileRecurrentesView
-          templates={templates}
-          accounts={accounts}
-          currency={currency as CurrencyCode}
-        />
+        <Link
+          href="/recurrentes"
+          className="flex items-center justify-between rounded-xl border border-white/6 bg-white/[0.03] px-4 py-3"
+        >
+          <div>
+            <p className="text-sm font-semibold">Administrar recurrentes</p>
+            <p className="text-xs text-muted-foreground">
+              {summary.activeCount} activos · {formatCurrency(summary.totalMonthlyExpenses + summary.totalMonthlyIncome, currency as CurrencyCode)}/mes
+            </p>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
       </div>
 
       {/* Desktop — only mounted on desktop viewports */}
