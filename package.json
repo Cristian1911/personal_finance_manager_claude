@@ -17,7 +17,16 @@
       "picomatch@>=4.0.0 <4.0.4": "4.0.4",
       "path-to-regexp@>=8.0.0 <8.4.0": "8.4.0",
       "@xmldom/xmldom": "0.8.12"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@shopify/react-native-skia",
+      "a",
+      "c",
+      "esbuild",
+      "n",
+      "s",
+      "v"
+    ]
   },
   "scripts": {
     "start": "pnpm --filter mobile start",
