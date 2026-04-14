@@ -36,10 +36,10 @@ function HeroCard() {
 
   return (
     <div className="relative">
-      <div className="absolute -inset-6 rounded-[2rem] bg-gradient-to-b from-primary/18 via-transparent to-z-income/10 blur-2xl" />
-      <Card className="relative overflow-hidden rounded-[2rem] border-white/10 bg-[#111111]/90 py-0 shadow-2xl shadow-black/35">
+      <div className="absolute -inset-6 rounded-3xl bg-gradient-to-b from-primary/18 via-transparent to-z-income/10 blur-2xl" />
+      <Card className="relative overflow-hidden rounded-3xl border-white/6 bg-z-ink/90 py-0 shadow-2xl shadow-black/35">
         {/* Header */}
-        <div className="border-b border-white/8 px-6 py-5">
+        <div className="border-b border-white/6 px-6 py-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-z-sage-light">
@@ -60,22 +60,22 @@ function HeroCard() {
 
         {/* Available to spend */}
         <div className="px-6 py-6">
-          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
             Disponible para gastar
           </p>
-          <p className="mt-2 text-4xl font-semibold tracking-tight">
+          <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums">
             {formatCurrency(availableToSpend, "COP")}
           </p>
 
           {/* Daily spending row */}
-          <div className="mt-5 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+          <div className="mt-5 rounded-2xl border border-white/6 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Gasto hoy</span>
               <span>
-                <span className="font-medium">
+                <span className="font-medium tabular-nums">
                   {formatCurrency(spentToday, "COP")}
                 </span>
-                <span className="ml-1 text-xs text-muted-foreground">
+                <span className="ml-1 text-xs tabular-nums text-muted-foreground">
                   / {formatCurrency(dailyAllowance, "COP")}
                 </span>
               </span>
@@ -129,7 +129,7 @@ function MobileHeroStrip() {
           <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Disponible para gastar
           </p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight">
+          <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
             {formatCurrency(availableToSpend, "COP")}
           </p>
         </div>
@@ -139,10 +139,10 @@ function MobileHeroStrip() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Gasto hoy</span>
             <span>
-              <span className="font-medium">
+              <span className="font-medium tabular-nums">
                 {formatCurrency(spentToday, "COP")}
               </span>
-              <span className="ml-1 text-xs text-muted-foreground">
+              <span className="ml-1 text-xs tabular-nums text-muted-foreground">
                 / {formatCurrency(dailyAllowance, "COP")}
               </span>
             </span>
@@ -186,7 +186,7 @@ export function LandingHero() {
             <Button
               asChild
               size="lg"
-              className="rounded-full bg-primary px-7 text-primary-foreground shadow-lg shadow-primary/20"
+              className="rounded-full bg-z-brass px-7 text-z-ink shadow-lg shadow-primary/20 hover:bg-z-brass/90"
             >
               <Link href="/signup">
                 Quiero probar Zeta
@@ -197,7 +197,7 @@ export function LandingHero() {
               asChild
               size="lg"
               variant="outline"
-              className="rounded-full border-white/10 bg-white/4 px-7 text-foreground hover:bg-white/8"
+              className="rounded-full border-white/6 bg-white/4 px-7 text-foreground hover:bg-white/8"
             >
               <a href="#funciones">Ver todo lo que hace</a>
             </Button>
@@ -207,7 +207,7 @@ export function LandingHero() {
             {highlights.map((highlight) => (
               <div
                 key={highlight.label}
-                className="rounded-3xl border border-white/8 bg-white/[0.03] p-5 shadow-lg shadow-black/10"
+                className="rounded-3xl border border-white/6 bg-white/[0.03] p-5 shadow-lg shadow-black/10"
               >
                 <p className="text-sm font-semibold text-z-sage-light">
                   {highlight.value}
