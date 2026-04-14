@@ -12,6 +12,8 @@ interface PlanExpandableChipsProps {
   incomes: UpcomingRecurrence[];
   payments: UpcomingRecurrence[];
   currency: CurrencyCode;
+  expanded?: string | null;
+  onToggle?: (id: string) => void;
 }
 
 type ChipType = "income" | "payment" | null;
@@ -53,14 +55,28 @@ export function PlanExpandableChips({
   incomes,
   payments,
   currency,
+  expanded: externalExpanded,
+  onToggle: externalToggle,
 }: PlanExpandableChipsProps) {
-  const [expanded, setExpanded] = useState<ChipType>(null);
+  const [internalExpanded, setInternalExpanded] = useState<ChipType>(null);
+
+  // Use external zone if provided, otherwise internal state
+  const chipKeys = { income: "chip-income", payment: "chip-payment" } as const;
+  const activeChip: ChipType = externalExpanded
+    ? (externalExpanded === chipKeys.income ? "income" : externalExpanded === chipKeys.payment ? "payment" : null)
+    : internalExpanded;
 
   const items = { income: incomes, payment: payments } as const;
-  const toggle = (type: ChipType) => setExpanded((prev) => (prev === type ? null : type));
+  const toggle = (type: ChipType) => {
+    if (type && externalToggle) {
+      externalToggle(chipKeys[type]);
+    } else {
+      setInternalExpanded((prev) => (prev === type ? null : type));
+    }
+  };
 
-  const expandedList = expanded ? items[expanded] : [];
-  const config = expanded ? CHIP_CONFIG[expanded] : null;
+  const expandedList = activeChip ? items[activeChip] : [];
+  const config = activeChip ? CHIP_CONFIG[activeChip] : null;
 
   return (
     <div className="space-y-2">
@@ -75,8 +91,8 @@ export function PlanExpandableChips({
               onClick={() => toggle(type)}
               className={cn(
                 "rounded-xl border p-3 text-left transition-all",
-                expanded === type ? c.borderActive : c.borderInactive,
-                expanded === OPPOSITE[type] && "opacity-50"
+                activeChip === type ? c.borderActive : c.borderInactive,
+                activeChip === OPPOSITE[type] && "opacity-50"
               )}
             >
               {next ? (
@@ -103,7 +119,7 @@ export function PlanExpandableChips({
         })}
       </div>
 
-      {expanded && config && (
+      {activeChip && config && (
         <div className={cn("rounded-xl border p-3", config.panelBorder)}>
           <p className={cn("text-[10px] font-semibold uppercase tracking-widest mb-2", config.text)}>
             {config.expandedLabel}
