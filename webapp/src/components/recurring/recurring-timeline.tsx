@@ -22,24 +22,38 @@ interface RecurringTimelineProps {
   getEffectiveDirection: (template: RecurringTemplateWithRelations) => "OUTFLOW" | "INFLOW";
 }
 
-const STATUS_ORDER: Record<DateStatus, number> = { past: 0, today: 1, future: 2 };
+type EffectiveStatus = "overdue" | "paid" | "today" | "future";
 
-function dotStyle(status: DateStatus) {
+const STATUS_ORDER: Record<EffectiveStatus, number> = { overdue: 0, today: 1, future: 2, paid: 3 };
+
+function dotStyle(status: EffectiveStatus) {
   switch (status) {
-    case "past":
+    case "overdue":
       return "bg-z-debt shadow-[0_0_8px_rgba(239,68,68,0.4)]";
     case "today":
       return "bg-z-alert shadow-[0_0_8px_rgba(245,158,11,0.4)]";
     case "future":
       return "border-2 border-white/15 bg-transparent";
+    case "paid":
+      return "bg-z-income shadow-[0_0_6px_rgba(74,222,128,0.3)]";
   }
 }
 
-function dateColor(status: DateStatus) {
+function dateColor(status: EffectiveStatus) {
   switch (status) {
-    case "past": return "text-z-debt";
+    case "overdue": return "text-z-debt";
     case "today": return "text-z-alert";
     case "future": return "text-muted-foreground";
+    case "paid": return "text-z-income";
+  }
+}
+
+function dateLabel(status: EffectiveStatus) {
+  switch (status) {
+    case "overdue": return "Vencido — ";
+    case "today": return "Hoy — ";
+    case "paid": return "";
+    case "future": return "";
   }
 }
 
@@ -83,23 +97,39 @@ export function RecurringTimeline({
     return groups;
   }, [allItems, templateMap, direction]);
 
-  const sortedDates = useMemo(
-    () => Array.from(dateGroups.keys())
-      .map((date) => ({ date, order: STATUS_ORDER[getDateStatus(date)] }))
-      .sort((a, b) => a.order - b.order || a.date.localeCompare(b.date))
-      .map((d) => d.date),
-    [dateGroups, getDateStatus]
-  );
-
   // Build occurrence status map (templateId:date → paid/pending)
+  const completedKeys = useMemo(() => new Set(completed.map((c) => c.key)), [completed]);
+
   const occurrenceStatuses = useMemo(() => {
-    const completedKeys = new Set(completed.map((c) => c.key));
     const statuses = new Map<string, "paid" | "pending" | "skipped">();
     for (const item of allItems) {
       statuses.set(`${item.templateId}:${item.date}`, completedKeys.has(item.key) ? "paid" : "pending");
     }
     return statuses;
-  }, [allItems, completed]);
+  }, [allItems, completedKeys]);
+
+  // Compute effective status per date group: combines date + payment status
+  const getGroupStatus = useMemo(() => {
+    return (date: string, items: OccurrenceItem[]): EffectiveStatus => {
+      const dateStatus = getDateStatus(date);
+      const allPaid = items.every((item) => completedKeys.has(item.key));
+      if (allPaid) return "paid";
+      if (dateStatus === "past") return "overdue";
+      if (dateStatus === "today") return "today";
+      return "future";
+    };
+  }, [getDateStatus, completedKeys]);
+
+  const sortedDates = useMemo(
+    () => Array.from(dateGroups.keys())
+      .map((date) => {
+        const items = dateGroups.get(date)!;
+        return { date, order: STATUS_ORDER[getGroupStatus(date, items)] };
+      })
+      .sort((a, b) => a.order - b.order || a.date.localeCompare(b.date))
+      .map((d) => d.date),
+    [dateGroups, getGroupStatus]
+  );
 
   return (
     <div className="relative pl-6">
@@ -108,8 +138,8 @@ export function RecurringTimeline({
 
       {/* Date groups */}
       {sortedDates.map((date) => {
-        const status = getDateStatus(date);
         const items = dateGroups.get(date)!;
+        const status = getGroupStatus(date, items);
 
         return (
           <div key={date} className="relative mb-5">
@@ -117,8 +147,7 @@ export function RecurringTimeline({
             <div className={cn("absolute -left-6 top-0.5 size-3 rounded-full", dotStyle(status))} />
             {/* Date label */}
             <p className={cn("mb-2 text-[10px] font-semibold uppercase tracking-[0.1em]", dateColor(status))}>
-              {status === "today" && "Hoy — "}
-              {status === "past" && "Vencido — "}
+              {dateLabel(status)}
               {formatDate(date, "EEEE d MMM")}
             </p>
 
