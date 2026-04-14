@@ -29,9 +29,9 @@
 - **What:** Income occurrences show "Confirmar pago" / "Ya pagué" — should say "Confirmar ingreso" / "Ya recibí". Actions, labels, and possibly the color accent should be contextual based on `direction` (INFLOW vs OUTFLOW). Also needs a "skip" or "delete" option for occurrences the user wants to clear without marking as received.
 - **Found:** Visual testing, 2026-04-13
 
-### Template active state ↔ occurrence status invariant
-- **Priority:** High
-- **What:** A pending occurrence for a paused template is invalid state. Currently enforced only in the `toggleRecurringTemplate` action (skips future occurrences on pause). Should also have a DB trigger on `recurring_transaction_templates` that auto-skips pending occurrences when `is_active` flips to `false` — prevents desync from race conditions, manual DB edits, or new code paths that bypass the action. Spawn `supabase-migrator`.
+### Template active state — query-side filtering
+- **Priority:** Done (implemented in this branch)
+- **What:** Paused template occurrences are filtered at query time via `is_active` check in `getPendingOccurrencesCached` and `getNextIncomeOccurrenceCached`. No destructive status changes — occurrences stay `pending`, just invisible when template is paused. Reactivating brings them back automatically.
 - **Found:** Visual testing, 2026-04-13
 
 ### Mobile recurring admin actions

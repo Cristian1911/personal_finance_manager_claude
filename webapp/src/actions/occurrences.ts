@@ -58,6 +58,7 @@ const OCCURRENCE_SELECT = `
     description,
     direction,
     currency_code,
+    is_active,
     account_id,
     transfer_source_account_id,
     account:accounts!recurring_transaction_templates_account_id_fkey(name, account_type),
@@ -77,6 +78,7 @@ type RawOccurrenceRow = {
     description: string | null;
     direction: "INFLOW" | "OUTFLOW";
     currency_code: string;
+    is_active: boolean;
     account_id: string;
     transfer_source_account_id: string | null;
     account: { name: string; account_type: string } | null;
@@ -161,7 +163,9 @@ export async function getPendingOccurrencesCached(
 
   if (error) throw error;
 
+  // Filter out occurrences for paused templates (is_active = false)
   return (data ?? [])
+    .filter((row) => (row as RawOccurrenceRow).template?.is_active !== false)
     .map((row) => mapOccurrenceRow(row as RawOccurrenceRow))
     .filter((r): r is RecurringOccurrence => r !== null);
 }

@@ -416,17 +416,6 @@ export async function toggleRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
-  if (!isActive) {
-    // Skip all future pending occurrences for this paused template
-    await supabase
-      .from("recurring_occurrences")
-      .update({ status: "skipped" })
-      .eq("template_id", id)
-      .eq("user_id", user.id)
-      .eq("status", "pending")
-      .gte("occurrence_date", new Date().toISOString().split("T")[0]);
-  }
-
   await ensureCurrentOccurrences();
 
   revalidateTag("recurring", "zeta");
