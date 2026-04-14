@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { useRecurringMonth } from "./use-recurring-month";
 import { RecurringHeroCompact } from "./recurring-hero-compact";
 import { RecurringTimeline } from "./recurring-timeline";
@@ -16,6 +17,14 @@ import {
 import type { Account, CurrencyCode, RecurringTemplateWithRelations } from "@/types/domain";
 
 type TabDirection = "OUTFLOW" | "INFLOW";
+
+/** INFLOW to debt accounts is a payment (expense), not income */
+function effectiveDirection(template: RecurringTemplateWithRelations): TabDirection {
+  if (template.direction === "INFLOW" && isDebtAccountType(template.account.account_type)) {
+    return "OUTFLOW";
+  }
+  return template.direction as TabDirection;
+}
 
 interface MobileRecurringManagerProps {
   templates: RecurringTemplateWithRelations[];
@@ -38,17 +47,17 @@ export function MobileRecurringManager({
     action: "pause" | "delete";
   } | null>(null);
 
-  // Compute totals per direction
+  // Compute totals per effective direction (debt payments = expense, not income)
   const totalExpenses = useMemo(
     () => templates
-      .filter((t) => t.direction === "OUTFLOW" && t.is_active)
+      .filter((t) => effectiveDirection(t) === "OUTFLOW" && t.is_active)
       .reduce((sum, t) => sum + Number(t.amount), 0),
     [templates]
   );
 
   const totalIncome = useMemo(
     () => templates
-      .filter((t) => t.direction === "INFLOW" && t.is_active)
+      .filter((t) => effectiveDirection(t) === "INFLOW" && t.is_active)
       .reduce((sum, t) => sum + Number(t.amount), 0),
     [templates]
   );
@@ -134,6 +143,7 @@ export function MobileRecurringManager({
           onPauseRequest={handlePauseRequest}
           onDeleteRequest={handleDeleteRequest}
           getDateStatus={hook.getDateStatus}
+          getEffectiveDirection={effectiveDirection}
         />
       )}
 

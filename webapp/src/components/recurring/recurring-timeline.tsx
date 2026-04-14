@@ -19,6 +19,7 @@ interface RecurringTimelineProps {
   onPauseRequest: (template: RecurringTemplateWithRelations) => void;
   onDeleteRequest: (template: RecurringTemplateWithRelations) => void;
   getDateStatus: (date: string) => DateStatus;
+  getEffectiveDirection: (template: RecurringTemplateWithRelations) => "OUTFLOW" | "INFLOW";
 }
 
 const STATUS_ORDER: Record<DateStatus, number> = { past: 0, today: 1, future: 2 };
@@ -59,13 +60,14 @@ export function RecurringTimeline({
   onPauseRequest,
   onDeleteRequest,
   getDateStatus,
+  getEffectiveDirection,
 }: RecurringTimelineProps) {
   const templateMap = useMemo(
     () => new Map(templates.map((t) => [t.id, t])),
     [templates]
   );
 
-  const pausedTemplates = templates.filter((t) => t.direction === direction && !t.is_active);
+  const pausedTemplates = templates.filter((t) => getEffectiveDirection(t) === direction && !t.is_active);
 
   // Build date-grouped items from pending + completed, filtered by direction
   const allItems = useMemo(() => [...pending, ...completed], [pending, completed]);
@@ -74,7 +76,7 @@ export function RecurringTimeline({
     const groups = new Map<string, OccurrenceItem[]>();
     for (const item of allItems) {
       const tmpl = templateMap.get(item.templateId);
-      if (!tmpl || tmpl.direction !== direction || !tmpl.is_active) continue;
+      if (!tmpl || getEffectiveDirection(tmpl) !== direction || !tmpl.is_active) continue;
       if (!groups.has(item.date)) groups.set(item.date, []);
       groups.get(item.date)!.push(item);
     }
@@ -147,7 +149,7 @@ export function RecurringTimeline({
       {/* Completed section — items already paid this month (green dots) */}
       {completed.filter((c) => {
         const tmpl = templateMap.get(c.templateId);
-        return tmpl && tmpl.direction === direction && tmpl.is_active && !dateGroups.has(c.date);
+        return tmpl && getEffectiveDirection(tmpl) === direction && tmpl.is_active && !dateGroups.has(c.date);
       }).length > 0 && (
         <div className="relative mb-5">
           <div className="absolute -left-6 top-0.5 size-3 rounded-full bg-z-income shadow-[0_0_6px_rgba(74,222,128,0.3)]" />
@@ -158,7 +160,7 @@ export function RecurringTimeline({
             {completed
               .filter((c) => {
                 const tmpl = templateMap.get(c.templateId);
-                return tmpl && tmpl.direction === direction && tmpl.is_active && !dateGroups.has(c.date);
+                return tmpl && getEffectiveDirection(tmpl) === direction && tmpl.is_active && !dateGroups.has(c.date);
               })
               .map((item) => {
                 const tmpl = templateMap.get(item.templateId);
