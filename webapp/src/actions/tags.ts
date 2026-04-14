@@ -135,6 +135,7 @@ async function getTagsForEntityCached(
   "use cache";
   cacheTag("tags");
   cacheTag("transactions");
+  cacheTag("destinatarios");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
@@ -479,17 +480,20 @@ export async function bulkTagTransactions(
     .single();
   if (!tag) return { success: false, error: "Etiqueta no encontrada" };
 
+  // Deduplicate to avoid false count mismatch
+  const uniqueIds = [...new Set(transactionIds)];
+
   // Defense-in-depth: verify all transactions belong to user
   const { count } = await supabase
     .from("transactions")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .in("id", transactionIds);
-  if (count !== transactionIds.length) {
+    .in("id", uniqueIds);
+  if (count !== uniqueIds.length) {
     return { success: false, error: "Transacciones no encontradas" };
   }
 
-  const rows = transactionIds.map((id) => ({ transaction_id: id, tag_id: tagId }));
+  const rows = uniqueIds.map((id) => ({ transaction_id: id, tag_id: tagId }));
 
   const { error } = await supabase
     .from("transaction_tags")
@@ -500,5 +504,5 @@ export async function bulkTagTransactions(
   revalidateTag("tags", "zeta");
   revalidateTag("categorize", "zeta");
   revalidateTag("transactions", "zeta");
-  return { success: true, data: { tagged: transactionIds.length } };
+  return { success: true, data: { tagged: uniqueIds.length } };
 }

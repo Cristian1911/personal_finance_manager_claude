@@ -7,6 +7,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { toColombiaDateString } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 import { getNextIncomeOccurrenceCached, getPendingOccurrencesCached } from "@/actions/occurrences";
+import { getRatesForCurrencies } from "@/actions/exchange-rate";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 
 export interface BurnRateDataPoint {
@@ -46,7 +47,8 @@ export interface BurnRateResponse {
 async function getBurnRateCached(
   accessToken: string,
   userId: string,
-  currency: string
+  currency: string,
+  ratesJson: string // serialized Map — "use cache" requires serializable params
 ): Promise<BurnRateResponse | null> {
   "use cache";
   cacheTag("dashboard:hero");
@@ -73,6 +75,9 @@ async function getBurnRateCached(
       .select("id, current_balance, currency_code, account_type")
       .eq("user_id", userId).eq("is_active", true)
       .in("account_type", ["CHECKING", "SAVINGS"]),
+    // TODO: transactions are base-currency-only while liquidBalance is multi-currency.
+    // This overestimates runway for users who also spend in foreign currencies.
+    // Per-transaction historical rate conversion would be needed for full accuracy.
     supabase.from("transactions")
       .select("id, amount, transaction_date, direction, is_recurring")
       .eq("user_id", userId).eq("direction", "OUTFLOW")
@@ -99,27 +104,34 @@ async function getBurnRateCached(
     windowEndDate = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
   }
 
+  // Deserialize pre-fetched exchange rates (fetched outside cache boundary)
+  const rates = new Map<CurrencyCode, number>(JSON.parse(ratesJson));
+  const toBase = (amount: number, currency: string) => {
+    if (currency === baseCurrency) return amount;
+    const rate = rates.get(currency as CurrencyCode);
+    return rate ? amount * rate : 0; // skip if no rate
+  };
+
   const obligationMarkers: ObligationMarker[] = (pendingOccurrences ?? [])
-    .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate)
+    .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
+      && (o.currency_code === baseCurrency || rates.has(o.currency_code as CurrencyCode)))
     .map((o) => ({
       date: o.occurrence_date,
       name: o.merchant_name ?? o.description ?? "Recurrente",
-      amount: o.expected_amount,
+      amount: toBase(o.expected_amount, o.currency_code),
     }));
 
-  // Compute disponible using window-scoped pending occurrences (same window as chart)
+  // Compute disponible using window-scoped pending occurrences (convertible currencies only)
   const windowOutflows = (pendingOccurrences ?? [])
     .filter((o) => o.direction === "OUTFLOW" && o.occurrence_date >= todayStr && o.occurrence_date <= windowEndDate
-      && o.currency_code === baseCurrency && o.account_type !== "CREDIT_CARD");
-  const totalPending = windowOutflows.reduce((sum, o) => sum + o.expected_amount, 0);
+      && o.account_type !== "CREDIT_CARD"
+      && (o.currency_code === baseCurrency || rates.has(o.currency_code as CurrencyCode)));
+  const totalPending = windowOutflows.reduce((sum, o) => sum + toBase(o.expected_amount, o.currency_code), 0);
 
-  const liquidAccounts = accounts.filter(
-    (a) => a.currency_code === baseCurrency
-  );
-  const liquidBalance = liquidAccounts.reduce(
-    (sum, a) => sum + (a.current_balance ?? 0),
-    0
-  );
+  // Include all liquid accounts with convertible currencies
+  const liquidBalance = accounts
+    .filter((a) => a.currency_code === baseCurrency || rates.has(a.currency_code as CurrencyCode))
+    .reduce((sum, a) => sum + toBase(a.current_balance ?? 0, a.currency_code), 0);
   const disponible = liquidBalance - totalPending;
 
   // Split transactions into total vs discretionary using is_recurring flag
@@ -147,11 +159,33 @@ async function getBurnRateCached(
 export async function getBurnRate(
   currency?: string
 ): Promise<BurnRateResponse | null> {
-  const { user, accessToken } = await getAuthenticatedClient();
+  const { supabase, user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return null;
 
   try {
-    return await getBurnRateCached(accessToken, user.id, currency ?? "COP");
+    const baseCurrency = (currency ?? "COP") as CurrencyCode;
+
+    // Fetch account + obligation currencies outside cache boundary (side-effecting rate lookups)
+    const [{ data: acctCurrencies }, { data: templateCurrencies }] = await Promise.all([
+      supabase.from("accounts").select("currency_code")
+        .eq("user_id", user.id).eq("is_active", true)
+        .in("account_type", ["CHECKING", "SAVINGS"]),
+      supabase.from("recurring_transaction_templates").select("currency_code")
+        .eq("user_id", user.id).eq("is_active", true),
+    ]);
+
+    const uniqueCurrencies = [...new Set([
+      ...(acctCurrencies ?? []).map((a) => a.currency_code),
+      ...(templateCurrencies ?? []).map((t) => t.currency_code),
+    ])] as CurrencyCode[];
+    const rates = uniqueCurrencies.some((c) => c !== baseCurrency)
+      ? await getRatesForCurrencies(uniqueCurrencies, baseCurrency)
+      : new Map<CurrencyCode, number>();
+
+    return await getBurnRateCached(
+      accessToken, user.id, currency ?? "COP",
+      JSON.stringify([...rates.entries()])
+    );
   } catch (error) {
     console.error("Error loading burn rate:", error);
     return null;

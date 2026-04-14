@@ -25,7 +25,7 @@ interface DashboardHeroProps {
 }
 
 export function DashboardHero({ data, allocationData, debtFreeBanner }: DashboardHeroProps) {
-  const { totalLiquid, totalPending, availableToSpend, pendingIncome, pendingIncomeCount, freshness, pendingObligations, currency, hasOtherCurrencies, nextIncomeDate, nextIncomeAmount, nextIncomeName, incomeConfigured } = data;
+  const { totalLiquid, totalPending, availableToSpend, pendingIncome, pendingIncomeCount, freshness, pendingObligations, currency, includesConvertedAmounts, hasUnconvertibleCurrencies, nextIncomeDate, nextIncomeAmount, nextIncomeName, incomeConfigured } = data;
   const f = freshnessMap[freshness];
   const code = currency as CurrencyCode;
   const hasPendingObligations = pendingObligations.length > 0;
@@ -99,9 +99,14 @@ export function DashboardHero({ data, allocationData, debtFreeBanner }: Dashboar
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
               {guidanceCopy}
             </p>
-            {hasOtherCurrencies && (
-              <p className="text-xs text-muted-foreground">
-                Tienes cuentas en otras monedas no incluidas en estos totales.
+            {includesConvertedAmounts && (
+              <p className="text-xs text-z-sage-dark">
+                Incluye montos convertidos de otras monedas (tasa del día).
+              </p>
+            )}
+            {hasUnconvertibleCurrencies && (
+              <p className="text-xs text-z-alert">
+                Algunas cuentas en monedas sin tasa disponible no se incluyen.
               </p>
             )}
           </div>
