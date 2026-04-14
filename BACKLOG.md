@@ -29,6 +29,10 @@
 - **What:** Direction-aware labels: "Confirmar ingreso" / "Ya recibí" for INFLOW, "Confirmar pago" / "Ya pagué" for OUTFLOW. Covers confirm inline, timeline, toasts, and attention fallback labels.
 - **Remaining:** Skip/delete option for clearing occurrences without marking received — deferred.
 
+### Undo completed occurrences
+- **Priority:** Done (this branch)
+- **What:** Revert paid/skipped occurrences back to pending. For paid: deletes transactions via `recurrence_group_id`, reverses balance deltas. For skipped: resets status. "Deshacer" button on each completed item.
+
 ### Template active state — query-side filtering
 - **Priority:** Done (implemented in this branch)
 - **What:** Paused template occurrences are filtered at query time via `is_active` check in `getPendingOccurrencesCached` and `getNextIncomeOccurrenceCached`. No destructive status changes — occurrences stay `pending`, just invisible when template is paused. Reactivating brings them back automatically.
@@ -37,6 +41,12 @@
 ### Mobile recurring admin actions
 - **Priority:** Done (this branch)
 - **What:** MoreVertical (⋮) button on each occurrence row opens bottom Sheet with Edit, Pause/Activate, Delete. Reuses RecurringFormDialog and RecurringImpactDialog from desktop.
+- **Remaining:** Edit dialog opens behind the action sheet (nested Radix portal). Needs to close Sheet first, then open Dialog sequentially. Full recurring form also needs mobile redesign.
+
+### Recurring form mobile redesign
+- **Priority:** Medium
+- **What:** RecurringFormDialog was designed for desktop. On mobile it opens as a Dialog over the action Sheet, causing layering issues. Needs a mobile-native form — either a full-page drawer or a dedicated route.
+- **Found:** Visual testing, 2026-04-13
 
 
 ### Income-aware runway & daily budget

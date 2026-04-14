@@ -5,7 +5,7 @@ import { Check, ChevronLeft, ChevronRight, MoreVertical, Pause, Pencil, Play, Ta
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { PANEL_INSET_CLASS, HERO_CARD_GRADIENT_CLASS, MOBILE_ACTION_BUTTON_CLASS, MOBILE_EYEBROW_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, HERO_CARD_GRADIENT_CLASS, MOBILE_ACTION_BUTTON_CLASS, MOBILE_EYEBROW_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import { useRecurringMonth, type OccurrenceItem, type DateStatus } from "@/components/recurring/use-recurring-month";
 import { RecurringConfirmInline } from "@/components/recurring/recurring-confirm-inline";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
@@ -16,6 +16,9 @@ import {
   deleteRecurringTemplate,
   toggleRecurringTemplate,
 } from "@/actions/recurring-templates";
+import { revertOccurrence } from "@/actions/occurrences";
+import { toast } from "sonner";
+import type { ActionResult } from "@/types/actions";
 import type { CategoryWithChildren, CurrencyCode, RecurringTemplateWithRelations, Account } from "@/types/domain";
 
 /* ------------------------------------------------------------------ */
@@ -160,7 +163,7 @@ export function MobileRecurrentesView({
               >
                 {/* Date header */}
                 <div className="px-3 py-1.5">
-                  <span className={cn("text-[10px] font-semibold uppercase tracking-wide", statusLabel(status))}>
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.18em]", statusLabel(status))}>
                     {status === "today" && "Hoy — "}
                     {formatDate(date, "EEEE d MMM")}
                   </span>
@@ -174,10 +177,10 @@ export function MobileRecurrentesView({
 
                     return (
                       <div key={item.key}>
-                        {/* Payment row — split into tap area + action button */}
+                        {/* Payment row — tap to expand, ⋮ for admin */}
                         <div
                           className={cn(
-                            "flex w-full items-center gap-2.5 px-3 py-2.5",
+                            "flex w-full items-center gap-2 px-3 py-2.5",
                             isBusy && "opacity-50 pointer-events-none"
                           )}
                         >
@@ -185,11 +188,11 @@ export function MobileRecurrentesView({
                           <button
                             type="button"
                             onClick={() => setExpandedKey(isExpanded ? null : item.key)}
-                            className="flex flex-1 items-center gap-2.5 text-left transition-colors active:bg-white/[0.03]"
+                            className="flex min-w-0 flex-1 items-center gap-2 text-left active:bg-white/[0.03]"
                           >
                             {/* Category dot */}
                             <span
-                              className="flex size-7 shrink-0 items-center justify-center rounded-lg"
+                              className="flex size-6 shrink-0 items-center justify-center rounded-md"
                               style={{ backgroundColor: item.categoryColor + "20" }}
                             >
                               <Tag className="size-3" style={{ color: item.categoryColor }} />
@@ -198,16 +201,16 @@ export function MobileRecurrentesView({
                             {/* Merchant + account */}
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-xs font-medium">{item.merchant}</p>
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="truncate text-[10px] text-muted-foreground">
                                 {item.accountName}
                               </p>
                             </div>
-
-                            {/* Amount */}
-                            <span className="shrink-0 text-xs font-semibold tabular-nums">
-                              {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
-                            </span>
                           </button>
+
+                          {/* Amount */}
+                          <span className="shrink-0 text-xs font-semibold tabular-nums">
+                            {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
+                          </span>
 
                           {/* Action hint */}
                           <button
@@ -284,7 +287,14 @@ export function MobileRecurrentesView({
 
       {/* Completed section */}
       {hook.isHydrated && hook.completed.length > 0 && (
-        <CompletedSection completed={hook.completed} />
+        <CompletedSection
+          completed={hook.completed}
+          onRevert={async (occurrenceId) => {
+            const result = await revertOccurrence(occurrenceId);
+            if (result.success) await hook.refreshOccurrences();
+            return result;
+          }}
+        />
       )}
 
       {/* Admin action sheet */}
@@ -303,6 +313,9 @@ export function MobileRecurrentesView({
 /* ------------------------------------------------------------------ */
 /*  Template Action Sheet                                              */
 /* ------------------------------------------------------------------ */
+
+const SHEET_CHIP_CLASS =
+  "flex flex-col items-center gap-1.5 rounded-xl border border-white/6 bg-white/4 px-3 py-3 active:bg-white/8 disabled:opacity-50";
 
 function TemplateActionSheet({
   item,
@@ -352,13 +365,13 @@ function TemplateActionSheet({
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+      <SheetContent side="bottom" className={cn("rounded-t-2xl", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
         <SheetHeader>
           <SheetTitle className="text-left">{template?.merchant_name}</SheetTitle>
         </SheetHeader>
 
         {template && (
-          <div className="mt-4 space-y-1">
+          <div className="mt-3 grid grid-cols-3 gap-2">
             {/* Edit */}
             <RecurringFormDialog
               template={template ?? undefined}
@@ -368,10 +381,12 @@ function TemplateActionSheet({
                 <button
                   type="button"
                   disabled={isPending}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left active:bg-white/5 disabled:opacity-50"
+                  className={SHEET_CHIP_CLASS}
                 >
-                  <Pencil className="size-4 text-muted-foreground" />
-                  <span className="text-sm">Editar</span>
+                  <span className="flex size-8 items-center justify-center rounded-full bg-z-brass/15">
+                    <Pencil className="size-4 text-z-brass" />
+                  </span>
+                  <span className="text-xs">Editar</span>
                 </button>
               }
             />
@@ -387,11 +402,13 @@ function TemplateActionSheet({
                 trigger={
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left active:bg-white/5"
                     disabled={isPending}
+                    className={SHEET_CHIP_CLASS}
                   >
-                    <Pause className="size-4 text-muted-foreground" />
-                    <span className="text-sm">Pausar</span>
+                    <span className="flex size-8 items-center justify-center rounded-full bg-z-alert/15">
+                      <Pause className="size-4 text-z-alert" />
+                    </span>
+                    <span className="text-xs">Pausar</span>
                   </button>
                 }
               />
@@ -399,11 +416,13 @@ function TemplateActionSheet({
               <button
                 type="button"
                 onClick={handleActivate}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left active:bg-white/5"
                 disabled={isPending}
+                className={SHEET_CHIP_CLASS}
               >
-                <Play className="size-4 text-muted-foreground" />
-                <span className="text-sm">{isPending ? "Activando..." : "Activar"}</span>
+                <span className="flex size-8 items-center justify-center rounded-full bg-z-income/15">
+                  <Play className="size-4 text-z-income" />
+                </span>
+                <span className="text-xs">{isPending ? "..." : "Activar"}</span>
               </button>
             )}
 
@@ -418,10 +437,12 @@ function TemplateActionSheet({
                 <button
                   type="button"
                   disabled={isPending}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-z-debt active:bg-white/5 disabled:opacity-50"
+                  className={SHEET_CHIP_CLASS}
                 >
-                  <Trash2 className="size-4" />
-                  <span className="text-sm">Eliminar</span>
+                  <span className="flex size-8 items-center justify-center rounded-full bg-z-debt/15">
+                    <Trash2 className="size-4 text-z-debt" />
+                  </span>
+                  <span className="text-xs text-z-debt">Eliminar</span>
                 </button>
               }
             />
@@ -438,35 +459,67 @@ function TemplateActionSheet({
 
 function CompletedSection({
   completed,
+  onRevert,
 }: {
   completed: OccurrenceItem[];
+  onRevert: (occurrenceId: string) => Promise<ActionResult>;
 }) {
   const [show, setShow] = useState(true);
+  const [revertingId, setRevertingId] = useState<string | null>(null);
+
+  async function handleRevert(item: OccurrenceItem) {
+    setRevertingId(item.occurrenceId);
+    try {
+      const result = await onRevert(item.occurrenceId);
+      if (!result.success) {
+        toast.error(result.error ?? "Error al deshacer");
+      } else {
+        toast.success("Movido a pendientes");
+      }
+    } finally {
+      setRevertingId(null);
+    }
+  }
 
   return (
     <div>
       <button
         type="button"
         onClick={() => setShow((prev) => !prev)}
-        className="flex w-full items-center justify-between py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+        className={cn("flex w-full items-center justify-between py-2", MOBILE_EYEBROW_CLASS)}
       >
         <span>Completados ({completed.length})</span>
         <span>{show ? "Ocultar ↑" : "Ver ↓"}</span>
       </button>
       {show && (
         <div className={cn(PANEL_INSET_CLASS, "divide-y divide-white/5")}>
-          {completed.map((item) => (
-            <div key={item.key} className="flex items-center gap-2.5 px-3 py-2.5 opacity-60">
-              <Check className="size-4 shrink-0 text-z-income" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs">{item.merchant}</p>
-                <p className="text-[10px] text-muted-foreground">{formatDate(item.date, "dd MMM")}</p>
+          {completed.map((item) => {
+            const isReverting = revertingId === item.occurrenceId;
+            return (
+              <div key={item.key} className={cn(
+                "flex items-center gap-2 px-3 py-2.5 opacity-60",
+                isReverting && "opacity-30 pointer-events-none"
+              )}>
+                <Check className="size-4 shrink-0 text-z-income" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs">{item.merchant}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatDate(item.date, "dd MMM")}</p>
+                </div>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRevert(item)}
+                  disabled={isReverting}
+                  aria-label={`Deshacer ${item.merchant}`}
+                  className="shrink-0 rounded-md px-2 py-0.5 text-[10px] text-z-sage-dark active:bg-white/5"
+                >
+                  Deshacer
+                </button>
               </div>
-              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
