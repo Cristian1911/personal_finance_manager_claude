@@ -95,16 +95,22 @@ export function RecurringForm({
   }, [isDebtAccount, direction]);
 
   useEffect(() => {
-    if (isDebtAccount && !categoryId) {
-      const defaultCat = selectedAccount?.account_type === "CREDIT_CARD"
+    if (!isDebtAccount) return;
+
+    const isDefault = !categoryId ||
+      categoryId === SUBCATEGORY_PAGO_TARJETA ||
+      categoryId === SUBCATEGORY_CUOTA_CREDITO;
+
+    if (isDefault) {
+      const targetCat = selectedAccount?.account_type === "CREDIT_CARD"
         ? SUBCATEGORY_PAGO_TARJETA
         : SUBCATEGORY_CUOTA_CREDITO;
-      setCategoryId(defaultCat);
+
+      if (categoryId !== targetCat) {
+        setCategoryId(targetCat);
+      }
     }
-    // categoryId intentionally omitted — only fire when account changes,
-    // not on every user category selection.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDebtAccount, selectedAccount?.account_type]);
+  }, [isDebtAccount, selectedAccount?.account_type, categoryId]);
 
   function nextOccurrenceForDay(dayOfMonth: number): string {
     const now = new Date();
