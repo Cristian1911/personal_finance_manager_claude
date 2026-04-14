@@ -191,6 +191,7 @@ export async function getNextIncomeOccurrenceCached(
         description,
         direction,
         currency_code,
+        is_active,
         accounts!recurring_transaction_templates_account_id_fkey (
           account_type
         )
@@ -210,8 +211,10 @@ export async function getNextIncomeOccurrenceCached(
       description: string | null;
       direction: string;
       currency_code: string;
+      is_active: boolean;
       accounts: { account_type: string } | null;
     };
+    if (!tpl.is_active) continue;
     if (tpl.direction !== "INFLOW") continue;
     if (tpl.currency_code !== currency) continue;
     const acctType = tpl.accounts?.account_type;
