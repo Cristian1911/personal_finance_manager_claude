@@ -6,6 +6,7 @@ import {
   getRecurringTemplates,
   getRecurringSummary,
 } from "@/actions/recurring-templates";
+import { getOccurrencesForMonth } from "@/actions/occurrences";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
@@ -20,7 +21,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 
 export async function PlanTabRecurrentes() {
-  const [templatesResult, accountsResult, categoriesResult, summary, currency, attentionSnapshot] =
+  const [templatesResult, accountsResult, categoriesResult, summary, currency, attentionSnapshot, occurrencesResult] =
     await Promise.all([
       getRecurringTemplates(),
       getAccounts(),
@@ -28,11 +29,13 @@ export async function PlanTabRecurrentes() {
       getRecurringSummary(),
       getPreferredCurrency(),
       getAttentionSnapshot(),
+      getOccurrencesForMonth(),
     ]);
 
   const templates = templatesResult.success ? templatesResult.data : [];
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
+  const initialOccurrences = occurrencesResult.success ? occurrencesResult.data : undefined;
 
   return (
     <div className="space-y-6">
@@ -59,6 +62,7 @@ export async function PlanTabRecurrentes() {
           templates={templates}
           accounts={accounts}
           currency={currency as CurrencyCode}
+          initialOccurrences={initialOccurrences}
         />
       </div>
 
