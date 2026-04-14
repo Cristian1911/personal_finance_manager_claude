@@ -144,6 +144,15 @@ export function InicioMetricsGrid({
                     {formatCurrency(burnRateData.discretionary.dailyAverage, currency)}/día
                   </span>
                 </div>
+                {burnRateData.nextIncomeDate && (
+                  <div className="flex items-baseline justify-between text-[11px]">
+                    <span className="text-z-income">Próximo ingreso</span>
+                    <span className="font-semibold tabular-nums text-z-income">
+                      +{formatCurrency(burnRateData.nextIncomeAmount, currency)}
+                      <span className="font-normal text-muted-foreground"> · día {parseInt(burnRateData.nextIncomeDate.split("-")[2], 10)}</span>
+                    </span>
+                  </div>
+                )}
                 <Link
                   href="/plan"
                   className="block rounded-xl bg-z-brass/8 border border-z-brass/20 px-3 py-2 text-center text-[11px] font-semibold text-z-brass transition-colors active:bg-z-brass/15"
