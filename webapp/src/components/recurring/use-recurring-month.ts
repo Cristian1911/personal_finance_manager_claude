@@ -254,7 +254,9 @@ export function useRecurringMonth(
       if (created > 0) {
         const msg = item.isDebtPayment
           ? "Pago registrado como transferencia + abono a deuda"
-          : "Pago recurrente registrado";
+          : item.direction === "INFLOW"
+            ? "Ingreso recurrente registrado"
+            : "Pago recurrente registrado";
 
         toast.success(msg);
         router.refresh();

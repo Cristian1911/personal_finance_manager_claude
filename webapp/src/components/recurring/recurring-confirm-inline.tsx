@@ -44,6 +44,7 @@ export function RecurringConfirmInline({
   isPending,
   sourceAccounts,
 }: RecurringConfirmInlineProps) {
+  const isIncome = item.direction === "INFLOW";
   const [amount, setAmount] = useState<string>(String(item.plannedAmount));
   const [paymentDate, setPaymentDate] = useState<string>(
     format(new Date(), "yyyy-MM-dd")
@@ -76,25 +77,25 @@ export function RecurringConfirmInline({
           {/* Amount */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">
-              Monto pagado
+              {isIncome ? "Monto recibido" : "Monto pagado"}
             </label>
             <CurrencyInput
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="h-8 text-sm"
-              placeholder="Monto pagado"
+              placeholder={isIncome ? "Monto recibido" : "Monto pagado"}
             />
           </div>
 
           {/* Date */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">
-              Fecha de pago
+              {isIncome ? "Fecha de ingreso" : "Fecha de pago"}
             </label>
             <DatePicker
               value={paymentDate}
               onChange={(v) => setPaymentDate(v ?? format(new Date(), "yyyy-MM-dd"))}
-              placeholder="Fecha de pago"
+              placeholder={isIncome ? "Fecha de ingreso" : "Fecha de pago"}
               className="h-8 w-full"
             />
           </div>
@@ -124,7 +125,7 @@ export function RecurringConfirmInline({
         {/* Actions row */}
         <div className="flex gap-2">
           <Button type="submit" size="sm" disabled={isPending}>
-            {isPending ? "Registrando..." : "Confirmar pago"}
+            {isPending ? "Registrando..." : isIncome ? "Confirmar ingreso" : "Confirmar pago"}
           </Button>
           <Button
             type="button"
@@ -133,7 +134,7 @@ export function RecurringConfirmInline({
             onClick={onSkip}
             disabled={isPending}
           >
-            Ya pagué
+            {isIncome ? "Ya recibí" : "Ya pagué"}
           </Button>
           <Button
             type="button"
