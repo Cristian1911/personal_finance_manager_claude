@@ -14,6 +14,7 @@ import {
   deleteRecurringTemplate,
   toggleRecurringTemplate,
 } from "@/actions/recurring-templates";
+import type { RecurringOccurrence } from "@/actions/occurrences";
 import type { Account, CurrencyCode, RecurringTemplateWithRelations } from "@/types/domain";
 
 type TabDirection = "OUTFLOW" | "INFLOW";
@@ -30,14 +31,16 @@ interface MobileRecurringManagerProps {
   templates: RecurringTemplateWithRelations[];
   accounts: Account[];
   currency: CurrencyCode;
+  initialOccurrences?: RecurringOccurrence[];
 }
 
 export function MobileRecurringManager({
   templates,
   accounts,
   currency,
+  initialOccurrences,
 }: MobileRecurringManagerProps) {
-  const hook = useRecurringMonth(templates, accounts);
+  const hook = useRecurringMonth(templates, accounts, initialOccurrences);
   const [activeTab, setActiveTab] = useState<TabDirection>("OUTFLOW");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 

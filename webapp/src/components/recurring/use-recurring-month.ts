@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   addMonths,
@@ -86,7 +86,8 @@ function mapToOccurrenceItem(
 
 export function useRecurringMonth(
   _templates: RecurringTemplateWithRelations[], // kept for caller signature compat
-  accounts: Account[]
+  accounts: Account[],
+  initialOccurrences?: RecurringOccurrence[]
 ) {
   const router = useRouter();
 
@@ -109,11 +110,19 @@ export function useRecurringMonth(
   );
 
   /* ---- DB-backed occurrences state ---- */
-  const [occurrences, setOccurrences] = useState<RecurringOccurrence[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [occurrences, setOccurrences] = useState<RecurringOccurrence[]>(initialOccurrences ?? []);
+  const [isHydrated, setIsHydrated] = useState(!!initialOccurrences);
 
   /* ---- Load occurrences from DB on mount and month change ---- */
+  const skipInitialFetch = useRef(!!initialOccurrences);
+
   useEffect(() => {
+    // Skip first fetch if server already provided data for current month
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      return;
+    }
+
     setIsHydrated(false);
     let cancelled = false;
 

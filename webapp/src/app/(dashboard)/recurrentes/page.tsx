@@ -4,7 +4,7 @@ import { MobileRecurringManager } from "@/components/recurring/mobile-recurring-
 import { getRecurringTemplates } from "@/actions/recurring-templates";
 import { getAccounts } from "@/actions/accounts";
 import { getPreferredCurrency } from "@/actions/profile";
-import { ensureCurrentOccurrences } from "@/actions/occurrences";
+import { ensureCurrentOccurrences, getOccurrencesForMonth } from "@/actions/occurrences";
 import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -12,14 +12,16 @@ export default async function RecurrentesPage() {
   await connection();
   await ensureCurrentOccurrences();
 
-  const [templatesResult, accountsResult, currency] = await Promise.all([
+  const [templatesResult, accountsResult, currency, occurrencesResult] = await Promise.all([
     getRecurringTemplates(),
     getAccounts(),
     getPreferredCurrency(),
+    getOccurrencesForMonth(),
   ]);
 
   const templates = templatesResult.success ? templatesResult.data : [];
   const accounts = accountsResult.success ? accountsResult.data : [];
+  const initialOccurrences = occurrencesResult.success ? occurrencesResult.data : [];
 
   return (
     <div className={PAGE_STACK_CLASS}>
@@ -28,6 +30,7 @@ export default async function RecurrentesPage() {
         templates={templates}
         accounts={accounts}
         currency={currency as CurrencyCode}
+        initialOccurrences={initialOccurrences}
       />
     </div>
   );
