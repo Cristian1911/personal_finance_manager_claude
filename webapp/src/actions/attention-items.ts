@@ -5,7 +5,9 @@ import { cacheTag, cacheLife } from "next/cache";
 import { addDays } from "date-fns";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
-import { toISODateString } from "@/lib/utils/date";
+import { toColombiaDateString } from "@/lib/utils/date";
+import { getPendingOccurrencesCached } from "@/actions/occurrences";
+import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -59,14 +61,17 @@ async function getAttentionItemsCached(
 ): Promise<AttentionItems> {
   "use cache";
   cacheTag("attention");
+  cacheTag("occurrences");
+  cacheTag("recurring");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
   const today = new Date();
-  const todayStr = toISODateString(today);
-  const in7Days = addDays(today, 7);
+  const todayStr = toColombiaDateString(today);
+  const in7DaysStr = toColombiaDateString(addDays(today, 7));
+  const rangeEnd = toColombiaDateString(addDays(today, PAY_CYCLE_LOOKAHEAD_DAYS));
 
-  const [remindersRes, emailsRes, occurrencesRes] = await Promise.all([
+  const [remindersRes, emailsRes, allOccurrences] = await Promise.all([
     // 1. Overdue reminders
     supabase
       .from("financial_reminders")
@@ -86,28 +91,15 @@ async function getAttentionItemsCached(
       .order("created_at", { ascending: false })
       .limit(5),
 
-    // 3. Pending recurring occurrences (next 7 days, already materialized)
-    supabase
-      .from("recurring_occurrences")
-      .select(`
-        id,
-        template_id,
-        occurrence_date,
-        expected_amount,
-        template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
-          merchant_name,
-          description,
-          direction,
-          is_active
-        )
-      `)
-      .eq("user_id", userId)
-      .eq("status", "pending")
-      .gte("occurrence_date", todayStr)
-      .lte("occurrence_date", toISODateString(in7Days))
-      .order("occurrence_date")
-      .limit(10),
+    // 3. Pending recurring occurrences — canonical 45-day range aligns cache key
+    //    with dashboard queries, avoiding a redundant DB hit on cold loads.
+    getPendingOccurrencesCached(userId, todayStr, rangeEnd, accessToken),
   ]);
+
+  // Filter to 7-day window for attention display
+  const pendingOccurrences = allOccurrences.filter(
+    (o) => o.occurrence_date <= in7DaysStr,
+  );
 
   // ── Map overdue reminders ──────────────────────────────────────────────────
 
@@ -139,21 +131,18 @@ async function getAttentionItemsCached(
     }
   );
 
-  // ── Map upcoming payments from materialized occurrences ───────────────────
+  // ── Map upcoming payments from shared cached occurrences ──────────────────
 
-  const upcomingPayments: AttentionUpcomingPayment[] = (occurrencesRes.data ?? [])
-    .filter((o) => (o.template as { is_active?: boolean } | null)?.is_active !== false)
-    .map((o) => {
-    const tmpl = o.template as { merchant_name: string | null; description: string | null; direction: string };
-    return {
+  const upcomingPayments: AttentionUpcomingPayment[] = pendingOccurrences
+    .slice(0, 5)
+    .map((o) => ({
       templateId: o.template_id,
-      name: tmpl.merchant_name ?? tmpl.description ?? "Pago recurrente",
+      name: o.merchant_name ?? o.description ?? "Pago recurrente",
       amount: o.expected_amount,
       next_date: o.occurrence_date,
-      direction: tmpl.direction as "INFLOW" | "OUTFLOW",
+      direction: o.direction,
       occurrenceDate: o.occurrence_date,
-    };
-  }).slice(0, 5);
+    }));
 
   return { overdueReminders, upcomingPayments, pendingEmails };
 }

@@ -42,10 +42,9 @@
 
 
 ### Income-aware runway & daily budget
-- **Priority:** High
-- **What:** Dashboard "gasto diario" and runway metrics should factor in upcoming recurring income. Two options: (A) count until end of month but add next income to available balance, or (B) count until next income date instead of end of month. Currently both metrics assume no more money coming in — overly pessimistic when income is configured.
-- **Context:** Recurring income is now first-class. These metrics should reflect it. Affects mobile dashboard hero and gasto diario calculation.
-- **Found:** Visual testing, 2026-04-13
+- **Priority:** Done (shipped in PR #134)
+- **What:** Dashboard hero and runway use pay-cycle budgeting (now → next income date). Obligations scoped to window. Burn-rate chart shows single segment with obligation markers.
+- **Context:** Spec: `docs/superpowers/specs/2026-04-13-income-aware-runway.md`
 
 ### Multi-currency aggregation in dashboard metrics
 - **Priority:** Medium
