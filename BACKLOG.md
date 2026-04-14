@@ -49,6 +49,12 @@
 - **Context:** Currently auto-linking works via `findMatchingOccurrence()` (date ±3 days, amount ±1%, account match). Manual override needed when auto-match fails or user wants to link proactively.
 - **Found:** User feedback, 2026-04-14
 
+### Recurring stats — historical backfill
+- **Priority:** Medium
+- **What:** Template stats (YTD, streak, annual estimate) are empty for newly created templates. Options: (1) backfill from `statement_snapshots` minimum payments or balance changes, (2) when creating a recurring template, auto-create historical occurrences as "paid" based on matching past transactions, (3) use snapshot history alongside occurrence history for the metrics.
+- **Context:** `getTemplateStats()` in `actions/template-stats.ts` only queries `recurring_occurrences`. New templates have no occurrences yet even if the user has been paying for months.
+- **Found:** User feedback, 2026-04-14
+
 ### Audit effectiveDirection usage across app
 - **Priority:** Low
 - **What:** The recurring manager introduced `effectiveDirection()` (INFLOW to debt account = expense, not income). Audit the whole app for places that classify by raw `template.direction` without checking account type — dashboards, budget calculations, income metrics, etc.
