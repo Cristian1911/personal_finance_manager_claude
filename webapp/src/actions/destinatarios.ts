@@ -492,15 +492,10 @@ export async function createDestinatario(
       }
     }
 
-    revalidateTag("categorize", "zeta");
-    revalidateTag("dashboard:charts", "zeta");
-    revalidateTag("dashboard:budgets", "zeta");
-    revalidateTag("dashboard:cashflow", "zeta");
-    revalidateTag("dashboard:hero", "zeta");
+    revalidateFinancialViews();
   }
 
   revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
   return { success: true, data: { ...data, linked_count: linkedCount } };
 }
 
