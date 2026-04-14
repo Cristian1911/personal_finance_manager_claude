@@ -846,8 +846,13 @@ export async function getDashboardHeroData(
       && (o.currency_code === baseCurrency || rates.has(o.currency_code as CurrencyCode))
   );
 
+  // Debt INFLOW (payment into loan/credit card) is an effective outflow for the user
+  const isEffectiveOutflow = (o: { direction: string; account_type: string }) =>
+    o.direction === "OUTFLOW" ||
+    (o.direction === "INFLOW" && (o.account_type === "CREDIT_CARD" || o.account_type === "LOAN"));
+
   const recurringObligations: PendingObligation[] = windowOccurrences
-    .filter((o) => o.direction === "OUTFLOW")
+    .filter((o) => isEffectiveOutflow(o))
     .map((o) => ({
       id: o.id,
       name: o.merchant_name ?? o.description ?? "Recurrente",
@@ -856,8 +861,9 @@ export async function getDashboardHeroData(
       due_date: o.occurrence_date,
     }));
 
+  // Exclude credit card obligations from disponible (they don't reduce liquid balance)
   const windowObligationsTotal = windowOccurrences
-    .filter((o) => o.direction === "OUTFLOW" && o.account_type !== "CREDIT_CARD")
+    .filter((o) => isEffectiveOutflow(o) && o.account_type !== "CREDIT_CARD")
     .reduce((sum, o) => sum + toBase(o.expected_amount, o.currency_code as CurrencyCode), 0);
 
   // 4. Pending INFLOW occurrences within window (expected income, NOT added to availableToSpend)

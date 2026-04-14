@@ -86,7 +86,7 @@ export function PlanExpandableChips({
                   </p>
                   <p className={cn("text-[10px]", c.textMuted)}>{c.label}</p>
                   <p className="text-[9px] text-muted-foreground">
-                    {next.template.description} · {formatDate(new Date(next.next_date), "dd MMM")}
+                    {next.template.description} · {formatDate(next.next_date, "dd MMM")}
                   </p>
                 </>
               ) : (
@@ -116,7 +116,7 @@ export function PlanExpandableChips({
                     <div>
                       <p className="text-xs font-medium">{item.template.description}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {formatDate(new Date(item.next_date), "dd MMM yyyy")}
+                        {formatDate(item.next_date, "dd MMM yyyy")}
                         {item.template.account && ` · ${item.template.account.name}`}
                       </p>
                     </div>
