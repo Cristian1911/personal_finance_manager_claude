@@ -24,13 +24,10 @@ import {
 interface DeseosState {
   items: WishlistItemWithCategory[];
   totalAmount: number;
-  wantCount: number;
-  savingCount: number;
-  readyCount: number;
 }
 
 const INITIAL: DeseosState = {
-  items: [], totalAmount: 0, wantCount: 0, savingCount: 0, readyCount: 0,
+  items: [], totalAmount: 0,
 };
 
 export function DeseosRoot() {
@@ -53,9 +50,6 @@ export function DeseosRoot() {
       setData({
         items,
         totalAmount: summary.total_amount,
-        wantCount: summary.want_count,
-        savingCount: summary.saving_count,
-        readyCount: summary.ready_count,
       });
     } catch (error) {
       console.error("Failed to load wishlist:", error);
@@ -95,7 +89,7 @@ export function DeseosRoot() {
     await loadData();
   }, [formName, formAmount, session, loadData]);
 
-  const totalItems = data.wantCount + data.savingCount + data.readyCount;
+  const totalItems = data.items.length;
 
   return (
     <View className="flex-1 bg-background">
@@ -118,39 +112,23 @@ export function DeseosRoot() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.brass} />
         }
       >
-        {/* Summary grid */}
+        {/* Summary */}
         {totalItems > 0 && (
           <MCardGrid>
-            <MCardGridCell borderRight borderBottom>
+            <MCardGridCell borderRight>
               <Text className="text-[18px] font-inter-bold text-foreground">
+                {totalItems}
+              </Text>
+              <Text className="text-[9px] font-inter text-muted-foreground mt-0.5">
+                Deseos activos
+              </Text>
+            </MCardGridCell>
+            <MCardGridCell>
+              <Text className="text-[18px] font-inter-bold text-z-alert">
                 {formatCurrency(data.totalAmount, currency)}
               </Text>
               <Text className="text-[9px] font-inter text-muted-foreground mt-0.5">
                 Total deseado
-              </Text>
-            </MCardGridCell>
-            <MCardGridCell borderBottom>
-              <Text className="text-[18px] font-inter-bold text-z-alert">
-                {data.wantCount}
-              </Text>
-              <Text className="text-[9px] font-inter text-muted-foreground mt-0.5">
-                Quiero
-              </Text>
-            </MCardGridCell>
-            <MCardGridCell borderRight>
-              <Text className="text-[18px] font-inter-bold text-z-brass">
-                {data.savingCount}
-              </Text>
-              <Text className="text-[9px] font-inter text-muted-foreground mt-0.5">
-                Ahorrando
-              </Text>
-            </MCardGridCell>
-            <MCardGridCell>
-              <Text className="text-[18px] font-inter-bold text-z-income">
-                {data.readyCount}
-              </Text>
-              <Text className="text-[9px] font-inter text-muted-foreground mt-0.5">
-                Listos
               </Text>
             </MCardGridCell>
           </MCardGrid>
@@ -224,12 +202,16 @@ function WishlistRow({
   item: WishlistItemWithCategory;
   currency: CurrencyCode;
 }) {
-  const statusIcon = item.status === "READY" ? Target : item.status === "SAVING" ? Sparkles : ShoppingBag;
-  const StatusIcon = statusIcon;
-  const statusColor =
-    item.status === "READY" ? COLORS.income :
-    item.status === "SAVING" ? COLORS.brass :
-    COLORS.alert;
+  const STATUS_MAP: Record<string, { icon: typeof Target; color: string }> = {
+    WANT: { icon: ShoppingBag, color: COLORS.alert },
+    SAVING: { icon: Sparkles, color: COLORS.brass },
+    READY: { icon: Target, color: COLORS.income },
+    BOUGHT: { icon: Heart, color: COLORS.income },
+  };
+  const { icon: StatusIcon, color: statusColor } = STATUS_MAP[item.status] ?? {
+    icon: Heart,
+    color: COLORS.alert,
+  };
 
   return (
     <MCard>

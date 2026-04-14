@@ -4,6 +4,7 @@ import { useFocusEffect } from "expo-router";
 import { Grid3X3, Plus } from "lucide-react-native";
 import * as Crypto from "expo-crypto";
 import { useSync } from "../../lib/sync/hooks";
+import { useAuth } from "../../lib/auth";
 import {
   getAllCategories,
   type CategoryRow as CategoryRowType,
@@ -16,6 +17,17 @@ import { MCard } from "../ui/MCard";
 import { CategoryRow } from "./CategoryRow";
 import { CategoryFormSheet } from "./CategoryFormSheet";
 
+/** Generate a URL-safe slug from a category name. */
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 50) || "category";
+}
+
 interface CategorySection {
   parent: CategoryRowType;
   children: CategoryRowType[];
@@ -23,6 +35,8 @@ interface CategorySection {
 
 export function CategoriesRoot() {
   const { sync } = useSync();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
 
   const [refreshing, setRefreshing] = useState(false);
   const [categories, setCategories] = useState<CategoryRowType[]>([]);
@@ -140,9 +154,10 @@ export function CategoriesRoot() {
 
         if (data.id) {
           // UPDATE existing category
+          const slug = generateSlug(data.name);
           await db.runAsync(
-            "UPDATE categories SET name = ?, name_es = ?, color = ?, parent_id = ? WHERE id = ?",
-            [data.name, data.nameEs, data.color, data.parentId, data.id]
+            "UPDATE categories SET name = ?, name_es = ?, slug = ?, color = ?, parent_id = ? WHERE id = ?",
+            [data.name, data.nameEs, slug, data.color, data.parentId, data.id]
           );
           await db.runAsync(
             `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,
@@ -153,6 +168,7 @@ export function CategoriesRoot() {
               JSON.stringify({
                 name: data.name,
                 name_es: data.nameEs,
+                slug,
                 color: data.color,
                 parent_id: data.parentId,
               }),
@@ -162,10 +178,11 @@ export function CategoriesRoot() {
         } else {
           // INSERT new category
           const id = Crypto.randomUUID();
+          const slug = generateSlug(data.name);
           await db.runAsync(
-            `INSERT INTO categories (id, user_id, name, name_es, color, parent_id, is_system, display_order, created_at)
-             VALUES (?, NULL, ?, ?, ?, ?, 0, 999, ?)`,
-            [id, data.name, data.nameEs, data.color, data.parentId, now]
+            `INSERT INTO categories (id, user_id, name, name_es, slug, color, parent_id, is_system, display_order, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0, 999, ?)`,
+            [id, userId, data.name, data.nameEs, slug, data.color, data.parentId, now]
           );
           await db.runAsync(
             `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,
@@ -175,8 +192,11 @@ export function CategoriesRoot() {
               "INSERT",
               JSON.stringify({
                 id,
+                user_id: userId,
                 name: data.name,
                 name_es: data.nameEs,
+                slug,
+                icon: "tag",
                 color: data.color,
                 parent_id: data.parentId,
                 is_system: false,

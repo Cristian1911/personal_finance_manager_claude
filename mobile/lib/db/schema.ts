@@ -263,7 +263,7 @@ export const DB_MIGRATIONS: DbMigration[] = [
         name TEXT NOT NULL,
         amount REAL NOT NULL,
         currency_code TEXT NOT NULL DEFAULT 'COP',
-        status TEXT NOT NULL DEFAULT 'WANT',
+        status TEXT NOT NULL DEFAULT 'wishlist',
         desire_type TEXT,
         urgency TEXT,
         why TEXT,
@@ -289,6 +289,18 @@ export const DB_MIGRATIONS: DbMigration[] = [
         FOREIGN KEY (transaction_id) REFERENCES transactions(id)
       )`,
       `CREATE INDEX IF NOT EXISTS idx_wishlist_user_status ON wishlist_items(user_id, status)`,
+    ],
+  },
+  {
+    version: 6,
+    statements: [
+      // Add slug column to categories (webapp requires it)
+      `ALTER TABLE categories ADD COLUMN slug TEXT`,
+      // Add categorization_source to transactions (webapp sets it on category assignment)
+      `ALTER TABLE transactions ADD COLUMN categorization_source TEXT`,
+      // Fix wishlist status default to match Supabase CHECK constraint
+      // Existing rows with 'WANT' status get corrected to 'wishlist'
+      `UPDATE wishlist_items SET status = 'wishlist' WHERE status = 'WANT'`,
     ],
   },
 ];

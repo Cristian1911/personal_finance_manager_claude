@@ -53,7 +53,7 @@ export function PlanRoot() {
       const daysRemaining = daysInMonth - now.getDate();
 
       const [txs, accounts, budgets, recSummary] = await Promise.all([
-        getTransactions({ month: currentMonth, limit: 500 }) as Promise<any[]>,
+        getTransactions({ month: currentMonth, limit: 500 }),
         getAllAccounts(),
         getBudgetProgress(currentMonth),
         getRecurringSummary(currentMonth),

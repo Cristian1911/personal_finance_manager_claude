@@ -110,6 +110,17 @@ function toDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function getHeroAmountColorClass(
+  isExcluded: boolean,
+  isDebtPayment: boolean,
+  isInflow: boolean
+): string {
+  if (isExcluded) return "text-gray-300";
+  if (isDebtPayment) return "text-sky-600";
+  if (isInflow) return "text-green-600";
+  return "text-gray-900";
+}
+
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -324,14 +335,12 @@ export default function TransactionDetailScreen() {
     accountType: transaction.account_type,
   });
   const isExcluded = !!transaction.is_excluded;
-  const statusLabel =
-    transaction.status === "CLEARED"
-      ? "Confirmada"
-      : transaction.status === "PENDING"
-        ? "Pendiente"
-        : transaction.status === "POSTED"
-          ? "Registrada"
-          : (transaction.status ?? "Desconocido");
+  const STATUS_LABELS: Record<string, string> = {
+    CLEARED: "Confirmada",
+    PENDING: "Pendiente",
+    POSTED: "Registrada",
+  };
+  const statusLabel = STATUS_LABELS[transaction.status ?? ""] ?? (transaction.status ?? "Desconocido");
 
   return (
     <View className="flex-1 bg-white">
@@ -547,15 +556,7 @@ export default function TransactionDetailScreen() {
               </View>
             )}
             <Text
-              className={`font-inter-bold text-4xl ${
-                isExcluded
-                  ? "text-gray-300"
-                  : isDebtPayment
-                    ? "text-sky-600"
-                    : isInflow
-                    ? "text-green-600"
-                    : "text-gray-900"
-              }`}
+              className={`font-inter-bold text-4xl ${getHeroAmountColorClass(isExcluded, isDebtPayment, isInflow)}`}
               style={isExcluded ? { textDecorationLine: "line-through" } : undefined}
             >
               {isInflow ? "+" : "-"}

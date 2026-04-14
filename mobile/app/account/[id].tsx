@@ -32,21 +32,10 @@ type TransactionRow = {
   account_type: string | null;
 };
 
-function InfoCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <View className="flex-1 bg-white rounded-xl p-4 items-center">
-      <Text className="text-gray-400 font-inter text-xs mb-1">{label}</Text>
-      <Text className="text-gray-900 font-inter-semibold text-sm text-center">
-        {value}
-      </Text>
-    </View>
-  );
+function getAmountColorClass(isDebtPayment: boolean, isInflow: boolean): string {
+  if (isDebtPayment) return "text-sky-600";
+  if (isInflow) return "text-green-600";
+  return "text-gray-900";
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -160,9 +149,6 @@ export default function AccountDetailScreen() {
   const Icon = typeDef?.icon;
   const color = account.color ?? "#6B7280";
   const currency = (account.currency_code as CurrencyCode) ?? "COP";
-  const isDebt =
-    account.account_type === "CREDIT_CARD" ||
-    account.account_type === "LOAN";
 
   return (
     <View className="flex-1 bg-white">
@@ -329,11 +315,7 @@ export default function AccountDetailScreen() {
                     </View>
                     <Text
                       className={`font-inter-semibold text-sm ml-3 ${
-                        isDebtPayment
-                          ? "text-sky-600"
-                          : isInflow
-                            ? "text-green-600"
-                            : "text-gray-900"
+                        getAmountColorClass(isDebtPayment, isInflow)
                       }`}
                     >
                       {isInflow ? "+" : "-"}

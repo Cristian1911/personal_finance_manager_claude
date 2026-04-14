@@ -15,7 +15,7 @@ import {
 import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, Platform, StyleSheet, View } from "react-native";
+import { ActivityIndicator, AppState, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 
@@ -78,18 +78,11 @@ export default function RootLayout() {
   );
 }
 
-function buildSheetOptions(detents: [number, number]) {
-  if (Platform.OS !== "ios") {
-    return {
-      presentation: "modal" as const,
-      headerShown: false,
-    };
-  }
-
+// iOS formSheet warns for several flows in this app because their root
+// layout contains more than the ScrollView/header pair that RNScreens
+// expects. Using a standard modal keeps the UX stable without warnings.
+function buildSheetOptions(_detents: [number, number]) {
   return {
-    // iOS formSheet warns for several flows in this app because their root
-    // layout contains more than the ScrollView/header pair that RNScreens
-    // expects. Using a standard modal keeps the UX stable without warnings.
     presentation: "modal" as const,
     headerShown: false,
   };

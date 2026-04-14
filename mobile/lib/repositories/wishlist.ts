@@ -42,12 +42,12 @@ export async function getActiveWishlistItems(): Promise<WishlistItemWithCategory
       COALESCE(c.name_es, c.name) AS category_name
     FROM wishlist_items w
     LEFT JOIN categories c ON w.category_id = c.id
-    WHERE w.status IN ('WANT', 'SAVING', 'READY')
+    WHERE w.status = 'wishlist'
     ORDER BY
       CASE w.urgency
-        WHEN 'HIGH' THEN 1
-        WHEN 'MEDIUM' THEN 2
-        WHEN 'LOW' THEN 3
+        WHEN 'NECESSARY' THEN 1
+        WHEN 'USEFUL' THEN 2
+        WHEN 'IMPULSE' THEN 3
         ELSE 4
       END,
       w.created_at DESC`
@@ -62,7 +62,7 @@ export async function getBoughtWishlistItems(): Promise<WishlistItemWithCategory
       COALESCE(c.name_es, c.name) AS category_name
     FROM wishlist_items w
     LEFT JOIN categories c ON w.category_id = c.id
-    WHERE w.status = 'BOUGHT'
+    WHERE w.status = 'bought'
     ORDER BY w.bought_at DESC
     LIMIT 20`
   );
@@ -80,11 +80,11 @@ export async function getWishlistSummary() {
     `SELECT
       COUNT(*) AS total_items,
       COALESCE(SUM(amount), 0) AS total_amount,
-      COALESCE(SUM(CASE WHEN status = 'WANT' THEN 1 ELSE 0 END), 0) AS want_count,
-      COALESCE(SUM(CASE WHEN status = 'SAVING' THEN 1 ELSE 0 END), 0) AS saving_count,
-      COALESCE(SUM(CASE WHEN status = 'READY' THEN 1 ELSE 0 END), 0) AS ready_count
+      COUNT(*) AS want_count,
+      0 AS saving_count,
+      0 AS ready_count
     FROM wishlist_items
-    WHERE status IN ('WANT', 'SAVING', 'READY')`
+    WHERE status = 'wishlist'`
   );
   return row ?? { total_items: 0, total_amount: 0, want_count: 0, saving_count: 0, ready_count: 0 };
 }
@@ -106,7 +106,7 @@ export async function createWishlistItem(params: {
   await db.runAsync(
     `INSERT INTO wishlist_items
       (id, user_id, name, amount, currency_code, status, urgency, why, url, category_id, enriched, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, 'WANT', ?, ?, ?, ?, 0, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, 'wishlist', ?, ?, ?, ?, 0, ?, ?)`,
     [
       id, params.user_id, params.name, params.amount,
       params.currency_code ?? "COP",
@@ -124,7 +124,7 @@ export async function createWishlistItem(params: {
       JSON.stringify({
         id, user_id: params.user_id, name: params.name,
         amount: params.amount, currency_code: params.currency_code ?? "COP",
-        status: "WANT", urgency: params.urgency ?? null,
+        status: "wishlist", urgency: params.urgency ?? null,
         why: params.why ?? null, url: params.url ?? null,
         category_id: params.category_id ?? null,
         enriched: false, created_at: now, updated_at: now,

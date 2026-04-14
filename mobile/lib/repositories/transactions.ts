@@ -86,10 +86,6 @@ export type LocalReconciliationDecision = {
   score: number;
 };
 
-function getTransactionVisibilityClause(includeReconciled: boolean): string {
-  return includeReconciled ? "" : "AND t.reconciled_into_transaction_id IS NULL";
-}
-
 function buildInsertPayload(id: string, now: string, params: CreateTransactionParams, idempotencyKey: string) {
   return {
     id,
@@ -99,7 +95,7 @@ function buildInsertPayload(id: string, now: string, params: CreateTransactionPa
     amount: params.amount,
     currency_code: params.currency_code,
     direction: params.direction,
-    description: params.description ?? null,
+    clean_description: params.description ?? null,
     merchant_name: params.merchant_name ?? null,
     raw_description: params.raw_description ?? null,
     transaction_date: params.transaction_date,
@@ -157,7 +153,7 @@ export async function createTransaction(params: CreateTransactionParams): Promis
         payload.amount,
         payload.currency_code,
         payload.direction,
-        payload.description,
+        payload.clean_description,
         payload.merchant_name,
         payload.raw_description,
         payload.transaction_date,
@@ -459,6 +455,9 @@ export async function updateTransaction(
   if (params.category_id !== undefined) {
     setClauses.push("category_id = ?");
     values.push(params.category_id ?? null);
+    // Match webapp: track how the category was assigned
+    setClauses.push("categorization_source = ?");
+    values.push(params.category_id ? "USER_OVERRIDE" : null);
   }
   if (params.notes !== undefined) {
     setClauses.push("notes = ?");
@@ -488,11 +487,14 @@ export async function updateTransaction(
   values.push(id);
 
   const syncPayload: Record<string, unknown> = { updated_at: now };
-  if (params.description !== undefined) syncPayload.description = params.description ?? null;
+  if (params.description !== undefined) syncPayload.clean_description = params.description ?? null;
   if (params.merchant_name !== undefined) syncPayload.merchant_name = params.merchant_name ?? null;
   if (params.amount !== undefined) syncPayload.amount = params.amount;
   if (params.transaction_date !== undefined) syncPayload.transaction_date = params.transaction_date;
-  if (params.category_id !== undefined) syncPayload.category_id = params.category_id ?? null;
+  if (params.category_id !== undefined) {
+    syncPayload.category_id = params.category_id ?? null;
+    syncPayload.categorization_source = params.category_id ? "USER_OVERRIDE" : null;
+  }
   if (params.notes !== undefined) syncPayload.notes = params.notes ?? null;
   if (params.is_excluded !== undefined) syncPayload.is_excluded = params.is_excluded;
   if (params.reconciled_into_transaction_id !== undefined) {
