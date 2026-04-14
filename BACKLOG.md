@@ -108,6 +108,12 @@
 - **Context:** PR #130 only covers mobile. Desktop table still uses inline category popover only.
 - **Blocked by:** PR #130 merge
 
+### Mobile app — Apple compliance (pre-submission)
+- **Priority:** High (blocks App Store submission)
+- **What:** Privacy Policy (ES + EN, hosted on webapp domain), Terms of Service, update `PrivacyInfo.xcprivacy` with accurate data types (app collects financial data, user IDs — currently declares empty), add `NSPhotoLibraryUsageDescription` + `NSCameraUsageDescription` to `app.json`, add in-app financial disclaimer ("Zeta no es un asesor financiero"), remove `NSAllowsLocalNetworking` from production builds.
+- **Context:** 2 new guardrail agents (`mobile-sync-doctor`, `mobile-webapp-parity`) are in place. Compliance is the remaining blocker before TestFlight/App Store submission.
+- **Found:** Mobile pages session, 2026-04-14
+
 ### Mobile v2 redesign — Phase 3
 - **Priority:** Low (deferred)
 - **What:** Full root redesign with zone-based layouts, custom heroes, Zeta-branded visualizations
