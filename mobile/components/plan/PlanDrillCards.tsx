@@ -34,13 +34,13 @@ export function PlanDrillCards({
           icon={Repeat}
           title="Recurrentes"
           hint={`${recurringCount} obligaciones activas`}
-          onPress={() => router.push("/subscriptions" as any)}
+          onPress={() => router.push("/recurrentes" as any)}
         />
         <HubEntry
           icon={Heart}
           title="Deseos"
           hint="Lista de deseos financieros"
-          onPress={() => {/* TODO: wishlist screen */}}
+          onPress={() => router.push("/deseos" as any)}
         />
       </View>
     </MobileZone>

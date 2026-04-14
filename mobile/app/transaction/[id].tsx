@@ -22,9 +22,14 @@ import {
 } from "../../lib/repositories/transactions";
 import { getAllCategories } from "../../lib/repositories/categories";
 import {
+  getTagsForTransaction,
+  saveTransactionTags,
+} from "../../lib/repositories/tags";
+import {
   CategoryPicker,
   type CategoryRow,
 } from "../../components/transactions/CategoryPicker";
+import { TagSelector } from "../../components/transactions/TagSelector";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import {
   DEBT_PAYMENT_CATEGORY_ID,
@@ -105,6 +110,17 @@ function toDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function getHeroAmountColorClass(
+  isExcluded: boolean,
+  isDebtPayment: boolean,
+  isInflow: boolean
+): string {
+  if (isExcluded) return "text-gray-300";
+  if (isDebtPayment) return "text-sky-600";
+  if (isInflow) return "text-green-600";
+  return "text-gray-900";
+}
+
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -133,13 +149,21 @@ export default function TransactionDetailScreen() {
   const [editCategoryName, setEditCategoryName] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState("");
   const [editIsExcluded, setEditIsExcluded] = useState(false);
+  const [editTagIds, setEditTagIds] = useState<string[]>([]);
+
+  // Read-only tag names for detail view
+  const [transactionTagNames, setTransactionTagNames] = useState<string[]>([]);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       try {
-        const result = (await getTransactionById(id)) as TransactionDetail;
+        const [result, tags] = await Promise.all([
+          getTransactionById(id) as Promise<TransactionDetail>,
+          getTagsForTransaction(id),
+        ]);
         setTransaction(result);
+        setTransactionTagNames(tags.map((t) => t.name));
       } catch (err) {
         console.error("Failed to load transaction:", err);
       } finally {
@@ -169,8 +193,8 @@ export default function TransactionDetailScreen() {
     successTimer.current = setTimeout(() => setSuccessVisible(false), 3000);
   };
 
-  const enterEditMode = () => {
-    if (!transaction) return;
+  const enterEditMode = async () => {
+    if (!transaction || !id) return;
     const txIsDebtPayment = isDebtInflow({
       direction: transaction.direction,
       accountType: transaction.account_type,
@@ -191,6 +215,15 @@ export default function TransactionDetailScreen() {
     );
     setEditNotes(transaction.notes ?? "");
     setEditIsExcluded(!!transaction.is_excluded);
+
+    // Load existing tags for edit form
+    try {
+      const existingTags = await getTagsForTransaction(id);
+      setEditTagIds(existingTags.map((t) => t.id));
+    } catch {
+      setEditTagIds([]);
+    }
+
     setIsEditing(true);
     if (categories.length === 0) loadCategories();
   };
@@ -302,14 +335,12 @@ export default function TransactionDetailScreen() {
     accountType: transaction.account_type,
   });
   const isExcluded = !!transaction.is_excluded;
-  const statusLabel =
-    transaction.status === "CLEARED"
-      ? "Confirmada"
-      : transaction.status === "PENDING"
-        ? "Pendiente"
-        : transaction.status === "POSTED"
-          ? "Registrada"
-          : (transaction.status ?? "Desconocido");
+  const STATUS_LABELS: Record<string, string> = {
+    CLEARED: "Confirmada",
+    PENDING: "Pendiente",
+    POSTED: "Registrada",
+  };
+  const statusLabel = STATUS_LABELS[transaction.status ?? ""] ?? (transaction.status ?? "Desconocido");
 
   return (
     <View className="flex-1 bg-white">
@@ -525,15 +556,7 @@ export default function TransactionDetailScreen() {
               </View>
             )}
             <Text
-              className={`font-inter-bold text-4xl ${
-                isExcluded
-                  ? "text-gray-300"
-                  : isDebtPayment
-                    ? "text-sky-600"
-                    : isInflow
-                    ? "text-green-600"
-                    : "text-gray-900"
-              }`}
+              className={`font-inter-bold text-4xl ${getHeroAmountColorClass(isExcluded, isDebtPayment, isInflow)}`}
               style={isExcluded ? { textDecorationLine: "line-through" } : undefined}
             >
               {isInflow ? "+" : "-"}

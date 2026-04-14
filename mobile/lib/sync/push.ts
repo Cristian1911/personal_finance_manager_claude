@@ -5,7 +5,7 @@ type SyncQueueItem = {
   id: number;
   table_name: string;
   record_id: string;
-  operation: "INSERT" | "UPDATE" | "DELETE";
+  operation: "INSERT" | "UPDATE" | "DELETE" | "REPLACE";
   payload: string;
   created_at: string;
   synced_at: string | null;
@@ -18,6 +18,13 @@ type SyncTableName =
   | "budgets"
   | "category_rules"
   | "recurring_transaction_templates"
+  | "recurring_occurrences"
+  | "destinatarios"
+  | "destinatario_rules"
+  | "tag_groups"
+  | "tags"
+  | "transaction_tags"
+  | "wishlist_items"
   | "statement_snapshots"
   | "transactions";
 
@@ -41,16 +48,19 @@ export async function pushPendingChanges(): Promise<number> {
       const payload = JSON.parse(item.payload);
       const tableName = item.table_name as SyncTableName;
 
+      // Cast to any — mobile types file may not include all tables
+      const sb = supabase as any;
+
       switch (item.operation) {
         case "INSERT": {
-          const { error } = await supabase
+          const { error } = await sb
             .from(tableName)
             .insert(payload);
           if (error) throw error;
           break;
         }
         case "UPDATE": {
-          const { error } = await supabase
+          const { error } = await sb
             .from(tableName)
             .update(payload)
             .eq("id", item.record_id);
@@ -58,11 +68,32 @@ export async function pushPendingChanges(): Promise<number> {
           break;
         }
         case "DELETE": {
-          const { error } = await supabase
+          const { error } = await sb
             .from(tableName)
             .delete()
             .eq("id", item.record_id);
           if (error) throw error;
+          break;
+        }
+        case "REPLACE": {
+          // Junction table replace: delete existing rows, insert new ones.
+          // Payload shape: { transaction_id, tag_ids: string[] }
+          const { error: delError } = await sb
+            .from(tableName)
+            .delete()
+            .eq("transaction_id", item.record_id);
+          if (delError) throw delError;
+
+          if (payload.tag_ids?.length > 0) {
+            const rows = payload.tag_ids.map((tagId: string) => ({
+              transaction_id: item.record_id,
+              tag_id: tagId,
+            }));
+            const { error: insError } = await sb
+              .from(tableName)
+              .insert(rows);
+            if (insError) throw insError;
+          }
           break;
         }
       }
