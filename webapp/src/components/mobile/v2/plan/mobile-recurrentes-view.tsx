@@ -125,14 +125,17 @@ export function MobileRecurrentesView({
   const handleImpactConfirm = async () => {
     if (!impactAction) return;
     const { template, action } = impactAction;
-    if (action === "pause") {
-      await toggleRecurringTemplate(template.id, false);
+    const result = action === "pause"
+      ? await toggleRecurringTemplate(template.id, false)
+      : await deleteRecurringTemplate(template.id);
+
+    if (result.success) {
+      await hook.refreshOccurrences();
+      setImpactAction(null);
+      setExpandedKey(null);
     } else {
-      await deleteRecurringTemplate(template.id);
+      toast.error(result.error ?? "Error al procesar la acción");
     }
-    await hook.refreshOccurrences();
-    setImpactAction(null);
-    setExpandedKey(null);
   };
 
   const sortedDates = useMemo(
@@ -179,9 +182,13 @@ export function MobileRecurrentesView({
         : undefined,
       onResume: template
         ? async () => {
-            setExpandedKey(null);
-            await toggleRecurringTemplate(template.id, true);
-            await hook.refreshOccurrences();
+            const result = await toggleRecurringTemplate(template.id, true);
+            if (result.success) {
+              setExpandedKey(null);
+              await hook.refreshOccurrences();
+            } else {
+              toast.error(result.error ?? "Error al activar la plantilla");
+            }
           }
         : undefined,
       onDelete: template

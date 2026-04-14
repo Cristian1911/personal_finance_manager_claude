@@ -181,7 +181,10 @@ export function OccurrenceActions({
             {/* Primary CTA */}
             <button
               type="button"
-              onClick={() => setPhase("confirm")}
+              onClick={() => {
+                setPaymentDate(format(new Date(), "yyyy-MM-dd"));
+                setPhase("confirm");
+              }}
               disabled={isPending}
               className={cn(
                 "rounded-xl px-10 py-2.5 text-xs font-semibold",
