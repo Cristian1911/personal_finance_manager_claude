@@ -324,16 +324,13 @@ export const DB_MIGRATIONS: DbMigration[] = [
       // ── recurring_occurrences: manual linkage flag ────────────────────
       `ALTER TABLE recurring_occurrences ADD COLUMN linked_manually INTEGER NOT NULL DEFAULT 0`,
 
-      // ── recurring_transaction_templates: categorization source ────────
-      `ALTER TABLE recurring_transaction_templates ADD COLUMN categorization_source TEXT`,
-
       // ── recurring_occurrence_skips: new table ─────────────────────────
       `CREATE TABLE IF NOT EXISTS recurring_occurrence_skips (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         template_id TEXT NOT NULL,
         occurrence_date TEXT NOT NULL,
-        skipped_at TEXT NOT NULL,
+        skipped_at TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY (template_id) REFERENCES recurring_transaction_templates(id)
       )`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_occurrence_skips_unique ON recurring_occurrence_skips(template_id, occurrence_date)`,

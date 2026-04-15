@@ -17,7 +17,6 @@ export type RecurringTemplateRow = {
   description: string | null;
   transfer_source_account_id: string | null;
   is_active: number;
-  categorization_source: string | null;
   created_at: string;
   updated_at: string;
 };

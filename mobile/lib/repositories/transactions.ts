@@ -41,8 +41,8 @@ export type TransactionRow = {
   installment_current: number | null;
   installment_total: number | null;
   installment_group_id: string | null;
-  is_subscription: number | boolean;
-  is_recurring: number | boolean;
+  is_subscription: number;
+  is_recurring: number;
   created_at: string;
   updated_at: string;
 };
