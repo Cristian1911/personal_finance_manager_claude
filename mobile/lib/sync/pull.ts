@@ -227,12 +227,12 @@ async function pullTable(
   }
 
   // Update sync metadata
-  const now = new Date().toISOString();
+  const syncedAt = new Date().toISOString();
   await db.runAsync(
     `INSERT INTO sync_metadata (table_name, last_synced_at)
      VALUES (?, ?)
      ON CONFLICT(table_name) DO UPDATE SET last_synced_at = excluded.last_synced_at`,
-    [table, now]
+    [table, syncedAt]
   );
 
   return upserted;
