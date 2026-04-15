@@ -1,8 +1,5 @@
 "use client";
 
-import { Suspense } from "react";
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { MonthSelector } from "@/components/month-selector";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import { DeudasHero } from "./deudas-hero";
 import { DeudasGrid } from "./deudas-grid";
@@ -59,19 +56,6 @@ export function DeudasRoot({
 
   return (
     <div className="space-y-3">
-      <MobileHeader
-        variant="main"
-        title="Deudas"
-        subtitle={`Lectura en ${currency}`}
-      />
-
-      {/* Month navigation */}
-      <div className="flex justify-center">
-        <Suspense fallback={<span className="text-xs capitalize text-z-sage-dark">{currency}</span>}>
-          <MonthSelector />
-        </Suspense>
-      </div>
-
       {/* Hero — monthly pressure */}
       <DeudasHero
         totalMonthlyPayment={stats.totalMonthlyPayment}
