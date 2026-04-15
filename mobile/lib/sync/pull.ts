@@ -25,14 +25,15 @@ const TABLE_COLUMNS_CACHE = new Map<string, Set<string>>();
 
 /** Boolean fields per table that need integer conversion for SQLite */
 const BOOLEAN_FIELDS: Record<string, string[]> = {
-  accounts: ["is_active"],
+  accounts: ["is_active", "show_in_dashboard", "is_payroll_deducted"],
   profiles: ["onboarding_completed"],
   categories: ["is_system"],
-  transactions: ["is_excluded"],
+  transactions: ["is_excluded", "is_subscription", "is_recurring"],
   recurring_transaction_templates: ["is_active"],
   destinatarios: ["is_active"],
   tag_groups: ["is_system"],
   tags: ["is_system"],
+  recurring_occurrences: ["linked_manually"],
   wishlist_items: ["enriched"],
 };
 

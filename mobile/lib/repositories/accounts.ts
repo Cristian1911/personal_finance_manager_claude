@@ -19,6 +19,10 @@ export type AccountRow = {
   monthly_payment: number | null;
   payment_day: number | null;
   cutoff_day: number | null;
+  show_in_dashboard: number;
+  card_brand: string | null;
+  debit_card_mask: string | null;
+  is_payroll_deducted: number;
   created_at: string;
   updated_at: string;
 };

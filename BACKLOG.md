@@ -139,6 +139,22 @@
 - **What:** Full root redesign with zone-based layouts, custom heroes, Zeta-branded visualizations
 - **Memory:** `project_mobile_v2_redesign.md`
 
+### Mobile charts — MVP set
+- **Priority:** Medium
+- **What:** Build mobile equivalents for the 6 most important webapp charts: monthly cashflow (bar), category donut (pie), daily spending (area), burn rate + runway, budget pace (ideal vs actual), account sparklines. `@shopify/react-native-skia` is already installed but unused.
+- **Data sources:** `getMonthlyCashflow()`, `getCategorySpending()`, `getDailySpending()`, `getBurnRate()`, `getDailyBudgetPace()`, `getAccountsWithSparklineData()` — all in `webapp/src/actions/charts.ts`.
+- **Found:** Mobile audit, 2026-04-15
+
+### Mobile missing pages
+- **Priority:** Low
+- **What:** Etiquetas (Tags), Pendientes (Pending Transactions), Settings Analytics — all exist in webapp but have no mobile equivalent.
+- **Found:** Mobile audit, 2026-04-15
+
+### Mobile sync — secondary tables
+- **Priority:** Low
+- **What:** `debt_scenarios`, `wishlist_reflections`, `dashboard_config` tables are used by the webapp but not synced to mobile. Add to SYNC_TABLES when mobile features need them.
+- **Found:** Mobile audit, 2026-04-15
+
 ## Tech Debt
 
 ### Defense-in-depth gaps

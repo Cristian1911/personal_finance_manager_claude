@@ -31,6 +31,7 @@ export type RecurringOccurrenceRow = {
   transaction_id: string | null;
   paid_at: string | null;
   skipped_at: string | null;
+  linked_manually: number;
   created_at: string;
 };
 
