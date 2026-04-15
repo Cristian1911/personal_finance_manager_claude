@@ -48,6 +48,7 @@ export interface OccurrenceItem {
   transferSourceAccountId: string | null;
   accountLastFour: string;
   status: "pending" | "paid" | "skipped";
+  transactionId: string | null;
 }
 
 export type DateStatus = "today" | "past" | "future";
@@ -80,6 +81,7 @@ function mapToOccurrenceItem(
     transferSourceAccountId: o.transfer_source_account_id,
     accountLastFour: accounts.find((a) => a.id === o.account_id)?.mask ?? "",
     status: o.status as "pending" | "paid" | "skipped",
+    transactionId: o.transaction_id,
   };
 }
 
@@ -383,7 +385,7 @@ export function useRecurringMonth(
           setOccurrences((prev) =>
             prev.map((o) =>
               o.id === item.occurrenceId
-                ? { ...o, status: item.status, transaction_id: null }
+                ? { ...o, status: item.status, transaction_id: item.transactionId }
                 : o
             )
           );
