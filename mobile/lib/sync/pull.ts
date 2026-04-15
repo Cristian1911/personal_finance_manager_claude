@@ -61,24 +61,61 @@ const WINDOWED_TABLES: Record<string, { column: string }> = {
   recurring_occurrences: { column: "occurrence_date" },
 };
 
-/** Number of months to sync (current + previous) */
-const SYNC_WINDOW_MONTHS = 2;
-
-/** Max rows per Supabase query (explicit to avoid silent 1000-row default) */
-const PAGE_SIZE = 5000;
+/** Rows per page when paginating Supabase queries */
+const PAGE_SIZE = 1000;
 
 /**
- * Returns the start date for the sync window (first day of N months ago).
+ * Returns the first day of N months ago as "YYYY-MM-DD".
+ * Mirrors webapp's monthStartStr() pattern.
  */
-function getWindowStartDate(months: number): string {
+function windowStartDate(): string {
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
-  return start.toISOString().slice(0, 10);
+  const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const y = start.getFullYear();
+  const m = String(start.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}-01`;
+}
+
+/**
+ * Returns the last day of the current month as "YYYY-MM-DD".
+ * Mirrors webapp's monthEndStr() pattern.
+ */
+function windowEndDate(): string {
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const y = end.getFullYear();
+  const m = String(end.getMonth() + 1).padStart(2, "0");
+  const d = String(end.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Fetch all rows from a Supabase query using .range() pagination.
+ * Iterates in PAGE_SIZE batches until all matching rows are fetched.
+ */
+async function fetchAllPages(baseQuery: any): Promise<any[]> {
+  const allRows: any[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await baseQuery.range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    allRows.push(...data);
+
+    // If we got fewer rows than PAGE_SIZE, we've reached the end
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return allRows;
 }
 
 /**
  * Pull all tables from Supabase into local SQLite.
- * Reference tables sync fully; transactional tables use a 2-month window.
+ * Reference tables sync fully; transactional tables use a date window
+ * (current month + previous month), matching the webapp's query pattern.
  */
 export async function pullAll(): Promise<Record<string, number>> {
   const db = await getDatabase();
@@ -129,10 +166,11 @@ async function pullTable(
   // Build Supabase query
   let query: any = (supabase as any).from(table).select("*");
 
-  // Apply date window for transactional tables
+  // Apply date window for transactional tables (current + previous month)
   if (window) {
-    const windowStart = getWindowStartDate(SYNC_WINDOW_MONTHS);
-    query = query.gte(window.column, windowStart);
+    const start = windowStartDate();
+    const end = windowEndDate();
+    query = query.gte(window.column, start).lte(window.column, end);
   }
 
   // Incremental sync: only fetch rows updated since last sync
@@ -145,12 +183,9 @@ async function pullTable(
     query = query.order("created_at", { ascending: true });
   }
 
-  // Explicit limit to avoid Supabase's silent 1000-row cap
-  query = query.limit(PAGE_SIZE);
-
-  const { data, error } = await query;
-  if (error) throw new Error(`Pull ${table} failed: ${error.message}`);
-  if (!data || data.length === 0) return 0;
+  // Fetch all matching rows with pagination
+  const data = await fetchAllPages(query);
+  if (data.length === 0) return 0;
 
   // Upsert each row into SQLite (skip only invalid rows, don't fail whole sync)
   let upserted = 0;
@@ -158,14 +193,14 @@ async function pullTable(
   let firstError: unknown = null;
 
   if (isFullReplace) {
-    // For windowed full-replace tables (e.g. recurring_occurrences),
-    // only delete rows within the sync window, not the entire table.
+    // For windowed full-replace tables, only delete rows within the window
     await db.withTransactionAsync(async () => {
       if (window) {
-        const windowStart = getWindowStartDate(SYNC_WINDOW_MONTHS);
+        const start = windowStartDate();
+        const end = windowEndDate();
         await db.runAsync(
-          `DELETE FROM ${table} WHERE ${window.column} >= ?`,
-          [windowStart]
+          `DELETE FROM ${table} WHERE ${window.column} >= ? AND ${window.column} <= ?`,
+          [start, end]
         );
       } else {
         await db.runAsync(`DELETE FROM ${table}`);
