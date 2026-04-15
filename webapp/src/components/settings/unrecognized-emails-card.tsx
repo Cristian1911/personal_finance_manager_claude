@@ -22,7 +22,7 @@ export function UnrecognizedEmailsCard({ initialEmails }: UnrecognizedEmailsCard
   if (emails.length === 0) return null;
 
   function buildReport(email: UnrecognizedEmail) {
-    const body = email.text_body || email.html_body?.slice(0, 3000) || "(sin contenido)";
+    const body = (email.text_body || email.html_body)?.slice(0, 3000) || "(sin contenido)";
     const type = email.text_body ? "text" : "html";
     return [
       `## Correo no reconocido`,
@@ -33,9 +33,9 @@ export function UnrecognizedEmailsCard({ initialEmails }: UnrecognizedEmailsCard
       `- **Tipo de cuerpo:** ${type}`,
       ``,
       `### Contenido`,
-      `\`\`\``,
+      `\`\`\`\``,
       body,
-      `\`\`\``,
+      `\`\`\`\``,
     ].filter(Boolean).join("\n");
   }
 

@@ -48,9 +48,9 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
       log.error_message ? `- **Error:** ${log.error_message}` : null,
       ``,
       `### Contenido`,
-      `\`\`\``,
-      log.raw_body || "(sin contenido)",
-      `\`\`\``,
+      `\`\`\`\``,
+      log.raw_body?.slice(0, 5000) || "(sin contenido)",
+      `\`\`\`\``,
     ].filter(Boolean).join("\n");
   }
 
@@ -129,6 +129,7 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
           {logs.map((log) => {
             const isExpanded = expanded.has(log.id);
             const isRetryable = RETRYABLE_STATUSES.has(log.status) && !!log.raw_body;
+            const isReportable = !!log.raw_body && (isRetryable || log.status === "pdf_parse_failed");
             const config = STATUS_CONFIG[log.status] ?? {
               label: log.status,
               className: "bg-white/6 text-muted-foreground",
@@ -160,48 +161,54 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
                       </p>
                     </div>
                   </button>
-                  {isRetryable && (
+                  {(isReportable || isRetryable) && (
                     <div className="flex shrink-0 gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-8 text-muted-foreground hover:text-amber-400"
-                        onClick={() => {
-                          navigator.clipboard.writeText(buildReport(log));
-                          toast.success("Reporte copiado — pégalo en un issue de GitHub");
-                        }}
-                        aria-label="Copiar reporte"
-                      >
-                        <ClipboardList className="size-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-8 text-muted-foreground hover:text-z-brass"
-                        onClick={() => handleRetry(log.id)}
-                        disabled={retryingId === log.id || dismissingId === log.id}
-                        aria-label="Reintentar"
-                      >
-                        {retryingId === log.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="size-4" />
-                        )}
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDismiss(log.id)}
-                        disabled={retryingId === log.id || dismissingId === log.id}
-                        aria-label="Descartar"
-                      >
-                        {dismissingId === log.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <X className="size-4" />
-                        )}
-                      </Button>
+                      {isReportable && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8 text-muted-foreground hover:text-amber-400"
+                          onClick={() => {
+                            navigator.clipboard.writeText(buildReport(log));
+                            toast.success("Reporte copiado — pégalo en un issue de GitHub");
+                          }}
+                          aria-label="Copiar reporte"
+                        >
+                          <ClipboardList className="size-4" />
+                        </Button>
+                      )}
+                      {isRetryable && (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-8 text-muted-foreground hover:text-z-brass"
+                            onClick={() => handleRetry(log.id)}
+                            disabled={retryingId === log.id || dismissingId === log.id}
+                            aria-label="Reintentar"
+                          >
+                            {retryingId === log.id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="size-4" />
+                            )}
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDismiss(log.id)}
+                            disabled={retryingId === log.id || dismissingId === log.id}
+                            aria-label="Descartar"
+                          >
+                            {dismissingId === log.id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <X className="size-4" />
+                            )}
+                          </Button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
