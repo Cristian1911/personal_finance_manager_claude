@@ -182,7 +182,7 @@ export function EtiquetasRoot() {
   );
 
   const renderTagChip = (tag: TagWithGroup, isSystem: boolean) => {
-    const tagColor = tag.color ?? tag.group_color ?? "#6B7280";
+    const tagColor = tag.color ?? tag.group_color ?? COLORS.sageDark;
     return (
       <Pressable
         key={tag.id}
@@ -335,7 +335,7 @@ export function EtiquetasRoot() {
               Sin etiquetas
             </Text>
             <Text className="text-[11px] font-inter text-muted-foreground text-center px-8">
-              Las etiquetas se sincronizaran cuando te conectes, o crea un grupo nuevo
+              Las etiquetas se sincronizarán cuando te conectes, o crea un grupo nuevo
             </Text>
           </View>
         )}

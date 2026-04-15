@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { X, Trash2, ChevronDown } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
-import { BRASS_BUTTON_CLASS } from "../../lib/constants/styles";
+import { BRASS_BUTTON_CLASS, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 import type { TagGroupRow, TagRow } from "../../lib/repositories/tags";
 
 /** Preset colors that read well on the dark background */
@@ -180,7 +180,7 @@ export function TagFormSheet({
           >
             {/* Name field */}
             <View>
-              <Text className="text-[11px] font-inter-semibold text-z-sage-dark uppercase tracking-[2px] mb-1.5">
+              <Text className={`${SECTION_EYEBROW_CLASS} mb-1.5`}>
                 Nombre
               </Text>
               <TextInput
@@ -197,7 +197,7 @@ export function TagFormSheet({
             {/* Group picker (tags only) */}
             {!isGroupMode && (
               <View>
-                <Text className="text-[11px] font-inter-semibold text-z-sage-dark uppercase tracking-[2px] mb-1.5">
+                <Text className={`${SECTION_EYEBROW_CLASS} mb-1.5`}>
                   Grupo (opcional)
                 </Text>
                 <Pressable
@@ -248,7 +248,7 @@ export function TagFormSheet({
 
             {/* Color picker */}
             <View>
-              <Text className="text-[11px] font-inter-semibold text-z-sage-dark uppercase tracking-[2px] mb-1.5">
+              <Text className={`${SECTION_EYEBROW_CLASS} mb-1.5`}>
                 Color {!isGroupMode ? "(opcional)" : ""}
               </Text>
               <View className="flex-row flex-wrap gap-3">
@@ -298,10 +298,11 @@ export function TagFormSheet({
               {isEditing && canDelete && (
                 <Pressable
                   onPress={handleDelete}
-                  className="flex-row items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/8 py-3 active:opacity-80"
+                  className="flex-row items-center justify-center gap-2 rounded-xl py-3 active:opacity-80"
+                  style={{ borderWidth: 1, borderColor: "rgba(224, 85, 69, 0.2)", backgroundColor: "rgba(224, 85, 69, 0.08)" }}
                 >
-                  <Trash2 size={14} color="#E05545" />
-                  <Text className="text-[13px] font-inter-semibold text-red-400">
+                  <Trash2 size={14} color={COLORS.debt} />
+                  <Text className="text-[13px] font-inter-semibold" style={{ color: COLORS.debt }}>
                     Eliminar {isGroupMode ? "grupo" : "etiqueta"}
                   </Text>
                 </Pressable>

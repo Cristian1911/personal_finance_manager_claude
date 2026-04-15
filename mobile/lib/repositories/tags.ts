@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import { getDatabase } from "../db/database";
 
 export type TagGroupRow = {
@@ -60,20 +61,17 @@ export async function getTagsForTransaction(
   );
 }
 
-/**
- * Replace all tags for a transaction.
- * Deletes existing junction rows and re-inserts the given tagIds.
- * Also enqueues a sync operation.
- */
-/** Generate a URL-safe slug from a tag name. */
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
+/** Generate a URL-safe slug. Must match webapp's generateSlug exactly. */
+function generateSlug(value: string): string {
+  return value
+    .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 50) || "tag";
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50);
 }
 
 export async function createTagGroup(
@@ -82,8 +80,7 @@ export async function createTagGroup(
   color: string | null
 ): Promise<string> {
   const db = await getDatabase();
-  const { randomUUID } = await import("expo-crypto");
-  const id = randomUUID();
+  const id = Crypto.randomUUID();
   const now = new Date().toISOString();
 
   await db.runAsync(
@@ -95,7 +92,7 @@ export async function createTagGroup(
   await db.runAsync(
     `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
      VALUES ('tag_groups', ?, 'INSERT', ?, ?)`,
-    [id, JSON.stringify({ id, user_id: userId, name, color, display_order: 999, is_system: false, created_at: now }), now]
+    [id, JSON.stringify({ id, user_id: userId, name, color, is_system: false, created_at: now }), now]
   );
 
   return id;
@@ -114,19 +111,65 @@ export async function updateTagGroup(
     [name, color, id]
   );
 
-  await db.runAsync(
-    `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
-     VALUES ('tag_groups', ?, 'UPDATE', ?, ?)`,
-    [id, JSON.stringify({ name, color }), now]
+  const payload = { name, color };
+
+  // Coalesce with pending INSERT if it hasn't synced yet
+  const pendingInsert = await db.getFirstAsync<{ id: number; payload: string }>(
+    `SELECT id, payload FROM sync_queue
+     WHERE table_name = 'tag_groups' AND record_id = ? AND operation = 'INSERT' AND synced_at IS NULL`,
+    [id]
   );
+
+  if (pendingInsert) {
+    const existing = JSON.parse(pendingInsert.payload);
+    await db.runAsync("UPDATE sync_queue SET payload = ? WHERE id = ?", [
+      JSON.stringify({ ...existing, ...payload }),
+      pendingInsert.id,
+    ]);
+  } else {
+    await db.runAsync(
+      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+       VALUES ('tag_groups', ?, 'UPDATE', ?, ?)`,
+      [id, JSON.stringify(payload), now]
+    );
+  }
 }
 
 export async function deleteTagGroup(id: string): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
 
-  // Unlink tags from this group (don't delete them)
+  // Guard: never delete system groups
+  const row = await db.getFirstAsync<{ is_system: number }>(
+    "SELECT is_system FROM tag_groups WHERE id = ?",
+    [id]
+  );
+  if (!row || row.is_system === 1) return;
+
+  // Collect child tag IDs before unlinking
+  const childTags = await db.getAllAsync<{ id: string }>(
+    "SELECT id FROM tags WHERE group_id = ?",
+    [id]
+  );
+
+  // Unlink tags from this group locally
   await db.runAsync("UPDATE tags SET group_id = NULL WHERE group_id = ?", [id]);
+
+  // Fix any pending unsynced INSERT payloads for child tags — null out group_id
+  for (const child of childTags) {
+    const pendingChildInsert = await db.getFirstAsync<{ id: number; payload: string }>(
+      `SELECT id, payload FROM sync_queue
+       WHERE table_name = 'tags' AND record_id = ? AND operation = 'INSERT' AND synced_at IS NULL`,
+      [child.id]
+    );
+    if (pendingChildInsert) {
+      const existing = JSON.parse(pendingChildInsert.payload);
+      await db.runAsync("UPDATE sync_queue SET payload = ? WHERE id = ?", [
+        JSON.stringify({ ...existing, group_id: null }),
+        pendingChildInsert.id,
+      ]);
+    }
+  }
 
   const pendingInsert = await db.getFirstAsync<{ id: number }>(
     `SELECT id FROM sync_queue WHERE table_name = 'tag_groups' AND record_id = ? AND operation = 'INSERT' AND synced_at IS NULL`,
@@ -136,7 +179,11 @@ export async function deleteTagGroup(id: string): Promise<void> {
   await db.runAsync("DELETE FROM tag_groups WHERE id = ?", [id]);
 
   if (pendingInsert) {
-    await db.runAsync("DELETE FROM sync_queue WHERE id = ?", [pendingInsert.id]);
+    // Never synced — remove all pending operations for this group
+    await db.runAsync(
+      "DELETE FROM sync_queue WHERE table_name = 'tag_groups' AND record_id = ? AND synced_at IS NULL",
+      [id]
+    );
   } else {
     await db.runAsync(
       `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
@@ -153,8 +200,7 @@ export async function createTag(
   color: string | null
 ): Promise<string> {
   const db = await getDatabase();
-  const { randomUUID } = await import("expo-crypto");
-  const id = randomUUID();
+  const id = Crypto.randomUUID();
   const slug = generateSlug(name);
   const now = new Date().toISOString();
 
@@ -167,7 +213,7 @@ export async function createTag(
   await db.runAsync(
     `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
      VALUES ('tags', ?, 'INSERT', ?, ?)`,
-    [id, JSON.stringify({ id, user_id: userId, name, slug, color, group_id: groupId, display_order: 999, is_system: false, created_at: now }), now]
+    [id, JSON.stringify({ id, user_id: userId, name, slug, color, group_id: groupId, is_system: false, created_at: now }), now]
   );
 
   return id;
@@ -188,16 +234,40 @@ export async function updateTag(
     [name, slug, color, groupId, id]
   );
 
-  await db.runAsync(
-    `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
-     VALUES ('tags', ?, 'UPDATE', ?, ?)`,
-    [id, JSON.stringify({ name, slug, color, group_id: groupId }), now]
+  const payload = { name, slug, color, group_id: groupId };
+
+  // Coalesce with pending INSERT if it hasn't synced yet
+  const pendingInsert = await db.getFirstAsync<{ id: number; payload: string }>(
+    `SELECT id, payload FROM sync_queue
+     WHERE table_name = 'tags' AND record_id = ? AND operation = 'INSERT' AND synced_at IS NULL`,
+    [id]
   );
+
+  if (pendingInsert) {
+    const existing = JSON.parse(pendingInsert.payload);
+    await db.runAsync("UPDATE sync_queue SET payload = ? WHERE id = ?", [
+      JSON.stringify({ ...existing, ...payload }),
+      pendingInsert.id,
+    ]);
+  } else {
+    await db.runAsync(
+      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+       VALUES ('tags', ?, 'UPDATE', ?, ?)`,
+      [id, JSON.stringify(payload), now]
+    );
+  }
 }
 
 export async function deleteTag(id: string): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
+
+  // Guard: never delete system tags
+  const row = await db.getFirstAsync<{ is_system: number }>(
+    "SELECT is_system FROM tags WHERE id = ?",
+    [id]
+  );
+  if (!row || row.is_system === 1) return;
 
   // Remove from junction table
   await db.runAsync("DELETE FROM transaction_tags WHERE tag_id = ?", [id]);
@@ -210,7 +280,11 @@ export async function deleteTag(id: string): Promise<void> {
   await db.runAsync("DELETE FROM tags WHERE id = ?", [id]);
 
   if (pendingInsert) {
-    await db.runAsync("DELETE FROM sync_queue WHERE id = ?", [pendingInsert.id]);
+    // Never synced — remove all pending operations for this tag
+    await db.runAsync(
+      "DELETE FROM sync_queue WHERE table_name = 'tags' AND record_id = ? AND synced_at IS NULL",
+      [id]
+    );
   } else {
     await db.runAsync(
       `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
