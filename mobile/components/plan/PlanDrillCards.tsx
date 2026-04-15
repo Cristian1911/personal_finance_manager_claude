@@ -1,6 +1,6 @@
 import { View } from "react-native";
 import { useRouter } from "expo-router";
-import { PiggyBank, Repeat, Heart } from "lucide-react-native";
+import { PiggyBank, Repeat, Heart, Tags } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { HubEntry } from "../ui/HubEntry";
 import { MobileZone } from "../ui/MobileZone";
@@ -41,6 +41,12 @@ export function PlanDrillCards({
           title="Deseos"
           hint="Lista de deseos financieros"
           onPress={() => router.push("/deseos" as any)}
+        />
+        <HubEntry
+          icon={Tags}
+          title="Etiquetas"
+          hint="Organiza con tags personalizados"
+          onPress={() => router.push("/etiquetas" as any)}
         />
       </View>
     </MobileZone>
