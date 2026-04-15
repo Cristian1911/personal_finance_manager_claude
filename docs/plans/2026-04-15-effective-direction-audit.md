@@ -90,6 +90,26 @@ Change `<SelectItem value="INFLOW">Ingreso</SelectItem>` to:
 - `webapp/src/components/mobile/v2/movimientos/movimientos-herramientas.tsx` — remove router.refresh
 - `webapp/src/components/recurring/recurring-form.tsx` — label fix
 
+## Agent Review Notes (2026-04-14)
+
+Reviewed by `cache-doctor` and `server-action-reviewer`. **Verdict: PASS.**
+
+### Implementation watch items
+
+| Severity | Change | Detail |
+|----------|--------|--------|
+| **HIGH** | 2e (`findMatchingOccurrence`) | Secondary query MUST use `!inner` join (like primary at line 648). Without it, PostgREST returns all parent rows with NULL template instead of filtering. Also include `account:accounts!...(account_type)` in select for the `isDebtAccountType()` client filter. |
+| **MEDIUM** | 2c (`getCandidateTransactionsForOccurrence`) | `and()` nesting inside `.or()` is valid PostgREST but first usage in this codebase. Verify with real data after implementation. |
+| **MEDIUM** | 2d (`linkExistingTransactionToOccurrence`) | Type assertion at line 722 must be updated to include `transfer_source_account_id: string \| null` and nested `account: { account_type: string }`. |
+
+### Confirmed safe
+
+- **Auth & defense-in-depth**: All 5 functions use `getAuthenticatedClient()` + `.eq("user_id", user.id)`. Cross-account changes only widen matching between rows owned by the same user. No IDOR surface.
+- **Cache invalidation**: `revalidateFinancialViews()` invalidates global tags (`"transactions"`, `"accounts"`, `"occurrences"`, etc.) — covers both source and debt accounts. No new tags needed.
+- **Income metrics**: No risk. Transaction directions unchanged; `getMonthlyCashflowCached()` debt-inflow exclusion unaffected.
+- **`router.refresh()` removal**: Safe. All 3 server actions already revalidate inside `startTransition`. The `router.refresh()` causes a race where stale Route Cache overwrites fresh revalidated data — removing it fixes the import queue → transaction list staleness bug.
+- **`isDebtAccountType`** already imported at line 11 of `occurrences.ts`. `OCCURRENCE_SELECT` already includes `transfer_source_account_id`. No new imports or migrations needed.
+
 ## Verification
 
 1. `pnpm build` passes
