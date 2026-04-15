@@ -7,7 +7,7 @@ import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { ArrowRight } from "lucide-react";
 
-export function PlanAccountsSection() {
+export function AccountsSection() {
   const accounts = useAccounts();
 
   if (accounts.length === 0) return null;

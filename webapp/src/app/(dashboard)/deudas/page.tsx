@@ -15,11 +15,12 @@ import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { DeudasRoot } from "@/components/mobile/v2/deudas/deudas-root";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { Button } from "@/components/ui/button";
-import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getRecentImpactEvents } from "@/actions/impact-events";
 import { AccountImpactTimeline } from "@/components/impact/account-impact-timeline";
+import { AccountsSection } from "@/components/accounts/accounts-section";
 import { computeDebtStats, getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
@@ -241,7 +242,12 @@ export default async function DeudasPage({
   return (
     <div className="space-y-3 lg:space-y-8">
       {/* ── Mobile ── */}
-      <div className="lg:hidden">
+      <div className={`lg:hidden space-y-4 ${MOBILE_TAB_BAR_CLEARANCE_CLASS}`}>
+        <div className="flex justify-center">
+          <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
+            <MonthSelector compact />
+          </Suspense>
+        </div>
         <Suspense
           fallback={
             <div className="space-y-3">
@@ -253,6 +259,7 @@ export default async function DeudasPage({
         >
           <MobileDebtSection currency={currency} month={month} />
         </Suspense>
+        <AccountsSection />
       </div>
 
       {/* ── Desktop ── */}
@@ -271,7 +278,7 @@ export default async function DeudasPage({
               <Button asChild variant="outline" className={GHOST_BUTTON_CLASS}>
                 <Link href="/plan">Volver a Plan</Link>
               </Button>
-              <Suspense>
+              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
                 <MonthSelector />
               </Suspense>
             </>
@@ -292,6 +299,8 @@ export default async function DeudasPage({
         </Suspense>
 
         <AccountImpactTimeline events={impactEvents} />
+
+        <AccountsSection />
       </div>
     </div>
   );

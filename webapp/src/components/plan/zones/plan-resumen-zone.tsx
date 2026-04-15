@@ -6,7 +6,6 @@ import { PlanBudgetToggle } from "@/components/plan/plan-budget-toggle";
 import { PlanDebtSection } from "@/components/plan/plan-debt-section";
 import { PlanRecurringSection } from "@/components/plan/plan-recurring-section";
 import { PlanScenarioPreview } from "@/components/plan/plan-scenario-preview";
-import { PlanAccountsSection } from "@/components/plan/plan-accounts-section";
 import { PlanTabNav, type PlanTab } from "@/components/plan/plan-tab-nav";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -60,8 +59,6 @@ export async function PlanResumenZone({
       </div>
 
       <PlanScenarioPreview scenarios={planData.scenarios} />
-
-      <PlanAccountsSection />
     </>
   );
 }
