@@ -231,8 +231,61 @@ Output format:
 | New cached function never invalidates | Tag not in `revalidateFinancialViews()` | Add the tag, or add explicit `revalidateTag` in mutation |
 | Cross-page data stale | No `revalidateTag` for that domain | Add `revalidateTag("domain", "zeta")` in the mutation |
 | Same-page not updating | Mutation not in `startTransition` | Wrap in `startTransition` or use `useActionState` (do NOT add `router.refresh()`) |
+| Sibling list stale after mutation | Dual-source staleness — see below | Wrap server action in `startTransition` AND call client-side refetch |
 | UI updates after delay but not instantly | No optimistic state | Add optimistic state (e.g., track pending IDs in `useState`, filter them from display) |
 | `revalidateTag` not working | Wrong signature — missing `"zeta"` second arg | Always: `revalidateTag("tag", "zeta")` |
+
+---
+
+## Dual-Source Staleness Pattern
+
+A common bug in Zeta: a client component reads data from **two different sources** — server component props AND client-side state. A mutation updates one source but not the other.
+
+### The Problem
+
+```
+Server Component (PlanTabRecurrentes)
+  └─ fetches templates, accounts, occurrences
+  └─ passes as props to:
+      └─ Client Component (MobileRecurrentesView)
+           ├─ templates prop ← from server component (stale after mutation)
+           └─ occurrences ← from useState + refreshOccurrences() (fresh after refetch)
+```
+
+After `toggleRecurringTemplate()`:
+- `refreshOccurrences()` re-fetches occurrences → checklist updates ✓
+- `templates` prop still has old `is_active` → TemplatesSection shows "Pausada" ✗
+
+### The Fix
+
+Wrap the server action call in `startTransition` so Next.js re-renders the server component tree (refreshing props), AND do the client-side refetch for local state:
+
+```ts
+startTransition(async () => {
+  const result = await toggleRecurringTemplate(template.id, true);
+  if (result.success) {
+    await hook.refreshOccurrences();  // updates client-side useState
+    setExpandedKey(null);
+    // startTransition triggers RSC re-render → fresh templates prop
+  } else {
+    toast.error(result.error ?? "Error");
+  }
+});
+```
+
+### Where This Appears
+
+- **Recurrentes**: templates prop + occurrences state (fixed in `use-recurring-month.ts`)
+- **Movimientos**: transaction list (server prop) + pending queue (client state) — after import, pending queue clears but list doesn't show the new tx until page refresh
+- **Dashboard**: hero metrics (server prop) + live metrics (client hook) — live hook corrects on mount, but sibling components may show stale props
+
+### How to Diagnose
+
+1. Identify what data is stale
+2. Check: does it come from a server component prop or client-side state?
+3. If server component prop → the mutation handler needs `startTransition` wrapping
+4. If client-side state → the mutation handler needs an explicit refetch call
+5. If both → needs both (this is the dual-source pattern)
 
 ---
 

@@ -279,6 +279,49 @@ Joins through encrypted views require explicit FK hints:
 
 ---
 
+## Check 9: Client-Side Mutation Handlers (HIGH)
+
+When reviewing server actions, also check **how they are called** from client components. Server actions called directly with `await` inside click handlers (not wrapped in `startTransition` or `useActionState`) will NOT trigger a server component re-render — sibling data from server component props will go stale.
+
+### The Dual-Source Pattern
+
+Client components often have data from two sources:
+1. **Server component props** (e.g., `templates` passed from `PlanTabRecurrentes`) → needs `startTransition` to refresh
+2. **Client-side `useState`** (e.g., occurrences from `refreshOccurrences()`) → needs explicit refetch
+
+Mutations that only do a client-side refetch leave the server component props stale. The fix is wrapping the server action in `startTransition`:
+
+```ts
+// WRONG — occurrences update but templates prop stays stale
+const handleResume = async () => {
+  await toggleRecurringTemplate(template.id, true);
+  await refreshOccurrences();  // only updates client state
+};
+
+// CORRECT — startTransition triggers RSC re-render for fresh props
+const handleResume = () => {
+  startTransition(async () => {
+    const result = await toggleRecurringTemplate(template.id, true);
+    if (result.success) {
+      await refreshOccurrences();  // updates client state
+      // startTransition re-renders server component → fresh props
+    } else {
+      toast.error(result.error ?? "Error");
+    }
+  });
+};
+```
+
+**Known locations of this pattern:**
+- `mobile-recurrentes-view.tsx` — handleImpactConfirm, onResume (fixed)
+- `movimientos-root.tsx` — transaction list after import (needs fix)
+
+**Flag as HIGH:**
+- Server action called with bare `await` in a click handler when the page also has server component props that depend on the mutated data
+- Missing `startTransition` wrapping on admin mutations (pause/delete/activate)
+
+---
+
 ## Output Format
 
 ```
@@ -309,3 +352,4 @@ Before reporting:
 3. Did you verify `revalidateTag` signature includes `"zeta"`?
 4. Did you check for `z.string().uuid()` usage?
 5. Did you check income calculations exclude debt inflows?
+6. Did you check client-side mutation handlers wrap server actions in `startTransition` when the page has server component props that depend on the mutated data?
