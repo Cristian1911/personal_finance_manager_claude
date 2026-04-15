@@ -755,6 +755,7 @@ export type Database = {
         | "ML_MODEL"
         | "USER_OVERRIDE"
         | "USER_LEARNED"
+        | "RECURRING_TEMPLATE"
       connection_status: "CONNECTED" | "DISCONNECTED" | "ERROR" | "PENDING"
       currency_code:
         | "COP"
@@ -932,6 +933,7 @@ export const Constants = {
         "ML_MODEL",
         "USER_OVERRIDE",
         "USER_LEARNED",
+        "RECURRING_TEMPLATE",
       ],
       connection_status: ["CONNECTED", "DISCONNECTED", "ERROR", "PENDING"],
       currency_code: ["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"],

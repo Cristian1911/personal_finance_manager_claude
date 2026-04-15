@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, SkipForward, Undo2, Pencil } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/utils/date";
 import type { OccurrenceItem } from "./use-recurring-month";
 import type { CurrencyCode } from "@/types/domain";
 import { ChevronDown } from "lucide-react";
+import Link from "next/link";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -18,6 +19,7 @@ import { ChevronDown } from "lucide-react";
 
 interface RecurringCompletedSectionProps {
   completed: OccurrenceItem[];
+  onRevert?: (item: OccurrenceItem) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -26,6 +28,7 @@ interface RecurringCompletedSectionProps {
 
 export function RecurringCompletedSection({
   completed,
+  onRevert,
 }: RecurringCompletedSectionProps) {
   if (completed.length === 0) return null;
 
@@ -48,7 +51,11 @@ export function RecurringCompletedSection({
               key={item.key}
               className="flex items-center gap-2 px-3 py-2"
             >
-              <CheckCircle2 className="size-4 shrink-0 text-green-600 dark:text-green-500" />
+              {item.status === "paid" ? (
+                <CheckCircle2 className="size-4 shrink-0 text-green-600 dark:text-green-500" />
+              ) : (
+                <SkipForward className="size-4 shrink-0 text-amber-600 dark:text-amber-500" />
+              )}
 
               <div className="min-w-0 flex-1">
                 <span className="truncate text-sm font-medium text-green-800 dark:text-green-300">
@@ -56,6 +63,7 @@ export function RecurringCompletedSection({
                 </span>
                 <span className="ml-1.5 text-xs text-green-600/70 dark:text-green-500/70">
                   {formatDate(item.date, "d MMM")}
+                  {item.status === "skipped" && " · Omitido"}
                 </span>
               </div>
 
@@ -65,6 +73,27 @@ export function RecurringCompletedSection({
                   item.currencyCode as CurrencyCode
                 )}
               </span>
+
+              {/* Actions */}
+              <div className="flex shrink-0 items-center gap-1 ml-1">
+                <Link
+                  href={`/recurrentes/${item.templateId}/edit`}
+                  className="rounded-md p-1.5 text-green-600/70 transition-colors hover:bg-green-200/50 hover:text-green-800 dark:text-green-500/70 dark:hover:bg-green-900/40 dark:hover:text-green-300"
+                  title="Editar plantilla"
+                >
+                  <Pencil className="size-3.5" />
+                </Link>
+                {onRevert && (
+                  <button
+                    type="button"
+                    onClick={() => onRevert(item)}
+                    className="rounded-md p-1.5 text-green-600/70 transition-colors hover:bg-green-200/50 hover:text-green-800 dark:text-green-500/70 dark:hover:bg-green-900/40 dark:hover:text-green-300"
+                    title="Deshacer — volver a pendiente"
+                  >
+                    <Undo2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
