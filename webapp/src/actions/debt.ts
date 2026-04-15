@@ -27,11 +27,11 @@ const EMPTY_DEBT_OVERVIEW: DebtOverview = {
   debtByCurrency: [],
 };
 
-/** Check if month string (YYYY-MM) is the current month or absent */
-function isCurrentMonth(month?: string): boolean {
+/** Check if month string (YYYY-MM) is the current or future month, or absent */
+function isCurrentOrFutureMonth(month?: string): boolean {
   if (!month) return true;
   const current = toColombiaDateString(new Date()).slice(0, 7);
-  return month === current;
+  return month >= current;
 }
 
 // ─── Build DebtOverview from DebtAccount[] ───────────────────────────────────
@@ -133,7 +133,7 @@ async function getDebtOverviewForMonthCached(
   accessToken: string
 ): Promise<DebtOverview> {
   "use cache";
-  cacheTag("debt", "snapshots");
+  cacheTag("snapshots");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
@@ -157,7 +157,8 @@ async function getDebtOverviewForMonthCached(
       .select("account_id, final_balance, remaining_balance, credit_limit, interest_rate, minimum_payment, total_payment_due, currency_code, period_to, initial_amount")
       .eq("user_id", userId)
       .lte("period_to", endStr)
-      .order("period_to", { ascending: false }),
+      .order("period_to", { ascending: false })
+      .limit(200),
   ]);
 
   if (accountsResult.error) throw accountsResult.error;
@@ -218,7 +219,7 @@ export async function getDebtOverview(
 
   if (!user || !accessToken) return EMPTY_DEBT_OVERVIEW;
 
-  if (isCurrentMonth(month)) {
+  if (isCurrentOrFutureMonth(month)) {
     return getDebtOverviewLiveCached(user.id, baseCurrency, accessToken);
   }
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month!)) {
