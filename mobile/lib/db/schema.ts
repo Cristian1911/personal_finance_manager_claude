@@ -303,6 +303,47 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `UPDATE wishlist_items SET status = 'wishlist' WHERE status = 'WANT'`,
     ],
   },
+  {
+    version: 7,
+    statements: [
+      // ── accounts: new columns from webapp ─────────────────────────────
+      `ALTER TABLE accounts ADD COLUMN show_in_dashboard INTEGER NOT NULL DEFAULT 1`,
+      `ALTER TABLE accounts ADD COLUMN card_brand TEXT`,
+      `ALTER TABLE accounts ADD COLUMN debit_card_mask TEXT`,
+      `ALTER TABLE accounts ADD COLUMN is_payroll_deducted INTEGER NOT NULL DEFAULT 0`,
+
+      // ── transactions: installment & transfer tracking ─────────────────
+      `ALTER TABLE transactions ADD COLUMN transfer_group_id TEXT`,
+      `ALTER TABLE transactions ADD COLUMN original_amount REAL`,
+      `ALTER TABLE transactions ADD COLUMN installment_current INTEGER`,
+      `ALTER TABLE transactions ADD COLUMN installment_total INTEGER`,
+      `ALTER TABLE transactions ADD COLUMN installment_group_id TEXT`,
+      `ALTER TABLE transactions ADD COLUMN is_subscription INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE transactions ADD COLUMN is_recurring INTEGER NOT NULL DEFAULT 0`,
+
+      // ── recurring_occurrences: manual linkage flag ────────────────────
+      `ALTER TABLE recurring_occurrences ADD COLUMN linked_manually INTEGER NOT NULL DEFAULT 0`,
+
+      // ── recurring_transaction_templates: categorization source ────────
+      `ALTER TABLE recurring_transaction_templates ADD COLUMN categorization_source TEXT`,
+
+      // ── recurring_occurrence_skips: new table ─────────────────────────
+      `CREATE TABLE IF NOT EXISTS recurring_occurrence_skips (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        template_id TEXT NOT NULL,
+        occurrence_date TEXT NOT NULL,
+        skipped_at TEXT NOT NULL,
+        FOREIGN KEY (template_id) REFERENCES recurring_transaction_templates(id)
+      )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_occurrence_skips_unique ON recurring_occurrence_skips(template_id, occurrence_date)`,
+      `CREATE INDEX IF NOT EXISTS idx_occurrence_skips_user ON recurring_occurrence_skips(user_id)`,
+
+      // ── transactions: indexes for new columns ─────────────────────────
+      `CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group ON transactions(transfer_group_id) WHERE transfer_group_id IS NOT NULL`,
+      `CREATE INDEX IF NOT EXISTS idx_transactions_installment_group ON transactions(installment_group_id) WHERE installment_group_id IS NOT NULL`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

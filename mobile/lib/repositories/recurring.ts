@@ -17,6 +17,7 @@ export type RecurringTemplateRow = {
   description: string | null;
   transfer_source_account_id: string | null;
   is_active: number;
+  categorization_source: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -31,6 +32,7 @@ export type RecurringOccurrenceRow = {
   transaction_id: string | null;
   paid_at: string | null;
   skipped_at: string | null;
+  linked_manually: number;
   created_at: string;
 };
 

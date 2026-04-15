@@ -36,6 +36,13 @@ export type TransactionRow = {
   capture_input_text: string | null;
   reconciled_into_transaction_id: string | null;
   reconciliation_score: number | null;
+  transfer_group_id: string | null;
+  original_amount: number | null;
+  installment_current: number | null;
+  installment_total: number | null;
+  installment_group_id: string | null;
+  is_subscription: number | boolean;
+  is_recurring: number | boolean;
   created_at: string;
   updated_at: string;
 };
