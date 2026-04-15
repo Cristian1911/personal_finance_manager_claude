@@ -25,7 +25,6 @@ type SyncTableName =
   | "tags"
   | "transaction_tags"
   | "wishlist_items"
-  | "recurring_occurrence_skips"
   | "statement_snapshots"
   | "transactions";
 

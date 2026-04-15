@@ -13,7 +13,6 @@ const SYNC_TABLES = [
   "destinatario_rules",
   "recurring_transaction_templates",
   "recurring_occurrences",
-  "recurring_occurrence_skips",
   "transactions",
   "transaction_tags",
   "wishlist_items",
@@ -85,7 +84,6 @@ const FULL_REPLACE_TABLES = new Set<string>([
   "tags",
   "destinatario_rules",
   "recurring_occurrences",
-  "recurring_occurrence_skips",
   "transaction_tags",
 ]);
 

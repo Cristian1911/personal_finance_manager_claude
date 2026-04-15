@@ -52,7 +52,6 @@ export async function clearDatabase(): Promise<void> {
   await database.execAsync(`
     DELETE FROM wishlist_items;
     DELETE FROM transaction_tags;
-    DELETE FROM recurring_occurrence_skips;
     DELETE FROM recurring_occurrences;
     DELETE FROM recurring_transaction_templates;
     DELETE FROM destinatario_rules;
