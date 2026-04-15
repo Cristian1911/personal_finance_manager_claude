@@ -16,6 +16,7 @@ import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 import { PlanResumenZone } from "@/components/plan/zones/plan-resumen-zone";
 import { PlanMobileZone } from "@/components/plan/zones/plan-mobile-zone";
+import { PlanAccountsSection } from "@/components/plan/plan-accounts-section";
 import type { CurrencyCode } from "@/types/domain";
 
 const VALID_TABS: PlanTab[] = ["resumen", "presupuesto", "periodo", "recurrentes", "deseos"];
@@ -106,23 +107,44 @@ export default async function PlanPage({
       {/* ── Mobile ── */}
       <div className="lg:hidden">
         {isResumen ? (
-          <Suspense fallback={mobileSkeleton}>
-            <PlanMobileZone
-              month={month}
-              currency={currency as CurrencyCode}
-              monthLabel={monthLabel}
-              periodoSummary={periodoSummary}
-              wishlistCount={wishlistSummary?.totalCount ?? 0}
-            />
-          </Suspense>
+          <div className="space-y-6">
+            <Suspense fallback={mobileSkeleton}>
+              <PlanMobileZone
+                month={month}
+                currency={currency as CurrencyCode}
+                monthLabel={monthLabel}
+                periodoSummary={periodoSummary}
+                wishlistCount={wishlistSummary?.totalCount ?? 0}
+              />
+            </Suspense>
+            <Suspense fallback={
+              <div className="space-y-3 px-1">
+                <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="h-[160px] rounded-xl bg-z-surface-2 animate-pulse" />
+                  <div className="h-[160px] rounded-xl bg-z-surface-2 animate-pulse" />
+                </div>
+              </div>
+            }>
+              <div className="px-1">
+                <PlanAccountsSection />
+              </div>
+            </Suspense>
+          </div>
         ) : (
-          tabContent && (
-            <div className="mt-4">
+          <div className="mt-4 space-y-4">
+            {/* Month selector for non-resumen mobile tabs */}
+            <div className="flex justify-center">
+              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-muted animate-pulse" />}>
+                <MonthSelector compact />
+              </Suspense>
+            </div>
+            {tabContent && (
               <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
                 {tabContent}
               </Suspense>
-            </div>
-          )
+            )}
+          </div>
         )}
       </div>
 
