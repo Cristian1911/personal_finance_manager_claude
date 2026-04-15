@@ -44,7 +44,7 @@ async function MobileDebtSection({
   month: string | undefined;
 }) {
   const [overview, incomeEstimate, sourceAccountsResult, usdRateResult] = await Promise.all([
-    getDebtOverview(currency),
+    getDebtOverview(currency, month),
     getEstimatedIncome(currency, month),
     getNonDebtAccounts(),
     currency !== "USD" ? getExchangeRate("USD", currency) : Promise.resolve(null),
@@ -114,7 +114,7 @@ async function DesktopDebtSection({
   month: string | undefined;
 }) {
   const [overview, incomeEstimate, exchangeRateResult, sourceAccountsResult] = await Promise.all([
-    getDebtOverview(currency),
+    getDebtOverview(currency, month),
     getEstimatedIncome(currency, month),
     getExchangeRate("USD" as CurrencyCode, currency).catch(() => null),
     getNonDebtAccounts(),

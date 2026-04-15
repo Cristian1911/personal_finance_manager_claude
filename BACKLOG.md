@@ -112,6 +112,12 @@
 - **What:** Auto-tag from destinatario during import — transactions inherit their matched destinatario's tags. Reconciliation merges also preserve existing tags. Batched for performance.
 - **Remaining:** Tags on recurring templates (needs `recurring_template_tags` migration + form changes + occurrence-to-tx tag copy). Nómina tag variants.
 
+### Accounts — `deactivated_at` timestamp
+- **Priority:** Medium
+- **What:** Add `deactivated_at` column to accounts table. When a user deactivates an account, store the date. Use in historical debt views to show "Cerrada en abril 2026" label on account cards. Currently only `is_active` boolean — no record of when.
+- **Migration:** 6-step encrypted table process (accounts is a view over `accounts_enc`). Spawn `supabase-migrator`.
+- **Found:** Debt page month selector work, 2026-04-15
+
 ### Categorization view enhancements
 - **Priority:** Medium
 - **What:** Show similar transactions when categorizing, more action options in the categorization inbox
