@@ -1,7 +1,8 @@
+import { monthStartStr, monthEndStr, subMonths } from "@zeta/shared";
 import { supabase } from "../supabase";
 import { getDatabase } from "../db/database";
 
-/** Tables to sync from Supabase, in dependency order */
+/** Tables to sync from Supabase, in dependency order (FK targets first) */
 const SYNC_TABLES = [
   "profiles",
   "accounts",
@@ -12,8 +13,8 @@ const SYNC_TABLES = [
   "destinatarios",
   "destinatario_rules",
   "recurring_transaction_templates",
-  "recurring_occurrences",
   "transactions",
+  "recurring_occurrences",
   "transaction_tags",
   "wishlist_items",
   "statement_snapshots",
@@ -43,7 +44,7 @@ const JSON_FIELDS: Record<string, string[]> = {
 };
 
 /** Tables with no updated_at — always full-replace on every sync */
-const FULL_REPLACE_TABLES = new Set<string>([
+const FULL_REPLACE_TABLES = new Set<SyncTable>([
   "tag_groups",
   "tags",
   "destinatario_rules",
@@ -52,10 +53,10 @@ const FULL_REPLACE_TABLES = new Set<string>([
 ]);
 
 /**
- * Tables that should be windowed by date instead of syncing all rows.
- * Maps table name → { column: date column to filter on }.
+ * Windowed tables sync only the current + previous month.
+ * Column is the date field used for filtering.
  */
-const WINDOWED_TABLES: Record<string, { column: string }> = {
+const WINDOWED_TABLES: Partial<Record<SyncTable, { column: string }>> = {
   transactions: { column: "transaction_date" },
   statement_snapshots: { column: "statement_date" },
   recurring_occurrences: { column: "occurrence_date" },
@@ -65,46 +66,20 @@ const WINDOWED_TABLES: Record<string, { column: string }> = {
 const PAGE_SIZE = 1000;
 
 /**
- * Returns the first day of N months ago as "YYYY-MM-DD".
- * Mirrors webapp's monthStartStr() pattern.
+ * Fetch all rows using .range() pagination.
+ * Accepts a factory that builds a fresh query each iteration,
+ * because postgrest-js .range() mutates the builder in place.
  */
-function windowStartDate(): string {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const y = start.getFullYear();
-  const m = String(start.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}-01`;
-}
-
-/**
- * Returns the last day of the current month as "YYYY-MM-DD".
- * Mirrors webapp's monthEndStr() pattern.
- */
-function windowEndDate(): string {
-  const now = new Date();
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const y = end.getFullYear();
-  const m = String(end.getMonth() + 1).padStart(2, "0");
-  const d = String(end.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-/**
- * Fetch all rows from a Supabase query using .range() pagination.
- * Iterates in PAGE_SIZE batches until all matching rows are fetched.
- */
-async function fetchAllPages(baseQuery: any): Promise<any[]> {
+async function fetchAllPages(buildQuery: () => any): Promise<any[]> {
   const allRows: any[] = [];
   let from = 0;
 
   while (true) {
-    const { data, error } = await baseQuery.range(from, from + PAGE_SIZE - 1);
+    const { data, error } = await buildQuery().range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
 
-    allRows.push(...data);
-
-    // If we got fewer rows than PAGE_SIZE, we've reached the end
+    allRows = allRows.concat(data);
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
@@ -154,7 +129,12 @@ async function pullTable(
   table: SyncTable
 ): Promise<number> {
   const isFullReplace = FULL_REPLACE_TABLES.has(table);
-  const window = WINDOWED_TABLES[table];
+  const dateWindow = WINDOWED_TABLES[table];
+
+  // Compute window bounds once to avoid drift at month boundaries
+  const now = new Date();
+  const winStart = dateWindow ? monthStartStr(subMonths(now, 1)) : null;
+  const winEnd = dateWindow ? monthEndStr(now) : null;
 
   // Read last sync timestamp
   const meta = await db.getFirstAsync<{ last_synced_at: string | null }>(
@@ -163,31 +143,31 @@ async function pullTable(
   );
   const lastSyncedAt = meta?.last_synced_at;
 
-  // Build Supabase query
-  let query: any = (supabase as any).from(table).select("*");
+  // Query factory: builds a fresh query per pagination page
+  const buildQuery = () => {
+    let q: any = (supabase as any).from(table).select("*");
 
-  // Apply date window for transactional tables (current + previous month)
-  if (window) {
-    const start = windowStartDate();
-    const end = windowEndDate();
-    query = query.gte(window.column, start).lte(window.column, end);
-  }
+    if (dateWindow && winStart && winEnd) {
+      q = q.gte(dateWindow.column, winStart).lte(dateWindow.column, winEnd);
+      // Also fetch rows with null date column (e.g. statement_snapshots)
+      // PostgREST gte/lte excludes NULLs, so we use an or-filter
+    }
 
-  // Incremental sync: only fetch rows updated since last sync
-  if (!isFullReplace && lastSyncedAt) {
-    query = query.gt("updated_at", lastSyncedAt);
-  }
+    if (!isFullReplace && lastSyncedAt) {
+      q = q.gt("updated_at", lastSyncedAt);
+    }
 
-  // Ordering for non-junction tables
-  if (!isFullReplace) {
-    query = query.order("created_at", { ascending: true });
-  }
+    if (!isFullReplace) {
+      q = q.order("created_at", { ascending: true });
+    }
 
-  // Fetch all matching rows with pagination
-  const data = await fetchAllPages(query);
+    return q;
+  };
+
+  const data = await fetchAllPages(buildQuery);
   if (data.length === 0) return 0;
 
-  // Upsert each row into SQLite (skip only invalid rows, don't fail whole sync)
+  // Upsert rows into SQLite
   let upserted = 0;
   let failed = 0;
   let firstError: unknown = null;
@@ -195,12 +175,10 @@ async function pullTable(
   if (isFullReplace) {
     // For windowed full-replace tables, only delete rows within the window
     await db.withTransactionAsync(async () => {
-      if (window) {
-        const start = windowStartDate();
-        const end = windowEndDate();
+      if (dateWindow && winStart && winEnd) {
         await db.runAsync(
-          `DELETE FROM ${table} WHERE ${window.column} >= ? AND ${window.column} <= ?`,
-          [start, end]
+          `DELETE FROM ${table} WHERE ${dateWindow.column} >= ? AND ${dateWindow.column} <= ?`,
+          [winStart, winEnd]
         );
       } else {
         await db.runAsync(`DELETE FROM ${table}`);
@@ -221,20 +199,23 @@ async function pullTable(
       }
     });
   } else {
-    for (const row of data) {
-      try {
-        await upsertRow(db, table, row);
-        upserted++;
-      } catch (error) {
-        failed++;
-        if (!firstError) firstError = error;
-        console.warn(
-          `Skipping invalid ${table} row during pull:`,
-          (row as { id?: string }).id ?? "<no-id>",
-          error
-        );
+    // Wrap incremental upserts in a transaction for atomicity + performance
+    await db.withTransactionAsync(async () => {
+      for (const row of data) {
+        try {
+          await upsertRow(db, table, row);
+          upserted++;
+        } catch (error) {
+          failed++;
+          if (!firstError) firstError = error;
+          console.warn(
+            `Skipping invalid ${table} row during pull:`,
+            (row as { id?: string }).id ?? "<no-id>",
+            error
+          );
+        }
       }
-    }
+    });
   }
 
   if (failed > 0) {
