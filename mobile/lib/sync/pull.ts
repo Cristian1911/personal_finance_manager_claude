@@ -42,9 +42,43 @@ const JSON_FIELDS: Record<string, string[]> = {
   statement_snapshots: ["statement_json"],
 };
 
+/** Tables with no updated_at — always full-replace on every sync */
+const FULL_REPLACE_TABLES = new Set<string>([
+  "tag_groups",
+  "tags",
+  "destinatario_rules",
+  "recurring_occurrences",
+  "transaction_tags",
+]);
+
+/**
+ * Tables that should be windowed by date instead of syncing all rows.
+ * Maps table name → { column: date column to filter on }.
+ */
+const WINDOWED_TABLES: Record<string, { column: string }> = {
+  transactions: { column: "transaction_date" },
+  statement_snapshots: { column: "statement_date" },
+  recurring_occurrences: { column: "occurrence_date" },
+};
+
+/** Number of months to sync (current + previous) */
+const SYNC_WINDOW_MONTHS = 2;
+
+/** Max rows per Supabase query (explicit to avoid silent 1000-row default) */
+const PAGE_SIZE = 5000;
+
+/**
+ * Returns the start date for the sync window (first day of N months ago).
+ */
+function getWindowStartDate(months: number): string {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+  return start.toISOString().slice(0, 10);
+}
+
 /**
  * Pull all tables from Supabase into local SQLite.
- * Uses incremental sync based on `updated_at` timestamps.
+ * Reference tables sync fully; transactional tables use a 2-month window.
  */
 export async function pullAll(): Promise<Record<string, number>> {
   const db = await getDatabase();
@@ -78,20 +112,12 @@ async function getTableColumns(
   return columns;
 }
 
-/** Tables with no updated_at — always full-replace on every sync */
-const FULL_REPLACE_TABLES = new Set<string>([
-  "tag_groups",
-  "tags",
-  "destinatario_rules",
-  "recurring_occurrences",
-  "transaction_tags",
-]);
-
 async function pullTable(
   db: Awaited<ReturnType<typeof getDatabase>>,
   table: SyncTable
 ): Promise<number> {
   const isFullReplace = FULL_REPLACE_TABLES.has(table);
+  const window = WINDOWED_TABLES[table];
 
   // Read last sync timestamp
   const meta = await db.getFirstAsync<{ last_synced_at: string | null }>(
@@ -100,17 +126,28 @@ async function pullTable(
   );
   const lastSyncedAt = meta?.last_synced_at;
 
-  // Query Supabase for new/updated rows
-  // Cast to any — mobile types file may not include all tables
+  // Build Supabase query
   let query: any = (supabase as any).from(table).select("*");
+
+  // Apply date window for transactional tables
+  if (window) {
+    const windowStart = getWindowStartDate(SYNC_WINDOW_MONTHS);
+    query = query.gte(window.column, windowStart);
+  }
+
+  // Incremental sync: only fetch rows updated since last sync
   if (!isFullReplace && lastSyncedAt) {
     query = query.gt("updated_at", lastSyncedAt);
   }
 
-  // Junction tables have no created_at — skip ordering
+  // Ordering for non-junction tables
   if (!isFullReplace) {
     query = query.order("created_at", { ascending: true });
   }
+
+  // Explicit limit to avoid Supabase's silent 1000-row cap
+  query = query.limit(PAGE_SIZE);
+
   const { data, error } = await query;
   if (error) throw new Error(`Pull ${table} failed: ${error.message}`);
   if (!data || data.length === 0) return 0;
@@ -121,10 +158,18 @@ async function pullTable(
   let firstError: unknown = null;
 
   if (isFullReplace) {
-    // Wrap full-replace in a transaction for atomicity — if interrupted,
-    // the old data is preserved rather than leaving the table empty.
+    // For windowed full-replace tables (e.g. recurring_occurrences),
+    // only delete rows within the sync window, not the entire table.
     await db.withTransactionAsync(async () => {
-      await db.runAsync(`DELETE FROM ${table}`);
+      if (window) {
+        const windowStart = getWindowStartDate(SYNC_WINDOW_MONTHS);
+        await db.runAsync(
+          `DELETE FROM ${table} WHERE ${window.column} >= ?`,
+          [windowStart]
+        );
+      } else {
+        await db.runAsync(`DELETE FROM ${table}`);
+      }
       for (const row of data) {
         try {
           await upsertRow(db, table, row);

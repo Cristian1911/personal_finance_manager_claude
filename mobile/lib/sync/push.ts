@@ -28,9 +28,50 @@ type SyncTableName =
   | "statement_snapshots"
   | "transactions";
 
+/** Tables that don't have an updated_at column (junction tables, etc.) */
+const TABLES_WITHOUT_UPDATED_AT = new Set<string>([
+  "transaction_tags",
+  "tag_groups",
+  "tags",
+  "destinatario_rules",
+  "category_rules",
+]);
+
+/**
+ * Check if the remote row has been modified since the local copy was last synced.
+ * Returns true if it's safe to push (remote is not newer), false if stale.
+ */
+async function isLocalFresh(
+  tableName: string,
+  recordId: string,
+  localUpdatedAt: string | undefined
+): Promise<boolean> {
+  // Junction tables have no updated_at — always allow push
+  if (TABLES_WITHOUT_UPDATED_AT.has(tableName)) return true;
+  // If the local payload has no updated_at, skip the check (INSERT case)
+  if (!localUpdatedAt) return true;
+
+  const sb = supabase as any;
+  const { data, error } = await sb
+    .from(tableName)
+    .select("updated_at")
+    .eq("id", recordId)
+    .maybeSingle();
+
+  // Row doesn't exist remotely — safe to push (INSERT)
+  if (error || !data) return true;
+
+  const remoteTime = new Date(data.updated_at).getTime();
+  const localTime = new Date(localUpdatedAt).getTime();
+
+  // Safe if local is same age or newer than remote
+  return localTime >= remoteTime;
+}
+
 /**
  * Push all pending local changes to Supabase.
  * Reads from sync_queue and executes each operation against the remote DB.
+ * Validates that local data is not stale before UPDATE operations.
  */
 export async function pushPendingChanges(): Promise<number> {
   const db = await getDatabase();
@@ -56,10 +97,26 @@ export async function pushPendingChanges(): Promise<number> {
           const { error } = await sb
             .from(tableName)
             .insert(payload);
-          if (error) throw error;
+          if (error) {
+            // Duplicate key — row already exists, skip silently
+            if (error.code === "23505") {
+              console.warn(`Skipping duplicate INSERT for ${tableName}/${item.record_id}`);
+              break;
+            }
+            throw error;
+          }
           break;
         }
         case "UPDATE": {
+          // Validate freshness before overwriting remote data
+          const fresh = await isLocalFresh(tableName, item.record_id, payload.updated_at);
+          if (!fresh) {
+            console.warn(
+              `Skipping stale UPDATE for ${tableName}/${item.record_id}: remote is newer`
+            );
+            break;
+          }
+
           const { error } = await sb
             .from(tableName)
             .update(payload)
