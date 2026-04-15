@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { getPlanPageData } from "@/actions/plan";
 import { getCategoriesByRhythm } from "@/actions/categories";
 import { PlanHero } from "@/components/plan/plan-hero";
@@ -44,7 +43,7 @@ export async function PlanResumenZone({
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Módulos del plan
           </p>
-          <PlanTabNav activeTab={activeTab} />
+          <PlanTabNav activeTab={activeTab} month={month} />
         </div>
       </div>
 
@@ -62,18 +61,7 @@ export async function PlanResumenZone({
 
       <PlanScenarioPreview scenarios={planData.scenarios} />
 
-      <Suspense fallback={
-        <div className="space-y-4">
-          <div className="h-4 w-32 rounded bg-muted animate-pulse" />
-          <div className="grid gap-4 xl:grid-cols-3">
-            <div className="h-[180px] rounded-xl bg-z-surface-2 animate-pulse" />
-            <div className="h-[180px] rounded-xl bg-z-surface-2 animate-pulse" />
-            <div className="h-[180px] rounded-xl bg-z-surface-2 animate-pulse" />
-          </div>
-        </div>
-      }>
-        <PlanAccountsSection />
-      </Suspense>
+      <PlanAccountsSection />
     </>
   );
 }

@@ -14,10 +14,7 @@ const PLAN_TABS = [
 
 export type PlanTab = (typeof PLAN_TABS)[number]["key"];
 
-export function PlanTabNav({ activeTab }: { activeTab: PlanTab }) {
-  const searchParams = useSearchParams();
-  const month = searchParams.get("month");
-
+export function PlanTabNav({ activeTab, month }: { activeTab: PlanTab; month?: string | null }) {
   function buildHref(tabKey: string) {
     const params = new URLSearchParams();
     if (tabKey !== "resumen") params.set("tab", tabKey);

@@ -117,30 +117,17 @@ export default async function PlanPage({
                 wishlistCount={wishlistSummary?.totalCount ?? 0}
               />
             </Suspense>
-            <Suspense fallback={
-              <div className="space-y-3 px-1">
-                <div className="h-3 w-24 rounded bg-muted animate-pulse" />
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="h-[160px] rounded-xl bg-z-surface-2 animate-pulse" />
-                  <div className="h-[160px] rounded-xl bg-z-surface-2 animate-pulse" />
-                </div>
-              </div>
-            }>
-              <div className="px-1">
-                <PlanAccountsSection />
-              </div>
-            </Suspense>
+            <PlanAccountsSection />
           </div>
         ) : (
           <div className="mt-4 space-y-4">
-            {/* Month selector for non-resumen mobile tabs */}
             <div className="flex justify-center">
-              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-muted animate-pulse" />}>
+              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
                 <MonthSelector compact />
               </Suspense>
             </div>
             {tabContent && (
-              <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+              <Suspense fallback={<div className="h-64 rounded-xl bg-z-surface-2 animate-pulse" />}>
                 {tabContent}
               </Suspense>
             )}
@@ -163,8 +150,8 @@ export default async function PlanPage({
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <PlanTabNav activeTab={activeTab} />
-              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-muted animate-pulse" />}>
+              <PlanTabNav activeTab={activeTab} month={month} />
+              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
                 <MonthSelector />
               </Suspense>
             </div>
@@ -184,7 +171,7 @@ export default async function PlanPage({
 
           {/* Tab content — already Suspensed */}
           {tabContent && (
-            <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+            <Suspense fallback={<div className="h-64 rounded-xl bg-z-surface-2 animate-pulse" />}>
               {tabContent}
             </Suspense>
           )}

@@ -1,20 +1,20 @@
+"use client";
+
 import Link from "next/link";
-import { getAccounts } from "@/actions/accounts";
+import { useAccounts } from "@/components/providers/app-data-provider";
 import { AccountCard } from "@/components/accounts/account-card";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { ArrowRight } from "lucide-react";
 
-export async function PlanAccountsSection() {
-  const result = await getAccounts();
-  const accounts = result.success ? result.data : [];
+export function PlanAccountsSection() {
+  const accounts = useAccounts();
 
   if (accounts.length === 0) return null;
 
-  const debtAccounts = accounts.filter(
-    (a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN"
-  );
-  const liquidAccounts = accounts.filter((a) =>
-    ["CHECKING", "SAVINGS", "CASH", "INVESTMENT"].includes(a.account_type)
+  const debtAccounts = accounts.filter((a) => isDebtAccountType(a.account_type));
+  const liquidAccounts = accounts.filter(
+    (a) => !isDebtAccountType(a.account_type) && a.account_type !== "OTHER"
   );
 
   const allMinimal = accounts.map((a) => ({
@@ -39,7 +39,7 @@ export async function PlanAccountsSection() {
 
       {liquidAccounts.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-medium text-muted-foreground">Liquidez y ahorro</p>
+          <p className="mb-2 text-xs font-medium text-z-sage-dark">Liquidez y ahorro</p>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {liquidAccounts.map((account) => (
               <AccountCard key={account.id} account={account} allAccounts={allMinimal} />
@@ -50,7 +50,7 @@ export async function PlanAccountsSection() {
 
       {debtAccounts.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-medium text-muted-foreground">Deuda</p>
+          <p className="mb-2 text-xs font-medium text-z-sage-dark">Deuda</p>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {debtAccounts.map((account) => (
               <AccountCard key={account.id} account={account} allAccounts={allMinimal} />
