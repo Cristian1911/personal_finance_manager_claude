@@ -214,6 +214,22 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.pattern_type).toBe("transferencia_recibida");
   });
 
+  // Pattern 12: QR received (INFLOW)
+  it("parses QR inflow (Recibiste por QR)", () => {
+    const line =
+      "Logo Bancolombia [https://bancolombia-email-wsuite.s3.amazonaws.com/templates/605ce7f68622a5425353ea51/img/header-logo.png]yellow-icon [https://bancolombia-email-wsuite.s3.amazonaws.com/templates/64e68b61fa57f445dc99747d/img/chulo.png] ¡Listo!Todo salió bien con tus movimientos Bancolombia: Recibiste $21,400.00 por QR de MATEO PEREZ HERNANDEZ en tu cuenta *4398 el 2026/04/15 a las 12:26. ¿Dudas? Llama al 018000931987. Estamos cerca.";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("INFLOW");
+    expect(result!.amount).toBe(21400);
+    expect(result!.merchant).toBe("MATEO PEREZ HERNANDEZ");
+    expect(result!.card_last4).toBe("4398");
+    expect(result!.card_type).toBe("Cta");
+    expect(result!.transaction_date).toBe("2026-04-15");
+    expect(result!.transaction_time).toBe("12:26");
+    expect(result!.pattern_type).toBe("qr_recibido");
+  });
+
   // Unrecognized emails
   it("returns null for non-Bancolombia email", () => {
     const line = "Your Amazon order has shipped!";
