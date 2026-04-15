@@ -297,6 +297,7 @@ export async function createTag(
   const parsed = tagSchema.safeParse({
     name: formData.get("name"),
     group_id: formData.get("group_id") || null,
+    color: formData.get("color") || null,
   });
 
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
@@ -310,6 +311,7 @@ export async function createTag(
       group_id: parsed.data.group_id ?? null,
       name: parsed.data.name,
       slug,
+      color: parsed.data.color ?? null,
       is_system: false,
     })
     .select("id")
@@ -336,6 +338,7 @@ export async function updateTag(
   const parsed = tagSchema.safeParse({
     name: formData.get("name"),
     group_id: formData.get("group_id") || null,
+    color: formData.get("color") || null,
   });
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
@@ -345,7 +348,12 @@ export async function updateTag(
 
   const { error } = await supabase
     .from("tags")
-    .update({ name: parsed.data.name, slug })
+    .update({
+      name: parsed.data.name,
+      slug,
+      group_id: parsed.data.group_id ?? null,
+      color: parsed.data.color ?? null,
+    })
     .eq("id", id)
     .eq("user_id", user.id)
     .eq("is_system", false);

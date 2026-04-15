@@ -11,4 +11,5 @@ export const tagGroupSchema = z.object({
 export const tagSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").max(50),
   group_id: uuidStr().nullable().optional(),
+  color: z.string().nullable().optional(),
 });
