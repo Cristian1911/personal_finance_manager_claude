@@ -93,7 +93,10 @@ export function RecurringTimelineView({
                   )
                   .map((a) => ({ id: a.id, name: a.name }))}
               />
-              <RecurringCompletedSection completed={hook.completed} />
+              <RecurringCompletedSection
+                completed={hook.completed}
+                onRevert={hook.revertPayment}
+              />
             </>
           )}
         </div>

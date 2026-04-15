@@ -15,6 +15,7 @@ import {
 import {
   getOccurrencesForMonth,
   skipOccurrence,
+  revertOccurrence,
   ensureOccurrencesForRange,
   linkExistingTransactionToOccurrence,
 } from "@/actions/occurrences";
@@ -46,6 +47,8 @@ export interface OccurrenceItem {
   isDebtPayment: boolean;
   transferSourceAccountId: string | null;
   accountLastFour: string;
+  status: "pending" | "paid" | "skipped";
+  transactionId: string | null;
 }
 
 export type DateStatus = "today" | "past" | "future";
@@ -77,6 +80,8 @@ function mapToOccurrenceItem(
     isDebtPayment,
     transferSourceAccountId: o.transfer_source_account_id,
     accountLastFour: accounts.find((a) => a.id === o.account_id)?.mask ?? "",
+    status: o.status as "pending" | "paid" | "skipped",
+    transactionId: o.transaction_id,
   };
 }
 
@@ -360,6 +365,37 @@ export function useRecurringMonth(
     );
   }, []);
 
+  /* ---- revert payment (full: optimistic + server action) ---- */
+  const revertPayment = useCallback(
+    (item: OccurrenceItem) => {
+      // Optimistic
+      setOccurrences((prev) =>
+        prev.map((o) =>
+          o.id === item.occurrenceId
+            ? { ...o, status: "pending" as const, transaction_id: null }
+            : o
+        )
+      );
+      toast.success("Pago revertido a pendiente");
+
+      startTransition(async () => {
+        const result = await revertOccurrence(item.occurrenceId);
+        if (!result.success) {
+          // Revert optimistic update
+          setOccurrences((prev) =>
+            prev.map((o) =>
+              o.id === item.occurrenceId
+                ? { ...o, status: item.status, transaction_id: item.transactionId }
+                : o
+            )
+          );
+          toast.error(result.error ?? "No se pudo revertir el pago.");
+        }
+      });
+    },
+    [startTransition]
+  );
+
   /* ---- totals ---- */
   const totalPlanned = useMemo(
     () =>
@@ -399,6 +435,7 @@ export function useRecurringMonth(
     skipPayment,
     linkExisting,
     optimisticRevert,
+    revertPayment,
     busyItems,
 
     // Helpers
