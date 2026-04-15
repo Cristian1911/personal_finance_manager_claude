@@ -16,6 +16,7 @@ import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 import { PlanResumenZone } from "@/components/plan/zones/plan-resumen-zone";
 import { PlanMobileZone } from "@/components/plan/zones/plan-mobile-zone";
+import { PlanAccountsSection } from "@/components/plan/plan-accounts-section";
 import type { CurrencyCode } from "@/types/domain";
 
 const VALID_TABS: PlanTab[] = ["resumen", "presupuesto", "periodo", "recurrentes", "deseos"];
@@ -106,23 +107,31 @@ export default async function PlanPage({
       {/* ── Mobile ── */}
       <div className="lg:hidden">
         {isResumen ? (
-          <Suspense fallback={mobileSkeleton}>
-            <PlanMobileZone
-              month={month}
-              currency={currency as CurrencyCode}
-              monthLabel={monthLabel}
-              periodoSummary={periodoSummary}
-              wishlistCount={wishlistSummary?.totalCount ?? 0}
-            />
-          </Suspense>
+          <div className="space-y-6">
+            <Suspense fallback={mobileSkeleton}>
+              <PlanMobileZone
+                month={month}
+                currency={currency as CurrencyCode}
+                monthLabel={monthLabel}
+                periodoSummary={periodoSummary}
+                wishlistCount={wishlistSummary?.totalCount ?? 0}
+              />
+            </Suspense>
+            <PlanAccountsSection />
+          </div>
         ) : (
-          tabContent && (
-            <div className="mt-4">
-              <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
-                {tabContent}
+          <div className="mt-4 space-y-4">
+            <div className="flex justify-center">
+              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
+                <MonthSelector compact />
               </Suspense>
             </div>
-          )
+            {tabContent && (
+              <Suspense fallback={<div className="h-64 rounded-xl bg-z-surface-2 animate-pulse" />}>
+                {tabContent}
+              </Suspense>
+            )}
+          </div>
         )}
       </div>
 
@@ -141,8 +150,8 @@ export default async function PlanPage({
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <PlanTabNav activeTab={activeTab} />
-              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-muted animate-pulse" />}>
+              <PlanTabNav activeTab={activeTab} month={month} />
+              <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
                 <MonthSelector />
               </Suspense>
             </div>
@@ -162,7 +171,7 @@ export default async function PlanPage({
 
           {/* Tab content — already Suspensed */}
           {tabContent && (
-            <Suspense fallback={<div className="h-64 rounded-xl bg-muted animate-pulse" />}>
+            <Suspense fallback={<div className="h-64 rounded-xl bg-z-surface-2 animate-pulse" />}>
               {tabContent}
             </Suspense>
           )}

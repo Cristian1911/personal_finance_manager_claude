@@ -14,13 +14,21 @@ const PLAN_TABS = [
 
 export type PlanTab = (typeof PLAN_TABS)[number]["key"];
 
-export function PlanTabNav({ activeTab }: { activeTab: PlanTab }) {
+export function PlanTabNav({ activeTab, month }: { activeTab: PlanTab; month?: string | null }) {
+  function buildHref(tabKey: string) {
+    const params = new URLSearchParams();
+    if (tabKey !== "resumen") params.set("tab", tabKey);
+    if (month) params.set("month", month);
+    const qs = params.toString();
+    return qs ? `/plan?${qs}` : "/plan";
+  }
+
   return (
     <nav className="hidden gap-1 overflow-x-auto scrollbar-none rounded-xl border border-white/6 bg-black/10 p-1 lg:flex">
       {PLAN_TABS.map((tab) => (
         <Link
           key={tab.key}
-          href={tab.key === "resumen" ? "/plan" : `/plan?tab=${tab.key}`}
+          href={buildHref(tab.key)}
           className={cn(
             "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap",
             activeTab === tab.key
