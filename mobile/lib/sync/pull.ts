@@ -1,7 +1,8 @@
+import { monthStartStr, monthEndStr, subMonths } from "@zeta/shared";
 import { supabase } from "../supabase";
 import { getDatabase } from "../db/database";
 
-/** Tables to sync from Supabase, in dependency order */
+/** Tables to sync from Supabase, in dependency order (FK targets first) */
 const SYNC_TABLES = [
   "profiles",
   "accounts",
@@ -12,8 +13,8 @@ const SYNC_TABLES = [
   "destinatarios",
   "destinatario_rules",
   "recurring_transaction_templates",
-  "recurring_occurrences",
   "transactions",
+  "recurring_occurrences",
   "transaction_tags",
   "wishlist_items",
   "statement_snapshots",
@@ -42,9 +43,54 @@ const JSON_FIELDS: Record<string, string[]> = {
   statement_snapshots: ["statement_json"],
 };
 
+/** Tables with no updated_at — always full-replace on every sync */
+const FULL_REPLACE_TABLES = new Set<SyncTable>([
+  "tag_groups",
+  "tags",
+  "destinatario_rules",
+  "recurring_occurrences",
+  "transaction_tags",
+]);
+
+/**
+ * Windowed tables sync only the current + previous month.
+ * Column is the date field used for filtering.
+ */
+const WINDOWED_TABLES: Partial<Record<SyncTable, { column: string }>> = {
+  transactions: { column: "transaction_date" },
+  statement_snapshots: { column: "statement_date" },
+  recurring_occurrences: { column: "occurrence_date" },
+};
+
+/** Rows per page when paginating Supabase queries */
+const PAGE_SIZE = 1000;
+
+/**
+ * Fetch all rows using .range() pagination.
+ * Accepts a factory that builds a fresh query each iteration,
+ * because postgrest-js .range() mutates the builder in place.
+ */
+async function fetchAllPages(buildQuery: () => any): Promise<any[]> {
+  const allRows: any[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await buildQuery().range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    allRows = allRows.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
 /**
  * Pull all tables from Supabase into local SQLite.
- * Uses incremental sync based on `updated_at` timestamps.
+ * Reference tables sync fully; transactional tables use a date window
+ * (current month + previous month), matching the webapp's query pattern.
  */
 export async function pullAll(): Promise<Record<string, number>> {
   const db = await getDatabase();
@@ -78,20 +124,17 @@ async function getTableColumns(
   return columns;
 }
 
-/** Tables with no updated_at — always full-replace on every sync */
-const FULL_REPLACE_TABLES = new Set<string>([
-  "tag_groups",
-  "tags",
-  "destinatario_rules",
-  "recurring_occurrences",
-  "transaction_tags",
-]);
-
 async function pullTable(
   db: Awaited<ReturnType<typeof getDatabase>>,
   table: SyncTable
 ): Promise<number> {
   const isFullReplace = FULL_REPLACE_TABLES.has(table);
+  const dateWindow = WINDOWED_TABLES[table];
+
+  // Compute window bounds once to avoid drift at month boundaries
+  const now = new Date();
+  const winStart = dateWindow ? monthStartStr(subMonths(now, 1)) : null;
+  const winEnd = dateWindow ? monthEndStr(now) : null;
 
   // Read last sync timestamp
   const meta = await db.getFirstAsync<{ last_synced_at: string | null }>(
@@ -100,31 +143,46 @@ async function pullTable(
   );
   const lastSyncedAt = meta?.last_synced_at;
 
-  // Query Supabase for new/updated rows
-  // Cast to any — mobile types file may not include all tables
-  let query: any = (supabase as any).from(table).select("*");
-  if (!isFullReplace && lastSyncedAt) {
-    query = query.gt("updated_at", lastSyncedAt);
-  }
+  // Query factory: builds a fresh query per pagination page
+  const buildQuery = () => {
+    let q: any = (supabase as any).from(table).select("*");
 
-  // Junction tables have no created_at — skip ordering
-  if (!isFullReplace) {
-    query = query.order("created_at", { ascending: true });
-  }
-  const { data, error } = await query;
-  if (error) throw new Error(`Pull ${table} failed: ${error.message}`);
-  if (!data || data.length === 0) return 0;
+    if (dateWindow && winStart && winEnd) {
+      q = q.gte(dateWindow.column, winStart).lte(dateWindow.column, winEnd);
+      // Also fetch rows with null date column (e.g. statement_snapshots)
+      // PostgREST gte/lte excludes NULLs, so we use an or-filter
+    }
 
-  // Upsert each row into SQLite (skip only invalid rows, don't fail whole sync)
+    if (!isFullReplace && lastSyncedAt) {
+      q = q.gt("updated_at", lastSyncedAt);
+    }
+
+    if (!isFullReplace) {
+      q = q.order("created_at", { ascending: true });
+    }
+
+    return q;
+  };
+
+  const data = await fetchAllPages(buildQuery);
+  if (data.length === 0) return 0;
+
+  // Upsert rows into SQLite
   let upserted = 0;
   let failed = 0;
   let firstError: unknown = null;
 
   if (isFullReplace) {
-    // Wrap full-replace in a transaction for atomicity — if interrupted,
-    // the old data is preserved rather than leaving the table empty.
+    // For windowed full-replace tables, only delete rows within the window
     await db.withTransactionAsync(async () => {
-      await db.runAsync(`DELETE FROM ${table}`);
+      if (dateWindow && winStart && winEnd) {
+        await db.runAsync(
+          `DELETE FROM ${table} WHERE ${dateWindow.column} >= ? AND ${dateWindow.column} <= ?`,
+          [winStart, winEnd]
+        );
+      } else {
+        await db.runAsync(`DELETE FROM ${table}`);
+      }
       for (const row of data) {
         try {
           await upsertRow(db, table, row);
@@ -141,20 +199,23 @@ async function pullTable(
       }
     });
   } else {
-    for (const row of data) {
-      try {
-        await upsertRow(db, table, row);
-        upserted++;
-      } catch (error) {
-        failed++;
-        if (!firstError) firstError = error;
-        console.warn(
-          `Skipping invalid ${table} row during pull:`,
-          (row as { id?: string }).id ?? "<no-id>",
-          error
-        );
+    // Wrap incremental upserts in a transaction for atomicity + performance
+    await db.withTransactionAsync(async () => {
+      for (const row of data) {
+        try {
+          await upsertRow(db, table, row);
+          upserted++;
+        } catch (error) {
+          failed++;
+          if (!firstError) firstError = error;
+          console.warn(
+            `Skipping invalid ${table} row during pull:`,
+            (row as { id?: string }).id ?? "<no-id>",
+            error
+          );
+        }
       }
-    }
+    });
   }
 
   if (failed > 0) {

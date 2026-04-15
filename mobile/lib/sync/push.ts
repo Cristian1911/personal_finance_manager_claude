@@ -28,9 +28,52 @@ type SyncTableName =
   | "statement_snapshots"
   | "transactions";
 
+/** Tables that don't have an updated_at column */
+const TABLES_WITHOUT_UPDATED_AT = new Set<string>([
+  "transaction_tags",
+  "tag_groups",
+  "tags",
+  "destinatario_rules",
+  "category_rules",
+  "recurring_occurrences",
+]);
+
+/**
+ * Check if the remote row has been modified since the local copy was last synced.
+ * Returns true if safe to push, false if stale or unreachable.
+ */
+async function isLocalFresh(
+  tableName: string,
+  recordId: string,
+  localUpdatedAt: string | undefined
+): Promise<boolean> {
+  if (TABLES_WITHOUT_UPDATED_AT.has(tableName)) return true;
+  if (!localUpdatedAt) return true;
+
+  const sb = supabase as any;
+  const { data, error } = await sb
+    .from(tableName)
+    .select("updated_at")
+    .eq("id", recordId)
+    .maybeSingle();
+
+  // Row doesn't exist remotely — safe to push (INSERT)
+  if (!error && !data) return true;
+
+  // Network/permission error — don't push, let it retry next sync
+  if (error) {
+    console.warn(`Freshness check failed for ${tableName}/${recordId}:`, error.message);
+    return false;
+  }
+
+  const remoteTime = new Date(data.updated_at).getTime();
+  const localTime = new Date(localUpdatedAt).getTime();
+  return localTime >= remoteTime;
+}
+
 /**
  * Push all pending local changes to Supabase.
- * Reads from sync_queue and executes each operation against the remote DB.
+ * Validates that local data is not stale before UPDATE operations.
  */
 export async function pushPendingChanges(): Promise<number> {
   const db = await getDatabase();
@@ -47,19 +90,34 @@ export async function pushPendingChanges(): Promise<number> {
     try {
       const payload = JSON.parse(item.payload);
       const tableName = item.table_name as SyncTableName;
-
-      // Cast to any — mobile types file may not include all tables
       const sb = supabase as any;
+
+      let pushed = true;
 
       switch (item.operation) {
         case "INSERT": {
           const { error } = await sb
             .from(tableName)
             .insert(payload);
-          if (error) throw error;
+          if (error) {
+            if (error.code === "23505") {
+              console.warn(`Skipping duplicate INSERT for ${tableName}/${item.record_id}`);
+              break;
+            }
+            throw error;
+          }
           break;
         }
         case "UPDATE": {
+          const fresh = await isLocalFresh(tableName, item.record_id, payload.updated_at);
+          if (!fresh) {
+            console.warn(
+              `Skipping stale UPDATE for ${tableName}/${item.record_id}: remote is newer or unreachable`
+            );
+            pushed = false;
+            break;
+          }
+
           const { error } = await sb
             .from(tableName)
             .update(payload)
@@ -76,8 +134,6 @@ export async function pushPendingChanges(): Promise<number> {
           break;
         }
         case "REPLACE": {
-          // Junction table replace: delete existing rows, insert new ones.
-          // Payload shape: { transaction_id, tag_ids: string[] }
           const { error: delError } = await sb
             .from(tableName)
             .delete()
@@ -98,14 +154,15 @@ export async function pushPendingChanges(): Promise<number> {
         }
       }
 
-      // Mark as synced
-      await db.runAsync(
-        "UPDATE sync_queue SET synced_at = datetime('now') WHERE id = ?",
-        [item.id]
-      );
-      synced++;
+      // Only mark as synced if the operation was actually pushed
+      if (pushed) {
+        await db.runAsync(
+          "UPDATE sync_queue SET synced_at = datetime('now') WHERE id = ?",
+          [item.id]
+        );
+        synced++;
+      }
     } catch (err) {
-      // Log and skip failed items so they can be retried later
       console.warn(`Sync push failed for ${item.table_name}/${item.record_id}:`, err);
     }
   }

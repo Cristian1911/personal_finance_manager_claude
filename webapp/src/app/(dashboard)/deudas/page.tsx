@@ -243,9 +243,14 @@ export default async function DeudasPage({
     <div className="space-y-3 lg:space-y-8">
       {/* ── Mobile ── */}
       <div className={`lg:hidden space-y-4 ${MOBILE_TAB_BAR_CLEARANCE_CLASS}`}>
+        <MobileHeader
+          variant="main"
+          title="Deudas"
+          subtitle={`Lectura en ${currency}`}
+        />
         <div className="flex justify-center">
           <Suspense fallback={<div className="h-9 w-40 rounded-md bg-z-surface-2 animate-pulse" />}>
-            <MonthSelector compact />
+            <MonthSelector />
           </Suspense>
         </div>
         <Suspense

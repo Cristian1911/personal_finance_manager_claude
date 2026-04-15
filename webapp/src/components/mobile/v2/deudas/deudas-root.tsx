@@ -1,6 +1,5 @@
 "use client";
 
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import { DeudasHero } from "./deudas-hero";
 import { DeudasGrid } from "./deudas-grid";
@@ -57,12 +56,6 @@ export function DeudasRoot({
 
   return (
     <div className="space-y-3">
-      <MobileHeader
-        variant="main"
-        title="Deudas"
-        subtitle={`Lectura en ${currency}`}
-      />
-
       {/* Hero — monthly pressure */}
       <DeudasHero
         totalMonthlyPayment={stats.totalMonthlyPayment}
