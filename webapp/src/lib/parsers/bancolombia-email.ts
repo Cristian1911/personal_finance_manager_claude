@@ -21,6 +21,7 @@ export interface ParsedEmailTransaction {
     | "pago_recibido"
     | "nomina"
     | "avance"
+    | "qr_recibido"
     | "transferencia_recibida";
 }
 
@@ -267,6 +268,25 @@ const PATTERNS: PatternDef[] = [
       transaction_date: parseDateDMY(m[4]),
       transaction_time: m[3],
       pattern_type: "avance",
+    }),
+  },
+  // Pattern 12: QR received (INFLOW, YYYY/MM/DD date)
+  // "Recibiste $21,400.00 por QR de MATEO PEREZ HERNANDEZ en tu cuenta *4398 el 2026/04/15 a las 12:26"
+  {
+    type: "qr_recibido",
+    regex:
+      /Recibiste \$([\d.,]+) por QR de (.+?) en tu cuenta \*{1,2}(\d+) el (\d{4}\/\d{2}\/\d{2}) a las (\d{2}:\d{2})/,
+    extract: (m) => ({
+      direction: "INFLOW",
+      amount: parseAmount(m[1]),
+      currency: "COP",
+      merchant: m[2].trim(),
+      destination: null,
+      card_last4: m[3],
+      card_type: "Cta",
+      transaction_date: parseDateYMD(m[4]),
+      transaction_time: m[5],
+      pattern_type: "qr_recibido",
     }),
   },
   // Pattern 11: Transferencia recibida (incoming transfer — INFLOW)
