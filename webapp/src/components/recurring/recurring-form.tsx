@@ -160,7 +160,7 @@ export function RecurringForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="OUTFLOW">Gasto</SelectItem>
-              <SelectItem value="INFLOW">Ingreso</SelectItem>
+              <SelectItem value="INFLOW">{isDebtAccount ? "Abono a deuda" : "Ingreso"}</SelectItem>
             </SelectContent>
           </Select>
           {isDebtAccount && (

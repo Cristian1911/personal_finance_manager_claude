@@ -115,6 +115,29 @@ type RawOccurrenceRow = {
   } | null;
 };
 
+/** Minimal template shape for cross-account debt matching queries. */
+type TemplateWithAccount = {
+  account_id: string;
+  direction: "INFLOW" | "OUTFLOW";
+  transfer_source_account_id: string | null;
+  account: { account_type: string } | null;
+};
+
+/** True when an OUTFLOW tx from a source account matches an INFLOW template on a debt account. */
+function isCrossAccountDebtPayment(
+  template: TemplateWithAccount,
+  txDirection: "INFLOW" | "OUTFLOW",
+  txAccountId: string,
+): boolean {
+  return (
+    template.direction === "INFLOW" &&
+    txDirection === "OUTFLOW" &&
+    template.transfer_source_account_id === txAccountId &&
+    template.account != null &&
+    isDebtAccountType(template.account.account_type)
+  );
+}
+
 function mapOccurrenceRow(row: RawOccurrenceRow): RecurringOccurrence | null {
   if (!row.template || !row.template.account) return null;
   return {
@@ -667,7 +690,42 @@ export async function findMatchingOccurrence(
   const match = data.find(
     (row) => Math.abs(row.expected_amount - amount) <= tolerance,
   );
-  return match?.id ?? null;
+  if (match) return match.id;
+
+  // Secondary query: cross-account debt payment matching.
+  // If this is an OUTFLOW from a source account, check if a debt payment template
+  // has transfer_source_account_id pointing here.
+  if (direction === "OUTFLOW") {
+    const { data: crossData, error: crossErr } = await supabase
+      .from("recurring_occurrences")
+      .select(
+        `id, expected_amount,
+         template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
+           account_id, transfer_source_account_id, direction, is_active,
+           account:accounts!recurring_transaction_templates_account_id_fkey(account_type)
+         )`
+      )
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .eq("template.transfer_source_account_id", accountId)
+      .eq("template.direction", "INFLOW")
+      .eq("template.is_active", true)
+      .gte("occurrence_date", rangeStart)
+      .lte("occurrence_date", rangeEnd);
+
+    if (!crossErr && crossData) {
+      const crossMatch = crossData.find((row) => {
+        const t = row.template as TemplateWithAccount | null;
+        return (
+          Math.abs(row.expected_amount - amount) <= tolerance &&
+          t?.account != null && isDebtAccountType(t.account.account_type)
+        );
+      });
+      if (crossMatch) return crossMatch.id;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -709,7 +767,11 @@ export async function linkExistingTransactionToOccurrence(
   // Fetch occurrence — must be pending
   const { data: occurrence, error: occErr } = await supabase
     .from("recurring_occurrences")
-    .select("id, template_id, occurrence_date, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(account_id, direction, frequency, category_id)")
+    .select(`id, template_id, occurrence_date,
+      template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
+        account_id, direction, frequency, category_id, transfer_source_account_id,
+        account:accounts!recurring_transaction_templates_account_id_fkey(account_type)
+      )`)
     .eq("id", occurrenceId)
     .eq("user_id", user.id)
     .eq("status", "pending")
@@ -719,7 +781,7 @@ export async function linkExistingTransactionToOccurrence(
     return { success: false, error: "Ocurrencia no encontrada o ya no está pendiente" };
   }
 
-  const template = occurrence.template as { account_id: string; direction: "INFLOW" | "OUTFLOW"; frequency: string; category_id: string | null } | null;
+  const template = occurrence.template as (TemplateWithAccount & { frequency: string; category_id: string | null }) | null;
   if (!template) return { success: false, error: "Plantilla no encontrada" };
 
   // Fetch transaction — must exist and match account + direction
@@ -734,7 +796,10 @@ export async function linkExistingTransactionToOccurrence(
     return { success: false, error: "Transacción no encontrada" };
   }
 
-  if (tx.account_id !== template.account_id || tx.direction !== template.direction) {
+  const directMatch = tx.account_id === template.account_id && tx.direction === template.direction;
+  const crossAccountDebt = isCrossAccountDebtPayment(template, tx.direction as "INFLOW" | "OUTFLOW", tx.account_id);
+
+  if (!directMatch && !crossAccountDebt) {
     return { success: false, error: "La transacción no coincide con la cuenta o dirección de la plantilla" };
   }
 
@@ -821,7 +886,11 @@ export async function getCandidateTransactionsForOccurrence(
 
   const { data: occurrence, error: occErr } = await supabase
     .from("recurring_occurrences")
-    .select("id, occurrence_date, expected_amount, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(account_id, direction)")
+    .select(`id, occurrence_date, expected_amount,
+      template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
+        account_id, direction, transfer_source_account_id,
+        account:accounts!recurring_transaction_templates_account_id_fkey(account_type)
+      )`)
     .eq("id", occurrenceId)
     .eq("user_id", user.id)
     .eq("status", "pending")
@@ -831,16 +900,27 @@ export async function getCandidateTransactionsForOccurrence(
     return { success: false, error: "Ocurrencia no encontrada" };
   }
 
-  const template = occurrence.template as { account_id: string; direction: "INFLOW" | "OUTFLOW" } | null;
+  const template = occurrence.template as TemplateWithAccount | null;
   if (!template) return { success: false, error: "Plantilla no encontrada" };
+
+  const isCrossAccountDebt = template.transfer_source_account_id &&
+    isCrossAccountDebtPayment(template, "OUTFLOW", template.transfer_source_account_id);
 
   let query = supabase
     .from("transactions")
     .select("id, clean_description, merchant_name, raw_description, amount, currency_code, transaction_date, provider")
     .eq("user_id", user.id)
-    .eq("account_id", template.account_id)
-    .eq("direction", template.direction)
-    .is("recurrence_group_id", null)
+    .is("recurrence_group_id", null);
+
+  if (isCrossAccountDebt) {
+    query = query.or(
+      `and(account_id.eq.${template.account_id},direction.eq.INFLOW),and(account_id.eq.${template.transfer_source_account_id},direction.eq.OUTFLOW)`
+    );
+  } else {
+    query = query.eq("account_id", template.account_id).eq("direction", template.direction);
+  }
+
+  query = query
     .order("transaction_date", { ascending: false })
     .limit(50);
 
@@ -920,7 +1000,8 @@ export async function getCandidateOccurrencesForTransaction(
     .select(`
       id, template_id, occurrence_date, expected_amount,
       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
-        merchant_name, description, direction, currency_code, account_id,
+        merchant_name, description, direction, currency_code, account_id, transfer_source_account_id,
+        account:accounts!recurring_transaction_templates_account_id_fkey(account_type),
         category:categories!recurring_transaction_templates_category_id_fkey(icon, color)
       )
     `)
@@ -933,8 +1014,10 @@ export async function getCandidateOccurrencesForTransaction(
 
   // Filter by account + direction (nested join filter not reliable in Supabase)
   const filtered = (data ?? []).filter((o) => {
-    const t = o.template as { account_id: string; direction: string } | null;
-    return t && t.account_id === tx.account_id && t.direction === tx.direction;
+    const t = o.template as TemplateWithAccount | null;
+    if (!t) return false;
+    if (t.account_id === tx.account_id && t.direction === tx.direction) return true;
+    return isCrossAccountDebtPayment(t, tx.direction as "INFLOW" | "OUTFLOW", tx.account_id);
   });
 
   const candidates: CandidateOccurrence[] = filtered.map((o) => {
@@ -983,14 +1066,17 @@ async function getAccountIdsWithPendingOccurrencesCached(
   const supabase = createCachedClient(accessToken);
   const { data } = await supabase
     .from("recurring_occurrences")
-    .select("template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(account_id)")
+    .select("template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(account_id, transfer_source_account_id)")
     .eq("user_id", userId)
     .eq("status", "pending");
 
   const ids = new Set<string>();
   for (const row of data ?? []) {
-    const t = row.template as { account_id: string } | null;
-    if (t) ids.add(t.account_id);
+    const t = row.template as { account_id: string; transfer_source_account_id: string | null } | null;
+    if (t) {
+      ids.add(t.account_id);
+      if (t.transfer_source_account_id) ids.add(t.transfer_source_account_id);
+    }
   }
   return Array.from(ids);
 }
