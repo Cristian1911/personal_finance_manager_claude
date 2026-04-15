@@ -718,7 +718,7 @@ export async function findMatchingOccurrence(
         const t = row.template as TemplateWithAccount | null;
         return (
           Math.abs(row.expected_amount - amount) <= tolerance &&
-          t?.account != null && isDebtAccountType(t.account.account_type)
+          t != null && isCrossAccountDebtPayment(t, direction, accountId)
         );
       });
       if (crossMatch) return crossMatch.id;
