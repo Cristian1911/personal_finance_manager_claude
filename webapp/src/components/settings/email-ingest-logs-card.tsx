@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, RefreshCw, ScrollText, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardList, Copy, Loader2, RefreshCw, ScrollText, X } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,22 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
   const [dismissingId, setDismissingId] = useState<string | null>(null);
 
   if (logs.length === 0) return null;
+
+  function buildReport(log: EmailIngestLog) {
+    return [
+      `## Error en ingesta de correo`,
+      ``,
+      `- **Remitente:** ${log.from_address || "(desconocido)"}`,
+      `- **Estado:** ${log.status}`,
+      `- **Fecha:** ${log.created_at}`,
+      log.error_message ? `- **Error:** ${log.error_message}` : null,
+      ``,
+      `### Contenido`,
+      `\`\`\`\``,
+      log.raw_body?.slice(0, 5000) || "(sin contenido)",
+      `\`\`\`\``,
+    ].filter(Boolean).join("\n");
+  }
 
   const errorCount = logs.filter(
     (l) => l.status === "parse_failed" || l.status === "sender_rejected" || l.status === "pdf_parse_failed"
@@ -113,6 +129,7 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
           {logs.map((log) => {
             const isExpanded = expanded.has(log.id);
             const isRetryable = RETRYABLE_STATUSES.has(log.status) && !!log.raw_body;
+            const isReportable = !!log.raw_body && (isRetryable || log.status === "pdf_parse_failed");
             const config = STATUS_CONFIG[log.status] ?? {
               label: log.status,
               className: "bg-white/6 text-muted-foreground",
@@ -144,36 +161,54 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
                       </p>
                     </div>
                   </button>
-                  {isRetryable && (
+                  {(isReportable || isRetryable) && (
                     <div className="flex shrink-0 gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-8 text-muted-foreground hover:text-z-brass"
-                        onClick={() => handleRetry(log.id)}
-                        disabled={retryingId === log.id || dismissingId === log.id}
-                        aria-label="Reintentar"
-                      >
-                        {retryingId === log.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="size-4" />
-                        )}
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDismiss(log.id)}
-                        disabled={retryingId === log.id || dismissingId === log.id}
-                        aria-label="Descartar"
-                      >
-                        {dismissingId === log.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <X className="size-4" />
-                        )}
-                      </Button>
+                      {isReportable && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8 text-muted-foreground hover:text-amber-400"
+                          onClick={() => {
+                            navigator.clipboard.writeText(buildReport(log));
+                            toast.success("Reporte copiado — pégalo en un issue de GitHub");
+                          }}
+                          aria-label="Copiar reporte"
+                        >
+                          <ClipboardList className="size-4" />
+                        </Button>
+                      )}
+                      {isRetryable && (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-8 text-muted-foreground hover:text-z-brass"
+                            onClick={() => handleRetry(log.id)}
+                            disabled={retryingId === log.id || dismissingId === log.id}
+                            aria-label="Reintentar"
+                          >
+                            {retryingId === log.id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="size-4" />
+                            )}
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDismiss(log.id)}
+                            disabled={retryingId === log.id || dismissingId === log.id}
+                            aria-label="Descartar"
+                          >
+                            {dismissingId === log.id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <X className="size-4" />
+                            )}
+                          </Button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -190,7 +225,21 @@ export function EmailIngestLogsCard({ initialLogs }: EmailIngestLogsCardProps) {
                     )}
                     {log.raw_body && (
                       <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">Contenido recibido</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-muted-foreground">Contenido recibido</p>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-6 text-muted-foreground hover:text-z-brass"
+                            onClick={() => {
+                              navigator.clipboard.writeText(log.raw_body!);
+                              toast.success("Contenido copiado");
+                            }}
+                            aria-label="Copiar contenido"
+                          >
+                            <Copy className="size-3" />
+                          </Button>
+                        </div>
                         <pre className="max-h-36 overflow-y-auto whitespace-pre-wrap rounded-md border border-white/6 bg-black/20 p-3 text-xs leading-relaxed">
                           {log.raw_body}
                         </pre>

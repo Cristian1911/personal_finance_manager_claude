@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, Loader2, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, ClipboardList, Copy, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,24 @@ export function UnrecognizedEmailsCard({ initialEmails }: UnrecognizedEmailsCard
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
   if (emails.length === 0) return null;
+
+  function buildReport(email: UnrecognizedEmail) {
+    const body = (email.text_body || email.html_body)?.slice(0, 3000) || "(sin contenido)";
+    const type = email.text_body ? "text" : "html";
+    return [
+      `## Correo no reconocido`,
+      ``,
+      `- **Remitente:** ${email.from_address}`,
+      email.subject ? `- **Asunto:** ${email.subject}` : null,
+      `- **Fecha:** ${email.created_at}`,
+      `- **Tipo de cuerpo:** ${type}`,
+      ``,
+      `### Contenido`,
+      `\`\`\`\``,
+      body,
+      `\`\`\`\``,
+    ].filter(Boolean).join("\n");
+  }
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -110,6 +128,18 @@ export function UnrecognizedEmailsCard({ initialEmails }: UnrecognizedEmailsCard
                     <Button
                       size="icon"
                       variant="ghost"
+                      className="size-8 text-muted-foreground hover:text-amber-400"
+                      onClick={() => {
+                        navigator.clipboard.writeText(buildReport(email));
+                        toast.success("Reporte copiado — pégalo en un issue de GitHub");
+                      }}
+                      aria-label="Copiar reporte"
+                    >
+                      <ClipboardList className="size-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
                       className="size-8 text-muted-foreground hover:text-z-brass"
                       onClick={() => handleRetry(email.id)}
                       disabled={retryingId === email.id || isPending}
@@ -142,7 +172,21 @@ export function UnrecognizedEmailsCard({ initialEmails }: UnrecognizedEmailsCard
                   <div className="mt-3 space-y-2">
                     {email.text_body && (
                       <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">Texto plano</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-muted-foreground">Texto plano</p>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-6 text-muted-foreground hover:text-z-brass"
+                            onClick={() => {
+                              navigator.clipboard.writeText(email.text_body!);
+                              toast.success("Contenido copiado");
+                            }}
+                            aria-label="Copiar contenido"
+                          >
+                            <Copy className="size-3" />
+                          </Button>
+                        </div>
                         <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border border-border/40 bg-black/20 p-3 text-xs leading-relaxed">
                           {email.text_body}
                         </pre>
@@ -150,7 +194,21 @@ export function UnrecognizedEmailsCard({ initialEmails }: UnrecognizedEmailsCard
                     )}
                     {email.html_body && !email.text_body && (
                       <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">HTML (sin texto plano)</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-muted-foreground">HTML (sin texto plano)</p>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-6 text-muted-foreground hover:text-z-brass"
+                            onClick={() => {
+                              navigator.clipboard.writeText(email.html_body!);
+                              toast.success("Contenido copiado");
+                            }}
+                            aria-label="Copiar contenido"
+                          >
+                            <Copy className="size-3" />
+                          </Button>
+                        </div>
                         <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border border-border/40 bg-black/20 p-3 text-xs leading-relaxed">
                           {email.html_body.slice(0, 2000)}
                         </pre>
