@@ -77,13 +77,9 @@ User's framing from the brainstorm: Plan answers **"What's the shape of this mon
 - The global `<MonthSelector />` at the top of `/plan` is now the single pager (audit §17 findings).
 - The hero's `Compromiso mensual` + total + `Pendientes/Completados` stat split stay.
 
-### D5 — `Recurrentes 8` chip badge: neutral by default, brass when overdue
+### D5 — `Recurrentes` badge semantics → folded into D10
 
-- On the `/plan` root drill-card for Recurrentes, today's `8` badge uses brass/warn colors regardless of context. Rewire:
-  - Badge = **neutral** (`bg-white/6` · `text-muted-foreground`) when the count represents the total month occurrences.
-  - Badge = **brass** (`bg-z-brass/16` · `text-z-brass`) with the text `{count} vencidas` when `overdueCount > 0`.
-  - `overdueCount` comes from the same source the Dashboard Timeline uses (`recurring_occurrences` where `status = 'pending' AND date < today`).
-- Apply the same neutral-by-default / brass-on-state rule to other drill-card badges on `/plan` root where the number is ambiguous (Periodo, Presupuesto, Deseos — audit if needed; only change if the current color carries false urgency).
+Originally this decision locked neutral-by-default / brass-on-overdue colors for the `Recurrentes` top-right badge on the drill card. **D10 replaces the top-right badge entirely with an icon-led layout**, so the brass / neutral signal moves into the caption line (`N este mes · M vencidas`). This decision number is retained for continuity with earlier mockups; its substance is subsumed by D10's caption rules.
 
 ### D6 — Presupuesto tab: grouped by risk state
 
@@ -116,6 +112,38 @@ User's framing from the brainstorm: Plan answers **"What's the shape of this mon
 - On expand: `Ocultar flujo ↑` + `ChevronUp`.
 - Keep center alignment, keep the "button-inside-button" behavior (tap anywhere on the hero toggles).
 
+### D10 — "IR A" chips: icon-led identity (match RITMO proportions)
+
+Today's four drill cards (`Presupuesto`, `Periodo`, `Recurrentes`, `Deseos`) on `/plan` root are compact: a small icon in the top-left corner, a number/badge in the top-right, and the label at the bottom-left. They blend visually because every chip looks the same except for the badge color.
+
+Match the **RITMO** widget rhythm from Dashboard (`inicio-metrics-grid.tsx`):
+
+- **Layout:** eyebrow label at top → **centered logo** (visual anchor) → caption underneath.
+- **Size:** `min-h-[150px]` (RITMO is ~120–130; bump slightly for 4-in-a-2x2 grid balance).
+- **Background:** `bg-z-surface-2` / `bg-white/[0.02]` · `border-white/6` · `rounded-2xl`.
+- **Logo treatment:** single-stroke `lucide-react` icon at ~40px, color `text-muted-foreground` (~78% opacity). **No colored backgrounds, no rings, no donut gauges.** Monochrome identity — the icon alone carries recognition.
+- **Icons:**
+  - `Presupuesto` → `Wallet` (or `WalletCards`)
+  - `Periodo` → `CalendarCheck` (calendar with checkmark)
+  - `Recurrentes` → `RefreshCw` (cycle arrow)
+  - `Deseos` → `Heart`
+- **Caption (`text-xs` · muted):** the only source of dynamic color — brass text when there's something to attend to, neutral otherwise.
+
+**Caption rules per chip:**
+| Chip | Neutral | Attention |
+|---|---|---|
+| Presupuesto | `dentro del límite` | `N sobre límite` (brass) |
+| Periodo | `al día` / `100%` | `N pendientes` (brass) · `N vencidas` (expense red) |
+| Recurrentes | `N este mes` | `N este mes · M vencidas` (brass tail) |
+| Deseos | `N activos` | *(no attention state — wishlist isn't time-critical)* |
+
+**What this replaces:**
+- The current `7 sobre límite`, `100%`, `8`, `2` badges in the top-right corner are gone; that information moves into the caption line with consistent voice.
+- The current `plan-drill-cards.tsx` rendering of `7 sobre límite` as a red pill in the corner becomes `7 sobre límite` as brass caption text under the `Wallet` logo.
+- D5's "neutral-by-default, brass-on-overdue" rule for `Recurrentes` folds into D10's caption rules and is no longer a separate decision.
+
+**Interaction:** entire chip still tappable, still routes to `/plan?tab=*`. No change to navigation.
+
 ### D9 — Out of scope (deferred to BACKLOG.md)
 
 1. **Empty states for `/plan` surfaces** — no income, no budgets, no recurrentes, no wishlist. Minimal template empty state in D4 is the single exception. All other empty states deferred as follow-up to match Dashboard Phase 2 scoping.
@@ -130,7 +158,7 @@ User's framing from the brainstorm: Plan answers **"What's the shape of this mon
 |---|---|---|
 | `webapp/src/components/mobile/v2/plan/plan-net-hero.tsx` | D1 + D8 retoken + restructure | Split collapsed vs expanded; retokenize emerald/red → z-income/z-expense; color-code NETO number; upgrade expand cue to full-opacity + icon. |
 | `webapp/src/components/mobile/v2/plan/plan-expandable-chips.tsx` | D2 — sort by soonest date | Accept `incomes[]` + `payments[]`; compute next-date for each; reorder slots; apply brass hint styling to the sooner chip. |
-| `webapp/src/components/mobile/v2/plan/plan-drill-cards.tsx` | D5 — badge color logic | Wire `overdueCount` when available; switch Recurrentes badge to neutral-by-default; audit other drill cards for the same rule. |
+| `webapp/src/components/mobile/v2/plan/plan-drill-cards.tsx` | D10 — icon-led layout, caption rules | Restructure all 4 chips to eyebrow → centered lucide icon (40px, monochrome) → caption. Caption text = the only state-aware color. Remove top-right numeric badges. Replace corner-icon + bottom-label pattern with RITMO-style vertical rhythm. |
 | `webapp/src/components/mobile/v2/plan/mobile-periodo-view.tsx` | D3 — NETO elevated + Parcial state | Replace the stat-row NETO with hero treatment; add `Parcial` execution state if schema supports. |
 | `webapp/src/components/mobile/v2/plan/mobile-recurrentes-view.tsx` | D4 — templates strip promoted | Create `mobile-recurrentes-templates-strip.tsx` subcomponent placed above the occurrences list; remove the footer `MIS PLANTILLAS VER ↓`. |
 | `webapp/src/components/mobile/mobile-presupuesto.tsx` | D6 + D7 — group-by-risk + tappable chip | Group transform in render; remove ⚠ JSX; convert `Necesario X% · Deseos Y%` static row to a button that opens the sheet. |
