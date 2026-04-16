@@ -105,17 +105,17 @@ export function MobilePeriodoView({
 
   const hasUnassigned = planData.unassigned_expenses.length > 0;
 
-  const totalIncome = income_envelopes.reduce(
-    (sum, env) => sum + env.total_amount,
-    0,
-  );
-  const net = totalIncome - total_expenses;
+  // NETO hero uses timeline (actual tx-based cashflow) so the elevated
+  // number matches the chart's stat row. D3 intent: surface the "real"
+  // monthly net, not the envelope-planning net.
+  const heroIncome = timelineData.totalIncome;
+  const heroExpense = timelineData.totalExpense;
+  const net = heroIncome - heroExpense;
 
-  const dayOfMonth = new Date().getDate();
   const periodLabel =
-    dayOfMonth <= 10
+    timelineData.dayOfMonth <= 10
       ? "Comienzo de mes"
-      : dayOfMonth <= 20
+      : timelineData.dayOfMonth <= 20
         ? "Mitad de mes"
         : "Fin de mes";
 
@@ -186,8 +186,8 @@ export function MobilePeriodoView({
           {formatCurrency(net, currency)}
         </p>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          +{formatCurrency(totalIncome, currency)} · −
-          {formatCurrency(total_expenses, currency)}
+          +{formatCurrency(heroIncome, currency)} · −
+          {formatCurrency(heroExpense, currency)}
         </p>
       </div>
 
