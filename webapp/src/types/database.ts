@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
           available_balance: number | null
+          bank_key: string | null
           card_brand: string | null
           color: string | null
           connection_status: Database["public"]["Enums"]["connection_status"]
@@ -59,6 +60,7 @@ export type Database = {
         Insert: {
           account_type: Database["public"]["Enums"]["account_type"]
           available_balance?: number | null
+          bank_key?: string | null
           card_brand?: string | null
           color?: string | null
           connection_status?: Database["public"]["Enums"]["connection_status"]
@@ -100,6 +102,7 @@ export type Database = {
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
           available_balance?: number | null
+          bank_key?: string | null
           card_brand?: string | null
           color?: string | null
           connection_status?: Database["public"]["Enums"]["connection_status"]
@@ -159,6 +162,7 @@ export type Database = {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
           available_balance: number | null
+          bank_key: string | null
           card_brand: string | null
           color: string | null
           connection_status: Database["public"]["Enums"]["connection_status"]
@@ -200,6 +204,7 @@ export type Database = {
         Insert: {
           account_type: Database["public"]["Enums"]["account_type"]
           available_balance?: number | null
+          bank_key?: string | null
           card_brand?: string | null
           color?: string | null
           connection_status?: Database["public"]["Enums"]["connection_status"]
@@ -241,6 +246,7 @@ export type Database = {
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
           available_balance?: number | null
+          bank_key?: string | null
           card_brand?: string | null
           color?: string | null
           connection_status?: Database["public"]["Enums"]["connection_status"]
