@@ -48,6 +48,7 @@ export interface PlanRecurringSummary {
   activeCount: number;
   dueSoonCount: number;
   dueSoonTotal: number;
+  overdueCount: number;
 }
 
 export interface PlanScenarioSummary {
