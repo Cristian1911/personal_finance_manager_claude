@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
+import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 import { MOBILE_EYEBROW_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import type {
   Account,
@@ -78,10 +79,24 @@ export function MobileRecurrentesTemplatesStrip({
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium">{t.merchant_name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {t.account?.name ?? "—"} · {t.frequency ?? "mensual"}
-                      {!t.is_active && " · Pausada"}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+                      {t.account ? (
+                        <AccountRowIdentity
+                          account={{
+                            name: t.account.name,
+                            mask: t.account.mask ?? null,
+                            bank_key: t.account.bank_key ?? null,
+                            account_type: t.account.account_type,
+                            color: t.account.color ?? null,
+                          }}
+                          density="picker"
+                        />
+                      ) : (
+                        <span>—</span>
+                      )}
+                      <span className="shrink-0">· {t.frequency ?? "mensual"}</span>
+                      {!t.is_active && <span className="shrink-0">· Pausada</span>}
+                    </div>
                   </div>
                   <span className="shrink-0 text-xs font-semibold tabular-nums">
                     {formatCurrency(Number(t.amount), currency)}

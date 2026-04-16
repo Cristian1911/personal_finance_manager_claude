@@ -34,7 +34,7 @@ const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
 
 const TEMPLATE_SELECT = `
   *,
-  account:accounts!recurring_transaction_templates_account_id_fkey(id, name, icon, color, account_type, currency_code),
+  account:accounts!recurring_transaction_templates_account_id_fkey(id, name, icon, color, account_type, currency_code, mask, bank_key),
   category:categories!recurring_transaction_templates_category_id_fkey(id, name, name_es, icon, color),
   transfer_source_account:accounts!recurring_transaction_templates_transfer_source_account_id_fkey(id, name, account_type, currency_code)
 `;
