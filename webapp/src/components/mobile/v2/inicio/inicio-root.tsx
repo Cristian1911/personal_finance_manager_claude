@@ -134,7 +134,10 @@ export function InicioRoot({
         onToggle={() => toggle("hero")}
       />
 
-      <InicioImportStrip daysSinceImport={daysSinceImport} />
+      <InicioImportStrip
+        daysSinceImport={daysSinceImport}
+        hasPendingEmails={live.attention.pendingEmails.length > 0}
+      />
 
       <InicioMetricsGrid
         daysInMonth={metrics.daysInMonth}

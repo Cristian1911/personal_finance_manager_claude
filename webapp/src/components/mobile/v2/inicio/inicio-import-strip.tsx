@@ -7,9 +7,12 @@ import { cn } from "@/lib/utils";
 
 interface InicioImportStripProps {
   daysSinceImport: number;
+  hasPendingEmails: boolean;
 }
 
-export function InicioImportStrip({ daysSinceImport }: InicioImportStripProps) {
+export function InicioImportStrip({ daysSinceImport, hasPendingEmails }: InicioImportStripProps) {
+  // Hide when pending emails already surface in the timeline — redundant signal.
+  if (hasPendingEmails) return null;
   if (daysSinceImport <= 15) return null;
 
   return (
