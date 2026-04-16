@@ -18,6 +18,8 @@ import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
 import { DemoBanner } from "@/components/dashboard/demo-banner";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 
 const DevOverlay = dynamic(
   () => import("@/components/dev/dev-overlay").then((m) => ({ default: m.DevOverlay })),
@@ -104,7 +106,7 @@ export default async function DashboardLayout({
           >
             <AppDataProvider data={appData}>
               <MobileSheetProvider>
-                <main className="flex-1 overflow-x-hidden p-4 pb-20 lg:p-6 lg:pb-6">
+                <main className={cn("flex-1 overflow-x-hidden p-4 lg:p-6 lg:pb-6", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
                   {profile.demo_mode && <DemoBanner />}
                   <PageTransition>
                     {children}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   addMonths,
   endOfMonth,
@@ -9,6 +10,7 @@ import {
   subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatMonthParam, isCurrentMonth, parseMonth } from "@/lib/utils/date";
 import {
   recordRecurringOccurrencePayment,
 } from "@/actions/recurring-templates";
@@ -98,8 +100,11 @@ export function useRecurringMonth(
 ) {
   const [, startTransition] = useTransition();
 
-  /* ---- month cursor ---- */
-  const [monthCursor, setMonthCursor] = useState(() => new Date());
+  /* ---- month cursor — synced with ?month= URL param (shared with <MonthSelector />) ---- */
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const monthCursor = parseMonth(searchParams.get("month"));
   const monthStart = startOfMonth(monthCursor);
   const monthEnd = endOfMonth(monthCursor);
   const monthKey = format(monthCursor, "yyyy-MM");
@@ -107,13 +112,27 @@ export function useRecurringMonth(
 
   const monthLabel = format(monthCursor, "MMMM yyyy", { locale: es });
 
+  const navigateToMonth = useCallback(
+    (date: Date) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (isCurrentMonth(date)) {
+        params.delete("month");
+      } else {
+        params.set("month", formatMonthParam(date));
+      }
+      const qs = params.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname);
+    },
+    [router, pathname, searchParams],
+  );
+
   const goNextMonth = useCallback(
-    () => setMonthCursor((prev) => addMonths(prev, 1)),
-    []
+    () => navigateToMonth(addMonths(monthCursor, 1)),
+    [monthCursor, navigateToMonth],
   );
   const goPrevMonth = useCallback(
-    () => setMonthCursor((prev) => subMonths(prev, 1)),
-    []
+    () => navigateToMonth(subMonths(monthCursor, 1)),
+    [monthCursor, navigateToMonth],
   );
 
   /* ---- DB-backed occurrences state ---- */

@@ -232,14 +232,16 @@ export default async function SettingsPage() {
 
       <BuildInfo />
 
-      <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-        <CardHeader>
-          <CardTitle className="text-base">Herramientas de Desarrollo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ReviewModeToggle />
-        </CardContent>
-      </Card>
+      {process.env.NODE_ENV === "development" && (
+        <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <CardHeader>
+            <CardTitle className="text-base">Herramientas de Desarrollo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReviewModeToggle />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
