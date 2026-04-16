@@ -41,7 +41,7 @@ const STATUS_BADGE: Record<
   PlanningEntryStatus,
   { label: string; className: string }
 > = {
-  PLANNED: { label: "Pendiente", className: "bg-amber-400/10 text-amber-400" },
+  PLANNED: { label: "Pendiente", className: "bg-z-brass/10 text-z-brass" },
   COMPLETED: { label: "Pagado", className: "bg-z-income/10 text-z-income" },
   SKIPPED: {
     label: "Omitido",
@@ -476,7 +476,7 @@ function IncomeCard({
                       type="button"
                       onClick={() => onRemoveAssignment(assignment.id)}
                       disabled={isPending}
-                      className="rounded-md p-1 text-muted-foreground transition-colors hover:text-red-400"
+                      className="rounded-md p-1 text-muted-foreground transition-colors hover:text-z-expense"
                     >
                       <Trash2 className="size-3" />
                     </button>
@@ -500,7 +500,7 @@ function IncomeCard({
               type="button"
               onClick={() => onDelete(entry.id)}
               disabled={isPending}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-red-400 transition-colors hover:text-red-300"
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-z-expense transition-colors hover:text-z-expense/80"
             >
               <Trash2 className="size-3" />
               Eliminar
@@ -633,7 +633,7 @@ function ExpenseRow({
             type="button"
             onClick={onDelete}
             disabled={isPending}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-red-400 transition-colors hover:text-red-300"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-z-expense transition-colors hover:text-z-expense/80"
           >
             <Trash2 className="size-3" />
             Eliminar
