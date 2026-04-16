@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -488,11 +488,11 @@ export async function createCategory(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("categories", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("categories");
+  updateTag("budgets");
+  updateTag("dashboard:charts");
+  updateTag("dashboard:budgets");
+  updateTag("attention");
   return { success: true, data };
 }
 
@@ -529,11 +529,11 @@ export async function updateCategory(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("categories", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("categories");
+  updateTag("budgets");
+  updateTag("dashboard:charts");
+  updateTag("dashboard:budgets");
+  updateTag("attention");
   return { success: true, data };
 }
 
@@ -551,7 +551,7 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
   if (error) return { success: false, error: error.message };
 
   revalidateFinancialViews();
-  revalidateTag("categories", "zeta");
+  updateTag("categories");
   return { success: true, data: undefined };
 }
 
@@ -584,11 +584,11 @@ export async function updateCategoryOrder(
     return { success: false, error: "Error actualizando el orden de las categorías" };
   }
 
-  revalidateTag("categories", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("categories");
+  updateTag("budgets");
+  updateTag("dashboard:charts");
+  updateTag("dashboard:budgets");
+  updateTag("attention");
   return { success: true, data: undefined };
 }
 
@@ -607,11 +607,11 @@ export async function updateCategoryExpenseType(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("categories", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("categories");
+  updateTag("budgets");
+  updateTag("dashboard:charts");
+  updateTag("dashboard:budgets");
+  updateTag("attention");
   return { success: true, data: undefined };
 }
 
@@ -645,7 +645,7 @@ export async function reassignAndDeleteCategory(
   if (deleteError) return { success: false, error: deleteError.message };
 
   revalidateFinancialViews();
-  revalidateTag("categories", "zeta");
+  updateTag("categories");
   return { success: true, data: undefined };
 }
 
@@ -664,11 +664,11 @@ export async function toggleCategoryActive(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("categories", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("categories");
+  updateTag("budgets");
+  updateTag("dashboard:charts");
+  updateTag("dashboard:budgets");
+  updateTag("attention");
   return { success: true, data: undefined };
 }
 

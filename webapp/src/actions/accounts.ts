@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { accountSchema } from "@/lib/validators/account";
@@ -183,11 +183,11 @@ export async function createAccount(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:hero");
+  updateTag("debt");
+  updateTag("attention");
   return { success: true, data: result };
 }
 
@@ -218,11 +218,11 @@ export async function updateAccount(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:hero");
+  updateTag("debt");
+  updateTag("attention");
   return { success: true, data: result };
 }
 
@@ -235,11 +235,11 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:hero");
+  updateTag("debt");
+  updateTag("attention");
   return { success: true, data: undefined };
 }
 
@@ -259,9 +259,9 @@ export async function toggleDashboardVisibility(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:hero");
   return { success: true, data: undefined };
 }
 
@@ -418,10 +418,10 @@ export async function reconcileBalance(
 
   if (updateError) return { success: false, error: updateError.message };
 
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("debt", "zeta");
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:hero");
+  updateTag("debt");
   return {
     success: true,
     data: {
@@ -567,10 +567,10 @@ export async function registerPayment(
     }
   }
 
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("debt", "zeta");
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:hero");
+  updateTag("debt");
   return { success: true, data: null };
 }
 

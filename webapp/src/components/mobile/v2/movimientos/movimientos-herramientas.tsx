@@ -77,18 +77,41 @@ export function MovimientosHerramientas({
   const isActive = (zone: ToolZone) => activeZone === zone;
 
   const activeAccent = activeZone ? accentStyles[activeZone] : null;
-  const pendingEmailCount = pendingEmails.length;
 
   // Optimistic: track IDs categorized from the detail panel so both
   // the chip count and the item list update immediately.
   const [categorizedIds, setCategorizedIds] = useState(() => new Set<string>());
 
-  // Reset optimistic state when server data refreshes (new props)
+  // Optimistic: track IDs imported/dismissed so chip count + list update immediately.
+  const [importProcessedIds, setImportProcessedIds] = useState(() => new Set<string>());
+
+  // Only reset optimistic state when server confirms the categorization
+  // (processed IDs no longer appear in the incoming uncategorized list).
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- categorizedIds read is synchronous
   useEffect(() => {
-    setCategorizedIds(new Set());
+    if (categorizedIds.size === 0) return;
+    const incomingIds = new Set(uncategorizedTransactions.map((tx) => tx.id));
+    const anyStillUncategorized = [...categorizedIds].some((id) => incomingIds.has(id));
+    if (!anyStillUncategorized) {
+      setCategorizedIds(new Set());
+    }
   }, [uncategorizedTransactions]);
 
+  // Only reset optimistic state when server confirms changes (processed IDs
+  // are no longer in the incoming data). If stale data still includes them,
+  // keep the optimistic state to avoid visual flicker.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- importProcessedIds read is synchronous; re-running on its change would cause extra cycles
+  useEffect(() => {
+    if (importProcessedIds.size === 0) return;
+    const incomingIds = new Set(pendingEmails.map((e) => e.id));
+    const anyStillPending = [...importProcessedIds].some((id) => incomingIds.has(id));
+    if (!anyStillPending) {
+      setImportProcessedIds(new Set());
+    }
+  }, [pendingEmails]);
+
   const optimisticCount = Math.max(0, uncategorizedCount - categorizedIds.size);
+  const optimisticPendingCount = Math.max(0, pendingEmails.length - importProcessedIds.size);
 
   return (
     <MobileZone eyebrow="HERRAMIENTAS">
@@ -131,13 +154,13 @@ export function MovimientosHerramientas({
           aria-expanded={isActive("importar")}
         >
           <p className="text-[22px] font-[680] leading-tight text-z-sage">
-            {pendingEmailCount}
+            {optimisticPendingCount}
           </p>
           <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
             Importar
           </p>
           <p className="mt-1 text-[9px] text-z-sage">
-            {pendingEmailCount > 0 ? `${pendingEmailCount} emails` : "Subir PDF"}
+            {optimisticPendingCount > 0 ? `${optimisticPendingCount} emails` : "Subir PDF"}
           </p>
         </button>
       </div>
@@ -185,6 +208,21 @@ export function MovimientosHerramientas({
                     pendingEmails={pendingEmails}
                     accounts={accounts}
                     currency={currency}
+                    processedIds={importProcessedIds}
+                    onProcess={(ids: string[]) =>
+                      setImportProcessedIds((prev) => {
+                        const next = new Set(prev);
+                        for (const id of ids) next.add(id);
+                        return next;
+                      })
+                    }
+                    onRollback={(ids: string[]) =>
+                      setImportProcessedIds((prev) => {
+                        const next = new Set(prev);
+                        for (const id of ids) next.delete(id);
+                        return next;
+                      })
+                    }
                   />
                 )}
               </div>
@@ -295,7 +333,6 @@ function CategorizarDetail({
           },
         });
       } else {
-        // Rollback optimistic removal
         onOptimisticRollback(tx.id);
         toast.error(result.error ?? "Error al categorizar");
       }
@@ -430,16 +467,24 @@ function ImportarDetail({
   pendingEmails,
   accounts,
   currency,
+  processedIds,
+  onProcess,
+  onRollback,
 }: {
   pendingEmails: PendingEmailTransaction[];
   accounts: Pick<Account, "id" | "name" | "currency_code">[];
   currency: CurrencyCode;
+  processedIds: Set<string>;
+  onProcess: (ids: string[]) => void;
+  onRollback: (ids: string[]) => void;
 }) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [accountOverrides, setAccountOverrides] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
-  const items = pendingEmails.slice(0, MAX_ITEMS);
-  const totalCount = pendingEmails.length;
+
+  const visibleEmails = pendingEmails.filter((e) => !processedIds.has(e.id));
+  const items = visibleEmails.slice(0, MAX_ITEMS);
+  const totalCount = visibleEmails.length;
 
   function parseTx(raw: unknown): ParsedEmailTransaction | null {
     if (!raw || typeof raw !== "object") return null;
@@ -448,22 +493,26 @@ function ImportarDetail({
 
   function handleApprove(id: string) {
     const overrideAccountId = accountOverrides[id];
+    onProcess([id]);
     startTransition(async () => {
       const result = await approveEmailTransaction(id, overrideAccountId);
       if (result.success) {
         toast.success("Importada");
       } else {
+        onRollback([id]);
         toast.error(result.error ?? "Error al importar");
       }
     });
   }
 
   function handleDismiss(id: string) {
+    onProcess([id]);
     startTransition(async () => {
       const result = await dismissEmailTransaction(id);
       if (result.success) {
         toast.success("Descartada");
       } else {
+        onRollback([id]);
         toast.error(result.error ?? "Error al descartar");
       }
     });
@@ -471,9 +520,11 @@ function ImportarDetail({
 
   function handleBulkApprove() {
     const ids = pendingEmails.map((e) => e.id);
+    onProcess(ids);
     startTransition(async () => {
       let approved = 0;
       let failed = 0;
+      const failedIds: string[] = [];
 
       for (const id of ids) {
         const overrideAccountId = accountOverrides[id];
@@ -484,10 +535,16 @@ function ImportarDetail({
             approved++;
           } else {
             failed++;
+            failedIds.push(id);
           }
         } catch {
           failed++;
+          failedIds.push(id);
         }
+      }
+
+      if (failedIds.length > 0) {
+        onRollback(failedIds);
       }
 
       if (failed === 0) {

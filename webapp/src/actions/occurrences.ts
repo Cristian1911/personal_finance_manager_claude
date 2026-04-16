@@ -1,7 +1,7 @@
 "use server";
 
 import "server-only";
-import { revalidateTag, cacheTag, cacheLife } from "next/cache";
+import { updateTag, cacheTag, cacheLife } from "next/cache";
 import { addDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { PAY_CYCLE_LOOKAHEAD_DAYS } from "@/lib/constants/occurrences";
@@ -408,7 +408,7 @@ async function deactivateOnceTemplate(
     .eq("user_id", userId);
 
   if (deactivateErr) console.error("Failed to deactivate ONCE template:", deactivateErr.message);
-  revalidateTag("recurring", "zeta");
+  updateTag("recurring");
 }
 
 /**
@@ -448,7 +448,7 @@ export async function markOccurrencePaid(
   }
 
   revalidateFinancialViews();
-  revalidateTag("occurrences", "zeta");
+  updateTag("occurrences");
   return { success: true, data: undefined };
 }
 
@@ -485,7 +485,7 @@ export async function skipOccurrence(occurrenceId: string): Promise<ActionResult
   }
 
   revalidateFinancialViews();
-  revalidateTag("occurrences", "zeta");
+  updateTag("occurrences");
   return { success: true, data: undefined };
 }
 
@@ -642,8 +642,8 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
   }
 
   revalidateFinancialViews();
-  revalidateTag("occurrences", "zeta");
-  revalidateTag("recurring", "zeta");
+  updateTag("occurrences");
+  updateTag("recurring");
   return { success: true, data: undefined };
 }
 

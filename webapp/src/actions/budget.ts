@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import type { ActionResult } from "@/types/actions";
 
@@ -35,8 +35,8 @@ export async function setBudgetMode(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("budgets", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("budgets");
+  updateTag("attention");
   return { success: true, data: null };
 }
 
@@ -63,9 +63,9 @@ export async function upsertBudgetForCategory(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("budgets");
+  updateTag("dashboard:budgets");
+  updateTag("attention");
   return { success: true, data: null };
 }
 
@@ -94,9 +94,9 @@ export async function bulkUpsertBudgets(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("budgets", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("budgets");
+  updateTag("dashboard:budgets");
+  updateTag("attention");
   return { success: true, data: null };
 }
 
