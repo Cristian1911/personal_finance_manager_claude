@@ -15,6 +15,7 @@ import { SubPaymentsBreakdown } from "@/components/recurring/sub-payments-breakd
 import { useRecurringMonth, type OccurrenceItem, type DateStatus } from "@/components/recurring/use-recurring-month";
 import type { RecurringOccurrence } from "@/actions/occurrences";
 import { OccurrenceActions } from "@/components/recurring/occurrence-actions";
+import { MergePickerSheet } from "@/components/recurring/merge-picker-sheet";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
 import { RecurringImpactDialog } from "@/components/recurring/recurring-impact-dialog";
 import { useCategories } from "@/components/providers/app-data-provider";
@@ -123,6 +124,9 @@ export function MobileRecurrentesView({
   /* ---- Edit dialog state ---- */
   const [editTemplate, setEditTemplate] = useState<RecurringTemplateWithRelations | null>(null);
 
+  /* ---- Merge template flow ---- */
+  const [mergeTemplate, setMergeTemplate] = useState<RecurringTemplateWithRelations | null>(null);
+
   const handleImpactConfirm = async () => {
     if (!impactAction) return;
     const { template, action } = impactAction;
@@ -196,6 +200,12 @@ export function MobileRecurrentesView({
         ? () => {
             setExpandedKey(null);
             setImpactAction({ item, template, action: "delete" });
+          }
+        : undefined,
+      onMerge: template
+        ? () => {
+            setExpandedKey(null);
+            setMergeTemplate(template);
           }
         : undefined,
     };
@@ -474,6 +484,17 @@ export function MobileRecurrentesView({
       )}
 
       {/* Impact dialog (pause/delete) */}
+      {/* Merge picker sheet (always rendered for close animation) */}
+      <MergePickerSheet
+        open={!!mergeTemplate}
+        onOpenChange={(open) => { if (!open) setMergeTemplate(null); }}
+        sourceTemplate={mergeTemplate}
+        onMerged={() => {
+          setMergeTemplate(null);
+          hook.refreshOccurrences();
+        }}
+      />
+
       {impactAction && (
         <RecurringImpactDialog
           templateId={impactAction.template.id}

@@ -25,10 +25,12 @@ import {
   Play,
   Pencil,
   Trash2,
+  Merge,
 } from "lucide-react";
 import { RecurringFormDialog } from "./recurring-form-dialog";
 import { RecurringImpactDialog } from "./recurring-impact-dialog";
 import { SubPaymentsBreakdown } from "./sub-payments-breakdown";
+import { MergePickerSheet } from "./merge-picker-sheet";
 import type {
   Account,
   CategoryWithChildren,
@@ -84,6 +86,7 @@ function RecurringCard({
 }) {
   const [isPending, startTransition] = useTransition();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
   const isDebtPayment =
     template.account.account_type === "CREDIT_CARD" ||
     template.account.account_type === "LOAN";
@@ -171,6 +174,10 @@ function RecurringCard({
                   Activar
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={() => { setMenuOpen(false); setMergeOpen(true); }}>
+                <Merge className="h-4 w-4 mr-2" />
+                Combinar con otra
+              </DropdownMenuItem>
               <RecurringImpactDialog
                 templateId={template.id}
                 templateName={template.merchant_name ?? "Recurrente"}
@@ -189,6 +196,7 @@ function RecurringCard({
               />
             </DropdownMenuContent>
           </DropdownMenu>
+
         </div>
 
         <div className="mt-4 flex items-baseline justify-between">
@@ -231,6 +239,13 @@ function RecurringCard({
             Pausada
           </Badge>
         )}
+
+        <MergePickerSheet
+          open={mergeOpen}
+          onOpenChange={setMergeOpen}
+          sourceTemplate={template}
+          onMerged={() => { /* revalidateFinancialViews() in action expires cache tags */ }}
+        />
       </CardContent>
     </Card>
   );
