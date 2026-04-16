@@ -2,9 +2,9 @@
 
 import { InicioHero } from "./inicio-hero";
 import { InicioMetricsGrid } from "./inicio-metrics-grid";
-import { InicioDiscovery } from "./inicio-discovery";
+import { InicioToolRow } from "./inicio-tool-row";
 import { InicioActivity } from "./inicio-activity";
-import { InicioAttention } from "./inicio-attention";
+import { InicioAttentionTimeline } from "./inicio-attention-timeline";
 import { InicioStarter } from "./inicio-starter";
 import { InicioImportStrip } from "./inicio-import-strip";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
@@ -12,6 +12,7 @@ import { useLiveDashboard } from "@/hooks/use-live-metrics";
 import type { LiveDashboardData } from "@/actions/live-dashboard";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 import type { CurrencyCode } from "@/types/domain";
+import type { UpcomingIncomeItem } from "./timeline-model";
 
 export interface InicioRootProps {
   hero: {
@@ -49,6 +50,7 @@ export interface InicioRootProps {
     upcomingPayments: LiveDashboardData["attention"]["upcomingPayments"];
     pendingEmails: LiveDashboardData["attention"]["pendingEmails"];
   };
+  upcomingIncome: UpcomingIncomeItem[];
   burnRateData: BurnRateResponse | null;
   totalBudget: number;
   starterMode: boolean;
@@ -57,11 +59,12 @@ export interface InicioRootProps {
     id: string;
     description: string;
     amount: number;
-    currency_code: string;
+    currency_code: CurrencyCode;
     direction: "INFLOW" | "OUTFLOW";
     account_id: string;
     account_name: string;
     account_color: string | null;
+    category_id: string | null;
     category_name: string | null;
     category_icon: string | null;
     recurrence_group_id: string | null;
@@ -74,6 +77,7 @@ export function InicioRoot({
   hero,
   metrics,
   attentionItems,
+  upcomingIncome,
   burnRateData,
   totalBudget,
   starterMode,
@@ -115,7 +119,7 @@ export function InicioRoot({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <InicioHero
         availablePerDay={live.hero.availablePerDay}
         availableTotal={live.hero.availableTotal}
@@ -131,7 +135,18 @@ export function InicioRoot({
         onToggle={() => toggle("hero")}
       />
 
-      <InicioImportStrip daysSinceImport={daysSinceImport} />
+      <InicioImportStrip
+        daysSinceImport={daysSinceImport}
+        hasPendingEmails={live.attention.pendingEmails.length > 0}
+      />
+
+      <InicioAttentionTimeline
+        overdueReminders={live.attention.overdueReminders}
+        upcomingPayments={live.attention.upcomingPayments}
+        pendingEmails={live.attention.pendingEmails}
+        upcomingIncome={upcomingIncome}
+        currency={currency}
+      />
 
       <InicioMetricsGrid
         daysInMonth={metrics.daysInMonth}
@@ -146,20 +161,7 @@ export function InicioRoot({
         onToggle={toggle}
       />
 
-      <InicioAttention
-        overdueReminders={live.attention.overdueReminders}
-        upcomingPayments={live.attention.upcomingPayments}
-        pendingEmails={live.attention.pendingEmails}
-        currency={currency}
-        expanded={activeZone}
-        onToggle={toggle}
-      />
-
-      <InicioDiscovery
-        expanded={activeZone}
-        onToggle={toggle}
-        currency={currency}
-      />
+      <InicioToolRow currency={currency} />
 
       <InicioActivity transactions={recentTransactions} />
     </div>

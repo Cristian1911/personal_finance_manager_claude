@@ -48,11 +48,12 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     id: tx.id,
     description: tx.merchant_name || tx.clean_description || "Sin descripción",
     amount: tx.amount,
-    currency_code: tx.currency_code ?? "COP",
+    currency_code: (tx.currency_code ?? "COP") as CurrencyCode,
     direction: tx.direction,
     account_id: tx.account_id,
     account_name: tx.accounts?.name ?? "Sin cuenta",
     account_color: tx.accounts?.color ?? null,
+    category_id: tx.category_id ?? null,
     category_name: tx.categories?.name_es ?? tx.categories?.name ?? null,
     category_icon: tx.categories?.icon ?? null,
     recurrence_group_id: tx.recurrence_group_id ?? null,
@@ -101,6 +102,15 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     ? last7Days.reduce((sum, d) => sum + d.amount, 0) / last7Days.length
     : 0;
 
+  // Upcoming income derived from hero data — surfaces on the "Por resolver" timeline
+  const upcomingIncome = heroData.incomeConfigured && heroData.nextIncomeDate
+    ? [{
+        occurrenceDate: heroData.nextIncomeDate,
+        amount: heroData.nextIncomeAmount,
+        name: heroData.nextIncomeName ?? "Próximo ingreso",
+      }]
+    : [];
+
   return (
     <>
       <MobileHeader variant="main" title="Zeta" />
@@ -130,6 +140,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           currency,
         }}
         attentionItems={attentionItemsData}
+        upcomingIncome={upcomingIncome}
         burnRateData={burnRateData}
         totalBudget={budgetSummary.totalTarget}
         starterMode={starterMode}

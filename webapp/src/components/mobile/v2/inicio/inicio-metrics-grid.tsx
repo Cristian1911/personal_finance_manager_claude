@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, PANEL_INSET_SUBTLE_CLASS } from "@/lib/constants/styles";
 import { RunwayMiniChart } from "@/components/dashboard/runway-mini-chart";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 import type { CurrencyCode } from "@/types/domain";
@@ -35,7 +35,7 @@ function ArcRing({ percentage }: { percentage: number }) {
 
   return (
     <svg width={48} height={48} viewBox="0 0 48 48" className="shrink-0" aria-hidden>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#2a2d28" strokeWidth={4} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-z-surface-3)" strokeWidth={4} />
       <circle
         cx={cx} cy={cy} r={r} fill="none"
         stroke="var(--color-z-income)" strokeWidth={4}
@@ -76,45 +76,45 @@ export function InicioMetricsGrid({
   const isGastoActive = expanded === "gasto-hoy";
   const hasActive = isRitmoActive || isGastoActive;
 
+  const widgetTileClass = `flex w-full flex-col items-center justify-center gap-2 ${PANEL_INSET_SUBTLE_CLASS} px-3 py-5 text-center transition-colors min-h-[120px]`;
+
   return (
     <div>
-      {/* Chip row */}
-      <div className="grid grid-cols-2 gap-1.5">
-        {/* Ritmo chip */}
+      {/* Widget row */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Ritmo widget */}
         <button
           type="button"
           onClick={() => onToggle("ritmo")}
           className={cn(
-            PANEL_INSET_CLASS,
-            "flex w-full flex-col items-center justify-center px-3 py-3 transition-colors",
-            isRitmoActive && "ring-1 ring-z-brass/30 bg-z-brass/[0.06]"
+            widgetTileClass,
+            isRitmoActive && "ring-1 ring-z-brass/30 bg-z-brass/[0.04]"
           )}
           aria-expanded={isRitmoActive}
         >
-          <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">Ritmo</p>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">Ritmo</p>
           <ArcRing percentage={percentage} />
-          <p className="mt-1.5 text-[11px] text-muted-foreground">día {dayOfMonth} de {daysInMonth}</p>
+          <p className="text-[10px] text-muted-foreground">día {dayOfMonth} de {daysInMonth}</p>
         </button>
 
-        {/* Gasto hoy chip */}
+        {/* Gasto hoy widget */}
         <button
           type="button"
           onClick={() => onToggle("gasto-hoy")}
           className={cn(
-            PANEL_INSET_CLASS,
-            "flex w-full flex-col items-center justify-center px-3 py-3 transition-colors",
-            isGastoActive && "ring-1 ring-z-brass/30 bg-z-brass/[0.06]"
+            widgetTileClass,
+            isGastoActive && "ring-1 ring-z-brass/30 bg-z-brass/[0.04]"
           )}
           aria-expanded={isGastoActive}
         >
-          <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">Gasto hoy</p>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">Gasto hoy</p>
           <p className={cn(
-            "text-[18px] font-[650] leading-tight",
+            "text-[24px] font-bold leading-none tabular-nums",
             spentToday === 0 ? "text-z-sage-light" : "text-foreground"
           )}>
             {compact(spentToday, currency)}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="text-[10px] text-muted-foreground">
             {spentToday === 0 ? "Sin gastos" : "gastado hoy"}
           </p>
         </button>
