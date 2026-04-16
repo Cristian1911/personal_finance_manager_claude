@@ -2,7 +2,7 @@
 
 import { InicioHero } from "./inicio-hero";
 import { InicioMetricsGrid } from "./inicio-metrics-grid";
-import { InicioDiscovery } from "./inicio-discovery";
+import { InicioToolRow } from "./inicio-tool-row";
 import { InicioActivity } from "./inicio-activity";
 import { InicioAttentionTimeline } from "./inicio-attention-timeline";
 import { InicioStarter } from "./inicio-starter";
@@ -156,11 +156,7 @@ export function InicioRoot({
         upcomingIncome={upcomingIncome}
       />
 
-      <InicioDiscovery
-        expanded={activeZone}
-        onToggle={toggle}
-        currency={currency}
-      />
+      <InicioToolRow currency={currency} />
 
       <InicioActivity transactions={recentTransactions} />
     </div>
