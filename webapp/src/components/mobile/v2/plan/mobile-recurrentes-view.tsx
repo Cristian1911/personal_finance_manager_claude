@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Check, ChevronLeft, ChevronRight, Plus, Tag } from "lucide-react";
+import { Check, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobileRecurrentesTemplatesStrip } from "./mobile-recurrentes-templates-strip";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import {
@@ -28,7 +29,7 @@ import type { CandidateTransaction } from "@/actions/occurrences";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
 import { toast } from "sonner";
 import type { ActionResult } from "@/types/actions";
-import type { CategoryWithChildren, CurrencyCode, RecurringTemplateWithRelations, Account } from "@/types/domain";
+import type { CurrencyCode, RecurringTemplateWithRelations, Account } from "@/types/domain";
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -226,27 +227,6 @@ export function MobileRecurrentesView({
           {formatCurrency(hook.totalPlanned, currency)}
         </p>
 
-        {/* Month navigation */}
-        <div className="mt-3 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={hook.goPrevMonth}
-            className="flex size-7 items-center justify-center rounded-full border border-white/6 text-muted-foreground active:bg-white/5"
-          >
-            <ChevronLeft className="size-3.5" />
-          </button>
-          <span className="text-xs font-medium capitalize text-muted-foreground">
-            {hook.monthLabel}
-          </span>
-          <button
-            type="button"
-            onClick={hook.goNextMonth}
-            className="flex size-7 items-center justify-center rounded-full border border-white/6 text-muted-foreground active:bg-white/5"
-          >
-            <ChevronRight className="size-3.5" />
-          </button>
-        </div>
-
         {/* Summary chips */}
         <div className="mt-3 flex gap-3 text-center">
           <div className="flex-1">
@@ -266,6 +246,17 @@ export function MobileRecurrentesView({
         <div className="animate-pulse py-8 text-center text-sm text-muted-foreground">
           Verificando estado de pagos...
         </div>
+      )}
+
+      {/* Templates strip — D4 */}
+      {hook.isHydrated && (
+        <MobileRecurrentesTemplatesStrip
+          templates={templates}
+          accounts={accounts}
+          categories={categories}
+          currency={currency}
+          onMutate={hook.refreshOccurrences}
+        />
       )}
 
       {/* Pending payments grouped by date */}
@@ -390,39 +381,6 @@ export function MobileRecurrentesView({
             }
             return result;
           }}
-        />
-      )}
-
-      {/* Create new recurring — always visible */}
-      {hook.isHydrated && (
-        <div className="space-y-2">
-          <RecurringFormDialog
-            accounts={accounts}
-            categories={categories}
-            onClose={hook.refreshOccurrences}
-            trigger={
-              <button
-                type="button"
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-z-brass/20 py-3 text-xs font-semibold text-z-brass active:bg-z-brass/5",
-                )}
-              >
-                <Plus className="size-3.5" />
-                Nueva recurrente
-              </button>
-            }
-          />
-        </div>
-      )}
-
-      {/* Templates section — view all, manage paused */}
-      {hook.isHydrated && (
-        <TemplatesSection
-          templates={templates}
-          accounts={accounts}
-          categories={categories}
-          currency={currency}
-          onMutate={hook.refreshOccurrences}
         />
       )}
 
@@ -591,85 +549,3 @@ function CompletedSection({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Templates section (admin — create, see all, manage paused)         */
-/* ------------------------------------------------------------------ */
-
-function TemplatesSection({
-  templates,
-  accounts,
-  categories,
-  currency,
-  onMutate,
-}: {
-  templates: RecurringTemplateWithRelations[];
-  accounts: Account[];
-  categories: CategoryWithChildren[];
-  currency: CurrencyCode;
-  onMutate: () => Promise<void>;
-}) {
-  const [show, setShow] = useState(false);
-
-  let activeCount = 0;
-  let pausedCount = 0;
-  for (const t of templates) {
-    if (t.is_active) activeCount++;
-    else pausedCount++;
-  }
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setShow((prev) => !prev)}
-        className={cn("flex w-full items-center justify-between py-2", MOBILE_EYEBROW_CLASS)}
-      >
-        <span>
-          Mis plantillas ({activeCount} activas{pausedCount > 0 ? ` · ${pausedCount} pausadas` : ""})
-        </span>
-        <span>{show ? "Ocultar ↑" : "Ver ↓"}</span>
-      </button>
-
-      {show && (
-        <div className="space-y-2">
-          {/* Template list */}
-          <div className={cn(PANEL_INSET_CLASS, "divide-y divide-white/5")}>
-            {templates.map((t) => (
-              <div
-                key={t.id}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2.5",
-                  !t.is_active && "opacity-50",
-                )}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium">{t.merchant_name}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {t.account?.name ?? "—"} · {t.frequency ?? "mensual"}
-                    {!t.is_active && " · Pausada"}
-                  </p>
-                </div>
-                <span className="shrink-0 text-xs font-semibold tabular-nums">
-                  {formatCurrency(Number(t.amount), currency)}
-                </span>
-                <RecurringFormDialog
-                  template={t}
-                  accounts={accounts}
-                  categories={categories}
-                  onClose={onMutate}
-                  trigger={
-                    <button
-                      type="button"
-                      className="shrink-0 rounded-md px-2 py-0.5 text-[10px] text-z-brass active:bg-white/5"
-                    >
-                      Editar
-                    </button>
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
