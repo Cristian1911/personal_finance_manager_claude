@@ -16,11 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { StateChip } from "@/components/mobile/v2/state-chip";
 import { CategoryIcon } from "@/components/categories/category-icon";
+import { PlanAllocationChip } from "@/components/mobile/v2/plan/plan-allocation-chip";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
-import { AlertTriangle } from "lucide-react";
 import type { CurrencyCode, CategoryBudgetData } from "@/types/domain";
 
 const BudgetWizard = dynamic(
@@ -100,13 +100,17 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
   const essentialPct = totalSpent > 0 ? Math.round((essentialSpent / totalSpent) * 100) : 0;
   const wantsPct = totalSpent > 0 ? Math.round((wantsSpent / totalSpent) * 100) : 0;
 
-  // Sort: over-budget first, then by percentUsed descending
-  const sortedCategories = [...budgeted].sort((a, b) => {
-    const aOver = a.percentUsed >= 100 ? 1 : 0;
-    const bOver = b.percentUsed >= 100 ? 1 : 0;
-    if (aOver !== bOver) return bOver - aOver;
-    return b.percentUsed - a.percentUsed;
-  });
+  // D6: group categories by risk state — over → near → safe
+  const over = [...budgeted]
+    .filter((c) => c.percentUsed > 100)
+    .sort((a, b) => b.percentUsed - a.percentUsed);
+  const near = [...budgeted]
+    .filter((c) => c.percentUsed >= 85 && c.percentUsed <= 100)
+    .sort((a, b) => b.percentUsed - a.percentUsed);
+  const safe = [...budgeted]
+    .filter((c) => c.percentUsed < 85)
+    .sort((a, b) => a.percentUsed - b.percentUsed);
+  const hasBudgetedCategories = over.length + near.length + safe.length > 0;
 
   const pressure = progress >= 100 ? "critical" : progress >= 80 ? "watch" : "stable";
   const chipConfig = {
@@ -161,28 +165,65 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               />
             </div>
 
-            {/* Status + distribution */}
+            {/* Status + distribution — D7: chip opens 50/30/20 sheet */}
             <div className="mt-3 flex items-center justify-between">
-              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                <span>Necesario {essentialPct}%</span>
-                <span className="text-white/15">|</span>
-                <span>Deseos {wantsPct}%</span>
-              </div>
+              <PlanAllocationChip
+                allocation={allocationData}
+                fallbackNeedsPct={essentialPct}
+                fallbackWantsPct={wantsPct}
+              />
               <StateChip label={chip.label} variant={chip.variant} />
             </div>
           </div>
 
-          {/* Category list */}
-          {sortedCategories.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark mb-2">
-                Por categoría
-              </p>
-              <div className="space-y-3">
-                {sortedCategories.map((cat) => (
-                  <MobileBudgetCategoryRow key={cat.id} category={cat} currency={currency} />
-                ))}
-              </div>
+          {/* Categories grouped by risk state — D6 */}
+          {hasBudgetedCategories && (
+            <div className="space-y-5">
+              {over.length > 0 && (
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-expense">
+                      Sobre límite
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">{over.length}</span>
+                  </div>
+                  <div className="space-y-3">
+                    {over.map((cat) => (
+                      <MobileBudgetCategoryRow key={cat.id} category={cat} currency={currency} />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {near.length > 0 && (
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-brass">
+                      Cerca del límite
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">{near.length}</span>
+                  </div>
+                  <div className="space-y-3">
+                    {near.map((cat) => (
+                      <MobileBudgetCategoryRow key={cat.id} category={cat} currency={currency} />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {safe.length > 0 && (
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-income">
+                      Dentro del límite
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">{safe.length}</span>
+                  </div>
+                  <div className="space-y-3">
+                    {safe.map((cat) => (
+                      <MobileBudgetCategoryRow key={cat.id} category={cat} currency={currency} />
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           )}
 
@@ -289,9 +330,6 @@ function MobileBudgetCategoryRow({
           <span className="text-sm font-medium truncate">
             {category.name_es ?? category.name}
           </span>
-          {isOver && (
-            <AlertTriangle className="size-3.5 shrink-0 text-z-debt" />
-          )}
         </div>
 
         {/* Right: amounts */}
