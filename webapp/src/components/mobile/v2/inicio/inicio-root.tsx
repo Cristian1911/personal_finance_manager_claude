@@ -64,6 +64,7 @@ export interface InicioRootProps {
     account_id: string;
     account_name: string;
     account_color: string | null;
+    category_id: string | null;
     category_name: string | null;
     category_icon: string | null;
     recurrence_group_id: string | null;

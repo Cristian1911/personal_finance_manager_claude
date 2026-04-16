@@ -31,6 +31,7 @@ interface RecentTransactionMobile {
   account_id: string;
   account_name: string;
   account_color: string | null;
+  category_id: string | null;
   category_name: string | null;
   category_icon: string | null;
   recurrence_group_id: string | null;
@@ -42,16 +43,16 @@ interface InicioActivityProps {
 }
 
 function findCategoryById(
-  categories: Array<{ id: string; name_es?: string | null; icon?: string | null; children: Array<{ id: string; name_es?: string | null; icon?: string | null }> }>,
+  categories: Array<{ id: string; name_es?: string | null; name?: string | null; icon?: string | null; children: Array<{ id: string; name_es?: string | null; name?: string | null; icon?: string | null }> }>,
   id: string,
 ): { id: string; name: string; icon: string | null } | null {
   for (const parent of categories) {
     if (parent.id === id) {
-      return { id: parent.id, name: parent.name_es ?? "", icon: parent.icon ?? null };
+      return { id: parent.id, name: parent.name_es ?? parent.name ?? "", icon: parent.icon ?? null };
     }
     const child = parent.children.find((c) => c.id === id);
     if (child) {
-      return { id: child.id, name: child.name_es ?? "", icon: child.icon ?? null };
+      return { id: child.id, name: child.name_es ?? child.name ?? "", icon: child.icon ?? null };
     }
   }
   return null;
@@ -285,7 +286,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                           </p>
                           <CategoryPickerBody
                             categories={outflowCategories}
-                            value={optimisticCat?.id ?? null}
+                            value={optimisticCat?.id ?? tx.category_id}
                             onSelect={(id) => {
                               if (id) handleAssignCategory(tx.id, id);
                             }}

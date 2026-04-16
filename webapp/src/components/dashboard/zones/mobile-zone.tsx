@@ -53,6 +53,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     account_id: tx.account_id,
     account_name: tx.accounts?.name ?? "Sin cuenta",
     account_color: tx.accounts?.color ?? null,
+    category_id: tx.category_id ?? null,
     category_name: tx.categories?.name_es ?? tx.categories?.name ?? null,
     category_icon: tx.categories?.icon ?? null,
     recurrence_group_id: tx.recurrence_group_id ?? null,
