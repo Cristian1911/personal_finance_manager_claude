@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
+import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
@@ -25,6 +26,7 @@ import type { Database } from "@/types/database";
 import type {
   RecurringTemplate,
   RecurringTemplateWithRelations,
+  SubPayment,
   UpcomingRecurrence,
 } from "@/types/domain";
 
@@ -1032,6 +1034,279 @@ export async function getRecurringTemplateImpact(
     console.error("Error calculating template impact:", error);
     return { success: false, error: "Error al calcular el impacto de la plantilla." };
   }
+}
+
+// ─── Merge / Split ──────────────────────────────────────────────────────────
+
+/**
+ * Merge two recurring templates into one. The "keep" template absorbs the
+ * "absorb" template. Both must belong to the same account and user.
+ *
+ * - The absorb template's currency+amount becomes a sub_payment entry on the keep template
+ * - The keep template's amount stays as its primary-currency minimum
+ * - Conflicting occurrences (same date) are deleted from the absorb template
+ * - Remaining occurrences are reassigned to the keep template
+ * - The absorb template is deleted
+ */
+export async function mergeRecurringTemplates(
+  keepId: string,
+  absorbId: string,
+): Promise<ActionResult<RecurringTemplate>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const keepCheck = uuidStr("ID de plantilla inválido").safeParse(keepId);
+  const absorbCheck = uuidStr("ID de plantilla inválido").safeParse(absorbId);
+  if (!keepCheck.success) return { success: false, error: keepCheck.error.issues[0].message };
+  if (!absorbCheck.success) return { success: false, error: absorbCheck.error.issues[0].message };
+  if (keepId === absorbId) return { success: false, error: "No puedes combinar una plantilla consigo misma." };
+
+  // Load both templates
+  const [keepRes, absorbRes] = await Promise.all([
+    supabase
+      .from("recurring_transaction_templates")
+      .select("*, account:accounts!recurring_transaction_templates_account_id_fkey(id, currency_code)")
+      .eq("id", keepId)
+      .eq("user_id", user.id)
+      .single(),
+    supabase
+      .from("recurring_transaction_templates")
+      .select("*")
+      .eq("id", absorbId)
+      .eq("user_id", user.id)
+      .single(),
+  ]);
+
+  if (keepRes.error || !keepRes.data) return { success: false, error: "No se encontró la plantilla principal." };
+  if (absorbRes.error || !absorbRes.data) return { success: false, error: "No se encontró la plantilla a combinar." };
+
+  const keep = keepRes.data;
+  const absorb = absorbRes.data;
+
+  if (keep.account_id !== absorb.account_id) {
+    return { success: false, error: "Ambas plantillas deben pertenecer a la misma cuenta." };
+  }
+
+  // Build merged sub_payments
+  const existingSubPayments: SubPayment[] = parseSubPayments(keep.sub_payments) ?? [];
+  const absorbSubPayments: SubPayment[] = parseSubPayments(absorb.sub_payments) ?? [];
+
+  // Start from the keep template's sub_payments (or create entry from its amount/currency)
+  const merged = new Map<string, number>();
+  if (existingSubPayments.length > 0) {
+    for (const sp of existingSubPayments) merged.set(sp.currency_code, sp.amount);
+  } else {
+    merged.set(keep.currency_code, keep.amount);
+  }
+
+  // Add the absorb template's sub_payments (or its amount/currency)
+  if (absorbSubPayments.length > 0) {
+    for (const sp of absorbSubPayments) {
+      merged.set(sp.currency_code, (merged.get(sp.currency_code) ?? 0) + sp.amount);
+    }
+  } else {
+    const existing = merged.get(absorb.currency_code) ?? 0;
+    merged.set(absorb.currency_code, existing + absorb.amount);
+  }
+
+  const primaryCurrency = (keep.account as { currency_code: string } | null)?.currency_code ?? keep.currency_code;
+  const subPayments: SubPayment[] = Array.from(merged.entries())
+    .map(([currency_code, amount]) => ({ currency_code, amount }))
+    .sort((a, b) => {
+      if (a.currency_code === primaryCurrency) return -1;
+      if (b.currency_code === primaryCurrency) return 1;
+      return a.currency_code.localeCompare(b.currency_code);
+    });
+
+  // template.amount = primary-currency entry only
+  const primaryAmount = merged.get(primaryCurrency) ?? keep.amount;
+
+  try {
+    // 1. Update the keep template
+    const { data: updated, error: updateError } = await supabase
+      .from("recurring_transaction_templates")
+      .update({
+        amount: primaryAmount,
+        currency_code: primaryCurrency as Database["public"]["Enums"]["currency_code"],
+        sub_payments: subPayments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"],
+      })
+      .eq("id", keepId)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    // 2. Delete conflicting occurrences (same date on both templates)
+    const { data: keepOccDates } = await supabase
+      .from("recurring_occurrences")
+      .select("occurrence_date")
+      .eq("template_id", keepId)
+      .eq("user_id", user.id);
+
+    if (keepOccDates && keepOccDates.length > 0) {
+      const dates = keepOccDates.map((o) => o.occurrence_date);
+      await supabase
+        .from("recurring_occurrences")
+        .delete()
+        .eq("template_id", absorbId)
+        .eq("user_id", user.id)
+        .in("occurrence_date", dates);
+    }
+
+    // 3. Reassign remaining occurrences from absorb to keep
+    await supabase
+      .from("recurring_occurrences")
+      .update({ template_id: keepId })
+      .eq("template_id", absorbId)
+      .eq("user_id", user.id);
+
+    // 4. Delete the absorbed template
+    await supabase
+      .from("recurring_transaction_templates")
+      .delete()
+      .eq("id", absorbId)
+      .eq("user_id", user.id);
+
+    revalidateFinancialViews();
+    updateTag("recurring");
+    updateTag("occurrences");
+
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error("Error merging templates:", error);
+    return { success: false, error: "Error al combinar las plantillas." };
+  }
+}
+
+/**
+ * Split a sub_payment entry out of a template into its own standalone template.
+ * The original template keeps everything except the split-out currency entry.
+ */
+export async function splitSubPayment(
+  templateId: string,
+  currencyCode: string,
+): Promise<ActionResult<RecurringTemplate>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const idCheck = uuidStr("ID de plantilla inválido").safeParse(templateId);
+  if (!idCheck.success) return { success: false, error: idCheck.error.issues[0].message };
+
+  const { data: template, error: fetchError } = await supabase
+    .from("recurring_transaction_templates")
+    .select("*, account:accounts!recurring_transaction_templates_account_id_fkey(id, currency_code)")
+    .eq("id", templateId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (fetchError || !template) return { success: false, error: "No se encontró la plantilla." };
+
+  const subPayments = parseSubPayments(template.sub_payments);
+  if (!subPayments || subPayments.length < 2) {
+    return { success: false, error: "La plantilla no tiene desglose de monedas para separar." };
+  }
+
+  const splitEntry = subPayments.find((sp) => sp.currency_code === currencyCode);
+  if (!splitEntry) {
+    return { success: false, error: `No se encontró la entrada de ${currencyCode} en el desglose.` };
+  }
+
+  const remainingSubPayments = subPayments.filter((sp) => sp.currency_code !== currencyCode);
+  const primaryCurrency = (template.account as { currency_code: string } | null)?.currency_code ?? template.currency_code;
+
+  // Recalculate the original template's amount (primary-currency entry)
+  const newPrimaryAmount = remainingSubPayments.find((sp) => sp.currency_code === primaryCurrency)?.amount ?? template.amount;
+
+  try {
+    // 1. Update original template — remove the split entry
+    const subPaymentsValue = remainingSubPayments.length > 1
+      ? (remainingSubPayments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
+      : null; // If only one currency left, clear sub_payments
+
+    await supabase
+      .from("recurring_transaction_templates")
+      .update({
+        amount: newPrimaryAmount,
+        sub_payments: subPaymentsValue,
+      })
+      .eq("id", templateId)
+      .eq("user_id", user.id);
+
+    // 2. Create new template for the split-out currency
+    const { data: newTemplate, error: insertError } = await supabase
+      .from("recurring_transaction_templates")
+      .insert({
+        user_id: user.id,
+        account_id: template.account_id,
+        transfer_source_account_id: template.transfer_source_account_id,
+        amount: splitEntry.amount,
+        currency_code: currencyCode as Database["public"]["Enums"]["currency_code"],
+        direction: template.direction,
+        frequency: template.frequency,
+        merchant_name: template.merchant_name
+          ? `${template.merchant_name} (${currencyCode})`
+          : null,
+        description: template.description,
+        category_id: template.category_id,
+        day_of_month: template.day_of_month,
+        day_of_week: template.day_of_week,
+        start_date: template.start_date,
+        end_date: template.end_date,
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    await ensureCurrentOccurrences();
+
+    revalidateFinancialViews();
+    updateTag("recurring");
+    updateTag("occurrences");
+
+    return { success: true, data: newTemplate };
+  } catch (error) {
+    console.error("Error splitting sub_payment:", error);
+    return { success: false, error: "Error al separar la moneda de la plantilla." };
+  }
+}
+
+/**
+ * Get templates eligible for merging with a given template.
+ * Returns templates for the same account, same direction, same frequency.
+ */
+export async function getMergeablTemplates(
+  templateId: string,
+): Promise<ActionResult<RecurringTemplateWithRelations[]>> {
+  const { supabase, user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+
+  const idCheck = uuidStr("ID inválido").safeParse(templateId);
+  if (!idCheck.success) return { success: false, error: idCheck.error.issues[0].message };
+
+  const { data: source, error: srcErr } = await supabase
+    .from("recurring_transaction_templates")
+    .select("account_id, direction, frequency")
+    .eq("id", templateId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (srcErr || !source) return { success: false, error: "No se encontró la plantilla." };
+
+  const { data: candidates, error } = await supabase
+    .from("recurring_transaction_templates")
+    .select(TEMPLATE_SELECT)
+    .eq("user_id", user.id)
+    .eq("account_id", source.account_id)
+    .eq("direction", source.direction)
+    .eq("frequency", source.frequency)
+    .neq("id", templateId)
+    .eq("is_active", true);
+
+  if (error) return { success: false, error: error.message };
+
+  return { success: true, data: (candidates ?? []) as RecurringTemplateWithRelations[] };
 }
 
 

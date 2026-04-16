@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Check, CircleSlash, Link2, Pencil, Pause, Play, Trash2 } from "lucide-react";
+import { Check, CircleSlash, Link2, Merge, Pencil, Pause, Play, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -39,6 +39,7 @@ export interface OccurrenceActionsProps {
   onPause?: () => void;
   onResume?: () => void;
   onDelete?: () => void;
+  onMerge?: () => void;
   isPending: boolean;
   sourceAccounts?: SourceAccount[];
 }
@@ -141,6 +142,7 @@ export function OccurrenceActions({
   onPause,
   onResume,
   onDelete,
+  onMerge,
   isPending,
   sourceAccounts,
 }: OccurrenceActionsProps) {
@@ -224,6 +226,14 @@ export function OccurrenceActions({
                   icon={<Pencil className="size-3" />}
                   label="Editar"
                   onClick={onEdit}
+                  disabled={isPending}
+                />
+              )}
+              {onMerge && (
+                <ActionChip
+                  icon={<Merge className="size-3" />}
+                  label="Combinar"
+                  onClick={onMerge}
                   disabled={isPending}
                 />
               )}
