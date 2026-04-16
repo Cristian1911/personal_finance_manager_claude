@@ -164,7 +164,11 @@ async function getUpcomingRecurrencesCached(
   return upcoming;
 }
 
-async function getRecurringSummaryCached(userId: string, accessToken: string): Promise<{
+async function getRecurringSummaryCached(
+  userId: string,
+  todayStr: string,
+  accessToken: string,
+): Promise<{
   totalMonthlyExpenses: number;
   totalMonthlyIncome: number;
   activeCount: number;
@@ -175,7 +179,6 @@ async function getRecurringSummaryCached(userId: string, accessToken: string): P
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
-  const today = new Date().toISOString().slice(0, 10);
 
   const [templatesRes, overdueRes] = await Promise.all([
     supabase
@@ -188,7 +191,7 @@ async function getRecurringSummaryCached(userId: string, accessToken: string): P
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("status", "pending")
-      .lt("occurrence_date", today),
+      .lt("occurrence_date", todayStr),
   ]);
 
   const templates = templatesRes.data;
@@ -958,7 +961,7 @@ export async function getRecurringSummary(): Promise<{
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken)
     return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0, overdueCount: 0 };
-  return getRecurringSummaryCached(user.id, accessToken);
+  return getRecurringSummaryCached(user.id, toISODateString(new Date()), accessToken);
 }
 
 // ─── Impact preview ──────────────────────────────────────────────────────────

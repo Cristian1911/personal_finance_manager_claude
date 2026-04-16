@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useId, useState } from "react";
+import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
@@ -29,6 +29,7 @@ export function MobileRecurrentesTemplatesStrip({
   onMutate,
 }: TemplatesStripProps) {
   const [expanded, setExpanded] = useState(false);
+  const regionId = useId();
 
   let activeCount = 0;
   let pausedCount = 0;
@@ -44,6 +45,7 @@ export function MobileRecurrentesTemplatesStrip({
         onClick={() => setExpanded((prev) => !prev)}
         className="flex w-full items-center justify-between text-left"
         aria-expanded={expanded}
+        aria-controls={regionId}
       >
         <div>
           <p className={cn(MOBILE_EYEBROW_CLASS, "text-z-brass")}>Mis plantillas</p>
@@ -52,13 +54,18 @@ export function MobileRecurrentesTemplatesStrip({
             {pausedCount > 0 && ` · ${pausedCount} pausada${pausedCount !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <span className="text-[11px] font-medium text-z-brass">
-          {expanded ? "Ocultar ↑" : "Ver ↓"}
+        <span className="flex items-center gap-1 text-[11px] font-medium text-z-brass">
+          {expanded ? "Ocultar" : "Ver"}
+          {expanded ? (
+            <ChevronUp className="size-3" aria-hidden />
+          ) : (
+            <ChevronDown className="size-3" aria-hidden />
+          )}
         </span>
       </button>
 
       {expanded && (
-        <div className="mt-3 space-y-2">
+        <div id={regionId} className="mt-3 space-y-2">
           {templates.length > 0 ? (
             <div className={cn(PANEL_INSET_CLASS, "divide-y divide-white/5")}>
               {templates.map((t) => (

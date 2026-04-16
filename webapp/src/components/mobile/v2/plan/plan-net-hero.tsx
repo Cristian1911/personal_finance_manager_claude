@@ -43,6 +43,8 @@ export function PlanNetHero({
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+        aria-label={expanded ? "Ocultar flujo del mes" : "Ver flujo del mes"}
         className={`relative z-50 w-full rounded-2xl border border-white/6 ${HERO_CARD_GRADIENT_CLASS} p-4 text-left transition-all`}
       >
         <div className="flex items-center justify-between mb-1">
@@ -102,10 +104,7 @@ export function PlanNetHero({
         {expanded && (
           <div className="mt-4" onClick={(e) => e.stopPropagation()}>
             <PlanFlowChart timelineData={timelineData} currency={currency} />
-            <p
-              className="mt-2 flex cursor-pointer items-center justify-center gap-1 text-center text-[11px] font-medium text-z-brass"
-              onClick={() => setExpanded(false)}
-            >
+            <p className="mt-2 flex items-center justify-center gap-1 text-center text-[11px] font-medium text-z-brass">
               Ocultar flujo
               <ChevronUp className="size-3" aria-hidden="true" />
             </p>

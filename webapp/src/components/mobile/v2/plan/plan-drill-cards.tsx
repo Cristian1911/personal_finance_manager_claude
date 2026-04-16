@@ -65,7 +65,7 @@ export function PlanDrillCards({
   const overdueCount = recurring.overdueCount;
   const recurrentesCaption = (
     <>
-      {dueSoonCount} este mes
+      {dueSoonCount} próximos
       {overdueCount > 0 && (
         <>
           {" · "}

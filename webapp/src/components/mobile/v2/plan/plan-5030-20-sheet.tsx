@@ -56,7 +56,14 @@ function BucketRow({ name, actual, target, currency, variance }: BucketRowProps)
           </span>
         </div>
       </div>
-      <div className="relative h-2 overflow-hidden rounded-full bg-white/[0.05]">
+      <div
+        className="relative h-2 overflow-hidden rounded-full bg-white/[0.05]"
+        role="progressbar"
+        aria-valuenow={Math.round(actual.percent)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${name}: ${Math.round(actual.percent)}% (meta ${target}%)`}
+      >
         <div
           className={cn("h-full rounded-full", fillColor)}
           style={{ width: `${clampedPercent}%` }}
@@ -104,7 +111,10 @@ export function Plan5030Sheet20({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className={cn("rounded-t-2xl", MOBILE_TAB_BAR_CLEARANCE_CLASS)}
+        className={cn(
+          "max-h-[calc(100vh-1rem)] overflow-y-auto rounded-t-2xl",
+          MOBILE_TAB_BAR_CLEARANCE_CLASS,
+        )}
       >
         <SheetHeader>
           <SheetTitle>Distribución 50/30/20</SheetTitle>

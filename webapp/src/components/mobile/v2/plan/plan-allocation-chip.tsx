@@ -39,6 +39,7 @@ export function PlanAllocationChip({
         type="button"
         onClick={() => setOpen(true)}
         disabled={!allocation}
+        aria-label="Ver distribución 50/30/20"
         className="flex items-center gap-1.5 text-[10px] text-muted-foreground transition-colors active:text-foreground disabled:cursor-default disabled:opacity-60"
       >
         <span>
