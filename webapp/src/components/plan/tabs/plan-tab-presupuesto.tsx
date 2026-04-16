@@ -129,9 +129,12 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
         <div className="space-y-4 px-4 pt-4">
           {/* Budget hero card */}
           <div className={cn(PANEL_INSET_CLASS, "p-4")}>
-            <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
-              Gastado este mes
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+                Gastado este mes
+              </p>
+              <StateChip label={chip.label} variant={chip.variant} />
+            </div>
 
             <div className="mt-2 flex items-center justify-between">
               <span
@@ -165,14 +168,13 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               />
             </div>
 
-            {/* Status + distribution — D7: chip opens 50/30/20 sheet */}
-            <div className="mt-3 flex items-center justify-between">
+            {/* 50/30/20 allocation chip — D7 opens sheet on tap */}
+            <div className="mt-3">
               <PlanAllocationChip
                 allocation={allocationData}
                 fallbackNeedsPct={essentialPct}
                 fallbackWantsPct={wantsPct}
               />
-              <StateChip label={chip.label} variant={chip.variant} />
             </div>
           </div>
 
