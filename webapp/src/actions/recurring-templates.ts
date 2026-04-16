@@ -1156,10 +1156,18 @@ export async function mergeRecurringTemplates(
         .in("occurrence_date", dates);
     }
 
-    // 3. Reassign remaining occurrences from absorb to keep, updating expected_amount
+    // 3. Reassign remaining occurrences from absorb to keep.
+    // Pending occurrences get the merged amount; paid/skipped keep historical amounts.
     await supabase
       .from("recurring_occurrences")
       .update({ template_id: keepId, expected_amount: primaryAmount })
+      .eq("template_id", absorbId)
+      .eq("user_id", user.id)
+      .eq("status", "pending");
+
+    await supabase
+      .from("recurring_occurrences")
+      .update({ template_id: keepId })
       .eq("template_id", absorbId)
       .eq("user_id", user.id);
 
@@ -1213,10 +1221,13 @@ export async function splitSubPayment(
   }
 
   const remainingSubPayments = subPayments.filter((sp) => sp.currency_code !== currencyCode);
-  const primaryCurrency = (template.account as { currency_code: string } | null)?.currency_code ?? template.currency_code;
+  const accountCurrency = (template.account as { currency_code: string } | null)?.currency_code ?? template.currency_code;
 
-  // Recalculate the original template's amount (primary-currency entry)
-  const newPrimaryAmount = remainingSubPayments.find((sp) => sp.currency_code === primaryCurrency)?.amount ?? template.amount;
+  // If splitting the primary currency, switch to the next available currency
+  const nextPrimary = remainingSubPayments.find((sp) => sp.currency_code === accountCurrency)
+    ?? remainingSubPayments[0];
+  const newPrimaryAmount = nextPrimary.amount;
+  const newCurrencyCode = nextPrimary.currency_code;
 
   try {
     // 1. Update original template — remove the split entry
@@ -1228,6 +1239,7 @@ export async function splitSubPayment(
       .from("recurring_transaction_templates")
       .update({
         amount: newPrimaryAmount,
+        currency_code: newCurrencyCode as Database["public"]["Enums"]["currency_code"],
         sub_payments: subPaymentsValue,
       })
       .eq("id", templateId)
