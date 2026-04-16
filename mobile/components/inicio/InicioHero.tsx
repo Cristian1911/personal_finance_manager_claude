@@ -32,12 +32,12 @@ export function InicioHero({
   return (
     <Pressable onPress={onToggle} accessibilityLabel="Expandir desglose del disponible diario">
       <GradientCard>
-        <Text className="text-[10px] font-inter-semibold uppercase tracking-[3px] text-z-sage-dark">
+        <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
           Disponible para gastar
         </Text>
 
         <View className="mt-2 flex-row items-baseline gap-0.5">
-          <Text className="text-[36px] font-inter-bold text-foreground">
+          <Text className="text-[36px] font-inter-bold tabular-nums text-foreground">
             {formatCurrency(availablePerDay, currency)}
           </Text>
           <Text className="text-sm font-inter-medium text-muted-foreground">
@@ -54,7 +54,7 @@ export function InicioHero({
           <View className="mt-3">
             {breakdown && (
               <View className={`${PANEL_INSET_CLASS} border-white-8 bg-black-20 p-3 gap-1.5`}>
-                <Text className="text-[10px] font-inter-bold uppercase tracking-[3px] text-z-brass">
+                <Text className="text-[10px] font-inter-bold uppercase tracking-[0.18em] text-z-brass">
                   Como se calcula
                 </Text>
                 <View className="flex-row justify-between">

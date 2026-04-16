@@ -231,7 +231,7 @@ export default function SettingsScreen() {
         : "Sincronizado";
 
   return (
-    <ScrollView className="flex-1 bg-z-card">
+    <ScrollView className="flex-1 bg-background">
       {/* Profile section */}
       <SectionHeader title="Perfil" />
       <View className="bg-z-surface-2-55">
@@ -289,7 +289,7 @@ export default function SettingsScreen() {
           className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55 active:bg-black-10"
           onPress={handleClearSyncQueue}
         >
-          <Trash2 size={18} color="#EF4444" />
+          <Trash2 size={18} color={COLORS.debt} />
           <Text className="ml-3 text-z-expense font-inter-medium text-sm">
             Limpiar cola de sincronizacion
           </Text>
@@ -302,7 +302,7 @@ export default function SettingsScreen() {
               onPress={handleFullResync}
               disabled={syncing}
             >
-              <RefreshCw size={18} color="#EF4444" />
+              <RefreshCw size={18} color={COLORS.debt} />
               <Text className="ml-3 text-z-expense font-inter-medium text-sm">
                 Resincronizar desde cero
               </Text>
@@ -356,8 +356,8 @@ export default function SettingsScreen() {
               <Switch
                 value={biometricsOn}
                 onValueChange={handleToggleBiometrics}
-                trackColor={{ false: "#3A3A3A", true: "#10B981" }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                thumbColor={COLORS.foreground}
                 ios_backgroundColor="#3A3A3A"
               />
             </View>
@@ -374,8 +374,8 @@ export default function SettingsScreen() {
                   <Switch
                     value={bgReauthOn}
                     onValueChange={handleToggleBgReauth}
-                    trackColor={{ false: "#3A3A3A", true: "#10B981" }}
-                    thumbColor="#FFFFFF"
+                    trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                    thumbColor={COLORS.foreground}
                     ios_backgroundColor="#3A3A3A"
                   />
                 </View>
@@ -390,14 +390,14 @@ export default function SettingsScreen() {
       <View className="bg-z-surface-2-55 mb-8">
         {demoMode ? (
           <SettingsRow
-            icon={<LogOut size={18} color="#EF4444" />}
+            icon={<LogOut size={18} color={COLORS.debt} />}
             label="Salir modo demo"
             onPress={handleExitDemoMode}
             destructive
           />
         ) : (
           <SettingsRow
-            icon={<LogOut size={18} color="#EF4444" />}
+            icon={<LogOut size={18} color={COLORS.debt} />}
             label="Cerrar sesion"
             onPress={handleSignOut}
             destructive

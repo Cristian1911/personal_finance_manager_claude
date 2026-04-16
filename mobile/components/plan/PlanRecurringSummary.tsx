@@ -25,7 +25,7 @@ export function PlanRecurringSummary({
       <MCard>
         <View className="flex-row items-center justify-between">
           <View className="flex-1">
-            <Text className="text-[10px] font-inter-semibold uppercase tracking-[3px] text-z-sage-dark">
+            <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
               Obligaciones recurrentes
             </Text>
             <Text className="text-[18px] font-inter-bold text-foreground mt-1">

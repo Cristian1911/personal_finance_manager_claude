@@ -1,3 +1,4 @@
+import { COLORS } from "../../lib/constants/colors";
 import { useState } from "react";
 import {
   View,
@@ -42,7 +43,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <AppKeyboardAwareScrollView
-      style={{ flex: 1, backgroundColor: "#121412" }}
+      style={{ flex: 1, backgroundColor: COLORS.ink }}
       contentContainerStyle={{
         flexGrow: 1,
         justifyContent: "center",

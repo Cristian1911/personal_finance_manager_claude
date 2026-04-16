@@ -101,7 +101,7 @@ export function PlanExpandableChips({
       <AnimatedAccordion expanded={active !== null} estimatedHeight={200}>
         {active === "income" && (
           <View className={`${PANEL_INSET_CLASS} p-3`} style={{ borderColor: "rgba(92,184,138,0.2)", backgroundColor: "rgba(92,184,138,0.05)" }}>
-            <Text className="text-[10px] font-inter-bold uppercase tracking-[3px] text-z-income mb-2">
+            <Text className="text-[10px] font-inter-bold uppercase tracking-[0.18em] text-z-income mb-2">
               Ingresos esperados
             </Text>
             {incomes.length > 0 ? (
@@ -137,7 +137,7 @@ export function PlanExpandableChips({
         )}
         {active === "payment" && (
           <View className={`${PANEL_INSET_CLASS} p-3`} style={{ borderColor: "rgba(224,85,69,0.2)", backgroundColor: "rgba(224,85,69,0.05)" }}>
-            <Text className="text-[10px] font-inter-bold uppercase tracking-[3px] text-z-debt mb-2">
+            <Text className="text-[10px] font-inter-bold uppercase tracking-[0.18em] text-z-debt mb-2">
               Pagos programados
             </Text>
             {payments.length > 0 ? (

@@ -1,3 +1,4 @@
+import { COLORS } from "../../lib/constants/colors";
 import { useState, useEffect } from "react";
 import {
   Alert,
@@ -145,7 +146,7 @@ export default function LoginScreen() {
 
   return (
     <AppKeyboardAwareScrollView
-      style={{ flex: 1, backgroundColor: "#121412" }}
+      style={{ flex: 1, backgroundColor: COLORS.ink }}
       contentContainerStyle={{
         flexGrow: 1,
         justifyContent: "center",

@@ -259,17 +259,17 @@ export function PlanFlowChart({ timelineData, currency }: PlanFlowChartProps) {
         {/* Summary row */}
         <View className="mt-2 flex-row items-center">
           <View className="flex-1 items-center">
-            <Text className="text-[9px] font-inter-semibold uppercase tracking-[3px] text-z-sage-dark">Ingresos</Text>
+            <Text className="text-[9px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">Ingresos</Text>
             <Text className="mt-0.5 text-[13px] font-inter-semibold text-z-income">{formatCurrency(totalIncome, currency)}</Text>
           </View>
           <View className="h-5 w-px bg-white-6" />
           <View className="flex-1 items-center">
-            <Text className="text-[9px] font-inter-semibold uppercase tracking-[3px] text-z-sage-dark">Gastos</Text>
+            <Text className="text-[9px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">Gastos</Text>
             <Text className="mt-0.5 text-[13px] font-inter-semibold text-z-debt">{formatCurrency(totalExpense, currency)}</Text>
           </View>
           <View className="h-5 w-px bg-white-6" />
           <View className="flex-1 items-center">
-            <Text className="text-[9px] font-inter-semibold uppercase tracking-[3px] text-z-sage-dark">Neto</Text>
+            <Text className="text-[9px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">Neto</Text>
             <Text className={`mt-0.5 text-[13px] font-inter-semibold ${net >= 0 ? "text-z-brass" : "text-z-debt"}`}>{formatCurrency(net, currency)}</Text>
           </View>
         </View>

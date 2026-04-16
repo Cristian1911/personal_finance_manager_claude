@@ -116,7 +116,7 @@ function getHeroAmountColorClass(
   isInflow: boolean
 ): string {
   if (isExcluded) return "text-muted-fg-50";
-  if (isDebtPayment) return "text-sky-600";
+  if (isDebtPayment) return "text-z-brass";
   if (isInflow) return "text-z-income";
   return "text-foreground";
 }
@@ -299,15 +299,15 @@ export default function TransactionDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-z-card">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color=COLORS.income />
       </View>
     );
   }
 
   if (!transaction) {
     return (
-      <View className="flex-1 bg-z-card">
+      <View className="flex-1 bg-background">
         <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
           <Pressable
             onPress={() => router.back()}
@@ -343,7 +343,7 @@ export default function TransactionDetailScreen() {
   const statusLabel = STATUS_LABELS[transaction.status ?? ""] ?? (transaction.status ?? "Desconocido");
 
   return (
-    <View className="flex-1 bg-z-card">
+    <View className="flex-1 bg-background">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
         {isEditing ? (
@@ -366,7 +366,7 @@ export default function TransactionDetailScreen() {
               disabled={saving}
             >
               {saving ? (
-                <ActivityIndicator size="small" color="#10B981" />
+                <ActivityIndicator size="small" color=COLORS.income />
               ) : (
                 <Text className="text-primary font-inter-bold text-sm">
                   Guardar
@@ -396,7 +396,7 @@ export default function TransactionDetailScreen() {
                 onPress={handleDelete}
                 className="w-8 h-8 items-center justify-center rounded-full bg-z-debt/10 active:bg-z-debt/20"
               >
-                <Trash2 size={16} color="#EF4444" />
+                <Trash2 size={16} color={COLORS.debt} />
               </Pressable>
             </View>
           </>
@@ -530,8 +530,8 @@ export default function TransactionDetailScreen() {
               <Switch
                 value={editIsExcluded}
                 onValueChange={setEditIsExcluded}
-                trackColor={{ false: "#3A3A3A", true: "#10B981" }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                thumbColor={COLORS.foreground}
                 ios_backgroundColor="#3A3A3A"
               />
             </View>
@@ -550,7 +550,7 @@ export default function TransactionDetailScreen() {
             </Text>
             {isExcluded && (
               <View className="flex-row items-center bg-amber-900/20 px-3 py-1 rounded-full mb-2">
-                <Text className="text-amber-400 font-inter-medium text-xs">
+                <Text className="text-z-alert font-inter-medium text-xs">
                   Excluido de totales
                 </Text>
               </View>
@@ -615,8 +615,8 @@ export default function TransactionDetailScreen() {
               <Switch
                 value={isExcluded}
                 onValueChange={handleToggleExclude}
-                trackColor={{ false: "#3A3A3A", true: "#10B981" }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                thumbColor={COLORS.foreground}
                 ios_backgroundColor="#3A3A3A"
               />
             </View>

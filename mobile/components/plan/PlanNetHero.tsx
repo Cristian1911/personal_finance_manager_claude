@@ -63,7 +63,7 @@ export function PlanNetHero({
         </View>
 
         {/* Main number: disponible */}
-        <Text className={`mt-2 text-[32px] font-inter-bold ${isPositive ? "text-z-income" : "text-z-expense"}`}>
+        <Text className={`mt-2 text-[32px] font-inter-bold tabular-nums ${isPositive ? "text-z-income" : "text-z-expense"}`}>
           {formatCurrency(disponible, currency)}
         </Text>
         <Text className="text-xs font-inter text-muted-foreground">
@@ -103,7 +103,7 @@ export function PlanNetHero({
           <View className="mt-3 gap-3">
             {/* ── INGRESOS section ── */}
             <View className={`${PANEL_INSET_CLASS} p-3 gap-1.5`} style={{ borderColor: "rgba(92,184,138,0.2)" }}>
-              <Text className="text-[9px] font-inter-bold uppercase tracking-[3px] text-z-income">
+              <Text className="text-[9px] font-inter-bold uppercase tracking-[0.18em] text-z-income">
                 Ingresos planeados
               </Text>
               <View className="flex-row justify-between">
@@ -140,7 +140,7 @@ export function PlanNetHero({
 
             {/* ── GASTOS FIJOS section ── */}
             <View className={`${PANEL_INSET_CLASS} p-3 gap-1.5`} style={{ borderColor: "rgba(212,168,67,0.2)" }}>
-              <Text className="text-[9px] font-inter-bold uppercase tracking-[3px] text-z-alert">
+              <Text className="text-[9px] font-inter-bold uppercase tracking-[0.18em] text-z-alert">
                 Gastos fijos planeados
               </Text>
               <View className="flex-row justify-between">
@@ -174,7 +174,7 @@ export function PlanNetHero({
 
             {/* ── GASTO LIBRE ── */}
             <View className={`${PANEL_INSET_CLASS} p-3 gap-1`} style={{ borderColor: "rgba(224,85,69,0.2)" }}>
-              <Text className="text-[9px] font-inter-bold uppercase tracking-[3px] text-z-debt">
+              <Text className="text-[9px] font-inter-bold uppercase tracking-[0.18em] text-z-debt">
                 Gasto libre
               </Text>
               <Text className="text-sm font-inter-bold text-z-expense">
