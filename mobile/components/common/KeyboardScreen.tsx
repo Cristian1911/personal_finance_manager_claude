@@ -17,17 +17,17 @@ export function KeyboardScreen({
 }) {
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-gray-100"
+      className="flex-1 bg-background"
       behavior="padding"
     >
-      <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-4 pb-2 pt-4">
+      <View className="flex-row items-center justify-between border-b border-white-6 bg-z-surface-2-55 px-4 pb-2 pt-4">
         <Pressable
           onPress={onBack}
-          className="h-8 w-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
         >
-          <ArrowLeft size={18} color="#6B7280" />
+          <ArrowLeft size={18} color="#938C7E" />
         </Pressable>
-        <Text className="text-base font-inter-bold text-gray-900">{title}</Text>
+        <Text className="text-base font-inter-bold text-foreground">{title}</Text>
         <View className="w-8" />
       </View>
 
@@ -41,7 +41,7 @@ export function KeyboardScreen({
       </AppKeyboardAwareScrollView>
 
       {footer ? (
-        <View className="border-t border-gray-200 bg-white p-4">{footer}</View>
+        <View className="border-t border-white-6 bg-z-surface-2-55 p-4">{footer}</View>
       ) : null}
     </KeyboardAvoidingView>
   );

@@ -38,7 +38,7 @@ export function TransactionRow({
 
   return (
     <Pressable
-      className="flex-row items-center px-4 py-3 bg-white active:bg-gray-50"
+      className="flex-row items-center px-4 py-3 bg-z-surface-2-55 active:bg-white/5"
       onPress={() => router.push(`/transaction/${id}`)}
     >
       {/* Category icon circle */}
@@ -57,13 +57,13 @@ export function TransactionRow({
       {/* Center: name + category */}
       <View className="flex-1 mr-2">
         <Text
-          className="text-gray-900 font-inter-semibold text-sm"
+          className="text-foreground font-inter-semibold text-sm"
           numberOfLines={1}
         >
           {displayName}
         </Text>
         {semanticCategory && (
-          <Text className="text-gray-400 font-inter text-xs mt-0.5">
+          <Text className="text-muted-fg-50 font-inter text-xs mt-0.5">
             {semanticCategory}
           </Text>
         )}
@@ -72,7 +72,7 @@ export function TransactionRow({
       {/* Amount */}
       <Text
         className={`font-inter-bold text-sm ${
-          isDebtPayment ? "text-sky-600" : isInflow ? "text-green-600" : "text-gray-900"
+          isDebtPayment ? "text-sky-600" : isInflow ? "text-green-600" : "text-foreground"
         }`}
       >
         {isInflow ? "+" : "-"}

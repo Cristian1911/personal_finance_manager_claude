@@ -163,7 +163,7 @@ export default function AnnotateScreenshotScreen() {
             onPress={handleUndo}
             disabled={!paths.length}
           >
-            <Undo2 size={18} color={paths.length ? "#374151" : "#D1D5DB"} />
+            <Undo2 size={18} color={paths.length ? "#C5BFAE" : "#4A4A4A"} />
           </Pressable>
 
           <Pressable
@@ -171,7 +171,7 @@ export default function AnnotateScreenshotScreen() {
             onPress={handleClear}
             disabled={!paths.length}
           >
-            <Trash2 size={18} color={paths.length ? "#374151" : "#D1D5DB"} />
+            <Trash2 size={18} color={paths.length ? "#C5BFAE" : "#4A4A4A"} />
           </Pressable>
 
           <View style={styles.colorPicker}>
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   toolbarRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: "rgba(18,20,18,0.95)",
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#1A1C1A",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   strokePreview: {
-    backgroundColor: "#374151",
+    backgroundColor: "#C5BFAE",
     borderRadius: 3,
   },
   cancelBtn: {
@@ -288,13 +288,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#1A1C1A",
     gap: 4,
   },
   cancelLabel: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#6B7280",
+    color: "#938C7E",
   },
   doneBtn: {
     marginLeft: "auto",
@@ -306,6 +306,6 @@ const styles = StyleSheet.create({
   doneLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFF",
+    color: "#121412",
   },
 });

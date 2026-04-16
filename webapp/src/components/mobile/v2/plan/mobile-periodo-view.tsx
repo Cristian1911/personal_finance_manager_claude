@@ -11,6 +11,7 @@ import { PlanFlowChart } from "./plan-flow-chart";
 import { EntryFormDialog } from "@/components/cashflow-planner/entry-form-dialog";
 import { EditEntryDialog } from "@/components/cashflow-planner/edit-entry-dialog";
 import { AssignmentDialog } from "@/components/cashflow-planner/assignment-dialog";
+import { PayExpenseDialog } from "@/components/cashflow-planner/pay-expense-dialog";
 import { AutoAssignButton } from "@/components/cashflow-planner/auto-assign-button";
 import {
   toggleEntryStatus,
@@ -20,6 +21,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowRightLeft,
+  Banknote,
   Check,
   ChevronDown,
   Pencil,
@@ -49,10 +51,13 @@ const STATUS_BADGE: Record<
 
 /* ────── Main component ────── */
 
+/** Accounts need account_type + current_balance for the pay dialog */
+export type PlanAccount = Pick<Account, "id" | "name" | "icon" | "color" | "account_type" | "current_balance" | "currency_code">;
+
 interface MobilePeriodoViewProps {
   planData: PeriodPlanData;
   timelineData: PlanTimelineData;
-  accounts: Pick<Account, "id" | "name" | "icon" | "color">[];
+  accounts: PlanAccount[];
   categories: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
 }
 
@@ -82,6 +87,9 @@ export function MobilePeriodoView({
   const [editTarget, setEditTarget] =
     useState<PlanningEntryWithRelations | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [payTarget, setPayTarget] =
+    useState<PlanningEntryWithRelations | null>(null);
+  const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   /* ── Computed data ── */
@@ -131,6 +139,14 @@ export function MobilePeriodoView({
     setEditTarget(entry);
     setEditDialogOpen(true);
   }
+
+  function openPay(entry: PlanningEntryWithRelations) {
+    setPayTarget(entry);
+    setPayDialogOpen(true);
+  }
+
+  // Derive the period month (YYYY-MM) from start_date
+  const periodMonth = period.start_date.slice(0, 7);
 
   return (
     <div className="space-y-4">
@@ -238,6 +254,7 @@ export function MobilePeriodoView({
                 onAssign={() => openAssign(entry)}
                 onEdit={() => openEdit(entry)}
                 onDelete={() => handleDeleteEntry(entry.id)}
+                onPay={() => openPay(entry)}
                 isPending={isPending}
               />
             ))}
@@ -266,6 +283,14 @@ export function MobilePeriodoView({
         currency={currency}
         accounts={accounts}
         categories={categories}
+      />
+      <PayExpenseDialog
+        entry={payTarget}
+        open={payDialogOpen}
+        onOpenChange={setPayDialogOpen}
+        currency={currency}
+        accounts={accounts}
+        periodMonth={periodMonth}
       />
     </div>
   );
@@ -458,6 +483,7 @@ function ExpenseRow({
   onAssign,
   onEdit,
   onDelete,
+  onPay,
   isPending,
 }: {
   entry: PlanningEntryWithRelations;
@@ -469,6 +495,7 @@ function ExpenseRow({
   onAssign: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onPay: () => void;
   isPending: boolean;
 }) {
   return (
@@ -535,6 +562,16 @@ function ExpenseRow({
       {/* Expanded action bar */}
       {isExpanded && (
         <div className="flex items-center gap-2 px-3.5 py-2 border-t border-white/5 bg-black/20">
+          {entry.status !== "COMPLETED" && (
+            <button
+              type="button"
+              onClick={onPay}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-z-brass transition-colors hover:text-z-brass/80"
+            >
+              <Banknote className="size-3" />
+              Pagar
+            </button>
+          )}
           <button
             type="button"
             onClick={onAssign}

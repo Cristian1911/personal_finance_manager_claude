@@ -6,6 +6,7 @@ import { useSync } from "../../lib/sync/hooks";
 import { getTransactions, type TransactionListRow } from "../../lib/repositories/transactions";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { computeCashflow } from "../../lib/utils/cashflow";
+import { toLocalMonthString } from "../../lib/utils/date";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
@@ -26,7 +27,7 @@ export function MovimientosRoot() {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentMonth, setCurrentMonth] = useState(
-    () => new Date().toISOString().slice(0, 7)
+    () => toLocalMonthString()
   );
 
   const loadData = useCallback(async () => {
@@ -110,9 +111,6 @@ export function MovimientosRoot() {
           <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
         </View>
 
-        {/* Search */}
-        <SearchBar onSearch={setSearchQuery} />
-
         {/* Lectura — month summary */}
         <MovimientosLectura
           count={count}
@@ -125,6 +123,9 @@ export function MovimientosRoot() {
 
         {/* Herramientas — tools grid */}
         <MovimientosHerramientas uncategorizedCount={uncategorizedCount} />
+
+        {/* Search — right above feed */}
+        <SearchBar onSearch={setSearchQuery} />
 
         {/* Feed — date-grouped transaction rows */}
         {transactions.length === 0 ? (

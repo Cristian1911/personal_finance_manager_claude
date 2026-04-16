@@ -8,6 +8,7 @@ interface InicioHeroProps {
   availablePerDay: number;
   availableTotal: number;
   daysRemaining: number;
+  daysLabel: string; // e.g. "12 días hasta 27 abr" or "15 días restantes"
   currency: CurrencyCode;
   breakdown?: {
     totalLiquid: number;
@@ -22,6 +23,7 @@ export function InicioHero({
   availablePerDay,
   availableTotal,
   daysRemaining,
+  daysLabel,
   currency,
   breakdown,
   expanded,
@@ -44,7 +46,7 @@ export function InicioHero({
         </View>
 
         <Text className="mt-2 text-xs font-inter text-muted-foreground">
-          = {formatCurrency(availableTotal, currency)} este mes · {daysRemaining} dias restantes
+          = {formatCurrency(availableTotal, currency)} · {daysLabel}
         </Text>
 
         {/* Expandable math breakdown */}
@@ -57,7 +59,7 @@ export function InicioHero({
                 </Text>
                 <View className="flex-row justify-between">
                   <Text className="text-xs font-inter text-z-sage-light">
-                    Ingresos del mes
+                    Saldo liquido
                   </Text>
                   <Text className="text-xs font-inter text-z-sage-light">
                     {formatCurrency(breakdown.totalLiquid, currency)}
@@ -65,7 +67,7 @@ export function InicioHero({
                 </View>
                 <View className="flex-row justify-between">
                   <Text className="text-xs font-inter text-z-sage-light">
-                    - Gastos fijos pendientes
+                    - Obligaciones pendientes
                   </Text>
                   <Text className="text-xs font-inter text-z-expense">
                     -{formatCurrency(breakdown.fixedExpenses, currency)}

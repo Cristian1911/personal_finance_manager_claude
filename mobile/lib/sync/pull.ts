@@ -58,7 +58,6 @@ const FULL_REPLACE_TABLES = new Set<SyncTable>([
  */
 const WINDOWED_TABLES: Partial<Record<SyncTable, { column: string }>> = {
   transactions: { column: "transaction_date" },
-  statement_snapshots: { column: "statement_date" },
   recurring_occurrences: { column: "occurrence_date" },
 };
 
@@ -79,7 +78,7 @@ async function fetchAllPages(buildQuery: () => any): Promise<any[]> {
     if (error) throw error;
     if (!data || data.length === 0) break;
 
-    allRows = allRows.concat(data);
+    allRows.push(...data);
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
@@ -96,8 +95,16 @@ export async function pullAll(): Promise<Record<string, number>> {
   const db = await getDatabase();
   const counts: Record<string, number> = {};
 
-  for (const table of SYNC_TABLES) {
-    counts[table] = await pullTable(db, table);
+  // Disable FK checks during sync — windowed tables (transactions) may not
+  // include rows referenced by junction tables (transaction_tags). Data
+  // integrity is enforced server-side by Supabase.
+  await db.execAsync("PRAGMA foreign_keys = OFF");
+  try {
+    for (const table of SYNC_TABLES) {
+      counts[table] = await pullTable(db, table);
+    }
+  } finally {
+    await db.execAsync("PRAGMA foreign_keys = ON");
   }
 
   return counts;

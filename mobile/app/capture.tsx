@@ -20,6 +20,7 @@ import {
   createQuickCaptureTransaction,
   createTransaction,
 } from "../lib/repositories/transactions";
+import { toLocalDateString } from "../lib/utils/date";
 
 const DEFAULT_ACCOUNT_KEY = "zeta.last_capture_account_id";
 
@@ -39,7 +40,7 @@ export default function CaptureScreen() {
   const [direction, setDirection] = useState<TransactionDirection>("OUTFLOW");
   const [amountInput, setAmountInput] = useState("");
   const [transactionDate, setTransactionDate] = useState(
-    new Date().toISOString().slice(0, 10)
+    toLocalDateString()
   );
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");

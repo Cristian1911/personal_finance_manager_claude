@@ -42,7 +42,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <AppKeyboardAwareScrollView
-      style={{ flex: 1, backgroundColor: "#F3F4F6" }}
+      style={{ flex: 1, backgroundColor: "#121412" }}
       contentContainerStyle={{
         flexGrow: 1,
         justifyContent: "center",
@@ -51,19 +51,19 @@ export default function ForgotPasswordScreen() {
       }}
       bottomOffset={20}
     >
-        <Text className="text-3xl font-bold text-center text-gray-900 mb-2">
+        <Text className="text-3xl font-bold text-center text-foreground mb-2">
           Recuperar contraseña
         </Text>
-        <Text className="text-base text-center text-gray-500 mb-10">
+        <Text className="text-base text-center text-muted-foreground mb-10">
           Te enviaremos un enlace a tu correo
         </Text>
 
         {success ? (
-          <View className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <Text className="text-green-700 text-sm text-center font-medium">
+          <View className="bg-z-income-12 border border-z-income-25 rounded-lg p-4 mb-6">
+            <Text className="text-z-income text-sm text-center font-medium">
               Correo enviado
             </Text>
-            <Text className="text-green-600 text-sm text-center mt-1">
+            <Text className="text-z-income text-sm text-center mt-1">
               Revisa tu bandeja de entrada y sigue las instrucciones para
               recuperar tu contraseña.
             </Text>
@@ -71,20 +71,20 @@ export default function ForgotPasswordScreen() {
         ) : (
           <>
             {error && (
-              <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                <Text className="text-red-700 text-sm text-center">
+              <View className="bg-z-debt-12 border border-z-debt-25 rounded-lg p-3 mb-4">
+                <Text className="text-z-debt text-sm text-center">
                   {error}
                 </Text>
               </View>
             )}
 
-            <Text className="text-sm font-medium text-gray-700 mb-1">
+            <Text className="text-sm font-medium text-muted-foreground mb-1">
               Correo electrónico
             </Text>
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-3 mb-6 text-base text-gray-900 bg-gray-50"
+              className="border border-white-6 rounded-lg px-4 py-3 mb-6 text-base text-foreground bg-black-10"
               placeholder="correo@ejemplo.com"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#938C7E"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -95,16 +95,16 @@ export default function ForgotPasswordScreen() {
 
             <TouchableOpacity
               className={`rounded-lg py-3.5 items-center ${
-                loading ? "bg-primary-light" : "bg-primary"
+                loading ? "bg-z-brass-70" : "bg-z-brass"
               }`}
               onPress={handleResetRequest}
               disabled={loading}
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color="#121412" />
               ) : (
-                <Text className="text-white font-semibold text-base">
+                <Text className="text-z-ink font-semibold text-base">
                   Enviar enlace
                 </Text>
               )}
@@ -116,7 +116,7 @@ export default function ForgotPasswordScreen() {
           className="mt-6 items-center"
           onPress={() => router.replace("/(auth)/login")}
         >
-          <Text className="text-sm text-primary font-medium">
+          <Text className="text-sm text-z-brass font-medium">
             Volver al inicio de sesión
           </Text>
         </TouchableOpacity>
