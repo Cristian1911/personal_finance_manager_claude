@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { ChevronDown, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import type { CurrencyCode, UpcomingRecurrence } from "@/types/domain";
 
 interface PlanFlowTimelineProps {
@@ -63,7 +64,7 @@ export function PlanFlowTimeline({
         <div className="divide-y divide-white/6">
           {sorted.map((item) => {
             const t = item.template;
-            const isIncome = t.direction === "INFLOW";
+            const isIncome = t.direction === "INFLOW" && !isDebtAccountType(t.account?.account_type);
             return (
               <div
                 key={t.id}

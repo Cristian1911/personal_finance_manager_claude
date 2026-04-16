@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { getTemplateStats, type TemplateStats } from "@/actions/template-stats";
+import { isDebtAccountType } from "@/lib/utils/account-balance";
 import type { CurrencyCode, RecurringTemplateWithRelations } from "@/types/domain";
 
 type OccurrenceStatus = "paid" | "pending" | "skipped" | null;
@@ -51,6 +52,8 @@ export function RecurringTemplateCard({
   const [loadingStats, setLoadingStats] = useState(false);
   const amount = Number(template.amount);
   const isOnce = template.frequency === "ONCE";
+  const isDebtPayment = isDebtAccountType(template.account.account_type);
+  const isIncome = template.direction === "INFLOW" && !isDebtPayment;
 
   function handleExpand() {
     onToggleExpand();
@@ -157,7 +160,7 @@ export function RecurringTemplateCard({
           {/* Action buttons */}
           <div className={cn(
             "grid gap-1.5",
-            isOnce ? "grid-cols-2" : template.direction === "INFLOW" ? "grid-cols-2" : "grid-cols-3"
+            isOnce ? "grid-cols-2" : isIncome ? "grid-cols-2" : "grid-cols-3"
           )}>
             <ActionButton
               label="Editar"
@@ -165,7 +168,7 @@ export function RecurringTemplateCard({
               className="bg-z-brass/10 border-z-brass/20 text-z-brass"
               onClick={() => router.push(`/recurrentes/${template.id}/edit`)}
             />
-            {template.direction === "OUTFLOW" && !isOnce && (
+            {!isIncome && !isOnce && (
               <ActionButton
                 label="Pausar"
                 icon={<Pause className="size-3.5" />}
