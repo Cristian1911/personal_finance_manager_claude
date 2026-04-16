@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, ArrowRight, Link2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -63,6 +63,8 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
   // the heavy CategoryPickerBody until the user actually interacts.
   const [openedOnceIds, setOpenedOnceIds] = useState<Set<string>>(new Set());
   const outflowCategories = useOutflowCategories();
+  // Refs for each row so we can scroll the expanded panel into view above the tab bar.
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   /* ---- Linkable account IDs (loaded client-side) ---- */
   const [linkableAccountIds, setLinkableAccountIds] = useState<Set<string>>(new Set());
@@ -145,17 +147,29 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
           const categoryIcon = optimisticCat?.icon ?? tx.category_icon;
           const categoryName = optimisticCat?.name ?? tx.category_name;
           return (
-            <div key={tx.id}>
+            <div
+              key={tx.id}
+              ref={(el) => {
+                rowRefs.current[tx.id] = el;
+              }}
+            >
               <button
                 type="button"
+                aria-expanded={isOpen}
+                aria-label={isOpen ? `Cerrar detalles de ${tx.description}` : `Ver acciones para ${tx.description}`}
                 onClick={() => {
-                  setExpandedId(isOpen ? null : tx.id);
-                  if (!isOpen) {
+                  const willOpen = !isOpen;
+                  setExpandedId(willOpen ? tx.id : null);
+                  if (willOpen) {
                     setOpenedOnceIds((prev) => {
                       if (prev.has(tx.id)) return prev;
                       const next = new Set(prev);
                       next.add(tx.id);
                       return next;
+                    });
+                    // Defer to next frame so the expanded panel has mounted before scrolling.
+                    requestAnimationFrame(() => {
+                      rowRefs.current[tx.id]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                     });
                   }
                 }}

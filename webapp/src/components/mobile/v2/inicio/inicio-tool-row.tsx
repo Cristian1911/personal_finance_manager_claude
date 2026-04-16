@@ -31,7 +31,7 @@ export function InicioToolRow({ currency }: InicioToolRowProps) {
             Evalúa tu próxima compra contra el plan
           </span>
         </span>
-        <ArrowRight className="size-5 text-z-brass" />
+        <ArrowRight className="size-5 text-z-brass" aria-hidden="true" />
       </button>
 
       <PurchaseRecommenderDrawer

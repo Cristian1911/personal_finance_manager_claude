@@ -63,6 +63,7 @@ export function InicioAttentionTimeline({
             <Link
               key={item.id}
               href={item.href}
+              aria-label={`${item.dateLabel} — ${item.title}${item.subtitle ? `: ${item.subtitle}` : ""}`}
               className={cn(
                 "flex min-w-[155px] shrink-0 flex-col gap-1 rounded-xl border bg-white/[0.02] p-3 transition-colors active:bg-white/[0.04]",
                 item.urgency === "overdue" && "border-z-debt/30 bg-z-debt/5",
@@ -97,9 +98,10 @@ export function InicioAttentionTimeline({
           ))}
           <Link
             href="/gestionar"
+            aria-label="Ver todos los pendientes en la bandeja"
             className="flex min-w-[72px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-white/6 bg-transparent p-3 text-muted-foreground active:bg-white/[0.03]"
           >
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-4" aria-hidden="true" />
             <span className="text-[10px]">Ver todo</span>
           </Link>
         </div>

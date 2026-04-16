@@ -139,6 +139,13 @@ export function InicioRoot({
         hasPendingEmails={live.attention.pendingEmails.length > 0}
       />
 
+      <InicioAttentionTimeline
+        overdueReminders={live.attention.overdueReminders}
+        upcomingPayments={live.attention.upcomingPayments}
+        pendingEmails={live.attention.pendingEmails}
+        upcomingIncome={upcomingIncome}
+      />
+
       <InicioMetricsGrid
         daysInMonth={metrics.daysInMonth}
         dayOfMonth={metrics.dayOfMonth}
@@ -150,13 +157,6 @@ export function InicioRoot({
         totalBudget={totalBudget}
         expanded={activeZone}
         onToggle={toggle}
-      />
-
-      <InicioAttentionTimeline
-        overdueReminders={live.attention.overdueReminders}
-        upcomingPayments={live.attention.upcomingPayments}
-        pendingEmails={live.attention.pendingEmails}
-        upcomingIncome={upcomingIncome}
       />
 
       <InicioToolRow currency={currency} />
