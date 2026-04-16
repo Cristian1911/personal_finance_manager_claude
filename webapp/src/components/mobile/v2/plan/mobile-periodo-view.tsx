@@ -105,6 +105,20 @@ export function MobilePeriodoView({
 
   const hasUnassigned = planData.unassigned_expenses.length > 0;
 
+  const totalIncome = income_envelopes.reduce(
+    (sum, env) => sum + env.total_amount,
+    0,
+  );
+  const net = totalIncome - total_expenses;
+
+  const dayOfMonth = new Date().getDate();
+  const periodLabel =
+    dayOfMonth <= 10
+      ? "Comienzo de mes"
+      : dayOfMonth <= 20
+        ? "Mitad de mes"
+        : "Fin de mes";
+
   /* ── Handlers ── */
   function cycleExpenseStatus(entry: PlanningEntryWithRelations) {
     startTransition(async () => { await toggleEntryStatus(entry.id, nextExpenseStatus(entry.status)); });
@@ -150,6 +164,33 @@ export function MobilePeriodoView({
 
   return (
     <div className="space-y-4">
+      {/* NETO hero — D3 */}
+      <div className="rounded-2xl border border-white/6 bg-z-surface-2 p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+            Neto del mes
+          </p>
+          <span className="text-[10px] text-muted-foreground">{periodLabel}</span>
+        </div>
+        <p
+          className={cn(
+            "mt-1 text-3xl font-bold tabular-nums",
+            net > 0
+              ? "text-z-income"
+              : net < 0
+                ? "text-z-expense"
+                : "text-z-brass",
+          )}
+        >
+          {net >= 0 ? "+" : ""}
+          {formatCurrency(net, currency)}
+        </p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          +{formatCurrency(totalIncome, currency)} · −
+          {formatCurrency(total_expenses, currency)}
+        </p>
+      </div>
+
       {/* Chart hero */}
       <PlanFlowChart timelineData={timelineData} currency={currency} />
 
