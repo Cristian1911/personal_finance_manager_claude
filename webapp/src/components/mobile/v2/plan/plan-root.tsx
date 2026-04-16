@@ -77,8 +77,6 @@ export function PlanRoot({
         periodoSummary={periodoSummary}
         wishlistCount={wishlistCount}
         currency={currency}
-        expanded={activeZone}
-        onToggle={toggle}
       />
 
       {/* Scenarios — only when stable */}
