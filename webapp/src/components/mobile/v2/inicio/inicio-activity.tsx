@@ -9,6 +9,9 @@ import { formatDate } from "@/lib/utils/date";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { TagChip } from "@/components/tags/tag-chip";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
+import { CategoryPickerBody } from "@/components/categories/category-zone-picker";
+import { useOutflowCategories } from "@/components/providers/app-data-provider";
+import { categorizeTransaction } from "@/actions/categorize";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import {
   getCandidateOccurrencesForTransaction,
@@ -38,14 +41,57 @@ interface InicioActivityProps {
   transactions: RecentTransactionMobile[];
 }
 
+function findCategoryById(
+  categories: Array<{ id: string; name_es?: string | null; icon?: string | null; children: Array<{ id: string; name_es?: string | null; icon?: string | null }> }>,
+  id: string,
+): { id: string; name: string; icon: string | null } | null {
+  for (const parent of categories) {
+    if (parent.id === id) {
+      return { id: parent.id, name: parent.name_es ?? "", icon: parent.icon ?? null };
+    }
+    const child = parent.children.find((c) => c.id === id);
+    if (child) {
+      return { id: child.id, name: child.name_es ?? "", icon: child.icon ?? null };
+    }
+  }
+  return null;
+}
+
 export function InicioActivity({ transactions }: InicioActivityProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const outflowCategories = useOutflowCategories();
 
   /* ---- Linkable account IDs (loaded client-side) ---- */
   const [linkableAccountIds, setLinkableAccountIds] = useState<Set<string>>(new Set());
   useEffect(() => {
     getAccountIdsWithPendingOccurrences().then((ids) => setLinkableAccountIds(new Set(ids)));
   }, []);
+
+  /* ---- Optimistic category assignment ---- */
+  const [optimisticCategories, setOptimisticCategories] = useState<
+    Record<string, { id: string; name: string; icon: string | null }>
+  >({});
+  const [, startCategoryTransition] = useTransition();
+
+  function handleAssignCategory(txId: string, categoryId: string) {
+    const category = findCategoryById(outflowCategories, categoryId);
+    if (!category) return;
+    setOptimisticCategories((prev) => ({ ...prev, [txId]: category }));
+    setExpandedId(null);
+    startCategoryTransition(async () => {
+      const result = await categorizeTransaction(txId, categoryId);
+      if (!result.success) {
+        setOptimisticCategories((prev) => {
+          const next = { ...prev };
+          delete next[txId];
+          return next;
+        });
+        toast.error(result.error ?? "Error al asignar categoría");
+      } else {
+        toast.success(`Categoría: ${category.name}`);
+      }
+    });
+  }
 
   /* ---- Link to recurring flow ---- */
   const [linkingTxId, setLinkingTxId] = useState<string | null>(null);
@@ -92,6 +138,9 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
       <div>
         {visible.map((tx) => {
           const isOpen = expandedId === tx.id;
+          const optimisticCat = optimisticCategories[tx.id];
+          const categoryIcon = optimisticCat?.icon ?? tx.category_icon;
+          const categoryName = optimisticCat?.name ?? tx.category_name;
           return (
             <div key={tx.id}>
               <button
@@ -127,14 +176,14 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                       style={{ backgroundColor: tx.account_color ?? undefined }}
                     />
                     <span className="truncate">{tx.account_name}</span>
-                    <span className="text-white/15">&middot;</span>
-                    {tx.category_icon ? (
-                      <span className="inline-flex items-center gap-0.5 truncate">
-                        <CategoryIcon icon={tx.category_icon} className="size-3 shrink-0" />
-                        {tx.category_name}
-                      </span>
-                    ) : (
-                      <span className="text-z-brass">Sin cat.</span>
+                    {categoryIcon && categoryName && (
+                      <>
+                        <span className="text-white/15">&middot;</span>
+                        <span className="inline-flex items-center gap-0.5 truncate">
+                          <CategoryIcon icon={categoryIcon} className="size-3 shrink-0" />
+                          {categoryName}
+                        </span>
+                      </>
                     )}
                   </p>
                   {tx.tags.length > 0 && (
@@ -170,32 +219,53 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
               >
                 <div className="overflow-hidden">
                   <div className={cn("py-1.5 transition-opacity duration-150", isOpen ? "opacity-100" : "opacity-0")}>
-                    <div className={cn(PANEL_INSET_CLASS, "border-z-brass/15 bg-black/20 p-2.5 flex items-center justify-between")}>
-                      <span className="text-[11px] text-muted-foreground">
-                        {tx.direction === "INFLOW" ? "Ingreso" : "Gasto"} &middot; {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {linkableAccountIds?.has(tx.account_id) && !tx.recurrence_group_id && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleOpenLinkPicker(tx.id);
-                            }}
+                    <div className={cn(PANEL_INSET_CLASS, "space-y-2 border-z-brass/15 bg-black/20 p-2.5")}>
+                      {/* Actions row */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-muted-foreground">
+                          {tx.direction === "INFLOW" ? "Ingreso" : "Gasto"} &middot; {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {linkableAccountIds?.has(tx.account_id) && !tx.recurrence_group_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleOpenLinkPicker(tx.id);
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
+                            >
+                              <Link2 className="size-2.5" />
+                              Vincular
+                            </button>
+                          )}
+                          <Link
+                            href={`/transactions/${tx.id}`}
                             className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
                           >
-                            <Link2 className="size-2.5" />
-                            Vincular
-                          </button>
-                        )}
-                        <Link
-                          href={`/transactions/${tx.id}`}
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
-                        >
-                          <Pencil className="size-2.5" />
-                          Ver detalle
-                        </Link>
+                            <Pencil className="size-2.5" />
+                            Ver detalle
+                          </Link>
+                        </div>
                       </div>
+                      {/* Inline category picker — OUTFLOW only; INFLOW txs use Ver detalle for the full form */}
+                      {tx.direction === "OUTFLOW" && (
+                        <div className="rounded-lg border border-white/6 bg-black/20 p-2">
+                          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                            Asignar categoría
+                          </p>
+                          <CategoryPickerBody
+                            categories={outflowCategories}
+                            value={optimisticCat?.id ?? null}
+                            onSelect={(id) => {
+                              if (id) handleAssignCategory(tx.id, id);
+                            }}
+                            onCategoryCreated={() => { /* no-op inline — user creates via /categories */ }}
+                            suggestion={null}
+                            direction="OUTFLOW"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
