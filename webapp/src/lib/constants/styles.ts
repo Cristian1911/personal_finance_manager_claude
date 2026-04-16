@@ -35,6 +35,10 @@ export const PANEL_INSET_CLASS = "rounded-2xl border border-white/6 bg-black/10"
 export const PANEL_INSET_INTERACTIVE_CLASS =
   "rounded-2xl border border-white/6 bg-black/10 transition-colors hover:bg-white/[0.03]";
 
+/** Subtle inset surface — lighter variant of PANEL_INSET_CLASS used by widget tiles */
+export const PANEL_INSET_SUBTLE_CLASS =
+  "rounded-2xl border border-white/6 bg-white/[0.02]";
+
 /** Mobile v2 card: inset container with figure/ground contrast */
 export const MOBILE_CARD_CLASS = `${PANEL_SURFACE_SUBTLE_CLASS} p-3`;
 

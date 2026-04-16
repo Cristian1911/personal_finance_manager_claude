@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, PANEL_INSET_SUBTLE_CLASS } from "@/lib/constants/styles";
 import { RunwayMiniChart } from "@/components/dashboard/runway-mini-chart";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 import type { CurrencyCode } from "@/types/domain";
@@ -35,7 +35,7 @@ function ArcRing({ percentage }: { percentage: number }) {
 
   return (
     <svg width={48} height={48} viewBox="0 0 48 48" className="shrink-0" aria-hidden>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#2a2d28" strokeWidth={4} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-z-surface-3)" strokeWidth={4} />
       <circle
         cx={cx} cy={cy} r={r} fill="none"
         stroke="var(--color-z-income)" strokeWidth={4}
@@ -76,7 +76,7 @@ export function InicioMetricsGrid({
   const isGastoActive = expanded === "gasto-hoy";
   const hasActive = isRitmoActive || isGastoActive;
 
-  const widgetTileClass = "flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-white/6 bg-white/[0.02] px-3 py-5 text-center transition-colors min-h-[120px]";
+  const widgetTileClass = `flex w-full flex-col items-center justify-center gap-2 ${PANEL_INSET_SUBTLE_CLASS} px-3 py-5 text-center transition-colors min-h-[120px]`;
 
   return (
     <div>

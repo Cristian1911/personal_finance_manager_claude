@@ -59,6 +59,9 @@ function findCategoryById(
 
 export function InicioActivity({ transactions }: InicioActivityProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Track which rows have been opened at least once so we can defer mounting
+  // the heavy CategoryPickerBody until the user actually interacts.
+  const [openedOnceIds, setOpenedOnceIds] = useState<Set<string>>(new Set());
   const outflowCategories = useOutflowCategories();
 
   /* ---- Linkable account IDs (loaded client-side) ---- */
@@ -145,7 +148,17 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
             <div key={tx.id}>
               <button
                 type="button"
-                onClick={() => setExpandedId(isOpen ? null : tx.id)}
+                onClick={() => {
+                  setExpandedId(isOpen ? null : tx.id);
+                  if (!isOpen) {
+                    setOpenedOnceIds((prev) => {
+                      if (prev.has(tx.id)) return prev;
+                      const next = new Set(prev);
+                      next.add(tx.id);
+                      return next;
+                    });
+                  }
+                }}
                 className={cn(
                   "flex w-full gap-2 px-1 py-2 text-left transition-colors active:bg-white/[0.03]",
                   isOpen && "border-l-2 border-l-z-brass pl-2"
@@ -156,8 +169,8 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                   className={cn(
                     "mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-md",
                     tx.direction === "INFLOW"
-                      ? "bg-green-500/12 text-z-income"
-                      : "bg-orange-500/12 text-z-expense"
+                      ? "bg-z-income/12 text-z-income"
+                      : "bg-z-expense/12 text-z-expense"
                   )}
                 >
                   {tx.direction === "INFLOW" ? (
@@ -248,10 +261,12 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                           </Link>
                         </div>
                       </div>
-                      {/* Inline category picker — OUTFLOW only; INFLOW txs use Ver detalle for the full form */}
-                      {tx.direction === "OUTFLOW" && (
+                      {/* Inline category picker — OUTFLOW only; INFLOW txs use Ver detalle for the full form.
+                          Lazy mount: only render the heavy picker tree once the row has been expanded
+                          at least once. Preserves the expand animation on subsequent open/close. */}
+                      {tx.direction === "OUTFLOW" && openedOnceIds.has(tx.id) && (
                         <div className="rounded-lg border border-white/6 bg-black/20 p-2">
-                          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                             Asignar categoría
                           </p>
                           <CategoryPickerBody

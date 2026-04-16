@@ -72,7 +72,7 @@ export function InicioAttentionTimeline({
             >
               <span
                 className={cn(
-                  "text-[9px] font-semibold uppercase tracking-[0.12em]",
+                  "text-[9px] font-semibold uppercase tracking-[0.18em]",
                   item.urgency === "overdue" && "text-z-debt",
                   item.urgency === "today" && "text-z-brass",
                   item.urgency === "future" && "text-muted-foreground",
