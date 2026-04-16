@@ -78,12 +78,28 @@ export function PlanExpandableChips({
   const expandedList = activeChip ? items[activeChip] : [];
   const config = activeChip ? CHIP_CONFIG[activeChip] : null;
 
+  // D2: sort by soonest next_date. Tie-breaker: payment first (debt urgency).
+  const nextIncomeDate = incomes[0]?.next_date ?? null;
+  const nextPaymentDate = payments[0]?.next_date ?? null;
+  const paymentSooner = (() => {
+    if (!nextIncomeDate && !nextPaymentDate) return false;
+    if (!nextIncomeDate) return true;
+    if (!nextPaymentDate) return false;
+    if (nextPaymentDate === nextIncomeDate) return true;
+    return nextPaymentDate < nextIncomeDate;
+  })();
+  const orderedTypes = paymentSooner
+    ? (["payment", "income"] as const)
+    : (["income", "payment"] as const);
+  const sooner = orderedTypes[0];
+
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
-        {(["income", "payment"] as const).map((type) => {
+        {orderedTypes.map((type) => {
           const c = CHIP_CONFIG[type];
           const next = items[type][0] ?? null;
+          const isSooner = type === sooner && next !== null;
           return (
             <button
               key={type}
@@ -92,7 +108,8 @@ export function PlanExpandableChips({
               className={cn(
                 "rounded-xl border p-3 text-left transition-all",
                 activeChip === type ? c.borderActive : c.borderInactive,
-                activeChip === OPPOSITE[type] && "opacity-50"
+                activeChip === OPPOSITE[type] && "opacity-50",
+                isSooner && activeChip !== type && "ring-1 ring-z-brass/30"
               )}
             >
               {next ? (
