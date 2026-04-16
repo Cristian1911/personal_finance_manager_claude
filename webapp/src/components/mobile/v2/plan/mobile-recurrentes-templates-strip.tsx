@@ -38,7 +38,7 @@ export function MobileRecurrentesTemplatesStrip({
   }
 
   return (
-    <div className="rounded-2xl border border-z-brass/18 bg-gradient-to-br from-z-brass/10 to-z-brass/[0.02] px-3.5 py-3">
+    <div className="rounded-2xl border border-z-brass/20 bg-gradient-to-br from-z-brass/10 to-z-brass/[0.02] px-3.5 py-3">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}

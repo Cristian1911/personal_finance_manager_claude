@@ -153,7 +153,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
             </div>
 
             {/* Progress bar */}
-            <div className="relative mt-3 h-2.5 rounded-full bg-[#1e221d]">
+            <div className="relative mt-3 h-2.5 rounded-full bg-z-surface-2">
               <div
                 className={cn(
                   "h-full rounded-full",

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Wallet, CalendarCheck, RefreshCw, Heart } from "lucide-react";
+import { MOBILE_EYEBROW_CLASS, PANEL_INSET_SUBTLE_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import type { PlanBudgetSummary, PlanRecurringSummary } from "@/types/plan";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -22,11 +24,12 @@ function DrillChip({ label, href, icon: Icon, caption }: DrillChipProps) {
   return (
     <Link
       href={href}
-      className="flex min-h-[150px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/6 bg-white/[0.02] p-4 transition-colors active:bg-white/[0.04]"
+      className={cn(
+        PANEL_INSET_SUBTLE_CLASS,
+        "flex min-h-[150px] flex-col items-center justify-center gap-3 p-4 transition-colors active:bg-white/[0.04]",
+      )}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </span>
+      <span className={MOBILE_EYEBROW_CLASS}>{label}</span>
       <Icon className="size-10 text-z-brass/85" aria-hidden />
       <div className="text-center text-xs font-medium text-muted-foreground">{caption}</div>
     </Link>
@@ -76,9 +79,7 @@ export function PlanDrillCards({
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Ir a
-      </p>
+      <p className={MOBILE_EYEBROW_CLASS}>Ir a</p>
       <div className="grid grid-cols-2 gap-2">
         <DrillChip
           label="Presupuesto"
