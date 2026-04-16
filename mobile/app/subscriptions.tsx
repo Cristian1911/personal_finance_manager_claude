@@ -56,7 +56,11 @@ type RecurringTemplateRow = Pick<
 >;
 
 function getTodayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function getScheduleLabel(template: RecurringTemplateRow): string {
@@ -350,9 +354,9 @@ export default function SubscriptionsScreen() {
             <Pressable
               onPress={resetForm}
               disabled={saving || loading}
-              className="rounded-xl border border-gray-300 px-4 py-3 items-center justify-center"
+              className="rounded-xl border border-white-6 px-4 py-3 items-center justify-center"
             >
-              <Text className="text-gray-700 font-inter-medium text-sm">Cancelar</Text>
+              <Text className="text-foreground font-inter-medium text-sm">Cancelar</Text>
             </Pressable>
           ) : null}
         </View>
@@ -364,11 +368,11 @@ export default function SubscriptionsScreen() {
         </View>
       ) : (
         <>
-          <View className="rounded-xl border border-gray-200 bg-white p-4">
-            <Text className="text-gray-900 font-inter-semibold text-base">
+          <View className="rounded-xl border border-white-6 bg-z-surface-2-55 p-4">
+            <Text className="text-foreground font-inter-semibold text-base">
               {editingId ? "Editar suscripción" : "Nueva suscripción"}
             </Text>
-            <Text className="text-gray-500 font-inter text-xs mt-1">
+            <Text className="text-muted-foreground font-inter text-xs mt-1">
               Registra pagos como gym, Netflix, YouTube Premium, Codex, Supabase o Notion.
             </Text>
 
@@ -377,38 +381,40 @@ export default function SubscriptionsScreen() {
                 <Pressable
                   key={name}
                   onPress={() => useSuggestedName(name)}
-                  className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 active:bg-emerald-100"
+                  className="rounded-full border border-z-brass/30 bg-z-brass/10 px-3 py-1.5 active:bg-z-brass/20"
                 >
-                  <Text className="text-emerald-700 font-inter-medium text-xs">{name}</Text>
+                  <Text className="text-z-brass font-inter-medium text-xs">{name}</Text>
                 </Pressable>
               ))}
             </View>
 
-            <Text className="mt-4 mb-1 text-sm font-inter-medium text-gray-700">
+            <Text className="mt-4 mb-1 text-sm font-inter-medium text-foreground">
               Servicio / Membresía
             </Text>
             <TextInput
               value={merchantName}
               onChangeText={setMerchantName}
               placeholder="Ej: Netflix"
-              className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+              placeholderTextColor="#938C7E"
+              className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
             />
 
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">Monto</Text>
+            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">Monto</Text>
             <TextInput
               value={amountInput}
               onChangeText={setAmountInput}
               keyboardType="decimal-pad"
               placeholder="Ej: 49900"
-              className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+              placeholderTextColor="#938C7E"
+              className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
             />
 
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">
+            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">
               Cuenta de cobro
             </Text>
             {accounts.length === 0 ? (
-              <View className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
-                <Text className="text-amber-700 font-inter text-xs">
+              <View className="rounded-xl border border-amber-700/30 bg-amber-900/20 px-3 py-2.5">
+                <Text className="text-amber-400 font-inter text-xs">
                   Crea una cuenta primero para registrar suscripciones.
                 </Text>
               </View>
@@ -423,12 +429,12 @@ export default function SubscriptionsScreen() {
                       className={`rounded-xl border px-3 py-2 ${
                         selected
                           ? "border-primary bg-primary-light"
-                          : "border-gray-300 bg-white"
+                          : "border-white-6 bg-black-10"
                       }`}
                     >
                       <Text
                         className={`font-inter-medium text-xs ${
-                          selected ? "text-primary-dark" : "text-gray-700"
+                          selected ? "text-primary-dark" : "text-foreground"
                         }`}
                       >
                         {account.name}
@@ -439,7 +445,7 @@ export default function SubscriptionsScreen() {
               </View>
             )}
 
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">Frecuencia</Text>
+            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">Frecuencia</Text>
             <View className="flex-row gap-2">
               {FREQUENCY_OPTIONS.map((option) => {
                 const selected = frequency === option.value;
@@ -448,12 +454,12 @@ export default function SubscriptionsScreen() {
                     key={option.value}
                     onPress={() => setFrequency(option.value)}
                     className={`rounded-xl border px-3 py-2 ${
-                      selected ? "border-primary bg-primary-light" : "border-gray-300 bg-white"
+                      selected ? "border-primary bg-primary-light" : "border-white-6 bg-black-10"
                     }`}
                   >
                     <Text
                       className={`font-inter-medium text-xs ${
-                        selected ? "text-primary-dark" : "text-gray-700"
+                        selected ? "text-primary-dark" : "text-foreground"
                       }`}
                     >
                       {option.label}
@@ -463,36 +469,38 @@ export default function SubscriptionsScreen() {
               })}
             </View>
 
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">Día de cobro</Text>
+            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">Día de cobro</Text>
             <TextInput
               value={dayOfMonthInput}
               onChangeText={setDayOfMonthInput}
               keyboardType="number-pad"
               placeholder="1 - 31"
-              className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+              placeholderTextColor="#938C7E"
+              className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
             />
 
-            <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">
+            <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">
               Nota (opcional)
             </Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
               placeholder="Ej: Plan familiar"
-              className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+              placeholderTextColor="#938C7E"
+              className="rounded-xl border border-white-6 bg-black-10 px-3 py-2.5 text-foreground"
             />
 
           </View>
 
           <View className="pt-5 pb-2">
-            <Text className="text-gray-500 font-inter-semibold text-xs uppercase">
+            <Text className="text-muted-foreground font-inter-semibold text-xs uppercase">
               Suscripciones registradas
             </Text>
           </View>
 
           {items.length === 0 ? (
-            <View className="rounded-2xl bg-white p-5">
-              <Text className="text-center text-sm text-gray-600 font-inter">
+            <View className="rounded-2xl bg-z-surface-2-55 p-5">
+              <Text className="text-center text-sm text-muted-foreground font-inter">
                 No hay suscripciones todavía.
               </Text>
             </View>
@@ -502,25 +510,25 @@ export default function SubscriptionsScreen() {
                 const account = accountsById.get(item.account_id);
                 const isBusy = togglingId === item.id || deletingId === item.id;
                 return (
-                  <View key={item.id} className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
+                  <View key={item.id} className="mb-3 rounded-2xl bg-z-surface-2-55 p-4">
                     <View className="flex-row items-start justify-between">
                       <View className="flex-1 pr-3">
-                        <Text className="text-gray-900 font-inter-semibold text-base">
+                        <Text className="text-foreground font-inter-semibold text-base">
                           {item.merchant_name ?? "Suscripción"}
                         </Text>
-                        <Text className="text-gray-500 font-inter text-xs mt-1">
+                        <Text className="text-muted-foreground font-inter text-xs mt-1">
                           {account?.name ?? "Cuenta no disponible"}
                         </Text>
                       </View>
 
                       <View
                         className={`rounded-full px-2.5 py-1 ${
-                          item.is_active ? "bg-emerald-100" : "bg-gray-200"
+                          item.is_active ? "bg-z-income/10" : "bg-black-10"
                         }`}
                       >
                         <Text
                           className={`font-inter-medium text-xs ${
-                            item.is_active ? "text-emerald-700" : "text-gray-600"
+                            item.is_active ? "text-z-income" : "text-muted-foreground"
                           }`}
                         >
                           {item.is_active ? "Activa" : "Pausada"}
@@ -529,19 +537,19 @@ export default function SubscriptionsScreen() {
                     </View>
 
                     <View className="mt-3 flex-row items-center justify-between">
-                      <Text className="text-gray-900 font-inter-bold text-base">
+                      <Text className="text-foreground font-inter-bold text-base">
                         {formatCurrency(item.amount, item.currency_code as CurrencyCode)}
                       </Text>
                       <View className="flex-row items-center">
-                        <Repeat size={14} color="#6B7280" />
-                        <Text className="ml-1 text-gray-500 font-inter text-xs">
+                        <Repeat size={14} color="#938C7E" />
+                        <Text className="ml-1 text-muted-foreground font-inter text-xs">
                           {getScheduleLabel(item)}
                         </Text>
                       </View>
                     </View>
 
                     {item.description ? (
-                      <Text className="mt-2 text-gray-500 font-inter text-xs">
+                      <Text className="mt-2 text-muted-foreground font-inter text-xs">
                         {item.description}
                       </Text>
                     ) : null}
@@ -549,21 +557,21 @@ export default function SubscriptionsScreen() {
                     <View className="mt-3 flex-row gap-2">
                       <Pressable
                         onPress={() => beginEdit(item)}
-                        className="rounded-xl border border-gray-300 px-3 py-2 active:bg-gray-50"
+                        className="rounded-xl border border-white-6 px-3 py-2 active:bg-black-10"
                         disabled={isBusy || saving}
                       >
-                        <Text className="text-gray-700 font-inter-medium text-xs">Editar</Text>
+                        <Text className="text-foreground font-inter-medium text-xs">Editar</Text>
                       </Pressable>
 
                       <Pressable
                         onPress={() => toggleActive(item)}
-                        className="rounded-xl border border-sky-200 px-3 py-2 active:bg-sky-50"
+                        className="rounded-xl border border-sky-700/30 px-3 py-2 active:bg-sky-900/20"
                         disabled={isBusy || saving}
                       >
                         {togglingId === item.id ? (
                           <ActivityIndicator size="small" color="#0284C7" />
                         ) : (
-                          <Text className="text-sky-700 font-inter-medium text-xs">
+                          <Text className="text-sky-400 font-inter-medium text-xs">
                             {item.is_active ? "Pausar" : "Activar"}
                           </Text>
                         )}
@@ -571,7 +579,7 @@ export default function SubscriptionsScreen() {
 
                       <Pressable
                         onPress={() => handleDelete(item)}
-                        className="rounded-xl border border-red-200 px-3 py-2 active:bg-red-50"
+                        className="rounded-xl border border-z-debt/30 px-3 py-2 active:bg-z-debt/10"
                         disabled={isBusy || saving}
                       >
                         {deletingId === item.id ? (
@@ -579,7 +587,7 @@ export default function SubscriptionsScreen() {
                         ) : (
                           <View className="flex-row items-center">
                             <Trash2 size={12} color="#DC2626" />
-                            <Text className="ml-1 text-red-600 font-inter-medium text-xs">
+                            <Text className="ml-1 text-z-expense font-inter-medium text-xs">
                               Eliminar
                             </Text>
                           </View>

@@ -1,3 +1,4 @@
+import { COLORS } from "../../lib/constants/colors";
 import { useState, useEffect } from "react";
 import {
   Alert,
@@ -145,7 +146,7 @@ export default function LoginScreen() {
 
   return (
     <AppKeyboardAwareScrollView
-      style={{ flex: 1, backgroundColor: "#F3F4F6" }}
+      style={{ flex: 1, backgroundColor: COLORS.ink }}
       contentContainerStyle={{
         flexGrow: 1,
         justifyContent: "center",
@@ -154,13 +155,13 @@ export default function LoginScreen() {
       }}
       bottomOffset={20}
     >
-        <Text className="text-base font-inter-bold text-center text-emerald-600 mb-3">
+        <Text className="text-base font-inter-bold text-center text-z-brass mb-3">
           Zeta
         </Text>
-        <Text className="text-3xl font-bold text-center text-gray-900 mb-2">
+        <Text className="text-3xl font-bold text-center text-foreground mb-2">
           Bienvenido
         </Text>
-        <Text className="text-base text-center text-gray-500 mb-10">
+        <Text className="text-base text-center text-muted-foreground mb-10">
           Tu dinero, con identidad y foco
         </Text>
 
@@ -171,31 +172,31 @@ export default function LoginScreen() {
             disabled={loading}
             activeOpacity={0.7}
           >
-            <View className="bg-emerald-50 border border-emerald-200 rounded-full p-4">
-              <Fingerprint size={36} color="#C5BFAE" />
+            <View className="bg-z-brass-12 border border-z-brass-25 rounded-full p-4">
+              <Fingerprint size={36} color="#937844" />
             </View>
-            <Text className="text-emerald-700 font-inter-medium text-sm">
+            <Text className="text-z-brass font-inter-medium text-sm">
               Ingresar con biometría
             </Text>
-            <Text className="text-gray-400 font-inter text-xs">
+            <Text className="text-muted-fg-50 font-inter text-xs">
               o usa tu correo y contraseña
             </Text>
           </TouchableOpacity>
         )}
 
         {error && (
-          <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-            <Text className="text-red-700 text-sm text-center">{error}</Text>
+          <View className="bg-z-debt-12 border border-z-debt-25 rounded-lg p-3 mb-4">
+            <Text className="text-z-debt text-sm text-center">{error}</Text>
           </View>
         )}
 
-        <Text className="text-sm font-medium text-gray-700 mb-1">
+        <Text className="text-sm font-medium text-muted-foreground mb-1">
           Correo electronico
         </Text>
         <TextInput
-          className="border border-gray-300 rounded-lg px-4 py-3 mb-4 text-base text-gray-900 bg-gray-50"
+          className="border border-white-6 rounded-lg px-4 py-3 mb-4 text-base text-foreground bg-black-10"
           placeholder="correo@ejemplo.com"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#938C7E"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -204,13 +205,13 @@ export default function LoginScreen() {
           textContentType="emailAddress"
         />
 
-        <Text className="text-sm font-medium text-gray-700 mb-1">
+        <Text className="text-sm font-medium text-muted-foreground mb-1">
           Contrasena
         </Text>
         <TextInput
-          className="border border-gray-300 rounded-lg px-4 py-3 mb-6 text-base text-gray-900 bg-gray-50"
+          className="border border-white-6 rounded-lg px-4 py-3 mb-6 text-base text-foreground bg-black-10"
           placeholder="Tu contrasena"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#938C7E"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -220,16 +221,16 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           className={`rounded-lg py-3.5 items-center ${
-            loading ? "bg-primary-light" : "bg-primary"
+            loading ? "bg-z-brass-70" : "bg-z-brass"
           }`}
           onPress={handleLogin}
           disabled={loading}
           activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#121412" />
           ) : (
-            <Text className="text-white font-semibold text-base">
+            <Text className="text-z-ink font-semibold text-base">
               Iniciar sesion
             </Text>
           )}
@@ -237,16 +238,16 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           className={`mt-3 rounded-lg py-3.5 items-center border ${
-            demoLoading ? "border-gray-200 bg-gray-100" : "border-gray-300 bg-white"
+            demoLoading ? "border-white-6 bg-white-5" : "border-white-6 bg-z-surface-2-55"
           }`}
           onPress={handleTryDemo}
           disabled={demoLoading || loading}
           activeOpacity={0.8}
         >
           {demoLoading ? (
-            <ActivityIndicator color="#6B7280" />
+            <ActivityIndicator color="#938C7E" />
           ) : (
-            <Text className="text-gray-700 font-semibold text-base">
+            <Text className="text-foreground font-semibold text-base">
               Probar demo sin cuenta
             </Text>
           )}
@@ -256,7 +257,7 @@ export default function LoginScreen() {
           className="mt-4 items-center"
           onPress={() => router.push("/(auth)/forgot-password")}
         >
-          <Text className="text-sm text-emerald-600 font-medium">
+          <Text className="text-sm text-z-brass font-medium">
             ¿Olvidaste tu contraseña?
           </Text>
         </TouchableOpacity>
@@ -265,9 +266,9 @@ export default function LoginScreen() {
           className="mt-4 items-center"
           onPress={() => router.push("/(auth)/signup")}
         >
-          <Text className="text-sm text-gray-500">
+          <Text className="text-sm text-muted-foreground">
             ¿No tienes cuenta?{" "}
-            <Text className="text-emerald-600 font-medium">Regístrate</Text>
+            <Text className="text-z-brass font-medium">Regístrate</Text>
           </Text>
         </TouchableOpacity>
     </AppKeyboardAwareScrollView>

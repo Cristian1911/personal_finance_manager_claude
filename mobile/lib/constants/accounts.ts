@@ -15,6 +15,9 @@ export function isDebtAccountType(type: string): boolean {
   return DEBT_ACCOUNT_TYPES.has(type);
 }
 
+/** Liquid account types — CHECKING + SAVINGS. Used for plan calculations and disponible. */
+export const LIQUID_ACCOUNT_TYPES = new Set(["CHECKING", "SAVINGS"]);
+
 export const ACCOUNT_TYPES = [
   {
     value: "CHECKING",

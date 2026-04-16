@@ -34,12 +34,12 @@ export function ScreenshotAnnotator({ screenshotUri, onAnnotated }: Props) {
           style={styles.annotateButton}
           onPress={() => router.push("/annotate-screenshot" as never)}
         >
-          <Pencil size={14} color="#FFFFFF" />
+          <Pencil size={14} color="#121412" />
           <Text style={styles.annotateLabel}>Anotar</Text>
         </Pressable>
 
         <Pressable style={styles.toolButton} onPress={() => onAnnotated("")}>
-          <Trash2 size={14} color="#374151" />
+          <Trash2 size={14} color="#C5BFAE" />
           <Text style={styles.toolLabel}>Quitar</Text>
         </Pressable>
 
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "rgba(255,255,255,0.06)",
     overflow: "hidden",
   },
   image: {
@@ -68,9 +68,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#121412",
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    borderTopColor: "rgba(255,255,255,0.06)",
     gap: 8,
   },
   annotateButton: {
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   annotateLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "#121412",
   },
   toolButton: {
     flexDirection: "row",
@@ -93,28 +93,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#1A1C1A",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "rgba(255,255,255,0.06)",
     gap: 4,
   },
   toolLabel: {
     fontSize: 12,
     fontWeight: "500",
-    color: "#374151",
+    color: "#C5BFAE",
   },
   doneButton: {
     marginLeft: "auto",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#1A1C1A",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "rgba(255,255,255,0.06)",
   },
   doneLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#374151",
+    color: "#C5BFAE",
   },
 });

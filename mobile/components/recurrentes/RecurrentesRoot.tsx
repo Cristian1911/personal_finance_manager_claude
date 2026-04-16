@@ -3,6 +3,7 @@ import { Pressable, Text, View, ScrollView, RefreshControl } from "react-native"
 import { useFocusEffect } from "expo-router";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import type { CurrencyCode } from "@zeta/shared";
+import { toLocalMonthString } from "../../lib/utils/date";
 import { useSync } from "../../lib/sync/hooks";
 import {
   getOccurrencesForMonth,
@@ -38,7 +39,7 @@ export function RecurrentesRoot() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(
-    () => new Date().toISOString().slice(0, 7)
+    () => toLocalMonthString()
   );
   const [occurrences, setOccurrences] = useState<OccurrenceWithTemplate[]>([]);
   const [summary, setSummary] = useState<RecurringSummary>(EMPTY_SUMMARY);

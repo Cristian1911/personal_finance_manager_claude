@@ -68,6 +68,14 @@ export async function getBoughtWishlistItems(): Promise<WishlistItemWithCategory
   );
 }
 
+export async function getWishlistCount(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ count: number }>(
+    "SELECT COUNT(*) AS count FROM wishlist_items WHERE status = 'wishlist'"
+  );
+  return row?.count ?? 0;
+}
+
 export async function getWishlistSummary() {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{

@@ -69,9 +69,9 @@ function DetailRow({
 }) {
   if (!value) return null;
   return (
-    <View className="flex-row items-start py-3 border-b border-gray-100">
-      <Text className="text-gray-500 font-inter text-sm w-20 mt-0.5">{label}</Text>
-      <Text className="text-gray-900 font-inter-medium text-sm text-right flex-1 ml-4 leading-5">
+    <View className="flex-row items-start py-3 border-b border-white-6">
+      <Text className="text-muted-foreground font-inter text-sm w-20 mt-0.5">{label}</Text>
+      <Text className="text-foreground font-inter-medium text-sm text-right flex-1 ml-4 leading-5">
         {value}
       </Text>
     </View>
@@ -89,9 +89,9 @@ function FormField({
 }) {
   return (
     <View className="mb-4">
-      <Text className="text-gray-700 font-inter-medium text-sm mb-1.5">
+      <Text className="text-foreground font-inter-medium text-sm mb-1.5">
         {label}
-        {required && <Text className="text-red-500"> *</Text>}
+        {required && <Text className="text-z-expense"> *</Text>}
       </Text>
       {children}
     </View>
@@ -115,10 +115,10 @@ function getHeroAmountColorClass(
   isDebtPayment: boolean,
   isInflow: boolean
 ): string {
-  if (isExcluded) return "text-gray-300";
-  if (isDebtPayment) return "text-sky-600";
-  if (isInflow) return "text-green-600";
-  return "text-gray-900";
+  if (isExcluded) return "text-muted-fg-50";
+  if (isDebtPayment) return "text-z-brass";
+  if (isInflow) return "text-z-income";
+  return "text-foreground";
 }
 
 export default function TransactionDetailScreen() {
@@ -299,29 +299,29 @@ export default function TransactionDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color=COLORS.income />
       </View>
     );
   }
 
   if (!transaction) {
     return (
-      <View className="flex-1 bg-white">
+      <View className="flex-1 bg-background">
         <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
           <Pressable
             onPress={() => router.back()}
-            className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+            className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
           >
-            <X size={18} color="#6B7280" />
+            <X size={18} color="#938C7E" />
           </Pressable>
-          <Text className="text-gray-900 font-inter-bold text-base">
+          <Text className="text-foreground font-inter-bold text-base">
             Detalle
           </Text>
           <View className="w-8" />
         </View>
         <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-gray-400 font-inter text-base">
+          <Text className="text-muted-fg-50 font-inter text-base">
             Transaccion no encontrada
           </Text>
         </View>
@@ -343,7 +343,7 @@ export default function TransactionDetailScreen() {
   const statusLabel = STATUS_LABELS[transaction.status ?? ""] ?? (transaction.status ?? "Desconocido");
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
         {isEditing ? (
@@ -353,11 +353,11 @@ export default function TransactionDetailScreen() {
               className="h-8 px-2 items-center justify-center"
               disabled={saving}
             >
-              <Text className="text-gray-500 font-inter-medium text-sm">
+              <Text className="text-muted-foreground font-inter-medium text-sm">
                 Cancelar
               </Text>
             </Pressable>
-            <Text className="text-gray-900 font-inter-bold text-base">
+            <Text className="text-foreground font-inter-bold text-base">
               Editar transacción
             </Text>
             <Pressable
@@ -366,7 +366,7 @@ export default function TransactionDetailScreen() {
               disabled={saving}
             >
               {saving ? (
-                <ActivityIndicator size="small" color="#10B981" />
+                <ActivityIndicator size="small" color=COLORS.income />
               ) : (
                 <Text className="text-primary font-inter-bold text-sm">
                   Guardar
@@ -378,25 +378,25 @@ export default function TransactionDetailScreen() {
           <>
             <Pressable
               onPress={() => router.back()}
-              className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
             >
-              <X size={18} color="#6B7280" />
+              <X size={18} color="#938C7E" />
             </Pressable>
-            <Text className="text-gray-900 font-inter-bold text-base">
+            <Text className="text-foreground font-inter-bold text-base">
               Detalle
             </Text>
             <View className="flex-row gap-2">
               <Pressable
                 onPress={enterEditMode}
-                className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+                className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
               >
-                <Pencil size={16} color="#6B7280" />
+                <Pencil size={16} color="#938C7E" />
               </Pressable>
               <Pressable
                 onPress={handleDelete}
-                className="w-8 h-8 items-center justify-center rounded-full bg-red-50 active:bg-red-100"
+                className="w-8 h-8 items-center justify-center rounded-full bg-z-debt/10 active:bg-z-debt/20"
               >
-                <Trash2 size={16} color="#EF4444" />
+                <Trash2 size={16} color={COLORS.debt} />
               </Pressable>
             </View>
           </>
@@ -405,8 +405,8 @@ export default function TransactionDetailScreen() {
 
       {/* Success banner */}
       {successVisible && (
-        <View className="mx-4 mb-2 bg-green-50 rounded-xl px-4 py-2.5">
-          <Text className="text-green-700 font-inter-medium text-sm">
+        <View className="mx-4 mb-2 bg-z-income/10 rounded-xl px-4 py-2.5">
+          <Text className="text-z-income font-inter-medium text-sm">
             Cambios guardados correctamente
           </Text>
         </View>
@@ -427,11 +427,11 @@ export default function TransactionDetailScreen() {
             {/* Merchant */}
             <FormField label="Comercio">
               <TextInput
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 text-foreground font-inter text-sm"
                 value={editMerchantName}
                 onChangeText={setEditMerchantName}
                 placeholder="Nombre del comercio"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#938C7E"
                 autoCapitalize="words"
               />
             </FormField>
@@ -439,22 +439,22 @@ export default function TransactionDetailScreen() {
             {/* Description */}
             <FormField label="Descripción">
               <TextInput
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 text-foreground font-inter text-sm"
                 value={editDescription}
                 onChangeText={setEditDescription}
                 placeholder="Descripción de la transacción"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#938C7E"
               />
             </FormField>
 
             {/* Amount */}
             <FormField label="Monto" required>
               <TextInput
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 text-foreground font-inter text-sm"
                 value={editAmount}
                 onChangeText={setEditAmount}
                 placeholder="0"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#938C7E"
                 keyboardType="decimal-pad"
               />
             </FormField>
@@ -463,43 +463,43 @@ export default function TransactionDetailScreen() {
             <FormField label="Fecha" required>
               <Pressable
                 onPress={() => setShowDatePicker(true)}
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-gray-50"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-white/10"
               >
-                <Text className="text-gray-900 font-inter text-sm">
+                <Text className="text-foreground font-inter text-sm">
                   {editDate.toLocaleDateString("es-CO", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
                   })}
                 </Text>
-                <Calendar size={16} color="#9CA3AF" />
+                <Calendar size={16} color="#938C7E" />
               </Pressable>
             </FormField>
 
             {/* Category */}
             <FormField label="Categoría">
               {isDebtPayment ? (
-                <View className="bg-sky-50 border border-sky-200 rounded-xl px-4 py-3 flex-row items-center justify-between">
-                  <Text className="font-inter-medium text-sm text-sky-700">
+                <View className="bg-sky-900/20 border border-sky-700/30 rounded-xl px-4 py-3 flex-row items-center justify-between">
+                  <Text className="font-inter-medium text-sm text-sky-400">
                     Abono a deuda
                   </Text>
-                  <Text className="font-inter text-xs text-sky-600">
+                  <Text className="font-inter text-xs text-sky-500">
                     Categoria fija
                   </Text>
                 </View>
               ) : (
                 <Pressable
                   onPress={() => setShowCategoryPicker(true)}
-                  className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-gray-50"
+                  className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-white/10"
                 >
                   <Text
                     className={`font-inter text-sm ${
-                      editCategoryName ? "text-gray-900" : "text-gray-400"
+                      editCategoryName ? "text-foreground" : "text-muted-fg-50"
                     }`}
                   >
                     {editCategoryName ?? "Sin categoría"}
                   </Text>
-                  <Tag size={16} color="#9CA3AF" />
+                  <Tag size={16} color="#938C7E" />
                 </Pressable>
               )}
             </FormField>
@@ -507,32 +507,32 @@ export default function TransactionDetailScreen() {
             {/* Notes */}
             <FormField label="Notas">
               <TextInput
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 text-foreground font-inter text-sm"
                 value={editNotes}
                 onChangeText={setEditNotes}
                 placeholder="Agregar nota..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#938C7E"
                 multiline
                 style={{ minHeight: 72, textAlignVertical: "top" }}
               />
             </FormField>
 
             {/* Exclude from totals */}
-            <View className="flex-row items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 mb-4">
+            <View className="flex-row items-center justify-between bg-black-10 border border-white-6 rounded-xl px-4 py-3 mb-4">
               <View className="flex-1 mr-4">
-                <Text className="text-gray-700 font-inter-medium text-sm">
+                <Text className="text-foreground font-inter-medium text-sm">
                   Excluir de totales
                 </Text>
-                <Text className="text-gray-500 font-inter text-xs mt-0.5">
+                <Text className="text-muted-foreground font-inter text-xs mt-0.5">
                   No contabilizar en estadísticas
                 </Text>
               </View>
               <Switch
                 value={editIsExcluded}
                 onValueChange={setEditIsExcluded}
-                trackColor={{ false: "#E5E7EB", true: "#10B981" }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor="#E5E7EB"
+                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                thumbColor={COLORS.foreground}
+                ios_backgroundColor="#3A3A3A"
               />
             </View>
           </ScrollView>
@@ -541,16 +541,16 @@ export default function TransactionDetailScreen() {
         /* ── Read-only view ── */
         <ScrollView className="flex-1">
           {/* Amount hero */}
-          <View className="items-center pt-6 pb-5 border-b border-gray-100 mx-4">
-            <Text className="text-gray-500 font-inter text-sm mb-1">
+          <View className="items-center pt-6 pb-5 border-b border-white-6 mx-4">
+            <Text className="text-muted-foreground font-inter text-sm mb-1">
               {getTransactionTypeLabel({
                 direction: transaction.direction,
                 accountType: transaction.account_type,
               })}
             </Text>
             {isExcluded && (
-              <View className="flex-row items-center bg-amber-50 px-3 py-1 rounded-full mb-2">
-                <Text className="text-amber-600 font-inter-medium text-xs">
+              <View className="flex-row items-center bg-amber-900/20 px-3 py-1 rounded-full mb-2">
+                <Text className="text-z-alert font-inter-medium text-xs">
                   Excluido de totales
                 </Text>
               </View>
@@ -568,7 +568,7 @@ export default function TransactionDetailScreen() {
             {transaction.merchant_name && (
               <Text
                 className={`font-inter-medium text-base mt-2 ${
-                  isExcluded ? "text-gray-400" : "text-gray-700"
+                  isExcluded ? "text-muted-fg-50" : "text-foreground"
                 }`}
               >
                 {transaction.merchant_name}
@@ -603,21 +603,21 @@ export default function TransactionDetailScreen() {
             <DetailRow label="Notas" value={transaction.notes} />
 
             {/* Exclude toggle */}
-            <View className="flex-row items-center justify-between py-3 border-b border-gray-100">
+            <View className="flex-row items-center justify-between py-3 border-b border-white-6">
               <View>
-                <Text className="text-gray-500 font-inter text-sm">
+                <Text className="text-muted-foreground font-inter text-sm">
                   Excluir de totales
                 </Text>
-                <Text className="text-gray-400 font-inter text-xs mt-0.5">
+                <Text className="text-muted-fg-50 font-inter text-xs mt-0.5">
                   No afecta estadísticas ni presupuestos
                 </Text>
               </View>
               <Switch
                 value={isExcluded}
                 onValueChange={handleToggleExclude}
-                trackColor={{ false: "#E5E7EB", true: "#10B981" }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor="#E5E7EB"
+                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                thumbColor={COLORS.foreground}
+                ios_backgroundColor="#3A3A3A"
               />
             </View>
           </View>
@@ -640,7 +640,7 @@ export default function TransactionDetailScreen() {
       {showDatePicker && Platform.OS === "ios" ? (
         <Modal transparent animationType="slide">
           <View className="flex-1 justify-end bg-black/40">
-            <View className="bg-white rounded-t-2xl pt-2 pb-6">
+            <View className="bg-z-surface-2-55 rounded-t-2xl pt-2 pb-6">
               <View className="flex-row justify-end px-4 pb-2">
                 <Pressable
                   onPress={() => setShowDatePicker(false)}

@@ -10,8 +10,10 @@ import {
 } from "@/lib/validators/cashflow-planner";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { getOccurrencesBetween } from "@zeta/shared";
-import { parseISO } from "date-fns";
+import { parseISO, endOfMonth } from "date-fns";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
+import { toColombiaDateString } from "@/lib/utils/date";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import type { ActionResult } from "@/types/actions";
 import type { TablesInsert } from "@/types/database";
 import type {
@@ -881,4 +883,370 @@ export async function autoAssignExpenses(
 
   updateTag(TAG);
   return { success: true, data: { assigned: assignedCount } };
+}
+
+// ─── Candidate Transactions for Planning Entry ──────────────────────────────
+
+export interface PlanCandidateTransaction {
+  id: string;
+  description: string;
+  merchant_name: string | null;
+  amount: number;
+  currency_code: string;
+  transaction_date: string;
+  account_name: string;
+}
+
+/**
+ * Find candidate transactions for linking to a planning entry's "Pagar" flow.
+ * Searches this month's OUTFLOW transactions (unlinked, not excluded, no transfer group).
+ * Also checks for INFLOW on a debt account if debtAccountId is provided.
+ */
+export async function findCandidateTransactions(params: {
+  entryLabel: string;
+  entryAmount: number;
+  debtAccountId?: string | null;
+  month: string; // YYYY-MM
+}): Promise<ActionResult<PlanCandidateTransaction[]>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const monthDate = parseISO(`${params.month}-01`);
+  const monthStart = `${params.month}-01`;
+  const monthEnd = endOfMonth(monthDate).toISOString().split("T")[0];
+
+  // Fetch OUTFLOW transactions this month
+  const { data: outflows, error: outflowErr } = await supabase
+    .from("transactions")
+    .select(
+      `id, clean_description, merchant_name, raw_description, amount, currency_code,
+       transaction_date, direction, account_id, is_excluded, transfer_group_id,
+       account:accounts!transactions_account_id_fkey(name)`
+    )
+    .eq("user_id", user.id)
+    .eq("direction", "OUTFLOW")
+    .eq("is_excluded", false)
+    .is("transfer_group_id", null)
+    .is("recurrence_group_id", null)
+    .gte("transaction_date", monthStart)
+    .lte("transaction_date", monthEnd)
+    .order("transaction_date", { ascending: false })
+    .limit(100);
+
+  if (outflowErr) return { success: false, error: outflowErr.message };
+
+  let allTxs = outflows ?? [];
+
+  // If there's a debt account, also find INFLOW transactions on it (payments)
+  if (params.debtAccountId) {
+    const { data: debtInflows } = await supabase
+      .from("transactions")
+      .select(
+        `id, clean_description, merchant_name, raw_description, amount, currency_code,
+         transaction_date, direction, account_id, is_excluded, transfer_group_id,
+         account:accounts!transactions_account_id_fkey(name)`
+      )
+      .eq("user_id", user.id)
+      .eq("account_id", params.debtAccountId)
+      .eq("direction", "INFLOW")
+      .eq("is_excluded", false)
+      .is("transfer_group_id", null)
+      .is("recurrence_group_id", null)
+      .gte("transaction_date", monthStart)
+      .lte("transaction_date", monthEnd)
+      .order("transaction_date", { ascending: false })
+      .limit(20);
+
+    if (debtInflows) allTxs = [...allTxs, ...debtInflows];
+  }
+
+  // Score & filter: amount ±50% OR merchant matching label
+  const labelLower = params.entryLabel.toLowerCase();
+  const amountMin = params.entryAmount * 0.5;
+  const amountMax = params.entryAmount * 1.5;
+
+  const scored = allTxs
+    .map((tx) => {
+      const desc = tx.clean_description ?? tx.merchant_name ?? tx.raw_description ?? "";
+      const merchantMatch = desc.toLowerCase().includes(labelLower) ||
+        labelLower.includes((tx.merchant_name ?? "").toLowerCase());
+      const amountMatch = tx.amount >= amountMin && tx.amount <= amountMax;
+      if (!merchantMatch && !amountMatch) return null;
+
+      const accountName = (tx.account as { name: string } | null)?.name ?? "";
+
+      return {
+        id: tx.id,
+        description: tx.clean_description ?? tx.merchant_name ?? tx.raw_description ?? "Sin descripción",
+        merchant_name: tx.merchant_name,
+        amount: tx.amount,
+        currency_code: String(tx.currency_code),
+        transaction_date: tx.transaction_date,
+        account_name: accountName,
+      } satisfies PlanCandidateTransaction;
+    })
+    .filter((x): x is PlanCandidateTransaction => x !== null);
+
+  // Return top 5
+  return { success: true, data: scored.slice(0, 5) };
+}
+
+// ─── Pay Planning Entry ─────────────────────────────────────────────────────
+
+/**
+ * Pay a planning entry by either linking an existing transaction or creating a new one.
+ * Handles recurring occurrence linking when the entry has a recurring_template_id.
+ */
+export async function payPlanningEntry(params: {
+  entryId: string;
+  // Link mode: connect existing transaction
+  existingTransactionId?: string;
+  // Create mode: record a new payment
+  amount?: number;
+  sourceAccountId?: string;
+  debtAccountId?: string;
+  currencyCode?: string;
+  categoryId?: string | null;
+  recurringTemplateId?: string | null;
+  label?: string;
+}): Promise<ActionResult<{ transactionId: string }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Fetch the planning entry
+  const { data: entry, error: entryErr } = await supabase
+    .from("planning_entries")
+    .select("*, period:planning_periods!inner(start_date, end_date)")
+    .eq("id", params.entryId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (entryErr || !entry) {
+    return { success: false, error: "Entrada del plan no encontrada" };
+  }
+
+  const period = entry.period as { start_date: string; end_date: string };
+
+  // ── LINK MODE: connect existing transaction ──
+  if (params.existingTransactionId) {
+    // If the entry has a recurring template, delegate to occurrence linking
+    if (entry.recurring_template_id) {
+      // Find the pending occurrence for this template in the period
+      const { data: occurrences } = await supabase
+        .from("recurring_occurrences")
+        .select("id")
+        .eq("template_id", entry.recurring_template_id)
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .gte("occurrence_date", period.start_date)
+        .lte("occurrence_date", period.end_date)
+        .limit(1);
+
+      if (occurrences && occurrences.length > 0) {
+        const { linkExistingTransactionToOccurrence } = await import("@/actions/occurrences");
+        const linkResult = await linkExistingTransactionToOccurrence(
+          occurrences[0].id,
+          params.existingTransactionId,
+        );
+        if (!linkResult.success) return { success: false, error: linkResult.error };
+      }
+    }
+
+    // Mark planning entry as completed
+    const { error: updateErr } = await supabase
+      .from("planning_entries")
+      .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
+      .eq("id", params.entryId)
+      .eq("user_id", user.id);
+
+    if (updateErr) return { success: false, error: updateErr.message };
+
+    updateTag(TAG);
+    updateTag("occurrences");
+    revalidateFinancialViews();
+    return { success: true, data: { transactionId: params.existingTransactionId } };
+  }
+
+  // ── CREATE MODE: record a new payment ──
+  if (!params.amount || !params.sourceAccountId) {
+    return { success: false, error: "Monto y cuenta origen son requeridos" };
+  }
+
+  // If the entry has a recurring template, delegate to the full payment infrastructure
+  if (entry.recurring_template_id) {
+    const { recordRecurringOccurrencePayment } = await import("@/actions/recurring-templates");
+    const payResult = await recordRecurringOccurrencePayment({
+      templateId: entry.recurring_template_id,
+      occurrenceDate: entry.expected_date,
+      paymentDate: toColombiaDateString(new Date()),
+      actualAmount: params.amount,
+      sourceAccountId: params.sourceAccountId,
+    });
+
+    if (!payResult.success) return { success: false, error: payResult.error };
+
+    // Mark planning entry as completed
+    const { error: updateErr } = await supabase
+      .from("planning_entries")
+      .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
+      .eq("id", params.entryId)
+      .eq("user_id", user.id);
+
+    if (updateErr) return { success: false, error: updateErr.message };
+
+    // Get the created transaction ID
+    const { data: createdTx } = await supabase
+      .from("transactions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("amount", params.amount)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    updateTag(TAG);
+    return { success: true, data: { transactionId: createdTx?.id ?? "" } };
+  }
+
+  // Standalone entry (no recurring template) — create a simple transaction
+  const today = toColombiaDateString(new Date());
+  const txId = crypto.randomUUID();
+  const transferGroupId = params.debtAccountId ? crypto.randomUUID() : null;
+  const currencyCode = params.currencyCode ?? entry.currency_code ?? "COP";
+  const idempotencyKey = await (async () => {
+    const { computeIdempotencyKey } = await import("@/lib/utils/idempotency");
+    return computeIdempotencyKey({
+      provider: "MANUAL_FORM",
+      providerTransactionId: txId,
+      transactionDate: today,
+      amount: params.amount!,
+      rawDescription: params.label ?? entry.label,
+    });
+  })();
+
+  // OUTFLOW from source account
+  const { error: txErr } = await supabase
+    .from("transactions")
+    .insert({
+      id: txId,
+      user_id: user.id,
+      account_id: params.sourceAccountId,
+      direction: "OUTFLOW",
+      amount: params.amount,
+      currency_code: currencyCode as any,
+      transaction_date: today,
+      raw_description: params.label ?? entry.label,
+      clean_description: params.label ?? entry.label,
+      capture_method: "MANUAL_FORM",
+      idempotency_key: idempotencyKey,
+      transfer_group_id: transferGroupId,
+      category_id: params.categoryId ?? entry.category_id ?? null,
+    } as any)
+    .single();
+
+  if (txErr) {
+    if (txErr.code === "23505") return { success: false, error: "Este pago ya fue registrado" };
+    return { success: false, error: txErr.message };
+  }
+
+  // Update source account balance
+  const { data: sourceAcct } = await supabase
+    .from("accounts")
+    .select("current_balance, account_type")
+    .eq("id", params.sourceAccountId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (sourceAcct) {
+    const { applyAccountBalanceDelta } = await import("@/lib/utils/account-balance");
+    const newBalance = applyAccountBalanceDelta({
+      currentBalance: sourceAcct.current_balance,
+      accountType: sourceAcct.account_type,
+      direction: "OUTFLOW",
+      amount: params.amount,
+    });
+    await supabase
+      .from("accounts")
+      .update({ current_balance: newBalance })
+      .eq("id", params.sourceAccountId)
+      .eq("user_id", user.id);
+  }
+
+  // If debt account, create INFLOW on the debt account
+  if (params.debtAccountId) {
+    const debtTxId = crypto.randomUUID();
+    const debtIdempotencyKey = await (async () => {
+      const { computeIdempotencyKey } = await import("@/lib/utils/idempotency");
+      return computeIdempotencyKey({
+        provider: "MANUAL_FORM",
+        providerTransactionId: debtTxId,
+        transactionDate: today,
+        amount: params.amount!,
+        rawDescription: `Pago: ${params.label ?? entry.label}`,
+      });
+    })();
+
+    const { error: debtTxErr } = await supabase
+      .from("transactions")
+      .insert({
+        id: debtTxId,
+        user_id: user.id,
+        account_id: params.debtAccountId,
+        direction: "INFLOW",
+        amount: params.amount,
+        currency_code: currencyCode as any,
+        transaction_date: today,
+        raw_description: `Pago: ${params.label ?? entry.label}`,
+        clean_description: `Pago: ${params.label ?? entry.label}`,
+        capture_method: "MANUAL_FORM",
+        idempotency_key: debtIdempotencyKey,
+        transfer_group_id: transferGroupId,
+        category_id: params.categoryId ?? entry.category_id ?? null,
+      } as any)
+      .single();
+
+    if (debtTxErr && debtTxErr.code !== "23505") {
+      console.error("Debt INFLOW insert error:", debtTxErr.message);
+    }
+
+    // Update debt account balance
+    const { data: debtAcct } = await supabase
+      .from("accounts")
+      .select("current_balance, account_type")
+      .eq("id", params.debtAccountId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (debtAcct) {
+      const { applyAccountBalanceDelta } = await import("@/lib/utils/account-balance");
+      const newBalance = applyAccountBalanceDelta({
+        currentBalance: debtAcct.current_balance,
+        accountType: debtAcct.account_type,
+        direction: "INFLOW",
+        amount: params.amount,
+      });
+      await supabase
+        .from("accounts")
+        .update({ current_balance: newBalance })
+        .eq("id", params.debtAccountId)
+        .eq("user_id", user.id);
+    }
+  }
+
+  // Mark planning entry as completed
+  const { error: entryUpdateErr } = await supabase
+    .from("planning_entries")
+    .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
+    .eq("id", params.entryId)
+    .eq("user_id", user.id);
+
+  if (entryUpdateErr) {
+    console.error("Entry update error:", entryUpdateErr.message);
+  }
+
+  updateTag(TAG);
+  updateTag("occurrences");
+  updateTag("recurring");
+  revalidateFinancialViews();
+  return { success: true, data: { transactionId: txId } };
 }

@@ -109,26 +109,26 @@ export function CategoryPicker({
       onRequestClose={handleClose}
     >
       <View className="flex-1 justify-end bg-black/35">
-        <View className="max-h-[72%] min-h-[320px] rounded-t-2xl bg-white">
+        <View className="max-h-[72%] min-h-[320px] rounded-t-2xl bg-z-surface-2-55">
           {/* Header */}
-          <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
-            <Text className="text-gray-900 font-inter-bold text-base">
+          <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-white-6">
+            <Text className="text-foreground font-inter-bold text-base">
               Categoría
             </Text>
             <Pressable
               onPress={handleClose}
-              className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
             >
-              <X size={18} color="#6B7280" />
+              <X size={18} color="#938C7E" />
             </Pressable>
           </View>
 
           {/* Search */}
-          <View className="px-4 py-3 border-b border-gray-100">
+          <View className="px-4 py-3 border-b border-white-6">
             <TextInput
-              className="bg-gray-100 rounded-xl px-4 py-2.5 text-gray-900 font-inter text-sm"
+              className="bg-black-10 rounded-xl px-4 py-2.5 text-foreground font-inter text-sm"
               placeholder="Buscar categoría..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#938C7E"
               value={search}
               onChangeText={setSearch}
               autoCorrect={false}
@@ -139,10 +139,10 @@ export function CategoryPicker({
           {/* "None" option */}
           <Pressable
             onPress={() => handleSelect(null, null)}
-            className="flex-row items-center px-4 py-3.5 border-b border-gray-100 active:bg-gray-50"
+            className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-white/5"
           >
-            <View className="w-3 h-3 rounded-full bg-gray-300 mr-3" />
-            <Text className="text-gray-500 font-inter text-sm flex-1">
+            <View className="w-3 h-3 rounded-full bg-white/15 mr-3" />
+            <Text className="text-muted-foreground font-inter text-sm flex-1">
               Sin categoría
             </Text>
             {selectedId === null && <Check size={16} color="#10B981" />}
@@ -155,8 +155,8 @@ export function CategoryPicker({
             renderItem={({ item }) => {
               if (item.type === "header") {
                 return (
-                  <View className="px-4 pt-4 pb-1.5 bg-gray-50">
-                    <Text className="text-gray-400 font-inter-semibold text-xs uppercase tracking-wide">
+                  <View className="px-4 pt-4 pb-1.5 bg-black-10">
+                    <Text className="text-muted-fg-50 font-inter-semibold text-xs uppercase tracking-wide">
                       {displayName(item.item)}
                     </Text>
                   </View>
@@ -171,7 +171,7 @@ export function CategoryPicker({
                   onPress={() =>
                     handleSelect(item.item.id, displayName(item.item))
                   }
-                  className={`flex-row items-center ${paddingLeft} pr-4 py-3.5 active:bg-gray-50`}
+                  className={`flex-row items-center ${paddingLeft} pr-4 py-3.5 active:bg-white/5`}
                 >
                   {item.item.color ? (
                     <View
@@ -179,11 +179,11 @@ export function CategoryPicker({
                       style={{ backgroundColor: item.item.color }}
                     />
                   ) : (
-                    <View className="w-3 h-3 rounded-full bg-gray-200 mr-3" />
+                    <View className="w-3 h-3 rounded-full bg-white/15 mr-3" />
                   )}
                   <Text
                     className={`font-inter text-sm flex-1 ${
-                      isSelected ? "text-primary font-inter-medium" : "text-gray-900"
+                      isSelected ? "text-primary font-inter-medium" : "text-foreground"
                     }`}
                   >
                     {displayName(item.item)}
@@ -193,7 +193,7 @@ export function CategoryPicker({
               );
             }}
             ItemSeparatorComponent={() => (
-              <View className="h-px bg-gray-50 ml-4" />
+              <View className="h-px bg-white-6 ml-4" />
             )}
           />
         </View>

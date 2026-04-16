@@ -34,7 +34,7 @@ import { disableDemoMode } from "../../lib/demo-mode";
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <Text className="text-gray-500 font-inter-semibold text-xs uppercase px-4 pt-5 pb-2">
+    <Text className="text-muted-foreground font-inter-semibold text-xs uppercase px-4 pt-5 pb-2">
       {title}
     </Text>
   );
@@ -56,19 +56,19 @@ function SettingsRow({
   const Wrapper = onPress ? Pressable : View;
   return (
     <Wrapper
-      className="flex-row items-center px-4 py-3.5 bg-white active:bg-gray-50"
+      className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55 active:bg-black-10"
       {...(onPress ? { onPress } : {})}
     >
       <View className="mr-3">{icon}</View>
       <Text
         className={`flex-1 font-inter-medium text-sm ${
-          destructive ? "text-red-500" : "text-gray-900"
+          destructive ? "text-z-expense" : "text-foreground"
         }`}
       >
         {label}
       </Text>
       {value && (
-        <Text className="text-gray-500 font-inter text-sm">{value}</Text>
+        <Text className="text-muted-foreground font-inter text-sm">{value}</Text>
       )}
     </Wrapper>
   );
@@ -231,24 +231,24 @@ export default function SettingsScreen() {
         : "Sincronizado";
 
   return (
-    <ScrollView className="flex-1 bg-gray-100">
+    <ScrollView className="flex-1 bg-background">
       {/* Profile section */}
       <SectionHeader title="Perfil" />
-      <View className="bg-white">
+      <View className="bg-z-surface-2-55">
         <SettingsRow
-          icon={<User size={18} color="#6B7280" />}
+          icon={<User size={18} color="#938C7E" />}
           label="Nombre"
           value={profile?.full_name || session?.user?.user_metadata?.full_name || "---"}
         />
-        <View className="h-px bg-gray-100 ml-12" />
+        <View className="h-px bg-white-6 ml-12" />
         <SettingsRow
-          icon={<Mail size={18} color="#6B7280" />}
+          icon={<Mail size={18} color="#938C7E" />}
           label="Email"
           value={session?.user?.email || "---"}
         />
-        <View className="h-px bg-gray-100 ml-12" />
+        <View className="h-px bg-white-6 ml-12" />
         <SettingsRow
-          icon={<Shield size={18} color="#6B7280" />}
+          icon={<Shield size={18} color="#938C7E" />}
           label="Plan"
           value="Gratuito"
         />
@@ -256,26 +256,26 @@ export default function SettingsScreen() {
 
       {/* Sync section */}
       <SectionHeader title="Sincronizacion" />
-      <View className="bg-white">
+      <View className="bg-z-surface-2-55">
         <SettingsRow
           icon={
             <RefreshCw
               size={18}
-              color={status === "error" ? "#EF4444" : "#6B7280"}
+              color={status === "error" ? "#EF4444" : "#938C7E"}
             />
           }
           label="Estado"
           value={syncStatusLabel}
         />
-        <View className="h-px bg-gray-100 ml-12" />
+        <View className="h-px bg-white-6 ml-12" />
         <SettingsRow
-          icon={<Clock size={18} color="#6B7280" />}
+          icon={<Clock size={18} color="#938C7E" />}
           label="Ultima sincronizacion"
           value={lastSynced ? formatRelativeDate(lastSynced) : "Nunca"}
         />
-        <View className="h-px bg-gray-100 ml-12" />
+        <View className="h-px bg-white-6 ml-12" />
         <Pressable
-          className="flex-row items-center px-4 py-3.5 bg-white active:bg-gray-50"
+          className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55 active:bg-black-10"
           onPress={handleSyncNow}
           disabled={syncing}
         >
@@ -284,26 +284,26 @@ export default function SettingsScreen() {
             {syncing ? "Sincronizando..." : "Sincronizar ahora"}
           </Text>
         </Pressable>
-        <View className="h-px bg-gray-100 ml-12" />
+        <View className="h-px bg-white-6 ml-12" />
         <Pressable
-          className="flex-row items-center px-4 py-3.5 bg-white active:bg-gray-50"
+          className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55 active:bg-black-10"
           onPress={handleClearSyncQueue}
         >
-          <Trash2 size={18} color="#EF4444" />
-          <Text className="ml-3 text-red-500 font-inter-medium text-sm">
+          <Trash2 size={18} color={COLORS.debt} />
+          <Text className="ml-3 text-z-expense font-inter-medium text-sm">
             Limpiar cola de sincronizacion
           </Text>
         </Pressable>
         {!demoMode && (
           <>
-            <View className="h-px bg-gray-100 ml-12" />
+            <View className="h-px bg-white-6 ml-12" />
             <Pressable
-              className="flex-row items-center px-4 py-3.5 bg-white active:bg-gray-50"
+              className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55 active:bg-black-10"
               onPress={handleFullResync}
               disabled={syncing}
             >
-              <RefreshCw size={18} color="#EF4444" />
-              <Text className="ml-3 text-red-500 font-inter-medium text-sm">
+              <RefreshCw size={18} color={COLORS.debt} />
+              <Text className="ml-3 text-z-expense font-inter-medium text-sm">
                 Resincronizar desde cero
               </Text>
             </Pressable>
@@ -313,31 +313,31 @@ export default function SettingsScreen() {
 
       {/* Accounts section */}
       <SectionHeader title="Cuentas" />
-      <View className="bg-white">
+      <View className="bg-z-surface-2-55">
         <Pressable
-          className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+          className="flex-row items-center px-4 py-3.5 active:bg-black-10"
           onPress={() => router.navigate("/(tabs)/accounts")}
         >
           <View className="mr-3">
-            <Wallet size={18} color="#6B7280" />
+            <Wallet size={18} color="#938C7E" />
           </View>
-          <Text className="flex-1 font-inter-medium text-sm text-gray-900">
+          <Text className="flex-1 font-inter-medium text-sm text-foreground">
             Administrar cuentas
           </Text>
-          <ChevronRight size={16} color="#9CA3AF" />
+          <ChevronRight size={16} color="#938C7E" />
         </Pressable>
-        <View className="h-px bg-gray-100 ml-12" />
+        <View className="h-px bg-white-6 ml-12" />
         <Pressable
-          className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+          className="flex-row items-center px-4 py-3.5 active:bg-black-10"
           onPress={() => router.push("/subscriptions" as never)}
         >
           <View className="mr-3">
-            <Repeat size={18} color="#6B7280" />
+            <Repeat size={18} color="#938C7E" />
           </View>
-          <Text className="flex-1 font-inter-medium text-sm text-gray-900">
+          <Text className="flex-1 font-inter-medium text-sm text-foreground">
             Suscripciones
           </Text>
-          <ChevronRight size={16} color="#9CA3AF" />
+          <ChevronRight size={16} color="#938C7E" />
         </Pressable>
       </View>
 
@@ -345,38 +345,38 @@ export default function SettingsScreen() {
       {biometricsAvailable && (
         <>
           <SectionHeader title="Seguridad" />
-          <View className="bg-white">
-            <View className="flex-row items-center px-4 py-3.5 bg-white">
+          <View className="bg-z-surface-2-55">
+            <View className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55">
               <View className="mr-3">
-                <Fingerprint size={18} color="#6B7280" />
+                <Fingerprint size={18} color="#938C7E" />
               </View>
-              <Text className="flex-1 font-inter-medium text-sm text-gray-900">
+              <Text className="flex-1 font-inter-medium text-sm text-foreground">
                 Desbloqueo biometrico
               </Text>
               <Switch
                 value={biometricsOn}
                 onValueChange={handleToggleBiometrics}
-                trackColor={{ false: "#E5E7EB", true: "#10B981" }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor="#E5E7EB"
+                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                thumbColor={COLORS.foreground}
+                ios_backgroundColor="#3A3A3A"
               />
             </View>
             {biometricsOn && (
               <>
-                <View className="h-px bg-gray-100 ml-12" />
-                <View className="flex-row items-center px-4 py-3.5 bg-white">
+                <View className="h-px bg-white-6 ml-12" />
+                <View className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55">
                   <View className="mr-3">
-                    <ShieldCheck size={18} color="#6B7280" />
+                    <ShieldCheck size={18} color="#938C7E" />
                   </View>
-                  <Text className="flex-1 font-inter-medium text-sm text-gray-900">
+                  <Text className="flex-1 font-inter-medium text-sm text-foreground">
                     Bloquear al salir de la app
                   </Text>
                   <Switch
                     value={bgReauthOn}
                     onValueChange={handleToggleBgReauth}
-                    trackColor={{ false: "#E5E7EB", true: "#10B981" }}
-                    thumbColor="#FFFFFF"
-                    ios_backgroundColor="#E5E7EB"
+                    trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                    thumbColor={COLORS.foreground}
+                    ios_backgroundColor="#3A3A3A"
                   />
                 </View>
               </>
@@ -387,17 +387,17 @@ export default function SettingsScreen() {
 
       {/* Session section */}
       <SectionHeader title="Sesion" />
-      <View className="bg-white mb-8">
+      <View className="bg-z-surface-2-55 mb-8">
         {demoMode ? (
           <SettingsRow
-            icon={<LogOut size={18} color="#EF4444" />}
+            icon={<LogOut size={18} color={COLORS.debt} />}
             label="Salir modo demo"
             onPress={handleExitDemoMode}
             destructive
           />
         ) : (
           <SettingsRow
-            icon={<LogOut size={18} color="#EF4444" />}
+            icon={<LogOut size={18} color={COLORS.debt} />}
             label="Cerrar sesion"
             onPress={handleSignOut}
             destructive
@@ -406,9 +406,9 @@ export default function SettingsScreen() {
       </View>
 
       <SectionHeader title="Soporte" />
-      <View className="bg-white mb-8">
+      <View className="bg-z-surface-2-55 mb-8">
         <SettingsRow
-          icon={<Bug size={18} color="#6B7280" />}
+          icon={<Bug size={18} color="#938C7E" />}
           label="Quick capture de bug"
           onPress={() => router.push("/bug-report" as never)}
         />

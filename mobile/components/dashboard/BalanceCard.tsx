@@ -14,17 +14,17 @@ export function BalanceCard({
   currencyCode = "COP",
 }: BalanceCardProps) {
   return (
-    <View className="bg-white rounded-lg shadow-sm p-5 mx-4 mt-4">
+    <View className="bg-z-surface-2-55 rounded-lg p-5 mx-4 mt-4">
       <View className="flex-row items-center mb-2">
-        <Wallet size={18} color="#6B7280" />
-        <Text className="text-gray-500 font-inter-medium text-sm ml-2">
+        <Wallet size={18} color="#938C7E" />
+        <Text className="text-muted-foreground font-inter-medium text-sm ml-2">
           Balance total
         </Text>
       </View>
-      <Text className="text-gray-900 font-inter-bold text-3xl mb-1">
+      <Text className="text-foreground font-inter-bold text-3xl mb-1">
         {formatCurrency(totalBalance, currencyCode)}
       </Text>
-      <Text className="text-gray-400 font-inter text-sm">
+      <Text className="text-muted-fg-50 font-inter text-sm">
         {accountCount} {accountCount === 1 ? "cuenta activa" : "cuentas activas"}
       </Text>
     </View>

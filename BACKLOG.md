@@ -10,12 +10,6 @@
 
 ---
 
-## In Review
-
-| PR | Description | Branch |
-|---|---|---|
-| — | Recurring impact preview + recurring income + account detail redesign | `feat/recurring-impact-income` |
-
 ## Features
 
 ### Account detail page — deferred items
@@ -23,94 +17,20 @@
 - **What:** Statement snapshots visual redesign, auto-populate `card_brand` from PDF parsers, composite `(account_id, user_id, transaction_date)` index, use `useAccounts()` hook instead of server-side `getAccounts()` in QuickActionsBar
 - **Context:** Shipped card hero, flip-to-graph, transaction-based balance history, transfer dialog, quick actions. Deferred items noted by perf-auditor and design reviews.
 
-### Income occurrence UX — different actions from expenses
-- **Priority:** Done (this branch)
-- **What:** Direction-aware labels: "Confirmar ingreso" / "Ya recibí" for INFLOW, "Confirmar pago" / "Ya pagué" for OUTFLOW. Covers confirm inline, timeline, toasts, and attention fallback labels.
-- **Remaining:** Skip/delete option for clearing occurrences without marking received — deferred.
-
-### Undo completed occurrences
-- **Priority:** Done (this branch)
-- **What:** Revert paid/skipped occurrences back to pending. For paid: deletes transactions via `recurrence_group_id`, reverses balance deltas. For skipped: resets status. "Deshacer" button on each completed item.
-
-### Template active state — query-side filtering
-- **Priority:** Done (implemented in this branch)
-- **What:** Paused template occurrences are filtered at query time via `is_active` check in `getPendingOccurrencesCached` and `getNextIncomeOccurrenceCached`. No destructive status changes — occurrences stay `pending`, just invisible when template is paused. Reactivating brings them back automatically.
-- **Found:** Visual testing, 2026-04-13
-
-### Mobile recurring admin actions
-- **Priority:** Done (this branch)
-- **What:** MoreVertical (⋮) button on each occurrence row opens bottom Sheet with Edit, Pause/Activate, Delete. Reuses RecurringFormDialog and RecurringImpactDialog from desktop.
-- **Remaining:** Edit dialog opens behind the action sheet (nested Radix portal). Needs to close Sheet first, then open Dialog sequentially. Full recurring form also needs mobile redesign.
-
-### Manual transaction-to-recurring matching
-- **Priority:** Done (this branch)
-- **What:** Manual link from both sides: occurrence → transaction picker, transaction → occurrence picker. Smart undo via `linked_manually` flag. Bottom drawer with ranked match scoring.
-- **Spec:** `docs/superpowers/specs/2026-04-14-manual-tx-recurring-linking.md`
-
 ### Recurring stats — historical backfill
 - **Priority:** Medium
 - **What:** Template stats (YTD, streak, annual estimate) are empty for newly created templates. Options: (1) backfill from `statement_snapshots` minimum payments or balance changes, (2) when creating a recurring template, auto-create historical occurrences as "paid" based on matching past transactions, (3) use snapshot history alongside occurrence history for the metrics.
 - **Context:** `getTemplateStats()` in `actions/template-stats.ts` only queries `recurring_occurrences`. New templates have no occurrences yet even if the user has been paying for months.
 - **Found:** User feedback, 2026-04-14
 
-### Email import — stale transaction lists after import
-- **Priority:** Medium
-- **What:** Importing pending email transactions removes them from queue but transaction lists (movimientos + dashboard) don't update. Desktop "Pendientes por correo" card also stays stale. Need page refresh.
-- **Context:** Revalidation from email import action may not cover all transaction list cache tags.
-- **Found:** User testing, 2026-04-14
-
-### "Vincular a recurrente" in movimientos expanded view
-- **Priority:** Medium
-- **What:** The "Vincular a recurrente" action was added to inicio-activity (dashboard) but not to the movimientos (transactions) mobile expanded view. Need to add it there too.
-- **Found:** User testing, 2026-04-14
-
-### Merge recurrentes pages into one
-- **Priority:** Medium
-- **What:** Two separate recurrentes views (plan tab + standalone page) is confusing. They offer different things. Unify into a single page with all features (checklist + admin actions + templates).
-- **Found:** User feedback, 2026-04-14
-
-### Plan page mobile — grid navigation instead of list
-- **Priority:** Medium
-- **What:** The "Ir a" section on the plan page mobile view shows Presupuesto, Periodo, Recurrentes, Deseos as a vertical list of link cards. Replace with a 2x2 grid of buttons for better visual density and scannability.
-- **Found:** User feedback, 2026-04-14
-
-### Dashboard ritmo/burn-rate stale after income received
-- **Priority:** Medium
-- **What:** After linking a nómina (income) to a recurring occurrence, the dashboard ritmo card and burn-rate chart don't update to reflect the new pay-cycle window. "Próximo ingreso" still shows the just-received income instead of advancing to the next one. "día 14 de 30" doesn't shift. Need page refresh.
-- **Context:** `linkExistingTransactionToOccurrence` calls `revalidateFinancialViews()` which should invalidate `dashboard:hero` and `burn-rate` tags. The issue is likely that `useLiveDashboard` or the Route Cache doesn't pick up the change until a full page refresh.
-- **Found:** User testing, 2026-04-14
-
 ### Recurring checklist — unify inline expand + action drawer
 - **Priority:** Medium
 - **What:** The plan tab checklist has two disconnected interaction patterns: (1) tap row → inline payment form with flat buttons, (2) tap ⋮ → bottom Sheet with chip-style admin actions. They look like different apps. Unify into a single cohesive pattern — either improve inline to match chip style with small confirmation Sheet, or merge both into one bottom drawer per-item.
 - **Found:** Visual testing, 2026-04-14
 
-### Debt payment category — distinguish CREDIT_CARD vs LOAN
-- **Priority:** Medium
-- **What:** All debt payments auto-assign `CATEGORY_OBLIGACIONES` (parent). Should distinguish: CREDIT_CARD → "Pago tarjeta" subcategory, LOAN → "Cuota crédito" subcategory. Three changes needed: (1) add seed subcategories for "Pago tarjeta" and "Cuota crédito" under Obligaciones if they don't exist, (2) allow category picker in RecurringForm for debt accounts (pre-select correct subcategory based on `account_type`), (3) update `recordRecurringOccurrencePayment` to use template's `category_id` instead of hardcoded `DEBT_PAYMENT_CATEGORY_ID`.
-- **Context:** Currently `category_id` is forced to `null` on template create (lines 277/351 in recurring-templates.ts), and payment recording hardcodes `DEBT_PAYMENT_CATEGORY_ID` (line 650). User already has manual subcategories mapped correctly.
-- **Found:** User feedback, 2026-04-14
-
 ### Audit effectiveDirection usage across app
-- **Priority:** Low
-- **What:** The recurring manager introduced `effectiveDirection()` (INFLOW to debt account = expense, not income). Audit the whole app for places that classify by raw `template.direction` without checking account type — dashboards, budget calculations, income metrics, etc.
-- **Found:** Bug fix during recurring manager development, 2026-04-14
-
-
-### Income-aware runway & daily budget
-- **Priority:** Done (shipped in PR #134)
-- **What:** Dashboard hero and runway use pay-cycle budgeting (now → next income date). Obligations scoped to window. Burn-rate chart shows single segment with obligation markers.
-- **Context:** Spec: `docs/superpowers/specs/2026-04-13-income-aware-runway.md`
-
-### Multi-currency aggregation in dashboard metrics
 - **Priority:** Done (this branch)
-- **What:** Dashboard hero, burn rate, runway, and net worth now aggregate all currencies by converting to base via `getRatesForCurrencies()`. Accounts/obligations with unavailable rates are excluded (not mixed raw). UI shows "tasa del día" hint when conversions are included.
-- **Known limitation:** Net worth history steps backward using single-currency cashflow, so the foreign portion floats as a constant — acceptable approximation for now.
-
-### Tag system broader reach
-- **Priority:** Partial (this branch)
-- **What:** Auto-tag from destinatario during import — transactions inherit their matched destinatario's tags. Reconciliation merges also preserve existing tags. Batched for performance.
-- **Remaining:** Tags on recurring templates (needs `recurring_template_tags` migration + form changes + occurrence-to-tx tag copy). Nómina tag variants.
+- **What:** Audited all `direction === "INFLOW"` usages. Fixed 3 bugs where raw template direction was used without debt account check: `plan-flow-timeline.tsx` (icon/color), `attention-items.ts` (fallback label), `recurring-template-card.tsx` (grid layout + pause button visibility). Transaction-level displays are correct (actual money flow per account).
 
 ### Accounts — `deactivated_at` timestamp
 - **Priority:** Medium
@@ -132,7 +52,11 @@
 - **Priority:** Medium
 - **What:** Same action chip pattern (destinatario, tag, edit) for desktop table rows. Migrate desktop consumers from old pickers (`destinatario-picker.tsx`, `tag-picker.tsx`) to zone pickers, then delete old files.
 - **Context:** PR #130 only covers mobile. Desktop table still uses inline category popover only.
-- **Blocked by:** PR #130 merge
+
+### Tag system broader reach — remaining items
+- **Priority:** Medium
+- **What:** Tags on recurring templates (needs `recurring_template_tags` migration + form changes + occurrence-to-tx tag copy). Nómina tag variants.
+- **Context:** Auto-tag from destinatario during import shipped in PR #138. This is the remaining work.
 
 ### Mobile app — Apple compliance (pre-submission)
 - **Priority:** High (blocks App Store submission)
@@ -162,18 +86,6 @@
 - **Found:** Mobile audit, 2026-04-15
 
 ## Tech Debt
-
-### Defense-in-depth gaps
-- **Priority:** Done (this branch)
-- **What:** Added `.eq("user_id")` to `getCategoriesByRhythm` transactions query. Added ownership verification to `bulkTagTransactions`.
-
-### Missing revalidation
-- **Priority:** Done (this branch)
-- **What:** `createDestinatario` with `link_matching_transactions` now calls `revalidateFinancialViews()`.
-
-### Uncached server action
-- **Priority:** Done (this branch)
-- **What:** `getTagsForEntity` extracted to `"use cache"` inner with `cacheTag("tags")` + `cacheLife("zeta")`.
 
 ### `useRecurringMonth` callbacks use `router.refresh()` instead of `startTransition`
 - **Priority:** Medium
@@ -212,4 +124,3 @@
 | PR | Description | Status |
 |---|---|---|
 | #98 | Demo mode with mock accounts | Open since 2026-04-08 |
-| #84 | Design review system in production | Open since 2026-04-06 |

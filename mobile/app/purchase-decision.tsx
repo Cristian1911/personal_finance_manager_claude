@@ -16,6 +16,7 @@ import {
 import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import { analyzeLocally } from "../lib/services/purchase-decision";
 import { KeyboardScreen } from "../components/common/KeyboardScreen";
+import { toLocalMonthString } from "../lib/utils/date";
 
 const urgencyOptions: { value: PurchaseUrgency; label: string }[] = [
   { value: "NECESSARY", label: "Necesidad" },
@@ -102,7 +103,7 @@ export default function PurchaseDecisionScreen() {
 
     setLoading(true);
     try {
-      const month = new Date().toISOString().slice(0, 7);
+      const month = toLocalMonthString();
       const res = await analyzeLocally({
         amount: numAmount,
         accountId: selectedAccountId,

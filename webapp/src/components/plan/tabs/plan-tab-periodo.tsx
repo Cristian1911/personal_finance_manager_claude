@@ -26,6 +26,9 @@ export async function PlanTabPeriodo() {
         name: a.name,
         icon: a.icon,
         color: a.color,
+        account_type: a.account_type,
+        current_balance: a.current_balance,
+        currency_code: a.currency_code,
       }))
     : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
