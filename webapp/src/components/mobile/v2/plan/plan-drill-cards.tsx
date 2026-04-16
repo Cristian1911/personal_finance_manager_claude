@@ -3,14 +3,12 @@ import { Wallet, CalendarCheck, RefreshCw, Heart } from "lucide-react";
 import { MOBILE_EYEBROW_CLASS, PANEL_INSET_SUBTLE_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import type { PlanBudgetSummary, PlanRecurringSummary } from "@/types/plan";
-import type { CurrencyCode } from "@/types/domain";
 
 interface PlanDrillCardsProps {
   budget: PlanBudgetSummary;
   recurring: PlanRecurringSummary;
   periodoSummary: { hasActive: boolean; percentAssigned: number; unassignedCount?: number } | null;
   wishlistCount: number;
-  currency: CurrencyCode;
 }
 
 interface DrillChipProps {
