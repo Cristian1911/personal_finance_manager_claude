@@ -118,7 +118,7 @@ export function InicioRoot({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <InicioHero
         availablePerDay={live.hero.availablePerDay}
         availableTotal={live.hero.availableTotal}
