@@ -240,7 +240,8 @@ export async function getPendingEmailTransactions(): Promise<
   try {
     const data = await getPendingEmailTransactionsCached(user.id, accessToken);
     return { success: true, data };
-  } catch {
+  } catch (error) {
+    console.error("Error fetching pending email transactions:", error);
     return { success: false, error: "Error al obtener transacciones pendientes" };
   }
 }
