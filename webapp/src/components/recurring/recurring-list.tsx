@@ -197,12 +197,6 @@ function RecurringCard({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <MergePickerSheet
-            open={mergeOpen}
-            onOpenChange={setMergeOpen}
-            sourceTemplate={template}
-            onMerged={() => { /* page will revalidate via cache tags */ }}
-          />
         </div>
 
         <div className="mt-4 flex items-baseline justify-between">
@@ -245,6 +239,13 @@ function RecurringCard({
             Pausada
           </Badge>
         )}
+
+        <MergePickerSheet
+          open={mergeOpen}
+          onOpenChange={setMergeOpen}
+          sourceTemplate={template}
+          onMerged={() => { /* revalidateFinancialViews() in action expires cache tags */ }}
+        />
       </CardContent>
     </Card>
   );

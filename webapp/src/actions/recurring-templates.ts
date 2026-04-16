@@ -1137,7 +1137,8 @@ export async function mergeRecurringTemplates(
 
     if (updateError) throw updateError;
 
-    // 2. Delete conflicting occurrences (same date on both templates)
+    // 2. Delete only PENDING conflicting occurrences (same date on both templates).
+    // Paid/skipped occurrences are preserved by reassigning them.
     const { data: keepOccDates } = await supabase
       .from("recurring_occurrences")
       .select("occurrence_date")
@@ -1151,13 +1152,14 @@ export async function mergeRecurringTemplates(
         .delete()
         .eq("template_id", absorbId)
         .eq("user_id", user.id)
+        .eq("status", "pending")
         .in("occurrence_date", dates);
     }
 
-    // 3. Reassign remaining occurrences from absorb to keep
+    // 3. Reassign remaining occurrences from absorb to keep, updating expected_amount
     await supabase
       .from("recurring_occurrences")
-      .update({ template_id: keepId })
+      .update({ template_id: keepId, expected_amount: primaryAmount })
       .eq("template_id", absorbId)
       .eq("user_id", user.id);
 
@@ -1169,8 +1171,6 @@ export async function mergeRecurringTemplates(
       .eq("user_id", user.id);
 
     revalidateFinancialViews();
-    updateTag("recurring");
-    updateTag("occurrences");
 
     return { success: true, data: updated };
   } catch (error) {
@@ -1244,6 +1244,7 @@ export async function splitSubPayment(
         currency_code: currencyCode as Database["public"]["Enums"]["currency_code"],
         direction: template.direction,
         frequency: template.frequency,
+        is_active: template.is_active,
         merchant_name: template.merchant_name
           ? `${template.merchant_name} (${currencyCode})`
           : null,
@@ -1260,10 +1261,7 @@ export async function splitSubPayment(
     if (insertError) throw insertError;
 
     await ensureCurrentOccurrences();
-
     revalidateFinancialViews();
-    updateTag("recurring");
-    updateTag("occurrences");
 
     return { success: true, data: newTemplate };
   } catch (error) {
@@ -1276,7 +1274,7 @@ export async function splitSubPayment(
  * Get templates eligible for merging with a given template.
  * Returns templates for the same account, same direction, same frequency.
  */
-export async function getMergeablTemplates(
+export async function getMergeableTemplates(
   templateId: string,
 ): Promise<ActionResult<RecurringTemplateWithRelations[]>> {
   const { supabase, user, accessToken } = await getAuthenticatedClient();

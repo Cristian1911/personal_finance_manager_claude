@@ -12,7 +12,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { frequencyLabel } from "@zeta/shared";
 import { BRASS_BUTTON_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import {
-  getMergeablTemplates,
+  getMergeableTemplates,
   mergeRecurringTemplates,
 } from "@/actions/recurring-templates";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ interface MergePickerSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** The template that will keep its identity (absorbs the picked one) */
-  sourceTemplate: RecurringTemplateWithRelations;
+  sourceTemplate: RecurringTemplateWithRelations | null;
   onMerged: () => void;
 }
 
@@ -37,15 +37,16 @@ export function MergePickerSheet({
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !sourceTemplate) return;
     setIsLoading(true);
-    getMergeablTemplates(sourceTemplate.id).then((res) => {
+    getMergeableTemplates(sourceTemplate.id).then((res) => {
       if (res.success) setCandidates(res.data);
       setIsLoading(false);
     });
-  }, [open, sourceTemplate.id]);
+  }, [open, sourceTemplate?.id]);
 
   function handleMerge(absorbId: string) {
+    if (!sourceTemplate) return;
     startTransition(async () => {
       const result = await mergeRecurringTemplates(sourceTemplate.id, absorbId);
       if (result.success) {
@@ -68,7 +69,7 @@ export function MergePickerSheet({
         <p className="mt-1 text-xs text-muted-foreground">
           Selecciona la plantilla que quieres absorber en{" "}
           <span className="font-semibold text-foreground">
-            {sourceTemplate.merchant_name}
+            {sourceTemplate?.merchant_name ?? "Recurrente"}
           </span>
           . Sus pagos pendientes se moverán aquí y la otra plantilla se eliminará.
         </p>

@@ -484,18 +484,16 @@ export function MobileRecurrentesView({
       )}
 
       {/* Impact dialog (pause/delete) */}
-      {/* Merge picker sheet */}
-      {mergeTemplate && (
-        <MergePickerSheet
-          open={!!mergeTemplate}
-          onOpenChange={(open) => { if (!open) setMergeTemplate(null); }}
-          sourceTemplate={mergeTemplate}
-          onMerged={() => {
-            setMergeTemplate(null);
-            hook.refreshOccurrences();
-          }}
-        />
-      )}
+      {/* Merge picker sheet (always rendered for close animation) */}
+      <MergePickerSheet
+        open={!!mergeTemplate}
+        onOpenChange={(open) => { if (!open) setMergeTemplate(null); }}
+        sourceTemplate={mergeTemplate}
+        onMerged={() => {
+          setMergeTemplate(null);
+          hook.refreshOccurrences();
+        }}
+      />
 
       {impactAction && (
         <RecurringImpactDialog
