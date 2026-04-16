@@ -101,6 +101,15 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     ? last7Days.reduce((sum, d) => sum + d.amount, 0) / last7Days.length
     : 0;
 
+  // Upcoming income derived from hero data — surfaces on the "Por resolver" timeline
+  const upcomingIncome = heroData.incomeConfigured && heroData.nextIncomeDate
+    ? [{
+        occurrenceDate: heroData.nextIncomeDate,
+        amount: heroData.nextIncomeAmount,
+        name: heroData.nextIncomeName ?? "Próximo ingreso",
+      }]
+    : [];
+
   return (
     <>
       <MobileHeader variant="main" title="Zeta" />
@@ -130,6 +139,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           currency,
         }}
         attentionItems={attentionItemsData}
+        upcomingIncome={upcomingIncome}
         burnRateData={burnRateData}
         totalBudget={budgetSummary.totalTarget}
         starterMode={starterMode}

@@ -4,7 +4,7 @@ import { InicioHero } from "./inicio-hero";
 import { InicioMetricsGrid } from "./inicio-metrics-grid";
 import { InicioDiscovery } from "./inicio-discovery";
 import { InicioActivity } from "./inicio-activity";
-import { InicioAttention } from "./inicio-attention";
+import { InicioAttentionTimeline } from "./inicio-attention-timeline";
 import { InicioStarter } from "./inicio-starter";
 import { InicioImportStrip } from "./inicio-import-strip";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
@@ -12,6 +12,7 @@ import { useLiveDashboard } from "@/hooks/use-live-metrics";
 import type { LiveDashboardData } from "@/actions/live-dashboard";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 import type { CurrencyCode } from "@/types/domain";
+import type { UpcomingIncomeItem } from "./timeline-model";
 
 export interface InicioRootProps {
   hero: {
@@ -49,6 +50,7 @@ export interface InicioRootProps {
     upcomingPayments: LiveDashboardData["attention"]["upcomingPayments"];
     pendingEmails: LiveDashboardData["attention"]["pendingEmails"];
   };
+  upcomingIncome: UpcomingIncomeItem[];
   burnRateData: BurnRateResponse | null;
   totalBudget: number;
   starterMode: boolean;
@@ -74,6 +76,7 @@ export function InicioRoot({
   hero,
   metrics,
   attentionItems,
+  upcomingIncome,
   burnRateData,
   totalBudget,
   starterMode,
@@ -146,13 +149,11 @@ export function InicioRoot({
         onToggle={toggle}
       />
 
-      <InicioAttention
+      <InicioAttentionTimeline
         overdueReminders={live.attention.overdueReminders}
         upcomingPayments={live.attention.upcomingPayments}
         pendingEmails={live.attention.pendingEmails}
-        currency={currency}
-        expanded={activeZone}
-        onToggle={toggle}
+        upcomingIncome={upcomingIncome}
       />
 
       <InicioDiscovery
