@@ -18,7 +18,11 @@ import { getCategories } from "@/actions/categories";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
 
-export async function PlanTabRecurrentes() {
+interface PlanTabRecurrentesProps {
+  month?: string;
+}
+
+export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}) {
   const [templatesResult, accountsResult, categoriesResult, summary, currency, attentionSnapshot, occurrencesResult] =
     await Promise.all([
       getRecurringTemplates(),
@@ -27,7 +31,7 @@ export async function PlanTabRecurrentes() {
       getRecurringSummary(),
       getPreferredCurrency(),
       getAttentionSnapshot(),
-      getOccurrencesForMonth(),
+      getOccurrencesForMonth(month),
     ]);
 
   const templates = templatesResult.success ? templatesResult.data : [];

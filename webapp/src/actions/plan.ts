@@ -196,6 +196,7 @@ export const getPlanPageData = cache(
         activeCount: recurringSummary.activeCount,
         dueSoonCount: dueSoon.length,
         dueSoonTotal,
+        overdueCount: recurringSummary.overdueCount,
       },
       scenarios: {
         savedScenarios: [],

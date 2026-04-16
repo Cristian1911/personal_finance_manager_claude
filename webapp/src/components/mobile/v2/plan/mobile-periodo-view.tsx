@@ -41,7 +41,7 @@ const STATUS_BADGE: Record<
   PlanningEntryStatus,
   { label: string; className: string }
 > = {
-  PLANNED: { label: "Pendiente", className: "bg-amber-400/10 text-amber-400" },
+  PLANNED: { label: "Pendiente", className: "bg-z-brass/10 text-z-brass" },
   COMPLETED: { label: "Pagado", className: "bg-z-income/10 text-z-income" },
   SKIPPED: {
     label: "Omitido",
@@ -105,6 +105,20 @@ export function MobilePeriodoView({
 
   const hasUnassigned = planData.unassigned_expenses.length > 0;
 
+  // NETO hero uses timeline (actual tx-based cashflow) so the elevated
+  // number matches the chart's stat row. D3 intent: surface the "real"
+  // monthly net, not the envelope-planning net.
+  const heroIncome = timelineData.totalIncome;
+  const heroExpense = timelineData.totalExpense;
+  const net = heroIncome - heroExpense;
+
+  const periodLabel =
+    timelineData.dayOfMonth <= 10
+      ? "Comienzo de mes"
+      : timelineData.dayOfMonth <= 20
+        ? "Mitad de mes"
+        : "Fin de mes";
+
   /* ── Handlers ── */
   function cycleExpenseStatus(entry: PlanningEntryWithRelations) {
     startTransition(async () => { await toggleEntryStatus(entry.id, nextExpenseStatus(entry.status)); });
@@ -150,6 +164,33 @@ export function MobilePeriodoView({
 
   return (
     <div className="space-y-4">
+      {/* NETO hero — D3 */}
+      <div className="rounded-2xl border border-white/6 bg-z-surface-2 p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+            Neto del mes
+          </p>
+          <span className="text-[10px] text-muted-foreground">{periodLabel}</span>
+        </div>
+        <p
+          className={cn(
+            "mt-1 text-3xl font-bold tabular-nums",
+            net > 0
+              ? "text-z-income"
+              : net < 0
+                ? "text-z-expense"
+                : "text-z-brass",
+          )}
+        >
+          {net >= 0 ? "+" : ""}
+          {formatCurrency(net, currency)}
+        </p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          +{formatCurrency(heroIncome, currency)} · −
+          {formatCurrency(heroExpense, currency)}
+        </p>
+      </div>
+
       {/* Chart hero */}
       <PlanFlowChart timelineData={timelineData} currency={currency} />
 
@@ -435,7 +476,7 @@ function IncomeCard({
                       type="button"
                       onClick={() => onRemoveAssignment(assignment.id)}
                       disabled={isPending}
-                      className="rounded-md p-1 text-muted-foreground transition-colors hover:text-red-400"
+                      className="rounded-md p-1 text-muted-foreground transition-colors hover:text-z-expense"
                     >
                       <Trash2 className="size-3" />
                     </button>
@@ -459,7 +500,7 @@ function IncomeCard({
               type="button"
               onClick={() => onDelete(entry.id)}
               disabled={isPending}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-red-400 transition-colors hover:text-red-300"
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-z-expense transition-colors hover:text-z-expense/80"
             >
               <Trash2 className="size-3" />
               Eliminar
@@ -592,7 +633,7 @@ function ExpenseRow({
             type="button"
             onClick={onDelete}
             disabled={isPending}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-red-400 transition-colors hover:text-red-300"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-z-expense transition-colors hover:text-z-expense/80"
           >
             <Trash2 className="size-3" />
             Eliminar

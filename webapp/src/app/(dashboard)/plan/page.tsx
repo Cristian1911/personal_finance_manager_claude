@@ -64,7 +64,7 @@ export default async function PlanPage({
       case "periodo":
         return <PlanTabPeriodo />;
       case "recurrentes":
-        return <PlanTabRecurrentes />;
+        return <PlanTabRecurrentes month={month} />;
       case "deseos":
         return <PlanTabDeseos />;
       default:

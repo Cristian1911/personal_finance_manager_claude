@@ -76,9 +76,6 @@ export function PlanRoot({
         recurring={planData.recurring}
         periodoSummary={periodoSummary}
         wishlistCount={wishlistCount}
-        currency={currency}
-        expanded={activeZone}
-        onToggle={toggle}
       />
 
       {/* Scenarios — only when stable */}

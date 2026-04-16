@@ -164,24 +164,41 @@ async function getUpcomingRecurrencesCached(
   return upcoming;
 }
 
-async function getRecurringSummaryCached(userId: string, accessToken: string): Promise<{
+async function getRecurringSummaryCached(
+  userId: string,
+  todayStr: string,
+  accessToken: string,
+): Promise<{
   totalMonthlyExpenses: number;
   totalMonthlyIncome: number;
   activeCount: number;
+  overdueCount: number;
 }> {
   "use cache";
   cacheTag("recurring");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
-  const { data: templates } = await supabase
-    .from("recurring_transaction_templates")
-    .select("amount, direction, frequency, accounts!recurring_transaction_templates_account_id_fkey(account_type)")
-    .eq("user_id", userId)
-    .eq("is_active", true);
+
+  const [templatesRes, overdueRes] = await Promise.all([
+    supabase
+      .from("recurring_transaction_templates")
+      .select("amount, direction, frequency, accounts!recurring_transaction_templates_account_id_fkey(account_type)")
+      .eq("user_id", userId)
+      .eq("is_active", true),
+    supabase
+      .from("recurring_occurrences")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "pending")
+      .lt("occurrence_date", todayStr),
+  ]);
+
+  const templates = templatesRes.data;
+  const overdueCount = overdueRes.count ?? 0;
 
   if (!templates)
-    return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0 };
+    return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0, overdueCount };
 
   let totalMonthlyExpenses = 0;
   let totalMonthlyIncome = 0;
@@ -201,6 +218,7 @@ async function getRecurringSummaryCached(userId: string, accessToken: string): P
     totalMonthlyExpenses,
     totalMonthlyIncome,
     activeCount: templates.length,
+    overdueCount,
   };
 }
 
@@ -938,10 +956,12 @@ export async function getRecurringSummary(): Promise<{
   totalMonthlyExpenses: number;
   totalMonthlyIncome: number;
   activeCount: number;
+  overdueCount: number;
 }> {
   const { user, accessToken } = await getAuthenticatedClient();
-  if (!user || !accessToken) return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0 };
-  return getRecurringSummaryCached(user.id, accessToken);
+  if (!user || !accessToken)
+    return { totalMonthlyExpenses: 0, totalMonthlyIncome: 0, activeCount: 0, overdueCount: 0 };
+  return getRecurringSummaryCached(user.id, toISODateString(new Date()), accessToken);
 }
 
 // ─── Impact preview ──────────────────────────────────────────────────────────
