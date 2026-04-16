@@ -22,6 +22,7 @@ import {
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { SUBCATEGORY_PAGO_TARJETA, SUBCATEGORY_CUOTA_CREDITO } from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, RecurringTemplate, SubPayment, TransactionDirection } from "@/types/domain";
@@ -85,26 +86,17 @@ export function RecurringForm({
     template?.transfer_source_account_id ?? ""
   );
   // Multi-currency sub_payments for debt accounts
-  const initialSubPayments: SubPayment[] = (() => {
-    const raw = template?.sub_payments as unknown;
-    if (!Array.isArray(raw)) return [];
-    return raw.filter(
-      (e): e is SubPayment =>
-        typeof e === "object" && e !== null &&
-        typeof (e as Record<string, unknown>).currency_code === "string" &&
-        typeof (e as Record<string, unknown>).amount === "number" &&
-        ((e as Record<string, unknown>).amount as number) > 0,
-    );
-  })();
+  const initialSubPayments: SubPayment[] = parseSubPayments(template?.sub_payments) ?? [];
   const [subPayments, setSubPayments] = useState<SubPayment[]>(initialSubPayments);
   const [useSubPayments, setUseSubPayments] = useState(initialSubPayments.length > 0);
 
-  const subPaymentsTotal = useMemo(
-    () => subPayments.reduce((sum, sp) => sum + (sp.amount || 0), 0),
-    [subPayments],
-  );
-
   const selectedAccount = accounts.find((acc) => acc.id === accountId) ?? null;
+
+  // Primary-currency amount from sub_payments (not a cross-currency sum).
+  // Falls back to 0 if the primary currency entry isn't set yet.
+  const primaryCurrency = selectedAccount?.currency_code ?? template?.currency_code ?? "COP";
+  const subPaymentsPrimaryAmount =
+    subPayments.find((sp) => sp.currency_code === primaryCurrency)?.amount ?? 0;
   const cutoffDay = selectedAccount?.cutoff_day ?? null;
   const paymentDay = selectedAccount?.payment_day ?? null;
   const isDebtAccount =
@@ -217,7 +209,7 @@ export function RecurringForm({
             id="amount"
             name="amount"
             defaultValue={template?.amount}
-            value={useSubPayments ? String(Math.round(subPaymentsTotal * 100) / 100) : undefined}
+            value={useSubPayments ? String(Math.round(subPaymentsPrimaryAmount * 100) / 100) : undefined}
             placeholder="0"
             required
             readOnly={useSubPayments}
@@ -225,7 +217,7 @@ export function RecurringForm({
           />
           <p className="text-xs text-muted-foreground">
             {useSubPayments
-              ? "Calculado desde el desglose por moneda."
+              ? `Pago mínimo en ${primaryCurrency} del desglose por moneda.`
               : isDebtAccount
                 ? "Si importas un extracto con fecha y total a pagar, actualizamos este monto automaticamente. Al confirmar el pago puedes ajustar el monto pagado."
                 : "Este valor es referencia. En el checklist podras registrar el monto pagado."}

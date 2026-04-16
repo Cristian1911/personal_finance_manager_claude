@@ -9,6 +9,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { UUID_RE } from "@/lib/validators/shared";
 import {
   generateOccurrenceRowsBatch,
@@ -53,10 +54,10 @@ export interface NextIncomeInfo {
   daysUntil: number;      // Days from today (1 = today or tomorrow)
 }
 
-export interface OccurrenceSubPayment {
-  currency_code: string;
-  amount: number;
-}
+import type { SubPayment } from "@/types/domain";
+
+/** @deprecated Use SubPayment from @/types/domain */
+export type OccurrenceSubPayment = SubPayment;
 
 export interface RecurringOccurrence {
   id: string;
@@ -144,17 +145,6 @@ function isCrossAccountDebtPayment(
     template.account != null &&
     isDebtAccountType(template.account.account_type)
   );
-}
-
-function parseSubPayments(raw: unknown): OccurrenceSubPayment[] | null {
-  if (!Array.isArray(raw)) return null;
-  const result = raw.filter(
-    (e): e is OccurrenceSubPayment =>
-      typeof e === "object" && e !== null &&
-      typeof e.currency_code === "string" &&
-      typeof e.amount === "number" && e.amount > 0,
-  );
-  return result.length > 0 ? result : null;
 }
 
 function mapOccurrenceRow(row: RawOccurrenceRow): RecurringOccurrence | null {

@@ -25,6 +25,7 @@ import type {
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
 import { linkTransactionToOccurrence, ensureCurrentOccurrences } from "@/actions/occurrences";
+import { parseSubPayments as parseSubPaymentsShared } from "@/lib/utils/sub-payments";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 
 type DebtKind = "credit_card" | "loan";
@@ -141,24 +142,24 @@ function buildRecurringTemplateKey(accountId: string): string {
 }
 
 function parseSubPayments(raw: unknown): SubPaymentEntry[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter(
-    (e): e is SubPaymentEntry =>
-      typeof e === "object" && e !== null &&
-      typeof e.currency_code === "string" &&
-      typeof e.amount === "number" && e.amount > 0,
-  );
+  return parseSubPaymentsShared(raw) ?? [];
 }
 
 function upsertSubPayment(
   existing: SubPaymentEntry[],
   currencyCode: string,
   amount: number,
+  primaryCurrency: string,
 ): SubPaymentEntry[] {
   const updated = existing.filter((e) => e.currency_code !== currencyCode);
   updated.push({ currency_code: currencyCode, amount });
-  // Sort: primary currency first (COP usually), then alphabetical
-  updated.sort((a, b) => a.currency_code.localeCompare(b.currency_code));
+  // Primary currency first, then alphabetical
+  updated.sort((a, b) => {
+    const aPrimary = a.currency_code === primaryCurrency ? 0 : 1;
+    const bPrimary = b.currency_code === primaryCurrency ? 0 : 1;
+    if (aPrimary !== bPrimary) return aPrimary - bPrimary;
+    return a.currency_code.localeCompare(b.currency_code);
+  });
   return updated;
 }
 
@@ -177,12 +178,10 @@ function getPrimaryCurrencyAmount(
 ): number {
   const primary = subPayments.find((sp) => sp.currency_code === primaryCurrency);
   if (primary) return Math.round(primary.amount * 100) / 100;
-  // If primary currency not yet imported, keep the existing amount
-  if (existingAmount != null && existingAmount > 0) return existingAmount;
-  // First import is a secondary currency — use it as placeholder until primary arrives
-  return subPayments.length > 0
-    ? Math.round(subPayments[0].amount * 100) / 100
-    : 0;
+  // If primary currency not yet imported, keep the existing amount.
+  // Never fall back to a secondary-currency amount — that would store
+  // e.g. a USD value as COP, producing a nonsensical template.amount.
+  return (existingAmount != null && existingAmount > 0) ? existingAmount : 0;
 }
 
 function getDayOfMonth(date: string): number | null {
@@ -262,7 +261,7 @@ async function syncCreditCardRecurringTemplate(params: {
 
   // Build updated sub_payments by merging this currency's payment into existing ones
   const existingSubPayments = parseSubPayments(params.existingTemplate?.sub_payments);
-  const updatedSubPayments = upsertSubPayment(existingSubPayments, params.meta.currency, currencyAmount);
+  const updatedSubPayments = upsertSubPayment(existingSubPayments, params.meta.currency, currencyAmount, primaryCurrency);
   // template.amount = primary-currency minimum only (sub_payments is display metadata)
   const totalAmount = getPrimaryCurrencyAmount(
     updatedSubPayments,
@@ -369,7 +368,7 @@ async function syncLoanRecurringTemplate(params: {
 
   // Build updated sub_payments
   const existingSubPayments = parseSubPayments(params.existingTemplate?.sub_payments);
-  const updatedSubPayments = upsertSubPayment(existingSubPayments, params.meta.currency, currencyAmount);
+  const updatedSubPayments = upsertSubPayment(existingSubPayments, params.meta.currency, currencyAmount, primaryCurrency);
   // template.amount = primary-currency minimum only (sub_payments is display metadata)
   const totalAmount = getPrimaryCurrencyAmount(
     updatedSubPayments,
