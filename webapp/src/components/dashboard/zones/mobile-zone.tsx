@@ -48,7 +48,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     id: tx.id,
     description: tx.merchant_name || tx.clean_description || "Sin descripción",
     amount: tx.amount,
-    currency_code: tx.currency_code ?? "COP",
+    currency_code: (tx.currency_code ?? "COP") as CurrencyCode,
     direction: tx.direction,
     account_id: tx.account_id,
     account_name: tx.accounts?.name ?? "Sin cuenta",

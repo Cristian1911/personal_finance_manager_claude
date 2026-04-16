@@ -10,12 +10,14 @@ import type {
   AttentionUpcomingPayment,
   AttentionPendingEmail,
 } from "@/actions/attention-items";
+import type { CurrencyCode } from "@/types/domain";
 
 interface InicioAttentionTimelineProps {
   overdueReminders: AttentionOverdueReminder[];
   upcomingPayments: AttentionUpcomingPayment[];
   pendingEmails: AttentionPendingEmail[];
   upcomingIncome: UpcomingIncomeItem[];
+  currency: CurrencyCode;
 }
 
 export function InicioAttentionTimeline({
@@ -23,6 +25,7 @@ export function InicioAttentionTimeline({
   upcomingPayments,
   pendingEmails,
   upcomingIncome,
+  currency,
 }: InicioAttentionTimelineProps) {
   const todayStr = toColombiaDateString(new Date());
   const items = buildTimelineItems({
@@ -31,6 +34,7 @@ export function InicioAttentionTimeline({
     pendingEmails,
     upcomingIncome,
     todayStr,
+    currency,
   });
 
   return (

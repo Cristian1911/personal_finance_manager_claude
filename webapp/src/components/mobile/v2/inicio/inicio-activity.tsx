@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, ArrowRight, Link2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,7 +10,6 @@ import { formatDate } from "@/lib/utils/date";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { TagChip } from "@/components/tags/tag-chip";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
-import { CategoryPickerBody } from "@/components/categories/category-zone-picker";
 import { useOutflowCategories } from "@/components/providers/app-data-provider";
 import { categorizeTransaction } from "@/actions/categorize";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
@@ -20,13 +20,21 @@ import {
 } from "@/actions/occurrences";
 import type { CandidateOccurrence } from "@/actions/occurrences";
 import { toast } from "sonner";
-import type { CurrencyCode } from "@/types/domain";
+import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
+
+// Dynamic import — CategoryPickerBody's tree (~804 LOC with Radix Command/Popover,
+// inline create form, etc.) is heavy. Lazy-*mount* via openedOnceIds below defers
+// rendering; dynamic import also defers the JS bundle cost.
+const CategoryPickerBody = dynamic(
+  () => import("@/components/categories/category-zone-picker").then((m) => m.CategoryPickerBody),
+  { ssr: false },
+);
 
 interface RecentTransactionMobile {
   id: string;
   description: string;
   amount: number;
-  currency_code: string;
+  currency_code: CurrencyCode;
   direction: "INFLOW" | "OUTFLOW";
   account_id: string;
   account_name: string;
@@ -43,7 +51,7 @@ interface InicioActivityProps {
 }
 
 function findCategoryById(
-  categories: Array<{ id: string; name_es?: string | null; name?: string | null; icon?: string | null; children: Array<{ id: string; name_es?: string | null; name?: string | null; icon?: string | null }> }>,
+  categories: CategoryWithChildren[],
   id: string,
 ): { id: string; name: string; icon: string | null } | null {
   for (const parent of categories) {
@@ -179,7 +187,6 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                   isOpen && "border-l-2 border-l-z-brass pl-2"
                 )}
               >
-                {/* Direction icon */}
                 <div
                   className={cn(
                     "mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-md",
@@ -195,7 +202,6 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                   )}
                 </div>
 
-                {/* Description + meta */}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium">{tx.description}</p>
                   <p className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -228,7 +234,6 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                   )}
                 </div>
 
-                {/* Amount */}
                 <span
                   className={cn(
                     "shrink-0 text-xs font-medium tabular-nums",
@@ -236,11 +241,10 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                   )}
                 >
                   {tx.direction === "INFLOW" ? "+" : "-"}
-                  {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
+                  {formatCurrency(tx.amount, tx.currency_code)}
                 </span>
               </button>
 
-              {/* Inline expand */}
               <div
                 className="grid transition-[grid-template-rows] duration-200 ease-out"
                 style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
@@ -248,13 +252,12 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                 <div className="overflow-hidden">
                   <div className={cn("py-1.5 transition-opacity duration-150", isOpen ? "opacity-100" : "opacity-0")}>
                     <div className={cn(PANEL_INSET_CLASS, "space-y-2 border-z-brass/15 bg-black/20 p-2.5")}>
-                      {/* Actions row */}
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] text-muted-foreground">
-                          {tx.direction === "INFLOW" ? "Ingreso" : "Gasto"} &middot; {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
+                          {tx.direction === "INFLOW" ? "Ingreso" : "Gasto"} &middot; {formatCurrency(tx.amount, tx.currency_code)}
                         </span>
                         <div className="flex items-center gap-2">
-                          {linkableAccountIds?.has(tx.account_id) && !tx.recurrence_group_id && (
+                          {linkableAccountIds.has(tx.account_id) && !tx.recurrence_group_id && (
                             <button
                               type="button"
                               onClick={(e) => {
@@ -276,11 +279,10 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                           </Link>
                         </div>
                       </div>
-                      {/* Inline category picker — OUTFLOW only; INFLOW txs use Ver detalle for the full form.
-                          Lazy mount: only render the heavy picker tree once the row has been expanded
-                          at least once. Preserves the expand animation on subsequent open/close. */}
+                      {/* OUTFLOW only; INFLOW txs use Ver detalle for the full form.
+                          Lazy-mounted via openedOnceIds so the picker tree is not hydrated for rows the user never expands. */}
                       {tx.direction === "OUTFLOW" && openedOnceIds.has(tx.id) && (
-                        <div className="rounded-lg border border-white/6 bg-black/20 p-2">
+                        <div className="border-t border-white/6 pt-2">
                           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                             Asignar categoría
                           </p>
@@ -321,7 +323,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
           title="Vincular a recurrente"
           subtitle={(() => {
             const tx = transactions.find((t) => t.id === linkingTxId);
-            return tx ? `${tx.description} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}` : "";
+            return tx ? `${tx.description} · ${formatCurrency(tx.amount, tx.currency_code)}` : "";
           })()}
           candidates={occurrenceCandidates.map((o) => ({
             id: o.id,

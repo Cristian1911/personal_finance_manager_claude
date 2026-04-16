@@ -7,6 +7,7 @@ const emptySources: TimelineSources = {
   pendingEmails: [],
   upcomingIncome: [],
   todayStr: "2026-04-16",
+  currency: "COP",
 };
 
 describe("buildTimelineItems", () => {

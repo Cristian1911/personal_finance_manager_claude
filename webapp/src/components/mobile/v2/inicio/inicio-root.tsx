@@ -59,7 +59,7 @@ export interface InicioRootProps {
     id: string;
     description: string;
     amount: number;
-    currency_code: string;
+    currency_code: CurrencyCode;
     direction: "INFLOW" | "OUTFLOW";
     account_id: string;
     account_name: string;
@@ -145,6 +145,7 @@ export function InicioRoot({
         upcomingPayments={live.attention.upcomingPayments}
         pendingEmails={live.attention.pendingEmails}
         upcomingIncome={upcomingIncome}
+        currency={currency}
       />
 
       <InicioMetricsGrid

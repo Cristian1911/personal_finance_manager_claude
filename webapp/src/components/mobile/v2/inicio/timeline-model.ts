@@ -1,8 +1,11 @@
+import { formatDate } from "@/lib/utils/date";
+import { formatCurrency } from "@/lib/utils/currency";
 import type {
   AttentionOverdueReminder,
   AttentionUpcomingPayment,
   AttentionPendingEmail,
 } from "@/actions/attention-items";
+import type { CurrencyCode } from "@/types/domain";
 
 export type TimelineUrgency = "overdue" | "today" | "future";
 
@@ -39,6 +42,8 @@ export interface TimelineSources {
   upcomingIncome: UpcomingIncomeItem[];
   /** ISO YYYY-MM-DD representing "today" in Colombia tz — passed from caller */
   todayStr: string;
+  /** Display currency — applied to all subtitle amounts on the timeline */
+  currency: CurrencyCode;
 }
 
 function urgencyFor(dateKey: string, todayStr: string): TimelineUrgency {
@@ -47,22 +52,13 @@ function urgencyFor(dateKey: string, todayStr: string): TimelineUrgency {
   return "future";
 }
 
-const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-
 function shortDate(iso: string, todayStr: string): string {
   if (iso === todayStr) return "Hoy";
-  const parts = iso.split("-");
-  const m = Number(parts[1]);
-  const d = Number(parts[2]);
-  return `${d} ${MONTHS[m - 1]}`;
-}
-
-function formatCurrencyShort(amount: number): string {
-  return `$${Math.round(amount).toLocaleString("es-CO")}`;
+  return formatDate(iso, "d MMM");
 }
 
 export function buildTimelineItems(sources: TimelineSources): TimelineItem[] {
-  const { overdueReminders, upcomingPayments, pendingEmails, upcomingIncome, todayStr } = sources;
+  const { overdueReminders, upcomingPayments, pendingEmails, upcomingIncome, todayStr, currency } = sources;
 
   const items: TimelineItem[] = [];
 
@@ -75,7 +71,7 @@ export function buildTimelineItems(sources: TimelineSources): TimelineItem[] {
       dateKey: r.due_date,
       dateLabel: `Vencido · ${shortDate(r.due_date, todayStr)}`,
       title: r.title,
-      subtitle: r.amount != null ? formatCurrencyShort(r.amount) : "",
+      subtitle: r.amount != null ? formatCurrency(r.amount, currency) : "",
       isIncome: false,
       href: "/gestionar",
     });
@@ -106,7 +102,7 @@ export function buildTimelineItems(sources: TimelineSources): TimelineItem[] {
       dateKey: p.occurrenceDate,
       dateLabel: `${shortDate(p.occurrenceDate, todayStr)} · Pago`,
       title: p.name,
-      subtitle: formatCurrencyShort(p.amount),
+      subtitle: formatCurrency(p.amount, currency),
       isIncome: false,
       href: "/plan?tab=recurrentes",
     });
@@ -121,7 +117,7 @@ export function buildTimelineItems(sources: TimelineSources): TimelineItem[] {
       dateKey: i.occurrenceDate,
       dateLabel: `${shortDate(i.occurrenceDate, todayStr)} · Ingreso`,
       title: i.name,
-      subtitle: `+${formatCurrencyShort(i.amount)}`,
+      subtitle: `+${formatCurrency(i.amount, currency)}`,
       isIncome: true,
       href: "/plan?tab=periodo",
     });
