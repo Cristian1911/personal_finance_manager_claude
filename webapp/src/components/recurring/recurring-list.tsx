@@ -194,7 +194,7 @@ function RecurringCard({
         <div className="mt-4 flex items-baseline justify-between">
           <div>
             <span
-              className={`text-xl font-bold ${
+              className={`text-xl font-bold tabular-nums ${
                 template.direction === "INFLOW" ? "text-z-income" : ""
               }`}
             >

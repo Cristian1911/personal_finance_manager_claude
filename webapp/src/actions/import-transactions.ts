@@ -24,7 +24,7 @@ import type {
   TransactionToImport,
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
-import { linkTransactionToOccurrence } from "@/actions/occurrences";
+import { linkTransactionToOccurrence, ensureCurrentOccurrences } from "@/actions/occurrences";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 
 type DebtKind = "credit_card" | "loan";
@@ -41,6 +41,7 @@ type RecurringTemplateSyncRow = Pick<
   Database["public"]["Tables"]["recurring_transaction_templates"]["Row"],
   | "id"
   | "account_id"
+  | "amount"
   | "currency_code"
   | "merchant_name"
   | "description"
@@ -90,7 +91,7 @@ const IMPORT_DETAIL_MESSAGES = {
 import { sanitizeInterestRate, mvToEaPercent, MV_THRESHOLD } from "@zeta/shared";
 
 const RECURRING_TEMPLATE_SYNC_SELECT =
-  "id, account_id, currency_code, merchant_name, description, direction, frequency, category_id, transfer_source_account_id, is_active, start_date, day_of_month, sub_payments";
+  "id, account_id, amount, currency_code, merchant_name, description, direction, frequency, category_id, transfer_source_account_id, is_active, start_date, day_of_month, sub_payments";
 
 function sanitizeEaRate(
   rawRate: number | null | undefined,
@@ -161,20 +162,27 @@ function upsertSubPayment(
   return updated;
 }
 
-function computeSubPaymentsTotal(
+/**
+ * Get the primary-currency amount from sub_payments. Only the primary-currency
+ * entry drives the template.amount (used for occurrence expected_amount and
+ * findMatchingOccurrence tolerance). Non-primary entries are display-only metadata.
+ *
+ * Falls back to the existing template amount if the primary currency isn't
+ * present in sub_payments (e.g., only a secondary currency statement was imported).
+ */
+function getPrimaryCurrencyAmount(
   subPayments: SubPaymentEntry[],
   primaryCurrency: string,
+  existingAmount: number | null,
 ): number {
-  // For now, sum all amounts directly. When sub_payments has multiple currencies,
-  // the non-primary currency amounts have already been converted at import time
-  // by using the bank's own minimum_payment in primary currency.
-  // For credit cards, banks typically report the total minimum in the primary currency statement.
-  // We store the per-currency breakdown for display purposes.
-  let total = 0;
-  for (const sp of subPayments) {
-    total += sp.amount;
-  }
-  return Math.round(total * 100) / 100;
+  const primary = subPayments.find((sp) => sp.currency_code === primaryCurrency);
+  if (primary) return Math.round(primary.amount * 100) / 100;
+  // If primary currency not yet imported, keep the existing amount
+  if (existingAmount != null && existingAmount > 0) return existingAmount;
+  // First import is a secondary currency — use it as placeholder until primary arrives
+  return subPayments.length > 0
+    ? Math.round(subPayments[0].amount * 100) / 100
+    : 0;
 }
 
 function getDayOfMonth(date: string): number | null {
@@ -255,7 +263,12 @@ async function syncCreditCardRecurringTemplate(params: {
   // Build updated sub_payments by merging this currency's payment into existing ones
   const existingSubPayments = parseSubPayments(params.existingTemplate?.sub_payments);
   const updatedSubPayments = upsertSubPayment(existingSubPayments, params.meta.currency, currencyAmount);
-  const totalAmount = computeSubPaymentsTotal(updatedSubPayments, primaryCurrency);
+  // template.amount = primary-currency minimum only (sub_payments is display metadata)
+  const totalAmount = getPrimaryCurrencyAmount(
+    updatedSubPayments,
+    primaryCurrency,
+    params.existingTemplate ? Number(params.existingTemplate.amount) : null,
+  );
 
   try {
     if (params.existingTemplate) {
@@ -357,7 +370,12 @@ async function syncLoanRecurringTemplate(params: {
   // Build updated sub_payments
   const existingSubPayments = parseSubPayments(params.existingTemplate?.sub_payments);
   const updatedSubPayments = upsertSubPayment(existingSubPayments, params.meta.currency, currencyAmount);
-  const totalAmount = computeSubPaymentsTotal(updatedSubPayments, primaryCurrency);
+  // template.amount = primary-currency minimum only (sub_payments is display metadata)
+  const totalAmount = getPrimaryCurrencyAmount(
+    updatedSubPayments,
+    primaryCurrency,
+    params.existingTemplate ? Number(params.existingTemplate.amount) : null,
+  );
 
   try {
     if (params.existingTemplate) {
@@ -1093,6 +1111,9 @@ export async function importTransactions(
     statementMeta: normalizedStatementMeta,
     details,
   });
+
+  // Ensure occurrence rows are generated for any newly created/updated templates
+  await ensureCurrentOccurrences();
 
   // Screenshot imports lack statement metadata — fall back to per-tx balance deltas.
   if (balanceDeltaTxs.length > 0) {

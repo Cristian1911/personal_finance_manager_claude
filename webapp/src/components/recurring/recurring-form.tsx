@@ -20,6 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { SUBCATEGORY_PAGO_TARJETA, SUBCATEGORY_CUOTA_CREDITO } from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, RecurringTemplate, SubPayment, TransactionDirection } from "@/types/domain";
@@ -239,9 +241,8 @@ export function RecurringForm({
             {!useSubPayments && (
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                className="h-6 text-[10px]"
+                className={cn(BRASS_GHOST_BUTTON_CLASS, "h-6 text-[10px]")}
                 onClick={() => {
                   setUseSubPayments(true);
                   if (subPayments.length === 0) {
@@ -293,9 +294,8 @@ export function RecurringForm({
               {subPayments.length < accountCurrencies.length && (
                 <Button
                   type="button"
-                  variant="ghost"
                   size="sm"
-                  className="h-7 text-xs"
+                  className={cn(GHOST_BUTTON_CLASS, "h-7 text-xs")}
                   onClick={() => {
                     const used = new Set(subPayments.map((s) => s.currency_code));
                     const next = accountCurrencies.find((c) => !used.has(c));
@@ -366,11 +366,11 @@ export function RecurringForm({
 
       {isDebtAccount &&
         (cutoffDay != null || paymentDay != null) && (
-          <div className="rounded-md border border-blue-200 bg-blue-50 p-3 space-y-2">
-            <p className="text-sm font-medium text-blue-900">
+          <div className="rounded-md border border-z-alert/20 bg-z-alert/8 p-3 space-y-2">
+            <p className="text-sm font-medium text-z-alert">
               Sugerencias para obligaciones
             </p>
-            <p className="text-xs text-blue-800">
+            <p className="text-xs text-muted-foreground">
               Corte: dia {cutoffDay ?? "--"} · Pago: dia{" "}
               {paymentDay ?? "--"}
             </p>
@@ -378,8 +378,8 @@ export function RecurringForm({
               {cutoffDay != null && (
                 <Button
                   type="button"
-                  variant="outline"
                   size="sm"
+                  className={GHOST_BUTTON_CLASS}
                   onClick={() => setStartDate(nextOccurrenceForDay(cutoffDay))}
                 >
                   Usar dia de corte
@@ -388,8 +388,8 @@ export function RecurringForm({
               {paymentDay != null && (
                 <Button
                   type="button"
-                  variant="outline"
                   size="sm"
+                  className={GHOST_BUTTON_CLASS}
                   onClick={() => setStartDate(nextOccurrenceForDay(paymentDay))}
                 >
                   Usar dia de pago
@@ -486,7 +486,7 @@ export function RecurringForm({
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className={cn(BRASS_BUTTON_CLASS, "w-full")} disabled={pending}>
         {pending
           ? "Guardando..."
           : template

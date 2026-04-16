@@ -20,7 +20,7 @@ export function SubPaymentsBreakdown({
   return (
     <div className={className}>
       {subPayments.map((sp) => (
-        <span key={sp.currency_code} className="text-muted-foreground">
+        <span key={sp.currency_code} className="tabular-nums text-muted-foreground">
           {sp.currency_code}: {formatCurrency(sp.amount, sp.currency_code as CurrencyCode)}
         </span>
       ))}

@@ -331,7 +331,7 @@ export function MobileRecurrentesView({
 
                         {/* Option A: Inline expand */}
                         {isExpanded && (
-                          <div className="border-t border-white/5 bg-black/20 px-3 py-3">
+                          <div className="border-t border-white/6 bg-black/20 px-3 py-3">
                             <OccurrenceActions
                               item={item}
                               isPending={isBusy}

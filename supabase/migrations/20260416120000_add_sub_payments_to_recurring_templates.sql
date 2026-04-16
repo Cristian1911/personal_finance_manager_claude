@@ -77,95 +77,79 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Step 5: Merge existing duplicate templates (same account, INFLOW, MONTHLY, no category)
--- For each account with multiple currency templates, keep the primary currency one
--- and merge the secondary into it as sub_payments.
-WITH duplicates AS (
-  SELECT
-    t.account_id,
-    t.user_id,
-    a.currency_code AS primary_currency,
-    jsonb_agg(
-      jsonb_build_object(
-        'currency_code', t.currency_code::text,
-        'amount', t.amount
-      )
-      ORDER BY CASE WHEN t.currency_code = a.currency_code THEN 0 ELSE 1 END
-    ) AS sub_payments_json,
-    -- Keep the template matching the primary currency (or the first active one)
-    (array_agg(t.id ORDER BY CASE WHEN t.currency_code = a.currency_code THEN 0 ELSE 1 END, t.is_active DESC, t.updated_at DESC))[1] AS keep_id,
-    array_agg(t.id ORDER BY CASE WHEN t.currency_code = a.currency_code THEN 0 ELSE 1 END, t.is_active DESC, t.updated_at DESC) AS all_ids,
-    sum(t.amount) AS total_amount
-  FROM recurring_transaction_templates_enc t
-  JOIN accounts ON accounts.id = t.account_id
-  -- Unencrypted join: accounts is not encrypted, and we filter on non-encrypted columns
-  CROSS JOIN LATERAL (
-    SELECT accounts.currency_code
-  ) a(currency_code)
-  WHERE t.direction = 'INFLOW'
-    AND t.frequency = 'MONTHLY'
-    AND t.category_id IS NULL
-  GROUP BY t.account_id, t.user_id, a.currency_code
-  HAVING count(*) > 1
-)
--- Update the kept template with sub_payments and summed amount
+-- For each account with multiple currency templates, keep the primary-currency one
+-- and merge the secondary into it as sub_payments (display-only metadata).
+-- template.amount stays as the PRIMARY-currency minimum (not a cross-currency sum).
+
+-- 5a: Identify groups and winners
+CREATE TEMP TABLE _merge_plan AS
+SELECT
+  t.account_id,
+  t.user_id,
+  a.currency_code AS primary_currency,
+  jsonb_agg(
+    jsonb_build_object(
+      'currency_code', t.currency_code::text,
+      'amount', t.amount
+    )
+    ORDER BY CASE WHEN t.currency_code = a.currency_code THEN 0 ELSE 1 END
+  ) AS sub_payments_json,
+  -- Keep the primary-currency template (or the first active one if primary is missing)
+  (array_agg(t.id ORDER BY
+    CASE WHEN t.currency_code = a.currency_code THEN 0 ELSE 1 END,
+    t.is_active DESC,
+    t.updated_at DESC
+  ))[1] AS keep_id,
+  -- Primary-currency amount (for template.amount — NOT a sum of all currencies)
+  (array_agg(t.amount ORDER BY
+    CASE WHEN t.currency_code = a.currency_code THEN 0 ELSE 1 END,
+    t.is_active DESC,
+    t.updated_at DESC
+  ))[1] AS primary_amount,
+  array_agg(t.id) AS all_ids
+FROM recurring_transaction_templates_enc t
+JOIN accounts ON accounts.id = t.account_id
+CROSS JOIN LATERAL (
+  SELECT accounts.currency_code
+) a(currency_code)
+WHERE t.direction = 'INFLOW'
+  AND t.frequency = 'MONTHLY'
+  AND t.category_id IS NULL
+GROUP BY t.account_id, t.user_id, a.currency_code
+HAVING count(*) > 1;
+
+-- 5b: Update the kept template with sub_payments and primary-currency amount
 UPDATE recurring_transaction_templates_enc enc
 SET
-  sub_payments = d.sub_payments_json,
-  amount = d.total_amount,
-  currency_code = d.primary_currency
-FROM duplicates d
-WHERE enc.id = d.keep_id;
+  sub_payments = mp.sub_payments_json,
+  amount = mp.primary_amount,
+  currency_code = mp.primary_currency
+FROM _merge_plan mp
+WHERE enc.id = mp.keep_id;
 
--- Delete the secondary templates (the ones NOT kept)
-WITH duplicates AS (
-  SELECT
-    t.account_id,
-    a.currency_code AS primary_currency,
-    (array_agg(t.id ORDER BY CASE WHEN t.currency_code = a.currency_code THEN 0 ELSE 1 END, t.is_active DESC, t.updated_at DESC))[1] AS keep_id,
-    array_agg(t.id) AS all_ids
-  FROM recurring_transaction_templates_enc t
-  JOIN accounts ON accounts.id = t.account_id
-  CROSS JOIN LATERAL (
-    SELECT accounts.currency_code
-  ) a(currency_code)
-  WHERE t.direction = 'INFLOW'
-    AND t.frequency = 'MONTHLY'
-    AND t.category_id IS NULL
-    AND t.sub_payments IS NULL  -- Only not-yet-merged ones (skip if already processed above)
-  GROUP BY t.account_id, a.currency_code
-  HAVING count(*) > 1
-),
-to_delete AS (
-  SELECT unnest(all_ids) AS id, keep_id FROM duplicates
-)
--- Reassign occurrences from deleted templates to the kept one
+-- 5c: Delete conflicting occurrences on losers that share the same date as the winner's
+-- (prevents UNIQUE(template_id, occurrence_date) violation on reassignment)
+DELETE FROM recurring_occurrences occ
+USING _merge_plan mp
+WHERE occ.template_id = ANY(mp.all_ids)
+  AND occ.template_id != mp.keep_id
+  AND EXISTS (
+    SELECT 1 FROM recurring_occurrences kept
+    WHERE kept.template_id = mp.keep_id
+      AND kept.occurrence_date = occ.occurrence_date
+  );
+
+-- 5d: Reassign remaining non-conflicting occurrences from losers to the winner
 UPDATE recurring_occurrences occ
-SET template_id = td.keep_id
-FROM to_delete td
-WHERE occ.template_id = td.id AND td.id != td.keep_id;
+SET template_id = mp.keep_id
+FROM _merge_plan mp
+WHERE occ.template_id = ANY(mp.all_ids)
+  AND occ.template_id != mp.keep_id;
 
--- Now delete the secondary templates
-WITH duplicates AS (
-  SELECT
-    t.account_id,
-    a.currency_code AS primary_currency,
-    (array_agg(t.id ORDER BY CASE WHEN t.currency_code = a.currency_code THEN 0 ELSE 1 END, t.is_active DESC, t.updated_at DESC))[1] AS keep_id,
-    array_agg(t.id) AS all_ids
-  FROM recurring_transaction_templates_enc t
-  JOIN accounts ON accounts.id = t.account_id
-  CROSS JOIN LATERAL (
-    SELECT accounts.currency_code
-  ) a(currency_code)
-  WHERE t.direction = 'INFLOW'
-    AND t.frequency = 'MONTHLY'
-    AND t.category_id IS NULL
-    -- sub_payments IS NOT NULL means it was the winner from the UPDATE above
-    -- We want to delete the ones that were NOT updated (losers)
-  GROUP BY t.account_id, a.currency_code
-  HAVING count(*) > 1
-),
-to_delete AS (
-  SELECT unnest(all_ids) AS id, keep_id FROM duplicates
-)
-DELETE FROM recurring_transaction_templates_enc
-WHERE id IN (SELECT id FROM to_delete WHERE id != keep_id);
+-- 5e: Delete the loser templates
+DELETE FROM recurring_transaction_templates_enc enc
+USING _merge_plan mp
+WHERE enc.id = ANY(mp.all_ids)
+  AND enc.id != mp.keep_id;
+
+DROP TABLE _merge_plan;
