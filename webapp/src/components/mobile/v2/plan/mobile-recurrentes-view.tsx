@@ -11,6 +11,7 @@ import {
   MOBILE_EYEBROW_CLASS,
   MOBILE_TAB_BAR_CLEARANCE_CLASS,
 } from "@/lib/constants/styles";
+import { SubPaymentsBreakdown } from "@/components/recurring/sub-payments-breakdown";
 import { useRecurringMonth, type OccurrenceItem, type DateStatus } from "@/components/recurring/use-recurring-month";
 import type { RecurringOccurrence } from "@/actions/occurrences";
 import { OccurrenceActions } from "@/components/recurring/occurrence-actions";
@@ -314,6 +315,12 @@ export function MobileRecurrentesView({
                             <p className="truncate text-[10px] text-muted-foreground">
                               {item.accountName}
                             </p>
+                            {item.subPayments && item.subPayments.length > 1 && (
+                              <SubPaymentsBreakdown
+                                subPayments={item.subPayments}
+                                className="flex gap-2 text-[10px]"
+                              />
+                            )}
                           </div>
 
                           {/* Amount */}
@@ -376,7 +383,29 @@ export function MobileRecurrentesView({
         />
       )}
 
-      {/* Templates section — admin for non-checklist management */}
+      {/* Create new recurring — always visible */}
+      {hook.isHydrated && (
+        <div className="space-y-2">
+          <RecurringFormDialog
+            accounts={accounts}
+            categories={categories}
+            onClose={hook.refreshOccurrences}
+            trigger={
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-z-brass/20 py-3 text-xs font-semibold text-z-brass active:bg-z-brass/5",
+                )}
+              >
+                <Plus className="size-3.5" />
+                Nueva recurrente
+              </button>
+            }
+          />
+        </div>
+      )}
+
+      {/* Templates section — view all, manage paused */}
       {hook.isHydrated && (
         <TemplatesSection
           templates={templates}
@@ -581,24 +610,6 @@ function TemplatesSection({
 
       {show && (
         <div className="space-y-2">
-          {/* Create new */}
-          <RecurringFormDialog
-            accounts={accounts}
-            categories={categories}
-            onClose={onMutate}
-            trigger={
-              <button
-                type="button"
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-z-brass/20 py-3 text-xs font-semibold text-z-brass active:bg-z-brass/5",
-                )}
-              >
-                <Plus className="size-3.5" />
-                Nueva plantilla
-              </button>
-            }
-          />
-
           {/* Template list */}
           <div className={cn(PANEL_INSET_CLASS, "divide-y divide-white/5")}>
             {templates.map((t) => (

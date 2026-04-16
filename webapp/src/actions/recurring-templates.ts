@@ -254,13 +254,14 @@ export async function createRecurringTemplate(
     day_of_week: formData.get("day_of_week") || undefined,
     start_date: formData.get("start_date"),
     end_date: formData.get("end_date") || undefined,
+    sub_payments: formData.get("sub_payments") || undefined,
   });
 
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const payload = { ...parsed.data };
+  const { sub_payments, ...payload } = parsed.data;
   const { data: account, error: accountError } = await supabase
     .from("accounts")
     .select("id, account_type")
@@ -285,11 +286,16 @@ export async function createRecurringTemplate(
     payload.transfer_source_account_id = null;
   }
 
+  const subPaymentsValue = sub_payments && sub_payments.length > 0
+    ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
+    : null;
+
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .insert({
       user_id: user.id,
       ...payload,
+      sub_payments: subPaymentsValue,
     })
     .select()
     .single();
@@ -328,13 +334,14 @@ export async function updateRecurringTemplate(
     day_of_week: formData.get("day_of_week") || undefined,
     start_date: formData.get("start_date"),
     end_date: formData.get("end_date") || undefined,
+    sub_payments: formData.get("sub_payments") || undefined,
   });
 
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  const payload = { ...parsed.data };
+  const { sub_payments, ...payload } = parsed.data;
   const { data: account, error: accountError } = await supabase
     .from("accounts")
     .select("id, account_type")
@@ -359,9 +366,16 @@ export async function updateRecurringTemplate(
     payload.transfer_source_account_id = null;
   }
 
+  const subPaymentsValue = sub_payments && sub_payments.length > 0
+    ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
+    : null;
+
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
-    .update(payload)
+    .update({
+      ...payload,
+      sub_payments: subPaymentsValue,
+    })
     .eq("id", id)
     .eq("user_id", user.id)
     .select()

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useActionState } from "react";
 import {
   createRecurringTemplate,
@@ -19,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Plus, X } from "lucide-react";
 import { SUBCATEGORY_PAGO_TARJETA, SUBCATEGORY_CUOTA_CREDITO } from "@zeta/shared";
 import type { ActionResult } from "@/types/actions";
-import type { Account, CategoryWithChildren, RecurringTemplate, TransactionDirection } from "@/types/domain";
+import type { Account, CategoryWithChildren, RecurringTemplate, SubPayment, TransactionDirection } from "@/types/domain";
 
 const FREQUENCY_OPTIONS = [
   { value: "ONCE", label: "Una vez" },
@@ -81,12 +82,45 @@ export function RecurringForm({
   const [transferSourceAccountId, setTransferSourceAccountId] = useState<string>(
     template?.transfer_source_account_id ?? ""
   );
+  // Multi-currency sub_payments for debt accounts
+  const initialSubPayments: SubPayment[] = (() => {
+    const raw = template?.sub_payments as unknown;
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(
+      (e): e is SubPayment =>
+        typeof e === "object" && e !== null &&
+        typeof (e as Record<string, unknown>).currency_code === "string" &&
+        typeof (e as Record<string, unknown>).amount === "number" &&
+        ((e as Record<string, unknown>).amount as number) > 0,
+    );
+  })();
+  const [subPayments, setSubPayments] = useState<SubPayment[]>(initialSubPayments);
+  const [useSubPayments, setUseSubPayments] = useState(initialSubPayments.length > 0);
+
+  const subPaymentsTotal = useMemo(
+    () => subPayments.reduce((sum, sp) => sum + (sp.amount || 0), 0),
+    [subPayments],
+  );
+
   const selectedAccount = accounts.find((acc) => acc.id === accountId) ?? null;
   const cutoffDay = selectedAccount?.cutoff_day ?? null;
   const paymentDay = selectedAccount?.payment_day ?? null;
   const isDebtAccount =
     selectedAccount?.account_type === "CREDIT_CARD" ||
     selectedAccount?.account_type === "LOAN";
+
+  // Available currencies for the account (from currency_balances)
+  const accountCurrencies = useMemo(() => {
+    const currencies = new Set<string>();
+    if (selectedAccount?.currency_code) currencies.add(selectedAccount.currency_code);
+    const balances = selectedAccount?.currency_balances;
+    if (balances && typeof balances === "object" && !Array.isArray(balances)) {
+      for (const key of Object.keys(balances as Record<string, unknown>)) {
+        currencies.add(key);
+      }
+    }
+    return Array.from(currencies).sort();
+  }, [selectedAccount]);
 
   useEffect(() => {
     if (isDebtAccount && direction !== "INFLOW") {
@@ -174,21 +208,119 @@ export function RecurringForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="amount">Monto</Label>
+          <Label htmlFor="amount">
+            {useSubPayments ? "Monto total" : "Monto"}
+          </Label>
           <CurrencyInput
             id="amount"
             name="amount"
             defaultValue={template?.amount}
+            value={useSubPayments ? String(Math.round(subPaymentsTotal * 100) / 100) : undefined}
             placeholder="0"
             required
+            readOnly={useSubPayments}
+            className={useSubPayments ? "opacity-60" : ""}
           />
           <p className="text-xs text-muted-foreground">
-            {isDebtAccount
-              ? "Si importas un extracto con fecha y total a pagar, actualizamos este monto automaticamente. Al confirmar el pago puedes ajustar el monto pagado."
-              : "Este valor es referencia. En el checklist podras registrar el monto pagado."}
+            {useSubPayments
+              ? "Calculado desde el desglose por moneda."
+              : isDebtAccount
+                ? "Si importas un extracto con fecha y total a pagar, actualizamos este monto automaticamente. Al confirmar el pago puedes ajustar el monto pagado."
+                : "Este valor es referencia. En el checklist podras registrar el monto pagado."}
           </p>
         </div>
       </div>
+
+      {/* Multi-currency breakdown for debt accounts */}
+      {isDebtAccount && accountCurrencies.length > 1 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label>Desglose por moneda</Label>
+            {!useSubPayments && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 text-[10px]"
+                onClick={() => {
+                  setUseSubPayments(true);
+                  if (subPayments.length === 0) {
+                    setSubPayments(
+                      accountCurrencies.map((c) => ({ currency_code: c, amount: 0 }))
+                    );
+                  }
+                }}
+              >
+                <Plus className="mr-1 size-3" />
+                Agregar
+              </Button>
+            )}
+          </div>
+
+          {useSubPayments && (
+            <div className="space-y-2 rounded-md border border-white/6 bg-muted/30 p-3">
+              {subPayments.map((sp, idx) => (
+                <div key={sp.currency_code} className="flex items-center gap-2">
+                  <span className="w-10 text-xs font-semibold text-muted-foreground">
+                    {sp.currency_code}
+                  </span>
+                  <CurrencyInput
+                    value={String(sp.amount || "")}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setSubPayments((prev) =>
+                        prev.map((s, i) => (i === idx ? { ...s, amount: val } : s))
+                      );
+                    }}
+                    placeholder="0"
+                    className="h-8 flex-1 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = subPayments.filter((_, i) => i !== idx);
+                      setSubPayments(updated);
+                      if (updated.length === 0) setUseSubPayments(false);
+                    }}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+
+              {/* Add another currency */}
+              {subPayments.length < accountCurrencies.length && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    const used = new Set(subPayments.map((s) => s.currency_code));
+                    const next = accountCurrencies.find((c) => !used.has(c));
+                    if (next) {
+                      setSubPayments((prev) => [...prev, { currency_code: next, amount: 0 }]);
+                    }
+                  }}
+                >
+                  <Plus className="mr-1 size-3" />
+                  Otra moneda
+                </Button>
+              )}
+
+              <p className="text-[10px] text-muted-foreground">
+                El monto total se calcula como la suma de los pagos mínimos de cada moneda.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Hidden field to send sub_payments JSON */}
+      {useSubPayments && subPayments.length > 0 && (
+        <input type="hidden" name="sub_payments" value={JSON.stringify(subPayments)} />
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">

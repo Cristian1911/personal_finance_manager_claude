@@ -1917,6 +1917,7 @@ export type Database = {
           is_active: boolean
           merchant_name: string | null
           start_date: string
+          sub_payments: Json | null
           transfer_source_account_id: string | null
           updated_at: string
           user_id: string
@@ -1937,6 +1938,7 @@ export type Database = {
           is_active?: boolean
           merchant_name?: string | null
           start_date: string
+          sub_payments?: Json | null
           transfer_source_account_id?: string | null
           updated_at?: string
           user_id: string
@@ -1957,6 +1959,7 @@ export type Database = {
           is_active?: boolean
           merchant_name?: string | null
           start_date?: string
+          sub_payments?: Json | null
           transfer_source_account_id?: string | null
           updated_at?: string
           user_id?: string
@@ -2030,6 +2033,7 @@ export type Database = {
           is_active: boolean
           merchant_name: string | null
           start_date: string
+          sub_payments: Json | null
           transfer_source_account_id: string | null
           updated_at: string
           user_id: string
@@ -2050,6 +2054,7 @@ export type Database = {
           is_active?: boolean
           merchant_name?: string | null
           start_date: string
+          sub_payments?: Json | null
           transfer_source_account_id?: string | null
           updated_at?: string
           user_id: string
@@ -2070,6 +2075,7 @@ export type Database = {
           is_active?: boolean
           merchant_name?: string | null
           start_date?: string
+          sub_payments?: Json | null
           transfer_source_account_id?: string | null
           updated_at?: string
           user_id?: string
