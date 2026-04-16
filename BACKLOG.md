@@ -29,6 +29,27 @@
 - **Touches:** 3 form components, `transactions.ts` action, possibly a DB migration if we pick B.
 - **Found:** Phase 1 PR session investigation, 2026-04-16
 
+### Link Destinatario ↔ Recurring Template
+- **Priority:** High (pairs well with "Hacer recurrente" CTA)
+- **What:** Let a `recurring_templates` row reference a `destinatario_id`. When a new transaction enters the system (manual, PDF import, email) and the destinatario matcher assigns it to a destinatario that's linked to an active recurring template, the system prompts the user to link this transaction to the current pending occurrence of that template — closing the "I just paid my home services, mark it paid" loop automatically. Also: if the transaction's amount matches the expected plannedAmount, auto-link without prompting (configurable).
+- **Why:** Today the occurrence auto-link relies on `findMatchingOccurrence()` heuristics (account + direction + amount + date proximity). Anchoring via a destinatario link is stronger and faster — user confirmed once, system links forever. Also powers the "Hacer recurrente" CTA naturally: promoting a tx to a template auto-creates the destinatario link.
+- **Touches:** Migration to add `destinatario_id` column to `recurring_templates`; matcher + `findMatchingOccurrence()` updates; confirmation UI on new transactions; `RecurringFormDialog` needs a destinatario field.
+- **Found:** Dashboard polish brainstorming, 2026-04-16
+
+### Account aliases + mini icons across the app
+- **Priority:** High (unblocks Dashboard polish density gains)
+- **What:** Current account labels are too long for dense list rows (`Bancolombia Ahorros ****4398` wraps in RECIENTE, `/transactions` list, account pickers). Add an optional `alias` string on the accounts table; display format becomes `<alias> · ****<mask>` with a tiny colored icon. When no alias is set, fall back to the current full name. Pair with the existing "personalized account card" backlog — same color/icon source of truth. Affects: RECIENTE (Dashboard), `/transactions` list rows, `/accounts` list, account pickers in forms, transaction detail "Cuenta" field, `/deudas` account rows.
+- **Why:** Dashboard RECIENTE and similar dense rows lose their visual rhythm because account names overflow. Short aliases reclaim horizontal space and reinforce bank identity via a 16×16 icon rather than a 28-character string.
+- **Migration:** Add `alias` column (encrypted table — spawn supabase-migrator for the 6-step process).
+- **Found:** Dashboard polish brainstorming, 2026-04-16
+
+### Dashboard RECIENTE — inline category assignment on row expand
+- **Priority:** High (scoped for Phase 2 Dashboard polish)
+- **What:** Replace the current inline yellow "Sin cat." tag with a tap-to-expand row interaction: tapping a transaction row reveals an inline panel with a category picker (and possibly: destinatario picker, mark-as-recurring, notes field). User resolves the categorization without leaving the Dashboard. Removes visual clutter from the row and turns a passive signal into a one-tap action.
+- **Context:** User de-prioritized "Sin cat." as a Dashboard-level reminder (the `/transactions` page already has a prominent CTA). But we still want users to be able to categorize from the Dashboard's RECIENTE list if they notice something.
+- **Component:** Update `inicio-activity.tsx`. Likely reuses the zone-picker pattern already in `/transactions` and `/destinatarios`.
+- **Found:** Dashboard polish brainstorming, 2026-04-16
+
 ### Account detail page — deferred items
 - **Priority:** Medium
 - **What:** Statement snapshots visual redesign, auto-populate `card_brand` from PDF parsers, composite `(account_id, user_id, transaction_date)` index, use `useAccounts()` hook instead of server-side `getAccounts()` in QuickActionsBar
