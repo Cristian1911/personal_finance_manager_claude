@@ -12,6 +12,23 @@
 
 ## Features
 
+### Promote transaction → recurring template ("Hacer recurrente" CTA)
+- **Priority:** High
+- **What:** Add a "Hacer recurrente" action on `/transactions/[id]` (and ideally the 3-dot menu on list rows) that opens the existing `RecurringFormDialog` pre-filled with the transaction's merchant, amount, account, category, destinatario, and a monthly-frequency default. On confirm, create a `recurring_templates` row with `start_date` = the transaction's date so the occurrence engine generates this month + future pendings; the source transaction auto-links to the current occurrence via `findMatchingOccurrence()`.
+- **Why:** When a bill (home services, rent, subscription) first shows up from email import, there's no way to promote it to a recurring template without rebuilding it from scratch at `/recurrentes/new`. User shouldn't retype data the app already has.
+- **Touches:** `transactions/[id]/page.tsx`, reuse `RecurringFormDialog`, possibly a new `createRecurringTemplateFromTransaction` helper that wires the link.
+- **Found:** User request during Phase 1 PR session, 2026-04-16
+
+### `is_subscription` toggle is a dead flag — connect or remove
+- **Priority:** High (ship with "Hacer recurrente")
+- **What:** The "Marcar como suscripción" switch in `mobile-transaction-form.tsx`, `transaction-form.tsx`, and `voice-capture-sheet.tsx` writes `is_subscription: boolean` to the transactions row, but **nothing reads that field meaningfully**. Zero filters, zero UI treatment, zero linkage to `recurring_templates`. Email ingest also always writes `is_subscription: false`. The actually meaningful flag for "this is a recurring expense" is `is_recurring`, which is only set by the recurring-template occurrence system (read by `burn-rate.ts` to split discretionary vs recurring spending).
+- **Options:**
+  - **A. Wire up (recommended):** When the toggle is on, also create a `recurring_templates` row with inferred defaults (monthly frequency, same account, same amount, merchant=description) and link the tx to the first generated occurrence. Same helper as the "Hacer recurrente" CTA above — the form becomes another entry point.
+  - **B. Remove:** Delete the toggle from all 3 forms and the `is_subscription` param from the `createTransaction` action path. Drop the column in a follow-up migration (nullable deprecation first, then drop).
+- **Why it matters:** Users see the toggle, expect it to do something, and get no signal that it's inert. Feature disappointment.
+- **Touches:** 3 form components, `transactions.ts` action, possibly a DB migration if we pick B.
+- **Found:** Phase 1 PR session investigation, 2026-04-16
+
 ### Account detail page — deferred items
 - **Priority:** Medium
 - **What:** Statement snapshots visual redesign, auto-populate `card_brand` from PDF parsers, composite `(account_id, user_id, transaction_date)` index, use `useAccounts()` hook instead of server-side `getAccounts()` in QuickActionsBar
