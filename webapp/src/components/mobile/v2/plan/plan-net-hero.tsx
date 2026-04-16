@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useChartFocusMode } from "@/hooks/use-chart-focus-mode";
 import { PlanFlowChart } from "./plan-flow-chart";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -53,16 +54,20 @@ export function PlanNetHero({
           </span>
         </div>
 
-        <p className="text-3xl font-bold text-z-brass">
+        <p
+          className={`text-3xl font-bold ${
+            neto > 0 ? "text-z-income" : neto < 0 ? "text-z-expense" : "text-z-brass"
+          }`}
+        >
           {neto >= 0 ? "+" : ""}
           {formatCurrency(neto, currency)}
         </p>
 
         {/* Stacked progress bar */}
         <div className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-z-surface-2">
-          <div className="absolute inset-y-0 left-0 w-full rounded-full bg-emerald-500/80" />
+          <div className="absolute inset-y-0 left-0 w-full rounded-full bg-z-income/80" />
           <div
-            className="absolute inset-y-0 left-0 rounded-l-full bg-red-500/80"
+            className="absolute inset-y-0 left-0 rounded-l-full bg-z-expense/80"
             style={{ width: `${gastosRatio}%` }}
           />
           <div
@@ -74,11 +79,11 @@ export function PlanNetHero({
         {/* Legend */}
         <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
-            <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
+            <span className="inline-block size-1.5 rounded-full bg-z-income" />
             Ingresos {formatCurrency(ingresos, currency)}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block size-1.5 rounded-full bg-red-500" />
+            <span className="inline-block size-1.5 rounded-full bg-z-expense" />
             Gastos {formatCurrency(gastos, currency)}
           </span>
           <span className="flex items-center gap-1">
@@ -88,8 +93,9 @@ export function PlanNetHero({
         </div>
 
         {!expanded && (
-          <p className="mt-3 text-center text-[11px] text-z-brass/50">
-            Toca para ver flujo ↓
+          <p className="mt-3 flex items-center justify-center gap-1 text-center text-[11px] font-medium text-z-brass">
+            Toca para ver flujo
+            <ChevronDown className="size-3" aria-hidden="true" />
           </p>
         )}
 
@@ -97,10 +103,11 @@ export function PlanNetHero({
           <div className="mt-4" onClick={(e) => e.stopPropagation()}>
             <PlanFlowChart timelineData={timelineData} currency={currency} />
             <p
-              className="mt-2 text-center text-[11px] text-z-brass cursor-pointer"
+              className="mt-2 flex cursor-pointer items-center justify-center gap-1 text-center text-[11px] font-medium text-z-brass"
               onClick={() => setExpanded(false)}
             >
-              Ocultar flujo ↑
+              Ocultar flujo
+              <ChevronUp className="size-3" aria-hidden="true" />
             </p>
           </div>
         )}
