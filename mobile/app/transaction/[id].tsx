@@ -37,6 +37,7 @@ import {
   isDebtInflow,
 } from "../../lib/transaction-semantics";
 import { parseLocalizedAmount } from "../../lib/amount";
+import { COLORS } from "../../lib/constants/colors";
 
 type TransactionDetail = {
   id: string;
@@ -300,7 +301,7 @@ export default function TransactionDetailScreen() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color=COLORS.income />
+        <ActivityIndicator size="large" color={COLORS.income} />
       </View>
     );
   }
@@ -366,7 +367,7 @@ export default function TransactionDetailScreen() {
               disabled={saving}
             >
               {saving ? (
-                <ActivityIndicator size="small" color=COLORS.income />
+                <ActivityIndicator size="small" color={COLORS.income} />
               ) : (
                 <Text className="text-primary font-inter-bold text-sm">
                   Guardar
