@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import type { ActionResult } from "@/types/actions";
 
@@ -54,7 +54,7 @@ export async function createCaptureToken(
     .single();
 
   if (error) return { success: false, error: error.message };
-  revalidateTag("capture-tokens", "zeta");
+  updateTag("capture-tokens");
   return { success: true, data: data as CaptureToken };
 }
 
@@ -108,7 +108,7 @@ export async function createTelegramLink(
     });
 
   if (error) return { success: false, error: error.message };
-  revalidateTag("capture-tokens", "zeta");
+  updateTag("capture-tokens");
 
   return {
     success: true,
@@ -130,6 +130,6 @@ export async function revokeCaptureToken(tokenId: string): Promise<ActionResult<
     .eq("user_id", user.id);
 
   if (error) return { success: false, error: error.message };
-  revalidateTag("capture-tokens", "zeta");
+  updateTag("capture-tokens");
   return { success: true, data: null };
 }

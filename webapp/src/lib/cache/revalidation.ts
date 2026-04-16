@@ -1,31 +1,29 @@
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 
 /**
- * Revalidate all financial Data Cache entries. Call after any mutation
- * that creates, updates, or deletes transactions.
+ * Immediately expire all financial Data Cache entries. Call after any
+ * mutation that creates, updates, or deletes transactions.
  *
- * Does NOT invalidate Route Cache — volatile UI metrics use client-side
- * live refresh instead (see useLiveMetrics hook).
+ * Uses `updateTag` (not `revalidateTag`) for read-your-own-writes —
+ * the user sees their change immediately, no stale-while-revalidate.
+ * Also clears the client Router Cache so cross-page navigation is fresh.
  *
  * Callers should add domain-specific extras after calling this:
  *   revalidateFinancialViews();
- *   revalidateTag("email-ingest", "zeta");   // domain extra
- *
- * NOTE: revalidateTag(tag, profile) — the second arg is the cacheLife
- * profile name ("zeta"), NOT a second tag. Always pass "zeta".
+ *   updateTag("email-ingest");   // domain extra
  */
 export function revalidateFinancialViews() {
-  revalidateTag("transactions", "zeta");
-  revalidateTag("accounts", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("categorize", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("attention", "zeta");
-  revalidateTag("occurrences", "zeta");
-  revalidateTag("recurring", "zeta");
+  updateTag("transactions");
+  updateTag("accounts");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:charts");
+  updateTag("dashboard:budgets");
+  updateTag("dashboard:cashflow");
+  updateTag("dashboard:hero");
+  updateTag("categorize");
+  updateTag("debt");
+  updateTag("budgets");
+  updateTag("attention");
+  updateTag("occurrences");
+  updateTag("recurring");
 }

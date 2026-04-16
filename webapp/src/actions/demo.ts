@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { computeIdempotencyKey } from "@zeta/shared";
 import { DEMO_ACCOUNTS, getDemoTransactions, DEMO_BUDGETS } from "@/lib/demo-data";
@@ -195,15 +195,15 @@ async function seedDemoDataInternal(
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function revalidateAllTags() {
-  revalidateTag("profile", "zeta");
-  revalidateTag("accounts", "zeta");
-  revalidateTag("transactions", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("dashboard:charts", "zeta");
-  revalidateTag("dashboard:cashflow", "zeta");
-  revalidateTag("dashboard:accounts", "zeta");
-  revalidateTag("dashboard:budgets", "zeta");
-  revalidateTag("budgets", "zeta");
-  revalidateTag("debt", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("profile");
+  updateTag("accounts");
+  updateTag("transactions");
+  updateTag("dashboard:hero");
+  updateTag("dashboard:charts");
+  updateTag("dashboard:cashflow");
+  updateTag("dashboard:accounts");
+  updateTag("dashboard:budgets");
+  updateTag("budgets");
+  updateTag("debt");
+  updateTag("attention");
 }

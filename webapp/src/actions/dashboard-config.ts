@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { dashboardConfigSchema } from "@/lib/validators/dashboard-config";
 import type { DashboardConfig } from "@/types/dashboard-config";
@@ -25,7 +25,7 @@ export async function updateDashboardConfig(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("dashboard-config", "zeta");
+  updateTag("dashboard-config");
   return { success: true, data: parsed.data };
 }
 

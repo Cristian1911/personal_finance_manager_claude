@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
@@ -282,7 +282,7 @@ export async function categorizeTransaction(
   }
 
   revalidateFinancialViews();
-  revalidateTag("destinatarios", "zeta");
+  updateTag("destinatarios");
   return { success: true, data: undefined };
 }
 
@@ -415,7 +415,7 @@ export async function bulkCategorize(
   }
 
   revalidateFinancialViews();
-  revalidateTag("destinatarios", "zeta");
+  updateTag("destinatarios");
   return { success: true, data: { categorized } };
 }
 
@@ -498,7 +498,7 @@ export async function assignDestinatario(
   }
 
   revalidateFinancialViews();
-  revalidateTag("destinatarios", "zeta");
+  updateTag("destinatarios");
   return { success: true, data: undefined };
 }
 
@@ -597,7 +597,7 @@ export async function bulkApplyDestinatarioMatches(
   );
 
   revalidateFinancialViews();
-  revalidateTag("destinatarios", "zeta");
+  updateTag("destinatarios");
 
   return { success: true, data: { applied: results.reduce((sum, n) => sum + n, 0) } };
 }
@@ -622,6 +622,6 @@ export async function removeDestinatarioFromTransaction(
   }
 
   revalidateFinancialViews();
-  revalidateTag("destinatarios", "zeta");
+  updateTag("destinatarios");
   return { success: true, data: undefined };
 }

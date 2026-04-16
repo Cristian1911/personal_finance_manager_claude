@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag, cacheTag, cacheLife } from "next/cache";
+import { updateTag, cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { saveScenarioSchema, type SaveScenarioInput } from "@/lib/validators/scenario";
@@ -88,7 +88,7 @@ export async function saveScenario(
     if (error) {
       return { success: false, error: "No se pudo actualizar el escenario" };
     }
-    revalidateTag("debt", "zeta");
+    updateTag("debt");
     return { success: true, data: updated };
   } else {
     // Create new
@@ -101,7 +101,7 @@ export async function saveScenario(
     if (error) {
       return { success: false, error: "No se pudo guardar el escenario" };
     }
-    revalidateTag("debt", "zeta");
+    updateTag("debt");
     return { success: true, data: created };
   }
 }
@@ -119,6 +119,6 @@ export async function deleteScenario(id: string): Promise<ActionResult<void>> {
   if (error) {
     return { success: false, error: "No se pudo eliminar el escenario" };
   }
-  revalidateTag("debt", "zeta");
+  updateTag("debt");
   return { success: true, data: undefined };
 }

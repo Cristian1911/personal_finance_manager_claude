@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag, cacheTag, cacheLife } from "next/cache";
+import { updateTag, cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import {
@@ -300,7 +300,7 @@ export async function createPlanningPeriod(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: data as PlanningPeriod };
 }
 
@@ -320,7 +320,7 @@ export async function deletePlanningPeriod(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: null };
 }
 
@@ -434,7 +434,7 @@ export async function seedPeriodFromRecurring(
     if (insertErr) return { success: false, error: insertErr.message };
   }
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: { created: entriesToInsert.length } };
 }
 
@@ -481,7 +481,7 @@ export async function createPlanningEntry(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: data as PlanningEntry };
 }
 
@@ -526,7 +526,7 @@ export async function updatePlanningEntry(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: data as PlanningEntry };
 }
 
@@ -544,7 +544,7 @@ export async function deletePlanningEntry(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: null };
 }
 
@@ -566,7 +566,7 @@ export async function toggleEntryStatus(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: null };
 }
 
@@ -680,7 +680,7 @@ export async function createAssignment(
     return { success: false, error: error.message };
   }
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: data as PlanningAssignment };
 }
 
@@ -778,7 +778,7 @@ export async function updateAssignment(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: data as PlanningAssignment };
 }
 
@@ -796,7 +796,7 @@ export async function deleteAssignment(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: null };
 }
 
@@ -879,6 +879,6 @@ export async function autoAssignExpenses(
     if (error) return { success: false, error: error.message };
   }
 
-  revalidateTag(TAG, "zeta");
+  updateTag(TAG);
   return { success: true, data: { assigned: assignedCount } };
 }

@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, updateTag } from "next/cache";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { nanoid } from "nanoid";
 import {
@@ -132,7 +133,7 @@ async function persistParsedEmail(params: {
 
     if (insertError) {
       if (insertError.code === "23505") {
-        revalidateTag("email-ingest", "zeta");
+        updateTag("email-ingest");
         return { success: true, data: "duplicate" };
       }
       return { success: false, error: insertError.message };
@@ -164,7 +165,7 @@ async function persistParsedEmail(params: {
     }
 
     revalidateFinancialViews();
-    revalidateTag("email-ingest", "zeta");
+    updateTag("email-ingest");
     return { success: true, data: "imported" };
   }
 
@@ -180,13 +181,13 @@ async function persistParsedEmail(params: {
 
   if (queueError) {
     if (queueError.code === "23505") {
-      revalidateTag("email-ingest", "zeta");
+      updateTag("email-ingest");
       return { success: true, data: "duplicate" };
     }
     return { success: false, error: queueError.message };
   }
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: "queued" };
 }
 
@@ -209,22 +210,39 @@ export async function getEmailIngestAddress(): Promise<
   return { success: true, data: data as EmailIngestAddress | null };
 }
 
-export async function getPendingEmailTransactions(): Promise<
-  ActionResult<PendingEmailTransaction[]>
-> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+async function getPendingEmailTransactionsCached(
+  userId: string,
+  accessToken: string,
+): Promise<PendingEmailTransaction[]> {
+  "use cache";
+  cacheTag("email-ingest");
+  cacheLife("zeta");
 
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("pending_email_transactions")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("status", "pending")
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: (data ?? []) as PendingEmailTransaction[] };
+  if (error) throw error;
+  return (data ?? []) as PendingEmailTransaction[];
+}
+
+export async function getPendingEmailTransactions(): Promise<
+  ActionResult<PendingEmailTransaction[]>
+> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+
+  try {
+    const data = await getPendingEmailTransactionsCached(user.id, accessToken);
+    return { success: true, data };
+  } catch {
+    return { success: false, error: "Error al obtener transacciones pendientes" };
+  }
 }
 
 export async function getPendingEmailCount(): Promise<ActionResult<number>> {
@@ -378,7 +396,7 @@ export async function retryUnrecognizedEmail(
 
   if (updateError) return { success: false, error: updateError.message };
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: persistResult.data };
 }
 
@@ -480,7 +498,7 @@ export async function retryEmailIngestLog(
     console.error("[retryEmailIngestLog] log status update failed:", updateError);
   }
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: persistResult.data };
 }
 
@@ -498,7 +516,7 @@ export async function dismissEmailIngestLog(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: null };
 }
 
@@ -530,7 +548,7 @@ export async function generateIngestAddress(): Promise<ActionResult<EmailIngestA
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: data as EmailIngestAddress };
 }
 
@@ -558,7 +576,7 @@ export async function updateIngestSettings(params: {
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: data as EmailIngestAddress };
 }
 
@@ -574,7 +592,7 @@ export async function deactivateIngestAddress(): Promise<ActionResult<null>> {
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: null };
 }
 
@@ -590,7 +608,7 @@ export async function clearGmailVerification(): Promise<ActionResult<null>> {
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: null };
 }
 
@@ -728,8 +746,8 @@ export async function approveEmailTransaction(
         .update({ status: "imported" })
         .eq("id", pendingId)
         .eq("user_id", user.id);
-      revalidateTag("email-ingest", "zeta");
-      revalidateTag("dashboard:hero", "zeta");
+      updateTag("email-ingest");
+      updateTag("dashboard:hero");
       return { success: true, data: null };
     }
     return { success: false, error: insertError.message };
@@ -811,7 +829,7 @@ export async function approveEmailTransaction(
   if (updateError) return { success: false, error: updateError.message };
 
   revalidateFinancialViews();
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: null };
 }
 
@@ -939,8 +957,8 @@ export async function dismissEmailTransaction(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("email-ingest", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("email-ingest");
+  updateTag("attention");
   return { success: true, data: null };
 }
 
@@ -1013,7 +1031,7 @@ export async function addAllowedSender(
     return { success: false, error: error.message };
   }
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: data as AllowedSender };
 }
 
@@ -1029,6 +1047,6 @@ export async function removeAllowedSender(id: string): Promise<ActionResult<null
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: null };
 }

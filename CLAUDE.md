@@ -71,7 +71,7 @@ Spawn these specialized agents for domain-specific review and diagnosis. Each ha
 - **Cached client pattern**: `"use cache"` functions use `createCachedClient(accessToken)` from `@/lib/supabase/cached` — never `createAdminClient()` (encrypted columns return NULL).
 - **Live metrics for volatile data**: `useLiveDashboard` pattern — page loads from Route Cache, client hook silently corrects stale values on mount.
 - **Cache invalidation**: Transaction mutations → `revalidateFinancialViews()`. Same-page → `startTransition`. Cross-page → live metrics hooks.
-- **cacheLife("zeta")**: stale 120s / revalidate 300s / expire 3600s. `revalidateTag("tag", "zeta")` — second arg is cacheLife profile, not a second tag.
+- **cacheLife("zeta")**: stale 120s / revalidate 300s / expire 3600s. **Mutations MUST use `updateTag("tag")` (from `next/cache`), NOT `revalidateTag`.** `updateTag` immediately expires cache for read-your-own-writes. `revalidateTag` uses stale-while-revalidate — serves old data while refreshing in background, which silently breaks every mutation. `updateTag` also clears the Router Cache so cross-page navigation is fresh. Only use `revalidateTag` in Route Handlers (webhooks, cron) where eventual consistency is acceptable.
 - Spawn `cache-doctor` for stale UI diagnosis.
 
 ## UI Rules

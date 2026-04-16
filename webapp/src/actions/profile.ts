@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag, cacheTag, cacheLife } from "next/cache";
+import { updateTag, cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import type { ActionResult } from "@/types/actions";
@@ -103,7 +103,7 @@ export async function updateProfile(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("profile", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
+  updateTag("profile");
+  updateTag("dashboard:hero");
   return { success: true, data };
 }

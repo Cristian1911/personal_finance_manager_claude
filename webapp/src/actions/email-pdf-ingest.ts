@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { parsePdfBuffer } from "@/lib/email-ingest/pdf-handler";
@@ -68,7 +68,7 @@ export async function dismissEmailPdfStatement(
     await admin.storage.from("email-pdfs").remove([row.storage_path]);
   }
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: null };
 }
 
@@ -165,7 +165,7 @@ export async function retryPdfParsing(
     return { success: false, error: result.error };
   }
 
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: null };
 }
 
@@ -201,6 +201,6 @@ export async function markEmailPdfStatementImported(
   }
 
   revalidateFinancialViews();
-  revalidateTag("email-ingest", "zeta");
+  updateTag("email-ingest");
   return { success: true, data: null };
 }

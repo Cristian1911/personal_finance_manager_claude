@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   computeSnapshotDiffs,
@@ -1116,9 +1116,9 @@ export async function importTransactions(
   }
 
   revalidateFinancialViews();
-  revalidateTag("snapshots", "zeta");
-  revalidateTag("impact", "zeta");
-  revalidateTag("tags", "zeta");
+  updateTag("snapshots");
+  updateTag("impact");
+  updateTag("tags");
 
   await trackProductEvent({
     event_name: "import_completed",

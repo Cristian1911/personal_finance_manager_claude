@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, updateTag } from "next/cache";
 import {
   analyzePurchaseDecision,
   calcUtilization,
@@ -76,7 +76,7 @@ function getNearestDays(dates: string[]): number | null {
 }
 
 function invalidateWishlist() {
-  revalidateTag("wishlist", "zeta");
+  updateTag("wishlist");
 }
 
 // ─── Cached inner functions ─────────────────────────────────────────────────

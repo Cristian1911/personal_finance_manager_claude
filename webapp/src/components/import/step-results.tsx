@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   CheckCircle,
   AlertTriangle,
@@ -238,7 +237,7 @@ export function StepResults({
 
       <div className="flex items-center gap-3">
         <Button asChild>
-          <Link href="/transactions">Ver transacciones</Link>
+          <a href="/transactions">Ver transacciones</a>
         </Button>
         <Button variant="outline" onClick={onReset}>
           Importar otro extracto

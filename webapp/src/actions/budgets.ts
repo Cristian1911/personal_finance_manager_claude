@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
@@ -140,9 +140,9 @@ export async function upsertBudget(
 
     if (error) return { success: false, error: error.message };
 
-    revalidateTag("budgets", "zeta");
-    revalidateTag("dashboard:budgets", "zeta");
-    revalidateTag("attention", "zeta");
+    updateTag("budgets");
+    updateTag("dashboard:budgets");
+    updateTag("attention");
     return { success: true, data };
 }
 
@@ -155,8 +155,8 @@ export async function deleteBudget(id: string): Promise<ActionResult> {
 
     if (error) return { success: false, error: error.message };
 
-    revalidateTag("budgets", "zeta");
-    revalidateTag("dashboard:budgets", "zeta");
-    revalidateTag("attention", "zeta");
+    updateTag("budgets");
+    updateTag("dashboard:budgets");
+    updateTag("attention");
     return { success: true, data: undefined };
 }

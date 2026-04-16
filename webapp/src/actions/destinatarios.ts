@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
@@ -423,8 +423,8 @@ export async function createDestinatario(
       .from("destinatario_rules")
       .insert(rules);
     if (rulesError) {
-      revalidateTag("destinatarios", "zeta");
-      revalidateTag("attention", "zeta");
+      updateTag("destinatarios");
+      updateTag("attention");
       return { success: true, data: { ...data, linked_count: 0 } };
     }
   }
@@ -495,8 +495,8 @@ export async function createDestinatario(
     revalidateFinancialViews();
   }
 
-  revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("destinatarios");
+  updateTag("attention");
   return { success: true, data: { ...data, linked_count: linkedCount } };
 }
 
@@ -531,8 +531,8 @@ export async function updateDestinatario(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("destinatarios");
+  updateTag("attention");
   return { success: true, data };
 }
 
@@ -553,8 +553,8 @@ export async function patchDestinatario(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("destinatarios");
+  updateTag("attention");
   return { success: true, data: null };
 }
 
@@ -574,8 +574,8 @@ export async function deleteDestinatario(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("destinatarios");
+  updateTag("attention");
   return { success: true, data: undefined };
 }
 
@@ -621,7 +621,7 @@ export async function mergeDestinatarios(
   if (deleteError) return { success: false, error: deleteError.message };
 
   revalidateFinancialViews();
-  revalidateTag("destinatarios", "zeta");
+  updateTag("destinatarios");
   return { success: true, data: undefined };
 }
 
@@ -681,8 +681,8 @@ export async function addDestinatarioRule(
     return { success: false, error: error.message };
   }
 
-  revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("destinatarios");
+  updateTag("attention");
   return { success: true, data, conflicts };
 }
 
@@ -702,8 +702,8 @@ export async function removeDestinatarioRule(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("destinatarios", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("destinatarios");
+  updateTag("attention");
   return { success: true, data: undefined };
 }
 
@@ -1087,7 +1087,7 @@ export async function bulkLinkToDestinatario(
   }
 
   revalidateFinancialViews();
-  revalidateTag("destinatarios", "zeta");
+  updateTag("destinatarios");
   return { success: true, data: { linked: linkedCount ?? transactionIds.length, categorized } };
 }
 
@@ -1285,7 +1285,7 @@ export async function applyDestinatarioRules(
   }
 
   revalidateFinancialViews();
-  revalidateTag("destinatarios", "zeta");
+  updateTag("destinatarios");
 
   return { success: true, data: { linked: matchingIds.length, categorized } };
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag, cacheTag, cacheLife } from "next/cache";
+import { updateTag, cacheTag, cacheLife } from "next/cache";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
@@ -298,10 +298,10 @@ export async function createRecurringTemplate(
 
   await ensureCurrentOccurrences();
 
-  revalidateTag("recurring", "zeta");
-  revalidateTag("occurrences", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("recurring");
+  updateTag("occurrences");
+  updateTag("dashboard:hero");
+  updateTag("attention");
   return { success: true, data };
 }
 
@@ -371,10 +371,10 @@ export async function updateRecurringTemplate(
 
   await ensureCurrentOccurrences();
 
-  revalidateTag("recurring", "zeta");
-  revalidateTag("occurrences", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("recurring");
+  updateTag("occurrences");
+  updateTag("dashboard:hero");
+  updateTag("attention");
   return { success: true, data };
 }
 
@@ -393,10 +393,10 @@ export async function deleteRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("recurring", "zeta");
-  revalidateTag("occurrences", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("recurring");
+  updateTag("occurrences");
+  updateTag("dashboard:hero");
+  updateTag("attention");
   return { success: true, data: undefined };
 }
 
@@ -418,10 +418,10 @@ export async function toggleRecurringTemplate(
 
   await ensureCurrentOccurrences();
 
-  revalidateTag("recurring", "zeta");
-  revalidateTag("occurrences", "zeta");
-  revalidateTag("dashboard:hero", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("recurring");
+  updateTag("occurrences");
+  updateTag("dashboard:hero");
+  updateTag("attention");
   return { success: true, data: undefined };
 }
 
@@ -890,9 +890,9 @@ export async function recordRecurringOccurrencePayment(input: {
   });
 
   revalidateFinancialViews();
-  revalidateTag("occurrences", "zeta");
-  revalidateTag("recurring", "zeta");
-  revalidateTag("impact", "zeta");
+  updateTag("occurrences");
+  updateTag("recurring");
+  updateTag("impact");
 
   return {
     success: true,

@@ -1,7 +1,7 @@
 "use server";
 
 import { cache } from "react";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { reminderSchema } from "@/lib/validators/reminders";
 import { toISODateString } from "@/lib/utils/date";
@@ -92,8 +92,8 @@ export async function createReminder(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("reminders", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("reminders");
+  updateTag("attention");
   return { success: true, data: { id: data.id } };
 }
 
@@ -127,8 +127,8 @@ export async function toggleReminder(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("reminders", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("reminders");
+  updateTag("attention");
   return { success: true, data: null };
 }
 
@@ -162,8 +162,8 @@ export async function updateReminder(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("reminders", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("reminders");
+  updateTag("attention");
   return { success: true, data: null };
 }
 
@@ -185,8 +185,8 @@ export async function postponeReminder(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("reminders", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("reminders");
+  updateTag("attention");
   return { success: true, data: null };
 }
 
@@ -204,7 +204,7 @@ export async function deleteReminder(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("reminders", "zeta");
-  revalidateTag("attention", "zeta");
+  updateTag("reminders");
+  updateTag("attention");
   return { success: true, data: null };
 }

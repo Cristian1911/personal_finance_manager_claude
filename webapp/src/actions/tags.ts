@@ -1,7 +1,7 @@
 "use server";
 
 import { cache } from "react";
-import { cacheTag, cacheLife, revalidateTag } from "next/cache";
+import { cacheTag, cacheLife, updateTag as expireTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { tagGroupSchema, tagSchema, generateSlug } from "@/lib/validators/tags";
@@ -239,7 +239,7 @@ export async function createTagGroup(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("tags", "zeta");
+  expireTag("tags");
   return { success: true, data: { id: data.id } };
 }
 
@@ -265,7 +265,7 @@ export async function updateTagGroup(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("tags", "zeta");
+  expireTag("tags");
   return { success: true, data: null };
 }
 
@@ -282,7 +282,7 @@ export async function deleteTagGroup(id: string): Promise<ActionResult<null>> {
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("tags", "zeta");
+  expireTag("tags");
   return { success: true, data: null };
 }
 
@@ -322,7 +322,7 @@ export async function createTag(
     return { success: false, error: error.message };
   }
 
-  revalidateTag("tags", "zeta");
+  expireTag("tags");
   return { success: true, data: { id: data.id } };
 }
 
@@ -357,7 +357,7 @@ export async function updateTag(
     return { success: false, error: error.message };
   }
 
-  revalidateTag("tags", "zeta");
+  expireTag("tags");
   return { success: true, data: null };
 }
 
@@ -374,7 +374,7 @@ export async function deleteTag(id: string): Promise<ActionResult<null>> {
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("tags", "zeta");
+  expireTag("tags");
   return { success: true, data: null };
 }
 
@@ -421,13 +421,13 @@ export async function addTagToEntity(
     return { success: false, error: error.message };
   }
 
-  revalidateTag("tags", "zeta");
+  expireTag("tags");
   if (entityType === "transaction") {
-    revalidateTag("categorize", "zeta");
-    revalidateTag("transactions", "zeta");
+    expireTag("categorize");
+    expireTag("transactions");
   }
-  if (entityType === "destinatario") revalidateTag("destinatarios", "zeta");
-  if (entityType === "category") revalidateTag("categories", "zeta");
+  if (entityType === "destinatario") expireTag("destinatarios");
+  if (entityType === "category") expireTag("categories");
   return { success: true, data: null };
 }
 
@@ -454,13 +454,13 @@ export async function removeTagFromEntity(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("tags", "zeta");
+  expireTag("tags");
   if (entityType === "transaction") {
-    revalidateTag("categorize", "zeta");
-    revalidateTag("transactions", "zeta");
+    expireTag("categorize");
+    expireTag("transactions");
   }
-  if (entityType === "destinatario") revalidateTag("destinatarios", "zeta");
-  if (entityType === "category") revalidateTag("categories", "zeta");
+  if (entityType === "destinatario") expireTag("destinatarios");
+  if (entityType === "category") expireTag("categories");
   return { success: true, data: null };
 }
 
@@ -501,8 +501,8 @@ export async function bulkTagTransactions(
 
   if (error) return { success: false, error: error.message };
 
-  revalidateTag("tags", "zeta");
-  revalidateTag("categorize", "zeta");
-  revalidateTag("transactions", "zeta");
+  expireTag("tags");
+  expireTag("categorize");
+  expireTag("transactions");
   return { success: true, data: { tagged: uniqueIds.length } };
 }
