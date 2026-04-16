@@ -10,6 +10,13 @@ export type Category = Tables<"categories">;
 export type Budget = Tables<"budgets">;
 
 export type RecurringTemplate = Tables<"recurring_transaction_templates">;
+
+/** Per-currency entry within a multi-currency recurring template */
+export interface SubPayment {
+  currency_code: string;
+  amount: number;
+}
+
 export type EmailIngestAddress = Tables<"email_ingest_addresses">;
 export type PendingEmailTransaction = Tables<"pending_email_transactions">;
 export type EmailIngestLog = Tables<"email_ingest_logs">;

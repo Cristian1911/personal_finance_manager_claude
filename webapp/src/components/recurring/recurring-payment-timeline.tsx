@@ -5,6 +5,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
 import { RecurringConfirmInline } from "./recurring-confirm-inline";
+import { SubPaymentsBreakdown } from "./sub-payments-breakdown";
 import type { OccurrenceItem, DateStatus } from "./use-recurring-month";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -182,12 +183,20 @@ export function PaymentTimeline({
                       </div>
 
                       {/* Amount */}
-                      <span className="shrink-0 text-sm font-medium tabular-nums">
-                        {formatCurrency(
-                          item.plannedAmount,
-                          item.currencyCode as CurrencyCode
+                      <div className="shrink-0 text-right">
+                        <span className="text-sm font-medium tabular-nums">
+                          {formatCurrency(
+                            item.plannedAmount,
+                            item.currencyCode as CurrencyCode
+                          )}
+                        </span>
+                        {item.subPayments && item.subPayments.length > 1 && (
+                          <SubPaymentsBreakdown
+                            subPayments={item.subPayments}
+                            className="flex gap-1.5 text-[10px] justify-end"
+                          />
                         )}
-                      </span>
+                      </div>
 
                       {/* Confirm indicator */}
                       <span className="shrink-0 text-xs text-muted-foreground">

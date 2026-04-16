@@ -9,6 +9,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { UUID_RE } from "@/lib/validators/shared";
 import {
   generateOccurrenceRowsBatch,
@@ -53,6 +54,11 @@ export interface NextIncomeInfo {
   daysUntil: number;      // Days from today (1 = today or tomorrow)
 }
 
+import type { SubPayment } from "@/types/domain";
+
+/** @deprecated Use SubPayment from @/types/domain */
+export type OccurrenceSubPayment = SubPayment;
+
 export interface RecurringOccurrence {
   id: string;
   template_id: string;
@@ -71,6 +77,7 @@ export interface RecurringOccurrence {
   category_icon: string | null;
   category_color: string | null;
   transfer_source_account_id: string | null;
+  sub_payments: OccurrenceSubPayment[] | null;
 }
 
 // ─── Select fragment for occurrence + joined template data ────────────────────
@@ -90,6 +97,7 @@ const OCCURRENCE_SELECT = `
     is_active,
     account_id,
     transfer_source_account_id,
+    sub_payments,
     account:accounts!recurring_transaction_templates_account_id_fkey(name, account_type),
     category:categories!recurring_transaction_templates_category_id_fkey(name_es, icon, color)
   )
@@ -110,6 +118,7 @@ type RawOccurrenceRow = {
     is_active: boolean;
     account_id: string;
     transfer_source_account_id: string | null;
+    sub_payments: unknown;
     account: { name: string; account_type: string } | null;
     category: { name_es: string | null; icon: string | null; color: string | null } | null;
   } | null;
@@ -158,6 +167,7 @@ function mapOccurrenceRow(row: RawOccurrenceRow): RecurringOccurrence | null {
     category_icon: row.template.category?.icon ?? null,
     category_color: row.template.category?.color ?? null,
     transfer_source_account_id: row.template.transfer_source_account_id,
+    sub_payments: parseSubPayments(row.template.sub_payments),
   };
 }
 

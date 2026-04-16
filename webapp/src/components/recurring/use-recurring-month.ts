@@ -24,7 +24,7 @@ import type {
   Account,
   RecurringTemplateWithRelations,
 } from "@/types/domain";
-import type { RecurringOccurrence } from "@/actions/occurrences";
+import type { RecurringOccurrence, OccurrenceSubPayment } from "@/actions/occurrences";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -49,6 +49,7 @@ export interface OccurrenceItem {
   accountLastFour: string;
   status: "pending" | "paid" | "skipped";
   transactionId: string | null;
+  subPayments: OccurrenceSubPayment[] | null;
 }
 
 export type DateStatus = "today" | "past" | "future";
@@ -82,6 +83,7 @@ function mapToOccurrenceItem(
     accountLastFour: accounts.find((a) => a.id === o.account_id)?.mask ?? "",
     status: o.status as "pending" | "paid" | "skipped",
     transactionId: o.transaction_id,
+    subPayments: o.sub_payments,
   };
 }
 

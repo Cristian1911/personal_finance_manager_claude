@@ -28,10 +28,12 @@ import {
 } from "lucide-react";
 import { RecurringFormDialog } from "./recurring-form-dialog";
 import { RecurringImpactDialog } from "./recurring-impact-dialog";
+import { SubPaymentsBreakdown } from "./sub-payments-breakdown";
 import type {
   Account,
   CategoryWithChildren,
   CurrencyCode,
+  SubPayment,
   RecurringTemplateWithRelations,
 } from "@/types/domain";
 
@@ -190,14 +192,22 @@ function RecurringCard({
         </div>
 
         <div className="mt-4 flex items-baseline justify-between">
-          <span
-            className={`text-xl font-bold ${
-              template.direction === "INFLOW" ? "text-z-income" : ""
-            }`}
-          >
-            {isIncome ? "+" : "-"}
-            {formatCurrency(template.amount, template.currency_code as CurrencyCode)}
-          </span>
+          <div>
+            <span
+              className={`text-xl font-bold tabular-nums ${
+                template.direction === "INFLOW" ? "text-z-income" : ""
+              }`}
+            >
+              {isIncome ? "+" : "-"}
+              {formatCurrency(template.amount, template.currency_code as CurrencyCode)}
+            </span>
+            {Array.isArray(template.sub_payments) && (template.sub_payments as unknown as SubPayment[]).length > 1 && (
+              <SubPaymentsBreakdown
+                subPayments={template.sub_payments as unknown as SubPayment[]}
+                className="mt-0.5 flex gap-2 text-xs"
+              />
+            )}
+          </div>
           <Badge variant="secondary">{frequencyLabel(template.frequency)}</Badge>
         </div>
 

@@ -24,7 +24,8 @@ import type {
   TransactionToImport,
 } from "@/types/import";
 import { trackProductEvent } from "@/actions/product-events";
-import { linkTransactionToOccurrence } from "@/actions/occurrences";
+import { linkTransactionToOccurrence, ensureCurrentOccurrences } from "@/actions/occurrences";
+import { parseSubPayments as parseSubPaymentsShared } from "@/lib/utils/sub-payments";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 
 type DebtKind = "credit_card" | "loan";
@@ -41,6 +42,7 @@ type RecurringTemplateSyncRow = Pick<
   Database["public"]["Tables"]["recurring_transaction_templates"]["Row"],
   | "id"
   | "account_id"
+  | "amount"
   | "currency_code"
   | "merchant_name"
   | "description"
@@ -51,7 +53,13 @@ type RecurringTemplateSyncRow = Pick<
   | "is_active"
   | "start_date"
   | "day_of_month"
+  | "sub_payments"
 >;
+
+interface SubPaymentEntry {
+  currency_code: string;
+  amount: number;
+}
 
 const IMPORT_DETAIL_MESSAGES = {
   monthlyToAnnual: (
@@ -84,7 +92,7 @@ const IMPORT_DETAIL_MESSAGES = {
 import { sanitizeInterestRate, mvToEaPercent, MV_THRESHOLD } from "@zeta/shared";
 
 const RECURRING_TEMPLATE_SYNC_SELECT =
-  "id, account_id, currency_code, merchant_name, description, direction, frequency, category_id, transfer_source_account_id, is_active, start_date, day_of_month";
+  "id, account_id, amount, currency_code, merchant_name, description, direction, frequency, category_id, transfer_source_account_id, is_active, start_date, day_of_month, sub_payments";
 
 function sanitizeEaRate(
   rawRate: number | null | undefined,
@@ -128,8 +136,52 @@ function buildDecisionKey(statementIndex: number, transactionIndex: number): str
   return `${statementIndex}:${transactionIndex}`;
 }
 
-function buildRecurringTemplateKey(accountId: string, currency: string): string {
-  return `${accountId}:${currency.toUpperCase()}`;
+/** Template key is per-account (not per-currency). Multi-currency payments merge into one template. */
+function buildRecurringTemplateKey(accountId: string): string {
+  return accountId;
+}
+
+function parseSubPayments(raw: unknown): SubPaymentEntry[] {
+  return parseSubPaymentsShared(raw) ?? [];
+}
+
+function upsertSubPayment(
+  existing: SubPaymentEntry[],
+  currencyCode: string,
+  amount: number,
+  primaryCurrency: string,
+): SubPaymentEntry[] {
+  const updated = existing.filter((e) => e.currency_code !== currencyCode);
+  updated.push({ currency_code: currencyCode, amount });
+  // Primary currency first, then alphabetical
+  updated.sort((a, b) => {
+    const aPrimary = a.currency_code === primaryCurrency ? 0 : 1;
+    const bPrimary = b.currency_code === primaryCurrency ? 0 : 1;
+    if (aPrimary !== bPrimary) return aPrimary - bPrimary;
+    return a.currency_code.localeCompare(b.currency_code);
+  });
+  return updated;
+}
+
+/**
+ * Get the primary-currency amount from sub_payments. Only the primary-currency
+ * entry drives the template.amount (used for occurrence expected_amount and
+ * findMatchingOccurrence tolerance). Non-primary entries are display-only metadata.
+ *
+ * Falls back to the existing template amount if the primary currency isn't
+ * present in sub_payments (e.g., only a secondary currency statement was imported).
+ */
+function getPrimaryCurrencyAmount(
+  subPayments: SubPaymentEntry[],
+  primaryCurrency: string,
+  existingAmount: number | null,
+): number {
+  const primary = subPayments.find((sp) => sp.currency_code === primaryCurrency);
+  if (primary) return Math.round(primary.amount * 100) / 100;
+  // If primary currency not yet imported, keep the existing amount.
+  // Never fall back to a secondary-currency amount — that would store
+  // e.g. a USD value as COP, producing a nonsensical template.amount.
+  return (existingAmount != null && existingAmount > 0) ? existingAmount : 0;
 }
 
 function getDayOfMonth(date: string): number | null {
@@ -199,24 +251,36 @@ async function syncCreditCardRecurringTemplate(params: {
   if (!dayOfMonth) return;
 
   const accountName = params.account?.name ?? "tarjeta";
-  const templateKey = buildRecurringTemplateKey(params.meta.accountId, params.meta.currency);
+  const primaryCurrency = params.account?.currency_code ?? params.meta.currency;
+  const templateKey = buildRecurringTemplateKey(params.meta.accountId);
   const merchantName =
     params.existingTemplate?.merchant_name?.trim() ||
     buildDebtPaymentMerchantName(accountName);
   const description = params.existingTemplate?.description?.trim() || null;
-  const amount = Math.round(cc.minimum_payment * 100) / 100;
+  const currencyAmount = Math.round(cc.minimum_payment * 100) / 100;
+
+  // Build updated sub_payments by merging this currency's payment into existing ones
+  const existingSubPayments = parseSubPayments(params.existingTemplate?.sub_payments);
+  const updatedSubPayments = upsertSubPayment(existingSubPayments, params.meta.currency, currencyAmount, primaryCurrency);
+  // template.amount = primary-currency minimum only (sub_payments is display metadata)
+  const totalAmount = getPrimaryCurrencyAmount(
+    updatedSubPayments,
+    primaryCurrency,
+    params.existingTemplate ? Number(params.existingTemplate.amount) : null,
+  );
 
   try {
     if (params.existingTemplate) {
       const { data, error } = await params.supabase
         .from("recurring_transaction_templates")
         .update({
-          amount,
-          currency_code: params.meta.currency as CurrencyCode,
+          amount: totalAmount,
+          currency_code: primaryCurrency as CurrencyCode,
           merchant_name: merchantName,
           description,
           start_date: cc.payment_due_date,
           day_of_month: dayOfMonth,
+          sub_payments: updatedSubPayments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"],
         })
         .eq("user_id", params.userId)
         .eq("id", params.existingTemplate.id)
@@ -237,8 +301,8 @@ async function syncCreditCardRecurringTemplate(params: {
         user_id: params.userId,
         account_id: params.meta.accountId,
         transfer_source_account_id: null,
-        amount,
-        currency_code: params.meta.currency as CurrencyCode,
+        amount: totalAmount,
+        currency_code: primaryCurrency as CurrencyCode,
         direction: "INFLOW",
         frequency: "MONTHLY",
         merchant_name: merchantName,
@@ -248,6 +312,7 @@ async function syncCreditCardRecurringTemplate(params: {
         day_of_week: null,
         start_date: cc.payment_due_date,
         end_date: null,
+        sub_payments: updatedSubPayments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"],
       })
       .select(RECURRING_TEMPLATE_SYNC_SELECT)
       .single();
@@ -292,25 +357,37 @@ async function syncLoanRecurringTemplate(params: {
   if (!dayOfMonth) return;
 
   const accountName = params.account?.name ?? "préstamo";
-  const templateKey = buildRecurringTemplateKey(params.meta.accountId, params.meta.currency);
+  const primaryCurrency = params.account?.currency_code ?? params.meta.currency;
+  const templateKey = buildRecurringTemplateKey(params.meta.accountId);
   const merchantName =
     params.existingTemplate?.merchant_name?.trim() ||
     buildDebtPaymentMerchantName(accountName);
   const description = params.existingTemplate?.description?.trim() || null;
   // Prefer minimum_payment (for banks that provide it), fall back to total_payment_due
-  const amount = Math.round((ln.minimum_payment ?? ln.total_payment_due) * 100) / 100;
+  const currencyAmount = Math.round((ln.minimum_payment ?? ln.total_payment_due) * 100) / 100;
+
+  // Build updated sub_payments
+  const existingSubPayments = parseSubPayments(params.existingTemplate?.sub_payments);
+  const updatedSubPayments = upsertSubPayment(existingSubPayments, params.meta.currency, currencyAmount, primaryCurrency);
+  // template.amount = primary-currency minimum only (sub_payments is display metadata)
+  const totalAmount = getPrimaryCurrencyAmount(
+    updatedSubPayments,
+    primaryCurrency,
+    params.existingTemplate ? Number(params.existingTemplate.amount) : null,
+  );
 
   try {
     if (params.existingTemplate) {
       const { data, error } = await params.supabase
         .from("recurring_transaction_templates")
         .update({
-          amount,
-          currency_code: params.meta.currency as CurrencyCode,
+          amount: totalAmount,
+          currency_code: primaryCurrency as CurrencyCode,
           merchant_name: merchantName,
           description,
           start_date: ln.payment_due_date,
           day_of_month: dayOfMonth,
+          sub_payments: updatedSubPayments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"],
         })
         .eq("user_id", params.userId)
         .eq("id", params.existingTemplate.id)
@@ -331,8 +408,8 @@ async function syncLoanRecurringTemplate(params: {
         user_id: params.userId,
         account_id: params.meta.accountId,
         transfer_source_account_id: null,
-        amount,
-        currency_code: params.meta.currency as CurrencyCode,
+        amount: totalAmount,
+        currency_code: primaryCurrency as CurrencyCode,
         direction: "INFLOW",
         frequency: "MONTHLY",
         merchant_name: merchantName,
@@ -342,6 +419,7 @@ async function syncLoanRecurringTemplate(params: {
         day_of_week: null,
         start_date: ln.payment_due_date,
         end_date: null,
+        sub_payments: updatedSubPayments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"],
       })
       .select(RECURRING_TEMPLATE_SYNC_SELECT)
       .single();
@@ -518,7 +596,7 @@ async function processStatementMeta(params: {
       .order("updated_at", { ascending: false });
 
     for (const template of (recurringTemplates ?? []) as RecurringTemplateSyncRow[]) {
-      const key = buildRecurringTemplateKey(template.account_id, template.currency_code);
+      const key = buildRecurringTemplateKey(template.account_id);
       if (!recurringTemplateMap.has(key)) {
         recurringTemplateMap.set(key, template);
       }
@@ -737,7 +815,7 @@ async function processStatementMeta(params: {
       isFirstImport: !prevSnapshot,
     });
 
-    const templateKey = buildRecurringTemplateKey(meta.accountId, meta.currency);
+    const templateKey = buildRecurringTemplateKey(meta.accountId);
     if (meta.creditCardMetadata) {
       await syncCreditCardRecurringTemplate({
         supabase,
@@ -1032,6 +1110,9 @@ export async function importTransactions(
     statementMeta: normalizedStatementMeta,
     details,
   });
+
+  // Ensure occurrence rows are generated for any newly created/updated templates
+  await ensureCurrentOccurrences();
 
   // Screenshot imports lack statement metadata — fall back to per-tx balance deltas.
   if (balanceDeltaTxs.length > 0) {
