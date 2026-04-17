@@ -1,9 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { startTransition, useEffect, useRef, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, ArrowRight, Link2, Pencil } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ArrowRight,
+  ChevronLeft,
+  Eye,
+  Hash,
+  Link2,
+  MoreHorizontal,
+  Tag,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -11,13 +24,36 @@ import { formatDate } from "@/lib/utils/date";
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { TagChip } from "@/components/tags/tag-chip";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
-import { useOutflowCategories } from "@/components/providers/app-data-provider";
-import { categorizeTransaction } from "@/actions/categorize";
-import { PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
+import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
+import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useOutflowCategories } from "@/components/providers/app-data-provider";
+import { categorizeTransaction, assignDestinatario } from "@/actions/categorize";
+import { deleteTransaction } from "@/actions/transactions";
+import {
+  DESTRUCTIVE_BUTTON_CLASS,
+  GHOST_BUTTON_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE_CLASS,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "@/lib/constants/styles";
+import {
+  getAccountIdsWithPendingOccurrences,
   getCandidateOccurrencesForTransaction,
   linkExistingTransactionToOccurrence,
-  getAccountIdsWithPendingOccurrences,
 } from "@/actions/occurrences";
 import type { CandidateOccurrence } from "@/actions/occurrences";
 import { toast } from "sonner";
@@ -32,6 +68,7 @@ const CategoryPickerBody = dynamic(
 );
 
 type AccountTypeEnum = "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "CASH" | "INVESTMENT" | "LOAN" | "OTHER";
+type RowPhase = "actions" | "categorize";
 
 interface RecentTransactionMobile {
   id: string;
@@ -39,6 +76,7 @@ interface RecentTransactionMobile {
   amount: number;
   currency_code: CurrencyCode;
   direction: "INFLOW" | "OUTFLOW";
+  transaction_date: string;
   account_id: string;
   account_name: string;
   account_color: string | null;
@@ -48,6 +86,8 @@ interface RecentTransactionMobile {
   category_id: string | null;
   category_name: string | null;
   category_icon: string | null;
+  destinatario_id: string | null;
+  destinatario_name: string | null;
   recurrence_group_id: string | null;
   tags: Array<{ id: string; name: string; color: string | null; group_color: string | null }>;
 }
@@ -72,11 +112,15 @@ function findCategoryById(
   return null;
 }
 
+const CHIP_BASE_CLASS =
+  "flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-[11px] font-semibold transition-colors active:opacity-70";
+
 export function InicioActivity({ transactions }: InicioActivityProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [rowPhase, setRowPhase] = useState<Record<string, RowPhase>>({});
   // Track which rows have been opened at least once so we can defer mounting
-  // the heavy CategoryPickerBody until the user actually interacts.
-  const [openedOnceIds, setOpenedOnceIds] = useState<Set<string>>(new Set());
+  // the heavy CategoryPickerBody until the user actually taps Categorizar.
+  const [openedCategorizeIds, setOpenedCategorizeIds] = useState<Set<string>>(new Set());
   const outflowCategories = useOutflowCategories();
   // Refs for each row so we can scroll the expanded panel into view above the tab bar.
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -98,6 +142,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
     if (!category) return;
     setOptimisticCategories((prev) => ({ ...prev, [txId]: category }));
     setExpandedId(null);
+    setRowPhase((prev) => ({ ...prev, [txId]: "actions" }));
     startCategoryTransition(async () => {
       const result = await categorizeTransaction(txId, categoryId);
       if (!result.success) {
@@ -137,7 +182,6 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
       const result = await linkExistingTransactionToOccurrence(occurrenceId, txId);
       if (result.success) {
         toast.success("Transacción vinculada a recurrente");
-        // Refresh linkable accounts — some may no longer have pending occurrences
         getAccountIdsWithPendingOccurrences().then((ids) => setLinkableAccountIds(new Set(ids)));
       } else {
         toast.error(result.error ?? "No se pudo vincular");
@@ -145,22 +189,93 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
     });
   };
 
+  /* ---- "Más" sheet + nested-picker state ----
+     Only one surface may be open at a time: the Más bottom-sheet OR one of the
+     nested pickers (destinatario/etiquetas drawer). Opening a picker from the
+     sheet closes the sheet first so they never stack. */
+  const router = useRouter();
+  const [moreSheetTxId, setMoreSheetTxId] = useState<string | null>(null);
+  const [nestedPicker, setNestedPicker] = useState<
+    | { txId: string; kind: "destinatario" | "tags" }
+    | null
+  >(null);
+  const [, startDestinatarioTransition] = useTransition();
+
+  const moreSheetTx = moreSheetTxId
+    ? transactions.find((t) => t.id === moreSheetTxId) ?? null
+    : null;
+  const nestedPickerTx = nestedPicker
+    ? transactions.find((t) => t.id === nestedPicker.txId) ?? null
+    : null;
+
+  function openNestedPicker(txId: string, kind: "destinatario" | "tags") {
+    setMoreSheetTxId(null);
+    setNestedPicker({ txId, kind });
+  }
+
+  function closeNestedPicker() {
+    setNestedPicker(null);
+    startTransition(() => router.refresh());
+  }
+
+  function handleAssignDestinatario(destId: string | null) {
+    const active = nestedPicker;
+    if (!destId || !active) return;
+    startDestinatarioTransition(async () => {
+      const result = await assignDestinatario(active.txId, destId);
+      if (result.success) {
+        toast.success("Destinatario asignado");
+        closeNestedPicker();
+      } else {
+        toast.error(result.error ?? "No se pudo asignar el destinatario");
+      }
+    });
+  }
+
   if (transactions.length === 0) return null;
 
   const visible = transactions.slice(0, 3);
 
+  function toggleExpand(txId: string) {
+    const willOpen = expandedId !== txId;
+    setExpandedId(willOpen ? txId : null);
+    if (willOpen) {
+      setRowPhase((prev) => ({ ...prev, [txId]: "actions" }));
+      requestAnimationFrame(() => {
+        rowRefs.current[txId]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
+  }
+
+  function openCategorizePhase(txId: string) {
+    setRowPhase((prev) => ({ ...prev, [txId]: "categorize" }));
+    setOpenedCategorizeIds((prev) => {
+      if (prev.has(txId)) return prev;
+      const next = new Set(prev);
+      next.add(txId);
+      return next;
+    });
+  }
+
+  function returnToActionsPhase(txId: string) {
+    setRowPhase((prev) => ({ ...prev, [txId]: "actions" }));
+  }
+
   return (
     <div>
-      <p className={cn(SECTION_EYEBROW_CLASS, "mb-1.5")}>
-        Reciente
-      </p>
+      <p className={cn(SECTION_EYEBROW_CLASS, "mb-1.5")}>Reciente</p>
 
       <div>
         {visible.map((tx) => {
           const isOpen = expandedId === tx.id;
+          const phase: RowPhase = rowPhase[tx.id] ?? "actions";
           const optimisticCat = optimisticCategories[tx.id];
           const categoryIcon = optimisticCat?.icon ?? tx.category_icon;
           const categoryName = optimisticCat?.name ?? tx.category_name;
+          const vincularEligible =
+            linkableAccountIds.has(tx.account_id) && !tx.recurrence_group_id;
+          const categoryResolved = Boolean(optimisticCat?.id ?? tx.category_id);
+
           return (
             <div
               key={tx.id}
@@ -172,25 +287,10 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                 type="button"
                 aria-expanded={isOpen}
                 aria-label={isOpen ? `Cerrar detalles de ${tx.description}` : `Ver acciones para ${tx.description}`}
-                onClick={() => {
-                  const willOpen = !isOpen;
-                  setExpandedId(willOpen ? tx.id : null);
-                  if (willOpen) {
-                    setOpenedOnceIds((prev) => {
-                      if (prev.has(tx.id)) return prev;
-                      const next = new Set(prev);
-                      next.add(tx.id);
-                      return next;
-                    });
-                    // Defer to next frame so the expanded panel has mounted before scrolling.
-                    requestAnimationFrame(() => {
-                      rowRefs.current[tx.id]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                    });
-                  }
-                }}
+                onClick={() => toggleExpand(tx.id)}
                 className={cn(
                   "flex w-full gap-2 px-1 py-2 text-left transition-colors active:bg-white/[0.03]",
-                  isOpen && "border-l-2 border-l-z-brass pl-2"
+                  isOpen && "border-l-2 border-l-z-brass pl-2",
                 )}
               >
                 <div
@@ -198,7 +298,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                     "mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-md",
                     tx.direction === "INFLOW"
                       ? "bg-z-income/12 text-z-income"
-                      : "bg-z-expense/12 text-z-expense"
+                      : "bg-z-expense/12 text-z-expense",
                   )}
                 >
                   {tx.direction === "INFLOW" ? (
@@ -249,7 +349,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                 <span
                   className={cn(
                     "shrink-0 text-xs font-medium tabular-nums",
-                    tx.direction === "INFLOW" && "text-z-income"
+                    tx.direction === "INFLOW" && "text-z-income",
                   )}
                 >
                   {tx.direction === "INFLOW" ? "+" : "-"}
@@ -263,51 +363,89 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
               >
                 <div className="overflow-hidden">
                   <div className={cn("py-1.5 transition-opacity duration-150", isOpen ? "opacity-100" : "opacity-0")}>
-                    <div className={cn(PANEL_INSET_CLASS, "space-y-2 border-z-brass/15 bg-black/20 p-2.5")}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-muted-foreground">
-                          {tx.direction === "INFLOW" ? "Ingreso" : "Gasto"} &middot; {formatCurrency(tx.amount, tx.currency_code)}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {linkableAccountIds.has(tx.account_id) && !tx.recurrence_group_id && (
+                    <div className={cn(PANEL_INSET_CLASS, "border-z-brass/15 bg-black/20 p-3")}>
+                      {phase === "actions" ? (
+                        <div className="flex gap-1.5">
+                          {tx.direction === "OUTFLOW" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                openCategorizePhase(tx.id);
+                              }}
+                              className={cn(
+                                CHIP_BASE_CLASS,
+                                categoryResolved
+                                  ? "border-white/8 bg-white/[0.03] text-foreground"
+                                  : "border-z-brass/25 bg-z-brass/10 text-z-brass",
+                              )}
+                            >
+                              <Tag className="size-3" />
+                              Categorizar
+                            </button>
+                          )}
+                          {vincularEligible && (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.preventDefault();
                                 handleOpenLinkPicker(tx.id);
                               }}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
+                              className={cn(
+                                CHIP_BASE_CLASS,
+                                "border-white/8 bg-white/[0.03] text-foreground",
+                              )}
                             >
-                              <Link2 className="size-2.5" />
+                              <Link2 className="size-3" />
                               Vincular
                             </button>
                           )}
-                          <Link
-                            href={`/transactions/${tx.id}`}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-z-brass"
-                          >
-                            <Pencil className="size-2.5" />
-                            Ver detalle
-                          </Link>
-                        </div>
-                      </div>
-                      {/* OUTFLOW only; INFLOW txs use Ver detalle for the full form.
-                          Lazy-mounted via openedOnceIds so the picker tree is not hydrated for rows the user never expands. */}
-                      {tx.direction === "OUTFLOW" && openedOnceIds.has(tx.id) && (
-                        <div className="border-t border-white/6 pt-2">
-                          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                            Asignar categoría
-                          </p>
-                          <CategoryPickerBody
-                            categories={outflowCategories}
-                            value={optimisticCat?.id ?? tx.category_id}
-                            onSelect={(id) => {
-                              if (id) handleAssignCategory(tx.id, id);
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setMoreSheetTxId(tx.id);
                             }}
-                            onCategoryCreated={() => { /* no-op inline — user creates via /categories */ }}
-                            suggestion={null}
-                            direction="OUTFLOW"
-                          />
+                            className={cn(
+                              CHIP_BASE_CLASS,
+                              "border-white/8 bg-white/[0.03] text-foreground",
+                              // When 3 chips fit, shrink "Más" slightly so labels stay readable
+                              tx.direction === "OUTFLOW" && vincularEligible && "flex-[0.8]",
+                            )}
+                          >
+                            <MoreHorizontal className="size-3" />
+                            Más
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="mb-2 flex items-center gap-2 border-b border-white/6 pb-2">
+                            <button
+                              type="button"
+                              onClick={() => returnToActionsPhase(tx.id)}
+                              aria-label="Volver a acciones"
+                              className="inline-flex size-6 items-center justify-center rounded-md bg-white/[0.05] text-muted-foreground transition-colors active:bg-white/[0.08]"
+                            >
+                              <ChevronLeft className="size-3.5" />
+                            </button>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              Asignar categoría
+                            </p>
+                          </div>
+                          {openedCategorizeIds.has(tx.id) && (
+                            <CategoryPickerBody
+                              categories={outflowCategories}
+                              value={optimisticCat?.id ?? tx.category_id}
+                              onSelect={(id) => {
+                                if (id) handleAssignCategory(tx.id, id);
+                              }}
+                              onCategoryCreated={() => {
+                                /* no-op inline — user creates via /categories */
+                              }}
+                              suggestion={null}
+                              direction="OUTFLOW"
+                            />
+                          )}
                         </div>
                       )}
                     </div>
@@ -331,7 +469,9 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
       {linkingTxId && (
         <LinkPickerSheet
           open={!!linkingTxId}
-          onOpenChange={(open) => { if (!open) setLinkingTxId(null); }}
+          onOpenChange={(open) => {
+            if (!open) setLinkingTxId(null);
+          }}
           title="Vincular a recurrente"
           subtitle={(() => {
             const tx = transactions.find((t) => t.id === linkingTxId);
@@ -350,6 +490,207 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
           isPending={isLinking}
         />
       )}
+
+      {/* Secondary-actions sheet opened via "Más" chip. On close we refresh the
+          Dashboard segment so any destinatario/tag/delete mutations are
+          reflected in the row immediately (server cache is already invalidated
+          by the underlying actions via updateTag). */}
+      {moreSheetTx && (
+        <MoreActionsSheet
+          tx={moreSheetTx}
+          open={!!moreSheetTxId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setMoreSheetTxId(null);
+              startTransition(() => router.refresh());
+            }
+          }}
+          onOpenNestedPicker={(kind) => openNestedPicker(moreSheetTx.id, kind)}
+        />
+      )}
+
+      {/* Nested pickers — rendered at root so they never stack on the Más sheet.
+          Opening a picker closes Más; picker close refreshes the segment. */}
+      {nestedPickerTx && nestedPicker?.kind === "destinatario" && (
+        <DestinatarioZonePicker
+          hideTrigger
+          controlledOpen
+          onControlledOpenChange={(open) => {
+            if (!open) closeNestedPicker();
+          }}
+          value={nestedPickerTx.destinatario_id}
+          selectedName={nestedPickerTx.destinatario_name}
+          onValueChange={handleAssignDestinatario}
+          variant="drawer"
+        />
+      )}
+      {nestedPickerTx && nestedPicker?.kind === "tags" && (
+        <TagZonePicker
+          hideTrigger
+          controlledOpen
+          onControlledOpenChange={(open) => {
+            if (!open) closeNestedPicker();
+          }}
+          entityType="transaction"
+          entityId={nestedPickerTx.id}
+          variant="drawer"
+        />
+      )}
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  MoreActionsSheet                                                          */
+/* -------------------------------------------------------------------------- */
+
+interface MoreActionsSheetProps {
+  tx: RecentTransactionMobile;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onOpenNestedPicker: (kind: "destinatario" | "tags") => void;
+}
+
+const SHEET_ROW_CLASS =
+  "flex w-full items-center gap-3 border-t border-white/6 px-1 py-3 text-left text-sm transition-colors active:bg-white/[0.03]";
+const SHEET_ROW_ICON_CLASS =
+  "inline-flex size-8 items-center justify-center rounded-lg bg-white/[0.04] text-muted-foreground";
+
+function MoreActionsSheet({ tx, open, onOpenChange, onOpenNestedPicker }: MoreActionsSheetProps) {
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    const result = await deleteTransaction(tx.id);
+    setDeleting(false);
+    if (result.success) {
+      toast.success("Transacción eliminada");
+      setDeleteConfirmOpen(false);
+      onOpenChange(false);
+    } else {
+      toast.error(result.error ?? "No se pudo eliminar");
+    }
+  }
+
+  return (
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          className={cn(
+            "max-h-[85dvh] rounded-t-2xl border-t border-white/6 bg-z-surface-2",
+            MOBILE_TAB_BAR_CLEARANCE_CLASS,
+          )}
+        >
+          <SheetHeader className="gap-1 border-b border-white/6 pb-3">
+            <SheetTitle className="text-sm">{tx.description}</SheetTitle>
+            <p className="text-[11px] text-muted-foreground">
+              {tx.direction === "INFLOW" ? "Ingreso" : "Gasto"} ·{" "}
+              {formatCurrency(tx.amount, tx.currency_code)} · {formatDate(tx.transaction_date)}
+            </p>
+          </SheetHeader>
+
+          <div className="px-4 pb-2">
+            <Link
+              href={`/transactions/${tx.id}`}
+              onClick={() => onOpenChange(false)}
+              className={SHEET_ROW_CLASS}
+            >
+              <span className={SHEET_ROW_ICON_CLASS}>
+                <Eye className="size-4" />
+              </span>
+              <span className="flex-1">Ver detalle</span>
+              <ArrowRight className="size-3.5 text-muted-foreground" />
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => onOpenNestedPicker("destinatario")}
+              className={SHEET_ROW_CLASS}
+            >
+              <span className={SHEET_ROW_ICON_CLASS}>
+                <UserRound className="size-4" />
+              </span>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm">Destinatario</p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {tx.destinatario_name ?? "Sin asignar"}
+                </p>
+              </div>
+              <ArrowRight className="size-3.5 text-muted-foreground" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenNestedPicker("tags")}
+              className={SHEET_ROW_CLASS}
+            >
+              <span className={SHEET_ROW_ICON_CLASS}>
+                <Hash className="size-4" />
+              </span>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm">Etiquetas</p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {tx.tags.length > 0
+                    ? `${tx.tags.length} aplicada${tx.tags.length === 1 ? "" : "s"}`
+                    : "Ninguna"}
+                </p>
+              </div>
+              <ArrowRight className="size-3.5 text-muted-foreground" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(true)}
+              className={cn(SHEET_ROW_CLASS, "text-z-debt")}
+            >
+              <span
+                className={cn(
+                  "inline-flex size-8 items-center justify-center rounded-lg bg-z-debt/10 text-z-debt",
+                )}
+              >
+                <Trash2 className="size-4" />
+              </span>
+              <span className="flex-1">Eliminar transacción</span>
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar transacción</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(false)}
+              className={cn(
+                "rounded-md border px-4 py-2 text-sm font-medium transition-colors",
+                GHOST_BUTTON_CLASS,
+              )}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className={cn(
+                "rounded-md px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50",
+                DESTRUCTIVE_BUTTON_CLASS,
+              )}
+            >
+              {deleting ? "Eliminando…" : "Eliminar"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

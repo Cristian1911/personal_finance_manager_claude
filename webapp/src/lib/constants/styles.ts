@@ -9,6 +9,10 @@ export const GHOST_BUTTON_CLASS =
 export const BRASS_GHOST_BUTTON_CLASS =
   "border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12";
 
+/** Solid destructive button — for confirm-destroy actions (deletes, unrecoverable ops). */
+export const DESTRUCTIVE_BUTTON_CLASS =
+  "bg-z-debt text-z-white hover:bg-z-debt/90";
+
 /** Shared page shell spacing */
 export const PAGE_STACK_CLASS = "space-y-6 lg:space-y-8";
 

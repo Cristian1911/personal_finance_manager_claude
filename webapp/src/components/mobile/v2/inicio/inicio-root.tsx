@@ -61,6 +61,7 @@ export interface InicioRootProps {
     amount: number;
     currency_code: CurrencyCode;
     direction: "INFLOW" | "OUTFLOW";
+    transaction_date: string;
     account_id: string;
     account_name: string;
     account_color: string | null;
@@ -70,6 +71,8 @@ export interface InicioRootProps {
     category_id: string | null;
     category_name: string | null;
     category_icon: string | null;
+    destinatario_id: string | null;
+    destinatario_name: string | null;
     recurrence_group_id: string | null;
     tags: Array<{ id: string; name: string; color: string | null; group_color: string | null }>;
   }>;

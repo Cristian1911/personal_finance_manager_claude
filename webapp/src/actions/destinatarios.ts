@@ -531,8 +531,11 @@ export async function updateDestinatario(
 
   if (error) return { success: false, error: error.message };
 
+  // Destinatario name/active state is embedded in several cached financial
+  // reads (e.g. getRecentTransactionsCached). Revalidate the full financial
+  // surface so renames are read-your-own-writes everywhere.
+  revalidateFinancialViews();
   updateTag("destinatarios");
-  updateTag("attention");
   return { success: true, data };
 }
 
@@ -553,8 +556,10 @@ export async function patchDestinatario(
 
   if (error) return { success: false, error: error.message };
 
+  // Same rationale as updateDestinatario — flipping is_active changes which
+  // destinatarios appear in cached pickers/joins.
+  revalidateFinancialViews();
   updateTag("destinatarios");
-  updateTag("attention");
   return { success: true, data: null };
 }
 

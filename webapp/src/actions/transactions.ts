@@ -574,6 +574,7 @@ export type RecentTransaction = {
   direction: "INFLOW" | "OUTFLOW";
   account_id: string;
   category_id: string | null;
+  destinatario_id: string | null;
   recurrence_group_id: string | null;
   merchant_name: string | null;
   clean_description: string | null;
@@ -587,6 +588,7 @@ export type RecentTransaction = {
     bank_key: string | null;
     account_type: Database["public"]["Enums"]["account_type"];
   } | null;
+  destinatario: { id: string; name: string } | null;
   transaction_tags: Array<{
     tag: { id: string; name: string; color: string | null; group: { color: string | null } | null };
   }>;
@@ -608,10 +610,11 @@ async function getRecentTransactionsCached(
   const { data } = await supabase
     .from("transactions")
     .select(`
-      id, amount, direction, account_id, category_id, recurrence_group_id, merchant_name, clean_description,
+      id, amount, direction, account_id, category_id, destinatario_id, recurrence_group_id, merchant_name, clean_description,
       transaction_date, currency_code,
       categories!transactions_category_id_fkey(name_es, name, icon),
       accounts!transactions_account_id_fkey(name, color, mask, bank_key, account_type),
+      destinatario:destinatarios!transactions_destinatario_id_fkey(id, name),
       transaction_tags!transaction_tags_transaction_id_fkey(tag:tags(id, name, color, group:tag_groups(color)))
     `)
     .eq("user_id", userId)
