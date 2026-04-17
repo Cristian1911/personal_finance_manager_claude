@@ -865,7 +865,7 @@ export async function importTransactions(
     return { success: false, error: "Datos inválidos" };
   }
 
-  const { transactions, statementMeta, reconciliationDecisions = [] } = parsed.data;
+  const { transactions, statementMeta, reconciliationDecisions = [], captureMethod = "PDF_IMPORT" } = parsed.data;
   const normalizedStatementMeta: StatementMetaForImport[] | undefined = statementMeta?.map(
     (meta) => ({
       ...meta,
@@ -950,7 +950,7 @@ export async function importTransactions(
         clean_description: tx.raw_description,
         idempotency_key: idempotencyKey,
         provider: "OCR",
-        capture_method: "PDF_IMPORT",
+        capture_method: captureMethod,
         category_id: tx.category_id ?? null,
         notes: tx.notes ?? null,
         categorization_source: tx.categorization_source ?? "SYSTEM_DEFAULT",
@@ -1027,7 +1027,7 @@ export async function importTransactions(
       category_id: insertedTx.category_id,
       categorization_source: insertedTx.categorization_source,
       notes: insertedTx.notes,
-      capture_method: "PDF_IMPORT",
+      capture_method: captureMethod,
     });
 
     await supabase

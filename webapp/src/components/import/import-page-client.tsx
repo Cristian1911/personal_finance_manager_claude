@@ -55,7 +55,7 @@ export function ImportPageClient({
         onReviewStatement={handleReviewStatement}
       />
 
-      <div id="import-wizard" className="scroll-mt-20">
+      <div id="import-wizard" className="scroll-mt-16">
         <ImportWizard
           key={selectedId ?? "fresh"}
           accounts={accounts}

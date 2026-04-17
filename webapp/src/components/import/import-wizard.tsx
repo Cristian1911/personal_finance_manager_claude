@@ -360,6 +360,7 @@ export function ImportWizard({
             statementMeta={preparedStatementMeta}
             preview={reconciliationPreview}
             currency={(parseResult?.statements[0]?.currency ?? "COP") as CurrencyCode}
+            captureMethod={pendingEmailStatementId ? "EMAIL_PDF_IMPORT" : "PDF_IMPORT"}
             onComplete={handleImportComplete}
             onBack={() => setStep("confirm")}
           />

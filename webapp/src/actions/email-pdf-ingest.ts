@@ -1,7 +1,8 @@
 "use server";
 
-import { updateTag } from "next/cache";
+import { cacheLife, cacheTag, updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { parsePdfBuffer } from "@/lib/email-ingest/pdf-handler";
 import { parseStatementFilename, matchAccountByLast4 } from "@/lib/email-ingest/statement-filename";
@@ -12,22 +13,39 @@ import type { Json } from "@/types/database";
 
 // ── Read actions ─────────────────────────────────────────────────────────────
 
-export async function getPendingEmailStatements(): Promise<
-  ActionResult<PendingEmailStatement[]>
-> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+async function getPendingEmailStatementsCached(
+  userId: string,
+  accessToken: string,
+): Promise<PendingEmailStatement[]> {
+  "use cache";
+  cacheTag("email-ingest");
+  cacheLife("zeta");
 
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("pending_email_statements")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .in("status", ["pending", "parsing", "parsed", "needs_password", "parse_failed"])
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: (data ?? []) as unknown as PendingEmailStatement[] };
+  if (error) throw error;
+  return (data ?? []) as unknown as PendingEmailStatement[];
+}
+
+export async function getPendingEmailStatements(): Promise<
+  ActionResult<PendingEmailStatement[]>
+> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+
+  try {
+    const data = await getPendingEmailStatementsCached(user.id, accessToken);
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Error desconocido" };
+  }
 }
 
 export async function getPendingEmailStatementCount(): Promise<ActionResult<number>> {
