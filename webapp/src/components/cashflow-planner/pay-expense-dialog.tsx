@@ -335,12 +335,12 @@ export function PayExpenseDialog({
 
             {/* Source account */}
             <div className="space-y-2">
-              <Label>Cuenta origen</Label>
+              <Label htmlFor="source-account-trigger">Cuenta origen</Label>
               <Select
                 value={sourceAccountId}
                 onValueChange={setSourceAccountId}
               >
-                <SelectTrigger className="bg-card border-white/6">
+                <SelectTrigger id="source-account-trigger" className="bg-card border-white/6">
                   <SelectValue placeholder="Seleccionar cuenta" />
                 </SelectTrigger>
                 <SelectContent>

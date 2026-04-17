@@ -307,9 +307,9 @@ export function OccurrenceActions({
 
         {needsSource && sourceAccounts && sourceAccounts.length > 0 && (
           <div className="col-span-2 space-y-1">
-            <label className="text-[10px] font-medium text-muted-foreground">Cuenta origen</label>
+            <label htmlFor="occurrence-source-trigger" className="text-[10px] font-medium text-muted-foreground">Cuenta origen</label>
             <Select value={sourceAccountId} onValueChange={setSourceAccountId}>
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger id="occurrence-source-trigger" className="h-8 text-sm">
                 <SelectValue placeholder="Seleccionar..." />
               </SelectTrigger>
               <SelectContent>
