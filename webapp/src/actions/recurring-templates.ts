@@ -1002,7 +1002,11 @@ export async function recordRecurringOccurrencePayment(input: {
       const tagIds = (tagRows ?? []).map((r) => r.tag_id);
       if (tagIds.length > 0) {
         const joinRows = createdIds.flatMap((txId) =>
-          tagIds.map((tagId) => ({ transaction_id: txId, tag_id: tagId })),
+          tagIds.map((tagId) => ({
+            transaction_id: txId,
+            tag_id: tagId,
+            user_id: user.id,
+          })),
         );
         const { error: tagUpsertErr } = await supabase
           .from("transaction_tags")

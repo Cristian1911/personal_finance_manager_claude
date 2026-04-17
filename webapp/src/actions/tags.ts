@@ -457,7 +457,7 @@ export async function addTagToEntity(
   } else if (entityType === "transaction") {
     const { error } = await supabase
       .from("transaction_tags")
-      .insert({ transaction_id: entityId, tag_id: tagId });
+      .insert({ transaction_id: entityId, tag_id: tagId, user_id: user.id });
     insertError = error;
   } else if (entityType === "destinatario") {
     const { error } = await supabase
@@ -572,7 +572,11 @@ export async function bulkTagTransactions(
     return { success: false, error: "Transacciones no encontradas" };
   }
 
-  const rows = uniqueIds.map((id) => ({ transaction_id: id, tag_id: tagId }));
+  const rows = uniqueIds.map((id) => ({
+    transaction_id: id,
+    tag_id: tagId,
+    user_id: user.id,
+  }));
 
   const { error } = await supabase
     .from("transaction_tags")
