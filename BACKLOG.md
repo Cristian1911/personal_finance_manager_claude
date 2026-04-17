@@ -66,35 +66,20 @@
 ### ~~PDF password vault — per-bank/per-account passwords with aliases~~ — DONE 2026-04-17
 - Shipped: migration `20260417143333_create_pdf_passwords_encrypted.sql` (encrypted `alias` + `password` with scope pairing CHECK). Server actions in `webapp/src/actions/pdf-passwords.ts` — list, suggest, create, update, delete. Settings UI `PdfPasswordsCard`. Upload step: "Usar guardada" dropdown (uses suggestions ranked account > bank > global) + inline "Guardar esta contraseña" checkbox (auto-infers bank scope from parser's `bank` label). `accounts.pdf_password` still mirrored on scope=account so email ingest keeps working. Follow-ups deferred: secure "copy password" affordance in settings list, and account-scope picker on the upload step once the account is known earlier.
 
-### Promote transaction → recurring template ("Hacer recurrente" CTA)
-- **Priority:** High
-- **What:** Add a "Hacer recurrente" action on `/transactions/[id]` (and ideally the 3-dot menu on list rows) that opens the existing `RecurringFormDialog` pre-filled with the transaction's merchant, amount, account, category, destinatario, and a monthly-frequency default. On confirm, create a `recurring_templates` row with `start_date` = the transaction's date so the occurrence engine generates this month + future pendings; the source transaction auto-links to the current occurrence via `findMatchingOccurrence()`.
-- **Why:** When a bill (home services, rent, subscription) first shows up from email import, there's no way to promote it to a recurring template without rebuilding it from scratch at `/recurrentes/new`. User shouldn't retype data the app already has.
-- **Touches:** `transactions/[id]/page.tsx`, reuse `RecurringFormDialog`, possibly a new `createRecurringTemplateFromTransaction` helper that wires the link.
-- **Found:** User request during Phase 1 PR session, 2026-04-16
+### ~~Promote transaction → recurring template ("Hacer recurrente" CTA)~~ — DONE 2026-04-17 (PR #173)
+- Shipped: `createRecurringTemplateFromTransaction` action + `PromoteToRecurringButton` mounted in `/transactions/[id]` hero actions. Pre-fills `RecurringFormDialog` with tx data and auto-links via `linkTransactionToOccurrence`. Replaced by inert "Ya es recurrente" badge when the tx is already linked.
 
-### `is_subscription` toggle is a dead flag — connect or remove
-- **Priority:** High (ship with "Hacer recurrente")
-- **What:** The "Marcar como suscripción" switch in `mobile-transaction-form.tsx`, `transaction-form.tsx`, and `voice-capture-sheet.tsx` writes `is_subscription: boolean` to the transactions row, but **nothing reads that field meaningfully**. Zero filters, zero UI treatment, zero linkage to `recurring_templates`. Email ingest also always writes `is_subscription: false`. The actually meaningful flag for "this is a recurring expense" is `is_recurring`, which is only set by the recurring-template occurrence system (read by `burn-rate.ts` to split discretionary vs recurring spending).
-- **Options:**
-  - **A. Wire up (recommended):** When the toggle is on, also create a `recurring_templates` row with inferred defaults (monthly frequency, same account, same amount, merchant=description) and link the tx to the first generated occurrence. Same helper as the "Hacer recurrente" CTA above — the form becomes another entry point.
-  - **B. Remove:** Delete the toggle from all 3 forms and the `is_subscription` param from the `createTransaction` action path. Drop the column in a follow-up migration (nullable deprecation first, then drop).
-- **Why it matters:** Users see the toggle, expect it to do something, and get no signal that it's inert. Feature disappointment.
-- **Touches:** 3 form components, `transactions.ts` action, possibly a DB migration if we pick B.
-- **Found:** Phase 1 PR session investigation, 2026-04-16
+### ~~`is_subscription` toggle dead flag~~ — DONE 2026-04-17 (PR #173, option B)
+- Shipped: removed the Switch from `transaction-form.tsx`, `mobile-transaction-form.tsx`, `voice-capture-sheet.tsx`. Dropped `is_subscription` from `CreateTransactionParams`, validator, and 5 API routes. Column remains nullable in DB; drop is a follow-up migration.
+
+### ~~Account aliases + mini icons across the app~~ — DONE 2026-04-17 (PR #171)
+- Shipped via `bank_key` column on `accounts_enc` + plaintext slug backfill for 9 Colombian banks. New `AccountIcon` primitive (bundled bank logos + lucide fallback) and `AccountRowIdentity` composer (compact / picker / detail densities). Wired into Dashboard Reciente, Recurrentes, source-account pickers, and account edit form. Reused `accounts.name` as the alias field — no new encrypted column.
 
 ### Link Destinatario ↔ Recurring Template
-- **Priority:** High (pairs well with "Hacer recurrente" CTA)
+- **Priority:** High (natural pairing with the just-shipped "Hacer recurrente" CTA)
 - **What:** Let a `recurring_templates` row reference a `destinatario_id`. When a new transaction enters the system (manual, PDF import, email) and the destinatario matcher assigns it to a destinatario that's linked to an active recurring template, the system prompts the user to link this transaction to the current pending occurrence of that template — closing the "I just paid my home services, mark it paid" loop automatically. Also: if the transaction's amount matches the expected plannedAmount, auto-link without prompting (configurable).
-- **Why:** Today the occurrence auto-link relies on `findMatchingOccurrence()` heuristics (account + direction + amount + date proximity). Anchoring via a destinatario link is stronger and faster — user confirmed once, system links forever. Also powers the "Hacer recurrente" CTA naturally: promoting a tx to a template auto-creates the destinatario link.
+- **Why:** Today the occurrence auto-link relies on `findMatchingOccurrence()` heuristics (account + direction + amount + date proximity). Anchoring via a destinatario link is stronger and faster — user confirmed once, system links forever. Also powers the "Hacer recurrente" CTA naturally: promoting a tx to a template can auto-create the destinatario link.
 - **Touches:** Migration to add `destinatario_id` column to `recurring_templates`; matcher + `findMatchingOccurrence()` updates; confirmation UI on new transactions; `RecurringFormDialog` needs a destinatario field.
-- **Found:** Dashboard polish brainstorming, 2026-04-16
-
-### Account aliases + mini icons across the app
-- **Priority:** High (unblocks Dashboard polish density gains)
-- **What:** Current account labels are too long for dense list rows (`Bancolombia Ahorros ****4398` wraps in RECIENTE, `/transactions` list, account pickers). Add an optional `alias` string on the accounts table; display format becomes `<alias> · ****<mask>` with a tiny colored icon. When no alias is set, fall back to the current full name. Pair with the existing "personalized account card" backlog — same color/icon source of truth. Affects: RECIENTE (Dashboard), `/transactions` list rows, `/accounts` list, account pickers in forms, transaction detail "Cuenta" field, `/deudas` account rows.
-- **Why:** Dashboard RECIENTE and similar dense rows lose their visual rhythm because account names overflow. Short aliases reclaim horizontal space and reinforce bank identity via a 16×16 icon rather than a 28-character string.
-- **Migration:** Add `alias` column (encrypted table — spawn supabase-migrator for the 6-step process).
 - **Found:** Dashboard polish brainstorming, 2026-04-16
 
 ### Dashboard RECIENTE — inline category assignment on row expand
