@@ -3,8 +3,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const { getAuthenticatedClient } = vi.hoisted(() => ({
   getAuthenticatedClient: vi.fn(),
 }));
-const { ensureCurrentOccurrences, linkTransactionToOccurrence } = vi.hoisted(() => ({
+const { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } = vi.hoisted(() => ({
   ensureCurrentOccurrences: vi.fn(),
+  ensureOccurrencesForRange: vi.fn(),
   linkTransactionToOccurrence: vi.fn(),
 }));
 const { revalidateFinancialViews } = vi.hoisted(() => ({
@@ -18,6 +19,7 @@ vi.mock("@/lib/supabase/cached", () => ({
 vi.mock("@/lib/cache/revalidation", () => ({ revalidateFinancialViews }));
 vi.mock("@/actions/occurrences", () => ({
   ensureCurrentOccurrences,
+  ensureOccurrencesForRange,
   linkTransactionToOccurrence,
 }));
 vi.mock("next/cache", () => ({
@@ -148,7 +150,7 @@ describe("createRecurringTemplateFromTransaction", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(ensureCurrentOccurrences).toHaveBeenCalledOnce();
+    expect(ensureOccurrencesForRange).toHaveBeenCalledOnce();
     expect(linkTransactionToOccurrence).toHaveBeenCalledWith(
       VALID_ACCT,
       "2026-04-17",

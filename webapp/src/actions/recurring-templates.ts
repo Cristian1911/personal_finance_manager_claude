@@ -10,14 +10,14 @@ import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
-import { ensureCurrentOccurrences, linkTransactionToOccurrence } from "@/actions/occurrences";
+import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
   getOccurrencesBetween,
   getNextOccurrence,
   TRANSFER_CATEGORY_ID,
   getDebtPaymentCategoryId,
 } from "@zeta/shared";
-import { addDays } from "date-fns";
+import { addDays, endOfMonth, startOfMonth } from "date-fns";
 import { toISODateString } from "@/lib/utils/date";
 import { z } from "zod";
 import { uuidStr } from "@/lib/validators/shared";
@@ -436,11 +436,17 @@ export async function createRecurringTemplateFromTransaction(
 
   if (error) return { success: false, error: error.message };
 
-  // Generate occurrences, then link the source tx to the current-period
-  // occurrence. linkTransactionToOccurrence → markOccurrencePaid flips the
-  // occurrence to status="paid" when a match is found; if no occurrence
-  // matches, it's a no-op (user can link later via the UI).
-  await ensureCurrentOccurrences();
+  // Generate occurrences covering a window that ALWAYS includes the source
+  // tx's date — otherwise a tx from a previous month would create a template
+  // but fail to auto-link (findMatchingOccurrence looks within ±3 days of
+  // tx.transaction_date, so the occurrence must exist in that window).
+  // linkTransactionToOccurrence → markOccurrencePaid flips the occurrence
+  // to status="paid"; if no occurrence matches, it's a no-op.
+  const txDate = new Date(`${tx.transaction_date}T12:00:00`);
+  const now = new Date();
+  const rangeStart = startOfMonth(txDate < now ? txDate : now);
+  const rangeEnd = addDays(endOfMonth(now), 14);
+  await ensureOccurrencesForRange(rangeStart, rangeEnd);
   await linkTransactionToOccurrence(
     tx.account_id,
     tx.transaction_date,
