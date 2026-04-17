@@ -24,6 +24,14 @@
 - **Touches:** Almost certainly `webapp/src/app/(dashboard)/accounts/[id]/page.tsx` or a child action component (QuickActionsBar / account hero).
 - **Found:** User feedback, 2026-04-17
 
+### Recurrentes tab shows empty state despite 9 active templates
+- **Priority:** High (prod)
+- **What:** `/plan?tab=recurrentes` renders the hero `$0 · 0 pendientes · 0 completados` and the empty state "No hay pagos recurrentes este mes" even though "9 activas · 1 pausada" is shown in the MIS PLANTILLAS strip. Reproduced on production (main, not this branch). Hypotheses to check in order: (1) `ensureCurrentOccurrences()` is failing silently on page load, so `recurring_occurrences` has no rows for this month; (2) all active templates have a `start_date` in the future or `end_date` in the past that excludes them from the current-month generator; (3) post-merge migration 20260416120000 deleted loser templates but left orphan occurrence rows whose `template_id` now FKs into a deleted row, tripping the view join; (4) a timezone boundary bug where the month cursor and the DB's `occurrence_date` range differ.
+- **Repro:** Open `/plan?tab=recurrentes` on an account with known active templates. Confirm the ring counts are 0 while the strip claims 9+1 templates.
+- **Debug path:** SQL `SELECT count(*), status FROM recurring_occurrences WHERE user_id = <uid> AND occurrence_date BETWEEN '2026-04-01' AND '2026-04-30' GROUP BY status;`. If 0 rows, call `ensureCurrentOccurrences()` manually or inspect the function's logs. If rows exist, the client filter or date range is off.
+- **Touches:** `webapp/src/actions/occurrences.ts`, `webapp/src/components/recurring/use-recurring-month.ts`, `webapp/src/app/(dashboard)/plan/page.tsx`.
+- **Found:** User feedback, 2026-04-17
+
 ## Features
 
 ### Promote transaction → recurring template ("Hacer recurrente" CTA)
