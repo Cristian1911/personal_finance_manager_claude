@@ -152,6 +152,7 @@ export function BugReportForm() {
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Qué hiciste, qué esperabas y qué pasó."
+          autoComplete="off"
           minLength={9}
           maxLength={4000}
           required
