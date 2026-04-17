@@ -10,7 +10,7 @@ import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
-import { ensureCurrentOccurrences } from "@/actions/occurrences";
+import { ensureCurrentOccurrences, linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
   getOccurrencesBetween,
   getNextOccurrence,
@@ -328,6 +328,126 @@ export async function createRecurringTemplate(
   updateTag("occurrences");
   updateTag("dashboard:hero");
   updateTag("attention");
+  return { success: true, data };
+}
+
+export async function createRecurringTemplateFromTransaction(
+  transactionId: string,
+  _prevState: ActionResult<RecurringTemplate>,
+  formData: FormData,
+): Promise<ActionResult<RecurringTemplate>> {
+  const { supabase, user } = await getAuthenticatedClient();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // 1. Load the source transaction first — fail fast if it's gone.
+  const { data: tx, error: txErr } = await supabase
+    .from("transactions")
+    .select("id, account_id, amount, direction, transaction_date")
+    .eq("id", transactionId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (txErr || !tx) {
+    return { success: false, error: "Transacción no encontrada" };
+  }
+
+  // 2. Block double-promotion. The link lives on the occurrence side
+  //    (recurring_occurrences.transaction_id), so check there.
+  const { data: existingLink } = await supabase
+    .from("recurring_occurrences")
+    .select("id")
+    .eq("transaction_id", transactionId)
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingLink) {
+    return { success: false, error: "Esta transacción ya está vinculada a una recurrente." };
+  }
+
+  // 3. Parse + validate — identical to createRecurringTemplate.
+  const parsed = recurringTemplateSchema.safeParse({
+    account_id: formData.get("account_id"),
+    transfer_source_account_id: formData.get("transfer_source_account_id") || undefined,
+    amount: formData.get("amount"),
+    currency_code: formData.get("currency_code"),
+    direction: formData.get("direction"),
+    frequency: formData.get("frequency"),
+    merchant_name: formData.get("merchant_name"),
+    description: formData.get("description") || undefined,
+    category_id: formData.get("category_id") || undefined,
+    day_of_month: formData.get("day_of_month") || undefined,
+    day_of_week: formData.get("day_of_week") || undefined,
+    start_date: formData.get("start_date"),
+    end_date: formData.get("end_date") || undefined,
+    sub_payments: formData.get("sub_payments") || undefined,
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const { sub_payments, ...payload } = parsed.data;
+  const { data: account, error: accountError } = await supabase
+    .from("accounts")
+    .select("id, account_type")
+    .eq("id", payload.account_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (accountError || !account) {
+    return { success: false, error: "Cuenta inválida para este usuario." };
+  }
+
+  if (DEBT_ACCOUNT_TYPES.has(account.account_type)) {
+    payload.direction = "INFLOW";
+    payload.category_id = payload.category_id ?? getDebtPaymentCategoryId(account.account_type);
+    if (!payload.transfer_source_account_id) {
+      return { success: false, error: "Selecciona la cuenta origen para el pago de deuda." };
+    }
+    if (payload.transfer_source_account_id === payload.account_id) {
+      return { success: false, error: "La cuenta origen no puede ser la misma cuenta de deuda." };
+    }
+  } else {
+    payload.transfer_source_account_id = null;
+  }
+
+  const subPaymentsValue = sub_payments && sub_payments.length > 0
+    ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
+    : null;
+
+  const { data, error } = await supabase
+    .from("recurring_transaction_templates")
+    .insert({
+      user_id: user.id,
+      ...payload,
+      sub_payments: subPaymentsValue,
+    })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+
+  // Generate occurrences, then link the source tx to the current-period
+  // occurrence. linkTransactionToOccurrence internally calls
+  // findMatchingOccurrence + markOccurrencePaid, which flips the occurrence
+  // to status="paid" and patches transactions.recurring_occurrence_id. If
+  // no occurrence matches, it's a no-op — user can link later via the UI.
+  await ensureCurrentOccurrences();
+  await linkTransactionToOccurrence(
+    tx.account_id,
+    tx.transaction_date,
+    tx.amount,
+    tx.direction,
+    tx.id,
+  );
+
+  updateTag("recurring");
+  updateTag("occurrences");
+  updateTag("dashboard:hero");
+  updateTag("attention");
+  updateTag("transactions");
   return { success: true, data };
 }
 
