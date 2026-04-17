@@ -6,6 +6,7 @@ import { Check, ShieldCheck } from "lucide-react";
 import { getPendingScreenshotFile } from "@/components/mobile/mobile-sheet-provider";
 import type { Account, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 import type { DestinatarioRule } from "@zeta/shared";
+import type { PdfPasswordSuggestion } from "@/actions/pdf-passwords";
 import type {
   ParseResponse,
   ReconciliationPreviewResult,
@@ -49,11 +50,13 @@ export function ImportWizard({
   categories,
   destinatarioRules,
   initialFile,
+  initialVaultSuggestions,
 }: {
   accounts: Account[];
   categories: CategoryWithChildren[];
   destinatarioRules: DestinatarioRule[];
   initialFile?: File | null;
+  initialVaultSuggestions?: PdfPasswordSuggestion[];
 }) {
   const [step, setStep] = useState<Step>("upload");
   const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
@@ -286,7 +289,13 @@ export function ImportWizard({
 
       <section className="rounded-[28px] border border-white/6 bg-z-surface-2/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-6">
         {/* Step content */}
-        {step === "upload" && <StepUpload onParsed={handleParsed} initialFile={resolvedInitialFile} />}
+        {step === "upload" && (
+          <StepUpload
+            onParsed={handleParsed}
+            initialFile={resolvedInitialFile}
+            initialVaultSuggestions={initialVaultSuggestions}
+          />
+        )}
         {step === "review" && parseResult && (
           <StepReview
             parseResult={parseResult}

@@ -21,9 +21,15 @@ import {
 } from "@/actions/pdf-passwords";
 import { toast } from "sonner";
 
+const BANK_KEY_OVERRIDES: Record<string, string> = {
+  banco_popular: "popular",
+  cooperativa_confiar: "confiar",
+};
+
 function normalizeBankToKey(bank: string | undefined | null): string | null {
   if (!bank) return null;
-  return bank.toLowerCase().replace(/_/g, "-");
+  const lower = bank.toLowerCase();
+  return BANK_KEY_OVERRIDES[lower] ?? lower.replace(/_/g, "-");
 }
 
 const PDF_EXTENSIONS = new Set([".pdf"]);
@@ -47,16 +53,20 @@ function isPdfFile(name: string): boolean {
 export function StepUpload({
   onParsed,
   initialFile,
+  initialVaultSuggestions,
 }: {
   onParsed: (data: ParseResponse) => void;
   initialFile?: File | null;
+  initialVaultSuggestions?: PdfPasswordSuggestion[];
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
   const [passwordFromVault, setPasswordFromVault] = useState(false);
   const [savePassword, setSavePassword] = useState(false);
   const [saveAlias, setSaveAlias] = useState("");
-  const [vaultSuggestions, setVaultSuggestions] = useState<PdfPasswordSuggestion[]>([]);
+  const [vaultSuggestions, setVaultSuggestions] = useState<PdfPasswordSuggestion[]>(
+    initialVaultSuggestions ?? []
+  );
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -67,6 +77,7 @@ export function StepUpload({
   const initialFileProcessed = useRef(false);
 
   useEffect(() => {
+    if (initialVaultSuggestions) return;
     let cancelled = false;
     suggestPdfPasswordsForAccount(null, null).then((suggestions) => {
       if (cancelled) return;
@@ -75,7 +86,7 @@ export function StepUpload({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialVaultSuggestions]);
 
   async function handleSaveForSupport() {
     if (!unsupportedFile) return;
@@ -246,6 +257,11 @@ export function StepUpload({
         );
         if (saveResult.success) {
           toast.success("Contraseña guardada en tu bóveda");
+        } else if (
+          saveResult.error &&
+          /alias|alcance/i.test(saveResult.error)
+        ) {
+          toast.info("Ya tenías esta contraseña guardada");
         } else {
           toast.error(saveResult.error ?? "No se pudo guardar la contraseña");
         }
@@ -461,7 +477,7 @@ export function StepUpload({
               <Button
                 size="sm"
                 variant="ghost"
-                className={cn(GHOST_BUTTON_CLASS, "border-z-alert/30 hover:bg-z-alert/10")}
+                className={cn(GHOST_BUTTON_CLASS, "!border-z-alert/30 hover:!bg-z-alert/10")}
                 onClick={handleSaveForSupport}
                 disabled={savingForSupport}
               >

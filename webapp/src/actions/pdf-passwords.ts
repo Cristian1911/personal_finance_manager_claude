@@ -77,6 +77,10 @@ export type PdfPasswordSuggestion = {
   account_id: string | null;
 };
 
+// Intentionally uncached: returns decrypted passwords. Caching would
+// either risk serializing plaintext into the cache layer, or require a
+// separate no-password index that the caller would have to re-resolve.
+// Freshness per call keeps the blast radius contained to the request.
 export async function suggestPdfPasswordsForAccount(
   accountId: string | null,
   bankKey: string | null
@@ -231,6 +235,13 @@ export async function deletePdfPassword(
     return { success: false, error: "ID inválido" };
   }
 
+  const { data: existing } = await supabase
+    .from("pdf_passwords")
+    .select("scope, account_id")
+    .eq("id", parsedId.data)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("pdf_passwords")
     .delete()
@@ -238,6 +249,15 @@ export async function deletePdfPassword(
     .eq("user_id", user.id);
 
   if (error) return { success: false, error: error.message };
+
+  if (existing?.scope === "account" && existing.account_id) {
+    await supabase
+      .from("accounts")
+      .update({ pdf_password: null })
+      .eq("id", existing.account_id)
+      .eq("user_id", user.id);
+    updateTag("accounts");
+  }
 
   updateTag("pdf-passwords");
   return { success: true, data: { id: parsedId.data } };
