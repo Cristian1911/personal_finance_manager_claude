@@ -7,7 +7,7 @@ const PARSE_TIMEOUT_MS = 120_000;
 export type ResendAttachment = {
   filename: string;
   content_type: string;
-  content: string; // base64-encoded
+  bytes: Uint8Array;
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

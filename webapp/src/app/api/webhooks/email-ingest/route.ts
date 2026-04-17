@@ -128,6 +128,50 @@ async function checkRateLimit(userId: string): Promise<boolean> {
 
 // ── Fetch email content from Resend API ─────────────────────────────────────
 
+type ResendAttachmentMeta = {
+  id: string;
+  filename: string;
+  content_type: string;
+  download_url: string;
+};
+
+async function fetchAttachmentList(
+  emailId: string,
+  apiKey: string,
+): Promise<ResendAttachmentMeta[]> {
+  const res = await fetch(
+    `https://api.resend.com/emails/receiving/${emailId}/attachments`,
+    { headers: { Authorization: `Bearer ${apiKey}` } },
+  );
+  if (!res.ok) {
+    console.error(
+      `[email-ingest] List attachments failed: ${res.status} ${res.statusText}`,
+    );
+    return [];
+  }
+  const json = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const list: ResendAttachmentMeta[] = (json.data ?? []).map((a: any) => ({
+    id: a.id ?? "",
+    filename: a.filename ?? "attachment.pdf",
+    content_type: a.content_type ?? a.contentType ?? "",
+    download_url: a.download_url ?? a.downloadUrl ?? "",
+  }));
+  return list.filter((a) => a.download_url);
+}
+
+async function downloadAttachment(meta: ResendAttachmentMeta): Promise<Uint8Array | null> {
+  const res = await fetch(meta.download_url);
+  if (!res.ok) {
+    console.error(
+      `[email-ingest] Download ${meta.filename} failed: ${res.status} ${res.statusText}`,
+    );
+    return null;
+  }
+  const buf = await res.arrayBuffer();
+  return new Uint8Array(buf);
+}
+
 async function fetchEmailContent(emailId: string): Promise<ResendEmailContent | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -135,22 +179,36 @@ async function fetchEmailContent(emailId: string): Promise<ResendEmailContent | 
     return null;
   }
 
-  const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
+  const [contentRes, attachmentList] = await Promise.all([
+    fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    }),
+    fetchAttachmentList(emailId, apiKey),
+  ]);
 
-  if (!res.ok) {
-    console.error(`[email-ingest] Resend API error: ${res.status} ${res.statusText}`);
+  if (!contentRes.ok) {
+    console.error(
+      `[email-ingest] Resend API error: ${contentRes.status} ${contentRes.statusText}`,
+    );
     return null;
   }
 
-  const data = await res.json();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const attachments: ResendAttachment[] = (data.attachments ?? []).map((a: any) => ({
-    filename: a.filename ?? "attachment.pdf",
-    content_type: a.content_type ?? a.contentType ?? "",
-    content: a.content ?? "",
-  }));
+  const data = await contentRes.json();
+
+  const attachments: ResendAttachment[] = (
+    await Promise.all(
+      attachmentList.map(async (meta) => {
+        const bytes = await downloadAttachment(meta);
+        if (!bytes || bytes.length === 0) return null;
+        return {
+          filename: meta.filename,
+          content_type: meta.content_type,
+          bytes,
+        };
+      }),
+    )
+  ).filter((a): a is ResendAttachment => a !== null);
+
   return { text: data.text ?? null, html: data.html ?? null, attachments };
 }
 
@@ -453,32 +511,69 @@ async function processEmail(ctx: {
 
       for (const attachment of pdfAttachments) {
         const filename = attachment.filename || "attachment.pdf";
-        // Buffer.from(..., "base64") may allocate from a shared 8KB pool — so
-        // `bytes.buffer` can reference a larger ArrayBuffer with `bytes` at a
-        // non-zero `byteOffset`. Always pass the Uint8Array itself (Buffer
-        // extends Uint8Array) so downstream consumers see exactly the PDF bytes.
-        const bytes = Buffer.from(attachment.content, "base64");
+        const bytes = attachment.bytes;
+
+        const isPdf =
+          bytes.length >= 4 &&
+          bytes[0] === 0x25 &&
+          bytes[1] === 0x50 &&
+          bytes[2] === 0x44 &&
+          bytes[3] === 0x46;
+
+        if (!isPdf) {
+          console.error(
+            `[email-ingest][${emailId}] ${filename}: bytes missing or not a PDF (len=${bytes.length}, first4=${Array.from(bytes.slice(0, 4)).join(",")})`,
+          );
+          await insertLog({
+            userId,
+            emailIngestId,
+            fromAddress: from,
+            status: "pdf_parse_failed",
+            rawBody: rawBodyPreview,
+            errorMessage: `Attachment ${filename} missing or not a PDF`,
+          });
+          continue;
+        }
+
         const contentHash = await computePdfHash(bytes);
 
-        // Check idempotency: skip if we already have this PDF
+        // Check idempotency: skip if we already have this PDF.
+        // Exception: if the prior row failed (parse_failed, needs_password) or
+        // was never parsed due to Resend 0-byte attachment bug, dismiss it so
+        // the user can resend and retry. Otherwise dead-letter blocks retry.
         const { data: existing } = await admin
           .from("pending_email_statements")
-          .select("id")
+          .select("id, status")
           .eq("user_id", userId)
           .eq("idempotency_hash", contentHash)
           .not("status", "in", "(dismissed)")
           .maybeSingle();
 
         if (existing) {
-          await insertLog({
-            userId,
-            emailIngestId,
-            fromAddress: from,
-            status: "duplicate",
-            rawBody: rawBodyPreview,
-            errorMessage: `Duplicate PDF: ${filename}`,
-          });
-          continue;
+          const retryableStatuses = ["parse_failed", "needs_password"];
+          if (retryableStatuses.includes(existing.status)) {
+            await admin
+              .from("pending_email_statements")
+              .update({
+                status: "dismissed",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", existing.id)
+              .eq("user_id", userId);
+            console.log(
+              `[email-ingest][${emailId}] Retryable row ${existing.id} dismissed (status=${existing.status}) — proceeding with fresh insert`,
+            );
+          } else {
+            await insertLog({
+              userId,
+              emailIngestId,
+              fromAddress: from,
+              status: "duplicate",
+              rawBody: rawBodyPreview,
+              errorMessage: `Duplicate PDF: ${filename}`,
+            });
+            continue;
+          }
         }
 
         // Store PDF in Supabase Storage
