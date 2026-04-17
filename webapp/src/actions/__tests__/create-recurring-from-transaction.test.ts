@@ -158,7 +158,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       50000,
       "OUTFLOW",
       VALID_TX,
-      undefined,
+      null,
     );
     expect(revalidateFinancialViews).toHaveBeenCalledOnce();
   });
@@ -273,7 +273,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       200000,
       "INFLOW",
       VALID_TX,
-      undefined,
+      null,
     );
   });
 });

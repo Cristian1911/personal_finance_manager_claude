@@ -390,13 +390,16 @@ export async function createRecurringTemplateFromTransaction(
   const rangeStart = startOfMonth(txDate < now ? txDate : now);
   const rangeEnd = addDays(endOfMonth(now), 14);
   await ensureOccurrencesForRange(rangeStart, rangeEnd);
+  // Use the saved template's destinatario_id (the user's final pick), not the
+  // tx's own. If the user changed the picker mid-promote, matching on the old
+  // tx destinatario would miss the anchored primary pass.
   await linkTransactionToOccurrence(
     tx.account_id,
     tx.transaction_date,
     tx.amount,
     tx.direction,
     tx.id,
-    tx.destinatario_id,
+    result.data.destinatario_id ?? null,
   );
 
   revalidateFinancialViews();

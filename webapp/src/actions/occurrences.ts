@@ -714,8 +714,13 @@ export async function findMatchingOccurrence(
 
   // Primary pass: if the transaction has a destinatario, try to match an
   // occurrence whose template is anchored to the same destinatario + account
-  // + direction. This is stronger than amount proximity — e.g. two different
-  // recurring payments with the same monthly amount won't cross-link.
+  // + direction. Stronger signal than amount proximity alone, but a ±50%
+  // tolerance still applies — the destinatario link says "this template
+  // tracks this merchant", NOT "every tx to this merchant is this payment".
+  // A 500k partial payment to a landlord should not silently auto-link to
+  // a 2M rent occurrence. The wide band (vs 1% on the amount-only pass)
+  // still absorbs realistic variance like fees, exchange rates, or partial
+  // extra-principal prepayments.
   if (destinatarioId) {
     const { data: anchored } = await supabase
       .from("recurring_occurrences")
@@ -732,17 +737,22 @@ export async function findMatchingOccurrence(
       .eq("template.direction", direction)
       .eq("template.is_active", true)
       .gte("occurrence_date", rangeStart)
-      .lte("occurrence_date", rangeEnd);
+      .lte("occurrence_date", rangeEnd)
+      .order("occurrence_date", { ascending: true });
 
-    if (anchored && anchored.length > 0) {
-      // Destinatario + account + date window is a strong enough signal that
-      // we don't require amount proximity — the user promised "this template
-      // is this destinatario". Pick the nearest by date.
-      const nearest = anchored.reduce((best, row) => {
+    const ANCHORED_TOLERANCE = 0.5;
+    const anchoredWithinTolerance = (anchored ?? []).filter(
+      (row) =>
+        row.expected_amount > 0 &&
+        Math.abs(row.expected_amount - amount) / row.expected_amount <= ANCHORED_TOLERANCE,
+    );
+
+    if (anchoredWithinTolerance.length > 0) {
+      const nearest = anchoredWithinTolerance.reduce((best, row) => {
         const bestDiff = Math.abs(new Date(best.occurrence_date).getTime() - baseDateObj.getTime());
         const rowDiff = Math.abs(new Date(row.occurrence_date).getTime() - baseDateObj.getTime());
         return rowDiff < bestDiff ? row : best;
-      }, anchored[0]);
+      }, anchoredWithinTolerance[0]);
       return nearest.id;
     }
   }
