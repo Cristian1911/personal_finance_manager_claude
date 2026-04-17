@@ -226,8 +226,36 @@
 - **When:** Extract when a 4th picker is added or when touching all 3 pickers.
 - **Found:** Code reuse review, 2026-04-13
 
-## Open PRs (stale)
+## Open PRs
 
 | PR | Description | Status |
 |---|---|---|
-| #98 | Demo mode with mock accounts | Open since 2026-04-08 |
+| #186 | has_auth guard on every encrypted view trigger | **Awaiting user review/merge.** Gemini MEDIUM addressed (SELECT INTO refactor on 7 update functions). Migration applied to prod (verified 20/20 guarded). 3 pre-existing functions (accounts/pdf_passwords/transactions) still on subquery form — left out of scope. |
+| #98 | Demo mode with mock accounts | Open since 2026-04-08 (stale) |
+
+## Session handoff — 2026-04-18
+
+### Just shipped (merged to main)
+- **PR #183** — tech-debt Wave 1 (tokens + createCachedClient pattern)
+- **PR #184** — tech-debt Wave 2 (transaction_tags RLS hardening + WITH CHECK)
+- **PR #185** — tech-debt Wave 3 (corrupted email-PDF cleanup script; dry-run found 0 prod rows)
+
+### In flight (not merged)
+- **PR #186** (`chore/has-auth-guard-encrypted-triggers`) — Encrypted view triggers no longer silently NULL ciphertext on no-auth paths. Two migrations applied to prod via MCP:
+  - `20260417193237_has_auth_guard_encrypted_triggers.sql` (initial 14-function rebuild)
+  - `20260417203708_has_auth_guard_select_into_refactor.sql` (Gemini's perf refactor: SELECT INTO _old)
+  - Both stamped in `supabase_migrations.schema_migrations` already. Local files match.
+  - Next session: `gh pr merge 186 --squash` if the user approves.
+
+### Discovered in this session — added to backlog
+- **Telegram webhook capture_tokens admin-client path** (Bug section, Medium): both SELECT and UPDATE through view never worked. Needs `set_capture_token_label` + `find_capture_token_by_chat_id` RPCs. Pre-existing, surfaced by supabase-migrator on PR #186.
+
+### Triage candidates if no specific direction is given
+1. **Dashboard RECIENTE inline category assignment** (Features section, High prio) — single-component feature, well-scoped, big UX win.
+2. **Promote-to-recurring success state** (Bugs section, Med) — small, user-facing polish; drive-by fix candidate.
+3. **Recurring templates — review unran 20260416 merge** (Bugs section, Med) — needs an audit SQL run + merge migration; depends on user input on which templates to merge.
+4. **Telegram webhook RPCs** (just added) — Medium, well-defined scope, completes the encryption hardening story.
+5. **Mobile Apple/Play compliance** (Features section, High) — user-blocked on assets; queue tech prep work in parallel.
+
+### Open agent thread
+None active. supabase-migrator review concluded. Gemini reviews concluded.
