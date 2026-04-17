@@ -54,17 +54,9 @@ PAYMENT_DUE_DATE_RE = re.compile(
 # Credit limit: "Tu cupo definido" then $ value on next line
 CREDIT_LIMIT_RE = re.compile(r"\$\s*([\d.,]+)")
 
-# Used credit: appears in the same section as "Usado"
-USED_CREDIT_RE = re.compile(r"Usado\s*\n?\s*\$\s*([\d.,]+)", re.IGNORECASE)
-
 # Available credit: "Disponible" then value
 AVAILABLE_CREDIT_RE = re.compile(
     r"Disponible\s*\n?\s*\$\s*([\d.,]+)", re.IGNORECASE
-)
-
-# Total payment due: "PAGO HASTA EL [date] $[amount]"
-TOTAL_PAYMENT_DUE_RE = re.compile(
-    r"PAGO\s+HASTA\s+EL\s+\d+\s+\w+\s+\d+\s*\$\s*([\d.,]+)", re.IGNORECASE
 )
 
 # Minimum payment: "PAGO MÍNIMO $[amount]"
@@ -443,6 +435,18 @@ def parse_nu_credit_card(
                     except ValueError:
                         pass
 
+    # Used credit: "Usado" followed by $ value on same or next line
+    used_credit: float | None = None
+    used_idx = combined_upper.find("USADO")
+    if used_idx >= 0:
+        search_text = combined_text[used_idx:used_idx + 100]
+        values = AMOUNT_RE.findall(search_text)
+        if values:
+            try:
+                used_credit = parse_co_number(values[0])
+            except ValueError:
+                pass
+
     # Available credit: when "Usado" and "Disponible" are on the same line,
     # their values are on the next line. Need to get the SECOND $ value.
     available_idx = combined_upper.find("DISPONIBLE")
@@ -463,13 +467,14 @@ def parse_nu_credit_card(
             except ValueError:
                 pass
 
-    # Total payment due
-    m = TOTAL_PAYMENT_DUE_RE.search(combined_upper)
-    if m:
-        try:
-            total_payment_due = parse_co_number(m.group(1))
-        except ValueError:
-            pass
+    # Total payment due = current outstanding balance (Usado).
+    # The PDF's "PAGO HASTA EL <date>" block refers to the PRIOR cycle's
+    # minimum (already paid), not the new total. "Usado" is what the user
+    # actually owes right now. Fallback: cupo_total - disponible.
+    if used_credit is not None:
+        total_payment_due = used_credit
+    elif credit_limit is not None and available_credit is not None:
+        total_payment_due = credit_limit - available_credit
 
     # Minimum payment
     m = MINIMUM_PAYMENT_RE.search(combined_upper)
