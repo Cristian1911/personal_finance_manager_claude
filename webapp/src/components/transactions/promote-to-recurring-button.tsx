@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { CalendarClock } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createRecurringTemplateFromTransaction } from "@/actions/recurring-templates";
-import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 
 // Dialog + form are ~580 lines; defer until the user clicks "Hacer recurrente".
 const RecurringFormDialog = dynamic(
@@ -104,15 +106,32 @@ export function PromoteToRecurringButton({
     }
   }, [pathname, router, searchParams]);
 
+  const handleSuccess = useCallback(
+    (saved: RecurringTemplate | undefined) => {
+      toast.success("Recurrente creada", {
+        description: "Se programó el próximo pago en Recurrentes.",
+        action: saved
+          ? {
+              label: "Ver",
+              onClick: () => router.push(`/recurrentes/${saved.id}/edit`),
+            }
+          : undefined,
+      });
+    },
+    [router],
+  );
+
   if (isLinkedToOccurrence) {
     return (
-      <Badge
-        variant="secondary"
-        className="bg-z-surface-3/60 text-z-sage-dark hover:bg-z-surface-3/60"
-      >
-        <CalendarClock className="mr-1.5 size-3.5" aria-hidden="true" />
-        Ya es recurrente
-      </Badge>
+      <Link href="/recurrentes" className="contents">
+        <Badge
+          variant="secondary"
+          className="cursor-pointer bg-z-surface-3/60 text-z-sage-dark transition-colors hover:bg-z-surface-3/80"
+        >
+          <CalendarClock className="size-3.5" aria-hidden="true" />
+          Ya es recurrente
+        </Badge>
+      </Link>
     );
   }
 
@@ -120,8 +139,7 @@ export function PromoteToRecurringButton({
     <>
       <Button
         type="button"
-        variant="ghost"
-        className={GHOST_BUTTON_CLASS}
+        className={BRASS_BUTTON_CLASS}
         onClick={() => setOpen(true)}
       >
         <CalendarClock className="size-4" aria-hidden="true" />
@@ -130,6 +148,7 @@ export function PromoteToRecurringButton({
       <RecurringFormDialog
         controlledOpen={open}
         onClose={handleClose}
+        onSuccess={handleSuccess}
         trigger={null}
         initialValues={initialValues}
         actionOverride={actionOverride}

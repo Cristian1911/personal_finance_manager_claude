@@ -57,7 +57,9 @@ export function RecurringForm({
   actionOverride?: RecurringFormAction;
   accounts: Account[];
   categories: CategoryWithChildren[];
-  onSuccess?: () => void;
+  /** Called with the saved template on success. Receives undefined when the
+   * action succeeded but didn't return the row (legacy actions). */
+  onSuccess?: (template: RecurringTemplate | undefined) => void;
 }) {
   const action = template
     ? updateRecurringTemplate.bind(null, template.id)
@@ -69,7 +71,7 @@ export function RecurringForm({
   >(
     async (prevState, formData) => {
       const result = await action(prevState, formData);
-      if (result.success) onSuccess?.();
+      if (result.success) onSuccess?.(result.data);
       return result;
     },
     { success: false, error: "" }

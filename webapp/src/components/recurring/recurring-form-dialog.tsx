@@ -28,6 +28,7 @@ export function RecurringFormDialog({
   trigger,
   controlledOpen,
   onClose,
+  onSuccess,
 }: {
   template?: RecurringTemplate;
   initialValues?: Partial<RecurringTemplate>;
@@ -38,6 +39,9 @@ export function RecurringFormDialog({
   /** When true, dialog opens immediately without a trigger */
   controlledOpen?: boolean;
   onClose?: () => void;
+  /** Fires after a successful save, before the dialog closes. Gives callers
+   * a place to toast / navigate without wiring a separate observer. */
+  onSuccess?: (template: RecurringTemplate | undefined) => void;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -70,7 +74,10 @@ export function RecurringFormDialog({
           actionOverride={actionOverride}
           accounts={accounts}
           categories={categories}
-          onSuccess={() => setOpen(false)}
+          onSuccess={(saved) => {
+            onSuccess?.(saved);
+            setOpen(false);
+          }}
         />
       </DialogContent>
     </Dialog>
