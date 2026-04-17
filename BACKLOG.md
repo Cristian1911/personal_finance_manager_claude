@@ -10,6 +10,20 @@
 
 ---
 
+## Bugs
+
+### Dashboard "Ritmo" chip shows dead-end empty state when expanded
+- **Priority:** Medium
+- **What:** `inicio-metrics-grid.tsx` — when `burnRateData` is null (no CHECKING/SAVINGS accounts OR no OUTFLOW tx in base currency in the last 3 months), expanding the Ritmo chip shows only "Sin datos de ritmo suficientes". The ring itself always renders (it uses calendar % `dayOfMonth/daysInMonth`, independent of financial data), which makes the empty state feel like a bug. Replace with an actionable message ("Importa transacciones recientes para ver tu ritmo" + link to /transactions/new) and investigate why `getBurnRate()` returns null for this user (likely currency mismatch between base currency and the existing tx currency, or genuinely no outflows in the 3-month window).
+- **Touches:** `webapp/src/components/mobile/v2/inicio/inicio-metrics-grid.tsx:165-169`; possibly `webapp/src/actions/burn-rate.ts` if the null-return logic should be more forgiving.
+- **Found:** User feedback, 2026-04-17
+
+### Account detail — "Ajustar" button does nothing when clicked
+- **Priority:** High
+- **What:** On `/accounts/[id]`, the "Ajustar" button is unresponsive — no dialog, no navigation, no toast. Likely a broken handler or a conditional render gating the dialog's open state. Needs repro + trace of the click event.
+- **Touches:** Almost certainly `webapp/src/app/(dashboard)/accounts/[id]/page.tsx` or a child action component (QuickActionsBar / account hero).
+- **Found:** User feedback, 2026-04-17
+
 ## Features
 
 ### Promote transaction → recurring template ("Hacer recurrente" CTA)

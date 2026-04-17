@@ -151,7 +151,7 @@ export function LinkPickerSheet({
             <button
               type="button"
               onClick={onCreateNew}
-              className="mt-3 flex w-full items-center gap-3 rounded-lg border border-dashed border-z-brass/30 bg-z-brass/[0.04] px-3 py-3 text-left transition-colors hover:bg-z-brass/[0.08]"
+              className="mt-3 flex w-full items-center gap-3 rounded-lg border border-dashed border-z-brass/30 bg-z-brass/5 px-3 py-3 text-left transition-colors hover:bg-z-brass/10"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-full border border-z-brass/30 bg-z-brass/10">
                 <CalendarPlus className="size-4 text-z-brass" />
@@ -161,7 +161,7 @@ export function LinkPickerSheet({
                   Crear nueva recurrente
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  Promueve esta transacción a un template mensual
+                  Promueve esta transacción a una plantilla mensual
                 </p>
               </div>
             </button>

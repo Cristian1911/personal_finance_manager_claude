@@ -327,10 +327,9 @@ export async function createRecurringTemplate(
 
   await ensureCurrentOccurrences();
 
-  updateTag("recurring");
-  updateTag("occurrences");
-  updateTag("dashboard:hero");
-  updateTag("attention");
+  // Full fan-out: a new template affects charts, budgets, debt projections,
+  // and account metrics — not just recurring/occurrences.
+  revalidateFinancialViews();
   return { success: true, data };
 }
 
@@ -533,10 +532,9 @@ export async function updateRecurringTemplate(
 
   await ensureCurrentOccurrences();
 
-  updateTag("recurring");
-  updateTag("occurrences");
-  updateTag("dashboard:hero");
-  updateTag("attention");
+  // Full fan-out: template edits affect charts, budgets, debt projections,
+  // and account metrics — not just recurring/occurrences.
+  revalidateFinancialViews();
   return { success: true, data };
 }
 
