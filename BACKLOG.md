@@ -53,12 +53,6 @@
 - **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
 - **Found:** 2026-04-18
 
-### Propagate `has_auth` guard to every encrypted `_enc` view trigger
-- **Priority:** Medium
-- **What:** Only `20260418120000_add_bank_key_to_accounts.sql` adopted the `has_auth := (SELECT auth.uid()) IS NOT NULL` pattern on its INSTEAD OF trigger functions. Every other encrypted view (`recurring_transaction_templates`, `destinatarios`, `profiles`, `transactions`, `pdf_passwords`, etc.) still calls `zeta_encrypt(NEW.col)` unconditionally. When those functions run without a JWT — webhooks, cron, service-role RPCs — the pgsodium context is missing and the ciphertext silently becomes NULL, losing data. Single migration that rebuilds every encrypted-view trigger function with the `CASE WHEN has_auth THEN zeta_encrypt(…) ELSE zeta_encrypt_as(…, NEW.user_id) END` pattern on INSERT and a preserve-existing-ciphertext subselect on UPDATE.
-- **Touches:** one migration rebuilding ~9 trigger pairs; no schema change.
-- **Found:** supabase-migrator reviews on PR #174 (recurring templates) + PR #182 (destinatario_id link) — both deferred the fix to keep scope tight.
-
 ## Features
 
 ### Import wizard — attach pattern to existing destinatario
@@ -226,8 +220,35 @@
 - **When:** Extract when a 4th picker is added or when touching all 3 pickers.
 - **Found:** Code reuse review, 2026-04-13
 
-## Open PRs (stale)
+## Open PRs
 
 | PR | Description | Status |
 |---|---|---|
-| #98 | Demo mode with mock accounts | Open since 2026-04-08 |
+| #98 | Demo mode with mock accounts | Open since 2026-04-08 (stale) |
+
+## Session handoff — 2026-04-18
+
+### Shipped this session (merged to main)
+- **PR #183** — tech-debt Wave 1 (tokens + createCachedClient pattern)
+- **PR #184** — tech-debt Wave 2 (transaction_tags RLS hardening + WITH CHECK)
+- **PR #185** — tech-debt Wave 3 (corrupted email-PDF cleanup script; dry-run found 0 prod rows)
+- **PR #186** — has_auth guard on every encrypted view trigger
+  - 14 trigger functions rebuilt across 7 tables (capture_tokens, destinatarios, email_ingest_addresses, profiles, recurring_templates, statement_snapshots, wishlist_items)
+  - Gemini's perf refactor applied: `SELECT * INTO _old <tbl>_enc` instead of N preserve-subqueries on no-auth UPDATE path
+  - Two migrations: `20260417193237_has_auth_guard_encrypted_triggers.sql` + `20260417203708_has_auth_guard_select_into_refactor.sql`
+  - Pre-existing accounts/pdf_passwords/transactions update functions still on subquery form — out of scope, can refactor later if desired
+
+### Discovered this session — added to backlog
+- **Telegram webhook capture_tokens admin path** (Bugs section, Medium): both SELECT and UPDATE through view never worked end-to-end. Needs `set_capture_token_label` + `find_capture_token_by_chat_id` SECURITY DEFINER RPCs. Pre-existing, surfaced by supabase-migrator on PR #186.
+
+### Triage candidates for next session
+1. **Dashboard RECIENTE inline category assignment** (Features, High) — single-component, well-scoped, big UX win
+2. **Promote-to-recurring success state** (Bugs, Med) — small user-facing polish
+3. **Recurring templates — review unran 20260416 merge** (Bugs, Med) — needs audit SQL + merge migration
+4. **Telegram webhook RPCs** (newly added Bug, Med) — completes encryption hardening story
+5. **Mobile Apple/Play compliance prep** (Features, High) — user-blocked on assets; tech prep can run in parallel
+
+### State
+- Working dir: clean on main after PR #186 merged
+- No active agent threads
+- All Gemini comments on shipped PRs replied to and resolved or declined
