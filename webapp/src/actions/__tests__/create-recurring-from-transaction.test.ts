@@ -7,9 +7,6 @@ const { ensureCurrentOccurrences, linkTransactionToOccurrence } = vi.hoisted(() 
   ensureCurrentOccurrences: vi.fn(),
   linkTransactionToOccurrence: vi.fn(),
 }));
-const { updateTag } = vi.hoisted(() => ({
-  updateTag: vi.fn(),
-}));
 const { revalidateFinancialViews } = vi.hoisted(() => ({
   revalidateFinancialViews: vi.fn(),
 }));
@@ -24,7 +21,7 @@ vi.mock("@/actions/occurrences", () => ({
   linkTransactionToOccurrence,
 }));
 vi.mock("next/cache", () => ({
-  updateTag,
+  updateTag: vi.fn(),
   revalidateTag: vi.fn(),
   cacheTag: vi.fn(),
   cacheLife: vi.fn(),
@@ -159,8 +156,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       "OUTFLOW",
       VALID_TX,
     );
-    expect(updateTag).toHaveBeenCalledWith("recurring");
-    expect(updateTag).toHaveBeenCalledWith("transactions");
+    expect(revalidateFinancialViews).toHaveBeenCalledOnce();
   });
 
   it("rejects when the source transaction is already linked to an occurrence", async () => {

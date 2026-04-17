@@ -1,12 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RecurringFormDialog } from "@/components/recurring/recurring-form-dialog";
 import { createRecurringTemplateFromTransaction } from "@/actions/recurring-templates";
 import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+
+// Dialog + form are ~580 lines; defer until the user clicks "Hacer recurrente".
+const RecurringFormDialog = dynamic(
+  () =>
+    import("@/components/recurring/recurring-form-dialog").then(
+      (m) => m.RecurringFormDialog,
+    ),
+  { ssr: false },
+);
 import type {
   Account,
   CategoryWithChildren,
@@ -81,7 +90,7 @@ export function PromoteToRecurringButton({
     return (
       <Badge
         variant="secondary"
-        className="bg-white/5 text-muted-foreground hover:bg-white/5"
+        className="bg-z-surface-3/60 text-z-sage-dark hover:bg-z-surface-3/60"
       >
         <CalendarClock className="mr-1.5 size-3.5" />
         Ya es recurrente
@@ -93,7 +102,7 @@ export function PromoteToRecurringButton({
     <>
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         className={GHOST_BUTTON_CLASS}
         onClick={() => setOpen(true)}
       >

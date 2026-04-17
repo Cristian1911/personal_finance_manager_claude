@@ -430,10 +430,9 @@ export async function createRecurringTemplateFromTransaction(
   if (error) return { success: false, error: error.message };
 
   // Generate occurrences, then link the source tx to the current-period
-  // occurrence. linkTransactionToOccurrence internally calls
-  // findMatchingOccurrence + markOccurrencePaid, which flips the occurrence
-  // to status="paid" and patches transactions.recurring_occurrence_id. If
-  // no occurrence matches, it's a no-op — user can link later via the UI.
+  // occurrence. linkTransactionToOccurrence → markOccurrencePaid flips the
+  // occurrence to status="paid" when a match is found; if no occurrence
+  // matches, it's a no-op (user can link later via the UI).
   await ensureCurrentOccurrences();
   await linkTransactionToOccurrence(
     tx.account_id,
@@ -443,11 +442,9 @@ export async function createRecurringTemplateFromTransaction(
     tx.id,
   );
 
-  updateTag("recurring");
-  updateTag("occurrences");
-  updateTag("dashboard:hero");
-  updateTag("attention");
-  updateTag("transactions");
+  // Use the full fan-out: a new active template affects charts, budgets,
+  // debt projections, and account metrics — not just recurring/occurrences.
+  revalidateFinancialViews();
   return { success: true, data };
 }
 
