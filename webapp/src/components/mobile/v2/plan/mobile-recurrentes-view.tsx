@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Check, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileRecurrentesTemplatesStrip } from "./mobile-recurrentes-templates-strip";
+import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import {
@@ -93,7 +94,14 @@ export function MobileRecurrentesView({
     () =>
       accounts
         .filter((a) => a.account_type === "CHECKING" || a.account_type === "SAVINGS")
-        .map((a) => ({ id: a.id, name: a.name })),
+        .map((a) => ({
+          id: a.id,
+          name: a.name,
+          mask: a.mask,
+          bank_key: a.bank_key,
+          account_type: a.account_type,
+          color: a.color,
+        })),
     [accounts],
   );
 
@@ -313,9 +321,11 @@ export function MobileRecurrentesView({
                           {/* Merchant + account */}
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-xs font-medium">{item.merchant}</p>
-                            <p className="truncate text-[10px] text-muted-foreground">
-                              {item.accountName}
-                            </p>
+                            <AccountRowIdentity
+                              account={item.account}
+                              density="compact"
+                              className="truncate text-[10px] text-muted-foreground"
+                            />
                             {item.subPayments && item.subPayments.length > 1 && (
                               <SubPaymentsBreakdown
                                 subPayments={item.subPayments}

@@ -52,6 +52,13 @@ export interface OccurrenceItem {
   status: "pending" | "paid" | "skipped";
   transactionId: string | null;
   subPayments: OccurrenceSubPayment[] | null;
+  account: {
+    name: string;
+    mask: string | null;
+    bank_key: string | null;
+    account_type: "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "CASH" | "INVESTMENT" | "LOAN" | "OTHER";
+    color: string | null;
+  };
 }
 
 export type DateStatus = "today" | "past" | "future";
@@ -66,6 +73,7 @@ function mapToOccurrenceItem(
 ): OccurrenceItem {
   const isDebtPayment =
     o.account_type === "CREDIT_CARD" || o.account_type === "LOAN";
+  const acct = accounts.find((a) => a.id === o.account_id);
   return {
     key: `${o.template_id}:${o.occurrence_date}`,
     occurrenceId: o.id,
@@ -82,10 +90,17 @@ function mapToOccurrenceItem(
     currencyCode: o.currency_code,
     isDebtPayment,
     transferSourceAccountId: o.transfer_source_account_id,
-    accountLastFour: accounts.find((a) => a.id === o.account_id)?.mask ?? "",
+    accountLastFour: acct?.mask ?? "",
     status: o.status as "pending" | "paid" | "skipped",
     transactionId: o.transaction_id,
     subPayments: o.sub_payments,
+    account: {
+      name: acct?.name ?? o.account_name,
+      mask: acct?.mask ?? null,
+      bank_key: acct?.bank_key ?? null,
+      account_type: (acct?.account_type ?? o.account_type) as OccurrenceItem["account"]["account_type"],
+      color: acct?.color ?? null,
+    },
   };
 }
 

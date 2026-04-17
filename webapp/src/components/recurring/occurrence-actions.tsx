@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 import type { OccurrenceItem } from "./use-recurring-month";
 import type { RecurringTemplateWithRelations } from "@/types/domain";
 
@@ -24,6 +25,10 @@ import type { RecurringTemplateWithRelations } from "@/types/domain";
 interface SourceAccount {
   id: string;
   name: string;
+  mask: string | null;
+  bank_key: string | null;
+  account_type: "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "CASH" | "INVESTMENT" | "LOAN" | "OTHER";
+  color: string | null;
 }
 
 type ActionPhase = "actions" | "confirm";
@@ -302,15 +307,24 @@ export function OccurrenceActions({
 
         {needsSource && sourceAccounts && sourceAccounts.length > 0 && (
           <div className="col-span-2 space-y-1">
-            <label className="text-[10px] font-medium text-muted-foreground">Cuenta origen</label>
+            <label htmlFor="occurrence-source-trigger" className="text-[10px] font-medium text-muted-foreground">Cuenta origen</label>
             <Select value={sourceAccountId} onValueChange={setSourceAccountId}>
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger id="occurrence-source-trigger" className="h-8 text-sm">
                 <SelectValue placeholder="Seleccionar..." />
               </SelectTrigger>
               <SelectContent>
                 {sourceAccounts.map((acc) => (
                   <SelectItem key={acc.id} value={acc.id}>
-                    {acc.name}
+                    <AccountRowIdentity
+                      account={{
+                        name: acc.name,
+                        mask: acc.mask,
+                        bank_key: acc.bank_key,
+                        account_type: acc.account_type,
+                        color: acc.color,
+                      }}
+                      density="picker"
+                    />
                   </SelectItem>
                 ))}
               </SelectContent>

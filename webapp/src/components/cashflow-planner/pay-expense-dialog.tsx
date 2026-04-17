@@ -32,6 +32,7 @@ import { Check, Link, CreditCard, Loader2 } from "lucide-react";
 import type { PlanningEntryWithRelations } from "@/types/cashflow-planner";
 import type { CurrencyCode } from "@/types/domain";
 import type { PlanAccount } from "@/components/mobile/v2/plan/mobile-periodo-view";
+import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 
 /* ── Amount Mode ── */
 type AmountMode = "planned" | "total_debt" | "custom";
@@ -334,19 +335,28 @@ export function PayExpenseDialog({
 
             {/* Source account */}
             <div className="space-y-2">
-              <Label>Cuenta origen</Label>
+              <Label htmlFor="source-account-trigger">Cuenta origen</Label>
               <Select
                 value={sourceAccountId}
                 onValueChange={setSourceAccountId}
               >
-                <SelectTrigger className="bg-card border-white/6">
+                <SelectTrigger id="source-account-trigger" className="bg-card border-white/6">
                   <SelectValue placeholder="Seleccionar cuenta" />
                 </SelectTrigger>
                 <SelectContent>
                   {sourceAccounts.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       <span className="flex items-center gap-2">
-                        {a.name}
+                        <AccountRowIdentity
+                          account={{
+                            name: a.name,
+                            mask: a.mask ?? null,
+                            bank_key: a.bank_key ?? null,
+                            account_type: a.account_type,
+                            color: a.color ?? null,
+                          }}
+                          density="picker"
+                        />
                         <span className="text-[10px] text-muted-foreground">
                           {formatCurrency(a.current_balance, a.currency_code as CurrencyCode)}
                         </span>

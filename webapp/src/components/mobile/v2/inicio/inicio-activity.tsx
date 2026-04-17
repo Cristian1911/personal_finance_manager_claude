@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, ArrowRight, Link2, Pencil } from "lucide-react";
+import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -30,6 +31,8 @@ const CategoryPickerBody = dynamic(
   { ssr: false },
 );
 
+type AccountTypeEnum = "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "CASH" | "INVESTMENT" | "LOAN" | "OTHER";
+
 interface RecentTransactionMobile {
   id: string;
   description: string;
@@ -39,6 +42,9 @@ interface RecentTransactionMobile {
   account_id: string;
   account_name: string;
   account_color: string | null;
+  account_mask: string | null;
+  account_bank_key: string | null;
+  account_type: AccountTypeEnum;
   category_id: string | null;
   category_name: string | null;
   category_icon: string | null;
@@ -205,11 +211,17 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium">{tx.description}</p>
                   <p className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <span
-                      className="inline-block size-[5px] shrink-0 rounded-full"
-                      style={{ backgroundColor: tx.account_color ?? undefined }}
+                    <AccountRowIdentity
+                      account={{
+                        name: tx.account_name,
+                        mask: tx.account_mask,
+                        bank_key: tx.account_bank_key,
+                        account_type: tx.account_type,
+                        color: tx.account_color,
+                      }}
+                      density="compact"
+                      className="truncate"
                     />
-                    <span className="truncate">{tx.account_name}</span>
                     {categoryIcon && categoryName && (
                       <>
                         <span className="text-white/15">&middot;</span>

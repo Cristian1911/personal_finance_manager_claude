@@ -142,7 +142,7 @@ export type AccountWithSummary = Account & {
 
 // Recurring template with joined relations
 export type RecurringTemplateWithRelations = RecurringTemplate & {
-  account: Pick<Account, "id" | "name" | "icon" | "color" | "account_type" | "currency_code">;
+  account: Pick<Account, "id" | "name" | "icon" | "color" | "account_type" | "currency_code" | "mask" | "bank_key">;
   category: Pick<Category, "id" | "name" | "name_es" | "icon" | "color"> | null;
   transfer_source_account: Pick<Account, "id" | "name" | "account_type" | "currency_code"> | null;
 };

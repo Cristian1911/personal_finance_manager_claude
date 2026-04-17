@@ -64,6 +64,9 @@ export interface InicioRootProps {
     account_id: string;
     account_name: string;
     account_color: string | null;
+    account_mask: string | null;
+    account_bank_key: string | null;
+    account_type: "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "CASH" | "INVESTMENT" | "LOAN" | "OTHER";
     category_id: string | null;
     category_name: string | null;
     category_icon: string | null;

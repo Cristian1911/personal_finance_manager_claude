@@ -116,7 +116,10 @@ function buildAccountInsertData(formData: FormData) {
     initial_investment: formData.get("initial_investment") || undefined,
     expected_return_rate: formData.get("expected_return_rate") || undefined,
     maturity_date: combineDateFields(formData, "maturity_month", "maturity_year"),
-    card_brand: formData.get("card_brand") || undefined,
+    card_brand: (() => {
+      const v = formData.get("card_brand");
+      return !v || v === "NONE" ? undefined : v;
+    })(),
     color: formData.get("color") || undefined,
     icon: formData.get("icon") || undefined,
     mask: formData.get("mask") || undefined,

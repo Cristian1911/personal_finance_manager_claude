@@ -381,6 +381,9 @@ export function SpecializedAccountForm({ account, defaultValues, onSuccess }: Pr
             placeholder={`Ej: Mi ${selectedTypeInfo?.label ?? "Cuenta"}`}
             required
           />
+          <p className="text-[11px] text-muted-foreground">
+            Puedes renombrar tu cuenta con un alias corto — p. ej. &ldquo;Caja&rdquo;, &ldquo;Ahorros mamá&rdquo;, &ldquo;Tarjeta amarilla&rdquo;. Se usa en listas y movimientos.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -440,12 +443,12 @@ export function SpecializedAccountForm({ account, defaultValues, onSuccess }: Pr
         {(selectedType === "CREDIT_CARD" || selectedType === "SAVINGS" || selectedType === "CHECKING") && (
           <div className="space-y-2">
             <Label>Red de tarjeta</Label>
-            <Select name="card_brand" defaultValue={account?.card_brand ?? ""}>
+            <Select name="card_brand" defaultValue={account?.card_brand ?? "NONE"}>
               <SelectTrigger>
                 <SelectValue placeholder="Sin especificar" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Sin especificar</SelectItem>
+                <SelectItem value="NONE">Sin especificar</SelectItem>
                 <SelectItem value="VISA">Visa</SelectItem>
                 <SelectItem value="MASTERCARD">Mastercard</SelectItem>
                 <SelectItem value="AMEX">American Express</SelectItem>

@@ -582,7 +582,13 @@ export type RecentTransaction = {
   transaction_date: string;
   currency_code: string;
   categories: { name_es: string | null; name: string; icon: string } | null;
-  accounts: { name: string; color: string | null } | null;
+  accounts: {
+    name: string;
+    color: string | null;
+    mask: string | null;
+    bank_key: string | null;
+    account_type: Database["public"]["Enums"]["account_type"];
+  } | null;
   transaction_tags: Array<{
     tag: { id: string; name: string; color: string | null; group: { color: string | null } | null };
   }>;
@@ -607,7 +613,7 @@ async function getRecentTransactionsCached(
       id, amount, direction, account_id, category_id, recurrence_group_id, merchant_name, clean_description,
       transaction_date, currency_code,
       categories!transactions_category_id_fkey(name_es, name, icon),
-      accounts!transactions_account_id_fkey(name, color),
+      accounts!transactions_account_id_fkey(name, color, mask, bank_key, account_type),
       transaction_tags!transaction_tags_transaction_id_fkey(tag:tags(id, name, color, group:tag_groups(color)))
     `)
     .eq("user_id", userId)
