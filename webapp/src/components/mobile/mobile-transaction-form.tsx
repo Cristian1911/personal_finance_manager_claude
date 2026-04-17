@@ -137,7 +137,6 @@ export function MobileTransactionForm({
 
   const today = new Date().toISOString().split("T")[0];
   const [merchantName, setMerchantName] = useState("");
-  const [isSubscription, setIsSubscription] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [createDestinatarioSetup, setCreateDestinatarioSetup] = useState(false);
   const [destinatarioName, setDestinatarioName] = useState("");
@@ -152,7 +151,6 @@ export function MobileTransactionForm({
 
   useEffect(() => {
     if (transactionType === "transfer") {
-      setIsSubscription(false);
       setCreateDestinatarioSetup(false);
       setCreateRecurringSetup(false);
       setAdvancedOpen(false);
@@ -217,11 +215,6 @@ export function MobileTransactionForm({
       <input type="hidden" name="direction" value={direction} />
       <input type="hidden" name="transaction_date" value={today} />
       <input type="hidden" name="currency_code" value={currencyCode} />
-      <input
-        type="hidden"
-        name="is_subscription"
-        value={isSubscription ? "true" : "false"}
-      />
       <input
         type="hidden"
         name="create_destinatario"
@@ -323,22 +316,6 @@ export function MobileTransactionForm({
 
       {allowRelatedSetup && (
         <>
-          <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
-            <div className="space-y-0.5 pr-4">
-              <Label htmlFor="mobile-is_subscription" className="cursor-pointer">
-                Marcar como suscripción
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Para cobros periódicos como streaming o software.
-              </p>
-            </div>
-            <Switch
-              id="mobile-is_subscription"
-              checked={isSubscription}
-              onCheckedChange={setIsSubscription}
-            />
-          </div>
-
           <Collapsible
             open={advancedOpen}
             onOpenChange={setAdvancedOpen}

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   let query = admin
     .from("transactions")
     .select(
-      "id, amount, currency_code, direction, transaction_date, merchant_name, raw_description, clean_description, category_id, account_id, is_subscription, notes, categories!category_id(name_es, name)",
+      "id, amount, currency_code, direction, transaction_date, merchant_name, raw_description, clean_description, category_id, account_id, notes, categories!category_id(name_es, name)",
       { count: "exact" },
     )
     .eq("user_id", auth.userId)
@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
         description: tx.merchant_name ?? tx.clean_description ?? tx.raw_description,
         category: cat?.name_es ?? cat?.name ?? null,
         account_id: tx.account_id,
-        is_subscription: tx.is_subscription,
         notes: tx.notes,
       };
     }),

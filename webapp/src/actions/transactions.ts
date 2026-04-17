@@ -37,7 +37,6 @@ type PersistTransactionParams = {
   notes?: string | null;
   capture_method?: Transaction["capture_method"];
   capture_input_text?: string | null;
-  is_subscription?: boolean;
 };
 
 type BalanceAccountRow = {
@@ -387,7 +386,6 @@ async function persistTransaction(
       provider: "MANUAL",
       capture_method: params.capture_method ?? "MANUAL_FORM",
       capture_input_text: params.capture_input_text ?? null,
-      is_subscription: params.is_subscription ?? false,
       categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
     })
     .select()
@@ -653,7 +651,6 @@ export async function createTransaction(
     category_id: formData.get("category_id") || undefined,
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
-    is_subscription: formData.get("is_subscription"),
   });
 
   if (!parsed.success) {
@@ -737,7 +734,6 @@ export async function createQuickCaptureTransaction(
     category_id: formData.get("category_id") || undefined,
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text"),
-    is_subscription: formData.get("is_subscription"),
   });
 
   if (!parsed.success) {
@@ -796,7 +792,6 @@ export async function updateTransaction(
     category_id: formData.get("category_id") || undefined,
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
-    is_subscription: formData.get("is_subscription"),
   });
 
   if (!parsed.success) {

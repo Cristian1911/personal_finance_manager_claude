@@ -241,7 +241,6 @@ export function VoiceCaptureSheet({
     formData.set("merchant_name", captured.description);
     formData.set("raw_description", captured.raw_description ?? captured.description);
     formData.set("capture_input_text", captured.capture_input_text ?? captured.description);
-    formData.set("is_subscription", "false");
     formData.set("create_destinatario", "false");
     formData.set("create_recurring_template", "false");
 

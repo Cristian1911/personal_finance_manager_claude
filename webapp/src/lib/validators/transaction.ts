@@ -20,7 +20,6 @@ export const transactionSchema = z.object({
   ),
   notes: z.string().optional(),
   capture_input_text: z.string().optional(),
-  is_subscription: formBoolean,
   tags: z.array(z.string()).optional(),
 });
 

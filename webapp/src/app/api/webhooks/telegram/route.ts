@@ -243,7 +243,6 @@ export async function POST(request: NextRequest) {
       provider: "MANUAL",
       capture_method: "TEXT_QUICK_CAPTURE",
       capture_input_text: text,
-      is_subscription: false,
       categorization_source: categoryId ? "SYSTEM_DEFAULT" : undefined,
     })
     .select("id, amount, direction, merchant_name, transaction_date")
