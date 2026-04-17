@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,7 @@ function prefillFromTransaction(tx: PromoteSourceTx): Partial<RecurringTemplate>
   const dayOfMonth = txDate.getDate();
   const merchant = tx.merchant_name ?? tx.clean_description ?? "";
   const hasDistinctDescription =
-    !!tx.clean_description && tx.clean_description !== tx.merchant_name;
+    !!tx.clean_description && tx.clean_description !== merchant;
   return {
     account_id: tx.account_id,
     amount: tx.amount,
@@ -74,7 +75,11 @@ export function PromoteToRecurringButton({
   accounts,
   categories,
 }: PromoteToRecurringButtonProps) {
-  const [open, setOpen] = useState(false);
+  // Auto-open when navigated here with ?promote=1 (e.g. from the Vincular
+  // picker on /transactions). Only opens for unlinked tx.
+  const searchParams = useSearchParams();
+  const shouldAutoOpen = searchParams.get("promote") === "1" && !isLinkedToOccurrence;
+  const [open, setOpen] = useState(shouldAutoOpen);
 
   const actionOverride = useMemo(
     () => createRecurringTemplateFromTransaction.bind(null, transaction.id),
