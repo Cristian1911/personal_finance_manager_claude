@@ -88,4 +88,7 @@ export const importPayloadSchema = z.object({
   transactions: z.array(transactionToImportSchema),
   statementMeta: z.array(statementMetaSchema).optional(),
   reconciliationDecisions: z.array(reconciliationDecisionSchema).optional(),
+  // Source of the import. Defaults to PDF_IMPORT (manual upload); the wizard
+  // sets EMAIL_PDF_IMPORT when seeded from a pending email statement.
+  captureMethod: z.enum(["PDF_IMPORT", "EMAIL_PDF_IMPORT"]).optional(),
 });

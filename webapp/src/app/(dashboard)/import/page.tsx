@@ -5,8 +5,7 @@ import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarioRules } from "@/actions/destinatarios";
 import { getPendingEmailStatements } from "@/actions/email-pdf-ingest";
-import { ImportWizard } from "@/components/import/import-wizard";
-import { PendingEmailStatements } from "@/components/import/pending-email-statements";
+import { ImportPageClient } from "@/components/import/import-page-client";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { Button } from "@/components/ui/button";
 import { PageHero, HeroPill, HeroAccentPill } from "@/components/ui/page-hero";
@@ -123,12 +122,11 @@ export default async function ImportPage() {
         </p>
       </div>
 
-      <PendingEmailStatements statements={pendingStatements} />
-
-      <ImportWizard
+      <ImportPageClient
         accounts={accounts}
         categories={categories}
         destinatarioRules={destinatarioRules}
+        pendingStatements={pendingStatements}
       />
 
       {/* Mobile: collapsible info section */}
