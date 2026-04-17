@@ -128,7 +128,7 @@ export function PromoteToRecurringButton({
           variant="secondary"
           className="cursor-pointer bg-z-surface-3/60 text-z-sage-dark transition-colors hover:bg-z-surface-3/80"
         >
-          <CalendarClock className="mr-1.5 size-3.5" aria-hidden="true" />
+          <CalendarClock className="size-3.5" aria-hidden="true" />
           Ya es recurrente
         </Badge>
       </Link>

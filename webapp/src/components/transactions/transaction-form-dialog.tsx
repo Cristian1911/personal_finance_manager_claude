@@ -32,11 +32,7 @@ export function TransactionFormDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className={isEdit ? GHOST_BUTTON_CLASS : undefined}>
-          {isEdit ? (
-            <Pencil className="h-4 w-4 mr-2" />
-          ) : (
-            <Plus className="h-4 w-4 mr-2" />
-          )}
+          {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           {isEdit ? "Editar" : "Nueva transacción"}
         </Button>
       </DialogTrigger>
