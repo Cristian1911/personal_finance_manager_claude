@@ -45,6 +45,12 @@
 - **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
 - **Found:** 2026-04-18
 
+### Recurring-templates triggers missing `has_auth` guard
+- **Priority:** Medium
+- **What:** `recurring_templates_view_insert()` and `recurring_templates_view_update()` call `zeta_encrypt(NEW.description)` / `zeta_encrypt(NEW.merchant_name)` unconditionally. When executed without a JWT (webhooks, cron, service_role RPCs), `zeta_encrypt` can store NULL ciphertext — silent data loss. `20260418120000_add_bank_key_to_accounts.sql` introduced the fix pattern: `has_auth := (SELECT auth.uid()) IS NOT NULL`, then `CASE WHEN has_auth THEN zeta_encrypt(…) ELSE zeta_encrypt_as(…, NEW.user_id) END` on INSERT and a preserve-existing-ciphertext subselect on UPDATE. Replicate the same pattern for the recurring-templates triggers.
+- **Touches:** new migration — rebuild both trigger functions; no schema change needed.
+- **Found:** supabase-migrator review on PR #174, 2026-04-18
+
 ## Features
 
 ### Promote transaction → recurring template ("Hacer recurrente" CTA)
@@ -136,6 +142,67 @@
 - **What:** Privacy Policy (ES + EN, hosted on webapp domain), Terms of Service, update `PrivacyInfo.xcprivacy` with accurate data types (app collects financial data, user IDs — currently declares empty), add `NSPhotoLibraryUsageDescription` + `NSCameraUsageDescription` to `app.json`, add in-app financial disclaimer ("Zeta no es un asesor financiero"), remove `NSAllowsLocalNetworking` from production builds.
 - **Context:** 2 new guardrail agents (`mobile-sync-doctor`, `mobile-webapp-parity`) are in place. Compliance is the remaining blocker before TestFlight/App Store submission.
 - **Found:** Mobile pages session, 2026-04-14
+
+### Mobile app — Play Store production release (rebrand + promote from alpha/beta)
+- **Priority:** High (blocks production launch on Google Play)
+- **Goal:** Ship Zeta to Play Store production track. Existing draft is on closed (alpha/beta). Name stays "Zeta"; bundle stays `com.zetafinance.app`; palette stays (`#121412` splash bg). User will deliver new brand PNGs later.
+
+- **Assets (user-supplied, pending)**
+  - `mobile/assets/images/icon.png` — 1024×1024, no alpha, no rounded corners (Play does the mask).
+  - `mobile/assets/images/adaptive-icon.png` — 1024×1024 foreground, safe zone 672×672 centered (background stays `#121412` per `app.json`).
+  - `mobile/assets/images/splash-icon.png` — centered logo on transparent; Expo scales to match `splash.backgroundColor`.
+  - `mobile/assets/images/favicon.png` — web fallback (low priority for Play).
+  - Play listing graphics: feature graphic 1024×500, phone screenshots ≥2 at 9:16 (min 1080px), optional 7"/10" tablet.
+
+- **Listing copy (Spanish)** — I can draft from webapp positioning, user reviews.
+  - Título de app (30 ch max)
+  - Descripción corta (80 ch max)
+  - Descripción completa (4000 ch max) — emphasize: importación de extractos PDF bancarios Colombia, presupuesto 50/30/20, deudas, multi-moneda.
+  - Categoría: `FINANCE`. Contenido: audiencia general.
+
+- **Compliance (blocks production)**
+  - Privacy Policy URL — hosted on webapp domain. Must exist and be reachable before Play lets us promote to prod. Draft ES + EN.
+  - Data Safety form: declare `Financial info` (in-app purchases N/A, other financial info = transactions, balances), `Personal info` (email, user ID), `App activity`. Data is encrypted in transit (HTTPS) AND at rest (envelope encryption on 9 `_enc` tables — document that). User can request deletion — point to in-app settings flow.
+  - Content rating questionnaire — all "no" for Zeta (no violence, gambling, user-generated social content).
+  - Target audience: 18+.
+  - App category: `Finance`.
+  - Financial Services declaration — Play requires extra disclosures for finance apps. Colombia-only for initial launch (if expanding, re-declare).
+  - In-app disclaimer string: "Zeta no es un asesor financiero" — surface in settings/onboarding.
+
+- **Technical (can do before assets)**
+  - Verify `android/build.gradle` `targetSdkVersion` = 35 (Play minimum as of Aug 2025 for new + updated apps).
+  - Verify `compileSdkVersion` = 35+.
+  - Bump `expo.version` in `app.json` (current `1.0.0` → bump per rebrand, e.g. `1.1.0`).
+  - `versionCode` auto-increments via EAS remote (`appVersionSource: remote` in `eas.json`) — no manual bump needed.
+  - Confirm Play App Signing is enabled in Console (recommended over self-managed upload key).
+  - Smoke-test release AAB on a physical device using `build:aab:production` EAS profile OR `build:aab:local` with Play upload keystore. Artifact: `android/app/build/outputs/bundle/release/app-release.aab`.
+  - Strip debug logs / `console.log` in production bundle (Expo does this by default in release mode).
+  - Audit permissions in `AndroidManifest.xml` — remove any not needed (e.g., if `RECORD_AUDIO` was added for voice and isn't used in current build).
+  - Pre-launch report in Play Console (automated crash/perf check) — runs after upload, review results before promoting.
+
+- **Track progression (user asked "do we have to pass through the others?")**
+  - Current: closed testing (alpha/beta).
+  - Play rules: org accounts can promote closed → production directly after policy review. Personal dev accounts registered after Nov 2023 must run a 14-day closed test with ≥20 testers before first-time production release. Confirm account type on Play Console.
+  - Flow: upload new AAB to closed track → verify w/ pre-launch report → promote build to production track OR create a new production release reusing the AAB. No rebuild needed.
+  - First production submission triggers **manual review** (can take hours to days for finance apps). Plan rebrand release so review window doesn't block other deliverables.
+
+- **Blockers to resolve before promotion**
+  1. New icon/splash/feature-graphic PNGs from user.
+  2. Privacy Policy URL live on webapp domain (webapp rebrand domain rename is pending per user — coordinate so the URL is stable before submission).
+  3. Dev account type (personal vs org `zetafinance`) — determines 14-day closed test rule.
+  4. Finalize Spanish listing copy.
+  5. Confirm screenshots captured post-rebrand (not pre-rebrand, to avoid old visual identity in store).
+
+- **Sequencing**
+  1. Tech prep (targetSdk, version bump, permissions audit, disclaimer string) — no assets needed.
+  2. Privacy Policy drafting + hosting (coordinate with webapp team).
+  3. Draft store listing copy for user review.
+  4. Wait on assets → swap PNGs → build preview AAB → device smoke test.
+  5. Build production AAB → upload to closed track → pre-launch report.
+  6. Data Safety form + content rating + financial disclosures.
+  7. Promote to production track → manual review.
+
+- **Found:** 2026-04-16 rebrand scoping session.
 
 ### Mobile v2 redesign — Phase 3
 - **Priority:** Low (deferred)
