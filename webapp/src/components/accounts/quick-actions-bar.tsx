@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -120,13 +121,23 @@ function ActionButton({
   );
 }
 
-function TriggerIcon({ icon: Icon }: { icon: React.ElementType }) {
+const TriggerIcon = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement> & { icon: React.ElementType }
+>(function TriggerIcon({ icon: Icon, className, ...props }, ref) {
   return (
-    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-z-white/80 transition-colors hover:bg-white/[0.1] cursor-pointer">
+    <span
+      ref={ref}
+      {...props}
+      className={cn(
+        "flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-z-white/80 transition-colors hover:bg-white/[0.1] cursor-pointer",
+        className
+      )}
+    >
       <Icon className="h-4 w-4" />
     </span>
   );
-}
+});
 
 export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) {
   const router = useRouter();

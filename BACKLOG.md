@@ -18,12 +18,6 @@
 - **Touches:** `webapp/src/components/mobile/v2/inicio/inicio-metrics-grid.tsx:165-169`; possibly `webapp/src/actions/burn-rate.ts` if the null-return logic should be more forgiving.
 - **Found:** User feedback, 2026-04-17
 
-### Account detail — "Ajustar" button does nothing when clicked
-- **Priority:** High
-- **What:** On `/accounts/[id]`, the "Ajustar" button is unresponsive — no dialog, no navigation, no toast. Likely a broken handler or a conditional render gating the dialog's open state. Needs repro + trace of the click event.
-- **Touches:** Almost certainly `webapp/src/app/(dashboard)/accounts/[id]/page.tsx` or a child action component (QuickActionsBar / account hero).
-- **Found:** User feedback, 2026-04-17
-
 ### Promote-to-recurring — success state undersells the outcome
 - **Priority:** Medium
 - **What:** After promoting a tx, the CTA collapses to a muted grey "Ya es recurrente" badge. User just created a template + linked this tx as paid — but has no signal that a future payment is now scheduled or where to find it. Options: (a) toast on success with the next occurrence date ("Recurrente creada · Próxima: 15 mayo"), (b) badge gains a subtle link to `/plan?tab=recurrentes&template=<id>`, (c) on submit redirect to `/plan?tab=recurrentes&highlight=<template_id>` with a flash highlight.
@@ -40,13 +34,23 @@
 - **What:** Today "Crear nueva recurrente" navigates to `/transactions/[id]?promote=1` instead of opening the dialog inline in the drawer. Code cost is small (`RecurringFormDialog` already accepts `controlledOpen`). Would remove the full-page detour. Drawback: dialog-in-drawer is visually awkward on mobile and the detail page detour gives the user a landing destination.
 - **Found:** ux-analyst review, 2026-04-17
 
-### Recurrentes tab shows empty state despite 9 active templates
-- **Priority:** High (prod)
-- **What:** `/plan?tab=recurrentes` renders the hero `$0 · 0 pendientes · 0 completados` and the empty state "No hay pagos recurrentes este mes" even though "9 activas · 1 pausada" is shown in the MIS PLANTILLAS strip. Reproduced on production (main, not this branch). Hypotheses to check in order: (1) `ensureCurrentOccurrences()` is failing silently on page load, so `recurring_occurrences` has no rows for this month; (2) all active templates have a `start_date` in the future or `end_date` in the past that excludes them from the current-month generator; (3) post-merge migration 20260416120000 deleted loser templates but left orphan occurrence rows whose `template_id` now FKs into a deleted row, tripping the view join; (4) a timezone boundary bug where the month cursor and the DB's `occurrence_date` range differ.
-- **Repro:** Open `/plan?tab=recurrentes` on an account with known active templates. Confirm the ring counts are 0 while the strip claims 9+1 templates.
-- **Debug path:** SQL `SELECT count(*), status FROM recurring_occurrences WHERE user_id = <uid> AND occurrence_date BETWEEN '2026-04-01' AND '2026-04-30' GROUP BY status;`. If 0 rows, call `ensureCurrentOccurrences()` manually or inspect the function's logs. If rows exist, the client filter or date range is off.
-- **Touches:** `webapp/src/actions/occurrences.ts`, `webapp/src/components/recurring/use-recurring-month.ts`, `webapp/src/app/(dashboard)/plan/page.tsx`.
-- **Found:** User feedback, 2026-04-17
+### Recurring templates — review the unran template-merge from 20260416
+- **Priority:** Medium
+- **What:** Migration `20260416120000_add_sub_payments_to_recurring_templates.sql` was stamped as applied on the remote project but its DDL never ran. `20260418130000_fix_missing_sub_payments.sql` recovers the column + view + triggers, but **intentionally skips the original step 5** (merge duplicate INFLOW/MONTHLY templates into one with `sub_payments`) to avoid destroying occurrence→tx links created over the past ~2 days. Decide: either run the merge manually via the UI, or ship a fresh migration that replicates step 5 after an audit of which dupes remain.
+- **Latent risk until merged:** `syncCreditCardRecurringTemplate` / `syncLoanRecurringTemplate` in `webapp/src/actions/import-transactions.ts` pick "the" active template by account — if two duplicates still exist, re-importing a statement may populate `sub_payments` on the non-canonical one. Non-crash, only a data-quality issue until the merge runs.
+- **Audit SQL:** `SELECT account_id, currency_code, count(*) FROM recurring_transaction_templates_enc WHERE direction='INFLOW' AND frequency='MONTHLY' AND category_id IS NULL GROUP BY 1,2 HAVING count(*) > 1;`
+- **Found:** 2026-04-18 — fixed in PR #174; merge follow-up flagged by recurring-doctor review.
+
+### Investigate why migration 20260416120000 stamped without running
+- **Priority:** Medium
+- **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
+- **Found:** 2026-04-18
+
+### Recurring-templates triggers missing `has_auth` guard
+- **Priority:** Medium
+- **What:** `recurring_templates_view_insert()` and `recurring_templates_view_update()` call `zeta_encrypt(NEW.description)` / `zeta_encrypt(NEW.merchant_name)` unconditionally. When executed without a JWT (webhooks, cron, service_role RPCs), `zeta_encrypt` can store NULL ciphertext — silent data loss. `20260418120000_add_bank_key_to_accounts.sql` introduced the fix pattern: `has_auth := (SELECT auth.uid()) IS NOT NULL`, then `CASE WHEN has_auth THEN zeta_encrypt(…) ELSE zeta_encrypt_as(…, NEW.user_id) END` on INSERT and a preserve-existing-ciphertext subselect on UPDATE. Replicate the same pattern for the recurring-templates triggers.
+- **Touches:** new migration — rebuild both trigger functions; no schema change needed.
+- **Found:** supabase-migrator review on PR #174, 2026-04-18
 
 ## Features
 
@@ -139,6 +143,67 @@
 - **What:** Privacy Policy (ES + EN, hosted on webapp domain), Terms of Service, update `PrivacyInfo.xcprivacy` with accurate data types (app collects financial data, user IDs — currently declares empty), add `NSPhotoLibraryUsageDescription` + `NSCameraUsageDescription` to `app.json`, add in-app financial disclaimer ("Zeta no es un asesor financiero"), remove `NSAllowsLocalNetworking` from production builds.
 - **Context:** 2 new guardrail agents (`mobile-sync-doctor`, `mobile-webapp-parity`) are in place. Compliance is the remaining blocker before TestFlight/App Store submission.
 - **Found:** Mobile pages session, 2026-04-14
+
+### Mobile app — Play Store production release (rebrand + promote from alpha/beta)
+- **Priority:** High (blocks production launch on Google Play)
+- **Goal:** Ship Zeta to Play Store production track. Existing draft is on closed (alpha/beta). Name stays "Zeta"; bundle stays `com.zetafinance.app`; palette stays (`#121412` splash bg). User will deliver new brand PNGs later.
+
+- **Assets (user-supplied, pending)**
+  - `mobile/assets/images/icon.png` — 1024×1024, no alpha, no rounded corners (Play does the mask).
+  - `mobile/assets/images/adaptive-icon.png` — 1024×1024 foreground, safe zone 672×672 centered (background stays `#121412` per `app.json`).
+  - `mobile/assets/images/splash-icon.png` — centered logo on transparent; Expo scales to match `splash.backgroundColor`.
+  - `mobile/assets/images/favicon.png` — web fallback (low priority for Play).
+  - Play listing graphics: feature graphic 1024×500, phone screenshots ≥2 at 9:16 (min 1080px), optional 7"/10" tablet.
+
+- **Listing copy (Spanish)** — I can draft from webapp positioning, user reviews.
+  - Título de app (30 ch max)
+  - Descripción corta (80 ch max)
+  - Descripción completa (4000 ch max) — emphasize: importación de extractos PDF bancarios Colombia, presupuesto 50/30/20, deudas, multi-moneda.
+  - Categoría: `FINANCE`. Contenido: audiencia general.
+
+- **Compliance (blocks production)**
+  - Privacy Policy URL — hosted on webapp domain. Must exist and be reachable before Play lets us promote to prod. Draft ES + EN.
+  - Data Safety form: declare `Financial info` (in-app purchases N/A, other financial info = transactions, balances), `Personal info` (email, user ID), `App activity`. Data is encrypted in transit (HTTPS) AND at rest (envelope encryption on 9 `_enc` tables — document that). User can request deletion — point to in-app settings flow.
+  - Content rating questionnaire — all "no" for Zeta (no violence, gambling, user-generated social content).
+  - Target audience: 18+.
+  - App category: `Finance`.
+  - Financial Services declaration — Play requires extra disclosures for finance apps. Colombia-only for initial launch (if expanding, re-declare).
+  - In-app disclaimer string: "Zeta no es un asesor financiero" — surface in settings/onboarding.
+
+- **Technical (can do before assets)**
+  - Verify `android/build.gradle` `targetSdkVersion` = 35 (Play minimum as of Aug 2025 for new + updated apps).
+  - Verify `compileSdkVersion` = 35+.
+  - Bump `expo.version` in `app.json` (current `1.0.0` → bump per rebrand, e.g. `1.1.0`).
+  - `versionCode` auto-increments via EAS remote (`appVersionSource: remote` in `eas.json`) — no manual bump needed.
+  - Confirm Play App Signing is enabled in Console (recommended over self-managed upload key).
+  - Smoke-test release AAB on a physical device using `build:aab:production` EAS profile OR `build:aab:local` with Play upload keystore. Artifact: `android/app/build/outputs/bundle/release/app-release.aab`.
+  - Strip debug logs / `console.log` in production bundle (Expo does this by default in release mode).
+  - Audit permissions in `AndroidManifest.xml` — remove any not needed (e.g., if `RECORD_AUDIO` was added for voice and isn't used in current build).
+  - Pre-launch report in Play Console (automated crash/perf check) — runs after upload, review results before promoting.
+
+- **Track progression (user asked "do we have to pass through the others?")**
+  - Current: closed testing (alpha/beta).
+  - Play rules: org accounts can promote closed → production directly after policy review. Personal dev accounts registered after Nov 2023 must run a 14-day closed test with ≥20 testers before first-time production release. Confirm account type on Play Console.
+  - Flow: upload new AAB to closed track → verify w/ pre-launch report → promote build to production track OR create a new production release reusing the AAB. No rebuild needed.
+  - First production submission triggers **manual review** (can take hours to days for finance apps). Plan rebrand release so review window doesn't block other deliverables.
+
+- **Blockers to resolve before promotion**
+  1. New icon/splash/feature-graphic PNGs from user.
+  2. Privacy Policy URL live on webapp domain (webapp rebrand domain rename is pending per user — coordinate so the URL is stable before submission).
+  3. Dev account type (personal vs org `zetafinance`) — determines 14-day closed test rule.
+  4. Finalize Spanish listing copy.
+  5. Confirm screenshots captured post-rebrand (not pre-rebrand, to avoid old visual identity in store).
+
+- **Sequencing**
+  1. Tech prep (targetSdk, version bump, permissions audit, disclaimer string) — no assets needed.
+  2. Privacy Policy drafting + hosting (coordinate with webapp team).
+  3. Draft store listing copy for user review.
+  4. Wait on assets → swap PNGs → build preview AAB → device smoke test.
+  5. Build production AAB → upload to closed track → pre-launch report.
+  6. Data Safety form + content rating + financial disclosures.
+  7. Promote to production track → manual review.
+
+- **Found:** 2026-04-16 rebrand scoping session.
 
 ### Mobile v2 redesign — Phase 3
 - **Priority:** Low (deferred)
