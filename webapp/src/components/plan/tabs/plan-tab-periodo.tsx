@@ -29,6 +29,8 @@ export async function PlanTabPeriodo() {
         account_type: a.account_type,
         current_balance: a.current_balance,
         currency_code: a.currency_code,
+        mask: a.mask,
+        bank_key: a.bank_key,
       }))
     : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];

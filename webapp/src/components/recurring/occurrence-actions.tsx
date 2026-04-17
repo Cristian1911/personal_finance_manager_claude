@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
 import type { OccurrenceItem } from "./use-recurring-month";
 import type { RecurringTemplateWithRelations } from "@/types/domain";
 
@@ -24,6 +25,10 @@ import type { RecurringTemplateWithRelations } from "@/types/domain";
 interface SourceAccount {
   id: string;
   name: string;
+  mask: string | null;
+  bank_key: string | null;
+  account_type: "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "CASH" | "INVESTMENT" | "LOAN" | "OTHER";
+  color: string | null;
 }
 
 type ActionPhase = "actions" | "confirm";
@@ -310,7 +315,16 @@ export function OccurrenceActions({
               <SelectContent>
                 {sourceAccounts.map((acc) => (
                   <SelectItem key={acc.id} value={acc.id}>
-                    {acc.name}
+                    <AccountRowIdentity
+                      account={{
+                        name: acc.name,
+                        mask: acc.mask,
+                        bank_key: acc.bank_key,
+                        account_type: acc.account_type,
+                        color: acc.color,
+                      }}
+                      density="picker"
+                    />
                   </SelectItem>
                 ))}
               </SelectContent>

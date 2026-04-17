@@ -94,7 +94,14 @@ export function MobileRecurrentesView({
     () =>
       accounts
         .filter((a) => a.account_type === "CHECKING" || a.account_type === "SAVINGS")
-        .map((a) => ({ id: a.id, name: a.name })),
+        .map((a) => ({
+          id: a.id,
+          name: a.name,
+          mask: a.mask,
+          bank_key: a.bank_key,
+          account_type: a.account_type,
+          color: a.color,
+        })),
     [accounts],
   );
 

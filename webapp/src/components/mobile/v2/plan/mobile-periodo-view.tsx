@@ -52,7 +52,7 @@ const STATUS_BADGE: Record<
 /* ────── Main component ────── */
 
 /** Accounts need account_type + current_balance for the pay dialog */
-export type PlanAccount = Pick<Account, "id" | "name" | "icon" | "color" | "account_type" | "current_balance" | "currency_code">;
+export type PlanAccount = Pick<Account, "id" | "name" | "icon" | "color" | "account_type" | "current_balance" | "currency_code" | "mask" | "bank_key">;
 
 interface MobilePeriodoViewProps {
   planData: PeriodPlanData;
