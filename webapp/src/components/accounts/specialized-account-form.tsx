@@ -381,6 +381,9 @@ export function SpecializedAccountForm({ account, defaultValues, onSuccess }: Pr
             placeholder={`Ej: Mi ${selectedTypeInfo?.label ?? "Cuenta"}`}
             required
           />
+          <p className="text-[11px] text-muted-foreground">
+            Puedes renombrar tu cuenta con un alias corto — p. ej. &ldquo;Caja&rdquo;, &ldquo;Ahorros mamá&rdquo;, &ldquo;Tarjeta amarilla&rdquo;. Se usa en listas y movimientos.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
