@@ -13,7 +13,7 @@ import { TagChip } from "@/components/tags/tag-chip";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
 import { useOutflowCategories } from "@/components/providers/app-data-provider";
 import { categorizeTransaction } from "@/actions/categorize";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import {
   getCandidateOccurrencesForTransaction,
   linkExistingTransactionToOccurrence,
@@ -151,7 +151,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
 
   return (
     <div>
-      <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-z-sage-dark">
+      <p className={cn(SECTION_EYEBROW_CLASS, "mb-1.5")}>
         Reciente
       </p>
 

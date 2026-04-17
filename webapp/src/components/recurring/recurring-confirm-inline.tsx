@@ -71,7 +71,7 @@ export function RecurringConfirmInline({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-b-lg border-t bg-muted/50 px-3 py-3"
+      className="rounded-b-lg border-t border-white/6 bg-z-surface-3/60 px-3 py-3"
     >
       <div className="space-y-2">
         {/* Fields row */}

@@ -3,7 +3,7 @@
 import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { categorySchema } from "@/lib/validators/category";
 import type { ActionResult } from "@/types/actions";
 import { parseMonth, monthStartStr, monthEndStr, monthsBeforeStart } from "@/lib/utils/date";
@@ -68,13 +68,14 @@ function buildCategoryTreeWithBudgets(
 
 async function getCategoriesCached(
   userId: string,
+  accessToken: string,
   direction?: TransactionDirection
 ): Promise<CategoryWithChildren[]> {
   "use cache";
   cacheTag("categories");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   let query = supabase
     .from("categories")
@@ -97,13 +98,15 @@ async function getCategoriesCached(
 
 async function getCategoriesWithBudgetsCached(
   userId: string,
+  accessToken: string,
   direction?: TransactionDirection
 ): Promise<CategoryWithBudget[]> {
   "use cache";
   cacheTag("categories");
+  cacheTag("budgets");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   let query = supabase
     .from("categories")
@@ -135,13 +138,14 @@ async function getCategoriesWithBudgetsCached(
 }
 
 async function getAllCategoriesForManagementCached(
-  userId: string
+  userId: string,
+  accessToken: string
 ): Promise<CategoryBudgetData[]> {
   "use cache";
   cacheTag("categories");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   // Fetch ALL parent categories (including inactive) for management
   const { data: parents, error } = await supabase
@@ -196,13 +200,15 @@ async function getAllCategoriesForManagementCached(
 
 async function getCategoryTransactionCountCached(
   userId: string,
+  accessToken: string,
   categoryId: string
 ): Promise<number> {
   "use cache";
   cacheTag("categories");
+  cacheTag("transactions");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
 
   const { count, error } = await supabase
     .from("transactions")
@@ -217,17 +223,20 @@ async function getCategoryTransactionCountCached(
 
 async function getCategoriesWithBudgetDataCached(
   userId: string,
+  accessToken: string,
   month?: string,
   currency?: CurrencyCode
 ): Promise<CategoryBudgetData[]> {
   "use cache";
   cacheTag("categories");
   cacheTag("budgets");
+  cacheTag("transactions");
+  cacheTag("recurring");
   cacheTag("dashboard:charts");
   cacheTag("dashboard:budgets");
   cacheLife("zeta");
 
-  const supabase = createAdminClient();
+  const supabase = createCachedClient(accessToken);
   const baseCurrency = currency ?? "COP";
   const target = parseMonth(month);
 
@@ -384,10 +393,10 @@ async function getCategoriesWithBudgetDataCached(
 export async function getCategories(
   direction?: TransactionDirection
 ): Promise<ActionResult<CategoryWithChildren[]>> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getCategoriesCached(user.id, direction);
+    const data = await getCategoriesCached(user.id, accessToken, direction);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading categories:", error);
@@ -398,10 +407,10 @@ export async function getCategories(
 export async function getCategoriesWithBudgets(
   direction?: TransactionDirection
 ): Promise<ActionResult<CategoryWithBudget[]>> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getCategoriesWithBudgetsCached(user.id, direction);
+    const data = await getCategoriesWithBudgetsCached(user.id, accessToken, direction);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading categories:", error);
@@ -412,10 +421,10 @@ export async function getCategoriesWithBudgets(
 export async function getAllCategoriesForManagement(): Promise<
   ActionResult<CategoryBudgetData[]>
 > {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getAllCategoriesForManagementCached(user.id);
+    const data = await getAllCategoriesForManagementCached(user.id, accessToken);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading categories:", error);
@@ -426,10 +435,10 @@ export async function getAllCategoriesForManagement(): Promise<
 export async function getCategoryTransactionCount(
   categoryId: string
 ): Promise<ActionResult<number>> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getCategoryTransactionCountCached(user.id, categoryId);
+    const data = await getCategoryTransactionCountCached(user.id, accessToken, categoryId);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading category count:", error);
@@ -441,10 +450,10 @@ export async function getCategoriesWithBudgetData(
   month?: string,
   currency?: CurrencyCode
 ): Promise<ActionResult<CategoryBudgetData[]>> {
-  const { user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
   try {
-    const data = await getCategoriesWithBudgetDataCached(user.id, month, currency);
+    const data = await getCategoriesWithBudgetDataCached(user.id, accessToken, month, currency);
     return { success: true, data };
   } catch (error) {
     console.error("Error loading budget data:", error);
