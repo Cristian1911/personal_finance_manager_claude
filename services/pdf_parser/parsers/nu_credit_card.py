@@ -435,15 +435,18 @@ def parse_nu_credit_card(
                     except ValueError:
                         pass
 
-    # Used credit: "Usado" followed by $ value on same or next line
+    # Used credit: "Usado" followed by $ value on same or next line.
+    # Allow an optional leading minus sign so a credit balance (overpayment)
+    # is parsed with the correct sign instead of flipping to positive.
     used_credit: float | None = None
     used_idx = combined_upper.find("USADO")
     if used_idx >= 0:
         search_text = combined_text[used_idx:used_idx + 100]
-        values = AMOUNT_RE.findall(search_text)
-        if values:
+        signed_match = re.search(r"(-?)\s*\$\s*([\d.,]+)", search_text)
+        if signed_match:
             try:
-                used_credit = parse_co_number(values[0])
+                magnitude = parse_co_number(signed_match.group(2))
+                used_credit = -magnitude if signed_match.group(1) == "-" else magnitude
             except ValueError:
                 pass
 
