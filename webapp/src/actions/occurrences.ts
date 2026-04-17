@@ -701,6 +701,7 @@ export async function findMatchingOccurrence(
   transactionDate: string,
   amount: number,
   direction: "INFLOW" | "OUTFLOW",
+  destinatarioId: string | null = null,
 ): Promise<string | null> {
   // Direct query — not cached. This runs on mutation paths (tx creation)
   // where fresh data is required to avoid double-linking in batch imports.
@@ -710,6 +711,64 @@ export async function findMatchingOccurrence(
   const baseDateObj = parseISO(transactionDate + "T12:00:00");
   const rangeStart = toColombiaDateString(addDays(baseDateObj, -3));
   const rangeEnd = toColombiaDateString(addDays(baseDateObj, 3));
+
+  // Primary pass: if the transaction has a destinatario, try to match an
+  // occurrence whose template is anchored to the same destinatario + account
+  // + direction. Stronger signal than amount proximity alone, but a ±50%
+  // tolerance still applies — the destinatario link says "this template
+  // tracks this merchant", NOT "every tx to this merchant is this payment".
+  // A 500k partial payment to a landlord should not silently auto-link to
+  // a 2M rent occurrence. The wide band (vs 1% on the amount-only pass)
+  // still absorbs realistic variance like fees, exchange rates, or partial
+  // extra-principal prepayments.
+  if (destinatarioId) {
+    const { data: anchored, error: anchoredError } = await supabase
+      .from("recurring_occurrences")
+      .select(
+        `id, occurrence_date, expected_amount,
+         template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
+           account_id, destinatario_id, direction, is_active
+         )`
+      )
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .eq("template.account_id", accountId)
+      .eq("template.destinatario_id", destinatarioId)
+      .eq("template.direction", direction)
+      .eq("template.is_active", true)
+      .gte("occurrence_date", rangeStart)
+      .lte("occurrence_date", rangeEnd)
+      .order("occurrence_date", { ascending: true });
+
+    if (anchoredError) {
+      // Log but don't abort — fall through to the amount-proximity pass so
+      // a transient DB hiccup doesn't block legitimate matches.
+      console.error("[findMatchingOccurrence] anchored query failed", anchoredError);
+    }
+
+    const ANCHORED_TOLERANCE = 0.5;
+    const anchoredWithinTolerance = (anchored ?? []).filter(
+      (row) =>
+        row.expected_amount > 0 &&
+        Math.abs(row.expected_amount - amount) / row.expected_amount <= ANCHORED_TOLERANCE,
+    );
+
+    if (anchoredWithinTolerance.length > 0) {
+      // parseISO both sides for timezone consistency — baseDateObj was parsed
+      // with an explicit noon offset, while occurrence_date is a bare YYYY-MM-DD
+      // which `new Date()` would interpret as UTC midnight (off by hours in Colombia).
+      const nearest = anchoredWithinTolerance.reduce((best, row) => {
+        const bestDiff = Math.abs(
+          parseISO(best.occurrence_date + "T12:00:00").getTime() - baseDateObj.getTime(),
+        );
+        const rowDiff = Math.abs(
+          parseISO(row.occurrence_date + "T12:00:00").getTime() - baseDateObj.getTime(),
+        );
+        return rowDiff < bestDiff ? row : best;
+      }, anchoredWithinTolerance[0]);
+      return nearest.id;
+    }
+  }
 
   const { data, error } = await supabase
     .from("recurring_occurrences")
@@ -781,8 +840,15 @@ export async function linkTransactionToOccurrence(
   amount: number,
   direction: "INFLOW" | "OUTFLOW",
   transactionId: string,
+  destinatarioId: string | null = null,
 ): Promise<void> {
-  const matchId = await findMatchingOccurrence(accountId, transactionDate, amount, direction);
+  const matchId = await findMatchingOccurrence(
+    accountId,
+    transactionDate,
+    amount,
+    direction,
+    destinatarioId,
+  );
   if (matchId) {
     await markOccurrencePaid(matchId, transactionId);
   }

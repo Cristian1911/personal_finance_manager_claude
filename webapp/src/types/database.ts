@@ -2054,6 +2054,7 @@ export type Database = {
           day_of_month: number | null
           day_of_week: number | null
           description: string | null
+          destinatario_id: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           end_date: string | null
           frequency: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2075,6 +2076,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          destinatario_id?: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           end_date?: string | null
           frequency: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2096,6 +2098,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          destinatario_id?: string | null
           direction?: Database["public"]["Enums"]["transaction_direction"]
           end_date?: string | null
           frequency?: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2128,6 +2131,20 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_enc_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_enc_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios_enc"
             referencedColumns: ["id"]
           },
           {
@@ -2170,6 +2187,7 @@ export type Database = {
           day_of_month: number | null
           day_of_week: number | null
           description: string | null
+          destinatario_id: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           end_date: string | null
           frequency: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2191,6 +2209,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          destinatario_id?: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           end_date?: string | null
           frequency: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2212,6 +2231,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          destinatario_id?: string | null
           direction?: Database["public"]["Enums"]["transaction_direction"]
           end_date?: string | null
           frequency?: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2244,6 +2264,20 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_enc_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transaction_templates_enc_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios_enc"
             referencedColumns: ["id"]
           },
           {

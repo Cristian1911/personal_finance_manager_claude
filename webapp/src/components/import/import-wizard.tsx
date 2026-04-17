@@ -55,6 +55,7 @@ export function ImportWizard({
   initialParseResult,
   pendingEmailStatementId,
   onImportedFromEmail,
+  onReset,
 }: {
   accounts: Account[];
   categories: CategoryWithChildren[];
@@ -64,6 +65,7 @@ export function ImportWizard({
   initialParseResult?: ParseResponse | null;
   pendingEmailStatementId?: string | null;
   onImportedFromEmail?: (id: string) => void;
+  onReset?: () => void;
 }) {
   const [step, setStep] = useState<Step>(initialParseResult ? "review" : "upload");
   const [parseResult, setParseResult] = useState<ParseResponse | null>(
@@ -241,6 +243,7 @@ export function ImportWizard({
     setPreparedStatementMeta([]);
     setReconciliationPreview(null);
     activeEmailStatementIdRef.current = null;
+    onReset?.();
   }
 
   return (

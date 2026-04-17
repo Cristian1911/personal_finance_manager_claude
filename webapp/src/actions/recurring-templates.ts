@@ -270,6 +270,7 @@ async function insertRecurringTemplateFromFormData(
     merchant_name: formData.get("merchant_name"),
     description: formData.get("description") || undefined,
     category_id: formData.get("category_id") || undefined,
+    destinatario_id: formData.get("destinatario_id") || undefined,
     day_of_month: formData.get("day_of_month") || undefined,
     day_of_week: formData.get("day_of_week") || undefined,
     start_date: formData.get("start_date"),
@@ -356,7 +357,7 @@ export async function createRecurringTemplateFromTransaction(
   const [txRes, linkRes] = await Promise.all([
     supabase
       .from("transactions")
-      .select("id, account_id, amount, direction, transaction_date")
+      .select("id, account_id, amount, direction, transaction_date, destinatario_id")
       .eq("id", transactionId)
       .eq("user_id", user.id)
       .maybeSingle(),
@@ -389,12 +390,16 @@ export async function createRecurringTemplateFromTransaction(
   const rangeStart = startOfMonth(txDate < now ? txDate : now);
   const rangeEnd = addDays(endOfMonth(now), 14);
   await ensureOccurrencesForRange(rangeStart, rangeEnd);
+  // Use the saved template's destinatario_id (the user's final pick), not the
+  // tx's own. If the user changed the picker mid-promote, matching on the old
+  // tx destinatario would miss the anchored primary pass.
   await linkTransactionToOccurrence(
     tx.account_id,
     tx.transaction_date,
     tx.amount,
     tx.direction,
     tx.id,
+    result.data.destinatario_id ?? null,
   );
 
   revalidateFinancialViews();
@@ -420,6 +425,7 @@ export async function updateRecurringTemplate(
     merchant_name: formData.get("merchant_name"),
     description: formData.get("description") || undefined,
     category_id: formData.get("category_id") || undefined,
+    destinatario_id: formData.get("destinatario_id") || undefined,
     day_of_month: formData.get("day_of_month") || undefined,
     day_of_week: formData.get("day_of_week") || undefined,
     start_date: formData.get("start_date"),

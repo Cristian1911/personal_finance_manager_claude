@@ -40,8 +40,17 @@ export function ImportPageClient({
   }, []);
 
   const handleImportedFromEmail = useCallback((id: string) => {
+    // Remove from the pending list so the user doesn't see it as a re-entry
+    // point, but do NOT clear `selectedId` here — that would remount the
+    // wizard (via `key`) and blow away the results step before the user can
+    // see it. The wizard stays mounted on the current id until the user
+    // explicitly resets or picks another pending statement.
     setPendingStatements((prev) => prev.filter((s) => s.id !== id));
-    setSelectedId((current) => (current === id ? null : current));
+  }, []);
+
+  const handleWizardReset = useCallback(() => {
+    setSelectedId(null);
+    setSelectedParseResult(null);
   }, []);
 
   // Hide any statement that has been selected for review from the pending list
@@ -68,6 +77,7 @@ export function ImportPageClient({
           initialParseResult={selectedParseResult}
           pendingEmailStatementId={selectedId}
           onImportedFromEmail={handleImportedFromEmail}
+          onReset={handleWizardReset}
           initialVaultSuggestions={initialVaultSuggestions}
         />
       </div>

@@ -55,11 +55,11 @@
 - **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
 - **Found:** 2026-04-18
 
-### Recurring-templates triggers missing `has_auth` guard
+### Propagate `has_auth` guard to every encrypted `_enc` view trigger
 - **Priority:** Medium
-- **What:** `recurring_templates_view_insert()` and `recurring_templates_view_update()` call `zeta_encrypt(NEW.description)` / `zeta_encrypt(NEW.merchant_name)` unconditionally. When executed without a JWT (webhooks, cron, service_role RPCs), `zeta_encrypt` can store NULL ciphertext — silent data loss. `20260418120000_add_bank_key_to_accounts.sql` introduced the fix pattern: `has_auth := (SELECT auth.uid()) IS NOT NULL`, then `CASE WHEN has_auth THEN zeta_encrypt(…) ELSE zeta_encrypt_as(…, NEW.user_id) END` on INSERT and a preserve-existing-ciphertext subselect on UPDATE. Replicate the same pattern for the recurring-templates triggers.
-- **Touches:** new migration — rebuild both trigger functions; no schema change needed.
-- **Found:** supabase-migrator review on PR #174, 2026-04-18
+- **What:** Only `20260418120000_add_bank_key_to_accounts.sql` adopted the `has_auth := (SELECT auth.uid()) IS NOT NULL` pattern on its INSTEAD OF trigger functions. Every other encrypted view (`recurring_transaction_templates`, `destinatarios`, `profiles`, `transactions`, `pdf_passwords`, etc.) still calls `zeta_encrypt(NEW.col)` unconditionally. When those functions run without a JWT — webhooks, cron, service-role RPCs — the pgsodium context is missing and the ciphertext silently becomes NULL, losing data. Single migration that rebuilds every encrypted-view trigger function with the `CASE WHEN has_auth THEN zeta_encrypt(…) ELSE zeta_encrypt_as(…, NEW.user_id) END` pattern on INSERT and a preserve-existing-ciphertext subselect on UPDATE.
+- **Touches:** one migration rebuilding ~9 trigger pairs; no schema change.
+- **Found:** supabase-migrator reviews on PR #174 (recurring templates) + PR #182 (destinatario_id link) — both deferred the fix to keep scope tight.
 
 ## Features
 

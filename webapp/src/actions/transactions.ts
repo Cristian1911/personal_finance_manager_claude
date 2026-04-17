@@ -710,6 +710,7 @@ export async function createTransaction(
   await linkTransactionToOccurrence(
     parsed.data.account_id, parsed.data.transaction_date,
     parsed.data.amount, parsed.data.direction, transactionResult.data.id,
+    relatedSetup.data.destinatarioId ?? null,
   );
 
   return transactionResult;
@@ -767,6 +768,7 @@ export async function createQuickCaptureTransaction(
     await linkTransactionToOccurrence(
       parsed.data.account_id, parsed.data.transaction_date,
       parsed.data.amount, parsed.data.direction, result.data.id,
+      destinatarioId,
     );
   }
 
