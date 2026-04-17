@@ -513,7 +513,14 @@ async function processEmail(ctx: {
         const filename = attachment.filename || "attachment.pdf";
         const bytes = attachment.bytes;
 
-        if (bytes.length === 0 || !bytes.slice(0, 4).every((b, i) => b === [0x25, 0x50, 0x44, 0x46][i])) {
+        const isPdf =
+          bytes.length >= 4 &&
+          bytes[0] === 0x25 &&
+          bytes[1] === 0x50 &&
+          bytes[2] === 0x44 &&
+          bytes[3] === 0x46;
+
+        if (!isPdf) {
           console.error(
             `[email-ingest][${emailId}] ${filename}: bytes missing or not a PDF (len=${bytes.length}, first4=${Array.from(bytes.slice(0, 4)).join(",")})`,
           );
