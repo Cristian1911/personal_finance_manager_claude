@@ -234,15 +234,8 @@
 
 ## Tech Debt
 
-### Clean up corrupted `pending_email_statements` storage rows (pre-Buffer-pool-fix)
-- **Priority:** Medium
-- **What:** Rows created before the Buffer-pool fix (commit `92555b4`, branch `claude/fix-pdf-email-delivery-Jwhzp`) have 8KB of Node pool garbage stored at `storage_path` in the `email-pdfs` bucket instead of the real PDF. They will never parse — even via `retryPdfParsing` — because the stored blob doesn't start with `%PDF`. One-shot cleanup:
-  1. Find `pending_email_statements` rows with `status IN ('pdf_queued','pdf_parse_failed','parse_failed')` AND `created_at < <deploy-timestamp-of-fix>`.
-  2. `admin.storage.from("email-pdfs").remove([storage_path])` for each.
-  3. Set `status = 'parse_failed'`, `error_message = 'Archivo corrupto — vuelve a reenviar el correo'` so the UI guides users to re-send rather than loop on retry.
-- **Why:** Surfaces the issue cleanly; re-sending the email produces a new row with a correct idempotency hash, so there's no collision with the old broken row.
-- **Touches:** One-shot admin script or migration with a pl/pgsql DO block + storage cleanup via service-role.
-- **Found:** import-flow-doctor review of Buffer-pool fix, 2026-04-17
+### ~~Clean up corrupted `pending_email_statements` storage rows (pre-Buffer-pool-fix)~~ — DONE 2026-04-18
+- Shipped: `scripts/cleanup-corrupted-email-pdfs.js` — dry-run by default, `--execute` to apply. Scopes to `created_at < 2026-04-17T01:54:49Z` AND `status IN ('pending','parsing','parse_failed','needs_password')`, downloads each blob's first 5 bytes and skips rows that are already valid PDFs (legit parse failures, not pool corruption). Dry-run against prod found **0 candidate rows** — either no user hit the bug at scale or affected rows were already auto-dismissed by the webhook's retry path (existing `parse_failed`/`needs_password` rows get dismissed on re-send so a fresh hash can insert). Script retained for future one-shot use.
 
 ### `useRecurringMonth` callbacks use `router.refresh()` instead of `startTransition`
 - **Priority:** Medium
