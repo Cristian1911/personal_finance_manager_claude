@@ -103,6 +103,7 @@ async function getCategoriesWithBudgetsCached(
 ): Promise<CategoryWithBudget[]> {
   "use cache";
   cacheTag("categories");
+  cacheTag("budgets");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
@@ -204,6 +205,7 @@ async function getCategoryTransactionCountCached(
 ): Promise<number> {
   "use cache";
   cacheTag("categories");
+  cacheTag("transactions");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
@@ -228,6 +230,8 @@ async function getCategoriesWithBudgetDataCached(
   "use cache";
   cacheTag("categories");
   cacheTag("budgets");
+  cacheTag("transactions");
+  cacheTag("recurring");
   cacheTag("dashboard:charts");
   cacheTag("dashboard:budgets");
   cacheLife("zeta");
