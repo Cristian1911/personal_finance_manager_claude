@@ -36,20 +36,31 @@ const FREQUENCY_OPTIONS = [
   { value: "ANNUAL", label: "Anual" },
 ] as const;
 
+type RecurringFormAction = (
+  prevState: ActionResult<RecurringTemplate>,
+  formData: FormData,
+) => Promise<ActionResult<RecurringTemplate>>;
+
 export function RecurringForm({
   template,
+  initialValues,
+  actionOverride,
   accounts,
   categories,
   onSuccess,
 }: {
   template?: RecurringTemplate;
+  /** Seed state when creating a new template with known data (e.g. promoting a transaction). Ignored when `template` is present. */
+  initialValues?: Partial<RecurringTemplate>;
+  /** Replace the default createRecurringTemplate action. Used to call a specialized action (e.g. createRecurringTemplateFromTransaction) while keeping UI behavior identical. */
+  actionOverride?: RecurringFormAction;
   accounts: Account[];
   categories: CategoryWithChildren[];
   onSuccess?: () => void;
 }) {
   const action = template
     ? updateRecurringTemplate.bind(null, template.id)
-    : createRecurringTemplate;
+    : (actionOverride ?? createRecurringTemplate);
 
   const [state, formAction, pending] = useActionState<
     ActionResult<RecurringTemplate>,
@@ -64,29 +75,31 @@ export function RecurringForm({
   );
 
   const defaultStartDate = new Date().toISOString().split("T")[0];
+  const seed = template ?? initialValues ?? null;
+
   const [direction, setDirection] = useState<TransactionDirection>(
-    template?.direction ?? "OUTFLOW"
+    (seed?.direction as TransactionDirection | undefined) ?? "OUTFLOW"
   );
   const [accountId, setAccountId] = useState<string>(
-    template?.account_id ?? ""
+    seed?.account_id ?? ""
   );
   const [startDate, setStartDate] = useState<string>(
-    template?.start_date ?? defaultStartDate
+    seed?.start_date ?? defaultStartDate
   );
   const [endDate, setEndDate] = useState<string | null>(
-    template?.end_date ?? null
+    seed?.end_date ?? null
   );
   const [categoryId, setCategoryId] = useState<string | null>(
-    template?.category_id ?? null
+    seed?.category_id ?? null
   );
   const [frequency, setFrequency] = useState<string>(
-    template?.frequency ?? "MONTHLY"
+    seed?.frequency ?? "MONTHLY"
   );
   const [transferSourceAccountId, setTransferSourceAccountId] = useState<string>(
-    template?.transfer_source_account_id ?? ""
+    seed?.transfer_source_account_id ?? ""
   );
   // Multi-currency sub_payments for debt accounts
-  const initialSubPayments: SubPayment[] = parseSubPayments(template?.sub_payments) ?? [];
+  const initialSubPayments: SubPayment[] = parseSubPayments(seed?.sub_payments) ?? [];
   const [subPayments, setSubPayments] = useState<SubPayment[]>(initialSubPayments);
   const [useSubPayments, setUseSubPayments] = useState(initialSubPayments.length > 0);
 
@@ -94,7 +107,7 @@ export function RecurringForm({
 
   // Primary-currency amount from sub_payments (not a cross-currency sum).
   // Falls back to 0 if the primary currency entry isn't set yet.
-  const primaryCurrency = selectedAccount?.currency_code ?? template?.currency_code ?? "COP";
+  const primaryCurrency = selectedAccount?.currency_code ?? seed?.currency_code ?? "COP";
   const subPaymentsPrimaryAmount =
     subPayments.find((sp) => sp.currency_code === primaryCurrency)?.amount ?? 0;
   const cutoffDay = selectedAccount?.cutoff_day ?? null;
@@ -168,7 +181,7 @@ export function RecurringForm({
         <Input
           id="merchant_name"
           name="merchant_name"
-          defaultValue={template?.merchant_name ?? ""}
+          defaultValue={seed?.merchant_name ?? ""}
           placeholder="Ej: Netflix, Arriendo, Salario"
           required
         />
@@ -208,7 +221,7 @@ export function RecurringForm({
           <CurrencyInput
             id="amount"
             name="amount"
-            defaultValue={template?.amount}
+            defaultValue={seed?.amount}
             value={useSubPayments ? String(Math.round(subPaymentsPrimaryAmount * 100) / 100) : undefined}
             placeholder="0"
             required
@@ -424,7 +437,7 @@ export function RecurringForm({
       <input
         type="hidden"
         name="currency_code"
-        value={selectedAccount?.currency_code ?? template?.currency_code ?? "COP"}
+        value={selectedAccount?.currency_code ?? seed?.currency_code ?? "COP"}
       />
 
       <div className={`grid gap-4 ${frequency === "ONCE" ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
@@ -473,7 +486,7 @@ export function RecurringForm({
         <Input
           id="description"
           name="description"
-          defaultValue={template?.description ?? ""}
+          defaultValue={seed?.description ?? ""}
           placeholder="Nota opcional"
         />
       </div>
