@@ -71,13 +71,29 @@ const admin = createClient(url, key, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-async function isRealPdf(storagePath) {
+// Result states:
+//   "pdf"     — blob exists and has %PDF- magic bytes (real PDF; skip row)
+//   "not-pdf" — blob exists but is not a PDF (corrupted pool garbage; clean it)
+//   "missing" — storage confirms the object does not exist (404)
+//   "error"   — transient/unknown storage error; do NOT touch the row
+async function probeBlob(storagePath) {
   // supabase-js storage.download() fetches the full object — there is no
   // Range-header API. `.slice(0, 5)` is an in-memory Blob operation. That's
   // fine here because corrupted blobs are ~8KB and real PDFs in the candidate
   // set are few.
   const { data, error } = await admin.storage.from("email-pdfs").download(storagePath);
-  if (error || !data) return { exists: false, isPdf: false };
+  if (error) {
+    // StorageApiError surfaces a `statusCode` string ("404", "500", …). Only
+    // "404" / "not found" is definitive; anything else could be transient and
+    // must not be treated as corruption — that would delete real user PDFs
+    // during a service blip. Skip the row instead.
+    const statusCode = String(error.statusCode ?? "");
+    const msg = (error.message ?? "").toLowerCase();
+    const isNotFound = statusCode === "404" || msg.includes("not found") || msg.includes("object not found");
+    if (isNotFound) return { state: "missing" };
+    return { state: "error", reason: error.message ?? "unknown storage error" };
+  }
+  if (!data) return { state: "error", reason: "empty response from storage.download" };
   const header = new Uint8Array(await data.slice(0, 5).arrayBuffer());
   // %PDF- = 0x25 0x50 0x44 0x46 0x2D
   const isPdf =
@@ -85,7 +101,7 @@ async function isRealPdf(storagePath) {
     header[0] === 0x25 && header[1] === 0x50 &&
     header[2] === 0x44 && header[3] === 0x46 &&
     header[4] === 0x2d;
-  return { exists: true, isPdf };
+  return { state: isPdf ? "pdf" : "not-pdf" };
 }
 
 async function main() {
@@ -106,24 +122,40 @@ async function main() {
   const candidates = rows ?? [];
   console.log(`[cleanup] ${candidates.length} candidate row(s)`);
 
-  const summary = { corrupted: 0, realPdf: 0, missingBlob: 0, updateErrors: 0, removeErrors: 0 };
+  const summary = {
+    corrupted: 0,
+    realPdf: 0,
+    missingBlob: 0,
+    probeErrors: 0,
+    updateErrors: 0,
+    removeErrors: 0,
+  };
 
   for (const row of candidates) {
-    const { exists, isPdf } = await isRealPdf(row.storage_path);
+    const probe = await probeBlob(row.storage_path);
 
-    if (exists && isPdf) {
+    if (probe.state === "pdf") {
       summary.realPdf += 1;
       console.log(`  skip   ${row.id} (${row.status}, real PDF at ${row.storage_path}) — ${row.original_filename ?? "?"}`);
       continue;
     }
 
+    if (probe.state === "error") {
+      // Transient / unknown storage error — do NOT mutate this row. Marking
+      // it corrupted on a 5xx / network blip would delete real PDFs.
+      summary.probeErrors += 1;
+      console.warn(`  defer  ${row.id} (${row.status}) — storage probe error: ${probe.reason}`);
+      continue;
+    }
+
+    // probe.state === "not-pdf" | "missing"
     summary.corrupted += 1;
-    if (!exists) summary.missingBlob += 1;
-    console.log(`  clean  ${row.id} (${row.status}, ${exists ? "corrupted blob" : "missing blob"}) — ${row.original_filename ?? "?"}`);
+    if (probe.state === "missing") summary.missingBlob += 1;
+    console.log(`  clean  ${row.id} (${row.status}, ${probe.state === "not-pdf" ? "corrupted blob" : "missing blob"}) — ${row.original_filename ?? "?"}`);
 
     if (!EXECUTE) continue;
 
-    if (exists) {
+    if (probe.state === "not-pdf") {
       const { error: removeError } = await admin.storage
         .from("email-pdfs")
         .remove([row.storage_path]);
