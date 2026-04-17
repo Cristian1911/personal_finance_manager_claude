@@ -21,19 +21,31 @@ export function filterPdfAttachments(attachments: ResendAttachment[]): ResendAtt
   );
 }
 
+/**
+ * Accepted PDF payload types. We accept both raw ArrayBuffers (e.g. from
+ * Blob.arrayBuffer()) and Uint8Array views (e.g. Node Buffers) so callers
+ * don't have to materialize pool-allocated buffers into fresh ArrayBuffers.
+ * Passing `Buffer.from(..).buffer` would include 8KB of shared-pool bytes
+ * around small payloads — always prefer the Uint8Array itself.
+ */
+export type PdfPayload = ArrayBuffer | Uint8Array;
+
+function toUint8(payload: PdfPayload): Uint8Array<ArrayBuffer> {
+  // Node Buffer / Uint8Array from attachment decode is always backed by a plain
+  // ArrayBuffer, never SharedArrayBuffer, so this cast is safe and avoids a copy.
+  if (payload instanceof Uint8Array) {
+    return payload as Uint8Array<ArrayBuffer>;
+  }
+  return new Uint8Array(payload);
+}
+
 /** Compute SHA-256 hash of raw PDF content (for idempotency) */
-export async function computePdfHash(buffer: ArrayBuffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+export async function computePdfHash(payload: PdfPayload): Promise<string> {
+  const bytes = toUint8(payload);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(hashBuffer))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-}
-
-/** Validate PDF magic bytes (%PDF) */
-function isPdfContent(buffer: ArrayBuffer): boolean {
-  if (buffer.byteLength < 4) return false;
-  const header = new Uint8Array(buffer, 0, 4);
-  return header[0] === 0x25 && header[1] === 0x50 && header[2] === 0x44 && header[3] === 0x46;
 }
 
 /**
@@ -41,8 +53,8 @@ function isPdfContent(buffer: ArrayBuffer): boolean {
  * Checks the last 4KB of the file (where the xref/trailer typically lives)
  * plus the first 2KB (some linearized PDFs put it early).
  */
-export function isPdfEncrypted(buffer: ArrayBuffer): boolean {
-  const bytes = new Uint8Array(buffer);
+export function isPdfEncrypted(payload: PdfPayload): boolean {
+  const bytes = toUint8(payload);
   const needle = "/Encrypt";
 
   // Check last 4KB (trailer area)
@@ -59,7 +71,7 @@ export function isPdfEncrypted(buffer: ArrayBuffer): boolean {
 
 /** Send a PDF buffer to the parser service and return parsed statements */
 export async function parsePdfBuffer(params: {
-  buffer: ArrayBuffer;
+  buffer: PdfPayload;
   filename: string;
   password?: string;
 }): Promise<
@@ -71,9 +83,11 @@ export async function parsePdfBuffer(params: {
   }
 
   const formData = new FormData();
+  // Convert to Uint8Array so Blob sees only the PDF bytes — not any enclosing
+  // pool ArrayBuffer that Node.js may have allocated around a small Buffer.
   formData.append(
     "file",
-    new Blob([params.buffer], { type: "application/pdf" }),
+    new Blob([toUint8(params.buffer)], { type: "application/pdf" }),
     params.filename,
   );
   if (params.password) {
