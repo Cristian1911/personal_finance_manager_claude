@@ -1,10 +1,30 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2, ImageIcon } from "lucide-react";
+import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2, ImageIcon, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { ParseResponse } from "@/types/import";
 import { trackClientEvent } from "@/lib/utils/analytics";
+import {
+  suggestPdfPasswordsForAccount,
+  createPdfPassword,
+  type PdfPasswordSuggestion,
+} from "@/actions/pdf-passwords";
+import { toast } from "sonner";
+
+function normalizeBankToKey(bank: string | undefined | null): string | null {
+  if (!bank) return null;
+  return bank.toLowerCase().replace(/_/g, "-");
+}
 
 const PDF_EXTENSIONS = new Set([".pdf"]);
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
@@ -33,6 +53,10 @@ export function StepUpload({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
+  const [passwordFromVault, setPasswordFromVault] = useState(false);
+  const [savePassword, setSavePassword] = useState(false);
+  const [saveAlias, setSaveAlias] = useState("");
+  const [vaultSuggestions, setVaultSuggestions] = useState<PdfPasswordSuggestion[]>([]);
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +65,17 @@ export function StepUpload({
   const [savedForSupport, setSavedForSupport] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const initialFileProcessed = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    suggestPdfPasswordsForAccount(null, null).then((suggestions) => {
+      if (cancelled) return;
+      setVaultSuggestions(suggestions);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSaveForSupport() {
     if (!unsupportedFile) return;
@@ -193,6 +228,29 @@ export function StepUpload({
           has_metadata: hasMetadata,
         },
       });
+
+      if (savePassword && password && !passwordFromVault && saveAlias.trim()) {
+        const bankKey = normalizeBankToKey(parsed.statements[0]?.bank);
+        const fd = new FormData();
+        fd.append("alias", saveAlias.trim());
+        fd.append("password", password);
+        if (bankKey) {
+          fd.append("scope", "bank");
+          fd.append("bank_key", bankKey);
+        } else {
+          fd.append("scope", "global");
+        }
+        const saveResult = await createPdfPassword(
+          { success: false, error: "" },
+          fd
+        );
+        if (saveResult.success) {
+          toast.success("Contraseña guardada en tu bóveda");
+        } else {
+          toast.error(saveResult.error ?? "No se pudo guardar la contraseña");
+        }
+      }
+
       onParsed(data as ParseResponse);
     } catch {
       void trackClientEvent({
@@ -291,14 +349,78 @@ export function StepUpload({
                     type="password"
                     placeholder="Contraseña del PDF (opcional)"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordFromVault(false);
+                    }}
                     className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                     autoComplete="off"
                   />
                 </div>
+                {vaultSuggestions.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className={cn(GHOST_BUTTON_CLASS, "shrink-0")}
+                      >
+                        <KeyRound className="h-4 w-4" />
+                        Usar guardada
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {vaultSuggestions.map((sug) => (
+                        <DropdownMenuItem
+                          key={sug.id}
+                          onSelect={() => {
+                            setPassword(sug.password);
+                            setPasswordFromVault(true);
+                            setSavePassword(false);
+                          }}
+                        >
+                          <span className="truncate">{sug.alias}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {sug.scope === "account"
+                              ? "cuenta"
+                              : sug.scope === "bank"
+                              ? sug.bank_key
+                              : "global"}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
+              {password && !passwordFromVault && (
+                <div className="rounded-md border border-dashed border-white/10 p-3 space-y-2">
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={savePassword}
+                      onChange={(e) => setSavePassword(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border border-white/6"
+                    />
+                    Guardar esta contraseña en la bóveda para próximos extractos
+                  </label>
+                  {savePassword && (
+                    <Input
+                      placeholder="Alias (ej: Cédula Cristian)"
+                      value={saveAlias}
+                      onChange={(e) => setSaveAlias(e.target.value)}
+                      maxLength={60}
+                      className="h-8 text-sm"
+                    />
+                  )}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 Algunos extractos están protegidos con contraseña (ej. número de cédula).
+                {vaultSuggestions.length > 0 && (
+                  <> Tienes {vaultSuggestions.length} guardada{vaultSuggestions.length === 1 ? "" : "s"}.</>
+                )}
               </p>
             </>
           )}

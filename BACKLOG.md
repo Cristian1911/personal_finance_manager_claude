@@ -60,19 +60,11 @@
 - **Touches:** new server action `addPatternToDestinatario(destinatarioId, pattern)` in `actions/destinatarios.ts` (insert into `destinatario_patterns` with `match_type: "contains"`, `priority: 100`; `updateTag("destinatarios")`); `step-destinatarios.tsx` UI (picker + wiring); `import-wizard.tsx` passes the updated rules so later steps use them.
 - **Found:** User feedback during Nu import session, 2026-04-17
 
-### Disable browser autofill/autocomplete on app inputs
-- **Priority:** Medium
-- **What:** Once upon a time we suppressed autocomplete suggestions across forms; the behaviour has regressed (or never covered the newer inputs). Chrome/Safari happily dump saved addresses, card numbers, and unrelated names on top of transaction amounts, account names, destinatarios, etc. Sweep every `<Input>`/`<input>`/`<Textarea>` in `webapp/src/components/` and add `autoComplete="off"` (+ `autoCorrect`, `spellCheck={false}` where relevant). Where browsers ignore `off` (Chrome does for heuristically-detected fields), use a non-standard sentinel like `autoComplete="new-password"` or a one-off token per field. Consider a shared `<AppInput>` wrapper that defaults these props so future forms stay clean.
-- **Touches:** `webapp/src/components/ui/input.tsx` (add default), every form component, mobile forms.
-- **Found:** User request, 2026-04-17
+### ~~Disable browser autofill/autocomplete on app inputs~~ — DONE 2026-04-17
+- Shipped: `ui/input.tsx` defaults `autoComplete/autoCorrect/spellCheck` to off (overridable). Auth forms keep their semantic `autoComplete` hints. Raw `<textarea>` fields in bug-report and deseos got `autoComplete="off"`. `ui/currency-input.tsx` now hardcodes off since the raw `<input>` in that component bypasses the wrapper.
 
-### PDF password vault — per-bank/per-account passwords with aliases
-- **Priority:** Medium
-- **What:** Today the import flow asks for a password per PDF upload and `accounts.pdf_password` is only auto-saved after the retry-with-password flow on email-ingested statements. Users with multiple banks end up retyping the same 3–4 passwords for each manual upload. Build a password vault UI: a table of `{ alias, password, scope }` rows (scope = "account:<id>" or "bank:<name>" or "global"), editable from `/settings`. During the import Upload step, show a dropdown of saved aliases; selecting one fills the password field. When a new password is entered manually and the PDF parses, prompt to save it with an alias. Sync into existing `accounts.pdf_password` when the scope is account-level so email ingest keeps benefiting.
-- **Storage:** New `pdf_passwords` encrypted table (alias + password) tied to `user_id`, with an optional `account_id` FK. Spawn `supabase-migrator` for the 6-step encrypted-column migration. Decide whether to keep `accounts.pdf_password` as a derived mirror or replace it entirely.
-- **UX:** Dropdown on the upload step, "Guardar contraseña" affordance after a successful parse, manage list from settings. For security, never render the password in plaintext after save — show ••• + copy/edit/delete.
-- **Touches:** new action file `webapp/src/actions/pdf-passwords.ts`, settings UI, upload step, password-retry modal, migration.
-- **Found:** User request, 2026-04-17
+### ~~PDF password vault — per-bank/per-account passwords with aliases~~ — DONE 2026-04-17
+- Shipped: migration `20260417143333_create_pdf_passwords_encrypted.sql` (encrypted `alias` + `password` with scope pairing CHECK). Server actions in `webapp/src/actions/pdf-passwords.ts` — list, suggest, create, update, delete. Settings UI `PdfPasswordsCard`. Upload step: "Usar guardada" dropdown (uses suggestions ranked account > bank > global) + inline "Guardar esta contraseña" checkbox (auto-infers bank scope from parser's `bank` label). `accounts.pdf_password` still mirrored on scope=account so email ingest keeps working. Follow-ups deferred: secure "copy password" affordance in settings list, and account-scope picker on the upload step once the account is known earlier.
 
 ### Promote transaction → recurring template ("Hacer recurrente" CTA)
 - **Priority:** High

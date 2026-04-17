@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Activity, ArrowRight, Bug, Mail, Tag, UserRound } from "lucide-react";
+import { Activity, ArrowRight, Bug, KeyRound, Mail, Tag, UserRound } from "lucide-react";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
@@ -23,6 +23,8 @@ import { SettingsMobileAccordion } from "@/components/settings/settings-mobile-a
 import { DemoModeCard } from "@/components/settings/demo-mode-card";
 import { getCaptureTokens } from "@/actions/capture-tokens";
 import { getEmailIngestAddress, getEmailIngestLogs, getUnrecognizedEmails, getAllowedSenders } from "@/actions/email-ingest";
+import { listPdfPasswords } from "@/actions/pdf-passwords";
+import { PdfPasswordsCard } from "@/components/settings/pdf-passwords-card";
 import { getTagGroups } from "@/actions/tags";
 import { TagManager } from "@/components/tags/tag-manager";
 import type { Account } from "@/types/domain";
@@ -40,7 +42,7 @@ export default async function SettingsPage() {
 
   if (!profile) redirect("/login");
 
-  const [tokensResult, { data: accounts }, emailIngestResult, unrecognizedResult, emailLogsResult, tagGroupsResult, allowedSenders] = await Promise.all([
+  const [tokensResult, { data: accounts }, emailIngestResult, unrecognizedResult, emailLogsResult, tagGroupsResult, allowedSenders, pdfPasswords] = await Promise.all([
     getCaptureTokens(),
     supabase
       .from("accounts")
@@ -53,6 +55,7 @@ export default async function SettingsPage() {
     getEmailIngestLogs(),
     getTagGroups(),
     getAllowedSenders(),
+    listPdfPasswords(),
   ]);
 
   const tokens = tokensResult.success ? tokensResult.data : [];
@@ -90,6 +93,17 @@ export default async function SettingsPage() {
           <UnrecognizedEmailsCard initialEmails={unrecognizedEmails} />
           <EmailIngestLogsCard initialLogs={emailLogs} />
         </div>
+      ),
+    },
+    {
+      id: "pdf-passwords",
+      title: "Contraseñas de PDF",
+      icon: <KeyRound className="size-4 text-z-brass" />,
+      children: (
+        <PdfPasswordsCard
+          initialEntries={pdfPasswords}
+          accounts={(accounts ?? []) as Account[]}
+        />
       ),
     },
     {
@@ -171,6 +185,11 @@ export default async function SettingsPage() {
         <UnrecognizedEmailsCard initialEmails={unrecognizedEmails} />
 
         <EmailIngestLogsCard initialLogs={emailLogs} />
+
+        <PdfPasswordsCard
+          initialEntries={pdfPasswords}
+          accounts={(accounts ?? []) as Account[]}
+        />
 
         <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
           <CardHeader>

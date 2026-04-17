@@ -1449,6 +1449,108 @@ export type Database = {
           },
         ]
       }
+      pdf_passwords_enc: {
+        Row: {
+          account_id: string | null
+          alias: string
+          bank_key: string | null
+          created_at: string
+          id: string
+          password: string
+          scope: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          alias: string
+          bank_key?: string | null
+          created_at?: string
+          id?: string
+          password: string
+          scope: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          alias?: string
+          bank_key?: string | null
+          created_at?: string
+          id?: string
+          password?: string
+          scope?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_passwords_enc_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_passwords_enc_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdf_passwords: {
+        Row: {
+          account_id: string | null
+          alias: string
+          bank_key: string | null
+          created_at: string
+          id: string
+          password: string
+          scope: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          alias: string
+          bank_key?: string | null
+          created_at?: string
+          id?: string
+          password: string
+          scope: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          alias?: string
+          bank_key?: string | null
+          created_at?: string
+          id?: string
+          password?: string
+          scope?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_passwords_enc_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_passwords_enc_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planning_assignments: {
         Row: {
           assigned_amount: number
