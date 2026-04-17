@@ -18,12 +18,6 @@
 - **Touches:** `webapp/src/components/mobile/v2/inicio/inicio-metrics-grid.tsx:165-169`; possibly `webapp/src/actions/burn-rate.ts` if the null-return logic should be more forgiving.
 - **Found:** User feedback, 2026-04-17
 
-### Account detail — "Ajustar" button does nothing when clicked
-- **Priority:** High
-- **What:** On `/accounts/[id]`, the "Ajustar" button is unresponsive — no dialog, no navigation, no toast. Likely a broken handler or a conditional render gating the dialog's open state. Needs repro + trace of the click event.
-- **Touches:** Almost certainly `webapp/src/app/(dashboard)/accounts/[id]/page.tsx` or a child action component (QuickActionsBar / account hero).
-- **Found:** User feedback, 2026-04-17
-
 ### Promote-to-recurring — success state undersells the outcome
 - **Priority:** Medium
 - **What:** After promoting a tx, the CTA collapses to a muted grey "Ya es recurrente" badge. User just created a template + linked this tx as paid — but has no signal that a future payment is now scheduled or where to find it. Options: (a) toast on success with the next occurrence date ("Recurrente creada · Próxima: 15 mayo"), (b) badge gains a subtle link to `/plan?tab=recurrentes&template=<id>`, (c) on submit redirect to `/plan?tab=recurrentes&highlight=<template_id>` with a flash highlight.
@@ -40,13 +34,16 @@
 - **What:** Today "Crear nueva recurrente" navigates to `/transactions/[id]?promote=1` instead of opening the dialog inline in the drawer. Code cost is small (`RecurringFormDialog` already accepts `controlledOpen`). Would remove the full-page detour. Drawback: dialog-in-drawer is visually awkward on mobile and the detail page detour gives the user a landing destination.
 - **Found:** ux-analyst review, 2026-04-17
 
-### Recurrentes tab shows empty state despite 9 active templates
-- **Priority:** High (prod)
-- **What:** `/plan?tab=recurrentes` renders the hero `$0 · 0 pendientes · 0 completados` and the empty state "No hay pagos recurrentes este mes" even though "9 activas · 1 pausada" is shown in the MIS PLANTILLAS strip. Reproduced on production (main, not this branch). Hypotheses to check in order: (1) `ensureCurrentOccurrences()` is failing silently on page load, so `recurring_occurrences` has no rows for this month; (2) all active templates have a `start_date` in the future or `end_date` in the past that excludes them from the current-month generator; (3) post-merge migration 20260416120000 deleted loser templates but left orphan occurrence rows whose `template_id` now FKs into a deleted row, tripping the view join; (4) a timezone boundary bug where the month cursor and the DB's `occurrence_date` range differ.
-- **Repro:** Open `/plan?tab=recurrentes` on an account with known active templates. Confirm the ring counts are 0 while the strip claims 9+1 templates.
-- **Debug path:** SQL `SELECT count(*), status FROM recurring_occurrences WHERE user_id = <uid> AND occurrence_date BETWEEN '2026-04-01' AND '2026-04-30' GROUP BY status;`. If 0 rows, call `ensureCurrentOccurrences()` manually or inspect the function's logs. If rows exist, the client filter or date range is off.
-- **Touches:** `webapp/src/actions/occurrences.ts`, `webapp/src/components/recurring/use-recurring-month.ts`, `webapp/src/app/(dashboard)/plan/page.tsx`.
-- **Found:** User feedback, 2026-04-17
+### Recurring templates — review the unran template-merge from 20260416
+- **Priority:** Medium
+- **What:** Migration `20260416120000_add_sub_payments_to_recurring_templates.sql` was stamped as applied on the remote project but its DDL never ran. `20260418130000_fix_missing_sub_payments.sql` recovers the column + view + triggers, but **intentionally skips the original step 5** (merge duplicate INFLOW/MONTHLY templates into one with `sub_payments`) to avoid destroying occurrence→tx links created over the past ~2 days. Decide: either run the merge manually via the UI, or ship a fresh migration that replicates step 5 after an audit of which dupes remain.
+- **Audit SQL:** `SELECT account_id, currency_code, count(*) FROM recurring_transaction_templates_enc WHERE direction='INFLOW' AND frequency='MONTHLY' AND category_id IS NULL GROUP BY 1,2 HAVING count(*) > 1;`
+- **Found:** 2026-04-18 — while fixing the empty Recurrentes tab.
+
+### Investigate why migration 20260416120000 stamped without running
+- **Priority:** Medium
+- **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
+- **Found:** 2026-04-18
 
 ## Features
 

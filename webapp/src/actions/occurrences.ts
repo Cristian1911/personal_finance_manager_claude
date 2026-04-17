@@ -359,7 +359,13 @@ export async function ensureOccurrencesForRange(
     .from("recurring_occurrences")
     .upsert(rows, { onConflict: "template_id,occurrence_date", ignoreDuplicates: true });
 
-  if (upsertError) return { success: false, error: upsertError.message };
+  if (upsertError) {
+    console.error(
+      `[ensureOccurrencesForRange] upsert failed for user=${user.id} generated=${rows.length}:`,
+      upsertError.message,
+    );
+    return { success: false, error: upsertError.message };
+  }
 
   return { success: true, data: undefined };
 }
@@ -390,7 +396,12 @@ export async function getOccurrencesForMonth(
     const data = await getOccurrencesForMonthCached(user.id, targetMonth, accessToken);
     return { success: true, data };
   } catch (error) {
-    console.error("Error loading occurrences:", error);
+    const err = error as { message?: string; code?: string; details?: string; hint?: string };
+    console.error(
+      "Error loading occurrences:",
+      err?.message ?? String(error),
+      { code: err?.code, details: err?.details, hint: err?.hint },
+    );
     return { success: false, error: "Error al cargar las ocurrencias recurrentes" };
   }
 }
