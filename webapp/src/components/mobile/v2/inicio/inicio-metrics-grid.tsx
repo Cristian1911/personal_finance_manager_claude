@@ -163,8 +163,19 @@ export function InicioMetricsGrid({
               </div>
             )}
             {isRitmoActive && !burnRateData && (
-              <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3 text-center text-[11px] text-muted-foreground")}>
-                Sin datos de ritmo suficientes
+              <div className={cn(PANEL_INSET_CLASS, "border-z-brass/20 bg-black/20 p-3 space-y-2 text-center")}>
+                <p className="text-[11px] text-muted-foreground">
+                  Aún no hay historial suficiente para calcular tu ritmo en {currency}.
+                </p>
+                <p className="text-[10px] text-muted-foreground/60">
+                  Importa o registra movimientos recientes para ver tu ritmo aquí.
+                </p>
+                <Link
+                  href="/transactions/new"
+                  className="block rounded-xl bg-z-brass/8 border border-z-brass/20 px-3 py-2 text-center text-[11px] font-semibold text-z-brass transition-colors active:bg-z-brass/15"
+                >
+                  Agregar movimiento →
+                </Link>
               </div>
             )}
 

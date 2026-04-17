@@ -207,16 +207,11 @@ export function ImportWizard({
     setStep("results");
 
     const emailId = activeEmailStatementIdRef.current;
-    // Also mark imported when everything was skipped: that means the PDF's
-    // transactions already exist in the DB (idempotency-key match). The
-    // pending row is redundant at that point — clean it up.
-    if (
-      emailId &&
-      (result.imported > 0 ||
-        result.autoMerged > 0 ||
-        result.manualMerged > 0 ||
-        result.skipped > 0)
-    ) {
+    // Mark imported only when at least one transaction was newly written.
+    // autoMerged/manualMerged are subsets of `imported` (see importTransactions),
+    // and skipped-only means all rows were dedup'd by idempotency — leave the
+    // queue row visible in that case so the user can retry or discard explicitly.
+    if (emailId && result.imported > 0) {
       activeEmailStatementIdRef.current = null;
       void markEmailPdfStatementImported(emailId).then((res) => {
         if (res.success) {
@@ -388,6 +383,11 @@ export function ImportWizard({
             result={importResult}
             currency={(parseResult?.statements[0]?.currency ?? "COP") as CurrencyCode}
             onReset={handleReset}
+            emailStatementId={activeEmailStatementIdRef.current}
+            onDismissedFromEmail={(id) => {
+              activeEmailStatementIdRef.current = null;
+              onImportedFromEmail?.(id);
+            }}
           />
         )}
       </section>

@@ -2008,6 +2008,42 @@ export type Database = {
           },
         ]
       }
+      recurring_template_tags: {
+        Row: {
+          created_at: string
+          recurring_template_id: string
+          tag_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          recurring_template_id: string
+          tag_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          recurring_template_id?: string
+          tag_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_template_tags_recurring_template_id_fkey"
+            columns: ["recurring_template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transaction_templates_enc"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_template_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_transaction_templates_enc: {
         Row: {
           account_id: string

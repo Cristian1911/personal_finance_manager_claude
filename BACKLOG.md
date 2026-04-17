@@ -12,9 +12,18 @@
 
 ## Bugs
 
-### Dashboard "Ritmo" chip shows dead-end empty state when expanded
-- **Priority:** Medium
-- **What:** `inicio-metrics-grid.tsx` — when `burnRateData` is null (no CHECKING/SAVINGS accounts OR no OUTFLOW tx in base currency in the last 3 months), expanding the Ritmo chip shows only "Sin datos de ritmo suficientes". The ring itself always renders (it uses calendar % `dayOfMonth/daysInMonth`, independent of financial data), which makes the empty state feel like a bug. Replace with an actionable message ("Importa transacciones recientes para ver tu ritmo" + link to /transactions/new) and investigate why `getBurnRate()` returns null for this user (likely currency mismatch between base currency and the existing tx currency, or genuinely no outflows in the 3-month window).
+### Import wizard — state persists across tab/visibility changes (bfcache)
+- **Priority:** Low
+- **What:** If the user completes an import, navigates away (browser tabs, minimize, or uses the back/forward cache), and returns, the wizard still shows the `results` step instead of a fresh upload step. React state is preserved because Next.js doesn't fully remount the page when restored from bfcache. User reads this as "unfinished import flow still there".
+- **Options:** (a) add a `visibilitychange` listener that resets the wizard if it is in `results` and the document becomes hidden → visible, (b) add a prominent "Terminar y cerrar" button on the results screen that calls `handleReset()` + scrolls to top, (c) accept the behavior and document it. Mild lean toward (b) — explicit control, no surprise resets.
+- **Touches:** `webapp/src/components/import/import-wizard.tsx` (handleReset trigger), possibly `step-results.tsx` (new button).
+- **Found:** User feedback, 2026-04-17 (post PR #177).
+
+### ~~Import wizard — skipped-only path silently marks email statement imported~~ — DONE 2026-04-17
+- Shipped: `handleImportComplete` no longer marks the pending row imported when `result.imported === 0 && autoMerged === 0 && manualMerged === 0 && skipped > 0`. Skipped-only means the PDF's rows were all dedup'd by idempotency — the user should decide whether to retry or dismiss instead of silently dropping the queue entry.
+
+### ~~Dashboard "Ritmo" chip shows dead-end empty state when expanded~~ — DONE 2026-04-17
+- Shipped: `inicio-metrics-grid.tsx` empty state now explains the null case in context (base currency) and offers a `/transactions/new` CTA instead of the dead-end "Sin datos suficientes" string. Root cause (null `burnRateData`) still undiagnosed per-user — most likely base-currency mismatch vs tx currency, or genuinely no OUTFLOW tx in the 3-month window.
 - **Touches:** `webapp/src/components/mobile/v2/inicio/inicio-metrics-grid.tsx:165-169`; possibly `webapp/src/actions/burn-rate.ts` if the null-return logic should be more forgiving.
 - **Found:** User feedback, 2026-04-17
 

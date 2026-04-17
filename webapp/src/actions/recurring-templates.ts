@@ -962,29 +962,56 @@ export async function recordRecurringOccurrencePayment(input: {
     return { success: false, error: inserted.error };
   }
 
-  // Mark the matching occurrence as paid
+  // Mark the matching occurrence as paid and propagate template tags.
   if (inserted.created > 0) {
-    // Get the first created transaction ID via the known recurrence_group_id
-    const { data: primaryTx } = await supabase
+    // Get all created transaction IDs via the known recurrence_group_id
+    const { data: createdRows } = await supabase
       .from("transactions")
       .select("id")
       .eq("recurrence_group_id", recurrenceGroupId)
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
+      .eq("user_id", user.id);
 
-    if (primaryTx) {
+    const createdIds = (createdRows ?? []).map((r) => r.id);
+
+    if (createdIds.length > 0) {
       await supabase
         .from("recurring_occurrences")
         .update({
           status: "paid" as const,
-          transaction_id: primaryTx.id,
+          transaction_id: createdIds[0],
           paid_at: new Date().toISOString(),
         })
         .eq("template_id", payload.templateId)
         .eq("occurrence_date", payload.occurrenceDate)
         .eq("user_id", user.id)
         .eq("status", "pending");
+
+      // Copy template tags onto every created transaction.
+      const { data: tagRows } = await supabase
+        .from("recurring_template_tags")
+        .select("tag_id")
+        .eq("recurring_template_id", payload.templateId)
+        .eq("user_id", user.id);
+
+      const tagIds = (tagRows ?? []).map((r) => r.tag_id);
+      if (tagIds.length > 0) {
+        const joinRows = createdIds.flatMap((txId) =>
+          tagIds.map((tagId) => ({ transaction_id: txId, tag_id: tagId })),
+        );
+        const { error: tagUpsertErr } = await supabase
+          .from("transaction_tags")
+          .upsert(joinRows, { onConflict: "transaction_id,tag_id", ignoreDuplicates: true });
+        if (tagUpsertErr) {
+          // Soft failure: occurrence is already marked paid and transactions exist.
+          // Tags are secondary metadata — log and continue rather than rolling back.
+          console.error(
+            "Failed to copy recurring template tags to transactions:",
+            tagUpsertErr.message,
+          );
+        } else {
+          updateTag("tags");
+        }
+      }
     }
   }
 

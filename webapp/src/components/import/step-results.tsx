@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useTransition } from "react";
 import {
   CheckCircle,
   AlertTriangle,
@@ -8,7 +9,9 @@ import {
   ArrowRight,
   RefreshCw,
   GitMerge,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils/currency";
+import { dismissEmailPdfStatement } from "@/actions/email-pdf-ingest";
 import type { ImportResult, SnapshotDiff } from "@/types/import";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -74,10 +78,16 @@ export function StepResults({
   result,
   currency,
   onReset,
+  emailStatementId,
+  onDismissedFromEmail,
 }: {
   result: ImportResult;
   currency: CurrencyCode;
   onReset: () => void;
+  /** When set, the results came from a pending_email_statements row.
+   *  If the import produced only duplicates, offer an inline dismiss. */
+  emailStatementId?: string | null;
+  onDismissedFromEmail?: (id: string) => void;
 }) {
   const allDuplicates =
     result.imported === 0 && result.skipped > 0 && result.errors === 0;
@@ -85,12 +95,48 @@ export function StepResults({
   const hasReconciliation =
     result.autoMerged > 0 || result.manualMerged > 0 || result.leftAsSeparate > 0;
 
+  const [dismissed, setDismissed] = useState(false);
+  const [isDismissing, startDismiss] = useTransition();
+
+  function handleDismiss() {
+    if (!emailStatementId) return;
+    startDismiss(async () => {
+      const res = await dismissEmailPdfStatement(emailStatementId);
+      if (res.success) {
+        setDismissed(true);
+        onDismissedFromEmail?.(emailStatementId);
+        toast.success("Entrada del correo descartada");
+      } else {
+        toast.error(res.error ?? "No se pudo descartar");
+      }
+    });
+  }
+
   return (
     <div className="space-y-6">
       {allDuplicates && (
-        <div className="bg-z-alert/5 text-z-alert text-sm rounded-md p-3">
-          Todas las transacciones ya existían en tu cuenta. Es posible que ya
-          hayas importado este extracto.
+        <div className="bg-z-alert/5 text-z-alert text-sm rounded-md p-3 space-y-2">
+          <p>
+            Todas las transacciones ya existían en tu cuenta. Es posible que ya
+            hayas importado este extracto.
+          </p>
+          {emailStatementId && !dismissed && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDismiss}
+              disabled={isDismissing}
+              className="gap-1.5"
+            >
+              <Trash2 className="size-3.5" />
+              {isDismissing ? "Descartando..." : "Descartar entrada del correo"}
+            </Button>
+          )}
+          {dismissed && (
+            <p className="text-xs text-muted-foreground">
+              Entrada removida de tu bandeja.
+            </p>
+          )}
         </div>
       )}
 
