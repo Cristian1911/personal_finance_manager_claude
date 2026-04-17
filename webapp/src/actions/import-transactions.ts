@@ -923,7 +923,7 @@ export async function importTransactions(
   let leftAsSeparate = 0;
   const details: string[] = [];
   const balanceDeltaTxs: TransactionToImport[] = [];
-  const pendingTagInserts: { transaction_id: string; tag_id: string }[] = [];
+  const pendingTagInserts: { transaction_id: string; tag_id: string; user_id: string }[] = [];
 
   for (const [txIndex, tx] of transactions.entries()) {
     // Use original_amount (full purchase price) for idempotency when available,
@@ -982,7 +982,7 @@ export async function importTransactions(
     const tagIds = tx.destinatario_id ? destTagMap.get(tx.destinatario_id) : undefined;
     if (tagIds) {
       for (const tag_id of tagIds) {
-        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id });
+        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id, user_id: user.id });
       }
     }
 
@@ -1054,7 +1054,7 @@ export async function importTransactions(
     const existingTags = existingTagMap.get(existingTx.id);
     if (existingTags) {
       for (const tag_id of existingTags) {
-        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id });
+        pendingTagInserts.push({ transaction_id: insertedTx.id, tag_id, user_id: user.id });
       }
     }
 
