@@ -19,14 +19,6 @@
 - **Touches:** `webapp/src/components/import/import-wizard.tsx` (handleReset trigger), possibly `step-results.tsx` (new button).
 - **Found:** User feedback, 2026-04-17 (post PR #177).
 
-### ~~Import wizard — skipped-only path silently marks email statement imported~~ — DONE 2026-04-17
-- Shipped: `handleImportComplete` no longer marks the pending row imported when `result.imported === 0 && autoMerged === 0 && manualMerged === 0 && skipped > 0`. Skipped-only means the PDF's rows were all dedup'd by idempotency — the user should decide whether to retry or dismiss instead of silently dropping the queue entry.
-
-### ~~Dashboard "Ritmo" chip shows dead-end empty state when expanded~~ — DONE 2026-04-17
-- Shipped: `inicio-metrics-grid.tsx` empty state now explains the null case in context (base currency) and offers a `/transactions/new` CTA instead of the dead-end "Sin datos suficientes" string. Root cause (null `burnRateData`) still undiagnosed per-user — most likely base-currency mismatch vs tx currency, or genuinely no OUTFLOW tx in the 3-month window.
-- **Touches:** `webapp/src/components/mobile/v2/inicio/inicio-metrics-grid.tsx:165-169`; possibly `webapp/src/actions/burn-rate.ts` if the null-return logic should be more forgiving.
-- **Found:** User feedback, 2026-04-17
-
 ### Promote-to-recurring — success state undersells the outcome
 - **Priority:** Medium
 - **What:** After promoting a tx, the CTA collapses to a muted grey "Ya es recurrente" badge. User just created a template + linked this tx as paid — but has no signal that a future payment is now scheduled or where to find it. Options: (a) toast on success with the next occurrence date ("Recurrente creada · Próxima: 15 mayo"), (b) badge gains a subtle link to `/plan?tab=recurrentes&template=<id>`, (c) on submit redirect to `/plan?tab=recurrentes&highlight=<template_id>` with a flash highlight.
@@ -69,28 +61,6 @@
 - **Touches:** new server action `addPatternToDestinatario(destinatarioId, pattern)` in `actions/destinatarios.ts` (insert into `destinatario_patterns` with `match_type: "contains"`, `priority: 100`; `updateTag("destinatarios")`); `step-destinatarios.tsx` UI (picker + wiring); `import-wizard.tsx` passes the updated rules so later steps use them.
 - **Found:** User feedback during Nu import session, 2026-04-17
 
-### ~~Disable browser autofill/autocomplete on app inputs~~ — DONE 2026-04-17
-- Shipped: `ui/input.tsx` defaults `autoComplete/autoCorrect/spellCheck` to off (overridable). Auth forms keep their semantic `autoComplete` hints. Raw `<textarea>` fields in bug-report and deseos got `autoComplete="off"`. `ui/currency-input.tsx` now hardcodes off since the raw `<input>` in that component bypasses the wrapper.
-
-### ~~PDF password vault — per-bank/per-account passwords with aliases~~ — DONE 2026-04-17
-- Shipped: migration `20260417143333_create_pdf_passwords_encrypted.sql` (encrypted `alias` + `password` with scope pairing CHECK). Server actions in `webapp/src/actions/pdf-passwords.ts` — list, suggest, create, update, delete. Settings UI `PdfPasswordsCard`. Upload step: "Usar guardada" dropdown (uses suggestions ranked account > bank > global) + inline "Guardar esta contraseña" checkbox (auto-infers bank scope from parser's `bank` label). `accounts.pdf_password` still mirrored on scope=account so email ingest keeps working. Follow-ups deferred: secure "copy password" affordance in settings list, and account-scope picker on the upload step once the account is known earlier.
-
-### ~~Promote transaction → recurring template ("Hacer recurrente" CTA)~~ — DONE 2026-04-17 (PR #173)
-- Shipped: `createRecurringTemplateFromTransaction` action + `PromoteToRecurringButton` mounted in `/transactions/[id]` hero actions. Pre-fills `RecurringFormDialog` with tx data and auto-links via `linkTransactionToOccurrence`. Replaced by inert "Ya es recurrente" badge when the tx is already linked.
-
-### ~~`is_subscription` toggle dead flag~~ — DONE 2026-04-17 (PR #173, option B)
-- Shipped: removed the Switch from `transaction-form.tsx`, `mobile-transaction-form.tsx`, `voice-capture-sheet.tsx`. Dropped `is_subscription` from `CreateTransactionParams`, validator, and 5 API routes. Column remains nullable in DB; drop is a follow-up migration.
-
-### ~~Account aliases + mini icons across the app~~ — DONE 2026-04-17 (PR #171)
-- Shipped via `bank_key` column on `accounts_enc` + plaintext slug backfill for 9 Colombian banks. New `AccountIcon` primitive (bundled bank logos + lucide fallback) and `AccountRowIdentity` composer (compact / picker / detail densities). Wired into Dashboard Reciente, Recurrentes, source-account pickers, and account edit form. Reused `accounts.name` as the alias field — no new encrypted column.
-
-### Link Destinatario ↔ Recurring Template
-- **Priority:** High (natural pairing with the just-shipped "Hacer recurrente" CTA)
-- **What:** Let a `recurring_templates` row reference a `destinatario_id`. When a new transaction enters the system (manual, PDF import, email) and the destinatario matcher assigns it to a destinatario that's linked to an active recurring template, the system prompts the user to link this transaction to the current pending occurrence of that template — closing the "I just paid my home services, mark it paid" loop automatically. Also: if the transaction's amount matches the expected plannedAmount, auto-link without prompting (configurable).
-- **Why:** Today the occurrence auto-link relies on `findMatchingOccurrence()` heuristics (account + direction + amount + date proximity). Anchoring via a destinatario link is stronger and faster — user confirmed once, system links forever. Also powers the "Hacer recurrente" CTA naturally: promoting a tx to a template can auto-create the destinatario link.
-- **Touches:** Migration to add `destinatario_id` column to `recurring_templates`; matcher + `findMatchingOccurrence()` updates; confirmation UI on new transactions; `RecurringFormDialog` needs a destinatario field.
-- **Found:** Dashboard polish brainstorming, 2026-04-16
-
 ### Dashboard RECIENTE — inline category assignment on row expand
 - **Priority:** High (scoped for Phase 2 Dashboard polish)
 - **What:** Replace the current inline yellow "Sin cat." tag with a tap-to-expand row interaction: tapping a transaction row reveals an inline panel with a category picker (and possibly: destinatario picker, mark-as-recurring, notes field). User resolves the categorization without leaving the Dashboard. Removes visual clutter from the row and turns a passive signal into a one-tap action.
@@ -113,10 +83,6 @@
 - **Priority:** Medium
 - **What:** The plan tab checklist has two disconnected interaction patterns: (1) tap row → inline payment form with flat buttons, (2) tap ⋮ → bottom Sheet with chip-style admin actions. They look like different apps. Unify into a single cohesive pattern — either improve inline to match chip style with small confirmation Sheet, or merge both into one bottom drawer per-item.
 - **Found:** Visual testing, 2026-04-14
-
-### Audit effectiveDirection usage across app
-- **Priority:** Done (this branch)
-- **What:** Audited all `direction === "INFLOW"` usages. Fixed 3 bugs where raw template direction was used without debt account check: `plan-flow-timeline.tsx` (icon/color), `attention-items.ts` (fallback label), `recurring-template-card.tsx` (grid layout + pause button visibility). Transaction-level displays are correct (actual money flow per account).
 
 ### Accounts — `deactivated_at` timestamp
 - **Priority:** Medium
@@ -234,9 +200,6 @@
 
 ## Tech Debt
 
-### ~~Clean up corrupted `pending_email_statements` storage rows (pre-Buffer-pool-fix)~~ — DONE 2026-04-18
-- Shipped: `scripts/cleanup-corrupted-email-pdfs.js` — dry-run by default, `--execute` to apply. Scopes to `created_at < 2026-04-17T01:54:49Z` AND `status IN ('pending','parsing','parse_failed','needs_password')`, downloads each blob's first 5 bytes and skips rows that are already valid PDFs (legit parse failures, not pool corruption). Dry-run against prod found **0 candidate rows** — either no user hit the bug at scale or affected rows were already auto-dismissed by the webhook's retry path (existing `parse_failed`/`needs_password` rows get dismissed on re-send so a fresh hash can insert). Script retained for future one-shot use.
-
 ### `useRecurringMonth` callbacks use `router.refresh()` instead of `startTransition`
 - **Priority:** Medium
 - **What:** All three callbacks in `use-recurring-month.ts` (`confirmPayment`, `skipPayment`, `linkExisting`) call `router.refresh()` after the server action. Should wrap in `startTransition` instead — `router.refresh()` is a redundant network round-trip.
@@ -252,22 +215,10 @@
 - **What:** Uses `bg-muted/50` (shadcn token) instead of Zeta surface tier token (`bg-z-surface-3/60` or `bg-black/20`).
 - **Found:** zetas-front-guy review, 2026-04-14
 
-### `transaction_tags` table missing columns
-- **What:** No `created_at` or `user_id` columns. Recents query works around this by joining through `transactions`. Adding these columns would:
-  - Enable proper recency ordering (currently orders by transaction_date as proxy)
-  - Improve RLS performance (current policy uses EXISTS subquery per row)
-  - Allow direct defense-in-depth filtering
-- **Migration needed:** `ALTER TABLE` + backfill + index + RLS policy update. Spawn `supabase-migrator`.
-- **Found:** Server action reviewer + perf auditor, 2026-04-13
-
 ### Shared PickerShell component
 - **What:** Popover/dialog/drawer branching is duplicated across 3 zone pickers (~40 lines each, ~120 total). A shared `PickerShell` accepting `{ open, onOpenChange, trigger, title, icon, body, variant }` would eliminate the duplication.
 - **When:** Extract when a 4th picker is added or when touching all 3 pickers.
 - **Found:** Code reuse review, 2026-04-13
-
-### `categories.ts` cached functions use `createAdminClient()`
-- **What:** 5 cached functions use `createAdminClient()` instead of `createCachedClient(accessToken)`. Categories table is not encrypted so it works, but deviates from established pattern and bypasses RLS entirely.
-- **Found:** Server action reviewer, 2026-04-13
 
 ## Open PRs (stale)
 
