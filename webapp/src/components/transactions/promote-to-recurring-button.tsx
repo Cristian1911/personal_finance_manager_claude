@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,8 @@ export function PromoteToRecurringButton({
 }: PromoteToRecurringButtonProps) {
   // Auto-open when navigated here with ?promote=1 (e.g. from the Vincular
   // picker on /transactions). Only opens for unlinked tx.
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const shouldAutoOpen = searchParams.get("promote") === "1" && !isLinkedToOccurrence;
   const [open, setOpen] = useState(shouldAutoOpen);
@@ -91,13 +93,24 @@ export function PromoteToRecurringButton({
     [transaction],
   );
 
+  // Strip ?promote=1 on close so refresh/back doesn't re-trigger the dialog.
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    if (searchParams.get("promote") === "1") {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("promote");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+  }, [pathname, router, searchParams]);
+
   if (isLinkedToOccurrence) {
     return (
       <Badge
         variant="secondary"
         className="bg-z-surface-3/60 text-z-sage-dark hover:bg-z-surface-3/60"
       >
-        <CalendarClock className="mr-1.5 size-3.5" />
+        <CalendarClock className="mr-1.5 size-3.5" aria-hidden="true" />
         Ya es recurrente
       </Badge>
     );
@@ -111,12 +124,12 @@ export function PromoteToRecurringButton({
         className={GHOST_BUTTON_CLASS}
         onClick={() => setOpen(true)}
       >
-        <CalendarClock className="size-4" />
+        <CalendarClock className="size-4" aria-hidden="true" />
         Hacer recurrente
       </Button>
       <RecurringFormDialog
         controlledOpen={open}
-        onClose={() => setOpen(false)}
+        onClose={handleClose}
         trigger={null}
         initialValues={initialValues}
         actionOverride={actionOverride}

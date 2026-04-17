@@ -198,7 +198,7 @@ export default async function TransactionDetailPage({
             <Suspense fallback={<Skeleton className="h-9 w-20 rounded-md" />}>
               <TransactionEditAction transaction={tx} />
             </Suspense>
-            <Suspense fallback={<Skeleton className="h-9 w-36 rounded-md" />}>
+            <Suspense fallback={<Skeleton className="h-9 w-28 rounded-md" />}>
               <TransactionPromoteAction transaction={tx} />
             </Suspense>
             <DeleteTransactionButton transactionId={tx.id} />

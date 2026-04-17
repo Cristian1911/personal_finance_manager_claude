@@ -151,10 +151,10 @@ export function LinkPickerSheet({
             <button
               type="button"
               onClick={onCreateNew}
-              className="mt-3 flex w-full items-center gap-3 rounded-lg border border-dashed border-z-brass/30 bg-z-brass/5 px-3 py-3 text-left transition-colors hover:bg-z-brass/10"
+              className="mt-3 flex w-full items-center gap-3 rounded-lg border border-dashed border-z-brass/30 bg-z-brass/5 px-3 py-3 text-left transition-colors hover:bg-z-brass/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-z-brass/60"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-full border border-z-brass/30 bg-z-brass/10">
-                <CalendarPlus className="size-4 text-z-brass" />
+                <CalendarPlus className="size-4 text-z-brass" aria-hidden="true" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-z-brass">
@@ -201,7 +201,7 @@ function CandidateRow({
       type="button"
       onClick={onSelect}
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
+        "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-z-brass/50",
         isSelected
           ? "bg-z-brass/10 ring-1 ring-z-brass/30"
           : "hover:bg-white/[0.03]",

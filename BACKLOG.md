@@ -24,6 +24,22 @@
 - **Touches:** Almost certainly `webapp/src/app/(dashboard)/accounts/[id]/page.tsx` or a child action component (QuickActionsBar / account hero).
 - **Found:** User feedback, 2026-04-17
 
+### Promote-to-recurring — success state undersells the outcome
+- **Priority:** Medium
+- **What:** After promoting a tx, the CTA collapses to a muted grey "Ya es recurrente" badge. User just created a template + linked this tx as paid — but has no signal that a future payment is now scheduled or where to find it. Options: (a) toast on success with the next occurrence date ("Recurrente creada · Próxima: 15 mayo"), (b) badge gains a subtle link to `/plan?tab=recurrentes&template=<id>`, (c) on submit redirect to `/plan?tab=recurrentes&highlight=<template_id>` with a flash highlight.
+- **Found:** ux-analyst review, 2026-04-17
+
+### Tx detail hero — Promote vs Edit visual weight inversion
+- **Priority:** Low
+- **What:** Edit uses the default brass `<Button>`, Promote uses `variant="ghost"`. Promotion is a more consequential action than editing one field. Either swap weights or make both ghost and let Delete remain the icon action.
+- **Touches:** `webapp/src/components/transactions/transaction-form-dialog.tsx`, `webapp/src/components/transactions/promote-to-recurring-button.tsx`.
+- **Found:** ux-analyst review, 2026-04-17
+
+### Inline Promote dialog inside Vincular drawer
+- **Priority:** Low
+- **What:** Today "Crear nueva recurrente" navigates to `/transactions/[id]?promote=1` instead of opening the dialog inline in the drawer. Code cost is small (`RecurringFormDialog` already accepts `controlledOpen`). Would remove the full-page detour. Drawback: dialog-in-drawer is visually awkward on mobile and the detail page detour gives the user a landing destination.
+- **Found:** ux-analyst review, 2026-04-17
+
 ### Recurrentes tab shows empty state despite 9 active templates
 - **Priority:** High (prod)
 - **What:** `/plan?tab=recurrentes` renders the hero `$0 · 0 pendientes · 0 completados` and the empty state "No hay pagos recurrentes este mes" even though "9 activas · 1 pausada" is shown in the MIS PLANTILLAS strip. Reproduced on production (main, not this branch). Hypotheses to check in order: (1) `ensureCurrentOccurrences()` is failing silently on page load, so `recurring_occurrences` has no rows for this month; (2) all active templates have a `start_date` in the future or `end_date` in the past that excludes them from the current-month generator; (3) post-merge migration 20260416120000 deleted loser templates but left orphan occurrence rows whose `template_id` now FKs into a deleted row, tripping the view join; (4) a timezone boundary bug where the month cursor and the DB's `occurrence_date` range differ.
