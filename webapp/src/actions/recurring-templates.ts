@@ -252,14 +252,14 @@ export async function getRecurringTemplate(
   }
 }
 
-export async function createRecurringTemplate(
-  _prevState: ActionResult<RecurringTemplate>,
-  formData: FormData
+// Shared body for the two create-template actions. Parses + validates form
+// data, verifies the account, applies DEBT-account normalization, and inserts.
+// Omits sub_payments when null to sidestep stale PostgREST schema caches.
+async function insertRecurringTemplateFromFormData(
+  formData: FormData,
+  user: { id: string },
+  supabase: SupabaseClient<Database>,
 ): Promise<ActionResult<RecurringTemplate>> {
-  const { supabase, user } = await getAuthenticatedClient();
-
-  if (!user) return { success: false, error: "No autenticado" };
-
   const parsed = recurringTemplateSchema.safeParse({
     account_id: formData.get("account_id"),
     transfer_source_account_id: formData.get("transfer_source_account_id") || undefined,
@@ -310,7 +310,6 @@ export async function createRecurringTemplate(
     ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
     : null;
 
-  // Omit sub_payments when null — sidesteps stale PostgREST schema caches.
   const insertPayload: Database["public"]["Tables"]["recurring_transaction_templates"]["Insert"] = {
     user_id: user.id,
     ...payload,
@@ -324,13 +323,24 @@ export async function createRecurringTemplate(
     .single();
 
   if (error) return { success: false, error: error.message };
+  return { success: true, data };
+}
+
+export async function createRecurringTemplate(
+  _prevState: ActionResult<RecurringTemplate>,
+  formData: FormData
+): Promise<ActionResult<RecurringTemplate>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const result = await insertRecurringTemplateFromFormData(formData, user, supabase);
+  if (!result.success) return result;
 
   await ensureCurrentOccurrences();
-
   // Full fan-out: a new template affects charts, budgets, debt projections,
   // and account metrics — not just recurring/occurrences.
   revalidateFinancialViews();
-  return { success: true, data };
+  return result;
 }
 
 export async function createRecurringTemplateFromTransaction(
@@ -339,109 +349,41 @@ export async function createRecurringTemplateFromTransaction(
   formData: FormData,
 ): Promise<ActionResult<RecurringTemplate>> {
   const { supabase, user } = await getAuthenticatedClient();
-
   if (!user) return { success: false, error: "No autenticado" };
 
-  // 1. Load the source transaction first — fail fast if it's gone.
-  const { data: tx, error: txErr } = await supabase
-    .from("transactions")
-    .select("id, account_id, amount, direction, transaction_date")
-    .eq("id", transactionId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Tx lookup + existing-link check in parallel — both only need user.id.
+  // Link column lives on the occurrence side (recurring_occurrences.transaction_id).
+  const [txRes, linkRes] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("id, account_id, amount, direction, transaction_date")
+      .eq("id", transactionId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("recurring_occurrences")
+      .select("id")
+      .eq("transaction_id", transactionId)
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  if (txErr || !tx) {
+  if (txRes.error || !txRes.data) {
     return { success: false, error: "Transacción no encontrada" };
   }
-
-  // 2. Block double-promotion. The link lives on the occurrence side
-  //    (recurring_occurrences.transaction_id), so check there.
-  const { data: existingLink } = await supabase
-    .from("recurring_occurrences")
-    .select("id")
-    .eq("transaction_id", transactionId)
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (existingLink) {
+  if (linkRes.data) {
     return { success: false, error: "Esta transacción ya está vinculada a una recurrente." };
   }
 
-  // 3. Parse + validate — identical to createRecurringTemplate.
-  const parsed = recurringTemplateSchema.safeParse({
-    account_id: formData.get("account_id"),
-    transfer_source_account_id: formData.get("transfer_source_account_id") || undefined,
-    amount: formData.get("amount"),
-    currency_code: formData.get("currency_code"),
-    direction: formData.get("direction"),
-    frequency: formData.get("frequency"),
-    merchant_name: formData.get("merchant_name"),
-    description: formData.get("description") || undefined,
-    category_id: formData.get("category_id") || undefined,
-    day_of_month: formData.get("day_of_month") || undefined,
-    day_of_week: formData.get("day_of_week") || undefined,
-    start_date: formData.get("start_date"),
-    end_date: formData.get("end_date") || undefined,
-    sub_payments: formData.get("sub_payments") || undefined,
-  });
+  const tx = txRes.data;
+  const result = await insertRecurringTemplateFromFormData(formData, user, supabase);
+  if (!result.success) return result;
 
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
-  }
-
-  const { sub_payments, ...payload } = parsed.data;
-  const { data: account, error: accountError } = await supabase
-    .from("accounts")
-    .select("id, account_type")
-    .eq("id", payload.account_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (accountError || !account) {
-    return { success: false, error: "Cuenta inválida para este usuario." };
-  }
-
-  if (DEBT_ACCOUNT_TYPES.has(account.account_type)) {
-    payload.direction = "INFLOW";
-    payload.category_id = payload.category_id ?? getDebtPaymentCategoryId(account.account_type);
-    if (!payload.transfer_source_account_id) {
-      return { success: false, error: "Selecciona la cuenta origen para el pago de deuda." };
-    }
-    if (payload.transfer_source_account_id === payload.account_id) {
-      return { success: false, error: "La cuenta origen no puede ser la misma cuenta de deuda." };
-    }
-  } else {
-    payload.transfer_source_account_id = null;
-  }
-
-  // Only attach sub_payments when non-empty. Omitting the field on null
-  // sidesteps stale PostgREST schema caches that briefly don't know about
-  // the column after its migration.
-  const subPaymentsValue = sub_payments && sub_payments.length > 0
-    ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
-    : null;
-
-  const insertPayload: Database["public"]["Tables"]["recurring_transaction_templates"]["Insert"] = {
-    user_id: user.id,
-    ...payload,
-    ...(subPaymentsValue !== null ? { sub_payments: subPaymentsValue } : {}),
-  };
-
-  const { data, error } = await supabase
-    .from("recurring_transaction_templates")
-    .insert(insertPayload)
-    .select()
-    .single();
-
-  if (error) return { success: false, error: error.message };
-
-  // Generate occurrences covering a window that ALWAYS includes the source
-  // tx's date — otherwise a tx from a previous month would create a template
-  // but fail to auto-link (findMatchingOccurrence looks within ±3 days of
-  // tx.transaction_date, so the occurrence must exist in that window).
-  // linkTransactionToOccurrence → markOccurrencePaid flips the occurrence
-  // to status="paid"; if no occurrence matches, it's a no-op.
+  // Widen the generator window to cover the tx's date — otherwise a tx from
+  // a previous month fails to auto-link (findMatchingOccurrence uses ±3 days
+  // around tx.transaction_date). linkTransactionToOccurrence → markOccurrencePaid
+  // flips the occurrence to paid; no-op when no match.
   const txDate = new Date(`${tx.transaction_date}T12:00:00`);
   const now = new Date();
   const rangeStart = startOfMonth(txDate < now ? txDate : now);
@@ -455,10 +397,8 @@ export async function createRecurringTemplateFromTransaction(
     tx.id,
   );
 
-  // Use the full fan-out: a new active template affects charts, budgets,
-  // debt projections, and account metrics — not just recurring/occurrences.
   revalidateFinancialViews();
-  return { success: true, data };
+  return result;
 }
 
 export async function updateRecurringTemplate(
