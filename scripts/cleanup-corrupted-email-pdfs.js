@@ -20,9 +20,17 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const EXECUTE = process.argv.includes("--execute");
-const CUTOFF_ISO = "2026-04-17T01:54:49Z"; // commit 92555b4 author timestamp
+// Cutoff = actual deploy finish of aef4441 (PR #172), not the git author
+// timestamp of 92555b4. The VPS deploy pipeline finished at 02:56:11Z per
+// GitHub Actions run 24545240603 — emails processed between the author
+// commit (01:54Z) and the deploy finish still hit the buggy code path.
+// Round up one minute for safety.
+const CUTOFF_ISO = "2026-04-17T02:57:00Z";
 const CANDIDATE_STATUSES = ["pending", "parsing", "parse_failed", "needs_password"];
 const ERROR_MESSAGE = "Archivo corrupto — vuelve a reenviar el correo";
+// PostgREST default page size is 1000. Explicit generous cap makes the
+// assumption visible; if you ever see this many rows something else is wrong.
+const QUERY_LIMIT = 5000;
 
 function loadEnv() {
   const envPath = path.resolve(__dirname, "..", "webapp", ".env.local");
@@ -30,8 +38,9 @@ function loadEnv() {
     console.error(`[cleanup] Missing ${envPath}`);
     process.exit(1);
   }
-  for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
-    const trimmed = line.trim();
+  for (const rawLine of fs.readFileSync(envPath, "utf8").split("\n")) {
+    // Strip `export KEY=value` shell-sourcing prefix, then trim.
+    const trimmed = rawLine.replace(/^\s*export\s+/, "").trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
     const eq = trimmed.indexOf("=");
     if (eq === -1) continue;
@@ -63,6 +72,10 @@ const admin = createClient(url, key, {
 });
 
 async function isRealPdf(storagePath) {
+  // supabase-js storage.download() fetches the full object — there is no
+  // Range-header API. `.slice(0, 5)` is an in-memory Blob operation. That's
+  // fine here because corrupted blobs are ~8KB and real PDFs in the candidate
+  // set are few.
   const { data, error } = await admin.storage.from("email-pdfs").download(storagePath);
   if (error || !data) return { exists: false, isPdf: false };
   const header = new Uint8Array(await data.slice(0, 5).arrayBuffer());
@@ -82,7 +95,8 @@ async function main() {
     .from("pending_email_statements")
     .select("id, user_id, storage_path, status, created_at, original_filename")
     .in("status", CANDIDATE_STATUSES)
-    .lt("created_at", CUTOFF_ISO);
+    .lt("created_at", CUTOFF_ISO)
+    .limit(QUERY_LIMIT);
 
   if (error) {
     console.error("[cleanup] query failed:", error.message);
@@ -127,7 +141,10 @@ async function main() {
         updated_at: new Date().toISOString(),
       })
       .eq("id", row.id)
-      .eq("user_id", row.user_id);
+      .eq("user_id", row.user_id)
+      // Race guard: if the webhook concurrently moved this row to 'imported'
+      // or 'dismissed' we must not stomp it back to parse_failed.
+      .in("status", CANDIDATE_STATUSES);
     if (updateError) {
       summary.updateErrors += 1;
       console.error(`         update failed for ${row.id}: ${updateError.message}`);
