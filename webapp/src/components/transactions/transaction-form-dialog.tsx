@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TransactionForm } from "./transaction-form";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
+import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import type { Account, CategoryWithChildren, Tag, Transaction } from "@/types/domain";
 
 export function TransactionFormDialog({
@@ -25,13 +27,21 @@ export function TransactionFormDialog({
   tags?: Tag[];
 }) {
   const [open, setOpen] = useState(false);
+  const isEdit = !!transaction;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          {transaction ? "Editar" : "Nueva transacción"}
+        <Button
+          variant={isEdit ? "ghost" : "default"}
+          className={isEdit ? cn(GHOST_BUTTON_CLASS) : undefined}
+        >
+          {isEdit ? (
+            <Pencil className="h-4 w-4 mr-2" />
+          ) : (
+            <Plus className="h-4 w-4 mr-2" />
+          )}
+          {isEdit ? "Editar" : "Nueva transacción"}
         </Button>
       </DialogTrigger>
       <DialogContent className="flex max-h-[85svh] flex-col overflow-hidden p-0 sm:max-w-xl">
