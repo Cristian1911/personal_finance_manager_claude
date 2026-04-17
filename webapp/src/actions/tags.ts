@@ -134,8 +134,6 @@ async function getTagsForEntityCached(
 ): Promise<Tag[]> {
   "use cache";
   cacheTag("tags");
-  cacheTag("transactions");
-  cacheTag("destinatarios");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
@@ -157,16 +155,45 @@ async function getTagsForEntityCached(
       .eq("user_id", userId)
       .single();
     if (!dest) return [];
+  } else if (entityType === "recurring_template") {
+    const { data: tpl } = await supabase
+      .from("recurring_transaction_templates")
+      .select("id")
+      .eq("id", entityId)
+      .eq("user_id", userId)
+      .single();
+    if (!tpl) return [];
   }
   // categories can be system-owned — skip ownership check
 
-  const tableName = `${entityType}_tags` as const;
-  const idColumn = `${entityType}_id` as const;
+  let tagIdRows: Array<{ tag_id: string }> | null = null;
+  if (entityType === "recurring_template") {
+    const { data } = await supabase
+      .from("recurring_template_tags")
+      .select("tag_id")
+      .eq("recurring_template_id", entityId);
+    tagIdRows = data;
+  } else if (entityType === "transaction") {
+    const { data } = await supabase
+      .from("transaction_tags")
+      .select("tag_id")
+      .eq("transaction_id", entityId);
+    tagIdRows = data;
+  } else if (entityType === "destinatario") {
+    const { data } = await supabase
+      .from("destinatario_tags")
+      .select("tag_id")
+      .eq("destinatario_id", entityId);
+    tagIdRows = data;
+  } else {
+    const { data } = await supabase
+      .from("category_tags")
+      .select("tag_id")
+      .eq("category_id", entityId);
+    tagIdRows = data;
+  }
 
-  const { data } = await supabase
-    .from(tableName)
-    .select("tag_id")
-    .eq(idColumn, entityId);
+  const data = tagIdRows;
 
   if (!data || data.length === 0) return [];
 
@@ -387,7 +414,12 @@ async function verifyEntityOwnership(
   userId: string
 ): Promise<boolean> {
   if (entityType === "category") return true; // categories can be system-owned
-  const table = entityType === "transaction" ? "transactions" : "destinatarios";
+  const table =
+    entityType === "transaction"
+      ? "transactions"
+      : entityType === "destinatario"
+        ? "destinatarios"
+        : "recurring_transaction_templates";
   const { data } = await supabase
     .from(table)
     .select("id")
@@ -409,16 +441,34 @@ export async function addTagToEntity(
     return { success: false, error: "No autorizado" };
   }
 
-  const tableName = `${entityType}_tags` as const;
-  const idColumn = `${entityType}_id` as const;
+  // recurring_template_tags has a denormalized user_id column (fast-path RLS);
+  // the other three junction tables do not. Branch for type safety.
+  let insertError: { code?: string; message: string } | null = null;
+  if (entityType === "recurring_template") {
+    const { error } = await supabase
+      .from("recurring_template_tags")
+      .insert({ recurring_template_id: entityId, tag_id: tagId, user_id: user.id });
+    insertError = error;
+  } else if (entityType === "transaction") {
+    const { error } = await supabase
+      .from("transaction_tags")
+      .insert({ transaction_id: entityId, tag_id: tagId });
+    insertError = error;
+  } else if (entityType === "destinatario") {
+    const { error } = await supabase
+      .from("destinatario_tags")
+      .insert({ destinatario_id: entityId, tag_id: tagId });
+    insertError = error;
+  } else {
+    const { error } = await supabase
+      .from("category_tags")
+      .insert({ category_id: entityId, tag_id: tagId });
+    insertError = error;
+  }
 
-  const { error } = await supabase
-    .from(tableName)
-    .insert({ [idColumn]: entityId, tag_id: tagId } as never);
-
-  if (error) {
-    if (error.code === "23505") return { success: true, data: null };
-    return { success: false, error: error.message };
+  if (insertError) {
+    if (insertError.code === "23505") return { success: true, data: null };
+    return { success: false, error: insertError.message };
   }
 
   expireTag("tags");
@@ -428,6 +478,7 @@ export async function addTagToEntity(
   }
   if (entityType === "destinatario") expireTag("destinatarios");
   if (entityType === "category") expireTag("categories");
+  if (entityType === "recurring_template") expireTag("recurring");
   return { success: true, data: null };
 }
 
@@ -443,16 +494,38 @@ export async function removeTagFromEntity(
     return { success: false, error: "No autorizado" };
   }
 
-  const tableName = `${entityType}_tags` as const;
-  const idColumn = `${entityType}_id` as const;
+  let deleteError: { message: string } | null = null;
+  if (entityType === "recurring_template") {
+    const { error } = await supabase
+      .from("recurring_template_tags")
+      .delete()
+      .eq("recurring_template_id", entityId)
+      .eq("tag_id", tagId);
+    deleteError = error;
+  } else if (entityType === "transaction") {
+    const { error } = await supabase
+      .from("transaction_tags")
+      .delete()
+      .eq("transaction_id", entityId)
+      .eq("tag_id", tagId);
+    deleteError = error;
+  } else if (entityType === "destinatario") {
+    const { error } = await supabase
+      .from("destinatario_tags")
+      .delete()
+      .eq("destinatario_id", entityId)
+      .eq("tag_id", tagId);
+    deleteError = error;
+  } else {
+    const { error } = await supabase
+      .from("category_tags")
+      .delete()
+      .eq("category_id", entityId)
+      .eq("tag_id", tagId);
+    deleteError = error;
+  }
 
-  const { error } = await supabase
-    .from(tableName)
-    .delete()
-    .eq(idColumn, entityId)
-    .eq("tag_id", tagId);
-
-  if (error) return { success: false, error: error.message };
+  if (deleteError) return { success: false, error: deleteError.message };
 
   expireTag("tags");
   if (entityType === "transaction") {
@@ -461,6 +534,7 @@ export async function removeTagFromEntity(
   }
   if (entityType === "destinatario") expireTag("destinatarios");
   if (entityType === "category") expireTag("categories");
+  if (entityType === "recurring_template") expireTag("recurring");
   return { success: true, data: null };
 }
 

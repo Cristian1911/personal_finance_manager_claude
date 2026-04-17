@@ -12,6 +12,7 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import {
   Select,
   SelectContent,
@@ -490,6 +491,25 @@ export function RecurringForm({
           placeholder="Nota opcional"
         />
       </div>
+
+      {template ? (
+        <div className="space-y-2">
+          <Label>Etiquetas</Label>
+          <TagZonePicker
+            entityType="recurring_template"
+            entityId={template.id}
+            placeholder="Asignar etiquetas"
+            variant="popover"
+          />
+          <p className="text-xs text-muted-foreground">
+            Las etiquetas se aplicarán a cada transacción creada al registrar un pago.
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Podrás asignar etiquetas a esta recurrente después de guardarla.
+        </p>
+      )}
 
       <Button type="submit" className={cn(BRASS_BUTTON_CLASS, "w-full")} disabled={pending}>
         {pending

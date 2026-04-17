@@ -159,7 +159,7 @@ export type Tag = Tables<"tags">;
 export type TagWithGroup = Tag & { group: TagGroup | null };
 export type TagGroupWithTags = TagGroup & { tags: Tag[] };
 
-export type TaggableEntity = "category" | "destinatario" | "transaction";
+export type TaggableEntity = "category" | "destinatario" | "transaction" | "recurring_template";
 
 // Impact Events — track positive financial movements across debt accounts
 export interface ImpactEventMetrics {
