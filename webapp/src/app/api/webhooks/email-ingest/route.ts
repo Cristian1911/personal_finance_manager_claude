@@ -449,12 +449,16 @@ async function processEmail(ctx: {
 
     if (pdfAttachments.length > 0 && pdfImportEnabled) {
       console.log(`[email-ingest][${emailId}] Text parse failed — falling back to ${pdfAttachments.length} PDF attachment(s)`);
-      const insertedPdfRows: Array<{ id: string; buffer: ArrayBuffer; filename: string }> = [];
+      const insertedPdfRows: Array<{ id: string; buffer: Uint8Array; filename: string }> = [];
 
       for (const attachment of pdfAttachments) {
         const filename = attachment.filename || "attachment.pdf";
+        // Buffer.from(..., "base64") may allocate from a shared 8KB pool — so
+        // `bytes.buffer` can reference a larger ArrayBuffer with `bytes` at a
+        // non-zero `byteOffset`. Always pass the Uint8Array itself (Buffer
+        // extends Uint8Array) so downstream consumers see exactly the PDF bytes.
         const bytes = Buffer.from(attachment.content, "base64");
-        const contentHash = await computePdfHash(bytes.buffer);
+        const contentHash = await computePdfHash(bytes);
 
         // Check idempotency: skip if we already have this PDF
         const { data: existing } = await admin
@@ -484,7 +488,7 @@ async function processEmail(ctx: {
 
         const { error: uploadError } = await admin.storage
           .from("email-pdfs")
-          .upload(storagePath, bytes.buffer, {
+          .upload(storagePath, bytes, {
             contentType: "application/pdf",
             upsert: false,
           });
@@ -542,7 +546,7 @@ async function processEmail(ctx: {
           continue;
         }
 
-        insertedPdfRows.push({ id: inserted.id, buffer: bytes.buffer, filename });
+        insertedPdfRows.push({ id: inserted.id, buffer: bytes, filename });
 
         await insertLog({
           userId,
