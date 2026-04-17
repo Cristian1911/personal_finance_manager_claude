@@ -54,6 +54,12 @@
 
 ## Features
 
+### Import wizard — attach pattern to existing destinatario
+- **Priority:** Medium
+- **What:** Step 3 (Destinatarios) of `/import` only offers "Crear destinatario" on each unmatched suggestion. When the cleaned pattern is actually a spelling variant of a destinatario that already exists (e.g., `Rappi Colombia*Dl` vs existing `rappi colombia`), the only recoverable path today is to skip, finish the import, then edit patterns at `/destinatarios`. Add a second action to every suggestion card: "Asignar a destinatario existente" → opens a picker (reuse the zone-picker pattern), on confirm appends the pattern to that destinatario's `destinatario_patterns`, refreshes the in-memory `destinatarioRules`, re-runs `matchDestinatario`, and collapses the suggestion. Optional polish: sort the picker by match score or by destinatario-spend to surface the likely target first.
+- **Touches:** new server action `addPatternToDestinatario(destinatarioId, pattern)` in `actions/destinatarios.ts` (insert into `destinatario_patterns` with `match_type: "contains"`, `priority: 100`; `updateTag("destinatarios")`); `step-destinatarios.tsx` UI (picker + wiring); `import-wizard.tsx` passes the updated rules so later steps use them.
+- **Found:** User feedback during Nu import session, 2026-04-17
+
 ### Disable browser autofill/autocomplete on app inputs
 - **Priority:** Medium
 - **What:** Once upon a time we suppressed autocomplete suggestions across forms; the behaviour has regressed (or never covered the newer inputs). Chrome/Safari happily dump saved addresses, card numbers, and unrelated names on top of transaction amounts, account names, destinatarios, etc. Sweep every `<Input>`/`<input>`/`<Textarea>` in `webapp/src/components/` and add `autoComplete="off"` (+ `autoCorrect`, `spellCheck={false}` where relevant). Where browsers ignore `off` (Chrome does for heuristically-detected fields), use a non-standard sentinel like `autoComplete="new-password"` or a one-off token per field. Consider a shared `<AppInput>` wrapper that defaults these props so future forms stay clean.
