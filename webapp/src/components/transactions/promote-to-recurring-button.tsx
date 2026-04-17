@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createRecurringTemplateFromTransaction } from "@/actions/recurring-templates";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
-import { cn } from "@/lib/utils";
 
 // Dialog + form are ~580 lines; defer until the user clicks "Hacer recurrente".
 const RecurringFormDialog = dynamic(
@@ -124,16 +123,15 @@ export function PromoteToRecurringButton({
 
   if (isLinkedToOccurrence) {
     return (
-      <Badge
-        asChild
-        variant="secondary"
-        className="bg-z-surface-3/60 text-z-sage-dark transition-colors hover:bg-z-surface-3/80"
-      >
-        <Link href="/recurrentes">
+      <Link href="/recurrentes" className="contents">
+        <Badge
+          variant="secondary"
+          className="cursor-pointer bg-z-surface-3/60 text-z-sage-dark transition-colors hover:bg-z-surface-3/80"
+        >
           <CalendarClock className="mr-1.5 size-3.5" aria-hidden="true" />
           Ya es recurrente
-        </Link>
-      </Badge>
+        </Badge>
+      </Link>
     );
   }
 
@@ -141,7 +139,7 @@ export function PromoteToRecurringButton({
     <>
       <Button
         type="button"
-        className={cn(BRASS_BUTTON_CLASS)}
+        className={BRASS_BUTTON_CLASS}
         onClick={() => setOpen(true)}
       >
         <CalendarClock className="size-4" aria-hidden="true" />

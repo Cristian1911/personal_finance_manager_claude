@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { TransactionForm } from "./transaction-form";
 import { Pencil, Plus } from "lucide-react";
 import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
-import { cn } from "@/lib/utils";
 import type { Account, CategoryWithChildren, Tag, Transaction } from "@/types/domain";
 
 export function TransactionFormDialog({
@@ -32,10 +31,7 @@ export function TransactionFormDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant={isEdit ? "ghost" : "default"}
-          className={isEdit ? cn(GHOST_BUTTON_CLASS) : undefined}
-        >
+        <Button className={isEdit ? GHOST_BUTTON_CLASS : undefined}>
           {isEdit ? (
             <Pencil className="h-4 w-4 mr-2" />
           ) : (
