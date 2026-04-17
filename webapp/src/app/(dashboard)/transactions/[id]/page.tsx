@@ -8,8 +8,10 @@ import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarios } from "@/actions/destinatarios";
 import { getTagGroups, getTagsForEntity } from "@/actions/tags";
+import { isTransactionLinkedToOccurrence } from "@/actions/occurrences";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
 import { DeleteTransactionButton } from "@/components/transactions/delete-transaction-button";
+import { PromoteToRecurringButton } from "@/components/transactions/promote-to-recurring-button";
 import { DestinatarioPicker } from "@/components/transactions/destinatario-picker";
 import { TagPicker } from "@/components/tags/tag-picker";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
@@ -33,6 +35,35 @@ async function TransactionEditAction({ transaction }: { transaction: Transaction
   return (
     <TransactionFormDialog
       transaction={transaction}
+      accounts={accountsResult.success ? accountsResult.data : []}
+      categories={categoriesResult.success ? categoriesResult.data : []}
+    />
+  );
+}
+
+// ─── Deferred: promote-to-recurring button ───────────────────────────────────
+
+async function TransactionPromoteAction({ transaction }: { transaction: Transaction }) {
+  const [accountsResult, categoriesResult, isLinked] = await Promise.all([
+    getAccounts(),
+    getCategories(),
+    isTransactionLinkedToOccurrence(transaction.id),
+  ]);
+
+  return (
+    <PromoteToRecurringButton
+      transaction={{
+        id: transaction.id,
+        account_id: transaction.account_id,
+        amount: transaction.amount,
+        currency_code: transaction.currency_code,
+        direction: transaction.direction,
+        merchant_name: transaction.merchant_name,
+        clean_description: transaction.clean_description,
+        category_id: transaction.category_id,
+        transaction_date: transaction.transaction_date,
+      }}
+      isLinkedToOccurrence={isLinked}
       accounts={accountsResult.success ? accountsResult.data : []}
       categories={categoriesResult.success ? categoriesResult.data : []}
     />
@@ -166,6 +197,9 @@ export default async function TransactionDetailPage({
           <>
             <Suspense fallback={<Skeleton className="h-9 w-20 rounded-md" />}>
               <TransactionEditAction transaction={tx} />
+            </Suspense>
+            <Suspense fallback={<Skeleton className="h-9 w-36 rounded-md" />}>
+              <TransactionPromoteAction transaction={tx} />
             </Suspense>
             <DeleteTransactionButton transactionId={tx.id} />
           </>
