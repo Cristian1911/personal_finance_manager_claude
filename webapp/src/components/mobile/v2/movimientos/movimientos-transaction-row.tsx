@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Pencil, ArrowDownLeft, ArrowUpRight, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ export function MovimientosTransactionRow({
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [, startTransition] = useTransition();
+  const router = useRouter();
 
   // Link to recurring state
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
@@ -295,6 +297,10 @@ export function MovimientosTransactionRow({
           }))}
           onConfirm={handleConfirmLink}
           isPending={isLinking}
+          onCreateNew={() => {
+            setLinkPickerOpen(false);
+            router.push(`/transactions/${tx.id}?promote=1`);
+          }}
         />
       )}
     </div>

@@ -310,13 +310,16 @@ export async function createRecurringTemplate(
     ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
     : null;
 
+  // Omit sub_payments when null — sidesteps stale PostgREST schema caches.
+  const insertPayload: Database["public"]["Tables"]["recurring_transaction_templates"]["Insert"] = {
+    user_id: user.id,
+    ...payload,
+    ...(subPaymentsValue !== null ? { sub_payments: subPaymentsValue } : {}),
+  };
+
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
-    .insert({
-      user_id: user.id,
-      ...payload,
-      sub_payments: subPaymentsValue,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
@@ -413,17 +416,22 @@ export async function createRecurringTemplateFromTransaction(
     payload.transfer_source_account_id = null;
   }
 
+  // Only attach sub_payments when non-empty. Omitting the field on null
+  // sidesteps stale PostgREST schema caches that briefly don't know about
+  // the column after its migration.
   const subPaymentsValue = sub_payments && sub_payments.length > 0
     ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
     : null;
 
+  const insertPayload: Database["public"]["Tables"]["recurring_transaction_templates"]["Insert"] = {
+    user_id: user.id,
+    ...payload,
+    ...(subPaymentsValue !== null ? { sub_payments: subPaymentsValue } : {}),
+  };
+
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
-    .insert({
-      user_id: user.id,
-      ...payload,
-      sub_payments: subPaymentsValue,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
@@ -507,12 +515,15 @@ export async function updateRecurringTemplate(
     ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
     : null;
 
+  // Omit sub_payments when null — sidesteps stale PostgREST schema caches.
+  const updatePayload: Database["public"]["Tables"]["recurring_transaction_templates"]["Update"] = {
+    ...payload,
+    ...(subPaymentsValue !== null ? { sub_payments: subPaymentsValue } : {}),
+  };
+
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
-    .update({
-      ...payload,
-      sub_payments: subPaymentsValue,
-    })
+    .update(updatePayload)
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
