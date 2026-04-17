@@ -204,7 +204,16 @@ export function ImportWizard({
     setStep("results");
 
     const emailId = activeEmailStatementIdRef.current;
-    if (emailId && (result.imported > 0 || result.autoMerged > 0 || result.manualMerged > 0)) {
+    // Also mark imported when everything was skipped: that means the PDF's
+    // transactions already exist in the DB (idempotency-key match). The
+    // pending row is redundant at that point — clean it up.
+    if (
+      emailId &&
+      (result.imported > 0 ||
+        result.autoMerged > 0 ||
+        result.manualMerged > 0 ||
+        result.skipped > 0)
+    ) {
       activeEmailStatementIdRef.current = null;
       void markEmailPdfStatementImported(emailId).then((res) => {
         if (res.success) {

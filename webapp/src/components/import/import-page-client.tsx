@@ -51,6 +51,7 @@ export function ImportPageClient({
   return (
     <>
       <PendingEmailStatements
+        key={selectedId ?? "none"}
         statements={visiblePending}
         onReviewStatement={handleReviewStatement}
       />
