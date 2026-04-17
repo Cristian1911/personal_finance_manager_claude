@@ -48,3 +48,17 @@ webapp/e2e/.auth/
 # .claude/todo.md — tracked
 mobile/.idea/
 .playwright-mcp/
+
+# Local ephemeral workspace (screenshots, videos, scratch)
+/tmp/
+
+# Loose media at repo root (screenshots dropped during audits, voice notes, etc.)
+/*.png
+/*.jpg
+/*.jpeg
+/*.mp4
+/*.mov
+/*.webm
+
+# PDF parser local scratch folder — sample statements, not shared
+/pdfs_to_review/
