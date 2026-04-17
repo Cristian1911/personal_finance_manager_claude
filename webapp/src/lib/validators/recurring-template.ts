@@ -24,6 +24,10 @@ export const recurringTemplateSchema = z.object({
     (val) => (val === "" || val === null ? undefined : val),
     uuidStr().optional().nullable()
   ),
+  destinatario_id: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    uuidStr().optional().nullable()
+  ),
   day_of_month: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),
     z.coerce.number().int().min(1).max(31).optional().nullable()

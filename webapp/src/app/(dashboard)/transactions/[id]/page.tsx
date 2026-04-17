@@ -61,6 +61,7 @@ async function TransactionPromoteAction({ transaction }: { transaction: Transact
         merchant_name: transaction.merchant_name,
         clean_description: transaction.clean_description,
         category_id: transaction.category_id,
+        destinatario_id: transaction.destinatario_id,
         transaction_date: transaction.transaction_date,
       }}
       isLinkedToOccurrence={isLinked}

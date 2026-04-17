@@ -270,6 +270,7 @@ async function insertRecurringTemplateFromFormData(
     merchant_name: formData.get("merchant_name"),
     description: formData.get("description") || undefined,
     category_id: formData.get("category_id") || undefined,
+    destinatario_id: formData.get("destinatario_id") || undefined,
     day_of_month: formData.get("day_of_month") || undefined,
     day_of_week: formData.get("day_of_week") || undefined,
     start_date: formData.get("start_date"),
@@ -356,7 +357,7 @@ export async function createRecurringTemplateFromTransaction(
   const [txRes, linkRes] = await Promise.all([
     supabase
       .from("transactions")
-      .select("id, account_id, amount, direction, transaction_date")
+      .select("id, account_id, amount, direction, transaction_date, destinatario_id")
       .eq("id", transactionId)
       .eq("user_id", user.id)
       .maybeSingle(),
@@ -395,6 +396,7 @@ export async function createRecurringTemplateFromTransaction(
     tx.amount,
     tx.direction,
     tx.id,
+    tx.destinatario_id,
   );
 
   revalidateFinancialViews();
@@ -420,6 +422,7 @@ export async function updateRecurringTemplate(
     merchant_name: formData.get("merchant_name"),
     description: formData.get("description") || undefined,
     category_id: formData.get("category_id") || undefined,
+    destinatario_id: formData.get("destinatario_id") || undefined,
     day_of_month: formData.get("day_of_month") || undefined,
     day_of_week: formData.get("day_of_week") || undefined,
     start_date: formData.get("start_date"),

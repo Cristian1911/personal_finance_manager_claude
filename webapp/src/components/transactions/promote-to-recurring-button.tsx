@@ -34,6 +34,7 @@ type PromoteSourceTx = {
   merchant_name: string | null;
   clean_description: string | null;
   category_id: string | null;
+  destinatario_id: string | null;
   transaction_date: string;
 };
 
@@ -59,6 +60,7 @@ function prefillFromTransaction(tx: PromoteSourceTx): Partial<RecurringTemplate>
     merchant_name: merchant,
     description: hasDistinctDescription ? tx.clean_description : null,
     category_id: tx.category_id,
+    destinatario_id: tx.destinatario_id,
     frequency: "MONTHLY",
     start_date: tx.transaction_date,
     day_of_month: dayOfMonth,

@@ -2054,6 +2054,7 @@ export type Database = {
           day_of_month: number | null
           day_of_week: number | null
           description: string | null
+          destinatario_id: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           end_date: string | null
           frequency: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2075,6 +2076,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          destinatario_id?: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           end_date?: string | null
           frequency: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2096,6 +2098,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          destinatario_id?: string | null
           direction?: Database["public"]["Enums"]["transaction_direction"]
           end_date?: string | null
           frequency?: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2170,6 +2173,7 @@ export type Database = {
           day_of_month: number | null
           day_of_week: number | null
           description: string | null
+          destinatario_id: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           end_date: string | null
           frequency: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2191,6 +2195,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          destinatario_id?: string | null
           direction: Database["public"]["Enums"]["transaction_direction"]
           end_date?: string | null
           frequency: Database["public"]["Enums"]["recurrence_frequency"]
@@ -2212,6 +2217,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          destinatario_id?: string | null
           direction?: Database["public"]["Enums"]["transaction_direction"]
           end_date?: string | null
           frequency?: Database["public"]["Enums"]["recurrence_frequency"]

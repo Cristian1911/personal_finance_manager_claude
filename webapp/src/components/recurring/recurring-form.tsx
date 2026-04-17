@@ -13,6 +13,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
+import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import {
   Select,
   SelectContent,
@@ -92,6 +93,9 @@ export function RecurringForm({
   );
   const [categoryId, setCategoryId] = useState<string | null>(
     seed?.category_id ?? null
+  );
+  const [destinatarioId, setDestinatarioId] = useState<string | null>(
+    seed?.destinatario_id ?? null
   );
   const [frequency, setFrequency] = useState<string>(
     seed?.frequency ?? "MONTHLY"
@@ -480,6 +484,20 @@ export function RecurringForm({
             Pre-seleccionada según tipo de cuenta. Puedes cambiarla si lo necesitas.
           </p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Destinatario</Label>
+        <DestinatarioZonePicker
+          variant="popover"
+          value={destinatarioId}
+          onValueChange={(id) => setDestinatarioId(id)}
+          placeholder="Vincular a un destinatario"
+        />
+        <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
+        <p className="text-xs text-muted-foreground">
+          Al pagar, la matcher anclará al destinatario antes de comparar por monto — evita que una transferencia del mismo valor se vincule por error.
+        </p>
       </div>
 
       <div className="space-y-2">

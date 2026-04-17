@@ -871,6 +871,7 @@ async function processEmail(ctx: {
         parsed.amount,
         parsed.direction,
         insertedTx.id,
+        destinatarioId,
       );
     }
 

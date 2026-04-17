@@ -61,6 +61,7 @@ type TxRow = {
   amount: number;
   direction: string;
   transaction_date: string;
+  destinatario_id?: string | null;
 };
 
 function buildSupabase({
@@ -157,6 +158,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       50000,
       "OUTFLOW",
       VALID_TX,
+      undefined,
     );
     expect(revalidateFinancialViews).toHaveBeenCalledOnce();
   });
@@ -271,6 +273,7 @@ describe("createRecurringTemplateFromTransaction", () => {
       200000,
       "INFLOW",
       VALID_TX,
+      undefined,
     );
   });
 });

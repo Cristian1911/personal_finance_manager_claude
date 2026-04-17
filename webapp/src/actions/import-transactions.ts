@@ -989,6 +989,7 @@ export async function importTransactions(
     await linkTransactionToOccurrence(
       tx.account_id, tx.transaction_date,
       tx.amount, tx.direction, insertedTx.id,
+      tx.destinatario_id ?? null,
     );
 
     const decision = tx.import_key

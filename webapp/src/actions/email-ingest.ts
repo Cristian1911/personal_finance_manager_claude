@@ -142,6 +142,7 @@ async function persistParsedEmail(params: {
       await linkTransactionToOccurrence(
         suggestedAccountId, parsed.transaction_date,
         parsed.amount, parsed.direction, insertedTxAuto.id,
+        destinatarioId,
       );
     }
 
@@ -756,6 +757,7 @@ export async function approveEmailTransaction(
     await linkTransactionToOccurrence(
       accountId, parsed.transaction_date,
       parsed.amount, parsed.direction, insertedTx.id,
+      destinatarioId,
     );
   }
 

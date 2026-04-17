@@ -701,6 +701,7 @@ export async function findMatchingOccurrence(
   transactionDate: string,
   amount: number,
   direction: "INFLOW" | "OUTFLOW",
+  destinatarioId: string | null = null,
 ): Promise<string | null> {
   // Direct query — not cached. This runs on mutation paths (tx creation)
   // where fresh data is required to avoid double-linking in batch imports.
@@ -710,6 +711,41 @@ export async function findMatchingOccurrence(
   const baseDateObj = parseISO(transactionDate + "T12:00:00");
   const rangeStart = toColombiaDateString(addDays(baseDateObj, -3));
   const rangeEnd = toColombiaDateString(addDays(baseDateObj, 3));
+
+  // Primary pass: if the transaction has a destinatario, try to match an
+  // occurrence whose template is anchored to the same destinatario + account
+  // + direction. This is stronger than amount proximity — e.g. two different
+  // recurring payments with the same monthly amount won't cross-link.
+  if (destinatarioId) {
+    const { data: anchored } = await supabase
+      .from("recurring_occurrences")
+      .select(
+        `id, occurrence_date, expected_amount,
+         template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
+           account_id, destinatario_id, direction, is_active
+         )`
+      )
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .eq("template.account_id", accountId)
+      .eq("template.destinatario_id", destinatarioId)
+      .eq("template.direction", direction)
+      .eq("template.is_active", true)
+      .gte("occurrence_date", rangeStart)
+      .lte("occurrence_date", rangeEnd);
+
+    if (anchored && anchored.length > 0) {
+      // Destinatario + account + date window is a strong enough signal that
+      // we don't require amount proximity — the user promised "this template
+      // is this destinatario". Pick the nearest by date.
+      const nearest = anchored.reduce((best, row) => {
+        const bestDiff = Math.abs(new Date(best.occurrence_date).getTime() - baseDateObj.getTime());
+        const rowDiff = Math.abs(new Date(row.occurrence_date).getTime() - baseDateObj.getTime());
+        return rowDiff < bestDiff ? row : best;
+      }, anchored[0]);
+      return nearest.id;
+    }
+  }
 
   const { data, error } = await supabase
     .from("recurring_occurrences")
@@ -781,8 +817,15 @@ export async function linkTransactionToOccurrence(
   amount: number,
   direction: "INFLOW" | "OUTFLOW",
   transactionId: string,
+  destinatarioId: string | null = null,
 ): Promise<void> {
-  const matchId = await findMatchingOccurrence(accountId, transactionDate, amount, direction);
+  const matchId = await findMatchingOccurrence(
+    accountId,
+    transactionDate,
+    amount,
+    direction,
+    destinatarioId,
+  );
   if (matchId) {
     await markOccurrencePaid(matchId, transactionId);
   }
