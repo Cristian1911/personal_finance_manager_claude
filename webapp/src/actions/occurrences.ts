@@ -722,7 +722,7 @@ export async function findMatchingOccurrence(
   // still absorbs realistic variance like fees, exchange rates, or partial
   // extra-principal prepayments.
   if (destinatarioId) {
-    const { data: anchored } = await supabase
+    const { data: anchored, error: anchoredError } = await supabase
       .from("recurring_occurrences")
       .select(
         `id, occurrence_date, expected_amount,
@@ -740,6 +740,12 @@ export async function findMatchingOccurrence(
       .lte("occurrence_date", rangeEnd)
       .order("occurrence_date", { ascending: true });
 
+    if (anchoredError) {
+      // Log but don't abort — fall through to the amount-proximity pass so
+      // a transient DB hiccup doesn't block legitimate matches.
+      console.error("[findMatchingOccurrence] anchored query failed", anchoredError);
+    }
+
     const ANCHORED_TOLERANCE = 0.5;
     const anchoredWithinTolerance = (anchored ?? []).filter(
       (row) =>
@@ -748,9 +754,16 @@ export async function findMatchingOccurrence(
     );
 
     if (anchoredWithinTolerance.length > 0) {
+      // parseISO both sides for timezone consistency — baseDateObj was parsed
+      // with an explicit noon offset, while occurrence_date is a bare YYYY-MM-DD
+      // which `new Date()` would interpret as UTC midnight (off by hours in Colombia).
       const nearest = anchoredWithinTolerance.reduce((best, row) => {
-        const bestDiff = Math.abs(new Date(best.occurrence_date).getTime() - baseDateObj.getTime());
-        const rowDiff = Math.abs(new Date(row.occurrence_date).getTime() - baseDateObj.getTime());
+        const bestDiff = Math.abs(
+          parseISO(best.occurrence_date + "T12:00:00").getTime() - baseDateObj.getTime(),
+        );
+        const rowDiff = Math.abs(
+          parseISO(row.occurrence_date + "T12:00:00").getTime() - baseDateObj.getTime(),
+        );
         return rowDiff < bestDiff ? row : best;
       }, anchoredWithinTolerance[0]);
       return nearest.id;
