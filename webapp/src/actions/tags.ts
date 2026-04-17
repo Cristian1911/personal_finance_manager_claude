@@ -134,6 +134,11 @@ async function getTagsForEntityCached(
 ): Promise<Tag[]> {
   "use cache";
   cacheTag("tags");
+  // Needed so that deleting a recurring template (which expires "recurring")
+  // busts any cached tag lookups for that template id — otherwise the cached
+  // result lingers until TTL and reports tags for a template that no longer
+  // exists. Per Gemini review on PR #179.
+  cacheTag("recurring");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
