@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2, ImageIcon, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -297,8 +297,9 @@ export function StepUpload({
           </p>
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
+          className={GHOST_BUTTON_CLASS}
           onClick={() => inputRef.current?.click()}
         >
           Seleccionar archivo
@@ -329,7 +330,11 @@ export function StepUpload({
                 {(file.size / 1024).toFixed(0)} KB
               </p>
             </div>
-            <Button onClick={handleUpload} disabled={loading}>
+            <Button
+              className={BRASS_BUTTON_CLASS}
+              onClick={handleUpload}
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -455,8 +460,8 @@ export function StepUpload({
             <div className="flex gap-2">
               <Button
                 size="sm"
-                variant="outline"
-                className="border-z-alert/30 hover:bg-z-alert/10"
+                variant="ghost"
+                className={cn(GHOST_BUTTON_CLASS, "border-z-alert/30 hover:bg-z-alert/10")}
                 onClick={handleSaveForSupport}
                 disabled={savingForSupport}
               >
@@ -472,6 +477,7 @@ export function StepUpload({
               <Button
                 size="sm"
                 variant="ghost"
+                className={GHOST_BUTTON_CLASS}
                 onClick={() => setUnsupportedFile(null)}
                 disabled={savingForSupport}
               >
