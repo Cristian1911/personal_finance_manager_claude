@@ -125,6 +125,16 @@
 
 ## Tech Debt
 
+### Clean up corrupted `pending_email_statements` storage rows (pre-Buffer-pool-fix)
+- **Priority:** Medium
+- **What:** Rows created before the Buffer-pool fix (commit `92555b4`, branch `claude/fix-pdf-email-delivery-Jwhzp`) have 8KB of Node pool garbage stored at `storage_path` in the `email-pdfs` bucket instead of the real PDF. They will never parse — even via `retryPdfParsing` — because the stored blob doesn't start with `%PDF`. One-shot cleanup:
+  1. Find `pending_email_statements` rows with `status IN ('pdf_queued','pdf_parse_failed','parse_failed')` AND `created_at < <deploy-timestamp-of-fix>`.
+  2. `admin.storage.from("email-pdfs").remove([storage_path])` for each.
+  3. Set `status = 'parse_failed'`, `error_message = 'Archivo corrupto — vuelve a reenviar el correo'` so the UI guides users to re-send rather than loop on retry.
+- **Why:** Surfaces the issue cleanly; re-sending the email produces a new row with a correct idempotency hash, so there's no collision with the old broken row.
+- **Touches:** One-shot admin script or migration with a pl/pgsql DO block + storage cleanup via service-role.
+- **Found:** import-flow-doctor review of Buffer-pool fix, 2026-04-17
+
 ### `useRecurringMonth` callbacks use `router.refresh()` instead of `startTransition`
 - **Priority:** Medium
 - **What:** All three callbacks in `use-recurring-month.ts` (`confirmPayment`, `skipPayment`, `linkExisting`) call `router.refresh()` after the server action. Should wrap in `startTransition` instead — `router.refresh()` is a redundant network round-trip.
