@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, ShieldCheck } from "lucide-react";
 import { getPendingScreenshotFile } from "@/components/mobile/mobile-sheet-provider";
+import { markEmailPdfStatementImported } from "@/actions/email-pdf-ingest";
 import type { Account, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 import type { DestinatarioRule } from "@zeta/shared";
 import type {
@@ -49,14 +50,22 @@ export function ImportWizard({
   categories,
   destinatarioRules,
   initialFile,
+  initialParseResult,
+  pendingEmailStatementId,
+  onImportedFromEmail,
 }: {
   accounts: Account[];
   categories: CategoryWithChildren[];
   destinatarioRules: DestinatarioRule[];
   initialFile?: File | null;
+  initialParseResult?: ParseResponse | null;
+  pendingEmailStatementId?: string | null;
+  onImportedFromEmail?: (id: string) => void;
 }) {
-  const [step, setStep] = useState<Step>("upload");
-  const [parseResult, setParseResult] = useState<ParseResponse | null>(null);
+  const [step, setStep] = useState<Step>(initialParseResult ? "review" : "upload");
+  const [parseResult, setParseResult] = useState<ParseResponse | null>(
+    initialParseResult ?? null,
+  );
   const [mappings, setMappings] = useState<StatementAccountMapping[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [accountsList, setAccountsList] = useState<Account[]>(accounts);
@@ -65,6 +74,7 @@ export function ImportWizard({
   const [reconciliationPreview, setReconciliationPreview] =
     useState<ReconciliationPreviewResult | null>(null);
   const [activeDestinatarioRules, setActiveDestinatarioRules] = useState<DestinatarioRule[]>(destinatarioRules);
+  const activeEmailStatementIdRef = useRef<string | null>(pendingEmailStatementId ?? null);
 
   const currentIndex = STEPS.findIndex((s) => s.key === step);
   const currentStep = STEPS[currentIndex];
@@ -96,6 +106,22 @@ export function ImportWizard({
       success: true,
     });
   }, []);
+
+  // Seed the wizard from a pre-parsed email statement when the parent
+  // selects one. Auto-match accounts and jump directly to the review step.
+  useEffect(() => {
+    if (initialParseResult && pendingEmailStatementId) {
+      setParseResult(initialParseResult);
+      setMappings(autoMatchAccounts(initialParseResult, accountsList));
+      setImportResult(null);
+      setPreparedTransactions([]);
+      setPreparedStatementMeta([]);
+      setReconciliationPreview(null);
+      setStep("review");
+      activeEmailStatementIdRef.current = pendingEmailStatementId;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialParseResult, pendingEmailStatementId]);
 
   function autoMatchAccounts(
     result: ParseResponse,
@@ -176,6 +202,16 @@ export function ImportWizard({
   function handleImportComplete(result: ImportResult) {
     setImportResult(result);
     setStep("results");
+
+    const emailId = activeEmailStatementIdRef.current;
+    if (emailId && (result.imported > 0 || result.autoMerged > 0 || result.manualMerged > 0)) {
+      activeEmailStatementIdRef.current = null;
+      void markEmailPdfStatementImported(emailId).then((res) => {
+        if (res.success) {
+          onImportedFromEmail?.(emailId);
+        }
+      });
+    }
   }
 
   function handlePrepared(payload: {
@@ -197,6 +233,7 @@ export function ImportWizard({
     setPreparedTransactions([]);
     setPreparedStatementMeta([]);
     setReconciliationPreview(null);
+    activeEmailStatementIdRef.current = null;
   }
 
   return (
