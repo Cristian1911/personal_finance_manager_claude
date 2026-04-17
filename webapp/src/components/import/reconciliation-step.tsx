@@ -73,6 +73,7 @@ export function ReconciliationStep({
   statementMeta,
   preview,
   currency,
+  captureMethod,
   onComplete,
   onBack,
 }: {
@@ -80,6 +81,7 @@ export function ReconciliationStep({
   statementMeta: StatementMetaForImport[];
   preview: ReconciliationPreviewResult;
   currency: CurrencyCode;
+  captureMethod?: "PDF_IMPORT" | "EMAIL_PDF_IMPORT";
   onComplete: (result: ImportResult) => void;
   onBack: () => void;
 }) {
@@ -115,8 +117,9 @@ export function ReconciliationStep({
         transactions,
         statementMeta,
         reconciliationDecisions,
+        captureMethod,
       }),
-    [transactions, statementMeta, reconciliationDecisions]
+    [transactions, statementMeta, reconciliationDecisions, captureMethod]
   );
 
   const [state, formAction, pending] = useActionState<ActionResult<ImportResult>, FormData>(
