@@ -6,12 +6,14 @@ import { PendingEmailStatements } from "@/components/import/pending-email-statem
 import type { Account, CategoryWithChildren, PendingEmailStatement } from "@/types/domain";
 import type { DestinatarioRule } from "@zeta/shared";
 import type { ParsedStatement, ParseResponse } from "@/types/import";
+import type { PdfPasswordSuggestion } from "@/actions/pdf-passwords";
 
 interface Props {
   accounts: Account[];
   categories: CategoryWithChildren[];
   destinatarioRules: DestinatarioRule[];
   pendingStatements: PendingEmailStatement[];
+  initialVaultSuggestions?: PdfPasswordSuggestion[];
 }
 
 export function ImportPageClient({
@@ -19,6 +21,7 @@ export function ImportPageClient({
   categories,
   destinatarioRules,
   pendingStatements: initialPending,
+  initialVaultSuggestions,
 }: Props) {
   const [pendingStatements, setPendingStatements] = useState(initialPending);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -65,6 +68,7 @@ export function ImportPageClient({
           initialParseResult={selectedParseResult}
           pendingEmailStatementId={selectedId}
           onImportedFromEmail={handleImportedFromEmail}
+          initialVaultSuggestions={initialVaultSuggestions}
         />
       </div>
     </>

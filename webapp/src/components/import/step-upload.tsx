@@ -1,10 +1,36 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2, ImageIcon } from "lucide-react";
+import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2, ImageIcon, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { ParseResponse } from "@/types/import";
 import { trackClientEvent } from "@/lib/utils/analytics";
+import {
+  suggestPdfPasswordsForAccount,
+  createPdfPassword,
+  type PdfPasswordSuggestion,
+} from "@/actions/pdf-passwords";
+import { toast } from "sonner";
+
+const BANK_KEY_OVERRIDES: Record<string, string> = {
+  banco_popular: "popular",
+  cooperativa_confiar: "confiar",
+};
+
+function normalizeBankToKey(bank: string | undefined | null): string | null {
+  if (!bank) return null;
+  const lower = bank.toLowerCase();
+  return BANK_KEY_OVERRIDES[lower] ?? lower.replace(/_/g, "-");
+}
 
 const PDF_EXTENSIONS = new Set([".pdf"]);
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
@@ -27,12 +53,20 @@ function isPdfFile(name: string): boolean {
 export function StepUpload({
   onParsed,
   initialFile,
+  initialVaultSuggestions,
 }: {
   onParsed: (data: ParseResponse) => void;
   initialFile?: File | null;
+  initialVaultSuggestions?: PdfPasswordSuggestion[];
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
+  const [passwordFromVault, setPasswordFromVault] = useState(false);
+  const [savePassword, setSavePassword] = useState(false);
+  const [saveAlias, setSaveAlias] = useState("");
+  const [vaultSuggestions, setVaultSuggestions] = useState<PdfPasswordSuggestion[]>(
+    initialVaultSuggestions ?? []
+  );
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +75,18 @@ export function StepUpload({
   const [savedForSupport, setSavedForSupport] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const initialFileProcessed = useRef(false);
+
+  useEffect(() => {
+    if (initialVaultSuggestions) return;
+    let cancelled = false;
+    suggestPdfPasswordsForAccount(null, null).then((suggestions) => {
+      if (cancelled) return;
+      setVaultSuggestions(suggestions);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialVaultSuggestions]);
 
   async function handleSaveForSupport() {
     if (!unsupportedFile) return;
@@ -193,6 +239,34 @@ export function StepUpload({
           has_metadata: hasMetadata,
         },
       });
+
+      if (savePassword && password && !passwordFromVault && saveAlias.trim()) {
+        const bankKey = normalizeBankToKey(parsed.statements[0]?.bank);
+        const fd = new FormData();
+        fd.append("alias", saveAlias.trim());
+        fd.append("password", password);
+        if (bankKey) {
+          fd.append("scope", "bank");
+          fd.append("bank_key", bankKey);
+        } else {
+          fd.append("scope", "global");
+        }
+        const saveResult = await createPdfPassword(
+          { success: false, error: "" },
+          fd
+        );
+        if (saveResult.success) {
+          toast.success("Contraseña guardada en tu bóveda");
+        } else if (
+          saveResult.error &&
+          /alias|alcance/i.test(saveResult.error)
+        ) {
+          toast.info("Ya tenías esta contraseña guardada");
+        } else {
+          toast.error(saveResult.error ?? "No se pudo guardar la contraseña");
+        }
+      }
+
       onParsed(data as ParseResponse);
     } catch {
       void trackClientEvent({
@@ -239,8 +313,9 @@ export function StepUpload({
           </p>
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
+          className={GHOST_BUTTON_CLASS}
           onClick={() => inputRef.current?.click()}
         >
           Seleccionar archivo
@@ -271,7 +346,11 @@ export function StepUpload({
                 {(file.size / 1024).toFixed(0)} KB
               </p>
             </div>
-            <Button onClick={handleUpload} disabled={loading}>
+            <Button
+              className={BRASS_BUTTON_CLASS}
+              onClick={handleUpload}
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -291,14 +370,78 @@ export function StepUpload({
                     type="password"
                     placeholder="Contraseña del PDF (opcional)"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordFromVault(false);
+                    }}
                     className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                     autoComplete="off"
                   />
                 </div>
+                {vaultSuggestions.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className={cn(GHOST_BUTTON_CLASS, "shrink-0")}
+                      >
+                        <KeyRound className="h-4 w-4" />
+                        Usar guardada
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {vaultSuggestions.map((sug) => (
+                        <DropdownMenuItem
+                          key={sug.id}
+                          onSelect={() => {
+                            setPassword(sug.password);
+                            setPasswordFromVault(true);
+                            setSavePassword(false);
+                          }}
+                        >
+                          <span className="truncate">{sug.alias}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {sug.scope === "account"
+                              ? "cuenta"
+                              : sug.scope === "bank"
+                              ? sug.bank_key
+                              : "global"}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
+              {password && !passwordFromVault && (
+                <div className="rounded-md border border-dashed border-white/10 p-3 space-y-2">
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={savePassword}
+                      onChange={(e) => setSavePassword(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border border-white/6"
+                    />
+                    Guardar esta contraseña en la bóveda para próximos extractos
+                  </label>
+                  {savePassword && (
+                    <Input
+                      placeholder="Alias (ej: Cédula Cristian)"
+                      value={saveAlias}
+                      onChange={(e) => setSaveAlias(e.target.value)}
+                      maxLength={60}
+                      className="h-8 text-sm"
+                    />
+                  )}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 Algunos extractos están protegidos con contraseña (ej. número de cédula).
+                {vaultSuggestions.length > 0 && (
+                  <> Tienes {vaultSuggestions.length} guardada{vaultSuggestions.length === 1 ? "" : "s"}.</>
+                )}
               </p>
             </>
           )}
@@ -333,8 +476,8 @@ export function StepUpload({
             <div className="flex gap-2">
               <Button
                 size="sm"
-                variant="outline"
-                className="border-z-alert/30 hover:bg-z-alert/10"
+                variant="ghost"
+                className={cn(GHOST_BUTTON_CLASS, "!border-z-alert/30 hover:!bg-z-alert/10")}
                 onClick={handleSaveForSupport}
                 disabled={savingForSupport}
               >
@@ -350,6 +493,7 @@ export function StepUpload({
               <Button
                 size="sm"
                 variant="ghost"
+                className={GHOST_BUTTON_CLASS}
                 onClick={() => setUnsupportedFile(null)}
                 disabled={savingForSupport}
               >

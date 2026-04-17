@@ -54,6 +54,18 @@
 
 ## Features
 
+### Import wizard — attach pattern to existing destinatario
+- **Priority:** Medium
+- **What:** Step 3 (Destinatarios) of `/import` only offers "Crear destinatario" on each unmatched suggestion. When the cleaned pattern is actually a spelling variant of a destinatario that already exists (e.g., `Rappi Colombia*Dl` vs existing `rappi colombia`), the only recoverable path today is to skip, finish the import, then edit patterns at `/destinatarios`. Add a second action to every suggestion card: "Asignar a destinatario existente" → opens a picker (reuse the zone-picker pattern), on confirm appends the pattern to that destinatario's `destinatario_patterns`, refreshes the in-memory `destinatarioRules`, re-runs `matchDestinatario`, and collapses the suggestion. Optional polish: sort the picker by match score or by destinatario-spend to surface the likely target first.
+- **Touches:** new server action `addPatternToDestinatario(destinatarioId, pattern)` in `actions/destinatarios.ts` (insert into `destinatario_patterns` with `match_type: "contains"`, `priority: 100`; `updateTag("destinatarios")`); `step-destinatarios.tsx` UI (picker + wiring); `import-wizard.tsx` passes the updated rules so later steps use them.
+- **Found:** User feedback during Nu import session, 2026-04-17
+
+### ~~Disable browser autofill/autocomplete on app inputs~~ — DONE 2026-04-17
+- Shipped: `ui/input.tsx` defaults `autoComplete/autoCorrect/spellCheck` to off (overridable). Auth forms keep their semantic `autoComplete` hints. Raw `<textarea>` fields in bug-report and deseos got `autoComplete="off"`. `ui/currency-input.tsx` now hardcodes off since the raw `<input>` in that component bypasses the wrapper.
+
+### ~~PDF password vault — per-bank/per-account passwords with aliases~~ — DONE 2026-04-17
+- Shipped: migration `20260417143333_create_pdf_passwords_encrypted.sql` (encrypted `alias` + `password` with scope pairing CHECK). Server actions in `webapp/src/actions/pdf-passwords.ts` — list, suggest, create, update, delete. Settings UI `PdfPasswordsCard`. Upload step: "Usar guardada" dropdown (uses suggestions ranked account > bank > global) + inline "Guardar esta contraseña" checkbox (auto-infers bank scope from parser's `bank` label). `accounts.pdf_password` still mirrored on scope=account so email ingest keeps working. Follow-ups deferred: secure "copy password" affordance in settings list, and account-scope picker on the upload step once the account is known earlier.
+
 ### Promote transaction → recurring template ("Hacer recurrente" CTA)
 - **Priority:** High
 - **What:** Add a "Hacer recurrente" action on `/transactions/[id]` (and ideally the 3-dot menu on list rows) that opens the existing `RecurringFormDialog` pre-filled with the transaction's merchant, amount, account, category, destinatario, and a monthly-frequency default. On confirm, create a `recurring_templates` row with `start_date` = the transaction's date so the occurrence engine generates this month + future pendings; the source transaction auto-links to the current occurrence via `findMatchingOccurrence()`.

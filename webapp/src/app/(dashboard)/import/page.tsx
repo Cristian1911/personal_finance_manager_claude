@@ -5,6 +5,7 @@ import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getDestinatarioRules } from "@/actions/destinatarios";
 import { getPendingEmailStatements } from "@/actions/email-pdf-ingest";
+import { suggestPdfPasswordsForAccount } from "@/actions/pdf-passwords";
 import { ImportPageClient } from "@/components/import/import-page-client";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { Button } from "@/components/ui/button";
@@ -14,11 +15,12 @@ import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 
 export default async function ImportPage() {
   await connection();
-  const [accountResult, categoryResult, rulesResult, pendingStatementsResult] = await Promise.all([
+  const [accountResult, categoryResult, rulesResult, pendingStatementsResult, vaultSuggestions] = await Promise.all([
     getAccounts(),
     getCategories(),
     getDestinatarioRules(),
     getPendingEmailStatements(),
+    suggestPdfPasswordsForAccount(null, null),
   ]);
   const accounts = accountResult.success ? accountResult.data : [];
   const categories = categoryResult.success ? categoryResult.data : [];
@@ -127,6 +129,7 @@ export default async function ImportPage() {
         categories={categories}
         destinatarioRules={destinatarioRules}
         pendingStatements={pendingStatements}
+        initialVaultSuggestions={vaultSuggestions}
       />
 
       {/* Mobile: collapsible info section */}

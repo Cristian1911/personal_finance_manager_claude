@@ -111,6 +111,7 @@ export function DeseosEnrichDrawer({
               rows={2}
               maxLength={500}
               placeholder="Describe tu motivacion..."
+              autoComplete="off"
               className="w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-z-brass focus:outline-none"
             />
           </div>
