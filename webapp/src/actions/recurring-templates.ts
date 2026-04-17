@@ -10,14 +10,14 @@ import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
-import { ensureCurrentOccurrences } from "@/actions/occurrences";
+import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
   getOccurrencesBetween,
   getNextOccurrence,
   TRANSFER_CATEGORY_ID,
   getDebtPaymentCategoryId,
 } from "@zeta/shared";
-import { addDays } from "date-fns";
+import { addDays, endOfMonth, startOfMonth } from "date-fns";
 import { toISODateString } from "@/lib/utils/date";
 import { z } from "zod";
 import { uuidStr } from "@/lib/validators/shared";
@@ -252,14 +252,14 @@ export async function getRecurringTemplate(
   }
 }
 
-export async function createRecurringTemplate(
-  _prevState: ActionResult<RecurringTemplate>,
-  formData: FormData
+// Shared body for the two create-template actions. Parses + validates form
+// data, verifies the account, applies DEBT-account normalization, and inserts.
+// Omits sub_payments when null to sidestep stale PostgREST schema caches.
+async function insertRecurringTemplateFromFormData(
+  formData: FormData,
+  user: { id: string },
+  supabase: SupabaseClient<Database>,
 ): Promise<ActionResult<RecurringTemplate>> {
-  const { supabase, user } = await getAuthenticatedClient();
-
-  if (!user) return { success: false, error: "No autenticado" };
-
   const parsed = recurringTemplateSchema.safeParse({
     account_id: formData.get("account_id"),
     transfer_source_account_id: formData.get("transfer_source_account_id") || undefined,
@@ -310,25 +310,95 @@ export async function createRecurringTemplate(
     ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
     : null;
 
+  const insertPayload: Database["public"]["Tables"]["recurring_transaction_templates"]["Insert"] = {
+    user_id: user.id,
+    ...payload,
+    ...(subPaymentsValue !== null ? { sub_payments: subPaymentsValue } : {}),
+  };
+
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
-    .insert({
-      user_id: user.id,
-      ...payload,
-      sub_payments: subPaymentsValue,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
   if (error) return { success: false, error: error.message };
+  return { success: true, data };
+}
+
+export async function createRecurringTemplate(
+  _prevState: ActionResult<RecurringTemplate>,
+  formData: FormData
+): Promise<ActionResult<RecurringTemplate>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const result = await insertRecurringTemplateFromFormData(formData, user, supabase);
+  if (!result.success) return result;
 
   await ensureCurrentOccurrences();
+  // Full fan-out: a new template affects charts, budgets, debt projections,
+  // and account metrics — not just recurring/occurrences.
+  revalidateFinancialViews();
+  return result;
+}
 
-  updateTag("recurring");
-  updateTag("occurrences");
-  updateTag("dashboard:hero");
-  updateTag("attention");
-  return { success: true, data };
+export async function createRecurringTemplateFromTransaction(
+  transactionId: string,
+  _prevState: ActionResult<RecurringTemplate>,
+  formData: FormData,
+): Promise<ActionResult<RecurringTemplate>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Tx lookup + existing-link check in parallel — both only need user.id.
+  // Link column lives on the occurrence side (recurring_occurrences.transaction_id).
+  const [txRes, linkRes] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("id, account_id, amount, direction, transaction_date")
+      .eq("id", transactionId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("recurring_occurrences")
+      .select("id")
+      .eq("transaction_id", transactionId)
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (txRes.error || !txRes.data) {
+    return { success: false, error: "Transacción no encontrada" };
+  }
+  if (linkRes.data) {
+    return { success: false, error: "Esta transacción ya está vinculada a una recurrente." };
+  }
+
+  const tx = txRes.data;
+  const result = await insertRecurringTemplateFromFormData(formData, user, supabase);
+  if (!result.success) return result;
+
+  // Widen the generator window to cover the tx's date — otherwise a tx from
+  // a previous month fails to auto-link (findMatchingOccurrence uses ±3 days
+  // around tx.transaction_date). linkTransactionToOccurrence → markOccurrencePaid
+  // flips the occurrence to paid; no-op when no match.
+  const txDate = new Date(`${tx.transaction_date}T12:00:00`);
+  const now = new Date();
+  const rangeStart = startOfMonth(txDate < now ? txDate : now);
+  const rangeEnd = addDays(endOfMonth(now), 14);
+  await ensureOccurrencesForRange(rangeStart, rangeEnd);
+  await linkTransactionToOccurrence(
+    tx.account_id,
+    tx.transaction_date,
+    tx.amount,
+    tx.direction,
+    tx.id,
+  );
+
+  revalidateFinancialViews();
+  return result;
 }
 
 export async function updateRecurringTemplate(
@@ -390,12 +460,15 @@ export async function updateRecurringTemplate(
     ? (sub_payments as unknown as Database["public"]["Tables"]["recurring_transaction_templates"]["Row"]["sub_payments"])
     : null;
 
+  // Omit sub_payments when null — sidesteps stale PostgREST schema caches.
+  const updatePayload: Database["public"]["Tables"]["recurring_transaction_templates"]["Update"] = {
+    ...payload,
+    ...(subPaymentsValue !== null ? { sub_payments: subPaymentsValue } : {}),
+  };
+
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
-    .update({
-      ...payload,
-      sub_payments: subPaymentsValue,
-    })
+    .update(updatePayload)
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
@@ -405,10 +478,9 @@ export async function updateRecurringTemplate(
 
   await ensureCurrentOccurrences();
 
-  updateTag("recurring");
-  updateTag("occurrences");
-  updateTag("dashboard:hero");
-  updateTag("attention");
+  // Full fan-out: template edits affect charts, budgets, debt projections,
+  // and account metrics — not just recurring/occurrences.
+  revalidateFinancialViews();
   return { success: true, data };
 }
 

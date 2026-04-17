@@ -168,7 +168,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<CaptureRe
       provider: "MANUAL",
       capture_method: "TEXT_QUICK_CAPTURE",
       capture_input_text,
-      is_subscription: false,
       categorization_source: categorizationSource,
     })
     .select("id, amount, direction, merchant_name, category_id, account_id, transaction_date")

@@ -126,7 +126,6 @@ async function persistParsedEmail(params: {
       idempotency_key: idempotencyKey,
       provider: "EMAIL",
       capture_method: "EMAIL_IMPORT",
-      is_subscription: false,
       categorization_source: categorizationSource,
       status: "POSTED",
     }).select("id").single();
@@ -733,7 +732,6 @@ export async function approveEmailTransaction(
       category_id: categoryId,
       categorization_source: categorizationSource,
       destinatario_id: destinatarioId,
-      is_subscription: false,
       status: "POSTED",
     })
     .select("id, category_id, categorization_source, notes")

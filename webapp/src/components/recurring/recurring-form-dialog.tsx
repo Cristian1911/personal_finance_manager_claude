@@ -11,10 +11,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { RecurringForm } from "./recurring-form";
 import { Plus } from "lucide-react";
+import type { ActionResult } from "@/types/actions";
 import type { Account, CategoryWithChildren, RecurringTemplate } from "@/types/domain";
+
+type RecurringFormAction = (
+  prevState: ActionResult<RecurringTemplate>,
+  formData: FormData,
+) => Promise<ActionResult<RecurringTemplate>>;
 
 export function RecurringFormDialog({
   template,
+  initialValues,
+  actionOverride,
   accounts,
   categories,
   trigger,
@@ -22,6 +30,8 @@ export function RecurringFormDialog({
   onClose,
 }: {
   template?: RecurringTemplate;
+  initialValues?: Partial<RecurringTemplate>;
+  actionOverride?: RecurringFormAction;
   accounts: Account[];
   categories: CategoryWithChildren[];
   trigger?: React.ReactNode;
@@ -56,6 +66,8 @@ export function RecurringFormDialog({
         </DialogHeader>
         <RecurringForm
           template={template}
+          initialValues={initialValues}
+          actionOverride={actionOverride}
           accounts={accounts}
           categories={categories}
           onSuccess={() => setOpen(false)}

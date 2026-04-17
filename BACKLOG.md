@@ -10,6 +10,44 @@
 
 ---
 
+## Bugs
+
+### Dashboard "Ritmo" chip shows dead-end empty state when expanded
+- **Priority:** Medium
+- **What:** `inicio-metrics-grid.tsx` — when `burnRateData` is null (no CHECKING/SAVINGS accounts OR no OUTFLOW tx in base currency in the last 3 months), expanding the Ritmo chip shows only "Sin datos de ritmo suficientes". The ring itself always renders (it uses calendar % `dayOfMonth/daysInMonth`, independent of financial data), which makes the empty state feel like a bug. Replace with an actionable message ("Importa transacciones recientes para ver tu ritmo" + link to /transactions/new) and investigate why `getBurnRate()` returns null for this user (likely currency mismatch between base currency and the existing tx currency, or genuinely no outflows in the 3-month window).
+- **Touches:** `webapp/src/components/mobile/v2/inicio/inicio-metrics-grid.tsx:165-169`; possibly `webapp/src/actions/burn-rate.ts` if the null-return logic should be more forgiving.
+- **Found:** User feedback, 2026-04-17
+
+### Account detail — "Ajustar" button does nothing when clicked
+- **Priority:** High
+- **What:** On `/accounts/[id]`, the "Ajustar" button is unresponsive — no dialog, no navigation, no toast. Likely a broken handler or a conditional render gating the dialog's open state. Needs repro + trace of the click event.
+- **Touches:** Almost certainly `webapp/src/app/(dashboard)/accounts/[id]/page.tsx` or a child action component (QuickActionsBar / account hero).
+- **Found:** User feedback, 2026-04-17
+
+### Promote-to-recurring — success state undersells the outcome
+- **Priority:** Medium
+- **What:** After promoting a tx, the CTA collapses to a muted grey "Ya es recurrente" badge. User just created a template + linked this tx as paid — but has no signal that a future payment is now scheduled or where to find it. Options: (a) toast on success with the next occurrence date ("Recurrente creada · Próxima: 15 mayo"), (b) badge gains a subtle link to `/plan?tab=recurrentes&template=<id>`, (c) on submit redirect to `/plan?tab=recurrentes&highlight=<template_id>` with a flash highlight.
+- **Found:** ux-analyst review, 2026-04-17
+
+### Tx detail hero — Promote vs Edit visual weight inversion
+- **Priority:** Low
+- **What:** Edit uses the default brass `<Button>`, Promote uses `variant="ghost"`. Promotion is a more consequential action than editing one field. Either swap weights or make both ghost and let Delete remain the icon action.
+- **Touches:** `webapp/src/components/transactions/transaction-form-dialog.tsx`, `webapp/src/components/transactions/promote-to-recurring-button.tsx`.
+- **Found:** ux-analyst review, 2026-04-17
+
+### Inline Promote dialog inside Vincular drawer
+- **Priority:** Low
+- **What:** Today "Crear nueva recurrente" navigates to `/transactions/[id]?promote=1` instead of opening the dialog inline in the drawer. Code cost is small (`RecurringFormDialog` already accepts `controlledOpen`). Would remove the full-page detour. Drawback: dialog-in-drawer is visually awkward on mobile and the detail page detour gives the user a landing destination.
+- **Found:** ux-analyst review, 2026-04-17
+
+### Recurrentes tab shows empty state despite 9 active templates
+- **Priority:** High (prod)
+- **What:** `/plan?tab=recurrentes` renders the hero `$0 · 0 pendientes · 0 completados` and the empty state "No hay pagos recurrentes este mes" even though "9 activas · 1 pausada" is shown in the MIS PLANTILLAS strip. Reproduced on production (main, not this branch). Hypotheses to check in order: (1) `ensureCurrentOccurrences()` is failing silently on page load, so `recurring_occurrences` has no rows for this month; (2) all active templates have a `start_date` in the future or `end_date` in the past that excludes them from the current-month generator; (3) post-merge migration 20260416120000 deleted loser templates but left orphan occurrence rows whose `template_id` now FKs into a deleted row, tripping the view join; (4) a timezone boundary bug where the month cursor and the DB's `occurrence_date` range differ.
+- **Repro:** Open `/plan?tab=recurrentes` on an account with known active templates. Confirm the ring counts are 0 while the strip claims 9+1 templates.
+- **Debug path:** SQL `SELECT count(*), status FROM recurring_occurrences WHERE user_id = <uid> AND occurrence_date BETWEEN '2026-04-01' AND '2026-04-30' GROUP BY status;`. If 0 rows, call `ensureCurrentOccurrences()` manually or inspect the function's logs. If rows exist, the client filter or date range is off.
+- **Touches:** `webapp/src/actions/occurrences.ts`, `webapp/src/components/recurring/use-recurring-month.ts`, `webapp/src/app/(dashboard)/plan/page.tsx`.
+- **Found:** User feedback, 2026-04-17
+
 ## Features
 
 ### Promote transaction → recurring template ("Hacer recurrente" CTA)

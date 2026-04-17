@@ -292,6 +292,28 @@ export async function getNextIncomeOccurrence(
   }
 }
 
+/**
+ * True iff a recurring_occurrences row already points to this transaction.
+ * Used by the "Hacer recurrente" CTA to hide itself when the tx is already
+ * promoted. Not cached — runs once per detail-page render inside Suspense.
+ */
+export async function isTransactionLinkedToOccurrence(
+  transactionId: string,
+): Promise<boolean> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return false;
+
+  const { data } = await supabase
+    .from("recurring_occurrences")
+    .select("id")
+    .eq("transaction_id", transactionId)
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  return !!data;
+}
+
 // ─── Public actions ───────────────────────────────────────────────────────────
 
 /**

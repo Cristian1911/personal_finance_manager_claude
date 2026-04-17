@@ -97,9 +97,6 @@ export function TransactionForm({
   const [categoryId, setCategoryId] = useState<string | null>(
     transaction?.category_id ?? null
   );
-  const [isSubscription, setIsSubscription] = useState(
-    transaction?.is_subscription ?? false
-  );
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [createDestinatarioSetup, setCreateDestinatarioSetup] = useState(false);
@@ -225,12 +222,6 @@ export function TransactionForm({
         name="currency_code"
         value={selectedAccount?.currency_code ?? transaction?.currency_code ?? "COP"}
       />
-      <input
-        type="hidden"
-        name="is_subscription"
-        value={isSubscription ? "true" : "false"}
-      />
-
       <div className="space-y-2">
         <Label htmlFor="merchant_name">Descripción / Comercio</Label>
         <Input
@@ -295,22 +286,6 @@ export function TransactionForm({
           name="notes"
           defaultValue={transaction?.notes ?? ""}
           placeholder="Nota opcional"
-        />
-      </div>
-
-      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
-        <div className="space-y-0.5 pr-4">
-          <Label htmlFor="is_subscription" className="cursor-pointer">
-            Marcar como suscripción
-          </Label>
-          <p className="text-xs text-muted-foreground">
-            Úsalo para pagos periódicos como streaming, software o membresías.
-          </p>
-        </div>
-        <Switch
-          id="is_subscription"
-          checked={isSubscription}
-          onCheckedChange={setIsSubscription}
         />
       </div>
 

@@ -733,7 +733,6 @@ async function processEmail(ctx: {
       idempotency_key: idempotencyKey,
       provider: "EMAIL",
       capture_method: "EMAIL_IMPORT",
-      is_subscription: false,
       categorization_source: categorizationSource,
       status: "POSTED",
     }).select("id").single();
