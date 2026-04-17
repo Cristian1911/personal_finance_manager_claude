@@ -1,28 +1,5 @@
-interface BrandMarkProps {
-  className?: string;
-  "aria-hidden"?: boolean;
-}
+import { LetterMark } from "./letter-mark";
 
-export function NequiMark({ className, "aria-hidden": ariaHidden = true }: BrandMarkProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden={ariaHidden}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect width="24" height="24" rx="5" fill="#C03BD9" />
-      <text
-        x="12"
-        y="17"
-        textAnchor="middle"
-        fontFamily="system-ui, sans-serif"
-        fontWeight="700"
-        fontSize="14"
-        fill="#FFFFFF"
-      >
-        N
-      </text>
-    </svg>
-  );
+export function NequiMark(props: { className?: string; "aria-hidden"?: boolean }) {
+  return <LetterMark bg="#C03BD9" letter="N" {...props} />;
 }

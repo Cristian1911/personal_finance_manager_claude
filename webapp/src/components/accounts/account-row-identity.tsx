@@ -31,10 +31,14 @@ const BANK_PREFIX_BY_KEY: Record<string, RegExp> = {
   nequi: /^nequi\s+/i,
 };
 
+const TRAILING_MASK_RE = /\s*·?\s*\*{2,}(\d{2,})\s*$/;
+
 function trimDisplayName(name: string, bank_key: string | null, mask: string | null): string {
   let out = name.trim();
-  const maskRegex = mask ? new RegExp(`\\s*·?\\s*\\*{2,}${mask}\\s*$`) : null;
-  if (maskRegex) out = out.replace(maskRegex, "").trim();
+  if (mask) {
+    const m = out.match(TRAILING_MASK_RE);
+    if (m && m[1] === mask) out = out.slice(0, out.length - m[0].length).trim();
+  }
   if (bank_key) {
     const prefix = BANK_PREFIX_BY_KEY[bank_key];
     if (prefix) out = out.replace(prefix, "").trim();
