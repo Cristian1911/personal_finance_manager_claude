@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-04-17-promote-to-recurring-design.md`
 
+**Implementation note (deviation from spec):** The spec assumed the "is this tx already linked to a recurring occurrence?" check would read `transactions.recurring_occurrence_id`. That column does not exist — the link lives on the *occurrence* side as `recurring_occurrences.transaction_id`. The server action queries that table with `.eq("transaction_id", transactionId).limit(1)`, and the detail page fetches an `isLinkedToOccurrence` boolean via a new `isTransactionLinkedToOccurrence()` helper in `actions/occurrences.ts`, passing it to `PromoteToRecurringButton`.
+
 ---
 
 ## File Structure
