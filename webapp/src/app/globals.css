@@ -51,6 +51,7 @@
   --color-z-olive-deep: var(--z-olive-deep);
   --color-z-sage: var(--z-sage);
   --color-z-brass: var(--z-brass);
+  --color-z-brass-hot: var(--z-brass-hot);
   --color-z-sage-light: var(--z-sage-light);
   --color-z-sage-dark: var(--z-sage-dark);
   --color-z-white: var(--z-white);
@@ -72,6 +73,7 @@
   --z-olive-deep: #3F4632;
   --z-sage:       #768053;
   --z-brass:      #937844;
+  --z-brass-hot:  #B29256;
   --z-sage-light: #D9CCB9;
   --z-sage-dark:  #938C7E;
   --z-white:      #F6F0E3;
