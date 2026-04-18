@@ -1,19 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { PlanFlowChart } from "./plan-flow-chart";
 import { DragEnvelopeBoard } from "@/components/cashflow-planner/drag-envelope-board";
-import { EditEntryDialog } from "@/components/cashflow-planner/edit-entry-dialog";
-import { PayExpenseDialog } from "@/components/cashflow-planner/pay-expense-dialog";
 import type { PlanTimelineData } from "@/actions/plan-timeline";
-import type {
-  PeriodPlanData,
-  PlanningEntryWithRelations,
-} from "@/types/cashflow-planner";
+import type { PeriodPlanData } from "@/types/cashflow-planner";
 import type { Account, Category } from "@/types/domain";
 
 /** Accounts need account_type + current_balance for the pay dialog */
@@ -45,13 +39,6 @@ export function MobilePeriodoView({
 }: MobilePeriodoViewProps) {
   const { period, currency, total_expenses, total_assigned } = planData;
 
-  const [editTarget, setEditTarget] =
-    useState<PlanningEntryWithRelations | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [payTarget, setPayTarget] =
-    useState<PlanningEntryWithRelations | null>(null);
-  const [payDialogOpen, setPayDialogOpen] = useState(false);
-
   const percentAssigned =
     total_expenses > 0 ? Math.round((total_assigned / total_expenses) * 100) : 0;
 
@@ -65,12 +52,6 @@ export function MobilePeriodoView({
       : timelineData.dayOfMonth <= 20
         ? "Mitad de mes"
         : "Fin de mes";
-
-  const periodMonth = period.start_date.slice(0, 7);
-
-  // Silence unused-var complaints while the Pagar/Edit triggers are deferred to the board.
-  void setEditTarget;
-  void setPayTarget;
 
   return (
     <div className="space-y-4">
@@ -127,30 +108,12 @@ export function MobilePeriodoView({
         </span>
       </div>
 
-      {/* Unified drag board (replaces Ingresos + Gastos sections) */}
+      {/* Unified drag board — owns the Edit/Pay dialogs */}
       <DragEnvelopeBoard
         dndId="planner-mobile"
         data={planData}
         accounts={accounts}
         categories={categories}
-      />
-
-      {/* Dialogs kept for future re-wiring */}
-      <EditEntryDialog
-        entry={editTarget}
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        currency={currency}
-        accounts={accounts}
-        categories={categories}
-      />
-      <PayExpenseDialog
-        entry={payTarget}
-        open={payDialogOpen}
-        onOpenChange={setPayDialogOpen}
-        currency={currency}
-        accounts={accounts}
-        periodMonth={periodMonth}
       />
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { GripVertical, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Banknote, GripVertical, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +27,7 @@ export interface ExpenseCardDraggableProps {
   assignedAmount: number;
   onEdit?: (entry: PlanningEntryWithRelations) => void;
   onDelete?: (id: string) => void;
+  onPay?: (entry: PlanningEntryWithRelations) => void;
   onRestoClick?: (entry: PlanningEntryWithRelations) => void;
   /** Mobile long-press handler — triggered after 400ms pointer-hold. */
   onLongPress?: (entry: PlanningEntryWithRelations) => void;
@@ -39,6 +40,7 @@ export function ExpenseCardDraggable({
   assignedAmount,
   onEdit,
   onDelete,
+  onPay,
   onRestoClick,
   onLongPress,
 }: ExpenseCardDraggableProps) {
@@ -74,6 +76,8 @@ export function ExpenseCardDraggable({
     return {
       onPointerDown: (e: React.PointerEvent) => {
         if (e.pointerType !== "touch") return;
+        // Skip long-press when fully assigned — the overlay would show "$ 0" hints.
+        if (remainder <= 0) return;
         timer = setTimeout(() => {
           onLongPress?.(entry);
           clear();
@@ -172,6 +176,12 @@ export function ExpenseCardDraggable({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {onPay && entry.status !== "COMPLETED" && (
+            <DropdownMenuItem onClick={() => onPay(entry)} className="text-z-brass focus:text-z-brass">
+              <Banknote className="mr-2 h-3.5 w-3.5" />
+              Pagar
+            </DropdownMenuItem>
+          )}
           {onEdit && (
             <DropdownMenuItem onClick={() => onEdit(entry)}>
               <Pencil className="mr-2 h-3.5 w-3.5" />

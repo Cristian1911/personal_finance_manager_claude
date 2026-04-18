@@ -20,6 +20,7 @@ import { AssignmentPopover } from "./assignment-popover";
 import { LongPressOverlay } from "./long-press-overlay";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EditEntryDialog } from "./edit-entry-dialog";
+import { PayExpenseDialog } from "./pay-expense-dialog";
 import { AutoAssignButton } from "./auto-assign-button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { buildEnvelopeMaps } from "@/lib/utils/cashflow-planner";
@@ -37,16 +38,17 @@ import {
 import { formatCurrency } from "@/lib/utils/currency";
 import { Wallet, Receipt } from "lucide-react";
 import { toast } from "sonner";
-import type { Account, Category, PlanningEntryStatus } from "@/types/domain";
+import type { Category, PlanningEntryStatus } from "@/types/domain";
 import type {
   IncomeEnvelope,
   PeriodPlanData,
   PlanningEntryWithRelations,
 } from "@/types/cashflow-planner";
+import type { PlanAccount } from "@/components/mobile/v2/plan/mobile-periodo-view";
 
 interface DragEnvelopeBoardProps {
   data: PeriodPlanData;
-  accounts?: Pick<Account, "id" | "name" | "icon" | "color">[];
+  accounts?: PlanAccount[];
   categories?: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
   /** Stable DnD scope id — required when multiple instances mount in the same tree
    *  (e.g. mobile + desktop branches both CSS-hidden). Prevents `useId` drift during hydration. */
@@ -91,6 +93,9 @@ export function DragEnvelopeBoard({
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [editTarget, setEditTarget] = useState<PlanningEntryWithRelations | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [payTarget, setPayTarget] = useState<PlanningEntryWithRelations | null>(null);
+  const [payOpen, setPayOpen] = useState(false);
+  const periodMonth = period.start_date.slice(0, 7);
   const [splitTarget, setSplitTarget] = useState<{
     expense: PlanningEntryWithRelations;
     envelope: IncomeEnvelope;
@@ -394,6 +399,10 @@ export function DragEnvelopeBoard({
                     setEditOpen(true);
                   }}
                   onDelete={handleDeleteEntry}
+                  onPay={(e) => {
+                    setPayTarget(e);
+                    setPayOpen(true);
+                  }}
                   onRestoClick={handleLongPress}
                   onLongPress={handleLongPress}
                 />
@@ -436,6 +445,15 @@ export function DragEnvelopeBoard({
         currency={currency}
         accounts={accounts}
         categories={categories}
+      />
+
+      <PayExpenseDialog
+        entry={payTarget}
+        open={payOpen}
+        onOpenChange={setPayOpen}
+        currency={currency}
+        accounts={accounts}
+        periodMonth={periodMonth}
       />
 
       {splitTarget && (
