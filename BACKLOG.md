@@ -200,6 +200,15 @@
 
 ## Tech Debt
 
+### Planner drag-and-drop — deferred perf optimizations
+- **Priority:** Medium (mobile perf)
+- **What:** `feat/planner-drag-drop` shipped with pointer-tracking via ref + CSS transform (H1 in perf-auditor report), but three optimizations were deferred:
+  1. Wrap `JarSlot` + `ExpenseCardDraggable` in `React.memo` — board state changes (overJarId, splitTarget) still cascade into all children.
+  2. Stabilize long-press handlers in `expense-card-draggable.tsx` with `useCallback` + timer ref — current `makeLongPressHandlers()` allocates a new object per render, prop identity thrashes.
+  3. Dynamic import `DragEnvelopeBoard` in `plan-tab-periodo.tsx` + `mobile-periodo-view.tsx` — `@dnd-kit/core` (~42 KB) currently in initial `/plan` bundle; `next/dynamic` + `React.lazy` would defer until the `periodo` tab renders.
+- **Also deferred (server-action-reviewer):** `clampAssignmentAmount` signature fragility (single `maxAmount` collapses two sides — refactor to require both), Slider step precision for sub-100 foreign-currency amounts (USD/EUR fractional assignments).
+- **Found:** perf-auditor + server-action-reviewer review on feat/planner-drag-drop, 2026-04-18
+
 ### Tx detail — `router.refresh()` on tag picker close
 - **Priority:** Low
 - **What:** `transaction-detail-client.tsx` calls `router.refresh()` after the TagZonePicker drawer closes to sync `initialTags` from the server. Could be avoided by lifting `setTags` into a `onTagsChanged` callback that TagZonePicker invokes on add/remove, so the parent updates its local `tags` state optimistically and skips the round-trip.
