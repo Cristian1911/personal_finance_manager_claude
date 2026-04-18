@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zeta — Transaction Detail · Mobile-first Redesign</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --z-ink: #1a1d1a;
+    --z-obsidian: #121412;
+    --z-surface: #171A17;
+    --z-surface-2: #1E221E;
+    --z-surface-3: #262B26;
+    --z-brass: #c8b560;
+    --z-brass-10: rgba(200,181,96,0.10);
+    --z-brass-20: rgba(200,181,96,0.20);
+    --z-sage-light: #b0b89c;
+    --z-sage-dark: #7a8068;
+    --z-sage: #8ea882;
+    --z-income: #10b981;
+    --z-expense: #f59e0b;
+    --z-debt: #ef4444;
+    --z-indigo: #7c68ee;
+    --z-border: rgba(255,255,255,0.06);
+    --z-muted: rgba(255,255,255,0.50);
+    --z-white: #F6F0E3;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--z-obsidian);
+    color: #e0e0e0;
+    line-height: 1.5;
+    padding: 40px 24px 80px;
+  }
+  .page-wrapper { max-width: 1200px; margin: 0 auto; }
+  .page-header { text-align: center; margin-bottom: 48px; }
+  .page-header .date { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: var(--z-brass); margin-bottom: 12px; }
+  .page-header h1 { font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -0.02em; }
+  .page-header .subtitle { font-size: 14px; color: var(--z-sage-dark); max-width: 720px; margin: 0 auto; }
+
+  .section { margin-bottom: 64px; }
+  .section-number { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: var(--z-brass); margin-bottom: 6px; }
+  .section-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .section-desc { font-size: 13px; color: var(--z-sage-dark); max-width: 780px; margin-bottom: 24px; }
+
+  .phones-row { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+  .phone {
+    width: 320px; border-radius: 28px; border: 2px solid rgba(255,255,255,0.08);
+    background: var(--z-obsidian); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); flex-shrink: 0;
+  }
+  .phone.before { opacity: 0.85; }
+  .phone-label { padding: 8px 16px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; text-align: center; }
+  .phone-label.before-l { background: rgba(239,68,68,0.06); color: #f87171; }
+  .phone-label.after-l { background: rgba(16,185,129,0.06); color: #34d399; }
+  .phone-label.alt-l { background: rgba(200,181,96,0.08); color: var(--z-brass); }
+  .status-bar { height: 24px; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #fff; }
+  .phone-content { padding: 0; min-height: 620px; position: relative; }
+
+  /* Mobile sub-header */
+  .sub-header { padding: 10px 14px 8px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--z-border); }
+  .back-btn { width: 24px; height: 24px; border-radius: 8px; background: rgba(255,255,255,0.05); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; color: var(--z-muted); }
+  .sub-header-title { font-size: 13px; font-weight: 600; color: #fff; }
+
+  /* Hero */
+  .hero {
+    padding: 16px 16px 14px;
+    background: radial-gradient(circle at top left, rgba(200,181,96,0.08), transparent 45%), linear-gradient(180deg, rgba(26,29,26,0.9), rgba(18,20,18,0.95));
+    border-bottom: 1px solid var(--z-border);
+  }
+  .hero-pill-row { display: flex; gap: 6px; margin-bottom: 10px; }
+  .hero-pill {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em;
+    padding: 3px 8px; border-radius: 999px;
+  }
+  .hero-pill.income { background: rgba(16,185,129,0.14); color: var(--z-income); }
+  .hero-pill.expense { background: rgba(245,158,11,0.14); color: var(--z-expense); }
+  .hero-pill.pending { background: rgba(200,181,96,0.12); color: var(--z-brass); }
+  .hero-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .hero-amount { font-size: 32px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; margin-top: 8px; margin-bottom: 6px; }
+  .hero-amount.income { color: var(--z-income); }
+  .hero-amount.expense { color: var(--z-white); }
+  .hero-meta { font-size: 11px; color: var(--z-muted); display: flex; align-items: center; gap: 3px; }
+  .sep { color: rgba(255,255,255,0.18); padding: 0 4px; }
+
+  .section-block { padding: 14px 14px 2px; }
+  .section-eyebrow { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.22em; color: var(--z-sage-dark); margin-bottom: 8px; }
+
+  /* Field row */
+  .field { padding: 10px 0; border-top: 1px solid var(--z-border); }
+  .field:first-child { border-top: none; }
+  .field-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.22em;
+    color: var(--z-sage-dark); margin-bottom: 6px;
+  }
+
+  /* Inline category / destinatario pill */
+  .select-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px 6px 8px;
+    border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+    border: 1px solid transparent;
+  }
+  .select-pill .ic {
+    width: 18px; height: 18px; border-radius: 999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px;
+  }
+  .select-pill .chev { margin-left: 2px; opacity: 0.5; font-size: 12px; }
+  .select-pill.cat-filled { background: rgba(124,104,238,0.15); color: #9d8dff; }
+  .select-pill.cat-filled .ic { background: rgba(124,104,238,0.2); color: #b3a6ff; }
+  .select-pill.dest-filled { background: rgba(200,181,96,0.12); color: var(--z-brass); }
+  .select-pill.dest-filled .ic { background: rgba(200,181,96,0.18); color: var(--z-brass); }
+  .select-pill.empty {
+    background: rgba(255,255,255,0.03);
+    border-color: rgba(255,255,255,0.08);
+    color: var(--z-muted);
+  }
+  .select-pill.empty .ic { background: rgba(255,255,255,0.05); color: var(--z-muted); }
+
+  /* Tag chips */
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    background: rgba(200,181,96,0.12);
+    color: var(--z-brass);
+    border: 1px solid rgba(200,181,96,0.25);
+  }
+  .tag-chip .x { opacity: 0.55; font-size: 10px; }
+  .tag-chip.add {
+    background: rgba(255,255,255,0.03);
+    color: var(--z-muted);
+    border-color: rgba(255,255,255,0.08);
+  }
+
+  /* Notes inline */
+  .notes {
+    background: rgba(0,0,0,0.22);
+    border: 1px solid var(--z-border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-top: 2px;
+    font-size: 12px; color: #eee; min-height: 30px;
+  }
+  .notes.placeholder { color: var(--z-muted); font-style: italic; }
+
+  /* Disclosure */
+  .disclosure {
+    font-size: 11px; color: var(--z-muted);
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 10px;
+  }
+  .disclosure-body {
+    margin-top: 6px;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid var(--z-border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 10px;
+    color: #ccc;
+    word-break: break-all;
+  }
+
+  /* Action chip trio */
+  .action-chips { display: flex; gap: 8px; }
+  .action-chip {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 10px 10px;
+    border-radius: 10px;
+    font-size: 11px; font-weight: 600;
+    border: 1px solid var(--z-border);
+    background: rgba(255,255,255,0.04);
+    color: #eee;
+    white-space: nowrap;
+  }
+  .action-chip.brass-ghost {
+    background: rgba(200,181,96,0.08);
+    border-color: rgba(200,181,96,0.2);
+    color: var(--z-brass);
+  }
+  .action-chip.icon-only { flex: 0 0 44px; padding: 10px 0; }
+
+  /* Sticky Guardar bar */
+  .savebar {
+    position: sticky; bottom: 0;
+    background: rgba(18,20,18,0.95);
+    border-top: 1px solid var(--z-border);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    backdrop-filter: blur(8px);
+  }
+  .save-btn {
+    width: 100%;
+    background: var(--z-brass); color: var(--z-ink);
+    border: none; border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .save-btn.dirty-indicator::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--z-ink); opacity: 0.8;
+    display: inline-block; margin-right: 4px;
+  }
+  .save-btn.ghost {
+    background: rgba(255,255,255,0.06);
+    color: var(--z-muted);
+  }
+
+  /* Picker preview */
+  .picker-pop {
+    position: absolute;
+    background: var(--z-surface-2);
+    border: 1px solid var(--z-border);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .picker-pop .item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; font-size: 12px;
+    border-radius: 8px;
+  }
+  .picker-pop .item.selected { background: rgba(124,104,238,0.12); color: #b3a6ff; }
+  .picker-pop .item .ic {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: rgba(124,104,238,0.15); color: #b3a6ff;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 11px;
+  }
+
+  /* Before blocks */
+  .before-hero { padding: 14px; }
+  .before-pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .before-pill { font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--z-border); color: var(--z-sage-light); background: rgba(0,0,0,0.2); }
+  .before-pill.income { background: rgba(16,185,129,0.15); color: var(--z-income); border-color: transparent; }
+  .before-pill.confirm { background: rgba(255,255,255,0.05); color: #ccc; border-color: transparent; }
+  .before-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .before-meta-line { font-size: 11px; color: var(--z-muted); margin-bottom: 12px; }
+  .before-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .before-action { font-size: 11px; font-weight: 600; padding: 6px 12px; border-radius: 8px; background: var(--z-brass); color: var(--z-ink); border: none; }
+  .before-action.ghost { background: rgba(255,255,255,0.06); color: #eee; }
+  .before-action.icon { padding: 6px 8px; }
+  .before-stats { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 14px; }
+  .before-stat { background: rgba(0,0,0,0.2); border: 1px solid var(--z-border); border-radius: 12px; padding: 12px; }
+  .before-stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: var(--z-sage-dark); margin-bottom: 4px; }
+  .before-stat-value { font-size: 20px; font-weight: 680; }
+  .before-stat-desc { font-size: 10px; color: var(--z-muted); margin-top: 3px; }
+  .before-card { background: rgba(30,34,30,0.7); border: 1px solid var(--z-border); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .before-card-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .before-card-desc { font-size: 10px; color: var(--z-muted); margin-bottom: 12px; }
+  .before-picker-slot { background: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.1); border-radius: 10px; padding: 14px; font-size: 11px; color: var(--z-muted); text-align: center; }
+  .before-card-icon { width: 32px; height: 32px; border-radius: 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--z-border); display: inline-flex; align-items: center; justify-content: center; color: var(--z-brass); font-size: 14px; margin-right: 8px; }
+  .before-card-head { display: flex; align-items: flex-start; margin-bottom: 10px; }
+
+  /* Annotation / verdict */
+  .annotation {
+    margin: 20px auto 0; max-width: 820px;
+    padding: 12px 14px;
+    border-radius: var(--radius-xl);
+    background: rgba(200,181,96,0.05);
+    border-left: 2px solid var(--z-brass);
+    font-size: 12px; color: var(--z-sage-light);
+  }
+  .annotation strong { color: #fff; }
+  .annotation ul { padding-left: 18px; margin-top: 4px; }
+  .annotation li { margin-bottom: 3px; }
+
+  .verdict {
+    margin: 28px auto; max-width: 820px;
+    padding: 14px 16px;
+    border: 1px solid var(--z-border);
+    border-radius: var(--radius-xl);
+    background: rgba(30,34,30,0.5);
+  }
+  .verdict h3 { font-size: 14px; color: var(--z-brass); margin-bottom: 8px; }
+  .verdict p { font-size: 12px; color: var(--z-sage-light); line-height: 1.6; }
+
+  .legend { font-size: 10px; color: var(--z-sage-dark); margin: 0 auto 20px; max-width: 720px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="page-header">
+    <div class="date">2026 · 04 · 18 · final</div>
+    <h1>Transaction Detail — Inline pills + Chip trio</h1>
+    <div class="subtitle">
+      Final direction: inline pill selectors for Categoría + Destinatario, brass tag chips with
+      <code>× remove</code> + <code>+ etiqueta</code>, inline Notas (autosave on blur), chip trio for
+      Vincular / Hacer recurrente / Eliminar. Fully optimistic — no save button.
+    </div>
+  </div>
+
+  <!-- ───── Jobs-to-be-done ───── -->
+  <div class="section">
+    <div class="section-number">00 — Jobs-to-be-done</div>
+    <div class="section-title">What a user is here to do, ranked</div>
+    <ol style="font-size:14px; color:#ddd; padding-left:20px; line-height:1.8; max-width:720px;">
+      <li><strong>Verify</strong> — amount, date, merchant, account. Read-only at a glance.</li>
+      <li><strong>Fix classification</strong> — category, destinatario, tags. Dominant active job.</li>
+      <li><strong>Annotate or manage</strong> — note, promote to recurring, link, or delete.</li>
+    </ol>
+    <div class="annotation" style="margin-top:16px;">
+      <strong>Cut as ceremony:</strong> raw_description (technical — behind a disclosure), "Qué hacer aquí" copy, duplicate back pill, Estado + Fuente as full stat cards, two full cards for two pickers.
+    </div>
+  </div>
+
+  <!-- ───── BEFORE ───── -->
+  <div class="section">
+    <div class="section-number">01 — Baseline</div>
+    <div class="section-title">Before: desktop layout reflowed</div>
+    <div class="section-desc">On 390px wide: ~2600px of scroll. 4 stat cards stacked vertically. 2 full-chrome picker cards. Actions wrap onto 2 rows in the hero. "Qué hacer aquí" occupies a data slot with prose.</div>
+
+    <div class="phones-row">
+      <div class="phone before">
+        <div class="phone-label before-l">Before — current</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="sub-header">
+            <div class="back-btn">←</div>
+            <div class="sub-header-title">Detalle</div>
+          </div>
+          <div class="before-hero">
+            <div class="before-pill-row">
+              <span class="before-pill">← Volver a Movimientos</span>
+              <span class="before-pill income">Ingreso</span>
+              <span class="before-pill confirm">Confirmada</span>
+            </div>
+            <div class="before-title">Nómina Q2</div>
+            <div class="before-meta-line">15 abr 2026 · manual</div>
+            <div class="before-actions">
+              <button class="before-action">✎ Editar</button>
+              <button class="before-action ghost">↻ Hacer recurrente</button>
+              <button class="before-action ghost icon">🗑</button>
+            </div>
+            <div class="before-stats">
+              <div class="before-stat">
+                <div class="before-stat-label">↙ Monto</div>
+                <div class="before-stat-value" style="color:var(--z-income)">+$3.250.000</div>
+                <div class="before-stat-desc">Valor que realmente movió esta transacción.</div>
+              </div>
+              <div class="before-stat">
+                <div class="before-stat-label">Estado</div>
+                <div class="before-stat-value" style="font-size:16px;">Confirmada</div>
+                <div class="before-stat-desc">Contexto actual del movimiento.</div>
+              </div>
+              <div class="before-stat">
+                <div class="before-stat-label">Fuente</div>
+                <div class="before-stat-value" style="font-size:16px;">manual</div>
+                <div class="before-stat-desc">Origen con el que entró.</div>
+              </div>
+              <div class="before-stat">
+                <div class="before-stat-label">✓ Qué hacer aquí</div>
+                <div class="before-stat-desc">Editar, borrar o reasignar sin salir del flujo.</div>
+              </div>
+            </div>
+            <div class="before-card">
+              <div class="before-card-head">
+                <div class="before-card-icon">👤</div>
+                <div>
+                  <div class="before-card-title">Destinatario</div>
+                  <div class="before-card-desc">Ajusta la asociación comercial…</div>
+                </div>
+              </div>
+              <div class="before-picker-slot">Picker destinatario</div>
+            </div>
+            <div class="before-card">
+              <div class="before-card-head">
+                <div class="before-card-icon">🏷</div>
+                <div>
+                  <div class="before-card-title">Etiquetas</div>
+                  <div class="before-card-desc">Agrega contexto libre.</div>
+                </div>
+              </div>
+              <div class="before-picker-slot">Picker etiquetas</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── Final layout ───── -->
+  <div class="section">
+    <div class="section-number">02 — Final layout</div>
+    <div class="section-title">Hero · Clasificación · Notas · Acciones · Guardar</div>
+    <div class="section-desc">
+      Inline pills + chip trio in the body; Guardar pinned at the bottom. Three frames: default
+      (clean state), Categoría popover (picker open), and dirty state (edits made, Guardar turns brass).
+    </div>
+
+    <div class="phones-row">
+      <!-- Frame 1 — default clean state -->
+      <div class="phone">
+        <div class="phone-label after-l">Default view</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content" style="padding-bottom: 0;">
+          <div class="sub-header">
+            <div class="back-btn">←</div>
+            <div class="sub-header-title">Detalle</div>
+          </div>
+
+          <div class="hero">
+            <div class="hero-pill-row">
+              <span class="hero-pill expense">GASTO</span>
+            </div>
+            <div class="hero-title">Nu Colombia</div>
+            <div class="hero-amount expense">-$120.000</div>
+            <div class="hero-meta">
+              15 abr 2026
+              <span class="sep">·</span>
+              Nu ··5678
+              <span class="sep">·</span>
+              PDF
+            </div>
+          </div>
+
+          <div class="section-block">
+            <div class="section-eyebrow">Clasificación</div>
+            <div class="field">
+              <div class="field-label">Categoría</div>
+              <span class="select-pill cat-filled">
+                <span class="ic">⚡</span> Servicios públicos <span class="chev">↕</span>
+              </span>
+            </div>
+            <div class="field">
+              <div class="field-label">Destinatario</div>
+              <span class="select-pill dest-filled">
+                <span class="ic">👤</span> EPM Servicios <span class="chev">↕</span>
+              </span>
+            </div>
+            <div class="field">
+              <div class="field-label">Etiquetas</div>
+              <div class="tag-row">
+                <span class="tag-chip">Fijos <span class="x">×</span></span>
+                <span class="tag-chip">Marzo <span class="x">×</span></span>
+                <span class="tag-chip add">+ etiqueta</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <div class="section-eyebrow">Notas</div>
+            <div class="notes placeholder">Toca para agregar una nota…</div>
+            <div class="disclosure">▸ Ver descripción original</div>
+          </div>
+
+          <div class="section-block">
+            <div class="section-eyebrow">Acciones</div>
+            <div class="action-chips">
+              <div class="action-chip brass-ghost">↻ Hacer recurrente</div>
+              <div class="action-chip">🔗 Vincular</div>
+              <div class="action-chip icon-only">⋯</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Frame 2 — Categoría picker open -->
+      <div class="phone">
+        <div class="phone-label after-l">Categoría popover</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content" style="padding-bottom: 0; position: relative;">
+          <div class="sub-header">
+            <div class="back-btn">←</div>
+            <div class="sub-header-title">Detalle</div>
+          </div>
+          <div class="hero">
+            <div class="hero-pill-row"><span class="hero-pill expense">GASTO</span></div>
+            <div class="hero-title">Rappi Colombia*DL</div>
+            <div class="hero-amount expense">-$42.900</div>
+            <div class="hero-meta">16 abr 2026 <span class="sep">·</span> Bancolombia ··1234</div>
+          </div>
+          <div class="section-block">
+            <div class="section-eyebrow">Clasificación</div>
+            <div class="field">
+              <div class="field-label">Categoría</div>
+              <span class="select-pill empty" style="opacity:0.6;">
+                <span class="ic">🏷</span> Sin categoría <span class="chev">↕</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="picker-pop" style="top:170px; left:14px; right:14px;">
+            <div style="background:rgba(0,0,0,0.3); border:1px solid var(--z-border); border-radius:8px; padding:6px 10px; font-size:11px; color:var(--z-muted); margin:4px 4px 8px;">🔍 Buscar…</div>
+            <div class="item selected"><span class="ic">🍽</span> Restaurantes</div>
+            <div class="item"><span class="ic">🛒</span> Supermercado</div>
+            <div class="item"><span class="ic">🚕</span> Transporte</div>
+            <div class="item"><span class="ic">🎬</span> Entretenimiento</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Frame 3 — populated state -->
+      <div class="phone">
+        <div class="phone-label after-l">Populated — all fields set</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content" style="padding-bottom: 0;">
+          <div class="sub-header">
+            <div class="back-btn">←</div>
+            <div class="sub-header-title">Detalle</div>
+          </div>
+          <div class="hero">
+            <div class="hero-pill-row"><span class="hero-pill expense">GASTO</span></div>
+            <div class="hero-title">Rappi Colombia*DL</div>
+            <div class="hero-amount expense">-$42.900</div>
+            <div class="hero-meta">16 abr 2026 <span class="sep">·</span> Bancolombia ··1234</div>
+          </div>
+          <div class="section-block">
+            <div class="section-eyebrow">Clasificación</div>
+            <div class="field">
+              <div class="field-label">Categoría</div>
+              <span class="select-pill cat-filled">
+                <span class="ic">🍽</span> Restaurantes <span class="chev">↕</span>
+              </span>
+            </div>
+            <div class="field">
+              <div class="field-label">Destinatario</div>
+              <span class="select-pill dest-filled">
+                <span class="ic">👤</span> Rappi <span class="chev">↕</span>
+              </span>
+            </div>
+            <div class="field">
+              <div class="field-label">Etiquetas</div>
+              <div class="tag-row">
+                <span class="tag-chip">Viaje Medellín <span class="x">×</span></span>
+                <span class="tag-chip add">+ etiqueta</span>
+              </div>
+            </div>
+          </div>
+          <div class="section-block">
+            <div class="section-eyebrow">Notas</div>
+            <div class="notes">Almuerzo con equipo en Parque Lleras</div>
+          </div>
+          <div class="section-block">
+            <div class="section-eyebrow">Acciones</div>
+            <div class="action-chips">
+              <div class="action-chip brass-ghost">↻ Hacer recurrente</div>
+              <div class="action-chip">🔗 Vincular</div>
+              <div class="action-chip icon-only">⋯</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Layout rules — fully optimistic, no save button</strong>
+      <ul>
+        <li><strong>Hero</strong> — direction pill, merchant title, signed amount, single meta line (date · account · source). Read-only.</li>
+        <li><strong>Clasificación</strong> — inline pills. <strong>Categoría</strong> indigo-tinted when set, muted outline when empty. <strong>Destinatario</strong> brass-tinted when set, muted outline when empty. Tap pill → Popover (desktop) or Drawer (mobile). Saves optimistically on select + toast.</li>
+        <li><strong>Etiquetas</strong> — brass chips with <code>× remove</code> (optimistic). <code>+ etiqueta</code> opens the tag picker.</li>
+        <li><strong>Notas</strong> — inline-editable textarea. Autosave on blur + toast.</li>
+        <li><strong>Descripción original</strong> — collapsed disclosure. Expands in place.</li>
+        <li><strong>Acciones</strong> — chip trio: Hacer recurrente (brass-ghost, primary intent) · Vincular (neutral, only when the account has pending occurrences) · <code>⋯</code> (opens sheet: Excluir · Eliminar). Fire immediately on tap.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <h3>Final direction</h3>
+    <p>
+      Fully optimistic. Every interaction persists immediately — pill select, tag add/remove,
+      notes blur, action tap. Matches the Dashboard row pattern we shipped and avoids the
+      "dirty-state / am-I-saved?" cognitive tax. Toasts confirm each mutation.
+    </p>
+  </div>
+
+  <div class="legend">
+    Tokens · z-brass <code>#c8b560</code> · z-income <code>#10b981</code> · z-expense <code>#f59e0b</code> · z-debt <code>#ef4444</code> · category pill uses indigo <code>#7c68ee</code>
+  </div>
+</div>
+</body>
+</html>

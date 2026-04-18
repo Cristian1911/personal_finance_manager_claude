@@ -43,6 +43,11 @@ interface DestinatarioZonePickerProps {
   /** Render as a small icon button instead of a combobox */
   compact?: boolean;
   variant?: "popover" | "dialog" | "drawer";
+  /** External open control — when defined, suppresses internal state. */
+  controlledOpen?: boolean;
+  onControlledOpenChange?: (open: boolean) => void;
+  /** Hide the default trigger button — parent opens via controlledOpen. */
+  hideTrigger?: boolean;
 }
 
 export function DestinatarioZonePicker({
@@ -53,8 +58,20 @@ export function DestinatarioZonePicker({
   selectedName,
   compact = false,
   variant: variantProp,
+  controlledOpen,
+  onControlledOpenChange,
+  hideTrigger = false,
 }: DestinatarioZonePickerProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (isControlled) {
+      onControlledOpenChange?.(next);
+    } else {
+      setInternalOpen(next);
+    }
+  };
   const [creating, setCreating] = useState(false);
   const [, startCreateTransition] = useTransition();
   const createInputRef = useRef<HTMLInputElement>(null);
@@ -284,7 +301,7 @@ export function DestinatarioZonePicker({
   if (variant === "popover") {
     return (
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
+        {!hideTrigger && <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>}
         <PopoverContent
           className="w-[280px] p-0"
           align="start"
@@ -299,7 +316,7 @@ export function DestinatarioZonePicker({
   if (variant === "dialog") {
     return (
       <>
-        {triggerButton}
+        {!hideTrigger && triggerButton}
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="flex max-h-[70vh] w-full max-w-sm flex-col gap-0 overflow-hidden p-0">
             <DialogHeader className="border-b px-4 py-3">
@@ -320,7 +337,7 @@ export function DestinatarioZonePicker({
   // variant === "drawer"
   return (
     <>
-      {triggerButton}
+      {!hideTrigger && triggerButton}
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent>
           <DrawerHeader>

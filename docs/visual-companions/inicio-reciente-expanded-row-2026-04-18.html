@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zeta — Dashboard RECIENTE · Expanded Row Redesign</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --z-ink: #1a1d1a;
+    --z-obsidian: #121412;
+    --z-surface-1: #151815;
+    --z-surface-2: rgba(26,29,26,0.80);
+    --z-brass: #c8b560;
+    --z-brass-10: rgba(200,181,96,0.10);
+    --z-brass-20: rgba(200,181,96,0.20);
+    --z-sage-light: #b0b89c;
+    --z-sage-dark: #7a8068;
+    --z-sage: #8ea882;
+    --z-income: #10b981;
+    --z-expense: #f59e0b;
+    --z-debt: #ef4444;
+    --z-border: rgba(255,255,255,0.06);
+    --z-muted: rgba(255,255,255,0.50);
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--z-obsidian);
+    color: #e0e0e0;
+    line-height: 1.5;
+    padding: 40px 24px 80px;
+  }
+  .page-wrapper { max-width: 1180px; margin: 0 auto; }
+  .page-header { text-align: center; margin-bottom: 48px; }
+  .page-header .date {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.18em; color: var(--z-brass); margin-bottom: 12px;
+  }
+  .page-header h1 { font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -0.02em; }
+  .page-header .subtitle { font-size: 14px; color: var(--z-sage-dark); max-width: 640px; margin: 0 auto; }
+
+  .section { margin-bottom: 64px; }
+  .section-number { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: var(--z-brass); margin-bottom: 6px; }
+  .section-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .section-desc { font-size: 13px; color: var(--z-sage-dark); max-width: 680px; margin-bottom: 24px; }
+
+  .phones-row { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+  .phone {
+    width: 320px;
+    border-radius: 28px;
+    border: 2px solid rgba(255,255,255,0.08);
+    background: var(--z-obsidian);
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+  }
+  .phone.before { opacity: 0.85; }
+  .phone-label {
+    padding: 8px 16px;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.18em;
+    text-align: center;
+  }
+  .phone-label.before-l { background: rgba(239,68,68,0.06); color: #f87171; }
+  .phone-label.after-l { background: rgba(16,185,129,0.06); color: #34d399; }
+  .phone-label.after-l2 { background: rgba(200,181,96,0.08); color: var(--z-brass); }
+
+  .status-bar { height: 24px; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #fff; }
+  .phone-content { padding: 12px 14px 16px; min-height: 520px; }
+
+  .m-eyebrow { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.22em; color: var(--z-sage-dark); margin-bottom: 6px; }
+
+  /* Tx row */
+  .m-tx-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 4px;
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .m-tx-row.open {
+    border-left: 2px solid var(--z-brass);
+    padding-left: 8px;
+    background: rgba(255,255,255,0.02);
+  }
+  .m-tx-icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; flex-shrink: 0; margin-top: 2px;
+  }
+  .m-tx-icon.inflow { background: rgba(16,185,129,0.12); color: var(--z-income); }
+  .m-tx-icon.outflow { background: rgba(245,158,11,0.12); color: var(--z-expense); }
+
+  .m-tx-body { flex: 1; min-width: 0; }
+  .m-tx-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-tx-meta { font-size: 10px; color: var(--z-muted); display: flex; align-items: center; gap: 3px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-tx-amount { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .m-tx-amount.inflow { color: var(--z-income); }
+  .sep { color: rgba(255,255,255,0.15); padding: 0 2px; }
+  .acc-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+  /* Panel inset (expanded body) */
+  .panel-inset {
+    margin: 2px 0 10px;
+    border: 1px solid var(--z-border);
+    border-radius: 14px;
+    background: rgba(0,0,0,0.18);
+  }
+  .panel-pad { padding: 12px; }
+
+  /* === CURRENT (BEFORE) — cramped, auto-picker === */
+  .before-panel { padding: 10px; }
+  .before-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; color: var(--z-muted);
+    margin-bottom: 8px;
+  }
+  .before-meta .actions { display: flex; gap: 8px; }
+  .before-meta .actions a { color: var(--z-brass); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+  .before-eyebrow {
+    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--z-muted); border-top: 1px solid var(--z-border); padding-top: 8px; margin-bottom: 6px;
+  }
+  .before-picker {
+    border: 1px solid var(--z-border); border-radius: 8px;
+    background: rgba(0,0,0,0.3);
+  }
+  .before-picker-search {
+    padding: 6px 8px; font-size: 11px; color: var(--z-muted);
+    border-bottom: 1px solid var(--z-border);
+  }
+  .before-picker-list { max-height: 180px; overflow: auto; }
+  .before-cat-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 8px; font-size: 11px; color: #e0e0e0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .before-cat-row .cat-ic { width: 16px; height: 16px; border-radius: 4px; background: var(--z-brass-10); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--z-brass); }
+
+  /* === NEW (AFTER) — action chips === */
+  .chips-row { display: flex; gap: 6px; }
+  .chip {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 9px 8px;
+    border: 1px solid var(--z-border);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    font-size: 11px; font-weight: 600;
+    color: #e6e6e6;
+    white-space: nowrap;
+  }
+  .chip.primary {
+    background: var(--z-brass-10);
+    border-color: rgba(200,181,96,0.25);
+    color: var(--z-brass);
+  }
+  .chip.danger {
+    background: rgba(239,68,68,0.08);
+    border-color: rgba(239,68,68,0.20);
+    color: #fca5a5;
+  }
+  .chip .ic { font-size: 11px; opacity: 0.85; }
+  .chip.more { flex: 0.8; }
+
+  /* Inline picker (after phase 2) */
+  .picker-head {
+    display: flex; align-items: center; gap: 8px;
+    padding-bottom: 8px; margin-bottom: 8px;
+    border-bottom: 1px solid var(--z-border);
+  }
+  .picker-back {
+    width: 20px; height: 20px; border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--z-muted);
+  }
+  .picker-title { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: #fff; }
+
+  .cat-picker-search {
+    padding: 6px 10px;
+    border: 1px solid var(--z-border);
+    border-radius: 8px;
+    background: rgba(0,0,0,0.3);
+    font-size: 11px; color: var(--z-muted);
+    margin-bottom: 8px;
+  }
+  .cat-picker-list { max-height: 210px; overflow: auto; }
+  .cat-parent {
+    padding: 6px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.18em; color: var(--z-sage-dark);
+  }
+  .cat-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 6px;
+    font-size: 12px; color: #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .cat-row:hover, .cat-row.selected { background: rgba(200,181,96,0.06); }
+  .cat-ic {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: var(--z-brass-10);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--z-brass);
+  }
+
+  /* === Sheet (Más) === */
+  .sheet {
+    background: var(--z-surface-1);
+    border-radius: 18px 18px 0 0;
+    border: 1px solid var(--z-border);
+    border-bottom: none;
+    padding: 10px 14px 18px;
+    margin-top: 4px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.4);
+  }
+  .sheet-handle {
+    width: 36px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.12);
+    margin: 0 auto 10px;
+  }
+  .sheet-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: var(--z-sage-dark); margin-bottom: 10px; }
+  .sheet-sub { font-size: 11px; color: var(--z-muted); margin-top: -6px; margin-bottom: 12px; }
+  .sheet-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 4px;
+    border-top: 1px solid var(--z-border);
+    font-size: 13px; color: #e6e6e6;
+  }
+  .sheet-row:first-of-type { border-top: none; }
+  .sheet-row.danger { color: #fca5a5; }
+  .sheet-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--z-muted);
+  }
+  .sheet-row.danger .sheet-icon { color: #fca5a5; background: rgba(239,68,68,0.08); }
+  .sheet-chev { margin-left: auto; color: var(--z-muted); font-size: 13px; }
+  .dim-backdrop { background: rgba(0,0,0,0.55); padding-top: 140px; }
+
+  /* Annotation */
+  .annotation {
+    margin: 20px auto 0; max-width: 820px;
+    padding: 12px 14px;
+    border-radius: var(--radius-xl);
+    background: rgba(200,181,96,0.05);
+    border-left: 2px solid var(--z-brass);
+    font-size: 12px; color: var(--z-sage-light);
+  }
+  .annotation strong { color: #fff; }
+  .annotation ul { padding-left: 18px; margin-top: 4px; }
+  .annotation li { margin-bottom: 2px; }
+  .legend {
+    font-size: 10px; color: var(--z-sage-dark);
+    margin: 0 auto 20px; max-width: 720px; text-align: center;
+  }
+
+  /* Dim surrounding when sheet open */
+  .phone.sheet-open .phone-content { background: rgba(0,0,0,0.25); }
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="page-header">
+    <div class="date">2026 · 04 · 18</div>
+    <h1>Dashboard RECIENTE — Expanded Row Redesign</h1>
+    <div class="subtitle">Fix the auto-open category picker bug and replace the cramped inline panel with a two-phase action-chip layout. Inicio mobile only.</div>
+  </div>
+
+  <!-- ───── BEFORE vs AFTER baseline ───── -->
+  <div class="section">
+    <div class="section-number">01 — Baseline</div>
+    <div class="section-title">Before: auto-mount picker crams every OUTFLOW expand</div>
+    <div class="section-desc">Today, tapping any OUTFLOW tx auto-opens the full CategoryPickerBody tree inside the row. The picker is the only action surface; Vincular and Ver detalle float above it on a single line. Narrow, noisy, and always-on.</div>
+
+    <div class="phones-row">
+      <div class="phone before">
+        <div class="phone-label before-l">Before — current</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="m-eyebrow">Reciente</div>
+
+          <!-- collapsed row -->
+          <div class="m-tx-row">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Rappi Colombia</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#8ea882"></span> Bancolombia ··1234</div>
+            </div>
+            <div class="m-tx-amount">-$42.900</div>
+          </div>
+
+          <!-- EXPANDED (current behavior) -->
+          <div class="m-tx-row open">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Nu Colombia</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#8a2be2"></span> Nu ··5678</div>
+            </div>
+            <div class="m-tx-amount">-$120.000</div>
+          </div>
+          <div class="panel-inset">
+            <div class="before-panel">
+              <div class="before-meta">
+                <span>Gasto · $120.000</span>
+                <div class="actions">
+                  <a>🔗 Vincular</a>
+                  <a>✎ Ver detalle</a>
+                </div>
+              </div>
+              <div class="before-eyebrow">Asignar categoría</div>
+              <div class="before-picker">
+                <div class="before-picker-search">🔍 Buscar categoría…</div>
+                <div class="before-picker-list">
+                  <div class="before-cat-row"><span class="cat-ic">🍽</span> Comida &amp; Restaurantes</div>
+                  <div class="before-cat-row"><span class="cat-ic">🛒</span> Supermercado</div>
+                  <div class="before-cat-row"><span class="cat-ic">🚗</span> Transporte</div>
+                  <div class="before-cat-row"><span class="cat-ic">🏠</span> Hogar</div>
+                  <div class="before-cat-row"><span class="cat-ic">🎬</span> Entretenimiento</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="m-tx-row">
+            <div class="m-tx-icon inflow">↙</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Nómina Q2</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#c8b560"></span> Bancolombia ··1234</div>
+            </div>
+            <div class="m-tx-amount inflow">+$3.250.000</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Problems we're solving</strong>
+      <ul>
+        <li>Picker opens on every tap — user can't even "peek" at a row without a 200+ LOC picker tree hydrating.</li>
+        <li>Vincular + Ver detalle crammed into one meta line; tap targets are undersized.</li>
+        <li>No path to Destinatario / Etiquetas / Eliminar without navigating off the Dashboard.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ───── AFTER Phase 1: Action chips ───── -->
+  <div class="section">
+    <div class="section-number">02 — After · Phase 1</div>
+    <div class="section-title">Expand shows a lean chip row — no heavy picker until requested</div>
+    <div class="section-desc">Three chips only: <strong>Categorizar</strong> (OUTFLOW · brass tint when uncategorized — neutral otherwise), <strong>Vincular</strong> (only when account has a pending occurrence), <strong>Más</strong> (opens bottom sheet with Ver detalle + secondary actions). Nothing auto-mounts. The picker tree stays unhydrated until the user taps Categorizar.</div>
+
+    <div class="phones-row">
+      <div class="phone">
+        <div class="phone-label after-l">After · Phase 1 — uncategorized</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="m-eyebrow">Reciente</div>
+
+          <div class="m-tx-row open">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Nu Colombia</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#8a2be2"></span> Nu ··5678</div>
+            </div>
+            <div class="m-tx-amount">-$120.000</div>
+          </div>
+          <div class="panel-inset">
+            <div class="panel-pad">
+              <div class="chips-row">
+                <div class="chip primary"><span class="ic">🏷</span> Categorizar</div>
+                <div class="chip"><span class="ic">🔗</span> Vincular</div>
+                <div class="chip more"><span class="ic">⋯</span> Más</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="m-tx-row">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Rappi Colombia</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#8ea882"></span> Bancolombia ··1234 <span class="sep">·</span> 🍽 Comida</div>
+            </div>
+            <div class="m-tx-amount">-$42.900</div>
+          </div>
+          <div class="m-tx-row">
+            <div class="m-tx-icon inflow">↙</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Nómina Q2</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#c8b560"></span> Bancolombia ··1234</div>
+            </div>
+            <div class="m-tx-amount inflow">+$3.250.000</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone">
+        <div class="phone-label after-l">After · Phase 1 — already categorized</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="m-eyebrow">Reciente</div>
+          <div class="m-tx-row open">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Rappi Colombia</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#8ea882"></span> Bancolombia ··1234 <span class="sep">·</span> 🍽 Comida</div>
+            </div>
+            <div class="m-tx-amount">-$42.900</div>
+          </div>
+          <div class="panel-inset">
+            <div class="panel-pad">
+              <div class="chips-row">
+                <div class="chip"><span class="ic">🏷</span> Categorizar</div>
+                <div class="chip more" style="flex:1;"><span class="ic">⋯</span> Más</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="m-tx-row">
+            <div class="m-tx-icon inflow">↙</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Nómina Q2</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#c8b560"></span> Bancolombia ··1234</div>
+            </div>
+            <div class="m-tx-amount inflow">+$3.250.000</div>
+          </div>
+          <div class="m-tx-row">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Netflix</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#c8b560"></span> Amex ··0404 <span class="sep">·</span> 🎬 Entretenimiento</div>
+            </div>
+            <div class="m-tx-amount">-$38.900</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Rules</strong>
+      <ul>
+        <li><strong>Categorizar</strong> — only on OUTFLOW. Brass-tinted when <code>category_id == null</code>, neutral otherwise.</li>
+        <li><strong>Vincular</strong> — only shown when the account has pending recurring occurrences AND the tx is not already linked.</li>
+        <li><strong>Más</strong> — always shown. Its flex expands to fill when Vincular isn't present.</li>
+        <li>INFLOW rows show a 2-chip layout (Vincular when applicable + Más); no Categorizar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ───── AFTER Phase 2a: Inline category picker ───── -->
+  <div class="section">
+    <div class="section-number">03 — After · Phase 2a</div>
+    <div class="section-title">Categorizar swaps the panel body with the picker (back arrow returns)</div>
+    <div class="section-desc">Stays <strong>inline</strong> — no sheet, no navigation. <code>CategoryPickerBody</code> mounts the first time Categorizar is tapped (lazy). Selecting a category optimistically updates the row and collapses the panel.</div>
+
+    <div class="phones-row">
+      <div class="phone">
+        <div class="phone-label after-l2">After · Phase 2a — inline picker</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content">
+          <div class="m-eyebrow">Reciente</div>
+
+          <div class="m-tx-row open">
+            <div class="m-tx-icon outflow">↗</div>
+            <div class="m-tx-body">
+              <div class="m-tx-name">Nu Colombia</div>
+              <div class="m-tx-meta"><span class="acc-dot" style="background:#8a2be2"></span> Nu ··5678</div>
+            </div>
+            <div class="m-tx-amount">-$120.000</div>
+          </div>
+          <div class="panel-inset">
+            <div class="panel-pad">
+              <div class="picker-head">
+                <div class="picker-back">←</div>
+                <div class="picker-title">ASIGNAR CATEGORÍA</div>
+              </div>
+              <div class="cat-picker-search">🔍 Buscar categoría…</div>
+              <div class="cat-picker-list">
+                <div class="cat-parent">Comida &amp; Alimentación</div>
+                <div class="cat-row selected"><span class="cat-ic">🍽</span> Restaurantes</div>
+                <div class="cat-row"><span class="cat-ic">🛒</span> Supermercado</div>
+                <div class="cat-row"><span class="cat-ic">🥤</span> Café &amp; Snacks</div>
+                <div class="cat-parent">Transporte</div>
+                <div class="cat-row"><span class="cat-ic">⛽</span> Combustible</div>
+                <div class="cat-row"><span class="cat-ic">🚕</span> Apps de transporte</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── AFTER Phase 2b: Más sheet ───── -->
+  <div class="section">
+    <div class="section-number">04 — After · Phase 2b</div>
+    <div class="section-title">Más opens a bottom sheet — secondary actions, not inline</div>
+    <div class="section-desc">Sheet keeps secondary actions out of the cramped row. Ver detalle navigates; the rest are in-place mutations (Destinatario, Etiquetas, Eliminar). Destinatario + Etiquetas could open their own pickers (existing zone-picker sheets) from inside this sheet — standard stacked-sheet pattern.</div>
+
+    <div class="phones-row">
+      <div class="phone sheet-open">
+        <div class="phone-label after-l">After · Phase 2b — Más sheet</div>
+        <div class="status-bar">9:41</div>
+        <div class="phone-content dim-backdrop">
+          <div class="sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title">Nu Colombia</div>
+            <div class="sheet-sub">Gasto · $120.000 · Hoy</div>
+            <div class="sheet-row">
+              <div class="sheet-icon">✎</div>
+              <div>Ver detalle</div>
+              <div class="sheet-chev">›</div>
+            </div>
+            <div class="sheet-row">
+              <div class="sheet-icon">👤</div>
+              <div>Asignar destinatario</div>
+              <div class="sheet-chev">›</div>
+            </div>
+            <div class="sheet-row">
+              <div class="sheet-icon">🏷</div>
+              <div>Etiquetas</div>
+              <div class="sheet-chev">›</div>
+            </div>
+            <div class="sheet-row danger">
+              <div class="sheet-icon">🗑</div>
+              <div>Eliminar transacción</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Implementation notes</strong>
+      <ul>
+        <li>Reuse existing <code>DestinatarioZonePicker</code> + <code>TagZonePicker</code> components — don't build new surfaces. They already handle their own Sheet/Popover variants.</li>
+        <li>Delete → reuse existing <code>DeleteTransactionButton</code> confirm flow.</li>
+        <li>Sheet uses <code>MOBILE_TAB_BAR_CLEARANCE_CLASS</code> on <code>SheetContent</code> bottom padding per UI Rules.</li>
+        <li>Phase state is row-local: <code>{ phase: "actions" | "categorize", rowId }</code>. Collapsing the row resets phase to "actions".</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="legend">
+    Tokens · z-brass <code>#c8b560</code> · z-income <code>#10b981</code> · z-expense <code>#f59e0b</code> · z-debt <code>#ef4444</code> · border <code>rgba(255,255,255,0.06)</code>
+  </div>
+</div>
+</body>
+</html>

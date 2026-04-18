@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheTag, cacheLife } from "next/cache";
+import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -574,6 +574,7 @@ export type RecentTransaction = {
   direction: "INFLOW" | "OUTFLOW";
   account_id: string;
   category_id: string | null;
+  destinatario_id: string | null;
   recurrence_group_id: string | null;
   merchant_name: string | null;
   clean_description: string | null;
@@ -587,6 +588,7 @@ export type RecentTransaction = {
     bank_key: string | null;
     account_type: Database["public"]["Enums"]["account_type"];
   } | null;
+  destinatario: { id: string; name: string } | null;
   transaction_tags: Array<{
     tag: { id: string; name: string; color: string | null; group: { color: string | null } | null };
   }>;
@@ -608,10 +610,11 @@ async function getRecentTransactionsCached(
   const { data } = await supabase
     .from("transactions")
     .select(`
-      id, amount, direction, account_id, category_id, recurrence_group_id, merchant_name, clean_description,
+      id, amount, direction, account_id, category_id, destinatario_id, recurrence_group_id, merchant_name, clean_description,
       transaction_date, currency_code,
       categories!transactions_category_id_fkey(name_es, name, icon),
       accounts!transactions_account_id_fkey(name, color, mask, bank_key, account_type),
+      destinatario:destinatarios!transactions_destinatario_id_fkey(id, name),
       transaction_tags!transaction_tags_transaction_id_fkey(tag:tags(id, name, color, group:tag_groups(color)))
     `)
     .eq("user_id", userId)
@@ -854,6 +857,38 @@ export async function updateTransaction(
 
   revalidateFinancialViews();
   return { success: true, data };
+}
+
+/**
+ * Patch the `notes` field on a single transaction. Lightweight counterpart to
+ * `updateTransaction` for inline/autosave flows (detail page textarea).
+ * Notes don't affect balances or categorization, so we skip the balance-change
+ * reconciliation path.
+ */
+export async function updateTransactionNotes(
+  id: string,
+  notes: string | null,
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const normalized = notes?.trim() ? notes.trim() : null;
+  if (normalized && normalized.length > 2000) {
+    return { success: false, error: "La nota es demasiado larga (máx 2000 caracteres)" };
+  }
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({ notes: normalized })
+    .eq("user_id", user.id)
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+
+  // Narrow invalidation — notes don't affect aggregates, so we only bust the
+  // transactions read cache (which serves getTransactionCached + list queries).
+  updateTag("transactions");
+  return { success: true, data: undefined };
 }
 
 export async function deleteTransaction(id: string): Promise<ActionResult> {
