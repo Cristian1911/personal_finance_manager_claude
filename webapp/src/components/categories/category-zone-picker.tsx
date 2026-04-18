@@ -63,6 +63,11 @@ interface CategoryZonePickerProps {
   transactionDescription?: string;
   /** Presentation variant — auto-detects if omitted */
   variant?: "dialog" | "popover" | "drawer";
+  /** External open control — when defined, suppresses internal state. */
+  controlledOpen?: boolean;
+  onControlledOpenChange?: (open: boolean) => void;
+  /** Hide the default trigger button — parent opens via controlledOpen. */
+  hideTrigger?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,8 +116,20 @@ export function CategoryZonePicker({
   categoryRules,
   transactionDescription,
   variant: variantProp,
+  controlledOpen,
+  onControlledOpenChange,
+  hideTrigger = false,
 }: CategoryZonePickerProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpenControlled = controlledOpen !== undefined;
+  const open = isOpenControlled ? controlledOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (isOpenControlled) {
+      onControlledOpenChange?.(next);
+    } else {
+      setInternalOpen(next);
+    }
+  };
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
@@ -301,7 +318,7 @@ export function CategoryZonePicker({
       <>
         {name && <input type="hidden" name={name} value={value ?? ""} />}
         <Popover open={open} onOpenChange={handleOpen}>
-          <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
+          {!hideTrigger && <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>}
           <PopoverContent
             container={portalContainer}
             className="w-[320px] max-w-[min(22rem,calc(100vw-2rem))] p-0 overscroll-contain touch-pan-y"
@@ -323,7 +340,7 @@ export function CategoryZonePicker({
     return (
       <>
         {name && <input type="hidden" name={name} value={value ?? ""} />}
-        {triggerButton}
+        {!hideTrigger && triggerButton}
         <Dialog open={open} onOpenChange={handleOpen}>
           <DialogContent className="flex max-h-[70vh] w-full max-w-md flex-col gap-0 overflow-hidden p-0">
             <DialogHeader className="border-b px-4 py-3">
@@ -345,7 +362,7 @@ export function CategoryZonePicker({
   return (
     <>
       {name && <input type="hidden" name={name} value={value ?? ""} />}
-      {triggerButton}
+      {!hideTrigger && triggerButton}
       <Drawer open={open} onOpenChange={handleOpen}>
         <DrawerContent>
           <DrawerHeader>

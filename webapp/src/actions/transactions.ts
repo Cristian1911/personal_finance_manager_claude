@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheTag, cacheLife } from "next/cache";
+import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -857,6 +857,38 @@ export async function updateTransaction(
 
   revalidateFinancialViews();
   return { success: true, data };
+}
+
+/**
+ * Patch the `notes` field on a single transaction. Lightweight counterpart to
+ * `updateTransaction` for inline/autosave flows (detail page textarea).
+ * Notes don't affect balances or categorization, so we skip the balance-change
+ * reconciliation path.
+ */
+export async function updateTransactionNotes(
+  id: string,
+  notes: string | null,
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const normalized = notes?.trim() ? notes.trim() : null;
+  if (normalized && normalized.length > 2000) {
+    return { success: false, error: "La nota es demasiado larga (máx 2000 caracteres)" };
+  }
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({ notes: normalized })
+    .eq("user_id", user.id)
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+
+  // Narrow invalidation — notes don't affect aggregates, so we only bust the
+  // transactions read cache (which serves getTransactionCached + list queries).
+  updateTag("transactions");
+  return { success: true, data: undefined };
 }
 
 export async function deleteTransaction(id: string): Promise<ActionResult> {

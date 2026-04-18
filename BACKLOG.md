@@ -200,6 +200,21 @@
 
 ## Tech Debt
 
+### Tx detail — `router.refresh()` on tag picker close
+- **Priority:** Low
+- **What:** `transaction-detail-client.tsx` calls `router.refresh()` after the TagZonePicker drawer closes to sync `initialTags` from the server. Could be avoided by lifting `setTags` into a `onTagsChanged` callback that TagZonePicker invokes on add/remove, so the parent updates its local `tags` state optimistically and skips the round-trip.
+- **Found:** perf-auditor review on tx detail redesign, 2026-04-18
+
+### Tx detail — zone pickers always mounted (hidden trigger)
+- **Priority:** Low
+- **What:** CategoryZonePicker + DestinatarioZonePicker + TagZonePicker all render on mount with `hideTrigger + controlledOpen`. They pull from context so fetches are gated, but the Radix Dialog/Drawer portals register on mount. Mount-once-on-first-open pattern would save 3 portal registrations per detail page load. Not measurable today, revisit if picker count grows.
+- **Found:** perf-auditor review on tx detail redesign, 2026-04-18
+
+### Tx detail — delete confirm dialog uses raw `<button>` instead of shadcn `<Button>`
+- **Priority:** Low
+- **What:** `transaction-detail-client.tsx` DialogFooter uses two raw `<button>` elements with `cn(GHOST_BUTTON_CLASS, ...)` + `cn(DESTRUCTIVE_BUTTON_CLASS, ...)`. Consolidating to `<Button variant="outline" className={...}>` would inherit shadcn sizing primitives + keep consistency with other Dialogs.
+- **Found:** zetas-front-guy review on tx detail redesign, 2026-04-18
+
 ### `useRecurringMonth` callbacks use `router.refresh()` instead of `startTransition`
 - **Priority:** Medium
 - **What:** All three callbacks in `use-recurring-month.ts` (`confirmPayment`, `skipPayment`, `linkExisting`) call `router.refresh()` after the server action. Should wrap in `startTransition` instead — `router.refresh()` is a redundant network round-trip.
