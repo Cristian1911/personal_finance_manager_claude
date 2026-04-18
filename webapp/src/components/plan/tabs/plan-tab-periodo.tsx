@@ -4,7 +4,7 @@ import { getCategories } from "@/actions/categories";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getPlanTimelineData } from "@/actions/plan-timeline";
 import { PeriodHeader } from "@/components/cashflow-planner/period-header";
-import { EnvelopeBoard } from "@/components/cashflow-planner/envelope-board";
+import { DragEnvelopeBoard } from "@/components/cashflow-planner/drag-envelope-board";
 import { PeriodSetupDialog } from "@/components/cashflow-planner/period-setup-dialog";
 import { MobilePeriodoView } from "@/components/mobile/v2/plan/mobile-periodo-view";
 import { CalendarPlus } from "lucide-react";
@@ -134,7 +134,7 @@ export async function PlanTabPeriodo() {
             <div className={isExpired ? "opacity-60" : undefined}>
               <PeriodHeader data={planData} isExpired={isExpired} />
               {!isExpired && (
-                <EnvelopeBoard
+                <DragEnvelopeBoard
                   data={planData}
                   accounts={accounts}
                   categories={categories}
