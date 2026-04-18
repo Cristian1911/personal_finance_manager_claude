@@ -135,6 +135,7 @@ export async function PlanTabPeriodo() {
               <PeriodHeader data={planData} isExpired={isExpired} />
               {!isExpired && (
                 <DragEnvelopeBoard
+                  dndId="planner-desktop"
                   data={planData}
                   accounts={accounts}
                   categories={categories}

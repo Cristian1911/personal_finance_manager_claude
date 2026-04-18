@@ -129,6 +129,7 @@ export function MobilePeriodoView({
 
       {/* Unified drag board (replaces Ingresos + Gastos sections) */}
       <DragEnvelopeBoard
+        dndId="planner-mobile"
         data={planData}
         accounts={accounts}
         categories={categories}

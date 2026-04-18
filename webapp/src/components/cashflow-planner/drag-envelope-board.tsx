@@ -48,6 +48,9 @@ interface DragEnvelopeBoardProps {
   data: PeriodPlanData;
   accounts?: Pick<Account, "id" | "name" | "icon" | "color">[];
   categories?: Pick<Category, "id" | "name" | "name_es" | "icon" | "color">[];
+  /** Stable DnD scope id — required when multiple instances mount in the same tree
+   *  (e.g. mobile + desktop branches both CSS-hidden). Prevents `useId` drift during hydration. */
+  dndId?: string;
 }
 
 interface DragState {
@@ -80,6 +83,7 @@ export function DragEnvelopeBoard({
   data,
   accounts = [],
   categories = [],
+  dndId = "drag-envelope-board",
 }: DragEnvelopeBoardProps) {
   const { income_envelopes, expense_entries, currency, period } = data;
   const [isPending, startTransition] = useTransition();
@@ -297,6 +301,7 @@ export function DragEnvelopeBoard({
 
   return (
     <DndContext
+      id={dndId}
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragOver={handleDragMove}
