@@ -10,7 +10,11 @@ export async function GET(request: Request) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const nextParam = searchParams.get("next");
-  const next = nextParam ?? (type === "recovery" ? RECOVERY_REDIRECT : "/dashboard");
+  const safeNext =
+    nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
+      ? nextParam
+      : null;
+  const next = safeNext ?? (type === "recovery" ? RECOVERY_REDIRECT : "/dashboard");
 
   const supabase = await createClient();
 
