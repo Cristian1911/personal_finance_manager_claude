@@ -1,6 +1,6 @@
 import Link from "next/link";
 import "./landing.css";
-import { LandingBehaviors, LandingDemo } from "./landing-demo";
+import { FooterYear, LandingBehaviors, LandingDemo } from "./landing-demo";
 
 export function MarketingLandingPage() {
   return (
@@ -532,7 +532,9 @@ export function MarketingLandingPage() {
             <a href="#">Términos</a>
             <a href="#">Seguridad</a>
           </div>
-          <div className="footer-copy">© 2026 · Hecho con calma</div>
+          <div className="footer-copy">
+            © <FooterYear /> · Hecho con calma
+          </div>
         </div>
       </footer>
     </div>

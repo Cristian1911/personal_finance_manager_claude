@@ -42,8 +42,14 @@ type Mood = {
   state: "good" | "tight" | "over";
 };
 
+function currentMonthLabel() {
+  const m = new Date().toLocaleString("es-CO", { month: "long" });
+  return m.charAt(0).toUpperCase() + m.slice(1);
+}
+
 export function LandingDemo() {
   const [day, setDay] = useState(17);
+  const monthLabel = useMemo(() => currentMonthLabel(), []);
 
   const { cums, finalCum, maxAbs } = useMemo(() => getState(day), [day]);
 
@@ -109,7 +115,7 @@ export function LandingDemo() {
   return (
     <div className="demo-card reveal">
       <div className="demo-top">
-        <span className="ttl">Este mes · Abril</span>
+        <span className="ttl">Este mes · {monthLabel}</span>
         <span className="eyebrow">
           <span className="dot" />
           Día {day} / {DAYS}
@@ -171,6 +177,12 @@ export function LandingDemo() {
       <p className="demo-note">{note}</p>
     </div>
   );
+}
+
+export function FooterYear() {
+  const [year, setYear] = useState<number | null>(null);
+  useEffect(() => setYear(new Date().getFullYear()), []);
+  return <>{year ?? ""}</>;
 }
 
 export function LandingBehaviors() {

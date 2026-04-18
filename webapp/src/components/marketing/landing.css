@@ -1088,4 +1088,7 @@
     transition-duration: 0.01s !important;
   }
   .zeta-landing .reveal { opacity: 1; transform: none; }
+  /* SMIL <animateMotion> does not honor prefers-reduced-motion at the engine
+     level; hide the moving dots so only the static arrow paths remain. */
+  .zeta-landing .cap-dot { display: none; }
 }
