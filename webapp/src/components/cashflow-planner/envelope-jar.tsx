@@ -67,7 +67,7 @@ export function EnvelopeJar({
     <div
       ref={dropRef}
       className={cn(
-        "relative overflow-hidden rounded-xl border bg-card p-4 transition-all duration-200",
+        "relative overflow-hidden rounded-xl border bg-z-surface-2 p-4 transition-all duration-200",
         "min-h-[140px] lg:min-h-[140px]",
         isDropTarget ? "shadow-[0_0_0_3px_color-mix(in_srgb,var(--jar-color)_22%,transparent)]" : "",
       )}
@@ -117,12 +117,8 @@ export function EnvelopeJar({
         aria-label={status === "COMPLETED" ? "Marcar como pendiente" : "Marcar como recibido"}
       >
         <Check
-          className="h-3 w-3"
-          style={
-            status === "COMPLETED"
-              ? { color: color.hex }
-              : { color: "var(--z-muted-foreground, rgba(246,240,227,0.55))" }
-          }
+          className={cn("h-3 w-3", status !== "COMPLETED" && "text-muted-foreground")}
+          style={status === "COMPLETED" ? { color: color.hex } : undefined}
         />
       </button>
 
@@ -148,7 +144,7 @@ export function EnvelopeJar({
             {onDelete && (
               <DropdownMenuItem
                 onClick={() => onDelete(entry.id)}
-                className="text-red-400 focus:text-red-400"
+                className="text-z-debt focus:text-z-debt"
               >
                 <Trash2 className="mr-2 h-3.5 w-3.5" />
                 Eliminar
@@ -172,7 +168,7 @@ export function EnvelopeJar({
         >
           {formatCurrency(remaining_amount, currency)}
         </p>
-        <p className={cn("text-[10px]", tone.color)}>{isFull ? "envelope lleno" : "disponible"}</p>
+        <p className={cn("text-[10px]", tone.color)}>{isFull ? "sobre lleno" : "disponible"}</p>
       </div>
     </div>
   );

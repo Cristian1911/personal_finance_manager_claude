@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -54,17 +54,26 @@ interface DragState {
   expenseId: string;
   remainder: number;
   overJarId: string | null;
-  pointer: { x: number; y: number } | null;
   altHeld: boolean;
 }
 
-function usePointerTracker(active: boolean, onMove: (x: number, y: number) => void) {
+/** Drive the tooltip position via CSS transform on a ref — pointermove must never setState,
+ *  else every move re-renders every jar + card at 60–120 Hz. */
+function usePointerTooltipTracker(
+  active: boolean,
+  tooltipRef: React.RefObject<HTMLDivElement | null>,
+) {
   useEffect(() => {
     if (!active) return;
-    const handle = (e: PointerEvent) => onMove(e.clientX, e.clientY);
-    document.addEventListener("pointermove", handle);
+    const handle = (e: PointerEvent) => {
+      const el = tooltipRef.current;
+      if (el) {
+        el.style.transform = `translate3d(${e.clientX + 18}px, ${e.clientY + 18}px, 0)`;
+      }
+    };
+    document.addEventListener("pointermove", handle, { passive: true });
     return () => document.removeEventListener("pointermove", handle);
-  }, [active, onMove]);
+  }, [active, tooltipRef]);
 }
 
 export function DragEnvelopeBoard({
@@ -73,8 +82,9 @@ export function DragEnvelopeBoard({
   categories = [],
 }: DragEnvelopeBoardProps) {
   const { income_envelopes, expense_entries, currency, period } = data;
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const [drag, setDrag] = useState<DragState | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [editTarget, setEditTarget] = useState<PlanningEntryWithRelations | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [splitTarget, setSplitTarget] = useState<{
@@ -98,11 +108,7 @@ export function DragEnvelopeBoard({
     useSensor(KeyboardSensor),
   );
 
-  const trackPointer = useCallback(
-    (x: number, y: number) => setDrag((p) => (p ? { ...p, pointer: { x, y } } : p)),
-    [],
-  );
-  usePointerTracker(!!drag, trackPointer);
+  usePointerTooltipTracker(!!drag, tooltipRef);
 
   function remainderOf(expenseId: string, convertedAmount: number) {
     return Math.max(0, convertedAmount - (assignedPerExpense.get(expenseId) ?? 0));
@@ -130,7 +136,6 @@ export function DragEnvelopeBoard({
       expenseId: payload.entry.id,
       remainder: payload.remainder,
       overJarId: null,
-      pointer: null,
       altHeld: false,
     });
   }
@@ -146,6 +151,12 @@ export function DragEnvelopeBoard({
 
   function handleDragEnd(e: DragEndEvent) {
     if (!drag) {
+      setDrag(null);
+      return;
+    }
+    // Guard: rapid drops while a prior mutation is in-flight see stale remaining_amount
+    // and can request more capacity than the jar will have after the server-side commit.
+    if (isPending) {
       setDrag(null);
       return;
     }
@@ -208,7 +219,7 @@ export function DragEnvelopeBoard({
   }
 
   function handleChipPick(envelopeId: string) {
-    if (!longPressTarget) return;
+    if (!longPressTarget || isPending) return;
     const envelope = income_envelopes.find((e) => e.entry.id === envelopeId);
     if (!envelope) return;
     const rem = remainderOf(longPressTarget.id, longPressTarget.converted_amount);
@@ -259,7 +270,8 @@ export function DragEnvelopeBoard({
     next: PlanningEntryStatus,
   ) {
     startTransition(async () => {
-      await toggleEntryStatus(entry.id, next);
+      const result = await toggleEntryStatus(entry.id, next);
+      if (!result.success) toast.error(result.error);
     });
   }
 
@@ -295,7 +307,7 @@ export function DragEnvelopeBoard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-z-income" />
-            <SectionEyebrow>Envelopes</SectionEyebrow>
+            <SectionEyebrow>Sobres</SectionEyebrow>
           </div>
           <EntryFormDialog
             periodId={period.id}
@@ -396,10 +408,9 @@ export function DragEnvelopeBoard({
         )}
       </div>
 
-      {drag && currentDragPreview && drag.pointer && currentHoveredJar && (
+      {drag && currentDragPreview && currentHoveredJar && (
         <DropTooltip
-          x={drag.pointer.x}
-          y={drag.pointer.y}
+          tooltipRef={tooltipRef}
           envelopeLabel={currentHoveredJar.envelope.entry.label}
           colorIndex={currentHoveredJar.colorIndex}
           currency={currency}

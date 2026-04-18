@@ -100,7 +100,7 @@ export function AssignmentPopover({
       <PopoverContent align="start" className="w-[280px] p-3 space-y-3">
         <div className="flex items-baseline justify-between">
           <p
-            className="font-mono text-[10px] font-bold uppercase tracking-widest"
+            className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]"
             style={{ color: color.hex }}
           >
             {envelopeLabel}
@@ -142,7 +142,7 @@ export function AssignmentPopover({
               variant="ghost"
               onClick={handleRemove}
               disabled={isPending}
-              className="text-red-400 hover:text-red-400"
+              className="text-z-debt hover:text-z-debt"
             >
               Quitar
             </Button>

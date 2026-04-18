@@ -6,9 +6,8 @@ import type { CurrencyCode } from "@/types/domain";
 import type { JarCapacityPreview } from "@/lib/utils/envelope-assignment";
 
 interface DropTooltipProps {
-  /** Screen coordinates in px. */
-  x: number;
-  y: number;
+  /** Ref to mutate via `transform: translate3d(x,y,0)` on pointermove — avoids React renders. */
+  tooltipRef: React.RefObject<HTMLDivElement | null>;
   envelopeLabel: string;
   colorIndex: number;
   currency: CurrencyCode;
@@ -19,8 +18,7 @@ interface DropTooltipProps {
 }
 
 export function DropTooltip({
-  x,
-  y,
+  tooltipRef,
   envelopeLabel,
   colorIndex,
   currency,
@@ -34,16 +32,13 @@ export function DropTooltip({
 
   return (
     <div
-      className="pointer-events-none fixed z-[9999] min-w-[200px] rounded-lg border bg-z-surface-3 p-3 shadow-2xl"
-      style={{
-        top: y + 18,
-        left: x + 18,
-        borderColor: color.hex,
-      }}
+      ref={tooltipRef}
+      className="pointer-events-none fixed left-0 top-0 z-[9999] min-w-[200px] rounded-lg border bg-z-surface-3 p-3 shadow-2xl will-change-transform"
+      style={{ borderColor: color.hex }}
       role="tooltip"
     >
       <p
-        className="font-mono text-[9px] font-bold uppercase tracking-widest"
+        className="font-mono text-[9px] font-bold uppercase tracking-[0.18em]"
         style={{ color: color.hex }}
       >
         {envelopeLabel} · capacidad
@@ -84,7 +79,7 @@ export function DropTooltip({
         <kbd className="rounded bg-z-surface-2 px-1 font-mono text-[9px] text-z-brass-hot">
           alt
         </kbd>{" "}
-        + drop = monto custom
+        + soltar = monto personalizado
       </p>
     </div>
   );

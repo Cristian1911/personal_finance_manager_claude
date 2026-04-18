@@ -92,7 +92,7 @@ export function ExpenseCardDraggable({
       ref={setNodeRef}
       {...attributes}
       className={cn(
-        "relative flex items-center gap-3 rounded-lg border bg-card/60 p-3 pl-4 transition-all",
+        "relative flex items-center gap-3 rounded-lg border bg-z-surface-2/60 p-3 pl-4 transition-all",
         isDragging && "opacity-55 scale-[0.98] shadow-lg",
         isUnassigned && "border-dashed border-z-expense/40 bg-z-expense/[0.04]",
         !isUnassigned && "border-white/6",
@@ -181,7 +181,7 @@ export function ExpenseCardDraggable({
           {onDelete && (
             <DropdownMenuItem
               onClick={() => onDelete(entry.id)}
-              className="text-red-400 focus:text-red-400"
+              className="text-z-debt focus:text-z-debt"
             >
               <Trash2 className="mr-2 h-3.5 w-3.5" />
               Eliminar
