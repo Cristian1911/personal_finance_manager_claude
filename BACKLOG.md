@@ -249,6 +249,14 @@
 | PR | Description | Status |
 |---|---|---|
 | #98 | Demo mode with mock accounts | Open since 2026-04-08 (stale) |
+| #190 | Planner drag-and-drop envelope assignment | Open 2026-04-18 — pending UX review (see below) |
+
+### PR #190 — pending UX review before merge
+- **Long-press overlay UX feels off** — user impression when testing mobile. The "cubre $X" chip hints work but the interaction doesn't feel right yet. Re-evaluate: timing (400ms), chip layout, whether long-press is still the right gesture, or if tap-to-pick is better.
+- **No assignment removal/edit path** — old UX had per-assignment `Trash2` in the `IncomeCard` expansion. New board has no way to remove a specific color-chip assignment from an expense once assigned. Options: (a) click a color chip on the expense card → popover with "Editar monto" / "Quitar", (b) drag the chip off, (c) resurrect an "assignments panel" per jar. Evaluate during PR review.
+- **Fully-assigned expenses are inert on mobile** — long-press is guarded to no-op, but there's no alternative gesture to re-manage existing assignments beyond the `⋯` menu (which only handles Pagar/Editar/Eliminar of the expense, not its assignments).
+- **Touches:** `webapp/src/components/cashflow-planner/drag-envelope-board.tsx`, `long-press-overlay.tsx`, `expense-card-draggable.tsx`.
+- **Found:** User smoke test on PR #190, 2026-04-18.
 
 ## Session handoff — 2026-04-18
 
