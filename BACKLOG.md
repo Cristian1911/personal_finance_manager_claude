@@ -240,15 +240,6 @@
 - **What:** Slice-1 extracted `mobile/components/ui/ExpandableStatTile.tsx` and migrated the import reconcile grid, but `InicioMetricsGrid` "Gasto hoy" was left on its bespoke `PANEL_INSET_CLASS` chip shape (different value size, ring-chart sibling, compact currency formatter). A future pass should either (a) widen `ExpandableStatTile` with a `variant="inset-compact"` option to absorb it, or (b) extract a sibling `CompactStatTile` primitive. Worth doing next time we touch either surface.
 - **Found:** zetas-front-guy follow-up on slice-1, 2026-04-19
 
-### Mobile onboarding → webapp cache staleness (cross-platform)
-- **Priority:** Medium
-- **What:** Mobile onboarding (`mobile/app/onboarding.tsx`) writes `profiles` + `accounts` directly to Supabase. The webapp's `(dashboard)/layout.tsx` guard reads `profile.onboarding_completed` via `getProfile()` which is `"use cache"` + `cacheTag("profile")` with `cacheLife("zeta")` (stale 120s / revalidate 300s). If a user completes onboarding on mobile and opens the webapp within that window, the cached profile still has `onboarding_completed: false` → the layout redirects them back to `/onboarding`, hiding the data they already entered.
-- **Options:**
-  - (a) Add a `POST /api/cache/onboarding-complete` route handler in webapp that authenticates via `getRequestUser` and calls `updateTag("profile")` + `updateTag("accounts")`. Mobile calls it after `persistOnboarding()` succeeds. Requires webapp hotfix + mobile call in one coordinated release.
-  - (b) Layout guard reads `onboarding_completed` via a separate uncached query (`createClient() → profile_onboarding_completed` view), keeping the rest of `getProfile()` cached. Self-contained to webapp.
-- **Recommendation:** Option (a) — correctness + cheap round-trip only at onboarding-complete. Option (b) adds a DB hit to every layout render.
-- **Found:** mobile-webapp-parity review on PR #195, 2026-04-19
-
 ### Mobile onboarding — follow-up polish from slice-2 review
 - **Priority:** Low
 - **What:** Non-blocking items deferred from the zetas-front-guy / frontend-auditor / ux-analyst / mobile-sync-doctor / mobile-webapp-parity reviews on PR #195:

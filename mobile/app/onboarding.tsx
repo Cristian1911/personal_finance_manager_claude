@@ -179,6 +179,22 @@ export default function MobileOnboardingScreen() {
 
       if (completeError) throw completeError;
 
+      // Fire-and-forget: ping the webapp so its Route Cache expires the
+      // profile/accounts tags. If the user opens the webapp right after, the
+      // dashboard guard sees the fresh `onboarding_completed: true` instead
+      // of the cached stale value (up to 120s) and doesn't redirect back.
+      // Failure here is non-fatal — the cache will still expire on its own.
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+      const accessToken = session.access_token;
+      if (apiUrl && accessToken) {
+        void fetch(`${apiUrl}/api/cache/onboarding-complete`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }).catch((cacheErr) => {
+          console.warn("[onboarding] cache purge failed (non-fatal):", cacheErr);
+        });
+      }
+
       return true;
     } catch (err) {
       // Never surface raw PostgREST messages — they can leak internal table
