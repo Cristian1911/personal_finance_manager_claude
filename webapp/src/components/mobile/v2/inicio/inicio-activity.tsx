@@ -40,7 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useOutflowCategories } from "@/components/providers/app-data-provider";
+import { useCategories } from "@/components/providers/app-data-provider";
 import { categorizeTransaction, assignDestinatario } from "@/actions/categorize";
 import { deleteTransaction } from "@/actions/transactions";
 import {
@@ -121,7 +121,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
   // Track which rows have been opened at least once so we can defer mounting
   // the heavy CategoryPickerBody until the user actually taps Categorizar.
   const [openedCategorizeIds, setOpenedCategorizeIds] = useState<Set<string>>(new Set());
-  const outflowCategories = useOutflowCategories();
+  const categories = useCategories();
   // Refs for each row so we can scroll the expanded panel into view above the tab bar.
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -138,7 +138,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
   const [, startCategoryTransition] = useTransition();
 
   function handleAssignCategory(txId: string, categoryId: string) {
-    const category = findCategoryById(outflowCategories, categoryId);
+    const category = findCategoryById(categories, categoryId);
     if (!category) return;
     setOptimisticCategories((prev) => ({ ...prev, [txId]: category }));
     setExpandedId(null);
@@ -434,7 +434,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                           </div>
                           {openedCategorizeIds.has(tx.id) && (
                             <CategoryPickerBody
-                              categories={outflowCategories}
+                              categories={categories}
                               value={optimisticCat?.id ?? tx.category_id}
                               onSelect={(id) => {
                                 if (id) handleAssignCategory(tx.id, id);
@@ -443,7 +443,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                                 /* no-op inline — user creates via /categories */
                               }}
                               suggestion={null}
-                              direction="OUTFLOW"
+                              direction={tx.direction}
                             />
                           )}
                         </div>

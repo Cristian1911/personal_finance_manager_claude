@@ -398,7 +398,7 @@ function CategorizarDetail({
                     categories={categories}
                     value={null}
                     onValueChange={(catId) => handleCategorize(tx, catId)}
-                    direction="OUTFLOW"
+                    direction={tx.direction}
                     placeholder="Categoría"
                     variant="drawer"
                     triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-lg border border-white/10 bg-white/[0.03] text-z-brass hover:bg-white/[0.06]"
