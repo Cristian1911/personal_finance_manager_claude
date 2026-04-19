@@ -235,6 +235,11 @@
 - **When:** Extract when a 4th picker is added or when touching all 3 pickers.
 - **Found:** Code reuse review, 2026-04-13
 
+### Mobile `InicioMetricsGrid` "Gasto hoy" migration to `ExpandableStatTile`
+- **Priority:** Low
+- **What:** Slice-1 extracted `mobile/components/ui/ExpandableStatTile.tsx` and migrated the import reconcile grid, but `InicioMetricsGrid` "Gasto hoy" was left on its bespoke `PANEL_INSET_CLASS` chip shape (different value size, ring-chart sibling, compact currency formatter). A future pass should either (a) widen `ExpandableStatTile` with a `variant="inset-compact"` option to absorb it, or (b) extract a sibling `CompactStatTile` primitive. Worth doing next time we touch either surface.
+- **Found:** zetas-front-guy follow-up on slice-1, 2026-04-19
+
 ## Open PRs
 
 | PR | Description | Status |
