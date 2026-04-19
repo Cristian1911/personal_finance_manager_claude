@@ -34,7 +34,7 @@ import { CreditCardSummary } from "../../components/import/CreditCardSummary";
 import { CreditCardStackCard } from "../../components/import/CreditCardStackCard";
 import { ImportThemeProvider } from "../../components/import/import-theme";
 import { Narrator } from "../../components/common/Narrator";
-import { useTheme } from "../../lib/theme";
+import { useTheme, themeSurfaceClasses } from "../../lib/theme";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import {
@@ -53,7 +53,9 @@ import { COLORS } from "../../lib/constants/colors";
 import {
   BRASS_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE,
 } from "../../lib/constants/styles";
+import { ExpandableStatTile } from "../../components/ui/ExpandableStatTile";
 import {
   applyReconciliationMerge,
   createTransaction,
@@ -306,6 +308,7 @@ export default function ImportScreen() {
   const { mode: themeMode } = useTheme();
   const neutralTheme = themeMode === "neutral";
   const inkCls = neutralTheme ? "bg-z-ink-neutral" : "bg-z-ink";
+  const actionBarCls = themeSurfaceClasses(themeMode).actionBar;
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, 12);
   const [reconExpanded, setReconExpanded] = useState<
@@ -1119,14 +1122,14 @@ export default function ImportScreen() {
         <FlatList
           data={transactions}
           keyExtractor={txnKeyExtractor}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
           ListHeaderComponent={reviewHeader}
           renderItem={renderTxnRow}
           ItemSeparatorComponent={ItemSeparator}
         />
 
         {/* Bottom buttons */}
-        <View className="absolute bottom-0 left-0 right-0 flex-row gap-3 border-t border-white-6 bg-background-92 p-4">
+        <View className={`absolute bottom-0 left-0 right-0 flex-row gap-3 border-t border-white-6 ${actionBarCls} p-4`}>
           <Pressable
             accessibilityLabel="Cancelar importación"
             className={`flex-1 items-center rounded-xl py-3 ${GHOST_BUTTON_CLASS}`}
@@ -1191,7 +1194,7 @@ export default function ImportScreen() {
       <View className={`flex-1 ${inkCls}`} style={{ paddingTop: topInset }}>
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         >
           <Text className="text-[11px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
             Paso 3 de 4
@@ -1234,7 +1237,7 @@ export default function ImportScreen() {
               <>
                 <View className="mt-4 flex-row gap-3">
                   <View className="flex-1">
-                    <StatTile
+                    <ExpandableStatTile
                       label="Nuevos"
                       hint="se agregan"
                       value={preview.unmatched.length}
@@ -1245,7 +1248,7 @@ export default function ImportScreen() {
                     />
                   </View>
                   <View className="flex-1">
-                    <StatTile
+                    <ExpandableStatTile
                       label="Destinatarios"
                       hint="sugeridos"
                       value={newMerchantNames.length}
@@ -1271,7 +1274,7 @@ export default function ImportScreen() {
                             Movimientos nuevos
                           </Text>
                           <Text className="mt-1 font-inter-italic text-xs text-z-sage-dark">
-                            No coinciden con nada existente — se importan fresh.
+                            No coinciden con nada existente — se importan limpios.
                           </Text>
                           <View className="mt-3 gap-1.5">
                             {preview.unmatched.map((item) => (
@@ -1318,7 +1321,7 @@ export default function ImportScreen() {
 
                 <View className="mt-3 flex-row gap-3">
                   <View className="flex-1">
-                    <StatTile
+                    <ExpandableStatTile
                       label="Duplicados"
                       hint="se omiten"
                       value={preview.autoMerge.length}
@@ -1329,7 +1332,7 @@ export default function ImportScreen() {
                     />
                   </View>
                   <View className="flex-1">
-                    <StatTile
+                    <ExpandableStatTile
                       label="Ambiguos"
                       hint="tú eliges"
                       value={preview.review.length}
@@ -1346,7 +1349,7 @@ export default function ImportScreen() {
                     {reconExpanded === "duplicates" ? (
                       preview.autoMerge.length === 0 ? (
                         <Narrator tone="sage">
-                          Cero duplicados. Todo entra fresh, sin pisarse.
+                          Cero duplicados. Nada se pisa.
                         </Narrator>
                       ) : (
                         <>
@@ -1423,9 +1426,12 @@ export default function ImportScreen() {
                                         [item.importIndex]: "MERGE",
                                       }))
                                     }
+                                    accessibilityRole="radio"
+                                    accessibilityState={{ selected: choice === "MERGE" }}
+                                    accessibilityLabel="Fusionar con movimiento existente"
                                     className={`flex-1 rounded-xl px-3 py-2 ${
                                       choice === "MERGE"
-                                        ? "bg-z-brass"
+                                        ? BRASS_BUTTON_CLASS
                                         : "bg-z-surface-3"
                                     }`}
                                   >
@@ -1446,6 +1452,9 @@ export default function ImportScreen() {
                                         [item.importIndex]: "KEEP_BOTH",
                                       }))
                                     }
+                                    accessibilityRole="radio"
+                                    accessibilityState={{ selected: choice === "KEEP_BOTH" }}
+                                    accessibilityLabel="Mantener ambos movimientos"
                                     className={`flex-1 rounded-xl px-3 py-2 ${
                                       choice === "KEEP_BOTH"
                                         ? "bg-z-sage-dark"
@@ -1478,7 +1487,7 @@ export default function ImportScreen() {
           <Narrator>{narratorLine}</Narrator>
         </ScrollView>
 
-        <View className="absolute bottom-0 left-0 right-0 flex-row gap-3 border-t border-white-6 bg-background-92 p-4">
+        <View className={`absolute bottom-0 left-0 right-0 flex-row gap-3 border-t border-white-6 ${actionBarCls} p-4`}>
           <Pressable
             accessibilityLabel="Volver al paso anterior"
             className={`flex-1 items-center rounded-xl py-3 ${GHOST_BUTTON_CLASS}`}
@@ -1546,7 +1555,9 @@ export default function ImportScreen() {
       )}
 
       <Pressable
-        className="mt-8 rounded-xl bg-z-brass px-8 py-3.5 active:opacity-90"
+        accessibilityRole="button"
+        accessibilityLabel="Ver transacciones importadas"
+        className={`mt-8 rounded-xl ${BRASS_BUTTON_CLASS} px-8 py-3.5 active:opacity-90`}
         onPress={() => {
           resetFlow();
           router.navigate("/(tabs)/transactions");
@@ -1557,7 +1568,12 @@ export default function ImportScreen() {
         </Text>
       </Pressable>
 
-      <Pressable className="mt-4 py-2" onPress={resetFlow}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Importar otro extracto"
+        className="mt-4 py-2"
+        onPress={resetFlow}
+      >
         <Text className="font-inter-medium text-sm text-z-sage-dark">
           Importar otro extracto
         </Text>
@@ -1567,62 +1583,3 @@ export default function ImportScreen() {
   );
 }
 
-function StatTile({
-  label,
-  value,
-  tone,
-  hint,
-  neutral,
-  active,
-  onPress,
-}: {
-  label: string;
-  value: number;
-  tone: "white" | "brass" | "alert" | "income";
-  hint?: string;
-  neutral: boolean;
-  active?: boolean;
-  onPress?: () => void;
-}) {
-  const surfaceCls = neutral ? "bg-z-surface-2-neutral" : "bg-z-surface-2";
-  const isZero = value === 0;
-  const valueColor = isZero
-    ? "text-z-sage-dark"
-    : tone === "brass"
-      ? "text-z-brass"
-      : tone === "alert"
-        ? "text-z-debt"
-        : tone === "income"
-          ? "text-z-income"
-          : "text-z-white";
-  const borderCls = active ? "border-z-brass" : "border-white-6";
-  const interactive = typeof onPress === "function";
-  const Wrapper: typeof Pressable | typeof View = interactive ? Pressable : View;
-  return (
-    <Wrapper
-      {...(interactive
-        ? {
-            onPress,
-            accessibilityRole: "button" as const,
-            accessibilityState: { expanded: !!active },
-            accessibilityLabel: `Ver ${label.toLowerCase()}`,
-          }
-        : {})}
-      className={`rounded-2xl border ${borderCls} ${surfaceCls} px-4 pt-3.5 pb-4`}
-    >
-      <Text className="text-[10px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
-        {label}
-      </Text>
-      <Text
-        className={`mt-1.5 text-[34px] font-inter-bold tabular-nums tracking-tight ${valueColor}`}
-      >
-        {value}
-      </Text>
-      {hint && (
-        <Text className="mt-1 font-inter text-[12px] text-z-sage-dark">
-          {hint}
-        </Text>
-      )}
-    </Wrapper>
-  );
-}

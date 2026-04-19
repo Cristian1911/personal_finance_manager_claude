@@ -68,5 +68,7 @@ export function themeSurfaceClasses(mode: ThemeMode) {
     surface1: isNeutral ? "bg-z-surface-neutral" : "bg-z-surface",
     surface2: isNeutral ? "bg-z-surface-2-neutral" : "bg-z-surface-2",
     surface3: isNeutral ? "bg-z-surface-3-neutral" : "bg-z-surface-3",
+    /** Translucent surface for sticky bottom action bars. */
+    actionBar: isNeutral ? "bg-z-ink-neutral-92" : "bg-background-92",
   };
 }

@@ -15,4 +15,5 @@ export const COLORS = {
   alert: "#D4A843",
   oliveDeep: "#3F4632",
   ringTrack: "#2a2d28",
+  switchTrack: "#3A3A3A",
 } as const;

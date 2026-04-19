@@ -322,7 +322,7 @@ export default function SettingsScreen() {
           icon={
             <RefreshCw
               size={18}
-              color={status === "error" ? "#EF4444" : "#938C7E"}
+              color={status === "error" ? COLORS.debt : COLORS.sageDark}
             />
           }
           label="Estado"
@@ -340,7 +340,7 @@ export default function SettingsScreen() {
           onPress={handleSyncNow}
           disabled={syncing}
         >
-          <RefreshCw size={18} color="#C5BFAE" />
+          <RefreshCw size={18} color={COLORS.sageLight} />
           <Text className="ml-3 text-primary font-inter-bold text-sm">
             {syncing ? "Sincronizando..." : "Sincronizar ahora"}
           </Text>
@@ -423,9 +423,9 @@ export default function SettingsScreen() {
               <Switch
                 value={biometricsOn}
                 onValueChange={handleToggleBiometrics}
-                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
                 thumbColor={COLORS.foreground}
-                ios_backgroundColor="#3A3A3A"
+                ios_backgroundColor={COLORS.switchTrack}
               />
             </View>
             {biometricsOn && (
@@ -441,9 +441,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={bgReauthOn}
                     onValueChange={handleToggleBgReauth}
-                    trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                    trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
                     thumbColor={COLORS.foreground}
-                    ios_backgroundColor="#3A3A3A"
+                    ios_backgroundColor={COLORS.switchTrack}
                   />
                 </View>
               </>

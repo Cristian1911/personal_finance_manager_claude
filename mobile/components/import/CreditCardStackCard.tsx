@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react-native";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { COLORS } from "../../lib/constants/colors";
 import { projectMinimumPayoff12mo } from "../../lib/utils/cc-projection";
+import { AnimatedAccordion } from "../ui/AnimatedAccordion";
 import { useImportTheme } from "./import-theme";
 
 type CreditCardMetadata = {
@@ -160,7 +161,7 @@ export function CreditCardStackCard({
         </View>
       </Pressable>
 
-      {expanded && (
+      <AnimatedAccordion expanded={expanded} estimatedHeight={320}>
         <View className="mt-2.5 gap-1.5 border-t border-z-sage-10 pt-2.5">
           <DetailRow
             label="Cupo total"
@@ -228,7 +229,7 @@ export function CreditCardStackCard({
           />
           <DetailRow label="Movimientos" value={String(transactionCount)} />
         </View>
-      )}
+      </AnimatedAccordion>
     </Pressable>
   );
 }

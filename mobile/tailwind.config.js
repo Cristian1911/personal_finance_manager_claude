@@ -122,6 +122,9 @@ module.exports = {
         "background-90": "rgba(18,20,18,0.90)",
         "background-92": "rgba(18,20,18,0.92)",
 
+        // neutral ink opacity (base #0d0d0e = rgb(13,13,14))
+        "z-ink-neutral-92": "rgba(13,13,14,0.92)",
+
         // muted-foreground opacity (base #938C7E = rgb(147,140,126))
         "muted-fg-50": "rgba(147,140,126,0.50)",
         "muted-fg-70": "rgba(147,140,126,0.70)",
