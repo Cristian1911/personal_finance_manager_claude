@@ -27,7 +27,7 @@ import {
   type CurrencyCode,
   type ReconciliationCandidate,
 } from "@zeta/shared";
-import { ImportProgress } from "../../components/import/ImportProgress";
+import { WizardProgress } from "../../components/ui/WizardProgress";
 import { StatementChip } from "../../components/import/StatementChip";
 import { SectionDivider } from "../../components/import/SectionDivider";
 import { CreditCardSummary } from "../../components/import/CreditCardSummary";
@@ -989,7 +989,7 @@ export default function ImportScreen() {
           Importar extracto
         </Text>
         <View className="mt-3 mb-5">
-          <ImportProgress step={1} total={4} />
+          <WizardProgress step={1} total={4} />
         </View>
 
         <Pressable
@@ -1118,7 +1118,7 @@ export default function ImportScreen() {
             Encontramos esto
           </Text>
           <View className="mt-3">
-            <ImportProgress step={2} total={4} />
+            <WizardProgress step={2} total={4} />
           </View>
           <Text className="mt-3 font-inter text-sm text-z-sage-dark">
             {selectedCount} de {transactionCount} seleccionadas
@@ -1211,7 +1211,7 @@ export default function ImportScreen() {
             Reconciliación
           </Text>
           <View className="mt-3 mb-3">
-            <ImportProgress step={3} total={4} />
+            <WizardProgress step={3} total={4} />
           </View>
           {selectedAccount && (
             <View className="mt-4 flex-row items-baseline justify-between gap-3 border-b border-white-6 pb-2.5">
@@ -1541,7 +1541,7 @@ export default function ImportScreen() {
           Paso 4 de 4
         </Text>
         <View className="mt-3">
-          <ImportProgress step={4} total={4} />
+          <WizardProgress step={4} total={4} />
         </View>
       </View>
 
