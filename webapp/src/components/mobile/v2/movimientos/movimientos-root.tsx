@@ -23,7 +23,7 @@ import type {
 
 interface MovimientosRootProps {
   transactions: TransactionWithAccount[];
-  outflowCategories: CategoryWithChildren[];
+  categories: CategoryWithChildren[];
   accounts: Account[];
   tags: Tag[];
   count: number;
@@ -36,7 +36,7 @@ interface MovimientosRootProps {
 
 export function MovimientosRoot({
   transactions,
-  outflowCategories,
+  categories,
   accounts,
   tags,
   count,
@@ -141,7 +141,7 @@ export function MovimientosRoot({
         uncategorizedTransactions={uncategorizedTransactions}
         uncategorizedCount={uncategorizedCount}
         pendingEmails={pendingEmails}
-        categories={outflowCategories}
+        categories={categories}
         accounts={accounts}
         currency={currency}
         expandedTool={activeZone?.startsWith("tool-") ? activeZone.replace("tool-", "") : null}
@@ -170,7 +170,7 @@ export function MovimientosRoot({
               </p>
               <div className="space-y-0.5">
                 {txs.map((tx) => (
-                  <MovimientosTransactionRow key={tx.id} transaction={tx} categories={outflowCategories} tags={tagsByTxId.get(tx.id)} linkableAccountIds={linkableAccountIds} />
+                  <MovimientosTransactionRow key={tx.id} transaction={tx} categories={categories} tags={tagsByTxId.get(tx.id)} linkableAccountIds={linkableAccountIds} />
                 ))}
               </div>
             </div>
