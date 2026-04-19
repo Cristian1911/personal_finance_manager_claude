@@ -3,6 +3,7 @@ import { ArrowDownLeft, ArrowUpRight } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { WidgetFrame } from "./WidgetFrame";
+import { SECTION_EYEBROW_CLASS } from "../../../lib/constants/styles";
 import { COLORS } from "../../../lib/constants/colors";
 import type { DashboardTx } from "../../../lib/dashboard/useDashboardData";
 
@@ -17,10 +18,13 @@ export function RecentWidget({ transactions, editing, onRemove }: RecentWidgetPr
   const visible = transactions.slice(0, 3);
 
   return (
-    <WidgetFrame editing={editing} onRemove={onRemove} accessibilityLabel="Movimientos recientes">
-      <Text className="text-[9px] font-inter-bold uppercase tracking-[4px] text-z-sage-dark">
-        Reciente
-      </Text>
+    <WidgetFrame
+      editing={editing}
+      onRemove={onRemove}
+      onPress={() => router.push("/(tabs)/transactions")}
+      accessibilityLabel="Movimientos recientes"
+    >
+      <Text className={SECTION_EYEBROW_CLASS}>Reciente</Text>
       {visible.length === 0 ? (
         <Text className="mt-2 text-[11px] font-inter text-muted-foreground">
           Sin movimientos aún
@@ -37,7 +41,7 @@ export function RecentWidget({ transactions, editing, onRemove }: RecentWidgetPr
               >
                 <View
                   className={`h-6 w-6 items-center justify-center rounded-md ${
-                    isInflow ? "bg-green-500-10" : "bg-z-expense-12"
+                    isInflow ? "bg-z-income-10" : "bg-z-expense-12"
                   }`}
                 >
                   {isInflow ? (
@@ -81,7 +85,12 @@ export function RecentWidget({ transactions, editing, onRemove }: RecentWidgetPr
               </Pressable>
             );
           })}
-          <Pressable onPress={() => router.push("/(tabs)/transactions")} className="mt-1">
+          <Pressable
+            onPress={() => router.push("/(tabs)/transactions")}
+            accessibilityRole="button"
+            accessibilityLabel="Ver todos los movimientos"
+            className="mt-1"
+          >
             <Text className="text-[11px] font-inter-semibold text-z-brass">
               Ver todos →
             </Text>

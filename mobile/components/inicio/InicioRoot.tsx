@@ -27,7 +27,10 @@ import {
 import { useDashboardData } from "../../lib/dashboard/useDashboardData";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
-import { MOBILE_TAB_BAR_CLEARANCE } from "../../lib/constants/styles";
+import {
+  MOBILE_TAB_BAR_CLEARANCE,
+  PANEL_INSET_CLASS,
+} from "../../lib/constants/styles";
 import { PulseWidget } from "./widgets/PulseWidget";
 import { NextBillWidget } from "./widgets/NextBillWidget";
 import { AccountsWidget } from "./widgets/AccountsWidget";
@@ -143,11 +146,13 @@ export function InicioRoot() {
         action={
           <Pressable
             onPress={() => setEditing((e) => !e)}
-            accessibilityLabel={editing ? "Terminar edición" : "Editar inicio"}
-            className="rounded-full border border-z-brass-20 bg-z-brass-10 px-2.5 py-1"
+            accessibilityRole="button"
+            accessibilityLabel={editing ? "Terminar" : "Organizar inicio"}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="rounded-full border border-z-brass-20 bg-z-brass-10 px-2.5 py-1.5"
           >
-            <Text className="text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-brass">
-              {editing ? "Listo" : "Editar"}
+            <Text className="text-[10px] font-inter-semibold uppercase tracking-[4px] text-z-brass">
+              {editing ? "Listo" : "Organizar"}
             </Text>
           </Pressable>
         }
@@ -172,7 +177,7 @@ export function InicioRoot() {
         {editing && (
           <View className="mb-1 flex-row items-center gap-2 rounded-xl border border-z-brass-20 bg-z-brass-8 px-3 py-2">
             <Text className="flex-1 text-[11px] font-inter text-z-brass">
-              Toca × para quitar widgets · Ritmo no se puede quitar
+              Quita widgets con × o añade más abajo · Ritmo es permanente
             </Text>
           </View>
         )}
@@ -231,7 +236,7 @@ export function InicioRoot() {
                 );
               default:
                 return (
-                  <View className="rounded-2xl border border-white-6 bg-black-10 p-3">
+                  <View className={`${PANEL_INSET_CLASS} p-3`}>
                     <Text className="text-[11px] font-inter text-muted-foreground">
                       Widget próximamente
                     </Text>

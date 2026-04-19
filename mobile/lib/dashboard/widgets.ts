@@ -53,7 +53,7 @@ export const WIDGET_CATALOG: CatalogEntry[] = [
   {
     type: "next_bill",
     label: "Próximo pago",
-    description: "El siguiente obligación a pagar",
+    description: "La siguiente obligación a pagar",
     defaultSize: "S",
     available: true,
   },

@@ -2,6 +2,7 @@ import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { WidgetFrame } from "./WidgetFrame";
+import { SECTION_EYEBROW_CLASS } from "../../../lib/constants/styles";
 import type { NextBill } from "../../../lib/dashboard/useDashboardData";
 
 interface NextBillWidgetProps {
@@ -26,13 +27,11 @@ export function NextBillWidget({
       onPress={() => router.push("/(tabs)/plan")}
       accessibilityLabel="Próximo pago"
     >
-      <Text className="text-[9px] font-inter-bold uppercase tracking-[4px] text-z-sage-dark">
-        Próximo pago
-      </Text>
+      <Text className={SECTION_EYEBROW_CLASS}>Próximo pago</Text>
       {bill ? (
         <>
           <Text
-            className="mt-2 text-[22px] font-inter-bold text-z-alert"
+            className="mt-2 text-[22px] font-inter-bold tabular-nums text-z-alert"
             numberOfLines={1}
           >
             {formatCurrency(bill.amount, currency)}

@@ -2,6 +2,7 @@ import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { WidgetFrame } from "./WidgetFrame";
+import { SECTION_EYEBROW_CLASS } from "../../../lib/constants/styles";
 import { COLORS } from "../../../lib/constants/colors";
 import type { DashboardTx } from "../../../lib/dashboard/useDashboardData";
 
@@ -43,9 +44,7 @@ export function WhereTodayWidget({
       onPress={() => router.push("/(tabs)/transactions")}
       accessibilityLabel="Gasto de hoy"
     >
-      <Text className="text-[9px] font-inter-bold uppercase tracking-[4px] text-z-sage-dark">
-        Gasto hoy
-      </Text>
+      <Text className={SECTION_EYEBROW_CLASS}>Gasto hoy</Text>
       {spentToday === 0 ? (
         <View className="mt-2">
           <Text className="text-[22px] font-inter-bold text-z-sage-light">$0</Text>

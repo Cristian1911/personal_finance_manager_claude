@@ -2,6 +2,7 @@ import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { WidgetFrame } from "./WidgetFrame";
+import { SECTION_EYEBROW_CLASS } from "../../../lib/constants/styles";
 import { isDebtAccountType } from "../../../lib/constants/accounts";
 import type { AccountRow } from "../../../lib/repositories/accounts";
 
@@ -32,9 +33,7 @@ export function AccountsWidget({
       onPress={() => router.push("/accounts-list" as any)}
       accessibilityLabel="Cuentas"
     >
-      <Text className="text-[9px] font-inter-bold uppercase tracking-[4px] text-z-sage-dark">
-        Cuentas
-      </Text>
+      <Text className={SECTION_EYEBROW_CLASS}>Cuentas</Text>
       <View className="mt-2 gap-1">
         {top.length === 0 ? (
           <Text className="text-[11px] font-inter text-muted-foreground">

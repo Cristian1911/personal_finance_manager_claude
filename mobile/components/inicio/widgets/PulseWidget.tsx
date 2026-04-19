@@ -1,7 +1,10 @@
 import { View, Text, Pressable } from "react-native";
 import Svg, { Polyline } from "react-native-svg";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
-import { PANEL_SURFACE_SUBTLE_CLASS } from "../../../lib/constants/styles";
+import {
+  PANEL_SURFACE_SUBTLE_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "../../../lib/constants/styles";
 import { COLORS } from "../../../lib/constants/colors";
 import type { PulseRange } from "../../../lib/dashboard/widgets";
 
@@ -50,7 +53,6 @@ export function PulseWidget({
   trend,
 }: PulseWidgetProps) {
   const subtitleLabel = range === "weekly" ? "esta semana" : "este mes";
-  const rangeLabel = range === "weekly" ? "Semana" : "Mes";
 
   return (
     <View
@@ -63,9 +65,7 @@ export function PulseWidget({
       }}
     >
       <View className="flex-row items-center justify-between">
-        <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-          Ritmo · {rangeLabel}
-        </Text>
+        <Text className={SECTION_EYEBROW_CLASS}>Ritmo</Text>
         <View className="flex-row items-center gap-1.5">
           <View className={`h-1.5 w-1.5 rounded-full ${onTrack ? "bg-z-income" : "bg-z-alert"}`} />
           <Text className={`text-[11px] font-inter ${onTrack ? "text-z-income" : "text-z-alert"}`}>
@@ -120,11 +120,11 @@ function RangeChip({
       className={`rounded-full border px-2.5 py-1 ${
         active
           ? "border-z-brass-30 bg-z-brass-10"
-          : "border-white-8 bg-black-10"
+          : "border-white-6 bg-black-10"
       }`}
     >
       <Text
-        className={`text-[10px] font-inter-semibold uppercase tracking-[2px] ${
+        className={`text-[10px] font-inter-semibold uppercase tracking-[4px] ${
           active ? "text-z-brass" : "text-z-sage-dark"
         }`}
       >
