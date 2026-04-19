@@ -166,6 +166,15 @@ export default function PurchaseDecisionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Any change to an analysis input invalidates the current result. Clearing
+  // both `result` and `savedToWishlist` prevents the user from saving a
+  // stale verdict against edited inputs (e.g. analyze $100k → change amount
+  // to $500k → "Guardar en deseos" would otherwise save the wrong verdict).
+  useEffect(() => {
+    setResult(null);
+    setSavedToWishlist(false);
+  }, [amount, selectedAccountId, urgency, fundingType, installments]);
+
   const selectedAccount = useMemo(
     () => accounts.find((a) => a.id === selectedAccountId) ?? null,
     [accounts, selectedAccountId],
