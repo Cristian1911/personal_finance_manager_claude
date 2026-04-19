@@ -45,14 +45,16 @@ export async function updateSession(request: NextRequest) {
     clearAuthCookies(request, supabaseResponse);
   }
 
-  // Blacklist pattern: everything is protected unless explicitly listed as public
+  // Blacklist pattern: everything is protected unless explicitly listed as public.
+  // API routes self-authenticate via getRequestUser() (supports Bearer + cookies) —
+  // middleware would reject mobile Bearer tokens since it only reads cookies.
   const publicPaths = [
     "/login",
     "/signup",
     "/forgot-password",
     "/onboarding",
     "/auth",
-    "/api/webhooks",
+    "/api",
   ];
   const pathname = request.nextUrl.pathname;
   const isPublic =

@@ -10,88 +10,97 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const FETCH_TIMEOUT_MS = 120_000; // 120 seconds (PDF parsing can be slow)
 
 export async function POST(request: NextRequest) {
-  const user = await getRequestUser(request);
-  if (!user) {
-    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
+  try {
+    const user = await getRequestUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
 
-  const formData = await request.formData();
-  const file = formData.get("file") as File | null;
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
 
-  if (!file || !file.name.toLowerCase().endsWith(".pdf")) {
-    return NextResponse.json(
-      { error: "El archivo debe ser un PDF" },
-      { status: 400 }
-    );
-  }
+    if (!file || !file.name.toLowerCase().endsWith(".pdf")) {
+      return NextResponse.json(
+        { error: "El archivo debe ser un PDF" },
+        { status: 400 }
+      );
+    }
 
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json(
-      { error: "El archivo excede el tamaño máximo de 10MB" },
-      { status: 400 }
-    );
-  }
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "El archivo excede el tamaño máximo de 10MB" },
+        { status: 400 }
+      );
+    }
 
-  let password = formData.get("password") as string | null;
-  const userProvidedPassword = !!password;
+    let password = formData.get("password") as string | null;
+    const userProvidedPassword = !!password;
 
-  // Parse filename once — used for auto-fill and password save
-  const filenameInfo = parseStatementFilename(file.name);
+    const filenameInfo = parseStatementFilename(file.name);
 
-  // Fetch accounts once — reused for both password auto-fill and save
-  let matchedAccounts: Array<{ id: string; mask: string | null; pdf_password: string | null }> | null = null;
-  if (filenameInfo) {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("accounts")
-      .select("id, mask, pdf_password")
-      .eq("user_id", user.id)
-      .eq("is_active", true);
-    matchedAccounts = data;
+    let matchedAccounts: Array<{ id: string; mask: string | null; pdf_password: string | null }> | null = null;
+    if (filenameInfo) {
+      const supabase = await createClient();
+      const { data } = await supabase
+        .from("accounts")
+        .select("id, mask, pdf_password")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+      matchedAccounts = data;
 
-    if (!password && matchedAccounts) {
-      const match = matchAccountByLast4(matchedAccounts, filenameInfo.last4);
-      if (match?.pdfPassword) {
-        password = match.pdfPassword;
+      if (!password && matchedAccounts) {
+        const match = matchAccountByLast4(matchedAccounts, filenameInfo.last4);
+        if (match?.pdfPassword) {
+          password = match.pdfPassword;
+        }
       }
     }
-  }
 
-  // Quick encryption check — fail fast instead of waiting for the parser
-  const fileBuffer = await file.arrayBuffer();
-  if (isPdfEncrypted(fileBuffer) && !password) {
-    return NextResponse.json(
-      {
-        error: "El PDF está protegido con contraseña. Ingresa la contraseña para procesarlo.",
-        errorType: "password_required",
-      },
-      { status: 422 }
-    );
-  }
+    const fileBuffer = await file.arrayBuffer();
+    if (isPdfEncrypted(fileBuffer) && !password) {
+      return NextResponse.json(
+        {
+          error: "El PDF está protegido con contraseña. Ingresa la contraseña para procesarlo.",
+          errorType: "password_required",
+        },
+        { status: 422 }
+      );
+    }
 
-  const proxyForm = new FormData();
-  proxyForm.append("file", new Blob([fileBuffer], { type: "application/pdf" }), file.name);
-  if (password) {
-    proxyForm.append("password", password);
-  }
+    const proxyForm = new FormData();
+    proxyForm.append("file", new Blob([fileBuffer], { type: "application/pdf" }), file.name);
+    if (password) {
+      proxyForm.append("password", password);
+    }
 
-  if (!PARSER_API_KEY) {
-    return NextResponse.json(
-      {
-        error:
-          "El servicio de procesamiento de PDFs no está disponible. Intenta más tarde.",
-      },
-      { status: 503 }
-    );
-  }
+    if (!PARSER_API_KEY) {
+      return NextResponse.json(
+        {
+          error:
+            "El servicio de procesamiento de PDFs no está disponible. Intenta más tarde.",
+        },
+        { status: 503 }
+      );
+    }
 
-  try {
-    const response = await fetch(`${PARSER_URL}/parse`, {
-      method: "POST",
-      headers: { "X-Parser-Key": PARSER_API_KEY },
-      body: proxyForm,
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${PARSER_URL}/parse`, {
+        method: "POST",
+        headers: { "X-Parser-Key": PARSER_API_KEY },
+        body: proxyForm,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+    } catch (fetchErr) {
+      console.error("[parse-statement] parser fetch failed:", fetchErr);
+      return NextResponse.json(
+        {
+          error:
+            "No se pudo conectar con el servicio de procesamiento de PDFs. Asegúrate de que esté ejecutándose.",
+        },
+        { status: 503 }
+      );
+    }
 
     if (!response.ok) {
       const body = await response
@@ -99,7 +108,6 @@ export async function POST(request: NextRequest) {
         .catch(() => ({ detail: "Error del parser" }));
       const detail = body.detail;
 
-      // Map raw server-config errors to user-friendly messages
       if (
         response.status === 503 &&
         typeof detail === "string" &&
@@ -128,7 +136,6 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
 
-    // Save password on matched account for future auto-parsing
     if (userProvidedPassword && password && filenameInfo && matchedAccounts) {
       try {
         const match = matchAccountByLast4(matchedAccounts, filenameInfo.last4);
@@ -146,13 +153,13 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(data);
-  } catch {
+  } catch (err) {
+    console.error("[parse-statement] unhandled error:", err);
+    const message =
+      err instanceof Error ? err.message : "Error interno del servidor";
     return NextResponse.json(
-      {
-        error:
-          "No se pudo conectar con el servicio de procesamiento de PDFs. Asegúrate de que esté ejecutándose.",
-      },
-      { status: 503 }
+      { error: message, errorType: "internal" },
+      { status: 500 }
     );
   }
 }
