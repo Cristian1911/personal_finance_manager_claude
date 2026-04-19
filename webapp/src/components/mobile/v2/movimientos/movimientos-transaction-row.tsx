@@ -207,27 +207,20 @@ export function MovimientosTransactionRow({
       {/* Expanded: action chips */}
       {expanded && (
         <div className="flex flex-wrap items-center gap-1.5 px-2 pb-2.5 pt-0.5">
-          {/* Category chip or picker */}
-          {categoryName ? (
-            <CategoryZonePicker
-              categories={categories}
-              value={localCategory?.id ?? null}
-              onValueChange={handleCategorize}
-              direction={tx.direction === "OUTFLOW" ? "OUTFLOW" : undefined}
-              variant="drawer"
-              triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-full border border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12 font-medium"
-            />
-          ) : (
-            <CategoryZonePicker
-              categories={categories}
-              value={null}
-              onValueChange={handleCategorize}
-              direction={tx.direction === "OUTFLOW" ? "OUTFLOW" : undefined}
-              placeholder="Categoría"
-              variant="drawer"
-              triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-full border border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
-            />
-          )}
+          <CategoryZonePicker
+            categories={categories}
+            value={localCategory?.id ?? null}
+            onValueChange={handleCategorize}
+            direction={tx.direction}
+            placeholder="Categoría"
+            variant="drawer"
+            triggerClassName={cn(
+              "text-[10px] h-auto py-1 px-2.5 rounded-full border font-medium",
+              categoryName
+                ? "border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12"
+                : "border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
+            )}
+          />
 
           {/* Destinatario chip */}
           <DestinatarioZonePicker
