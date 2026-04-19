@@ -366,24 +366,22 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                     <div className={cn(PANEL_INSET_CLASS, "border-z-brass/15 bg-black/20 p-3")}>
                       {phase === "actions" ? (
                         <div className="flex gap-1.5">
-                          {tx.direction === "OUTFLOW" && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                openCategorizePhase(tx.id);
-                              }}
-                              className={cn(
-                                CHIP_BASE_CLASS,
-                                categoryResolved
-                                  ? "border-white/8 bg-white/[0.03] text-foreground"
-                                  : "border-z-brass/25 bg-z-brass/10 text-z-brass",
-                              )}
-                            >
-                              <Tag className="size-3" />
-                              Categorizar
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              openCategorizePhase(tx.id);
+                            }}
+                            className={cn(
+                              CHIP_BASE_CLASS,
+                              categoryResolved
+                                ? "border-white/8 bg-white/[0.03] text-foreground"
+                                : "border-z-brass/25 bg-z-brass/10 text-z-brass",
+                            )}
+                          >
+                            <Tag className="size-3" />
+                            Categorizar
+                          </button>
                           {vincularEligible && (
                             <button
                               type="button"
@@ -410,7 +408,7 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                               CHIP_BASE_CLASS,
                               "border-white/8 bg-white/[0.03] text-foreground",
                               // When 3 chips fit, shrink "Más" slightly so labels stay readable
-                              tx.direction === "OUTFLOW" && vincularEligible && "flex-[0.8]",
+                              vincularEligible && "flex-[0.8]",
                             )}
                           >
                             <MoreHorizontal className="size-3" />

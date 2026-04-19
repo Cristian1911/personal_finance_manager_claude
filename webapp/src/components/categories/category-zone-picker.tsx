@@ -398,10 +398,17 @@ export function CategoryPickerBody({
   suggestion,
   direction,
 }: CategoryPickerBodyProps) {
+  const filtered = useMemo(
+    () =>
+      direction
+        ? categories.filter((c) => !c.direction || c.direction === direction)
+        : categories,
+    [categories, direction],
+  );
   const [search, setSearch] = useState("");
   const [expandedZoneId, setExpandedZoneId] = useState<string | null>(() => {
     // Pre-expand zone containing current value
-    const parent = findParentZone(categories, value);
+    const parent = findParentZone(filtered, value);
     return parent?.id ?? null;
   });
   const [showInlineCreate, setShowInlineCreate] = useState(false);
@@ -418,12 +425,12 @@ export function CategoryPickerBody({
 
   // Zones (parents with children) + standalone categories
   const zones = useMemo(
-    () => categories.filter((c) => c.children.length > 0),
-    [categories],
+    () => filtered.filter((c) => c.children.length > 0),
+    [filtered],
   );
   const standalone = useMemo(
-    () => categories.filter((c) => c.children.length === 0),
-    [categories],
+    () => filtered.filter((c) => c.children.length === 0),
+    [filtered],
   );
 
   // -----------------------------------------------------------------------
