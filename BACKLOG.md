@@ -240,6 +240,18 @@
 - **What:** Slice-1 extracted `mobile/components/ui/ExpandableStatTile.tsx` and migrated the import reconcile grid, but `InicioMetricsGrid` "Gasto hoy" was left on its bespoke `PANEL_INSET_CLASS` chip shape (different value size, ring-chart sibling, compact currency formatter). A future pass should either (a) widen `ExpandableStatTile` with a `variant="inset-compact"` option to absorb it, or (b) extract a sibling `CompactStatTile` primitive. Worth doing next time we touch either surface.
 - **Found:** zetas-front-guy follow-up on slice-1, 2026-04-19
 
+### Mobile Afford — follow-up polish from slice-5 review
+- **Priority:** Low
+- **What:** Non-blocking items deferred from the zetas-front-guy / frontend-auditor / ux-analyst review on PR #197:
+  - Extract the private `MetricTile` in `mobile/app/purchase-decision.tsx` into a shared `mobile/components/ui/StatTile.tsx` (non-interactive variant of `ExpandableStatTile`). Reuse opportunity flagged by multiple reviewers across slices.
+  - Wishlist save errors currently reuse the top-level `setError` slot, which renders above the Analizar button. After a result is visible, wishlist errors appear far from the wishlist CTA that produced them. Add a local inline error under the "Guardar en deseos" button.
+  - Surface `selectedAccount.name` in the verdict hero ("Con tu cuenta Bancolombia…") to anchor the analysis context.
+  - Re-tapping Analizar while `savedToWishlist === true` silently resets the saved confirmation. Either preserve the flag when inputs are unchanged (stable input hash) or show a subtle toast "Guardaste una versión anterior".
+  - Engine-level: when `urgency === "NECESSARY"` but verdict is `NOT_RECOMMENDED`, add a dedicated reason that names the tension ("Aunque lo marcaste como necesidad, tu colchón no aguanta este gasto.") — UI is already ready to render it.
+  - `w-[47.5%]` arbitrary value on `MetricTile` — swap to `basis-[47%] flex-grow` or normalize container paddings and use `w-1/2 minus gap`.
+  - Treat SQLite `SQLITE_CONSTRAINT_UNIQUE` (code 19) as success when saving to deseos (currently shows a red error for what should be a no-op).
+- **Found:** agent review sweep on PR #197, 2026-04-19
+
 ### Mobile onboarding — follow-up polish from slice-2 review
 - **Priority:** Low
 - **What:** Non-blocking items deferred from the zetas-front-guy / frontend-auditor / ux-analyst / mobile-sync-doctor / mobile-webapp-parity reviews on PR #195:

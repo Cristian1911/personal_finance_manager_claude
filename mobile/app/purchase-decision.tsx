@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -63,6 +62,7 @@ const FUNDING_OPTIONS: { value: PurchaseFundingType; label: string }[] = [
 type VerdictMeta = {
   label: string;
   icon: ComponentType<LucideProps>;
+  iconColor: string;
   badgeBg: string;
   badgeText: string;
   scoreColor: string;
@@ -75,6 +75,7 @@ const VERDICT_META: Record<Verdict, VerdictMeta> = {
   BUY: {
     label: "Sí, adelante",
     icon: ShieldCheck,
+    iconColor: COLORS.income,
     badgeBg: "bg-z-income-12",
     badgeText: "text-z-income",
     scoreColor: "text-z-income",
@@ -84,6 +85,7 @@ const VERDICT_META: Record<Verdict, VerdictMeta> = {
   BUY_WITH_CAUTION: {
     label: "Sí, con cautela",
     icon: TriangleAlert,
+    iconColor: COLORS.alert,
     badgeBg: "bg-z-alert-12",
     badgeText: "text-z-alert",
     scoreColor: "text-z-alert",
@@ -93,6 +95,7 @@ const VERDICT_META: Record<Verdict, VerdictMeta> = {
   WAIT: {
     label: "Mejor espera",
     icon: Clock,
+    iconColor: COLORS.expense,
     badgeBg: "bg-z-expense-12",
     badgeText: "text-z-expense",
     scoreColor: "text-z-expense",
@@ -102,6 +105,7 @@ const VERDICT_META: Record<Verdict, VerdictMeta> = {
   NOT_RECOMMENDED: {
     label: "No recomendado",
     icon: Ban,
+    iconColor: COLORS.debt,
     badgeBg: "bg-z-debt-12",
     badgeText: "text-z-debt",
     scoreColor: "text-z-debt",
@@ -193,7 +197,7 @@ export default function PurchaseDecisionScreen() {
         fundingType,
         installments:
           fundingType === "INSTALLMENTS"
-            ? Number(installments) || 1
+            ? Math.max(1, Math.round(parseMoney(installments)) || 1)
             : null,
         month,
       });
@@ -244,9 +248,14 @@ export default function PurchaseDecisionScreen() {
   }, [savingWishlist, savedToWishlist, session, result, amount, currency, urgency]);
 
   const verdictMeta = result ? VERDICT_META[result.verdict] : null;
+  // Offer the save-to-deseos bridge whenever the user might want to defer —
+  // WAIT, NOT_RECOMMENDED, and BUY_WITH_CAUTION all qualify. BUY is excluded
+  // since a green-light would render the "save for later" CTA contradictory.
   const shouldOfferWishlist =
     result !== null &&
-    (result.verdict === "WAIT" || result.verdict === "NOT_RECOMMENDED");
+    (result.verdict === "WAIT" ||
+      result.verdict === "NOT_RECOMMENDED" ||
+      result.verdict === "BUY_WITH_CAUTION");
 
   return (
     <View className={`flex-1 ${inkCls}`} style={{ paddingTop: topInset }}>
@@ -261,8 +270,8 @@ export default function PurchaseDecisionScreen() {
           <ArrowLeft size={18} color={COLORS.sageLight} strokeWidth={2} />
         </Pressable>
         <View className="flex-1">
-          <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Afford
+          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Compra consciente
           </Text>
           <Text className="mt-0.5 font-inter-bold text-lg text-z-white">
             ¿Debería comprar esto?
@@ -280,38 +289,45 @@ export default function PurchaseDecisionScreen() {
       >
         {/* Monto */}
         <View className="gap-1.5">
-          <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Monto
           </Text>
           <TextInput
             value={amount}
             onChangeText={setAmount}
             keyboardType="numeric"
+            autoCorrect={false}
+            autoCapitalize="none"
             placeholder="250000"
             placeholderTextColor={COLORS.sageDark}
             accessibilityLabel="Monto de la compra"
-            className={`rounded-xl border border-z-sage-10 ${surface} px-4 py-3.5 font-inter-semibold text-lg text-z-white tabular-nums`}
+            className={`rounded-xl border border-white-6 ${surface} px-4 py-3.5 font-inter-semibold text-lg text-z-white tabular-nums`}
           />
         </View>
 
         {/* Cuenta */}
         <View className="mt-5 gap-1.5">
-          <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Cuenta
           </Text>
           {accounts.length === 0 ? (
-            <View
-              className={`rounded-xl border border-white-6 ${surface} px-4 py-3`}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Agregar una cuenta"
+              onPress={() => router.push("/account/create" as never)}
+              className={`rounded-xl border border-z-brass-30 bg-z-brass-8 px-4 py-3.5 active:opacity-90`}
             >
-              <Text className="font-inter text-sm text-z-sage-light">
-                No tienes cuentas activas. Agrega una antes de analizar.
+              <Text className="font-inter-semibold text-sm text-z-brass">
+                Agrega una cuenta para analizar
               </Text>
-            </View>
+              <Text className="mt-0.5 font-inter text-xs text-z-sage-light">
+                Toca para crear tu primera cuenta activa.
+              </Text>
+            </Pressable>
           ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+            <View
+              accessibilityLabel="Cuenta"
+              className="flex-row flex-wrap gap-2"
             >
               {accounts.map((a) => {
                 const isSelected = a.id === selectedAccountId;
@@ -344,17 +360,17 @@ export default function PurchaseDecisionScreen() {
                   </Pressable>
                 );
               })}
-            </ScrollView>
+            </View>
           )}
         </View>
 
         {/* Urgencia */}
         <View className="mt-5 gap-1.5">
-          <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Urgencia
           </Text>
           <View
-            accessibilityRole="radiogroup"
+            accessibilityLabel="Selección"
             className="flex-row gap-2"
           >
             {URGENCY_OPTIONS.map((opt) => {
@@ -387,11 +403,11 @@ export default function PurchaseDecisionScreen() {
 
         {/* Forma de pago */}
         <View className="mt-5 gap-1.5">
-          <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Forma de pago
           </Text>
           <View
-            accessibilityRole="radiogroup"
+            accessibilityLabel="Selección"
             className="flex-row gap-2"
           >
             {FUNDING_OPTIONS.map((opt) => {
@@ -424,17 +440,19 @@ export default function PurchaseDecisionScreen() {
 
         {fundingType === "INSTALLMENTS" && (
           <View className="mt-5 gap-1.5">
-            <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
               Número de cuotas
             </Text>
             <TextInput
               value={installments}
               onChangeText={setInstallments}
               keyboardType="numeric"
+              autoCorrect={false}
+              autoCapitalize="none"
               placeholder="12"
               placeholderTextColor={COLORS.sageDark}
               accessibilityLabel="Número de cuotas"
-              className={`rounded-xl border border-z-sage-10 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
+              className={`rounded-xl border border-white-6 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
             />
           </View>
         )}
@@ -450,15 +468,23 @@ export default function PurchaseDecisionScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Analizar la compra"
-          accessibilityState={{ disabled: loading }}
+          accessibilityState={{ disabled: loading || accounts.length === 0 }}
           onPress={handleAnalyze}
-          disabled={loading}
-          className={`mt-6 flex-row items-center justify-center gap-2 rounded-xl ${BRASS_BUTTON_CLASS} py-3.5 active:opacity-90`}
+          disabled={loading || accounts.length === 0}
+          className={`mt-6 flex-row items-center justify-center gap-2 rounded-xl py-3.5 ${
+            loading || accounts.length === 0
+              ? "bg-z-surface-2"
+              : `${BRASS_BUTTON_CLASS} active:opacity-90`
+          }`}
         >
           {loading ? (
             <ActivityIndicator color={COLORS.ink} />
           ) : (
-            <Text className="font-inter-bold text-base text-z-ink">
+            <Text
+              className={`font-inter-bold text-base ${
+                accounts.length === 0 ? "text-z-sage-dark" : "text-z-ink"
+              }`}
+            >
               Analizar
             </Text>
           )}
@@ -477,15 +503,7 @@ export default function PurchaseDecisionScreen() {
                 >
                   <verdictMeta.icon
                     size={14}
-                    color={
-                      result.verdict === "BUY"
-                        ? COLORS.income
-                        : result.verdict === "BUY_WITH_CAUTION"
-                          ? COLORS.alert
-                          : result.verdict === "WAIT"
-                            ? COLORS.expense
-                            : COLORS.debt
-                    }
+                    color={verdictMeta.iconColor}
                     strokeWidth={2.2}
                   />
                   <Text
@@ -537,15 +555,30 @@ export default function PurchaseDecisionScreen() {
               </Pressable>
             )}
             {savedToWishlist && (
-              <View className="flex-row items-center justify-center gap-2 rounded-xl border border-z-income-30 bg-z-income-12 py-3">
-                <CheckCircle2
-                  size={16}
-                  color={COLORS.income}
-                  strokeWidth={2}
-                />
-                <Text className="font-inter-semibold text-sm text-z-income">
-                  Guardado en deseos
-                </Text>
+              <View className="gap-2">
+                <View
+                  accessibilityLiveRegion="polite"
+                  className="flex-row items-center justify-center gap-2 rounded-xl border border-z-income-30 bg-z-income-12 py-3"
+                >
+                  <CheckCircle2
+                    size={16}
+                    color={COLORS.income}
+                    strokeWidth={2}
+                  />
+                  <Text className="font-inter-semibold text-sm text-z-income">
+                    Guardado en deseos
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir la lista de deseos"
+                  onPress={() => router.push("/(tabs)/deseos" as never)}
+                  className="items-center py-2"
+                >
+                  <Text className="font-inter-semibold text-sm text-z-brass">
+                    Ver en Deseos →
+                  </Text>
+                </Pressable>
               </View>
             )}
 
@@ -553,7 +586,7 @@ export default function PurchaseDecisionScreen() {
             <View
               className={`rounded-2xl border border-white-6 ${surface} p-4`}
             >
-              <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+              <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
                 Impacto financiero
               </Text>
               <View className="mt-3 flex-row flex-wrap gap-2.5">
@@ -614,7 +647,7 @@ export default function PurchaseDecisionScreen() {
               <View
                 className={`rounded-2xl border border-white-6 ${surface} p-4`}
               >
-                <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
                   Por qué
                 </Text>
                 <View className="mt-3 gap-3">
@@ -642,7 +675,7 @@ export default function PurchaseDecisionScreen() {
               <View
                 className={`rounded-2xl border border-white-6 ${surface} p-4`}
               >
-                <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
                   Qué podrías hacer en vez
                 </Text>
                 <View className="mt-3 gap-3">
@@ -680,7 +713,7 @@ function MetricTile({
     <View
       className={`w-[47.5%] rounded-xl border border-white-6 ${bg} px-3 py-2.5`}
     >
-      <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.14em] text-z-sage-dark">
+      <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
         {label}
       </Text>
       <Text className="mt-0.5 font-inter-bold text-sm text-z-white tabular-nums">
