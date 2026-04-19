@@ -240,6 +240,21 @@
 - **What:** Slice-1 extracted `mobile/components/ui/ExpandableStatTile.tsx` and migrated the import reconcile grid, but `InicioMetricsGrid` "Gasto hoy" was left on its bespoke `PANEL_INSET_CLASS` chip shape (different value size, ring-chart sibling, compact currency formatter). A future pass should either (a) widen `ExpandableStatTile` with a `variant="inset-compact"` option to absorb it, or (b) extract a sibling `CompactStatTile` primitive. Worth doing next time we touch either surface.
 - **Found:** zetas-front-guy follow-up on slice-1, 2026-04-19
 
+### Mobile import wizard — follow-up polish from slice-1 review
+- **Priority:** Low
+- **What:** Non-blocking items deferred from the zetas-front-guy / frontend-auditor / ux-analyst review on PR #193:
+  - `mobile/components/import/CreditCardSummary.tsx:242-270` — private `PeriodTile` duplicates `ExpandableStatTile`. Migrate.
+  - `mobile/components/import/import-theme.tsx` — `themeClasses()` is a diverged copy of `themeSurfaceClasses()` in `lib/theme.tsx`. Remove entirely; consumers should call `themeSurfaceClasses(mode)` directly.
+  - `mobile/lib/constants/colors.ts` — settings theme swatches (`#1E221E`, `#18181b`) should become `COLORS.surface2` / `COLORS.surface2Neutral` tokens so they can't drift silently.
+  - `mobile/app/(tabs)/import.tsx:1355` — `AnimatedAccordion estimatedHeight={1200}` for the Row-2 reconcile panel is a worst-case estimate that produces blank-space flicker on short lists. Switch to dynamic `onLayout`-measured height (or reduce the estimate) once `AnimatedAccordion` grows a measured-mode.
+  - `mobile/app/(tabs)/import.tsx:622-670` — `handlePrepareImport` calls `getReconciliationCandidates` then `getReconciliationCandidateById` per match (two awaits per item). Can be flattened to a single query that returns the full candidate in one pass — highest-latency path in the wizard.
+  - UX: Narrator voice (Kalam) is used for both page-level annotations and in-panel empty states; should be reserved for the page-level summary. Convert in-panel empty states to plain `text-xs italic text-z-sage-dark`.
+  - UX: `CreditCardStackCard` lacks a visible "linked" signal between the per-currency cards (both read as independent). Add an eyebrow header "Tarjeta · N monedas" above the stack.
+  - UX: Step 2 → Step 3 → Step 2 loses scroll position on the review list — preserve offset on back.
+  - UX: `ItemSeparator` uses `ml-12` but the checkbox indent is ~28px; hairline misaligns.
+  - `mobile/app/(tabs)/import.tsx:981-989` etc. — `ImportProgress` + "Paso X de 4" eyebrow are redundant. Drop the eyebrow.
+- **Found:** agent review sweep on PR #193, 2026-04-19
+
 ## Open PRs
 
 | PR | Description | Status |

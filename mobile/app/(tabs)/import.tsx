@@ -252,7 +252,7 @@ function AccountSelector({
             Seleccionar cuenta...
           </Text>
         )}
-        <ChevronDown size={16} color="#938C7E" />
+        <ChevronDown size={16} color={COLORS.sageDark} />
       </Pressable>
 
       {open && (
@@ -263,9 +263,13 @@ function AccountSelector({
             );
             const AIcon = aTypeDef?.icon;
             const aColor = account.color ?? COLORS.sageDark;
+            const isSelected = selected?.id === account.id;
             return (
               <Pressable
                 key={account.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Seleccionar cuenta ${account.name}`}
+                accessibilityState={{ selected: isSelected }}
                 className={`flex-row items-center px-4 py-3 active:bg-z-surface-3 ${
                   index > 0 ? "border-t border-z-sage-10" : ""
                 }`}
@@ -283,8 +287,8 @@ function AccountSelector({
                 <Text className="flex-1 font-inter-medium text-sm text-z-white">
                   {account.name}
                 </Text>
-                {selected?.id === account.id && (
-                  <CheckSquare size={16} color="#937844" />
+                {isSelected && (
+                  <CheckSquare size={16} color={COLORS.brass} />
                 )}
               </Pressable>
             );
@@ -994,7 +998,7 @@ export default function ImportScreen() {
           className="items-center justify-center rounded-2xl border border-z-brass-30 bg-z-brass-8 p-8 active:bg-z-brass-12"
           onPress={handlePickDocument}
         >
-          <Upload size={40} color="#937844" />
+          <Upload size={40} color={COLORS.brass} />
           <Text className="mt-4 font-inter-semibold text-base text-z-white">
             Seleccionar extracto PDF
           </Text>
@@ -1006,7 +1010,7 @@ export default function ImportScreen() {
         {document && (
           <View className="mt-4 rounded-2xl border border-z-sage-10 bg-z-surface-2 p-4">
             <View className="flex-row items-center">
-              <FileText size={20} color="#937844" />
+              <FileText size={20} color={COLORS.brass} />
               <View className="ml-3 flex-1">
                 <Text
                   className="font-inter-medium text-sm text-z-white"
@@ -1030,7 +1034,7 @@ export default function ImportScreen() {
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Si el extracto está cifrado, ingrésala aquí"
-                placeholderTextColor="#938C7E"
+                placeholderTextColor={COLORS.sageDark}
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -1055,6 +1059,7 @@ export default function ImportScreen() {
                     {savedPdfPasswords.map((entry) => (
                       <Pressable
                         key={entry.accountId}
+                        accessibilityRole="button"
                         accessibilityLabel={`Usar contraseña guardada de ${entry.accountName}`}
                         onPress={() => setPassword(entry.password)}
                         className="rounded-full border border-z-income-30 bg-z-income-12 px-3 py-1.5 active:bg-z-income-20"
@@ -1072,6 +1077,7 @@ export default function ImportScreen() {
         )}
 
         <Pressable
+          accessibilityRole="button"
           accessibilityLabel="Procesar extracto"
           className={`mt-6 items-center rounded-xl py-3.5 ${
             document ? `${BRASS_BUTTON_CLASS} active:opacity-90` : "bg-z-surface-2"
@@ -1131,6 +1137,7 @@ export default function ImportScreen() {
         {/* Bottom buttons */}
         <View className={`absolute bottom-0 left-0 right-0 flex-row gap-3 border-t border-white-6 ${actionBarCls} p-4`}>
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Cancelar importación"
             className={`flex-1 items-center rounded-xl py-3 ${GHOST_BUTTON_CLASS}`}
             onPress={resetFlow}
@@ -1140,6 +1147,7 @@ export default function ImportScreen() {
             </Text>
           </Pressable>
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Continuar a reconciliación"
             className={`flex-1 items-center rounded-xl py-3 ${
               canImport
@@ -1489,6 +1497,7 @@ export default function ImportScreen() {
 
         <View className={`absolute bottom-0 left-0 right-0 flex-row gap-3 border-t border-white-6 ${actionBarCls} p-4`}>
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Volver al paso anterior"
             className={`flex-1 items-center rounded-xl py-3 ${GHOST_BUTTON_CLASS}`}
             onPress={() => setStep("review")}
@@ -1498,7 +1507,8 @@ export default function ImportScreen() {
             </Text>
           </Pressable>
           <Pressable
-            accessibilityLabel="Confirmar importación"
+            accessibilityRole="button"
+            accessibilityLabel={`Confirmar importación de ${selected.size} movimiento${selected.size === 1 ? "" : "s"}`}
             className={`flex-1 items-center rounded-xl py-3 ${
               importing
                 ? "bg-z-surface-2"
@@ -1511,7 +1521,8 @@ export default function ImportScreen() {
               <ActivityIndicator color={COLORS.ink} />
             ) : (
               <Text className="font-inter-bold text-sm text-z-ink">
-                Confirmar importación
+                Confirmar {selected.size}{" "}
+                {selected.size === 1 ? "movimiento" : "movimientos"}
               </Text>
             )}
           </Pressable>
@@ -1534,7 +1545,7 @@ export default function ImportScreen() {
         </View>
       </View>
 
-      <CheckCircle size={64} color="#5CB88A" />
+      <CheckCircle size={64} color={COLORS.income} />
       <Text className="mt-6 font-inter-bold text-xl text-z-white">
         Importación exitosa
       </Text>
@@ -1545,7 +1556,8 @@ export default function ImportScreen() {
           : "transacciones importadas"}
       </Text>
       <Text className="mt-2 text-center font-inter text-sm text-z-sage-dark">
-        {importSummary.autoMerged} auto-merge, {importSummary.manualMerged} merge manual,{" "}
+        {importSummary.autoMerged} fusionadas automáticamente ·{" "}
+        {importSummary.manualMerged} fusionadas manualmente ·{" "}
         {importSummary.leftAsSeparate} separadas
       </Text>
       {selectedAccount && (
@@ -1567,6 +1579,36 @@ export default function ImportScreen() {
           Ver transacciones
         </Text>
       </Pressable>
+
+      {(() => {
+        const newMerchantCount = reconciliationPreview
+          ? new Set(
+              reconciliationPreview.unmatched
+                .map((i) => i.transaction.description)
+                .filter(
+                  (s): s is string => typeof s === "string" && s.length > 0,
+                ),
+            ).size
+          : 0;
+        if (newMerchantCount === 0) return null;
+        return (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Revisar ${newMerchantCount} destinatarios sugeridos`}
+            className="mt-4 py-2"
+            onPress={() => {
+              resetFlow();
+              router.navigate("/(tabs)/destinatarios" as never);
+            }}
+          >
+            <Text className="font-inter-medium text-sm text-z-brass">
+              Revisar {newMerchantCount} destinatario
+              {newMerchantCount === 1 ? "" : "s"} nuevo
+              {newMerchantCount === 1 ? "" : "s"}
+            </Text>
+          </Pressable>
+        );
+      })()}
 
       <Pressable
         accessibilityRole="button"

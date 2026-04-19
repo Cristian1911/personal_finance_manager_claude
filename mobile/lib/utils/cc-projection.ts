@@ -47,17 +47,22 @@ export function projectMinimumPayoff12mo(
 
   let current = balance;
   let interest = 0;
-  const months = 12;
+  const maxMonths = 12;
+  let monthsToPayoff = maxMonths;
 
-  for (let i = 0; i < months; i++) {
+  for (let i = 0; i < maxMonths; i++) {
     const monthInterest = current * rMo;
     interest += monthInterest;
     current = current + monthInterest - minPayment;
-    if (current < 0) current = 0;
+    if (current <= 0) {
+      current = 0;
+      monthsToPayoff = i + 1;
+      break;
+    }
   }
 
   return {
-    months,
+    months: monthsToPayoff,
     interestAccrued: interest,
     remainingBalance: current,
     growing: false,

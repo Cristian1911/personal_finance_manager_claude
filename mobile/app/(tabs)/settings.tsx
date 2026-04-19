@@ -36,7 +36,7 @@ import { COLORS } from "../../lib/constants/colors";
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <Text className="text-muted-foreground font-inter-semibold text-xs uppercase px-4 pt-5 pb-2">
+    <Text className="text-z-sage-dark font-inter-semibold text-xs uppercase px-4 pt-5 pb-2">
       {title}
     </Text>
   );

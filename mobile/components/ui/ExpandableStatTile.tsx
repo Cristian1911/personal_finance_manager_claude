@@ -22,7 +22,7 @@ type Props = {
 const toneClass: Record<StatTone, string> = {
   white: "text-z-white",
   brass: "text-z-brass",
-  alert: "text-z-debt",
+  alert: "text-z-alert",
   income: "text-z-income",
   debt: "text-z-debt",
 };
