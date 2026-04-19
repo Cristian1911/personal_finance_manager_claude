@@ -8,13 +8,22 @@ type Props = {
   label: string;
   selected: boolean;
   onPress: () => void;
+  /** Swap surface to neutral-theme variant when the user has opted in. */
+  neutral?: boolean;
 };
 
 /**
  * Row tile used on onboarding step 1 to pick the user's main purpose.
  * Radio-button semantics (re-clicking a selected option doesn't deselect).
  */
-export function PurposeOption({ icon: Icon, label, selected, onPress }: Props) {
+export function PurposeOption({
+  icon: Icon,
+  label,
+  selected,
+  onPress,
+  neutral = false,
+}: Props) {
+  const unselectedSurface = neutral ? "bg-z-surface-2-neutral" : "bg-z-surface-2";
   return (
     <Pressable
       onPress={onPress}
@@ -24,7 +33,7 @@ export function PurposeOption({ icon: Icon, label, selected, onPress }: Props) {
       className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3.5 ${
         selected
           ? "border-z-brass bg-z-brass-12"
-          : "border-white-6 bg-z-surface-2"
+          : `border-white-6 ${unselectedSurface}`
       }`}
     >
       <View

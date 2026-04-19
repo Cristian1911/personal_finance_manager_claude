@@ -1,6 +1,7 @@
 import { Text, TextInput, View } from "react-native";
 import { formatCurrency } from "@zeta/shared";
 import { COLORS } from "../../lib/constants/colors";
+import { parseMoney } from "../../lib/utils/money";
 import { Narrator } from "../common/Narrator";
 import type { AppPurpose, CurrencyCode } from "./types";
 
@@ -13,13 +14,8 @@ type Props = {
   onExpensesChange: (next: string) => void;
   debtCount: string;
   onDebtCountChange: (next: string) => void;
+  neutral?: boolean;
 };
-
-function parseMoney(raw: string): number {
-  if (!raw) return 0;
-  const n = Number(raw.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
 
 export function StepPulse({
   purpose,
@@ -30,7 +26,9 @@ export function StepPulse({
   onExpensesChange,
   debtCount,
   onDebtCountChange,
+  neutral = false,
 }: Props) {
+  const surface = neutral ? "bg-z-surface-2-neutral" : "bg-z-surface-2";
   const incomeN = parseMoney(income);
   const expensesN = parseMoney(expenses);
   const available = incomeN - expensesN;
@@ -50,7 +48,8 @@ export function StepPulse({
           keyboardType="numeric"
           placeholder="5000000"
           placeholderTextColor={COLORS.sageDark}
-          className="rounded-xl border border-z-sage-10 bg-z-surface-2 px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums"
+          accessibilityLabel="Ingreso mensual estimado"
+          className={`rounded-xl border border-z-sage-10 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
         />
       </View>
 
@@ -64,7 +63,8 @@ export function StepPulse({
           keyboardType="numeric"
           placeholder="3200000"
           placeholderTextColor={COLORS.sageDark}
-          className="rounded-xl border border-z-sage-10 bg-z-surface-2 px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums"
+          accessibilityLabel="Gasto mensual estimado"
+          className={`rounded-xl border border-z-sage-10 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
         />
       </View>
 
@@ -101,7 +101,8 @@ export function StepPulse({
             keyboardType="numeric"
             placeholder="2"
             placeholderTextColor={COLORS.sageDark}
-            className="rounded-xl border border-z-sage-10 bg-z-surface-2 px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums"
+            accessibilityLabel="Cantidad de tarjetas o préstamos"
+            className={`rounded-xl border border-z-sage-10 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
           />
           {debtCountN > 0 && (
             <Narrator tone="brass" spacing="tight">

@@ -4,8 +4,9 @@ import { PurposeOption } from "./PurposeOption";
 import type { AppPurpose } from "./types";
 
 type Props = {
-  value: AppPurpose;
+  value: AppPurpose | null;
   onChange: (next: AppPurpose) => void;
+  neutral?: boolean;
 };
 
 const OPTIONS = [
@@ -15,7 +16,7 @@ const OPTIONS = [
   { id: "improve_habits" as const, icon: Sparkles, label: "Mejorar mis hábitos" },
 ];
 
-export function StepWelcome({ value, onChange }: Props) {
+export function StepWelcome({ value, onChange, neutral }: Props) {
   return (
     <View className="gap-2">
       {OPTIONS.map((opt) => (
@@ -25,6 +26,7 @@ export function StepWelcome({ value, onChange }: Props) {
           label={opt.label}
           selected={value === opt.id}
           onPress={() => onChange(opt.id)}
+          neutral={neutral}
         />
       ))}
     </View>

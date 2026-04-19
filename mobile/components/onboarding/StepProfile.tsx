@@ -7,6 +7,7 @@ type Props = {
   onFirstNameChange: (next: string) => void;
   currency: CurrencyCode;
   onCurrencyChange: (next: CurrencyCode) => void;
+  neutral?: boolean;
 };
 
 const CURRENCIES: Array<{ code: CurrencyCode; label: string }> = [
@@ -22,7 +23,9 @@ export function StepProfile({
   onFirstNameChange,
   currency,
   onCurrencyChange,
+  neutral = false,
 }: Props) {
+  const surface = neutral ? "bg-z-surface-2-neutral" : "bg-z-surface-2";
   return (
     <View className="gap-5">
       <View className="gap-1.5">
@@ -38,7 +41,8 @@ export function StepProfile({
           autoCorrect={false}
           autoComplete="given-name"
           textContentType="givenName"
-          className="rounded-xl border border-z-sage-10 bg-z-surface-2 px-4 py-3 font-inter text-base text-z-white"
+          accessibilityLabel="Nombre"
+          className={`rounded-xl border border-z-sage-10 ${surface} px-4 py-3 font-inter text-base text-z-white`}
         />
         <Text className="font-inter text-xs text-z-sage-dark">
           Así te vamos a saludar en la app.
@@ -62,10 +66,10 @@ export function StepProfile({
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
                 accessibilityLabel={opt.label}
-                className={`rounded-xl border px-4 py-2.5 ${
+                className={`rounded-xl border px-4 py-3 ${
                   selected
                     ? "border-z-brass bg-z-brass-12"
-                    : "border-white-6 bg-z-surface-2"
+                    : `border-white-6 ${surface}`
                 }`}
               >
                 <Text

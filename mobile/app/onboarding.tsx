@@ -9,7 +9,6 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
 import { AppKeyboardAwareScrollView } from "../components/common/AppKeyboardAwareScrollView";
-import { Narrator } from "../components/common/Narrator";
 import { WizardProgress } from "../components/ui/WizardProgress";
 import { StepWelcome } from "../components/onboarding/StepWelcome";
 import { StepProfile } from "../components/onboarding/StepProfile";
@@ -27,6 +26,7 @@ import {
   MOBILE_TAB_BAR_CLEARANCE,
 } from "../lib/constants/styles";
 import { useTheme, themeSurfaceClasses } from "../lib/theme";
+import { parseMoney } from "../lib/utils/money";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 
@@ -37,14 +37,13 @@ type StepMeta = {
   eyebrow: string;
   title: string;
   description: string;
-  narrator?: string;
 };
 
 const STEP_META: Record<StepIndex, StepMeta> = {
   1: {
     eyebrow: "Paso 1 de 5",
     title: "Bienvenido a Zeta",
-    description: "Antes de arrancar, contanos qué quieres lograr.",
+    description: "Antes de arrancar, cuéntanos qué quieres lograr.",
   },
   2: {
     eyebrow: "Paso 2 de 5",
@@ -54,8 +53,8 @@ const STEP_META: Record<StepIndex, StepMeta> = {
   3: {
     eyebrow: "Paso 3 de 5",
     title: "Pulso mensual",
-    description: "Arranquemos con una estimación rápida.",
-    narrator: "No te preocupes por ser exacto — es una referencia.",
+    description:
+      "Arranquemos con una estimación rápida. No te preocupes por ser exacto — es una referencia.",
   },
   4: {
     eyebrow: "Paso 4 de 5",
@@ -63,24 +62,20 @@ const STEP_META: Record<StepIndex, StepMeta> = {
     description: "Agrega tu cuenta principal para empezar con datos reales.",
   },
   5: {
-    eyebrow: "Paso 5 de 5",
-    title: "¡Casi listo!",
+    eyebrow: "",
+    title: "",
     description: "",
   },
 };
-
-function parseMoney(raw: string): number {
-  if (!raw) return 0;
-  const n = Number(raw.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
 
 export default function MobileOnboardingScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, 12);
+  const bottomInset = Math.max(insets.bottom + 8, 20);
   const { mode } = useTheme();
+  const neutral = mode === "neutral";
   const inkCls = themeSurfaceClasses(mode).ink;
   const actionBarCls = themeSurfaceClasses(mode).actionBar;
 
@@ -96,17 +91,19 @@ export default function MobileOnboardingScreen() {
   const canAdvance = useMemo(() => {
     switch (step) {
       case 1:
-        return !!data.purpose;
+        return data.purpose !== null;
       case 2:
         return data.firstName.trim().length > 0;
       case 3:
-        // Income + expenses both > 0; debtCount only required if manage_debt and user wants to enter
-        return parseMoney(data.incomeMonthly) > 0 && parseMoney(data.expensesMonthly) > 0;
+        return (
+          parseMoney(data.incomeMonthly) > 0 &&
+          parseMoney(data.expensesMonthly) > 0
+        );
       case 4:
         return (
           data.accountName.trim().length > 0 &&
-          Number.isFinite(Number(data.balance)) &&
-          data.balance.trim().length > 0
+          data.balance.trim().length > 0 &&
+          Number.isFinite(Number(data.balance))
         );
       case 5:
         return true;
@@ -118,6 +115,10 @@ export default function MobileOnboardingScreen() {
   async function persistOnboarding(): Promise<boolean> {
     if (!session?.user?.id) {
       setError("Sesión expirada. Vuelve a iniciar sesión.");
+      return false;
+    }
+    if (!data.purpose) {
+      setError("Elige tu objetivo principal antes de continuar.");
       return false;
     }
 
@@ -175,6 +176,8 @@ export default function MobileOnboardingScreen() {
   }
 
   async function handleNext() {
+    if (loading) return;
+    if (!canAdvance) return;
     if (step === 4) {
       const ok = await persistOnboarding();
       if (ok) setStep(5);
@@ -184,14 +187,22 @@ export default function MobileOnboardingScreen() {
   }
 
   function handleBack() {
+    if (loading) return;
     if (step > 1 && step < 5) setStep((step - 1) as StepIndex);
   }
 
   function handleFinishPrimary() {
-    if (data.purpose === "manage_debt" || data.purpose === "track_spending") {
-      router.replace("/(tabs)/import");
-    } else {
-      router.replace("/(tabs)");
+    switch (data.purpose) {
+      case "manage_debt":
+      case "track_spending":
+        router.replace("/(tabs)/import");
+        return;
+      case "save_money":
+        router.replace("/(tabs)/plan");
+        return;
+      case "improve_habits":
+      default:
+        router.replace("/(tabs)");
     }
   }
 
@@ -201,28 +212,31 @@ export default function MobileOnboardingScreen() {
 
   return (
     <View className={`flex-1 ${inkCls}`} style={{ paddingTop: topInset }}>
-      <View className="px-5 pt-3 pb-4">
-        <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-          {meta.eyebrow}
-        </Text>
-        <Text className="mt-1 font-inter-bold text-[22px] text-z-white">
-          {meta.title}
-        </Text>
-        {meta.description ? (
-          <Text className="mt-1 font-inter text-sm text-z-sage-light">
-            {meta.description}
+      {step < 5 && (
+        <View className="px-5 pt-3 pb-4">
+          <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            {meta.eyebrow}
           </Text>
-        ) : null}
-        <View className="mt-4">
-          <WizardProgress step={step} total={TOTAL_STEPS} />
+          <Text className="mt-1 font-inter-bold text-[22px] text-z-white">
+            {meta.title}
+          </Text>
+          {meta.description ? (
+            <Text className="mt-1 font-inter text-sm text-z-sage-light">
+              {meta.description}
+            </Text>
+          ) : null}
+          <View className="mt-4">
+            <WizardProgress step={step} total={TOTAL_STEPS} />
+          </View>
         </View>
-      </View>
+      )}
 
       <AppKeyboardAwareScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingBottom: MOBILE_TAB_BAR_CLEARANCE,
+          paddingTop: step === 5 ? 48 : 0,
+          paddingBottom: step < 5 ? MOBILE_TAB_BAR_CLEARANCE : 24,
         }}
         bottomOffset={20}
       >
@@ -230,6 +244,7 @@ export default function MobileOnboardingScreen() {
           <StepWelcome
             value={data.purpose}
             onChange={(next) => set("purpose", next)}
+            neutral={neutral}
           />
         )}
 
@@ -239,10 +254,11 @@ export default function MobileOnboardingScreen() {
             onFirstNameChange={(next) => set("firstName", next)}
             currency={data.currency}
             onCurrencyChange={(next) => set("currency", next)}
+            neutral={neutral}
           />
         )}
 
-        {step === 3 && (
+        {step === 3 && data.purpose && (
           <StepPulse
             purpose={data.purpose}
             currency={data.currency}
@@ -252,6 +268,7 @@ export default function MobileOnboardingScreen() {
             onExpensesChange={(next) => set("expensesMonthly", next)}
             debtCount={data.debtCount}
             onDebtCountChange={(next) => set("debtCount", next)}
+            neutral={neutral}
           />
         )}
 
@@ -263,10 +280,11 @@ export default function MobileOnboardingScreen() {
             onAccountTypeChange={(next) => set("accountType", next)}
             balance={data.balance}
             onBalanceChange={(next) => set("balance", next)}
+            neutral={neutral}
           />
         )}
 
-        {step === 5 && (
+        {step === 5 && data.purpose && (
           <StepComplete
             firstName={data.firstName}
             purpose={data.purpose}
@@ -275,8 +293,6 @@ export default function MobileOnboardingScreen() {
             loading={loading}
           />
         )}
-
-        {meta.narrator ? <Narrator tone="sage">{meta.narrator}</Narrator> : null}
 
         {error ? (
           <View className="mt-5 rounded-xl border border-z-debt-20 bg-z-debt-5 px-4 py-3">
@@ -289,12 +305,14 @@ export default function MobileOnboardingScreen() {
 
       {step < 5 && (
         <View
-          className={`absolute bottom-0 left-0 right-0 flex-row items-center gap-3 border-t border-white-6 ${actionBarCls} px-4 pt-3 pb-6`}
+          className={`absolute bottom-0 left-0 right-0 flex-row items-center gap-3 border-t border-white-6 ${actionBarCls} px-4 pt-3`}
+          style={{ paddingBottom: bottomInset }}
         >
           {step > 1 ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Volver al paso anterior"
+              accessibilityState={{ disabled: loading }}
               className={`flex-row items-center gap-2 rounded-xl border ${GHOST_BUTTON_CLASS} px-4 py-3`}
               onPress={handleBack}
               disabled={loading}
@@ -310,7 +328,10 @@ export default function MobileOnboardingScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={step === 4 ? "Finalizar onboarding" : "Siguiente paso"}
+            accessibilityLabel={
+              step === 4 ? "Finalizar onboarding" : "Siguiente paso"
+            }
+            accessibilityState={{ disabled: !canAdvance || loading }}
             onPress={handleNext}
             disabled={!canAdvance || loading}
             className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl px-5 py-3.5 ${

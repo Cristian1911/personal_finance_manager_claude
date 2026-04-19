@@ -240,6 +240,19 @@
 - **What:** Slice-1 extracted `mobile/components/ui/ExpandableStatTile.tsx` and migrated the import reconcile grid, but `InicioMetricsGrid` "Gasto hoy" was left on its bespoke `PANEL_INSET_CLASS` chip shape (different value size, ring-chart sibling, compact currency formatter). A future pass should either (a) widen `ExpandableStatTile` with a `variant="inset-compact"` option to absorb it, or (b) extract a sibling `CompactStatTile` primitive. Worth doing next time we touch either surface.
 - **Found:** zetas-front-guy follow-up on slice-1, 2026-04-19
 
+### Mobile onboarding — follow-up polish from slice-2 review
+- **Priority:** Low
+- **What:** Non-blocking items deferred from the zetas-front-guy / frontend-auditor / ux-analyst review on PR #195:
+  - Money input formatting — thousand separators + currency prefix so `5000000` renders as `$ 5.000.000 COP`. Meatier change; extract a shared `MoneyInput` component when we touch it.
+  - Purpose acknowledgement on step 2 title/eyebrow — "Vamos a ayudarte a salir de deudas, {firstName}" instead of generic "Tu perfil". Reinforces the step-1 choice.
+  - `save_money` reinforcement on step 3 — when `available > 0`, add a Narrator line: "Con eso podrías apartar {X} al mes para tu meta."
+  - `profiles.debt_count` schema column — reference captures the count but there's no home for it. Add via supabase-migrator. Then onboarding can persist it.
+  - `firstName` saved into `full_name` column — either rename DB column or add a `first_name` column so intent matches storage.
+  - Error surface auto-scroll — on submit failure, scroll the error into view near the action bar.
+  - Extract `SelectPill` primitive — currency pills + account-type pills + purpose tiles share the "radio-button with brass highlight" shape. Consolidating into one `components/ui/SelectPill.tsx` would DRY ~60 lines across steps.
+  - `SECTION_EYEBROW_CLASS` tracking fix — `mobile/lib/constants/styles.ts:39` defines `tracking-[4px]` while the design system uses `tracking-[0.18em]`. The onboarding steps avoid the constant and inline the correct tracking, but any consumer that adopts the constant will get wrong tracking.
+- **Found:** agent review sweep on PR #195, 2026-04-19
+
 ### Mobile import wizard — follow-up polish from slice-1 review
 - **Priority:** Low
 - **What:** Non-blocking items deferred from the zetas-front-guy / frontend-auditor / ux-analyst review on PR #193:

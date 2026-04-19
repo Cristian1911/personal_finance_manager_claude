@@ -12,6 +12,7 @@ type Props = {
   onAccountTypeChange: (next: OnboardingAccountType) => void;
   balance: string;
   onBalanceChange: (next: string) => void;
+  neutral?: boolean;
 };
 
 const ACCOUNT_TYPES: Array<{
@@ -32,7 +33,11 @@ export function StepAccount({
   onAccountTypeChange,
   balance,
   onBalanceChange,
+  neutral = false,
 }: Props) {
+  const surface = neutral ? "bg-z-surface-2-neutral" : "bg-z-surface-2";
+  const balanceLabel =
+    accountType === "CREDIT_CARD" ? "Deuda actual" : "Saldo actual";
   return (
     <View className="gap-5">
       <View className="gap-1.5">
@@ -46,7 +51,8 @@ export function StepAccount({
           placeholderTextColor={COLORS.sageDark}
           autoCapitalize="words"
           autoCorrect={false}
-          className="rounded-xl border border-z-sage-10 bg-z-surface-2 px-4 py-3 font-inter text-base text-z-white"
+          accessibilityLabel="Nombre de la cuenta"
+          className={`rounded-xl border border-z-sage-10 ${surface} px-4 py-3 font-inter text-base text-z-white`}
         />
       </View>
 
@@ -67,10 +73,10 @@ export function StepAccount({
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
                 accessibilityLabel={label}
-                className={`flex-row items-center gap-2 rounded-xl border px-3.5 py-2.5 ${
+                className={`flex-row items-center gap-2 rounded-xl border px-3.5 py-3 ${
                   selected
                     ? "border-z-brass bg-z-brass-12"
-                    : "border-white-6 bg-z-surface-2"
+                    : `border-white-6 ${surface}`
                 }`}
               >
                 <Icon
@@ -93,7 +99,7 @@ export function StepAccount({
 
       <View className="gap-1.5">
         <Text className="text-[11px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-          Saldo actual
+          {balanceLabel}
         </Text>
         <TextInput
           value={balance}
@@ -101,7 +107,8 @@ export function StepAccount({
           keyboardType="numeric"
           placeholder="1250000"
           placeholderTextColor={COLORS.sageDark}
-          className="rounded-xl border border-z-sage-10 bg-z-surface-2 px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums"
+          accessibilityLabel={balanceLabel}
+          className={`rounded-xl border border-z-sage-10 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
         />
         <Text className="font-inter text-xs text-z-sage-dark">
           Si no lo sabes exacto, deja un estimado — lo ajustas después.

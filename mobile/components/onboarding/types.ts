@@ -13,7 +13,8 @@ export type OnboardingAccountType =
   | "CASH";
 
 export type OnboardingData = {
-  purpose: AppPurpose;
+  /** Null until the user explicitly picks a purpose on step 1 (no default). */
+  purpose: AppPurpose | null;
   firstName: string;
   currency: CurrencyCode;
   incomeMonthly: string;
@@ -25,7 +26,7 @@ export type OnboardingData = {
 };
 
 export const DEFAULT_ONBOARDING: OnboardingData = {
-  purpose: "manage_debt",
+  purpose: null,
   firstName: "",
   currency: "COP",
   incomeMonthly: "",

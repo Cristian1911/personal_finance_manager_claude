@@ -29,13 +29,13 @@ function primaryCtaFor(purpose: AppPurpose): { label: string; detail: string } {
       };
     case "save_money":
       return {
-        label: "Define tu primera meta",
-        detail: "Arranquemos por lo que quieres ahorrar.",
+        label: "Planifica tu próximo mes",
+        detail: "Asignemos sobres para tu meta.",
       };
     case "improve_habits":
       return {
         label: "Explora tu dashboard",
-        detail: "Mirá cómo Zeta resume tu mes.",
+        detail: "Mira cómo Zeta resume tu mes.",
       };
   }
 }
@@ -49,7 +49,10 @@ export function StepComplete({
 }: Props) {
   const cta = primaryCtaFor(purpose);
   const PrimaryIcon = purpose === "improve_habits" ? Compass : FileText;
-  const greetName = firstName.trim() || "todo listo";
+  // The primary CTA already goes to /(tabs) for improve_habits, so "Explorar primero"
+  // would duplicate it. Hide the ghost on that purpose.
+  const showExplore = purpose !== "improve_habits";
+  const trimmedName = firstName.trim();
 
   return (
     <View className="items-center gap-6">
@@ -59,7 +62,7 @@ export function StepComplete({
 
       <View className="items-center gap-1.5">
         <Text className="font-inter-bold text-[28px] text-z-white">
-          {firstName.trim() ? `¡Listo, ${greetName}!` : "¡Listo!"}
+          {trimmedName ? `¡Listo, ${trimmedName}!` : "¡Listo!"}
         </Text>
         <Text className="text-center font-inter text-sm text-z-sage-light">
           Tu Zeta está configurado. ¿Qué quieres hacer primero?
@@ -70,6 +73,7 @@ export function StepComplete({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={cta.label}
+          accessibilityState={{ disabled: !!loading }}
           onPress={onPrimary}
           disabled={loading}
           className={`flex-row items-center justify-center gap-2 rounded-xl ${BRASS_BUTTON_CLASS} px-5 py-4 active:opacity-90`}
@@ -83,17 +87,20 @@ export function StepComplete({
           {cta.detail}
         </Text>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Explorar Zeta primero"
-          onPress={onExplore}
-          disabled={loading}
-          className={`items-center justify-center rounded-xl border ${GHOST_BUTTON_CLASS} px-5 py-3.5 mt-2`}
-        >
-          <Text className="font-inter-medium text-sm text-z-sage-light">
-            Explorar primero
-          </Text>
-        </Pressable>
+        {showExplore && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Explorar Zeta primero"
+            accessibilityState={{ disabled: !!loading }}
+            onPress={onExplore}
+            disabled={loading}
+            className={`items-center justify-center rounded-xl ${GHOST_BUTTON_CLASS} px-5 py-3.5 mt-2`}
+          >
+            <Text className="font-inter-medium text-sm text-z-sage-light">
+              Explorar primero
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
