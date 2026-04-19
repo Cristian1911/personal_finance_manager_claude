@@ -213,7 +213,7 @@ export function MovimientosTransactionRow({
               categories={categories}
               value={localCategory?.id ?? null}
               onValueChange={handleCategorize}
-              direction={tx.direction === "OUTFLOW" ? "OUTFLOW" : undefined}
+              direction={tx.direction}
               variant="drawer"
               triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-full border border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12 font-medium"
             />
@@ -222,7 +222,7 @@ export function MovimientosTransactionRow({
               categories={categories}
               value={null}
               onValueChange={handleCategorize}
-              direction={tx.direction === "OUTFLOW" ? "OUTFLOW" : undefined}
+              direction={tx.direction}
               placeholder="Categoría"
               variant="drawer"
               triggerClassName="text-[10px] h-auto py-1 px-2.5 rounded-full border border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
