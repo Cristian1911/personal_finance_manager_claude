@@ -190,9 +190,21 @@ export default function MobileOnboardingScreen() {
         void fetch(`${apiUrl}/api/cache/onboarding-complete`, {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}` },
-        }).catch((cacheErr) => {
-          console.warn("[onboarding] cache purge failed (non-fatal):", cacheErr);
-        });
+        })
+          .then((res) => {
+            if (!res.ok) {
+              console.warn(
+                "[onboarding] cache purge returned non-ok:",
+                res.status,
+              );
+            }
+          })
+          .catch((cacheErr) => {
+            console.warn(
+              "[onboarding] cache purge failed (non-fatal):",
+              cacheErr,
+            );
+          });
       }
 
       return true;
