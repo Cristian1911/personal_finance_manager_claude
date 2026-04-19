@@ -7,9 +7,17 @@ type Props = {
   total: number;
 };
 
-export function ImportProgress({ step, total }: Props) {
+/**
+ * Horizontal progress bar for step-by-step flows. Filled segments are brass,
+ * pending segments are sage-10. Used by the import wizard and onboarding.
+ */
+export function WizardProgress({ step, total }: Props) {
   return (
-    <View className="flex-row gap-1">
+    <View
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: total, now: step }}
+      className="flex-row gap-1"
+    >
       {Array.from({ length: total }).map((_, i) => (
         <View
           key={i}
