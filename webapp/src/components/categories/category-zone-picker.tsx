@@ -23,6 +23,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import {
@@ -368,7 +369,7 @@ export function CategoryZonePicker({
           <DrawerHeader>
             <DrawerTitle>Elegir categoría</DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className={cn("overflow-y-auto px-2", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
             {pickerContent}
           </div>
         </DrawerContent>

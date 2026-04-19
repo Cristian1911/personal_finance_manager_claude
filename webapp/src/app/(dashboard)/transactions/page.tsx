@@ -95,7 +95,7 @@ export default async function TransactionsPage({
       <div className="pb-20 lg:hidden lg:pb-0">
         <MovimientosRoot
           transactions={transactionsResult.data}
-          outflowCategories={outflowCategories}
+          categories={categories}
           accounts={accounts}
           tags={allTags}
           count={transactionsResult.count}
