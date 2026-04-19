@@ -1,141 +1,133 @@
-# Session Handover — 2026-04-16 (Mobile Polish — Phase 1 + 2)
+# Session Handover — 2026-04-19 (Mobile Import Redesign · Slice 1 continued)
 
-> Supersedes prior handovers in this file. For the 2026-04-08 performance-audit handover, see git history (`HANDOVER.md@HEAD~N`).
+> Supersedes prior handovers. For earlier handovers see git history (`HANDOVER.md@HEAD~N`).
 
 ## 1. Session Summary
 
-Two-phase mobile polish milestone. Phase 1 shipped structural fixes — production leak of dev tooling, tab-bar clipping on list rows, month-pager desync, `/etiquetas` deep-link. Phase 2 reshaped the mobile `/dashboard` end-to-end via the `brainstorming → writing-plans → executing-plans` superpowers flow. Also performed a full mobile audit (28 screenshots, 30+ findings) before any code landed. Five review passes (zetas-front-guy, perf-auditor, frontend-auditor, ux-analyst, Gemini, `/simplify`) shaped the final implementation.
-
----
+Continued the Claude Design "Zeta Wireframes" implementation in the mobile app. Shipped a working end-to-end Bancolombia CC PDF import (fixed a prod middleware bug that was blocking mobile uploads), redesigned the reconcile step with a 2×2 stat grid + in-place expansion animation, introduced a global "narrator" voice (Kalam handwritten font), added a Sage/Neutral theme selector on Settings with persistence, and laid groundwork for a shared `ExpandableStatTile` primitive. App currently runs against local webapp (`http://192.168.1.6:3000`) for testing; the prod middleware fix is local-only and not yet deployed.
 
 ## 2. Changes Made
 
-### Phase 1 — PR #168 (MERGED → `93f1cf3`)
+### Webapp — prod hotfix (NOT YET DEPLOYED)
+- `webapp/src/lib/supabase/middleware.ts:49-57` — added `/api` to `publicPaths`. Fixes mobile Bearer-token requests being redirected to `/login` (then 500'd as `Failed to find Server Action`).
+- `webapp/src/app/api/parse-statement/route.ts` — top-level `try/catch` so unhandled exceptions return JSON instead of generic `"Internal Server Error"`.
 
-- **`webapp/src/app/(dashboard)/settings/page.tsx:235-244`** — Gate "Herramientas de Desarrollo" card behind `process.env.NODE_ENV === 'development'` (was rendering to prod).
-- **`webapp/src/app/(dashboard)/layout.tsx:107`** — Swap `pb-20` for `MOBILE_TAB_BAR_CLEARANCE_CLASS`. 80px was less than `56px + env(safe-area-inset-bottom)` on iPhones with home indicator, clipping the last list row on `/transactions`, `/accounts/[id]`, `/plan?tab=periodo`, etc.
-- **`webapp/src/components/settings/settings-mobile-accordion.tsx`** — Added `useEffect` hash handler + `scroll-mt-16` + per-section refs so `/settings#etiquetas` auto-opens the matching accordion and scrolls into view.
-- **`webapp/src/app/(dashboard)/etiquetas/page.tsx`** — Redirect target changed to `/settings#etiquetas` (was `/settings` top).
-- **`webapp/src/components/recurring/use-recurring-month.ts`** — Rewired month-cursor from local `useState(() => new Date())` to URL-param source via `useRouter`/`useSearchParams`/`parseMonth`/`formatMonthParam`. Inner Recurrentes pager and global `<MonthSelector />` now share one source of truth.
-- **`~/.claude/rules/pdf-parser.md`** — Personal rule sync: import wizard is 6 steps (`upload | review | destinatarios | confirm | reconcile | results`), not 4.
+### Mobile — import flow
+- `mobile/app/(tabs)/import.tsx`:
+  - iOS upload swapped to `FileSystem.uploadAsync` (`expo-file-system/legacy`) + 30s `Promise.race` timeout. Replaced hanging `fetch`+FormData.
+  - Response parsing made content-type-agnostic (iOS omits `content-type` in `uploadResult.headers`).
+  - Multi-statement CC: `allStatements` state + `switchStatement()` helper.
+  - `useSafeAreaInsets` applied to all 4 step roots so headers clear the Dynamic Island.
+  - Step 3 (reconcile) redesigned as 2×2 stat grid (Nuevos / Destinatarios / Duplicados / Ambiguos) with `AnimatedAccordion` expansion between rows.
+  - `StatTile` component with tones `white | brass | alert | income`. Zero values dim to `z-sage-dark`.
+  - `Narrator` annotation always visible below the grid (removed earlier gate).
+  - Account indicator softened from brass chip → baseline caption + hair-line divider.
+  - Removed local `neutralTheme` state; reads from global `useTheme()`.
+- `mobile/components/import/CreditCardStackCard.tsx` — **new**. Per-currency compact CC card with expandable detail metrics.
+- `mobile/components/import/CreditCardSummary.tsx` — added `useImportTheme` for surface swaps.
+- `mobile/components/import/StatementChip.tsx` — **new** (earlier session). Bank · ••last4 chip with period.
+- `mobile/components/import/SectionDivider.tsx` — **new** (earlier session).
+- `mobile/components/import/ImportProgress.tsx` — **new** (earlier session). 4-segment brass progress.
+- `mobile/components/import/import-theme.tsx` — refactored to delegate to global `useTheme()`. `ImportThemeProvider` is now a no-op shim.
+- `mobile/lib/utils/cc-projection.ts` — **new**. 12-month minimum payment projection math (`r_mo = (1+EA)^(1/12)-1`).
 
-### Phase 2 — PR #169 (OPEN, mergeable CLEAN)
+### Mobile — theme + narrator
+- `mobile/lib/theme.tsx` — **new**. `ZetaThemeProvider` + `useTheme()` with `SecureStore` persistence. Modes: `"sage" | "neutral"` (light later). Key: `zeta.theme-mode`.
+- `mobile/app/_layout.tsx` — wrapped root in `ZetaThemeProvider`. Added `Kalam_700Bold` font. (Earlier: `Inter_*_Italic` variants too.)
+- `mobile/app/(tabs)/settings.tsx` — new "Apariencia" section with `ThemeSelector` (Sage / Neutral pill cards). Settings root respects the theme for instant visual feedback.
+- `mobile/components/common/Narrator.tsx` — **new**. Centered 24px `font-narrator` (Kalam 700) annotation. Tones: `brass | sage`. Spacing: `default | tight`.
+- `mobile/tailwind.config.js` — added tokens: `z-ink-neutral (#0d0d0e)`, `z-surface-neutral (#121214)`, `z-surface-2-neutral (#18181b)`, `z-surface-3-neutral (#1f1f23)`. Added `font-narrator: ["Kalam_700Bold"]`.
+- `mobile/package.json` / `pnpm-lock.yaml` — added `@expo-google-fonts/kalam ^0.4.1`. Tried + removed `@expo-google-fonts/caveat`.
 
-**New files:**
-
-- **`webapp/src/components/mobile/v2/inicio/timeline-model.ts`** — Pure module. `TimelineItem`/`TimelineSources`/`UpcomingIncomeItem` types + `buildTimelineItems()` merger. Consumes `formatDate` + `formatCurrency` from `@/lib/utils/*` (was hand-rolling them; simplified in `/simplify` pass).
-- **`webapp/src/components/mobile/v2/inicio/timeline-model.test.ts`** — 5 Vitest cases (empty, overdue, today-collapsed-emails, date sort, income styling). All passing.
-- **`webapp/src/components/mobile/v2/inicio/inicio-attention-timeline.tsx`** — Replaces `inicio-attention.tsx`. Horizontal "Por resolver" strip + `aria-label` per card + empty-state "Todo tranquilo".
-- **`webapp/src/components/mobile/v2/inicio/inicio-tool-row.tsx`** — Replaces `inicio-discovery.tsx`. Single full-width tile wrapping `PurchaseRecommenderDrawer`.
-- **`webapp/vitest.config.ts`** — Minimal `defineConfig` with `@` → `src` path alias. Required only because `timeline-model.ts` now imports `@/lib/utils/*`; previously tests worked with no config.
-
-**Modified files:**
-
-- **`webapp/src/components/mobile/v2/inicio/inicio-root.tsx`** — Reorder to Hero → ImportStrip → Timeline → Widgets → Tool → Reciente. `space-y-2` → `space-y-4`. Added `upcomingIncome` + `currency` plumbing.
-- **`webapp/src/components/mobile/v2/inicio/inicio-metrics-grid.tsx`** — RITMO + GASTO HOY restyled from chip-style to widget tile (`rounded-2xl`, `min-h-[120px]`, centered col, uses new `PANEL_INSET_SUBTLE_CLASS`). Arc-ring stroke uses `var(--color-z-surface-3)` token.
-- **`webapp/src/components/mobile/v2/inicio/inicio-activity.tsx`** — Major. Dropped "Sin cat." yellow tag. Tap-to-expand with inline `CategoryPickerBody` (OUTFLOW only) + optimistic update via `categorizeTransaction`. `CategoryPickerBody` loaded via `next/dynamic({ssr:false})`. Lazy-mount via `openedOnceIds`. `scrollIntoView` after expand to clear tab bar. `aria-expanded` + `aria-label` on row button. `currency_code` typed as `CurrencyCode`. Direction icons use `bg-z-income/12` + `bg-z-expense/12`.
-- **`webapp/src/components/mobile/v2/inicio/inicio-import-strip.tsx`** — Added `hasPendingEmails: boolean` prop; hides when true (redundant with timeline's email card).
-- **`webapp/src/components/dashboard/zones/mobile-zone.tsx`** — Derive `upcomingIncome` from `heroData.nextIncome*`. Added `category_id` to `mobileRecentTx` mapping. `currency_code` cast to `CurrencyCode`.
-- **`webapp/src/actions/transactions.ts:573-588, 604-619`** — Added `category_id` to `RecentTransaction` type + select columns in `getRecentTransactionsCached`.
-- **`webapp/src/lib/constants/styles.ts`** — Added `PANEL_INSET_SUBTLE_CLASS` export (`rounded-2xl border border-white/6 bg-white/[0.02]`).
-
-**Deleted:** `inicio-attention.tsx`, `inicio-discovery.tsx`.
-
-### Session artifacts committed (not code, but durable)
-
-- **`audit/MOBILE_AUDIT_2026-04-16.md`** — 368-line full mobile audit, top 10 quick wins, per-screen findings, RN parity gaps.
-- **`audit/2026-04-16/*.png`** — 28 original sweep captures + 8 Phase 2 verification captures.
-- **`docs/superpowers/specs/2026-04-16-dashboard-polish-design.md`** — Phase 2 design spec (decisions D1–D7).
-- **`docs/superpowers/plans/2026-04-16-dashboard-polish.md`** — Phase 2 implementation plan (12 tasks, ~50 steps).
-- **`BACKLOG.md`** — Appended 5 entries (see section 5 below).
-
----
+### Mobile env (testing only — revert before ship)
+- `mobile/.env` — `EXPO_PUBLIC_API_URL=http://192.168.1.6:3000`. **Revert to `https://pfm.sanson1911.cloud` before release.**
 
 ## 3. Key Decisions
 
-- **Dashboard job = Status + Triage (co-dominant), habit-reinforcement de-prioritized.** User framing: "Am I on track + what needs attention." Drove every subsequent layout choice.
-- **Hero first, same position always.** Rejected adaptive ordering ("attention leads when urgent") for predictability.
-- **"Por resolver" horizontal timeline** (Option D from mockup round) won over stacked cards, unified attention hero, single next action. Chronological mental model absorbs emails/pagos/ingresos.
-- **Widget tiles (W2 mockup) over chip or single-tool variants.** RITMO kept (track signal, not habit). GASTO HOY restored after user feedback despite de-prioritizing habit metrics.
-- **`Plan del mes` tile removed** — redundant with tab-bar Plan entry. `¿Puedo comprarlo?` kept as single tool row since it has no tab-bar home.
-- **Dual-back pills on `/transactions/[id]` + `/deudas/planificador` NOT removed.** User's explicit call: PWA installs lose browser back-swipe; pills are safety insurance. Deferred to redesign (breadcrumb tag vs back chip), not removal.
-- **Reciente "Sin cat." yellow tag removed.** Signal moved into tap-to-expand inline category picker. `/transactions` already surfaces the uncategorized count prominently; don't duplicate on Dashboard.
-- **Inline execution over subagent-driven** for Phase 2. Reasons: Playwright auth session reuse (agents spawn fresh contexts), shared-file serialization (4 tasks touch `inicio-root.tsx`), visual polish benefits from user-in-the-loop iteration.
-- **`CategoryPickerBody` → dynamic import.** `/simplify` efficiency finding: static import shipped ~800 LOC (Radix Command/Popover + inline form + zone tiles) to Dashboard route even though `openedOnceIds` only lazy-*rendered*. `next/dynamic({ssr:false})` defers mount AND bundle.
-- **Timeline model accepts `currency` via `TimelineSources`.** Original hardcoded `$`; frontend-auditor + Gemini + `/simplify` all flagged. Now multi-currency-ready (caveat: attention types still carry `amount: number` with no currency per item — see Gotchas).
-
----
+- **Prod middleware bug root cause** confirmed via SSH + `docker logs` on the VPS: the `Failed to find Server Action "x"` stack trace pointed at `app-page` chunks, not API chunks. Unauthenticated POST returned `307 → /login?redirect=/api/parse-statement`. iOS `FileSystem.uploadAsync` follows redirects, so the multipart POST hit `/login` and Next.js tried to parse it as a Server Action. Fix: treat `/api` as public in middleware; route handlers self-auth via `getRequestUser()` (supports cookie AND Bearer).
+- **Font is Kalam, not Caveat.** User said the reference looked like "Kammus"-ish — nearest Google Font is Kalam. 700 Bold matches the reference weight; Caveat was too uniform.
+- **Multi-currency CC → V2 stacked cards** (user confirmed). Each currency is its own `CreditCardStackCard` with expandable detail row. Account auto-match + selection swap on currency toggle.
+- **Neutral theme is a palette swap, not a CSS rebuild.** Added `*_neutral` tokens in Tailwind; components decide surface class via `useImportTheme`/`useTheme`. Light theme (future) can reuse the same pattern.
+- **Destinatarios copy changed** from "se crean" to "sugeridos" per user. Mobile import will not auto-create destinatarios; user reviews/approves after. (Creation code is currently not present in mobile import; copy now matches behavior.)
+- **Narrator always visible** under the reconcile grid — hiding it when a panel is open felt jarring.
+- **Shared expansion primitive = `AnimatedAccordion`** (`components/ui/AnimatedAccordion.tsx`). User flagged 3 inconsistent expansion patterns (dashboard, plan, import). Import now uses this primitive. Dashboard and plan already do. `CreditCardStackCard` still has its own state — migrate later.
+- **Theme selector scope: global state, instant feedback.** Settings root now swaps bg by theme so the user sees the change immediately instead of having to navigate to Import.
+- **Tool limitation accepted:** I cannot process video input. User will provide verbal description, key frames, or a video path ffmpeg can split.
 
 ## 4. Current State
 
-- **Branch:** `feat/dashboard-polish-phase-2`
-- **PR #169:** OPEN, `mergeStateStatus=CLEAN`, CI green (`verify-webapp: SUCCESS`; others SKIPPED — non-parser, non-deploy PR).
-- **PR #168:** MERGED via squash as commit `93f1cf3` on `main`.
-- **Build:** `pnpm build` clean. Only diagnostic is pre-existing `totalBudget` deprecation warning at `inicio-root.tsx:159` — not this session's change.
-- **Tests:** `pnpm vitest run` — `timeline-model.test.ts` 5/5 passing. No other test files in scope.
-- **Uncommitted changes:** 0 tracked. 38 untracked files (stale `.png` mockups + a WhatsApp video from earlier audit work — unrelated, leave alone or archive).
-- **Dev server:** Background dev server running on :3000 from bash task `bhf8l4v6e`. Kill with `lsof -i :3000 -P -sTCP:LISTEN -t | xargs kill` if desired.
-- **Visual Companion server:** Auto-exits after 30 min idle. Mockup files persist in `.superpowers/brainstorm/9678-1776362397/` (gitignored).
+- **Typecheck:** `npx tsc --noEmit` clean in import.tsx, theme.tsx, Narrator.tsx. Pre-existing errors remain in `mobile/app/(tabs)/settings.tsx` (missing COLORS) and `mobile/lib/demo-data.ts` (missing `@zeta/shared` exports) — untouched, not from this session's edits.
+- **Mobile build:** iOS debug build succeeded (0 errors, 1165 warnings). App installed on sim `AFBA8440-2959-4DC9-8B8D-ABD7CFE5B14A` (iPhone 17 Pro, iOS 26.2). Metro re-bundles fine after `--clear` reset.
+- **End-to-end import verified:** 200 / `statementCount: 2` from real Bancolombia CC PDF (multi-currency) in 1.17 s.
+- **Local services running:**
+  - Webapp dev on `:3000` (needed for current mobile testing).
+  - PDF parser on `:8000` (`uv run python main.py`).
+- **Git:** branch `feat/planner-drag-drop` — **NOT a clean slice-1 branch**. Still stacked on planner work.
 
----
+```
+ M HANDOVER.md
+ M mobile/app/(tabs)/import.tsx
+ M mobile/app/(tabs)/settings.tsx
+ M mobile/app/_layout.tsx
+ M mobile/package.json
+ M mobile/tailwind.config.js
+ M pnpm-lock.yaml
+ M webapp/src/app/api/parse-statement/route.ts
+ M webapp/src/lib/supabase/middleware.ts
+?? mobile/components/common/Narrator.tsx
+?? mobile/components/import/ (StatementChip, SectionDivider, ImportProgress, CreditCardSummary, CreditCardStackCard, import-theme)
+?? mobile/lib/theme.tsx
+?? mobile/lib/utils/cc-projection.ts
+ M mobile/.env (EXPO_PUBLIC_API_URL pointed at local)
+```
 
 ## 5. Open Issues & Gotchas
 
-- **`inicio-root.tsx:159`** — pre-existing `totalBudget` deprecation. Not this session's change.
-- **Timeline `Ver todo →` destination** is `/gestionar`. `ux-analyst` flagged this isn't strictly a time-ordered attention list today. Revisit if Bandeja gets a "Por resolver" section that mirrors the Dashboard timeline.
-- **Category picker is a grid, not chip row** — spec D6 said "horizontal scroll chip row"; implementation uses `CategoryPickerBody` (richer, searchable). `ux-analyst` noted density. Acceptable tradeoff; revisit if real-device feedback shows overflow.
-- **`formatCurrency` on attention items uses a single dashboard currency.** Attention types carry `amount: number` with no per-item currency_code. Timeline receives a single `currency: CurrencyCode` prop. Means a USD obligation would render with `$` (COP's symbol in `es-CO` locale) instead of the correct symbol. Out of scope for polish; track if multi-currency obligations become real.
-- **Reciente INFLOW rows have no inline picker.** Expanded panel shows only "Vincular" + "Ver detalle". Deliberate — INFLOW categorization is rare on Dashboard and rich forms live at `/transactions/[id]`.
-- **Turbopack dev-cache staleness** bit me once when adding a cross-file export. If HMR gets stuck: `lsof -i :3000 -t | xargs kill && rm -rf webapp/.next && cd webapp && pnpm dev`. Codified in CLAUDE.md.
-- **Two pre-existing `as CurrencyCode` casts** at `inicio-activity.tsx:331` on `o.currencyCode` from `occurrenceCandidates`. Not touched — from a different type not owned by this feature.
-
-### BACKLOG entries added this session
-
-1. **Promote transaction → recurring template ("Hacer recurrente" CTA)** — HIGH priority. Add action on `/transactions/[id]` that opens prefilled `RecurringFormDialog`. Closes the "I just paid this, mark it recurring" loop.
-2. **`is_subscription` toggle is dead flag** — HIGH. The mobile + web transaction forms write `is_subscription` to the tx row, but nothing reads it. Connect to template-creation OR remove.
-3. **Link Destinatario ↔ Recurring Template** — HIGH. Add `destinatario_id` column to `recurring_templates`. When destinatario matcher hits a recipient linked to a template, prompt user to link the tx to the pending occurrence.
-4. **Account aliases + mini icons** — HIGH (unblocks density gains). `Bancolombia Ahorros ****4398` → `<alias> · ****<mask>` + 16×16 icon. Requires encrypted-table migration (spawn `supabase-migrator`).
-5. **Dashboard RECIENTE inline category assignment** — Shipped as part of this PR. (Originally backlogged mid-session, then scoped into Phase 2.)
-
----
+- **`zetas-front-guy` agent review findings not yet fixed:**
+  - `settings.tsx:325,343,426,428,444,446` — hardcoded hex (`#EF4444`, `#C5BFAE`, `#3A3A3A`). Use `COLORS.debt`, `COLORS.sageLight`, and add a `switchTrack` token.
+  - `import.tsx:1427,1449` — "Fusionar" / "Mantener ambas" buttons bypass `BRASS_BUTTON_CLASS`/`GHOST_BUTTON_CLASS`. Missing `accessibilityRole`/`accessibilityLabel`.
+  - `import.tsx:1549,1561` — result-step buttons same issue.
+  - `import.tsx:1275,1350` — English loanword "fresh" in user-facing Spanish copy. Replace ("limpios"/"sin duplicados").
+  - `import.tsx:1122,1195` — `paddingBottom: 120` magic number. Extract `MOBILE_TAB_BAR_CLEARANCE` constant in `lib/constants/styles.ts`.
+  - **Neutral theme gap:** fixed action bar uses `bg-background-92` (sage-only token). Add `z-ink-neutral-92` / a semantic `bg-action-bar` token.
+  - **Pattern duplication:** `CreditCardStackCard` has its own `expanded` state. Migrate to `AnimatedAccordion`.
+  - **Reuse gap:** `StatTile` (import) and "Gasto hoy" (`InicioMetricsGrid`) are the same pattern. Extract `components/ui/ExpandableStatTile.tsx`.
+- **Mobile `/api/parse-statement` points at local webapp** — revert `mobile/.env` before shipping.
+- **Prod middleware fix NOT deployed.** Mobile uploads in prod will still 500 until the middleware PR lands + deploys.
+- **Video input not possible** from the agent side. Closing-animation feedback needs description, frames, or ffmpeg path.
+- **`AnimatedAccordion` `estimatedHeight` is hardcoded** in import (`700` row1, `1200` row2). Long transaction lists may clip.
+- **Expansion happens between rows**, not directly under the clicked tile. Acceptable but not identical to dashboard's "Gasto hoy" (accordion inside the tile itself). Shared `ExpandableStatTile` would unify this.
+- **Pre-existing TS errors** (settings COLORS, demo-data exports) still present — untouched.
 
 ## 6. Suggested Next Steps
 
-**Immediate:** merge PR #169 when workflows pass (user said they'll handle this).
-
-**Phase 2 step 2 — Plan page polish:**
-
-1. Re-read `audit/MOBILE_AUDIT_2026-04-16.md` — sections `10` (Plan), `11` (plan-periodo), `17` (recurrentes), and `06` (plan?tab=presupuesto). Key findings:
-   - `/plan` — `Recurrentes 8` badge ambiguous yellow color
-   - `/plan?tab=periodo` — NETO value buried in stat row, list clips behind tab bar (hopefully now fixed by Phase 1 layout change)
-   - `/plan?tab=recurrentes` — `MIS PLANTILLAS` footer buried; discoverability low
-   - `/plan?tab=presupuesto` — all-red category saturation, group by risk state
-2. Invoke `superpowers:brainstorming`. Visual Companion files persist in `.superpowers/brainstorm/` from this session — reference prior mockups if useful.
-3. Produce `docs/superpowers/specs/2026-04-17-plan-page-polish-design.md`.
-4. Produce `docs/superpowers/plans/2026-04-17-plan-page-polish.md`.
-5. Execute inline using `superpowers:executing-plans`.
-6. Same review-gate pattern: zetas-front-guy + perf-auditor → Gemini → frontend-auditor + ux-analyst → `/simplify`.
-
-**Cross-cutting work worth prioritizing:**
-
-- **Account aliases** — unblocks density in many row surfaces (Reciente, Plan occurrences, Deudas accounts). High backlog priority.
-- **"Hacer recurrente" + Destinatario↔Recurring link** — paired features. High backlog priority.
-
----
+1. **Fix `zetas-front-guy` blockers** (§5 above).
+2. **Extract `ExpandableStatTile`** in `components/ui/ExpandableStatTile.tsx`. Use in import reconcile grid and `InicioMetricsGrid` "Gasto hoy". Migrate `CreditCardStackCard` expansion to `AnimatedAccordion` too.
+3. **Revert `mobile/.env`** to `https://pfm.sanson1911.cloud`.
+4. **Cut a new branch off `main`** for slice-1 PR. Don't stack on `feat/planner-drag-drop`. Split commits logically:
+   - Webapp: middleware fix + route try/catch.
+   - Mobile: import-flow components + theme system + narrator + Kalam font + safe-area + reconcile grid.
+5. **Deploy webapp hotfix first.** Mobile slice-1 depends on it to work against prod.
+6. **Move `ParsedStatement` / `ParsedTransaction` to `packages/shared`** — duplicated between mobile and webapp.
+7. **Slice 2 (ranked):** onboarding redesign (6 frames), dashboard Variant B + widgets, Settings visual polish, Afford + "add to wishlist" CTA, Loan Step 2 variant.
+8. **Wire up light theme mode** (user mentioned as future). `lib/theme.tsx` is ready to extend — need light palette tokens + accent decisions.
 
 ## 7. Context for Claude
 
-- **Mobile dashboard tree:** `webapp/src/app/(dashboard)/dashboard/page.tsx` → `<MobileZone>` (`webapp/src/components/dashboard/zones/mobile-zone.tsx`) → `<InicioRoot>` → 5 `inicio-*` children. The Server Component page renders both desktop and mobile branches; desktop is gated to `lg:block`, mobile to `lg:hidden`.
-- **`useLiveDashboard`** hook refreshes hero + metrics + attention silently after mount. Treat the props it derives as the source of truth in client components that receive it.
-- **`categorizeTransaction(txId, categoryId)`** in `@/actions/categorize` — lightweight server action for category assignment. Not `updateTransaction` (full-shape action for form submissions).
-- **`useOutflowCategories()`** in `AppDataProvider` context — cached, no DB call on render. Prefer over `useCategories()` when scope is outflow-only.
-- **`<MonthSelector />`** at `webapp/src/components/month-selector.tsx` — canonical `?month=` URL-param navigation pattern. Any month-aware view should read/write it the same way. This session's `useRecurringMonth` rewrite now follows this pattern.
-- **Review-gate pattern that worked well this session** (recommend for future phases):
-  1. Spawn `zetas-front-guy` + `perf-auditor` in parallel after implementation.
-  2. Push + let Gemini's bot review (usually within 2 min).
-  3. Spawn `frontend-auditor` + `ux-analyst` for deeper a11y + cohesion.
-  4. Run `/simplify` skill (reuse + quality + efficiency).
-
-  Each layer surfaces non-overlapping findings. Apply each as a separate commit for clean review history.
-- **CLAUDE.md rules most relevant to mobile dashboard work:** Performance Rules (`"use cache"` + `cacheTag()`), UI Rules (token palette, `MOBILE_TAB_BAR_CLEARANCE_CLASS`, BRASS/GHOST button variants), Cache API (`updateTag` not `revalidateTag`), Debt account direction rule (INFLOW to CREDIT_CARD ≠ income).
-- **Superpowers skill flow for polish milestones:** audit → brainstorm (with Visual Companion) → write-spec → write-plan → execute. Each artifact lives under `audit/` + `docs/superpowers/{specs,plans}/`. This session's docs are reusable templates.
+- **Global theme hook:** `mobile/lib/theme.tsx` exports `useTheme()` (`{ mode, setMode }`) + `themeSurfaceClasses(mode)` helper. Persistence: `SecureStore`, key `zeta.theme-mode`. Wrap new themed screens:
+  ```ts
+  const { mode } = useTheme();
+  const inkCls = mode === "neutral" ? "bg-z-ink-neutral" : "bg-background";
+  ```
+- **`ImportThemeProvider` is a no-op shim.** `useImportTheme()` delegates to `useTheme()`. Safe to delete once all import components are migrated.
+- **Narrator rules:** only for conversational, low-stakes guidance. Never for errors / critical copy. Centered, `font-narrator` (Kalam 700), `text-z-brass`. Use `tone="sage"` for zero-state "nothing-to-see-here" messages.
+- **Kalam font** — `Kalam_700Bold`. Available weights: 300 / 400 / 700. Caveat was tried and removed.
+- **`AnimatedAccordion`** at `mobile/components/ui/AnimatedAccordion.tsx`. Props: `expanded: boolean`, `estimatedHeight: number`, `duration?: number`. Uses `react-native-reanimated`. Always mounts children; clips to 0 when collapsed.
+- **iOS sim UDID:** `AFBA8440-2959-4DC9-8B8D-ABD7CFE5B14A` (iPhone 17 Pro, iOS 26.2).
+- **Local API for sim:** `http://192.168.1.6:3000` (Mac LAN IP). Simulator reaches this.
+- **Logs:** `tail -F /tmp/zeta-ios.log`.
+- **Mobile upload path:** `mobile/app/(tabs)/import.tsx:handleParse` → `FileSystem.uploadAsync` from `"expo-file-system/legacy"`. Main namespace doesn't export the legacy API in expo-file-system v55.
+- **VPS access:** `ssh root@147.93.41.103`. Webapp container: `personal-finance-manager-webapp-1`. Parser: `personal-finance-manager-pdf-parser-1`. Use `docker logs <container> --tail N`. Reverse-proxy config read is blocked by sandbox permission.
+- **Reconcile state:** `reconExpanded` union is `"none" | "duplicates" | "review" | "unmatched" | "merchants"`. Toggle helper is inline inside the IIFE at ~`import.tsx:1186`.
+- **`StatTile` location:** bottom of `mobile/app/(tabs)/import.tsx`. When extracting the shared component, generalize signature (`tone` union, `hint`, `active`, `onPress`).
+- **BACKLOG.md** at repo root is the canonical backlog. Update it with slice-1 PR status and the unfixed `zetas-front-guy` items.

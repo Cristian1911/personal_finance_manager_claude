@@ -31,12 +31,70 @@ import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { clearDatabase, getDatabase } from "../../lib/db/database";
 import { disableDemoMode } from "../../lib/demo-mode";
+import { useTheme, type ThemeMode } from "../../lib/theme";
+import { COLORS } from "../../lib/constants/colors";
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <Text className="text-muted-foreground font-inter-semibold text-xs uppercase px-4 pt-5 pb-2">
+    <Text className="text-z-sage-dark font-inter-semibold text-xs uppercase px-4 pt-5 pb-2">
       {title}
     </Text>
+  );
+}
+
+function ThemeSelector() {
+  const { mode, setMode } = useTheme();
+  const options: Array<{
+    id: ThemeMode;
+    label: string;
+    blurb: string;
+    swatch: string;
+  }> = [
+    { id: "sage", label: "Sage", blurb: "Verde cálido (actual)", swatch: "#1E221E" },
+    { id: "neutral", label: "Neutral", blurb: "Gris oscuro sin tinte", swatch: "#18181b" },
+  ];
+  return (
+    <View className="px-4 py-3">
+      <View className="flex-row gap-2.5">
+        {options.map((opt) => {
+          const selected = opt.id === mode;
+          return (
+            <Pressable
+              key={opt.id}
+              onPress={() => setMode(opt.id)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`Tema ${opt.label}`}
+              className={`flex-1 rounded-xl border px-3 py-3 ${
+                selected
+                  ? "border-z-brass bg-z-brass-8"
+                  : "border-white-6 bg-z-surface-3"
+              }`}
+            >
+              <View className="flex-row items-center gap-2">
+                <View
+                  style={{ backgroundColor: opt.swatch }}
+                  className="h-5 w-5 rounded-full border border-white-10"
+                />
+                <Text
+                  className={`font-inter-semibold text-sm ${
+                    selected ? "text-z-brass" : "text-z-white"
+                  }`}
+                >
+                  {opt.label}
+                </Text>
+              </View>
+              <Text className="mt-1 font-inter text-[11px] text-z-sage-dark">
+                {opt.blurb}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text className="mt-3 font-inter-italic text-[11px] text-z-sage-dark">
+        Más temas en camino — incluido uno claro.
+      </Text>
+    </View>
   );
 }
 
@@ -230,8 +288,11 @@ export default function SettingsScreen() {
         ? "Error de sincronizacion"
         : "Sincronizado";
 
+  const { mode: themeMode } = useTheme();
+  const inkCls = themeMode === "neutral" ? "bg-z-ink-neutral" : "bg-background";
+
   return (
-    <ScrollView className="flex-1 bg-background">
+    <ScrollView className={`flex-1 ${inkCls}`}>
       {/* Profile section */}
       <SectionHeader title="Perfil" />
       <View className="bg-z-surface-2-55">
@@ -261,7 +322,7 @@ export default function SettingsScreen() {
           icon={
             <RefreshCw
               size={18}
-              color={status === "error" ? "#EF4444" : "#938C7E"}
+              color={status === "error" ? COLORS.debt : COLORS.sageDark}
             />
           }
           label="Estado"
@@ -279,7 +340,7 @@ export default function SettingsScreen() {
           onPress={handleSyncNow}
           disabled={syncing}
         >
-          <RefreshCw size={18} color="#C5BFAE" />
+          <RefreshCw size={18} color={COLORS.sageLight} />
           <Text className="ml-3 text-primary font-inter-bold text-sm">
             {syncing ? "Sincronizando..." : "Sincronizar ahora"}
           </Text>
@@ -309,6 +370,12 @@ export default function SettingsScreen() {
             </Pressable>
           </>
         )}
+      </View>
+
+      {/* Appearance section */}
+      <SectionHeader title="Apariencia" />
+      <View className="bg-z-surface-2-55">
+        <ThemeSelector />
       </View>
 
       {/* Accounts section */}
@@ -356,9 +423,9 @@ export default function SettingsScreen() {
               <Switch
                 value={biometricsOn}
                 onValueChange={handleToggleBiometrics}
-                trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
                 thumbColor={COLORS.foreground}
-                ios_backgroundColor="#3A3A3A"
+                ios_backgroundColor={COLORS.switchTrack}
               />
             </View>
             {biometricsOn && (
@@ -374,9 +441,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={bgReauthOn}
                     onValueChange={handleToggleBgReauth}
-                    trackColor={{ false: "#3A3A3A", true: COLORS.income }}
+                    trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
                     thumbColor={COLORS.foreground}
-                    ios_backgroundColor="#3A3A3A"
+                    ios_backgroundColor={COLORS.switchTrack}
                   />
                 </View>
               </>

@@ -97,6 +97,12 @@ module.exports = {
         "z-surface-2-80": "rgba(30,34,30,0.80)",
         "z-surface-2-95": "rgba(30,34,30,0.95)",
 
+        // ─── Neutral theme (A/B test — no green tint) ─────────────────────
+        "z-ink-neutral": "#0d0d0e",
+        "z-surface-neutral": "#121214",
+        "z-surface-2-neutral": "#18181b",
+        "z-surface-3-neutral": "#1f1f23",
+
         // white overlays
         "white-3": "rgba(255,255,255,0.03)",
         "white-4": "rgba(255,255,255,0.04)",
@@ -116,6 +122,9 @@ module.exports = {
         "background-90": "rgba(18,20,18,0.90)",
         "background-92": "rgba(18,20,18,0.92)",
 
+        // neutral ink opacity (base #0d0d0e = rgb(13,13,14))
+        "z-ink-neutral-92": "rgba(13,13,14,0.92)",
+
         // muted-foreground opacity (base #938C7E = rgb(147,140,126))
         "muted-fg-50": "rgba(147,140,126,0.50)",
         "muted-fg-70": "rgba(147,140,126,0.70)",
@@ -131,9 +140,12 @@ module.exports = {
       },
       fontFamily: {
         inter: ["Inter_400Regular"],
+        "inter-italic": ["Inter_400Regular_Italic"],
         "inter-medium": ["Inter_500Medium"],
+        "inter-medium-italic": ["Inter_500Medium_Italic"],
         "inter-semibold": ["Inter_600SemiBold"],
         "inter-bold": ["Inter_700Bold"],
+        narrator: ["Kalam_700Bold"],
       },
       borderRadius: {
         sm: "6px",

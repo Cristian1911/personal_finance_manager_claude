@@ -41,3 +41,10 @@ export const SECTION_EYEBROW_CLASS =
 /** Mobile v2 action button (brass ghost) */
 export const MOBILE_ACTION_BUTTON_CLASS =
   "rounded-lg border border-z-brass-20 bg-z-brass-8 px-2.5 py-1 text-[10px] font-inter-semibold text-z-brass";
+
+/**
+ * Bottom padding for scrollable screens so content clears the floating tab bar.
+ * Mirrors webapp MOBILE_TAB_BAR_CLEARANCE_CLASS but as a numeric padding value
+ * for RN contentContainerStyle.
+ */
+export const MOBILE_TAB_BAR_CLEARANCE = 120;
