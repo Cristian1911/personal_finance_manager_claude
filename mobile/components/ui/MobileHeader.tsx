@@ -11,6 +11,8 @@ interface MainHeaderProps {
   variant: "main";
   title: string;
   subtitle?: string;
+  /** Use the handwritten brand font (Kalam) for the title. */
+  titleFont?: "inter" | "narrator";
   action?: ReactNode;
   right?: ReactNode;
 }
@@ -69,7 +71,11 @@ export function MobileHeader(props: MobileHeaderProps) {
       <View className="h-12 flex-row items-center justify-between gap-3">
         <View className="min-w-0 flex-shrink">
           <Text
-            className="text-[15px] font-inter-bold text-foreground"
+            className={
+              props.titleFont === "narrator"
+                ? "text-[22px] font-narrator text-foreground leading-[24px]"
+                : "text-[15px] font-inter-bold text-foreground"
+            }
             numberOfLines={1}
           >
             {props.title}
