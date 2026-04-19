@@ -40,21 +40,32 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const user = await getUserSafely(supabase);
+  // Try cookie-based session first (web). If absent, fall back to
+  // Authorization: Bearer (mobile). Both paths populate `user`, so every route —
+  // including /api — stays gated centrally. Route handlers still self-auth via
+  // getRequestUser() as defense-in-depth.
+  let user = await getUserSafely(supabase);
+
+  if (!user) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const { data } = await supabase.auth.getUser(authHeader.slice(7));
+      user = data.user ?? null;
+    }
+  }
+
   if (!user) {
     clearAuthCookies(request, supabaseResponse);
   }
 
   // Blacklist pattern: everything is protected unless explicitly listed as public.
-  // API routes self-authenticate via getRequestUser() (supports Bearer + cookies) —
-  // middleware would reject mobile Bearer tokens since it only reads cookies.
   const publicPaths = [
     "/login",
     "/signup",
     "/forgot-password",
     "/onboarding",
     "/auth",
-    "/api",
+    "/api/webhooks",
   ];
   const pathname = request.nextUrl.pathname;
   const isPublic =
@@ -63,6 +74,15 @@ export async function updateSession(request: NextRequest) {
   const isProtected = !isPublic;
 
   if (!user && isProtected) {
+    // API requests get JSON 401 instead of a redirect — iOS FileSystem.uploadAsync
+    // follows 3xx, so a redirect to /login would cause Next.js to try to parse a
+    // multipart POST as a Server Action ("Failed to find Server Action 'x'").
+    if (pathname.startsWith("/api")) {
+      return NextResponse.json(
+        { error: "No autenticado" },
+        { status: 401 }
+      );
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", request.nextUrl.pathname);

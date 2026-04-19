@@ -154,11 +154,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (err) {
+    // Keep details in logs; return a generic message to avoid leaking internals.
     console.error("[parse-statement] unhandled error:", err);
-    const message =
-      err instanceof Error ? err.message : "Error interno del servidor";
     return NextResponse.json(
-      { error: message, errorType: "internal" },
+      { error: "Error interno del servidor", errorType: "internal" },
       { status: 500 }
     );
   }
