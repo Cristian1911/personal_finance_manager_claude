@@ -8,10 +8,13 @@ import {
 import { useFonts } from "expo-font";
 import {
   Inter_400Regular,
+  Inter_400Regular_Italic,
   Inter_500Medium,
+  Inter_500Medium_Italic,
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+import { Kalam_700Bold } from "@expo-google-fonts/kalam";
 import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -30,6 +33,7 @@ import {
   isBackgroundReauthEnabled,
 } from "../lib/biometrics";
 import { BiometricLockScreen } from "../components/common/BiometricLockScreen";
+import { ZetaThemeProvider } from "../lib/theme";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -48,9 +52,12 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     ...FontAwesome.font,
     Inter_400Regular,
+    Inter_400Regular_Italic,
     Inter_500Medium,
+    Inter_500Medium_Italic,
     Inter_600SemiBold,
     Inter_700Bold,
+    Kalam_700Bold,
   });
 
   useEffect(() => {
@@ -206,6 +213,7 @@ function RootLayoutNav() {
 
   return (
     <SafeAreaProvider>
+      <ZetaThemeProvider>
       <ThemeProvider value={DarkTheme}>
         <BugReportViewShot>
           <Stack>
@@ -311,6 +319,7 @@ function RootLayoutNav() {
           </View>
         )}
       </ThemeProvider>
+      </ZetaThemeProvider>
     </SafeAreaProvider>
   );
 }
