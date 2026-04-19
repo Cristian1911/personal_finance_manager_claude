@@ -240,9 +240,18 @@
 - **What:** Slice-1 extracted `mobile/components/ui/ExpandableStatTile.tsx` and migrated the import reconcile grid, but `InicioMetricsGrid` "Gasto hoy" was left on its bespoke `PANEL_INSET_CLASS` chip shape (different value size, ring-chart sibling, compact currency formatter). A future pass should either (a) widen `ExpandableStatTile` with a `variant="inset-compact"` option to absorb it, or (b) extract a sibling `CompactStatTile` primitive. Worth doing next time we touch either surface.
 - **Found:** zetas-front-guy follow-up on slice-1, 2026-04-19
 
+### Mobile onboarding → webapp cache staleness (cross-platform)
+- **Priority:** Medium
+- **What:** Mobile onboarding (`mobile/app/onboarding.tsx`) writes `profiles` + `accounts` directly to Supabase. The webapp's `(dashboard)/layout.tsx` guard reads `profile.onboarding_completed` via `getProfile()` which is `"use cache"` + `cacheTag("profile")` with `cacheLife("zeta")` (stale 120s / revalidate 300s). If a user completes onboarding on mobile and opens the webapp within that window, the cached profile still has `onboarding_completed: false` → the layout redirects them back to `/onboarding`, hiding the data they already entered.
+- **Options:**
+  - (a) Add a `POST /api/cache/onboarding-complete` route handler in webapp that authenticates via `getRequestUser` and calls `updateTag("profile")` + `updateTag("accounts")`. Mobile calls it after `persistOnboarding()` succeeds. Requires webapp hotfix + mobile call in one coordinated release.
+  - (b) Layout guard reads `onboarding_completed` via a separate uncached query (`createClient() → profile_onboarding_completed` view), keeping the rest of `getProfile()` cached. Self-contained to webapp.
+- **Recommendation:** Option (a) — correctness + cheap round-trip only at onboarding-complete. Option (b) adds a DB hit to every layout render.
+- **Found:** mobile-webapp-parity review on PR #195, 2026-04-19
+
 ### Mobile onboarding — follow-up polish from slice-2 review
 - **Priority:** Low
-- **What:** Non-blocking items deferred from the zetas-front-guy / frontend-auditor / ux-analyst review on PR #195:
+- **What:** Non-blocking items deferred from the zetas-front-guy / frontend-auditor / ux-analyst / mobile-sync-doctor / mobile-webapp-parity reviews on PR #195:
   - Money input formatting — thousand separators + currency prefix so `5000000` renders as `$ 5.000.000 COP`. Meatier change; extract a shared `MoneyInput` component when we touch it.
   - Purpose acknowledgement on step 2 title/eyebrow — "Vamos a ayudarte a salir de deudas, {firstName}" instead of generic "Tu perfil". Reinforces the step-1 choice.
   - `save_money` reinforcement on step 3 — when `available > 0`, add a Narrator line: "Con eso podrías apartar {X} al mes para tu meta."
@@ -251,6 +260,9 @@
   - Error surface auto-scroll — on submit failure, scroll the error into view near the action bar.
   - Extract `SelectPill` primitive — currency pills + account-type pills + purpose tiles share the "radio-button with brass highlight" shape. Consolidating into one `components/ui/SelectPill.tsx` would DRY ~60 lines across steps.
   - `SECTION_EYEBROW_CLASS` tracking fix — `mobile/lib/constants/styles.ts:39` defines `tracking-[4px]` while the design system uses `tracking-[0.18em]`. The onboarding steps avoid the constant and inline the correct tracking, but any consumer that adopts the constant will get wrong tracking.
+  - Webapp onboarding `locale` default — `webapp/src/app/onboarding/page.tsx:130` uses `navigator.language || "en-US"`. Mobile hardcodes `"es-CO"`. Changing the webapp fallback to `"es-CO"` aligns both platforms on the target-region default.
+  - Webapp onboarding atomicity — `webapp/src/actions/onboarding.ts` has the same "update profile, then insert account" ordering that mobile just fixed. Also swap the webapp, or extract a shared `finish_onboarding(p_profile jsonb, p_account jsonb)` SECURITY DEFINER RPC so both platforms get true transactional behaviour.
+  - `CurrencyCode` type in `mobile/components/onboarding/types.ts` is missing `PEN | CLP | ARS` relative to the DB enum. Expand when the picker grows.
 - **Found:** agent review sweep on PR #195, 2026-04-19
 
 ### Mobile import wizard — follow-up polish from slice-1 review

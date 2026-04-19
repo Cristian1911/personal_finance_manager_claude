@@ -95,15 +95,19 @@ export default function MobileOnboardingScreen() {
       case 2:
         return data.firstName.trim().length > 0;
       case 3:
+        // Allow zero values (students, unemployed, fully supported users)
+        // but both fields must be filled in with a parseable number.
         return (
-          parseMoney(data.incomeMonthly) > 0 &&
-          parseMoney(data.expensesMonthly) > 0
+          data.incomeMonthly.trim().length > 0 &&
+          data.expensesMonthly.trim().length > 0 &&
+          parseMoney(data.incomeMonthly) >= 0 &&
+          parseMoney(data.expensesMonthly) >= 0
         );
       case 4:
         return (
           data.accountName.trim().length > 0 &&
           data.balance.trim().length > 0 &&
-          Number.isFinite(Number(data.balance))
+          Number.isFinite(parseMoney(data.balance))
         );
       case 5:
         return true;
@@ -126,8 +130,14 @@ export default function MobileOnboardingScreen() {
     setError(null);
     try {
       const now = new Date().toISOString();
-      const balanceN = Number(data.balance) || 0;
+      const balanceN = parseMoney(data.balance);
 
+      // Two-phase write to keep `onboarding_completed` truthful:
+      // 1. Save profile data EXCEPT completion flag.
+      // 2. Insert the first account.
+      // 3. Flip `onboarding_completed = true` only if both succeeded.
+      // Not atomic without an RPC, but guarantees the flag never implies
+      // "complete without an account".
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -140,7 +150,6 @@ export default function MobileOnboardingScreen() {
             Intl.DateTimeFormat().resolvedOptions().timeZone ||
             "America/Bogota",
           locale: "es-CO",
-          onboarding_completed: true,
           updated_at: now,
         })
         .eq("id", session.user.id);
@@ -162,13 +171,21 @@ export default function MobileOnboardingScreen() {
       });
 
       if (accountError) throw accountError;
+
+      const { error: completeError } = await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true, updated_at: now })
+        .eq("id", session.user.id);
+
+      if (completeError) throw completeError;
+
       return true;
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "No se pudo completar el onboarding.",
-      );
+      // Never surface raw PostgREST messages — they can leak internal table
+      // names (`profiles_enc`, constraint names, etc.). Log to console for
+      // debugging; show a generic Spanish fallback to the user.
+      console.error("[onboarding] persistOnboarding failed:", err);
+      setError("No se pudo completar el onboarding. Intenta de nuevo.");
       return false;
     } finally {
       setLoading(false);

@@ -329,6 +329,17 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_transactions_installment_group ON transactions(installment_group_id) WHERE installment_group_id IS NOT NULL`,
     ],
   },
+  {
+    version: 8,
+    statements: [
+      // ── accounts: close column drift vs Supabase view ─────────────────
+      // `bank_key` was added in 20260418120000_add_bank_key_to_accounts.sql
+      // but the SQLite schema never caught up — pull silently dropped it
+      // every cycle. `pdf_password` is in the view but was also absent.
+      `ALTER TABLE accounts ADD COLUMN bank_key TEXT`,
+      `ALTER TABLE accounts ADD COLUMN pdf_password TEXT`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =
