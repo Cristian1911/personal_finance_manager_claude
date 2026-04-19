@@ -8,9 +8,12 @@ import {
   ScrollView,
   TextInput,
 } from "react-native";
+import { AnimatedAccordion } from "../../components/ui/AnimatedAccordion";
 import { useRouter, useFocusEffect } from "expo-router";
-import { useState, useCallback } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCallback, useMemo, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import {
   Upload,
   FileText,
@@ -19,7 +22,19 @@ import {
   CheckSquare,
   ChevronDown,
 } from "lucide-react-native";
-import { formatCurrency, type ReconciliationCandidate } from "@zeta/shared";
+import {
+  formatCurrency,
+  type CurrencyCode,
+  type ReconciliationCandidate,
+} from "@zeta/shared";
+import { ImportProgress } from "../../components/import/ImportProgress";
+import { StatementChip } from "../../components/import/StatementChip";
+import { SectionDivider } from "../../components/import/SectionDivider";
+import { CreditCardSummary } from "../../components/import/CreditCardSummary";
+import { CreditCardStackCard } from "../../components/import/CreditCardStackCard";
+import { ImportThemeProvider } from "../../components/import/import-theme";
+import { Narrator } from "../../components/common/Narrator";
+import { useTheme } from "../../lib/theme";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import {
@@ -34,6 +49,11 @@ import {
   setPdfPasswordForAccount,
 } from "../../lib/pdf-passwords";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
+import { COLORS } from "../../lib/constants/colors";
+import {
+  BRASS_BUTTON_CLASS,
+  GHOST_BUTTON_CLASS,
+} from "../../lib/constants/styles";
 import {
   applyReconciliationMerge,
   createTransaction,
@@ -99,12 +119,52 @@ type ParsedTransaction = {
   currency?: string;
 };
 
+type StatementSummary = {
+  previous_balance: number | null;
+  total_credits: number | null;
+  total_debits: number | null;
+  final_balance: number | null;
+  purchases_and_charges: number | null;
+  interest_charged: number | null;
+};
+
+type CreditCardMetadata = {
+  credit_limit: number | null;
+  available_credit: number | null;
+  interest_rate: number | null;
+  late_interest_rate: number | null;
+  total_payment_due: number | null;
+  minimum_payment: number | null;
+  payment_due_date: string | null;
+};
+
+type LoanMetadata = {
+  loan_number: string | null;
+  loan_type: string | null;
+  initial_amount: number | null;
+  disbursement_date: string | null;
+  remaining_balance: number | null;
+  interest_rate: number | null;
+  late_interest_rate: number | null;
+  total_payment_due: number | null;
+  minimum_payment: number | null;
+  payment_due_date: string | null;
+  installments_in_default: number | null;
+  statement_cut_date: string | null;
+  last_payment_date: string | null;
+};
+
 type ParsedStatement = {
   bank: string;
-  statement_type: string;
+  statement_type: "savings" | "credit_card" | "loan" | string;
   account_number?: string | null;
   card_last_four?: string | null;
+  period_from?: string | null;
+  period_to?: string | null;
   currency: string;
+  summary?: StatementSummary | null;
+  credit_card_metadata?: CreditCardMetadata | null;
+  loan_metadata?: LoanMetadata | null;
   transactions: ParsedTransaction[];
 };
 
@@ -128,6 +188,10 @@ type ReconciliationPreview = {
   }>;
 };
 
+function ItemSeparator() {
+  return <View className="ml-12 h-px bg-white-6" />;
+}
+
 function AccountSelector({
   accounts,
   selected,
@@ -141,12 +205,12 @@ function AccountSelector({
 
   if (accounts.length === 0) {
     return (
-      <View className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-        <Text className="text-amber-800 font-inter-medium text-sm">
+      <View className="mb-4 rounded-xl border border-z-alert-25 bg-z-alert-12 p-4">
+        <Text className="font-inter-medium text-sm text-z-alert">
           No tienes cuentas registradas.
         </Text>
-        <Text className="text-amber-700 font-inter text-xs mt-1">
-          Crea una cuenta primero en la pestana Cuentas.
+        <Text className="mt-1 font-inter text-xs text-z-sage-light">
+          Crea una cuenta primero en la pestaña Cuentas.
         </Text>
       </View>
     );
@@ -156,50 +220,52 @@ function AccountSelector({
     ? ACCOUNT_TYPES.find((t) => t.value === selected.account_type)
     : null;
   const Icon = typeDef?.icon;
-  const color = selected?.color ?? "#6B7280";
+  const color = selected?.color ?? COLORS.sageDark;
 
   return (
     <View className="mb-4">
-      <Text className="text-gray-700 font-inter-medium text-sm mb-1.5">
-        Cuenta de destino <Text className="text-red-500">*</Text>
+      <Text className="mb-1.5 font-inter-medium text-sm text-z-sage-light">
+        Cuenta de destino <Text className="text-z-debt">*</Text>
       </Text>
       <Pressable
-        className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex-row items-center active:bg-gray-100"
+        accessibilityLabel="Seleccionar cuenta de destino"
+        accessibilityRole="button"
+        className="flex-row items-center rounded-xl border border-z-sage-10 bg-z-surface-2 px-4 py-3 active:bg-z-surface-3"
         onPress={() => setOpen(!open)}
       >
         {selected && Icon ? (
           <>
             <View
-              className="w-7 h-7 rounded-full items-center justify-center mr-3"
+              className="mr-3 h-7 w-7 items-center justify-center rounded-full"
               style={{ backgroundColor: color + "20" }}
             >
               <Icon size={14} color={color} />
             </View>
-            <Text className="flex-1 text-gray-900 font-inter-medium text-sm">
+            <Text className="flex-1 font-inter-medium text-sm text-z-white">
               {selected.name}
             </Text>
           </>
         ) : (
-          <Text className="flex-1 text-gray-400 font-inter text-sm">
+          <Text className="flex-1 font-inter text-sm text-z-sage-dark">
             Seleccionar cuenta...
           </Text>
         )}
-        <ChevronDown size={16} color="#9CA3AF" />
+        <ChevronDown size={16} color="#938C7E" />
       </Pressable>
 
       {open && (
-        <View className="bg-white border border-gray-200 rounded-xl mt-1 overflow-hidden">
+        <View className="mt-1 overflow-hidden rounded-xl border border-z-sage-10 bg-z-surface-2">
           {accounts.map((account, index) => {
             const aTypeDef = ACCOUNT_TYPES.find(
               (t) => t.value === account.account_type
             );
             const AIcon = aTypeDef?.icon;
-            const aColor = account.color ?? "#6B7280";
+            const aColor = account.color ?? COLORS.sageDark;
             return (
               <Pressable
                 key={account.id}
-                className={`flex-row items-center px-4 py-3 active:bg-gray-100 ${
-                  index > 0 ? "border-t border-gray-100" : ""
+                className={`flex-row items-center px-4 py-3 active:bg-z-surface-3 ${
+                  index > 0 ? "border-t border-z-sage-10" : ""
                 }`}
                 onPress={() => {
                   onSelect(account);
@@ -207,16 +273,16 @@ function AccountSelector({
                 }}
               >
                 <View
-                  className="w-7 h-7 rounded-full items-center justify-center mr-3"
+                  className="mr-3 h-7 w-7 items-center justify-center rounded-full"
                   style={{ backgroundColor: aColor + "20" }}
                 >
                   {AIcon && <AIcon size={14} color={aColor} />}
                 </View>
-                <Text className="flex-1 text-gray-900 font-inter-medium text-sm">
+                <Text className="flex-1 font-inter-medium text-sm text-z-white">
                   {account.name}
                 </Text>
                 {selected?.id === account.id && (
-                  <CheckSquare size={16} color="#C5BFAE" />
+                  <CheckSquare size={16} color="#937844" />
                 )}
               </Pressable>
             );
@@ -235,7 +301,16 @@ export default function ImportScreen() {
   const [password, setPassword] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedStatement | null>(null);
+  const [allStatements, setAllStatements] = useState<ParsedStatement[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const { mode: themeMode } = useTheme();
+  const neutralTheme = themeMode === "neutral";
+  const inkCls = neutralTheme ? "bg-z-ink-neutral" : "bg-z-ink";
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, 12);
+  const [reconExpanded, setReconExpanded] = useState<
+    "none" | "duplicates" | "review" | "unmatched" | "merchants"
+  >("none");
   const [importing, setImporting] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
@@ -289,44 +364,94 @@ export default function ImportScreen() {
   const handleParse = useCallback(async () => {
     if (!document) return;
     setParsing(true);
+    const t0 = Date.now();
+    const log = (step: string, extra?: unknown) => {
+      const ms = Date.now() - t0;
+      console.log(`[import +${ms}ms] ${step}`, extra ?? "");
+    };
+
     try {
-      const formData = new FormData();
-      formData.append("file", {
-        uri: document.uri,
-        name: document.name || "statement.pdf",
-        type: "application/pdf",
-      } as any);
-      if (password.trim()) {
-        formData.append("password", password.trim());
-      }
+      log("start", { uri: document.uri, size: document.size });
 
       const {
         data: { session: currentSession },
       } = await supabase.auth.getSession();
       const accessToken = currentSession?.access_token;
 
-      const response = await fetch(`${API_URL}/api/parse-statement`, {
-        method: "POST",
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-        body: formData,
+      if (!accessToken) {
+        throw new Error("No hay sesión activa. Inicia sesión e intenta de nuevo.");
+      }
+      log("got token");
+
+      const url = `${API_URL}/api/parse-statement`;
+      log("uploading to", url);
+
+      // expo-file-system handles multipart uploads via native NSURLSession.
+      // Unlike RN fetch + FormData, it sets Content-Length correctly, supports
+      // real cancellation, and doesn't hang on HTTPS + multipart + chunked bodies.
+      let uploadResult: FileSystem.FileSystemUploadResult;
+      try {
+        uploadResult = await Promise.race<FileSystem.FileSystemUploadResult>([
+          FileSystem.uploadAsync(url, document.uri, {
+            httpMethod: "POST",
+            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+            fieldName: "file",
+            mimeType: "application/pdf",
+            parameters: password.trim() ? { password: password.trim() } : {},
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("timeout-30s")),
+              30_000,
+            ),
+          ),
+        ]);
+      } catch (netErr) {
+        log("upload error", netErr);
+        if (netErr instanceof Error && netErr.message === "timeout-30s") {
+          throw new Error(
+            "El servidor no respondió en 30 segundos. Intenta de nuevo.",
+          );
+        }
+        throw new Error(
+          `No se pudo conectar al servidor: ${netErr instanceof Error ? netErr.message : "red desconocida"}`,
+        );
+      }
+
+      log("response", {
+        status: uploadResult.status,
+        bodyLen: uploadResult.body?.length ?? 0,
       });
 
-      if (!response.ok) {
-        const payload = await response
-          .json()
-          .catch(() => ({ error: `Parse failed: ${response.status}` }));
-        const errorMessage =
-          typeof payload?.error === "string"
-            ? payload.error
-            : typeof payload?.detail === "string"
-              ? payload.detail
-              : `Parse failed: ${response.status}`;
+      const rawBody = uploadResult.body ?? "";
+      let parsedBody: unknown = null;
+      try {
+        parsedBody = JSON.parse(rawBody);
+      } catch {
+        // body wasn't valid JSON
+      }
+
+      if (uploadResult.status < 200 || uploadResult.status >= 300) {
+        let errorMessage = `HTTP ${uploadResult.status}`;
+        if (parsedBody && typeof parsedBody === "object") {
+          const maybeError = (parsedBody as { error?: unknown; detail?: unknown });
+          if (typeof maybeError.error === "string") errorMessage = maybeError.error;
+          else if (typeof maybeError.detail === "string") errorMessage = maybeError.detail;
+        } else if (rawBody && rawBody.length < 200) {
+          errorMessage = rawBody;
+        }
+        log("error message", errorMessage);
         throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      const statements: ParsedStatement[] =
-        data.statements ?? (Array.isArray(data) ? data : []);
+      if (!parsedBody) {
+        throw new Error("Respuesta invalida del servidor");
+      }
+      const statements: ParsedStatement[] = Array.isArray(parsedBody)
+        ? (parsedBody as ParsedStatement[])
+        : (parsedBody as { statements?: ParsedStatement[] }).statements ?? [];
+      log("parsed JSON", { statementCount: statements.length });
       const stmt = statements[0];
 
       if (!stmt) {
@@ -345,6 +470,7 @@ export default function ImportScreen() {
         );
       }
 
+      setAllStatements(statements);
       setParsedData(stmt);
       const allIndices = new Set(
         stmt.transactions.map((_: ParsedTransaction, i: number) => i)
@@ -401,7 +527,7 @@ export default function ImportScreen() {
             account_type: accountType,
             institution_name: stmt.bank ?? null,
             currency_code: stmt.currency ?? "COP",
-            color: "#6366f1",
+            color: COLORS.brass,
           });
           const newAccount = await getAccountById(newId);
           if (newAccount) {
@@ -678,6 +804,7 @@ export default function ImportScreen() {
     setDocument(null);
     setPassword("");
     setParsedData(null);
+    setAllStatements([]);
     setSelected(new Set());
     setSelectedAccount(null);
     setReconciliationPreview(null);
@@ -690,40 +817,202 @@ export default function ImportScreen() {
     });
   }, []);
 
+  const switchStatement = useCallback(
+    async (idx: number) => {
+      const next = allStatements[idx];
+      if (!next || !session?.user?.id) return;
+      setParsedData(next);
+      setSelected(
+        new Set(next.transactions.map((_: ParsedTransaction, i: number) => i))
+      );
+      setReconciliationPreview(null);
+      setReviewDecisions({});
+
+      const stmtTypeMap: Record<string, string> = {
+        savings: "CHECKING",
+        credit_card: "CREDIT_CARD",
+        loan: "LOAN",
+      };
+      const accountType = stmtTypeMap[next.statement_type] ?? "CHECKING";
+      const currentAccounts = await getAllAccounts();
+      setAccounts(currentAccounts);
+      const match = findMatchingAccount(currentAccounts, next, accountType);
+      setSelectedAccount(match ?? null);
+    },
+    [allStatements, session?.user?.id]
+  );
+
+  // ===== Shared derivations for Step 2 (hooks can't be inside if-branches) =====
+  const transactions = parsedData?.transactions ?? [];
+  const transactionCount = transactions.length;
+  const currency = (parsedData?.currency ?? "COP") as CurrencyCode;
+  const isCreditCard =
+    parsedData?.statement_type === "credit_card" &&
+    parsedData?.credit_card_metadata != null;
+
+  const reviewHeader = useMemo(() => {
+    if (!parsedData) return null;
+    const activeIdx = allStatements.indexOf(parsedData);
+    const multiCreditCard =
+      allStatements.length > 1 &&
+      allStatements.every(
+        (s) => s.statement_type === "credit_card" && s.credit_card_metadata != null
+      );
+    return (
+      <View className="px-4 pt-2">
+        <View className="mb-4">
+          <StatementChip
+            bank={parsedData.bank}
+            cardLastFour={parsedData.card_last_four}
+            accountNumber={parsedData.account_number}
+            periodFrom={parsedData.period_from}
+            periodTo={parsedData.period_to}
+          />
+        </View>
+
+        {multiCreditCard ? (
+          <>
+            <SectionDivider label="Por pagar" />
+            {allStatements.map((s, i) => (
+              <CreditCardStackCard
+                key={`${s.currency ?? "COP"}-${i}`}
+                currency={(s.currency ?? "COP") as CurrencyCode}
+                metadata={s.credit_card_metadata!}
+                summary={s.summary ?? null}
+                transactionCount={s.transactions.length}
+                active={i === activeIdx}
+                onPress={() => switchStatement(i)}
+              />
+            ))}
+            <View className="h-2" />
+          </>
+        ) : (
+          isCreditCard &&
+          parsedData.credit_card_metadata && (
+            <>
+              <SectionDivider label="Por pagar" />
+              <CreditCardSummary
+                metadata={parsedData.credit_card_metadata}
+                summary={parsedData.summary ?? null}
+                transactionCount={transactionCount}
+                currency={currency}
+              />
+              <View className="h-4" />
+            </>
+          )
+        )}
+
+        <SectionDivider
+          label={isCreditCard ? "Movimientos" : "Transacciones"}
+        />
+
+        <AccountSelector
+          accounts={accounts}
+          selected={selectedAccount}
+          onSelect={setSelectedAccount}
+        />
+      </View>
+    );
+  }, [parsedData, allStatements, switchStatement, isCreditCard, transactionCount, currency, accounts, selectedAccount]);
+
+  const renderTxnRow = useCallback(
+    ({ item, index }: { item: ParsedTransaction; index: number }) => {
+      const isSelected = selected.has(index);
+      const isInflow = item.direction === "INFLOW";
+      const isDebtPayment = isDebtInflow({
+        direction: item.direction,
+        accountType: selectedAccount?.account_type,
+      });
+      const Icon = isSelected ? CheckSquare : Square;
+      const amountClass = isDebtPayment
+        ? "text-z-income"
+        : isInflow
+          ? "text-z-income"
+          : "text-z-white";
+
+      return (
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: isSelected }}
+          accessibilityLabel={`${isSelected ? "Deseleccionar" : "Seleccionar"} ${item.description}`}
+          className="mx-4 flex-row items-center rounded-lg px-2 py-3 active:bg-z-surface-2"
+          onPress={() => toggleSelect(index)}
+        >
+          <Icon
+            size={20}
+            color={isSelected ? COLORS.brass : COLORS.sageDark}
+          />
+          <View className="mx-3 flex-1">
+            <Text
+              className="font-inter-medium text-sm text-z-white"
+              numberOfLines={1}
+            >
+              {item.description}
+            </Text>
+            <Text className="mt-0.5 font-inter text-xs text-z-sage-dark">
+              {item.date}
+              {isDebtPayment ? " • Abono a deuda" : ""}
+            </Text>
+          </View>
+          <Text className={`font-inter-bold text-sm ${amountClass}`}>
+            {isInflow ? "+" : "-"}
+            {formatCurrency(Math.abs(item.amount), currency)}
+          </Text>
+        </Pressable>
+      );
+    },
+    [selected, selectedAccount?.account_type, toggleSelect, currency],
+  );
+
+  const txnKeyExtractor = useCallback(
+    (item: ParsedTransaction, index: number) =>
+      `${item.date}|${item.amount}|${item.description}|${index}`,
+    [],
+  );
+
   // ===== STEP 1: Pick PDF =====
   if (step === "pick") {
     return (
-      <View className="flex-1 bg-gray-100 p-4">
-        <Text className="text-gray-900 font-inter-bold text-xl mb-6">
+      <ImportThemeProvider neutral={neutralTheme}>
+      <View className={`flex-1 ${inkCls} px-4 pb-4`} style={{ paddingTop: topInset + 4 }}>
+        <Text className="text-[11px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
+          Paso 1 de 4
+        </Text>
+        <Text className="mt-1 font-inter-bold text-xl text-z-white">
           Importar extracto
         </Text>
+        <View className="mt-3 mb-5">
+          <ImportProgress step={1} total={4} />
+        </View>
 
         <Pressable
-          className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center justify-center bg-white active:bg-gray-100"
+          accessibilityLabel="Seleccionar extracto PDF"
+          accessibilityRole="button"
+          className="items-center justify-center rounded-2xl border border-z-brass-30 bg-z-brass-8 p-8 active:bg-z-brass-12"
           onPress={handlePickDocument}
         >
-          <Upload size={40} color="#9CA3AF" />
-          <Text className="text-gray-500 font-inter-medium text-base mt-4">
+          <Upload size={40} color="#937844" />
+          <Text className="mt-4 font-inter-semibold text-base text-z-white">
             Seleccionar extracto PDF
           </Text>
-          <Text className="text-gray-400 font-inter text-sm mt-1">
+          <Text className="mt-1 font-inter text-sm text-z-sage-dark">
             Toca para abrir el selector
           </Text>
         </Pressable>
 
         {document && (
-          <View className="bg-white rounded-lg p-4 mt-4">
+          <View className="mt-4 rounded-2xl border border-z-sage-10 bg-z-surface-2 p-4">
             <View className="flex-row items-center">
-              <FileText size={20} color="#C5BFAE" />
+              <FileText size={20} color="#937844" />
               <View className="ml-3 flex-1">
                 <Text
-                  className="text-gray-900 font-inter-medium text-sm"
+                  className="font-inter-medium text-sm text-z-white"
                   numberOfLines={1}
                 >
                   {document.name}
                 </Text>
                 {document.size && (
-                  <Text className="text-gray-400 font-inter text-xs mt-0.5">
+                  <Text className="mt-0.5 font-inter text-xs text-z-sage-dark">
                     {(document.size / 1024).toFixed(1)} KB
                   </Text>
                 )}
@@ -731,27 +1020,28 @@ export default function ImportScreen() {
             </View>
 
             <View className="mt-4">
-              <Text className="text-gray-700 font-inter-medium text-sm mb-1.5">
+              <Text className="mb-1.5 font-inter-medium text-sm text-z-sage-light">
                 Contraseña del PDF
               </Text>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Si el extracto está cifrado, ingrésala aquí"
+                placeholderTextColor="#938C7E"
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="off"
                 importantForAutofill="no"
                 textContentType="none"
-                className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+                className="rounded-xl border border-z-sage-10 bg-z-ink px-4 py-3 font-inter text-sm text-z-white"
               />
-              <Text className="text-gray-400 font-inter text-xs mt-2">
+              <Text className="mt-2 font-inter text-xs text-z-sage-dark">
                 Déjalo vacío si el PDF no tiene contraseña.
               </Text>
               {savedPdfPasswords.length > 0 && (
                 <View className="mt-3">
-                  <Text className="text-gray-500 font-inter text-xs mb-1.5">
+                  <Text className="mb-1.5 font-inter text-xs text-z-sage-dark">
                     Contraseñas guardadas:
                   </Text>
                   <ScrollView
@@ -760,16 +1050,17 @@ export default function ImportScreen() {
                     contentContainerStyle={{ gap: 8 }}
                   >
                     {savedPdfPasswords.map((entry) => (
-                        <Pressable
-                          key={entry.accountId}
-                          onPress={() => setPassword(entry.password)}
-                          className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 active:bg-emerald-100"
-                        >
-                          <Text className="text-emerald-700 font-inter-medium text-xs">
-                            {entry.accountName}
-                          </Text>
-                        </Pressable>
-                      ))}
+                      <Pressable
+                        key={entry.accountId}
+                        accessibilityLabel={`Usar contraseña guardada de ${entry.accountName}`}
+                        onPress={() => setPassword(entry.password)}
+                        className="rounded-full border border-z-income-30 bg-z-income-12 px-3 py-1.5 active:bg-z-income-20"
+                      >
+                        <Text className="font-inter-medium text-xs text-z-income">
+                          {entry.accountName}
+                        </Text>
+                      </Pressable>
+                    ))}
                   </ScrollView>
                 </View>
               )}
@@ -778,18 +1069,19 @@ export default function ImportScreen() {
         )}
 
         <Pressable
-          className={`mt-6 rounded-lg py-3.5 items-center ${
-            document ? "bg-primary active:bg-primary-dark" : "bg-gray-200"
+          accessibilityLabel="Procesar extracto"
+          className={`mt-6 items-center rounded-xl py-3.5 ${
+            document ? `${BRASS_BUTTON_CLASS} active:opacity-90` : "bg-z-surface-2"
           }`}
           onPress={handleParse}
           disabled={!document || parsing}
         >
           {parsing ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={COLORS.ink} />
           ) : (
             <Text
               className={`font-inter-bold text-base ${
-                document ? "text-white" : "text-gray-400"
+                document ? "text-z-ink" : "text-z-sage-dark"
               }`}
             >
               Procesar extracto
@@ -797,117 +1089,78 @@ export default function ImportScreen() {
           )}
         </Pressable>
       </View>
+      </ImportThemeProvider>
     );
   }
 
   // ===== STEP 2: Review =====
   if (step === "review") {
-    const transactions = parsedData?.transactions ?? [];
     const selectedCount = selected.size;
     const canImport = selectedCount > 0 && selectedAccount !== null;
 
     return (
-      <View className="flex-1 bg-gray-100">
-        <View className="px-4 pt-4 pb-2">
-          <Text className="text-gray-900 font-inter-bold text-xl">
-            Revisar transacciones
+      <ImportThemeProvider neutral={neutralTheme}>
+      <View className={`flex-1 ${inkCls}`} style={{ paddingTop: topInset }}>
+        <View className="px-4 pt-2 pb-2">
+          <Text className="text-[11px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
+            Paso 2 de 4{isCreditCard ? " · Tarjeta de crédito" : ""}
           </Text>
-          <Text className="text-gray-500 font-inter text-sm mt-1">
-            {selectedCount} de {transactions.length} seleccionadas
+          <Text className="mt-1 font-inter-bold text-xl text-z-white">
+            Encontramos esto
+          </Text>
+          <View className="mt-3">
+            <ImportProgress step={2} total={4} />
+          </View>
+          <Text className="mt-3 font-inter text-sm text-z-sage-dark">
+            {selectedCount} de {transactionCount} seleccionadas
           </Text>
         </View>
 
         <FlatList
           data={transactions}
-          keyExtractor={(_, index) => String(index)}
+          keyExtractor={txnKeyExtractor}
           contentContainerStyle={{ paddingBottom: 120 }}
-          ListHeaderComponent={
-            <View className="px-4 pt-2 pb-1">
-              <AccountSelector
-                accounts={accounts}
-                selected={selectedAccount}
-                onSelect={setSelectedAccount}
-              />
-            </View>
-          }
-          renderItem={({ item, index }) => {
-            const isSelected = selected.has(index);
-            const isInflow = item.direction === "INFLOW";
-            const isDebtPayment = isDebtInflow({
-              direction: item.direction,
-              accountType: selectedAccount?.account_type,
-            });
-            const Icon = isSelected ? CheckSquare : Square;
-
-            return (
-              <Pressable
-                className="flex-row items-center px-4 py-3 bg-white active:bg-gray-100"
-                onPress={() => toggleSelect(index)}
-              >
-                <Icon size={20} color={isSelected ? "#C5BFAE" : "#D1D5DB"} />
-                <View className="flex-1 mx-3">
-                  <Text
-                    className="text-gray-900 font-inter-medium text-sm"
-                    numberOfLines={1}
-                  >
-                    {item.description}
-                  </Text>
-                  <Text className="text-gray-400 font-inter text-xs mt-0.5">
-                    {item.date}
-                    {isDebtPayment ? " • Abono a deuda" : ""}
-                  </Text>
-                </View>
-                <Text
-                  className={`font-inter-bold text-sm ${
-                    isDebtPayment
-                      ? "text-sky-600"
-                      : isInflow
-                        ? "text-green-600"
-                        : "text-gray-900"
-                  }`}
-                >
-                  {isInflow ? "+" : "-"}
-                  {formatCurrency(Math.abs(item.amount))}
-                </Text>
-              </Pressable>
-            );
-          }}
-          ItemSeparatorComponent={() => (
-            <View className="h-px bg-gray-100 ml-12" />
-          )}
+          ListHeaderComponent={reviewHeader}
+          renderItem={renderTxnRow}
+          ItemSeparatorComponent={ItemSeparator}
         />
 
         {/* Bottom buttons */}
-        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex-row gap-3">
+        <View className="absolute bottom-0 left-0 right-0 flex-row gap-3 border-t border-white-6 bg-background-92 p-4">
           <Pressable
-            className="flex-1 rounded-lg py-3 items-center border border-gray-300 active:bg-gray-100"
+            accessibilityLabel="Cancelar importación"
+            className={`flex-1 items-center rounded-xl py-3 ${GHOST_BUTTON_CLASS}`}
             onPress={resetFlow}
           >
-            <Text className="text-gray-700 font-inter-medium text-sm">
+            <Text className="font-inter-medium text-sm text-z-sage-light">
               Cancelar
             </Text>
           </Pressable>
           <Pressable
-            className={`flex-1 rounded-lg py-3 items-center ${
-              canImport ? "bg-primary active:bg-primary-dark" : "bg-gray-200"
+            accessibilityLabel="Continuar a reconciliación"
+            className={`flex-1 items-center rounded-xl py-3 ${
+              canImport
+                ? `${BRASS_BUTTON_CLASS} active:opacity-90`
+                : "bg-z-surface-2"
             }`}
             onPress={handlePrepareImport}
             disabled={!canImport || importing}
           >
             {importing ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={COLORS.ink} />
             ) : (
               <Text
                 className={`font-inter-bold text-sm ${
-                  canImport ? "text-white" : "text-gray-400"
+                  canImport ? "text-z-ink" : "text-z-sage-dark"
                 }`}
               >
-                Revisar conciliación
+                Continuar
               </Text>
             )}
           </Pressable>
         </View>
       </View>
+      </ImportThemeProvider>
     );
   }
 
@@ -917,213 +1170,459 @@ export default function ImportScreen() {
       review: [],
       unmatched: [],
     };
+    const txnsCount = selected.size;
+    const newMerchantNames = Array.from(
+      new Set(
+        preview.unmatched
+          .map((i) => i.transaction.description)
+          .filter((s): s is string => typeof s === "string" && s.length > 0),
+      ),
+    );
+    const narratorLine = (() => {
+      if (preview.review.length > 0)
+        return `Hay ${preview.review.length} ambigu${preview.review.length === 1 ? "o" : "os"} — tú decides. Son solo unos toques.`;
+      if (preview.autoMerge.length > 0)
+        return `Se omiten ${preview.autoMerge.length} duplicado${preview.autoMerge.length === 1 ? "" : "s"}. El resto entra fresco.`;
+      return "Sin sorpresas — nada duplicado, nada ambiguo. Dale.";
+    })();
 
     return (
-      <View className="flex-1 bg-gray-100">
+      <ImportThemeProvider neutral={neutralTheme}>
+      <View className={`flex-1 ${inkCls}`} style={{ paddingTop: topInset }}>
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
         >
-          <Text className="text-gray-900 font-inter-bold text-xl">
+          <Text className="text-[11px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
+            Paso 3 de 4
+          </Text>
+          <Text className="mt-1 font-inter-bold text-xl text-z-white">
             Reconciliación
           </Text>
-          <Text className="mt-1 text-gray-500 font-inter text-sm">
-            Evita duplicados antes de guardar el extracto.
-          </Text>
-
-          <View className="mt-4 flex-row gap-3">
-            <View className="flex-1 rounded-xl bg-white p-4">
-              <Text className="text-xs font-inter text-gray-500">Auto-merge</Text>
-              <Text className="mt-1 text-2xl font-inter-bold text-gray-900">
-                {preview.autoMerge.length}
-              </Text>
-            </View>
-            <View className="flex-1 rounded-xl bg-white p-4">
-              <Text className="text-xs font-inter text-gray-500">Revisión</Text>
-              <Text className="mt-1 text-2xl font-inter-bold text-gray-900">
-                {preview.review.length}
-              </Text>
-            </View>
-            <View className="flex-1 rounded-xl bg-white p-4">
-              <Text className="text-xs font-inter text-gray-500">Sin match</Text>
-              <Text className="mt-1 text-2xl font-inter-bold text-gray-900">
-                {preview.unmatched.length}
-              </Text>
-            </View>
+          <View className="mt-3 mb-3">
+            <ImportProgress step={3} total={4} />
           </View>
-
-          {preview.autoMerge.length > 0 ? (
-            <View className="mt-5 rounded-xl bg-white p-4">
-              <Text className="text-sm font-inter-semibold text-gray-900">
-                Coincidencias de alta confianza
+          {selectedAccount && (
+            <View className="mt-4 flex-row items-baseline justify-between gap-3 border-b border-white-6 pb-2.5">
+              <Text
+                numberOfLines={1}
+                className="flex-1 font-inter-semibold text-[15px] text-z-white tracking-tight"
+              >
+                {selectedAccount.name}
               </Text>
-              <View className="mt-3 gap-3">
-                {preview.autoMerge.map((item) => (
-                  <View
-                    key={`auto-${item.importIndex}`}
-                    className="rounded-xl border border-emerald-100 bg-emerald-50 p-3"
-                  >
-                    <Text className="font-inter-medium text-sm text-gray-900">
-                      {item.transaction.description}
-                    </Text>
-                    <Text className="mt-1 text-xs font-inter text-gray-600">
-                      Se fusiona con{" "}
-                      {item.candidate.raw_description ??
-                        item.candidate.merchant_name ??
-                        "movimiento manual"}
-                    </Text>
-                    <Text className="mt-1 text-xs font-inter text-emerald-700">
-                      Score {Math.round(item.score * 100)}%
-                    </Text>
+              <Text className="font-inter text-[11px] text-z-sage-dark">
+                {txnsCount} movs
+              </Text>
+            </View>
+          )}
+
+          {(() => {
+            const toggle = (
+              target:
+                | "unmatched"
+                | "merchants"
+                | "duplicates"
+                | "review"
+            ) => {
+              setReconExpanded((v) => (v === target ? "none" : target));
+            };
+            const isRow1 =
+              reconExpanded === "unmatched" || reconExpanded === "merchants";
+            const isRow2 =
+              reconExpanded === "duplicates" || reconExpanded === "review";
+            return (
+              <>
+                <View className="mt-4 flex-row gap-3">
+                  <View className="flex-1">
+                    <StatTile
+                      label="Nuevos"
+                      hint="se agregan"
+                      value={preview.unmatched.length}
+                      tone="income"
+                      neutral={neutralTheme}
+                      active={reconExpanded === "unmatched"}
+                      onPress={() => toggle("unmatched")}
+                    />
                   </View>
-                ))}
-              </View>
-            </View>
-          ) : null}
+                  <View className="flex-1">
+                    <StatTile
+                      label="Destinatarios"
+                      hint="sugeridos"
+                      value={newMerchantNames.length}
+                      tone="brass"
+                      neutral={neutralTheme}
+                      active={reconExpanded === "merchants"}
+                      onPress={() => toggle("merchants")}
+                    />
+                  </View>
+                </View>
 
-          {preview.review.length > 0 ? (
-            <View className="mt-5 rounded-xl bg-white p-4">
-              <Text className="text-sm font-inter-semibold text-gray-900">
-                Revisión manual
-              </Text>
-              <View className="mt-3 gap-4">
-                {preview.review.map((item) => {
-                  const choice = reviewDecisions[item.importIndex] ?? "KEEP_BOTH";
-                  return (
-                    <View
-                      key={`review-${item.importIndex}`}
-                      className="rounded-xl border border-gray-200 p-3"
-                    >
-                      <Text className="font-inter-medium text-sm text-gray-900">
-                        {item.transaction.description}
-                      </Text>
-                      <Text className="mt-1 text-xs font-inter text-gray-500">
-                        Posible duplicado:{" "}
-                        {item.candidate.raw_description ??
-                          item.candidate.merchant_name ??
-                          "movimiento manual"}
-                      </Text>
-                      <Text className="mt-1 text-xs font-inter text-gray-500">
-                        Score {Math.round(item.score * 100)}%
-                      </Text>
+                <AnimatedAccordion expanded={isRow1} estimatedHeight={700}>
+                  <View className="mt-3 rounded-xl border border-z-sage-10 bg-z-surface-2 p-4">
+                    {reconExpanded === "unmatched" ? (
+                      preview.unmatched.length === 0 ? (
+                        <Narrator tone="sage">
+                          No hay movimientos nuevos en este extracto. Raro pero
+                          OK.
+                        </Narrator>
+                      ) : (
+                        <>
+                          <Text className="font-inter-semibold text-sm text-z-white">
+                            Movimientos nuevos
+                          </Text>
+                          <Text className="mt-1 font-inter-italic text-xs text-z-sage-dark">
+                            No coinciden con nada existente — se importan fresh.
+                          </Text>
+                          <View className="mt-3 gap-1.5">
+                            {preview.unmatched.map((item) => (
+                              <View
+                                key={`unmatched-${item.importIndex}`}
+                                className="rounded-lg border border-white-6 px-3 py-2"
+                              >
+                                <Text className="font-inter text-xs text-z-sage-light">
+                                  {item.transaction.description}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </>
+                      )
+                    ) : newMerchantNames.length === 0 ? (
+                      <Narrator tone="sage">
+                        Nada por sugerir — ya tenías a todos registrados.
+                      </Narrator>
+                    ) : (
+                      <>
+                        <Text className="font-inter-semibold text-sm text-z-white">
+                          Destinatarios sugeridos
+                        </Text>
+                        <Text className="mt-1 font-inter-italic text-xs text-z-sage-dark">
+                          Después de importar, revisa cuáles quieres crear.
+                        </Text>
+                        <View className="mt-3 gap-1.5">
+                          {newMerchantNames.map((name) => (
+                            <View
+                              key={`new-m-${name}`}
+                              className="rounded-lg border border-white-6 px-3 py-2"
+                            >
+                              <Text className="font-inter text-xs text-z-sage-light">
+                                {name}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      </>
+                    )}
+                  </View>
+                </AnimatedAccordion>
 
-                      <View className="mt-3 flex-row gap-2">
-                        <Pressable
-                          onPress={() =>
-                            setReviewDecisions((prev) => ({
-                              ...prev,
-                              [item.importIndex]: "MERGE",
-                            }))
-                          }
-                          className={`flex-1 rounded-xl px-3 py-2 ${
-                            choice === "MERGE" ? "bg-primary" : "bg-gray-100"
-                          }`}
-                        >
-                          <Text
-                            className={`text-center font-inter-medium text-xs ${
-                              choice === "MERGE" ? "text-white" : "text-gray-700"
-                            }`}
-                          >
-                            Fusionar
+                <View className="mt-3 flex-row gap-3">
+                  <View className="flex-1">
+                    <StatTile
+                      label="Duplicados"
+                      hint="se omiten"
+                      value={preview.autoMerge.length}
+                      tone="brass"
+                      neutral={neutralTheme}
+                      active={reconExpanded === "duplicates"}
+                      onPress={() => toggle("duplicates")}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <StatTile
+                      label="Ambiguos"
+                      hint="tú eliges"
+                      value={preview.review.length}
+                      tone="alert"
+                      neutral={neutralTheme}
+                      active={reconExpanded === "review"}
+                      onPress={() => toggle("review")}
+                    />
+                  </View>
+                </View>
+
+                <AnimatedAccordion expanded={isRow2} estimatedHeight={1200}>
+                  <View className="mt-3 rounded-xl border border-z-sage-10 bg-z-surface-2 p-4">
+                    {reconExpanded === "duplicates" ? (
+                      preview.autoMerge.length === 0 ? (
+                        <Narrator tone="sage">
+                          Cero duplicados. Todo entra fresh, sin pisarse.
+                        </Narrator>
+                      ) : (
+                        <>
+                          <Text className="font-inter-semibold text-sm text-z-white">
+                            Coincidencias de alta confianza
                           </Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() =>
-                            setReviewDecisions((prev) => ({
-                              ...prev,
-                              [item.importIndex]: "KEEP_BOTH",
-                            }))
-                          }
-                          className={`flex-1 rounded-xl px-3 py-2 ${
-                            choice === "KEEP_BOTH" ? "bg-gray-900" : "bg-gray-100"
-                          }`}
-                        >
-                          <Text
-                            className={`text-center font-inter-medium text-xs ${
-                              choice === "KEEP_BOTH" ? "text-white" : "text-gray-700"
-                            }`}
-                          >
-                            Mantener ambas
+                          <Text className="mt-1 font-inter-italic text-xs text-z-sage-dark">
+                            Se fusionan automáticamente con movimientos
+                            existentes.
                           </Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          ) : null}
+                          <View className="mt-3 gap-3">
+                            {preview.autoMerge.map((item) => (
+                              <View
+                                key={`auto-${item.importIndex}`}
+                                className="rounded-xl border border-z-income-30 bg-z-income-12 p-3"
+                              >
+                                <Text className="font-inter-medium text-sm text-z-white">
+                                  {item.transaction.description}
+                                </Text>
+                                <Text className="mt-1 font-inter text-xs text-z-sage-light">
+                                  Se fusiona con{" "}
+                                  {item.candidate.raw_description ??
+                                    item.candidate.merchant_name ??
+                                    "movimiento manual"}
+                                </Text>
+                                <Text className="mt-1 font-inter text-xs text-z-income">
+                                  Score {Math.round(item.score * 100)}%
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </>
+                      )
+                    ) : preview.review.length === 0 ? (
+                      <Narrator tone="sage">
+                        Sin ambigüedades. Nada que decidir.
+                      </Narrator>
+                    ) : (
+                      <>
+                        <Text className="font-inter-semibold text-sm text-z-white">
+                          Decide caso por caso
+                        </Text>
+                        <Text className="mt-1 font-inter-italic text-xs text-z-sage-dark">
+                          Coincidencias parciales — tú eliges fusionar o
+                          mantener ambas.
+                        </Text>
+                        <View className="mt-3 gap-4">
+                          {preview.review.map((item) => {
+                            const choice =
+                              reviewDecisions[item.importIndex] ?? "KEEP_BOTH";
+                            return (
+                              <View
+                                key={`review-${item.importIndex}`}
+                                className="rounded-xl border border-z-sage-10 p-3"
+                              >
+                                <Text className="font-inter-medium text-sm text-z-white">
+                                  {item.transaction.description}
+                                </Text>
+                                <Text className="mt-1 font-inter text-xs text-z-sage-dark">
+                                  Posible duplicado:{" "}
+                                  {item.candidate.raw_description ??
+                                    item.candidate.merchant_name ??
+                                    "movimiento manual"}
+                                </Text>
+                                <Text className="mt-1 font-inter text-xs text-z-sage-dark">
+                                  Score {Math.round(item.score * 100)}%
+                                </Text>
+
+                                <View className="mt-3 flex-row gap-2">
+                                  <Pressable
+                                    onPress={() =>
+                                      setReviewDecisions((prev) => ({
+                                        ...prev,
+                                        [item.importIndex]: "MERGE",
+                                      }))
+                                    }
+                                    className={`flex-1 rounded-xl px-3 py-2 ${
+                                      choice === "MERGE"
+                                        ? "bg-z-brass"
+                                        : "bg-z-surface-3"
+                                    }`}
+                                  >
+                                    <Text
+                                      className={`text-center font-inter-medium text-xs ${
+                                        choice === "MERGE"
+                                          ? "text-z-ink"
+                                          : "text-z-sage-light"
+                                      }`}
+                                    >
+                                      Fusionar
+                                    </Text>
+                                  </Pressable>
+                                  <Pressable
+                                    onPress={() =>
+                                      setReviewDecisions((prev) => ({
+                                        ...prev,
+                                        [item.importIndex]: "KEEP_BOTH",
+                                      }))
+                                    }
+                                    className={`flex-1 rounded-xl px-3 py-2 ${
+                                      choice === "KEEP_BOTH"
+                                        ? "bg-z-sage-dark"
+                                        : "bg-z-surface-3"
+                                    }`}
+                                  >
+                                    <Text
+                                      className={`text-center font-inter-medium text-xs ${
+                                        choice === "KEEP_BOTH"
+                                          ? "text-z-ink"
+                                          : "text-z-sage-light"
+                                      }`}
+                                    >
+                                      Mantener ambas
+                                    </Text>
+                                  </Pressable>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </>
+                    )}
+                  </View>
+                </AnimatedAccordion>
+              </>
+            );
+          })()}
+
+          <Narrator>{narratorLine}</Narrator>
         </ScrollView>
 
-        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex-row gap-3">
+        <View className="absolute bottom-0 left-0 right-0 flex-row gap-3 border-t border-white-6 bg-background-92 p-4">
           <Pressable
-            className="flex-1 rounded-lg py-3 items-center border border-gray-300 active:bg-gray-100"
+            accessibilityLabel="Volver al paso anterior"
+            className={`flex-1 items-center rounded-xl py-3 ${GHOST_BUTTON_CLASS}`}
             onPress={() => setStep("review")}
           >
-            <Text className="text-gray-700 font-inter-medium text-sm">
+            <Text className="font-inter-medium text-sm text-z-sage-light">
               Volver
             </Text>
           </Pressable>
           <Pressable
-            className={`flex-1 rounded-lg py-3 items-center ${
-              importing ? "bg-gray-300" : "bg-primary active:bg-primary-dark"
+            accessibilityLabel="Confirmar importación"
+            className={`flex-1 items-center rounded-xl py-3 ${
+              importing
+                ? "bg-z-surface-2"
+                : `${BRASS_BUTTON_CLASS} active:opacity-90`
             }`}
             onPress={handleImport}
             disabled={importing}
           >
             {importing ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={COLORS.ink} />
             ) : (
-              <Text className="font-inter-bold text-sm text-white">
+              <Text className="font-inter-bold text-sm text-z-ink">
                 Confirmar importación
               </Text>
             )}
           </Pressable>
         </View>
       </View>
+      </ImportThemeProvider>
     );
   }
 
-  // ===== STEP 3: Result =====
+  // ===== STEP 4: Result =====
   return (
-    <View className="flex-1 bg-gray-100 items-center justify-center px-8">
-      <CheckCircle size={64} color="#C5BFAE" />
-      <Text className="text-gray-900 font-inter-bold text-xl mt-6">
-        Importacion exitosa
+    <ImportThemeProvider neutral={neutralTheme}>
+    <View className={`flex-1 items-center justify-center ${inkCls} px-8`} style={{ paddingTop: topInset }}>
+      <View className="absolute left-0 right-0 top-0 px-4 pt-4">
+        <Text className="text-[11px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
+          Paso 4 de 4
+        </Text>
+        <View className="mt-3">
+          <ImportProgress step={4} total={4} />
+        </View>
+      </View>
+
+      <CheckCircle size={64} color="#5CB88A" />
+      <Text className="mt-6 font-inter-bold text-xl text-z-white">
+        Importación exitosa
       </Text>
-      <Text className="text-gray-500 font-inter text-base mt-2 text-center">
+      <Text className="mt-2 text-center font-inter text-base text-z-sage-light">
         {importedCount}{" "}
         {importedCount === 1
-          ? "transaccion importada"
+          ? "transacción importada"
           : "transacciones importadas"}
       </Text>
-      <Text className="text-gray-400 font-inter text-sm mt-2 text-center">
+      <Text className="mt-2 text-center font-inter text-sm text-z-sage-dark">
         {importSummary.autoMerged} auto-merge, {importSummary.manualMerged} merge manual,{" "}
         {importSummary.leftAsSeparate} separadas
       </Text>
       {selectedAccount && (
-        <Text className="text-gray-400 font-inter text-sm mt-1">
+        <Text className="mt-1 font-inter text-sm text-z-sage-dark">
           en {selectedAccount.name}
         </Text>
       )}
 
       <Pressable
-        className="bg-primary rounded-lg py-3.5 px-8 mt-8 active:bg-primary-dark"
+        className="mt-8 rounded-xl bg-z-brass px-8 py-3.5 active:opacity-90"
         onPress={() => {
           resetFlow();
           router.navigate("/(tabs)/transactions");
         }}
       >
-        <Text className="text-white font-inter-bold text-base">
+        <Text className="font-inter-bold text-base text-z-ink">
           Ver transacciones
         </Text>
       </Pressable>
 
       <Pressable className="mt-4 py-2" onPress={resetFlow}>
-        <Text className="text-gray-500 font-inter-medium text-sm">
+        <Text className="font-inter-medium text-sm text-z-sage-dark">
           Importar otro extracto
         </Text>
       </Pressable>
     </View>
+    </ImportThemeProvider>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  tone,
+  hint,
+  neutral,
+  active,
+  onPress,
+}: {
+  label: string;
+  value: number;
+  tone: "white" | "brass" | "alert" | "income";
+  hint?: string;
+  neutral: boolean;
+  active?: boolean;
+  onPress?: () => void;
+}) {
+  const surfaceCls = neutral ? "bg-z-surface-2-neutral" : "bg-z-surface-2";
+  const isZero = value === 0;
+  const valueColor = isZero
+    ? "text-z-sage-dark"
+    : tone === "brass"
+      ? "text-z-brass"
+      : tone === "alert"
+        ? "text-z-debt"
+        : tone === "income"
+          ? "text-z-income"
+          : "text-z-white";
+  const borderCls = active ? "border-z-brass" : "border-white-6";
+  const interactive = typeof onPress === "function";
+  const Wrapper: typeof Pressable | typeof View = interactive ? Pressable : View;
+  return (
+    <Wrapper
+      {...(interactive
+        ? {
+            onPress,
+            accessibilityRole: "button" as const,
+            accessibilityState: { expanded: !!active },
+            accessibilityLabel: `Ver ${label.toLowerCase()}`,
+          }
+        : {})}
+      className={`rounded-2xl border ${borderCls} ${surfaceCls} px-4 pt-3.5 pb-4`}
+    >
+      <Text className="text-[10px] font-inter-semibold uppercase text-z-sage-dark tracking-[0.18em]">
+        {label}
+      </Text>
+      <Text
+        className={`mt-1.5 text-[34px] font-inter-bold tabular-nums tracking-tight ${valueColor}`}
+      >
+        {value}
+      </Text>
+      {hint && (
+        <Text className="mt-1 font-inter text-[12px] text-z-sage-dark">
+          {hint}
+        </Text>
+      )}
+    </Wrapper>
   );
 }
