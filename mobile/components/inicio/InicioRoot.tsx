@@ -25,19 +25,19 @@ import {
   saveDashboardLayout,
 } from "../../lib/dashboard/layout-storage";
 import { useDashboardData } from "../../lib/dashboard/useDashboardData";
+import { useExpandableZone } from "../ui/useExpandableZone";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
-import {
-  MOBILE_TAB_BAR_CLEARANCE,
-  PANEL_INSET_CLASS,
-} from "../../lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE } from "../../lib/constants/styles";
 import { PulseWidget } from "./widgets/PulseWidget";
-import { NextBillWidget } from "./widgets/NextBillWidget";
-import { AccountsWidget } from "./widgets/AccountsWidget";
-import { WhereTodayWidget } from "./widgets/WhereTodayWidget";
-import { RecentWidget } from "./widgets/RecentWidget";
-import { WidgetGrid } from "./WidgetGrid";
+import { WidgetGrid, type WidgetRender } from "./WidgetGrid";
+import { ChipEyebrow } from "../ui/ExpandableChip";
 import { AddWidgetSheet } from "./AddWidgetSheet";
+import { renderAccountsWidget } from "./widgets/AccountsWidget";
+import { renderNextBillWidget } from "./widgets/NextBillWidget";
+import { renderNextIncomeWidget } from "./widgets/NextIncomeWidget";
+import { renderWhereTodayWidget } from "./widgets/WhereTodayWidget";
+import { renderRecentWidget } from "./widgets/RecentWidget";
 
 const WEEKDAY_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTH_ES = [
@@ -59,6 +59,23 @@ function formatHeaderDate(d: Date): string {
   return `${WEEKDAY_ES[d.getDay()]} · ${d.getDate()} ${MONTH_ES[d.getMonth()]}`;
 }
 
+const UNKNOWN_RENDER: WidgetRender = {
+  tone: "foreground",
+  accessibilityLabel: "Widget",
+  chip: (
+    <View>
+      <ChipEyebrow tone="foreground">Widget</ChipEyebrow>
+      <Text className="mt-2 text-[20px] font-inter-bold text-z-sage-dark">
+        —
+      </Text>
+      <Text className="mt-1 text-[10px] font-inter text-muted-foreground">
+        Próximamente
+      </Text>
+    </View>
+  ),
+  detail: null,
+};
+
 export function InicioRoot() {
   const { sync } = useSync();
   const { session } = useAuth();
@@ -71,10 +88,17 @@ export function InicioRoot() {
   const [editing, setEditing] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
 
+  const { activeZone, toggle, close } = useExpandableZone<string>();
+
   useEffect(() => {
     if (!userId) return;
     loadDashboardLayout(userId).then(setLayout).catch(() => {});
   }, [userId]);
+
+  // Close any open chip when entering/leaving edit mode
+  useEffect(() => {
+    close();
+  }, [editing, close]);
 
   const persist = useCallback(
     (next: DashboardLayout) => {
@@ -127,7 +151,6 @@ export function InicioRoot() {
   const today = toLocalDateString(new Date());
   const dateLabel = formatHeaderDate(new Date());
 
-  // Pulse metric depends on selected range
   const pulseValue =
     layout.pulseRange === "weekly"
       ? Math.round(summary.spentLast7 / Math.max(1, 7))
@@ -135,6 +158,44 @@ export function InicioRoot() {
   const pulseDays = layout.pulseRange === "weekly" ? 7 : summary.daysRemaining;
   const pulseTrend =
     layout.pulseRange === "weekly" ? summary.spentTrend7 : summary.spentTrend30;
+
+  const renderWidget = useCallback(
+    (w: WidgetInstance): WidgetRender => {
+      switch (w.type) {
+        case "accounts":
+          return renderAccountsWidget({
+            accounts: summary.accounts,
+            currency: summary.currency,
+          });
+        case "next_bill":
+          return renderNextBillWidget({
+            bill: summary.nextBill,
+            upcoming: summary.upcomingBills,
+            currency: summary.currency,
+          });
+        case "next_income":
+          return renderNextIncomeWidget({
+            income: summary.nextIncome,
+            upcoming: summary.upcomingIncomes,
+            currency: summary.currency,
+          });
+        case "where_today":
+          return renderWhereTodayWidget({
+            transactions: summary.transactions,
+            today,
+            spentToday: summary.spentToday,
+            currency: summary.currency,
+          });
+        case "recent":
+          return renderRecentWidget({
+            transactions: summary.transactions,
+          });
+        default:
+          return UNKNOWN_RENDER;
+      }
+    },
+    [summary, today]
+  );
 
   return (
     <View className="flex-1 bg-background">
@@ -177,7 +238,7 @@ export function InicioRoot() {
         {editing && (
           <View className="mb-1 flex-row items-center gap-2 rounded-xl border border-z-brass-20 bg-z-brass-8 px-3 py-2">
             <Text className="flex-1 text-[11px] font-inter text-z-brass">
-              Quita widgets con × o añade más abajo · Ritmo es permanente
+              Quita chips con × o añade más abajo · Ritmo es permanente
             </Text>
           </View>
         )}
@@ -194,67 +255,22 @@ export function InicioRoot() {
 
         <WidgetGrid
           widgets={layout.widgets}
-          render={(w) => {
-            const onRemove = () => handleRemove(w.id);
-            switch (w.type) {
-              case "next_bill":
-                return (
-                  <NextBillWidget
-                    bill={summary.nextBill}
-                    currency={summary.currency}
-                    editing={editing}
-                    onRemove={onRemove}
-                  />
-                );
-              case "accounts":
-                return (
-                  <AccountsWidget
-                    accounts={summary.accounts}
-                    currency={summary.currency}
-                    editing={editing}
-                    onRemove={onRemove}
-                  />
-                );
-              case "where_today":
-                return (
-                  <WhereTodayWidget
-                    transactions={summary.transactions}
-                    today={today}
-                    spentToday={summary.spentToday}
-                    currency={summary.currency}
-                    editing={editing}
-                    onRemove={onRemove}
-                  />
-                );
-              case "recent":
-                return (
-                  <RecentWidget
-                    transactions={summary.transactions}
-                    editing={editing}
-                    onRemove={onRemove}
-                  />
-                );
-              default:
-                return (
-                  <View className={`${PANEL_INSET_CLASS} p-3`}>
-                    <Text className="text-[11px] font-inter text-muted-foreground">
-                      Widget próximamente
-                    </Text>
-                  </View>
-                );
-            }
-          }}
+          activeId={editing ? null : activeZone}
+          onToggle={toggle}
+          render={renderWidget}
+          editing={editing}
+          onRemove={handleRemove}
         />
 
         {editing && (
           <Pressable
             onPress={() => setCatalogOpen(true)}
-            accessibilityLabel="Añadir widget"
+            accessibilityLabel="Añadir chip"
             className="mt-1 flex-row items-center justify-center gap-2 rounded-2xl border border-dashed border-z-brass-30 bg-z-brass-8 py-4"
           >
             <Plus size={14} color={COLORS.brass} />
             <Text className="text-[12px] font-inter-semibold text-z-brass">
-              Añadir widget
+              Añadir chip
             </Text>
           </Pressable>
         )}

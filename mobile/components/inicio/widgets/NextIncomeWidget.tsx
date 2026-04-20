@@ -7,52 +7,52 @@ import {
 } from "../../ui/ExpandableChip";
 import { PANEL_INSET_CLASS } from "../../../lib/constants/styles";
 import type {
-  NextBill,
+  NextIncome,
   UpcomingItem,
 } from "../../../lib/dashboard/useDashboardData";
 
-export interface NextBillWidgetData {
-  bill: NextBill;
+export interface NextIncomeWidgetData {
+  income: NextIncome;
   upcoming: UpcomingItem[];
   currency: CurrencyCode;
 }
 
-export function renderNextBillWidget({
-  bill,
+export function renderNextIncomeWidget({
+  income,
   upcoming,
   currency,
-}: NextBillWidgetData) {
-  const tone: ChipTone = "debt";
+}: NextIncomeWidgetData) {
+  const tone: ChipTone = "income";
 
-  const subtitle = bill
-    ? bill.daysUntil === 0
-      ? "vence hoy"
-      : bill.daysUntil === 1
+  const subtitle = income
+    ? income.daysUntil === 0
+      ? "llega hoy"
+      : income.daysUntil === 1
         ? "mañana"
-        : `en ${bill.daysUntil} días`
+        : `en ${income.daysUntil} días`
     : null;
 
   const total = upcoming.reduce((s, u) => s + u.amount, 0);
 
   return {
     tone,
-    accessibilityLabel: "Próximo pago",
+    accessibilityLabel: "Próximo ingreso",
     chip: (
       <View>
-        <ChipEyebrow tone={tone}>Próximo pago</ChipEyebrow>
-        {bill ? (
+        <ChipEyebrow tone={tone}>Próximo ingreso</ChipEyebrow>
+        {income ? (
           <>
             <Text
-              className="mt-2 text-[24px] font-inter-bold tabular-nums text-z-debt"
+              className="mt-2 text-[24px] font-inter-bold tabular-nums text-z-income"
               numberOfLines={1}
             >
-              {formatCurrency(bill.amount, currency)}
+              {formatCurrency(income.amount, currency)}
             </Text>
             <Text
               className="mt-1 text-[11px] font-inter text-foreground"
               numberOfLines={1}
             >
-              {bill.name}
+              {income.name}
             </Text>
             <Text className="text-[10px] font-inter text-muted-foreground">
               {subtitle}
@@ -64,7 +64,7 @@ export function renderNextBillWidget({
               —
             </Text>
             <Text className="mt-1 text-[11px] font-inter text-muted-foreground">
-              Sin pagos próximos
+              Sin ingresos próximos
             </Text>
           </>
         )}
@@ -72,10 +72,10 @@ export function renderNextBillWidget({
     ),
     detail: (
       <View className={`${PANEL_INSET_CLASS} p-3`}>
-        <ChipDetailHeading tone={tone}>Pagos programados</ChipDetailHeading>
+        <ChipDetailHeading tone={tone}>Ingresos esperados</ChipDetailHeading>
         {upcoming.length === 0 ? (
           <Text className="py-3 text-center text-[12px] font-inter text-muted-foreground">
-            No tienes pagos recurrentes configurados
+            No tienes ingresos recurrentes configurados
           </Text>
         ) : (
           <>
@@ -99,7 +99,7 @@ export function renderNextBillWidget({
                     {u.accountName ? ` · ${u.accountName}` : ""}
                   </Text>
                 </View>
-                <Text className="text-[13px] font-inter-semibold tabular-nums text-z-debt">
+                <Text className="text-[13px] font-inter-semibold tabular-nums text-z-income">
                   {formatCurrency(u.amount, currency)}
                 </Text>
               </View>
@@ -108,7 +108,7 @@ export function renderNextBillWidget({
               <Text className="text-[11px] font-inter text-muted-foreground">
                 Total
               </Text>
-              <Text className="text-[12px] font-inter-bold tabular-nums text-z-debt">
+              <Text className="text-[12px] font-inter-bold tabular-nums text-z-income">
                 {formatCurrency(total, currency)}
               </Text>
             </View>

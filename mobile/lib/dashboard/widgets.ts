@@ -8,6 +8,7 @@ export type WidgetSize = "S" | "M" | "L";
 export type WidgetType =
   | "pulse"
   | "next_bill"
+  | "next_income"
   | "accounts"
   | "where_today"
   | "recent"
@@ -34,8 +35,9 @@ export type DashboardLayout = {
 export const DEFAULT_LAYOUT: DashboardLayout = {
   pulseRange: "weekly",
   widgets: [
+    { id: "next_income", type: "next_income", size: "S" },
     { id: "next_bill", type: "next_bill", size: "S" },
-    { id: "accounts", type: "accounts", size: "M" },
+    { id: "accounts", type: "accounts", size: "S" },
     { id: "where_today", type: "where_today", size: "S" },
     { id: "recent", type: "recent", size: "L" },
   ],
@@ -51,6 +53,13 @@ export type CatalogEntry = {
 
 export const WIDGET_CATALOG: CatalogEntry[] = [
   {
+    type: "next_income",
+    label: "Próximo ingreso",
+    description: "Tu siguiente entrada de dinero",
+    defaultSize: "S",
+    available: true,
+  },
+  {
     type: "next_bill",
     label: "Próximo pago",
     description: "La siguiente obligación a pagar",
@@ -61,7 +70,7 @@ export const WIDGET_CATALOG: CatalogEntry[] = [
     type: "accounts",
     label: "Cuentas",
     description: "Tus cuentas principales",
-    defaultSize: "M",
+    defaultSize: "S",
     available: true,
   },
   {

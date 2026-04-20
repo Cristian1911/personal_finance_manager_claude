@@ -1,47 +1,91 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text } from "react-native";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react-native";
-import { useRouter } from "expo-router";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
-import { WidgetFrame } from "./WidgetFrame";
-import { SECTION_EYEBROW_CLASS } from "../../../lib/constants/styles";
+import {
+  ChipEyebrow,
+  ChipDetailHeading,
+  type ChipTone,
+} from "../../ui/ExpandableChip";
+import { StateChip } from "../../ui/StateChip";
+import { PANEL_INSET_CLASS } from "../../../lib/constants/styles";
 import { COLORS } from "../../../lib/constants/colors";
 import type { DashboardTx } from "../../../lib/dashboard/useDashboardData";
 
-interface RecentWidgetProps {
+export interface RecentWidgetData {
   transactions: DashboardTx[];
-  editing?: boolean;
-  onRemove?: () => void;
 }
 
-export function RecentWidget({ transactions, editing, onRemove }: RecentWidgetProps) {
-  const router = useRouter();
-  const visible = transactions.slice(0, 3);
+export function renderRecentWidget({ transactions }: RecentWidgetData) {
+  const tone: ChipTone = "brass";
+  const preview = transactions.slice(0, 2);
+  const visible = transactions.slice(0, 5);
 
-  return (
-    <WidgetFrame
-      editing={editing}
-      onRemove={onRemove}
-      onPress={() => router.push("/(tabs)/transactions")}
-      accessibilityLabel="Movimientos recientes"
-    >
-      <Text className={SECTION_EYEBROW_CLASS}>Reciente</Text>
-      {visible.length === 0 ? (
-        <Text className="mt-2 text-[11px] font-inter text-muted-foreground">
-          Sin movimientos aún
-        </Text>
-      ) : (
-        <View className="mt-2">
-          {visible.map((tx) => {
+  return {
+    tone,
+    accessibilityLabel: "Movimientos recientes",
+    chip: (
+      <View>
+        <ChipEyebrow tone={tone}>Recientes</ChipEyebrow>
+        {preview.length === 0 ? (
+          <Text className="mt-2 text-[11px] font-inter text-muted-foreground">
+            Sin movimientos aún
+          </Text>
+        ) : (
+          <View className="mt-2 gap-1.5">
+            {preview.map((tx) => {
+              const isInflow = tx.direction === "INFLOW";
+              return (
+                <View key={tx.id} className="flex-row items-center gap-2">
+                  <View
+                    className={`h-5 w-5 items-center justify-center rounded-md ${
+                      isInflow ? "bg-z-income-10" : "bg-z-expense-10"
+                    }`}
+                  >
+                    {isInflow ? (
+                      <ArrowDownLeft size={10} color={COLORS.income} />
+                    ) : (
+                      <ArrowUpRight size={10} color={COLORS.expense} />
+                    )}
+                  </View>
+                  <Text
+                    className="min-w-0 flex-1 text-[11px] font-inter text-foreground"
+                    numberOfLines={1}
+                  >
+                    {tx.description}
+                  </Text>
+                  <Text
+                    className={`text-[11px] font-inter-semibold tabular-nums ${
+                      isInflow ? "text-z-income" : "text-foreground"
+                    }`}
+                  >
+                    {isInflow ? "+" : "-"}
+                    {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+    ),
+    detail: (
+      <View className={`${PANEL_INSET_CLASS} p-3`}>
+        <ChipDetailHeading tone={tone}>Últimos movimientos</ChipDetailHeading>
+        {visible.length === 0 ? (
+          <Text className="py-3 text-center text-[12px] font-inter text-muted-foreground">
+            Sin movimientos aún
+          </Text>
+        ) : (
+          visible.map((tx) => {
             const isInflow = tx.direction === "INFLOW";
             return (
-              <Pressable
+              <View
                 key={tx.id}
-                onPress={() => router.push(`/transaction/${tx.id}` as any)}
-                className="flex-row items-center gap-2 py-1.5"
+                className="flex-row items-center gap-2 border-b border-white-6 py-2"
               >
                 <View
-                  className={`h-6 w-6 items-center justify-center rounded-md ${
-                    isInflow ? "bg-z-income-10" : "bg-z-expense-12"
+                  className={`h-7 w-7 items-center justify-center rounded-md ${
+                    isInflow ? "bg-z-income-10" : "bg-z-expense-10"
                   }`}
                 >
                   {isInflow ? (
@@ -59,11 +103,7 @@ export function RecentWidget({ transactions, editing, onRemove }: RecentWidgetPr
                       {tx.description}
                     </Text>
                     {tx.is_recurring && (
-                      <View className="rounded-md border border-z-brass-20 bg-z-brass-10 px-1 py-0.5">
-                        <Text className="text-[8px] font-inter-semibold uppercase tracking-[1px] text-z-brass">
-                          Fijos
-                        </Text>
-                      </View>
+                      <StateChip label="Fijos" variant="brass" />
                     )}
                   </View>
                   <Text
@@ -75,28 +115,18 @@ export function RecentWidget({ transactions, editing, onRemove }: RecentWidgetPr
                   </Text>
                 </View>
                 <Text
-                  className={`text-[12px] font-inter-medium ${
+                  className={`text-[12px] font-inter-semibold tabular-nums ${
                     isInflow ? "text-z-income" : "text-foreground"
                   }`}
                 >
                   {isInflow ? "+" : "-"}
                   {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
                 </Text>
-              </Pressable>
+              </View>
             );
-          })}
-          <Pressable
-            onPress={() => router.push("/(tabs)/transactions")}
-            accessibilityRole="button"
-            accessibilityLabel="Ver todos los movimientos"
-            className="mt-1"
-          >
-            <Text className="text-[11px] font-inter-semibold text-z-brass">
-              Ver todos →
-            </Text>
-          </Pressable>
-        </View>
-      )}
-    </WidgetFrame>
-  );
+          })
+        )}
+      </View>
+    ),
+  };
 }

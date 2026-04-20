@@ -30,18 +30,16 @@ export type DashboardTx = {
   is_recurring: boolean;
 };
 
-export type NextBill = {
+export type UpcomingItem = {
+  id: string;
   name: string;
   amount: number;
-  daysUntil: number;
+  date: string; // ISO YYYY-MM-DD
   accountName: string;
-} | null;
+};
 
-export type NextIncome = {
-  name: string;
-  amount: number;
-  date: string; // ISO
-} | null;
+export type NextBill = UpcomingItem & { daysUntil: number } | null;
+export type NextIncome = UpcomingItem & { daysUntil: number } | null;
 
 export type DashboardSummary = {
   currency: CurrencyCode;
@@ -71,6 +69,8 @@ export type DashboardSummary = {
   /** Widget data */
   nextBill: NextBill;
   nextIncome: NextIncome;
+  upcomingBills: UpcomingItem[];
+  upcomingIncomes: UpcomingItem[];
   netWorth: number;
   liquidBalance: number;
   pendingObligations: number;
@@ -97,6 +97,8 @@ const EMPTY: DashboardSummary = {
   avgLast7: 0,
   nextBill: null,
   nextIncome: null,
+  upcomingBills: [],
+  upcomingIncomes: [],
   netWorth: 0,
   liquidBalance: 0,
   pendingObligations: 0,
@@ -226,36 +228,61 @@ export function useDashboardData() {
           a.occurrence_date.localeCompare(b.occurrence_date)
         );
 
+      const daysUntilFrom = (iso: string) =>
+        Math.max(
+          0,
+          Math.ceil(
+            (new Date(iso + "T12:00:00").getTime() - now.getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        );
+
+      const upcomingBills: UpcomingItem[] = upcoming.slice(0, 6).map(
+        (o: OccurrenceWithTemplate) => ({
+          id: o.id,
+          name: o.merchant_name ?? o.description ?? "Recurrente",
+          amount: o.expected_amount,
+          date: o.occurrence_date,
+          accountName: accountMap.get(o.account_id)?.name ?? "",
+        })
+      );
+
       const nextBill: NextBill =
-        upcoming.length > 0
+        upcomingBills.length > 0
           ? {
-              name:
-                upcoming[0].merchant_name ??
-                upcoming[0].description ??
-                "Recurrente",
-              amount: upcoming[0].expected_amount,
-              daysUntil: Math.max(
-                0,
-                Math.ceil(
-                  (new Date(upcoming[0].occurrence_date + "T12:00:00").getTime() -
-                    now.getTime()) /
-                    (1000 * 60 * 60 * 24)
-                )
-              ),
-              accountName: accountMap.get(upcoming[0].account_id)?.name ?? "",
+              ...upcomingBills[0],
+              daysUntil: daysUntilFrom(upcomingBills[0].date),
             }
           : null;
 
-      const nextIncome: NextIncome = nextIncomeOcc
-        ? {
-            name:
-              nextIncomeOcc.merchant_name ??
-              nextIncomeOcc.description ??
-              "Ingreso",
-            amount: nextIncomeOcc.expected_amount,
-            date: nextIncomeOcc.occurrence_date,
-          }
-        : null;
+      const upcomingIncomes: UpcomingItem[] = pendingOccs
+        .filter(
+          (o: OccurrenceWithTemplate) =>
+            o.direction === "INFLOW" &&
+            !isDebtAccountType(
+              accountMap.get(o.account_id)?.account_type ?? ""
+            ) &&
+            o.occurrence_date >= today
+        )
+        .sort((a: OccurrenceWithTemplate, b: OccurrenceWithTemplate) =>
+          a.occurrence_date.localeCompare(b.occurrence_date)
+        )
+        .slice(0, 6)
+        .map((o: OccurrenceWithTemplate) => ({
+          id: o.id,
+          name: o.merchant_name ?? o.description ?? "Ingreso",
+          amount: o.expected_amount,
+          date: o.occurrence_date,
+          accountName: accountMap.get(o.account_id)?.name ?? "",
+        }));
+
+      const nextIncome: NextIncome =
+        upcomingIncomes.length > 0
+          ? {
+              ...upcomingIncomes[0],
+              daysUntil: daysUntilFrom(upcomingIncomes[0].date),
+            }
+          : null;
 
       const recent: DashboardTx[] = txRows
         .filter((tx: any) => !tx.is_excluded && !tx.reconciled_into_transaction_id)
@@ -305,6 +332,8 @@ export function useDashboardData() {
         avgLast7,
         nextBill,
         nextIncome,
+        upcomingBills,
+        upcomingIncomes,
         netWorth,
         liquidBalance,
         pendingObligations,
