@@ -99,11 +99,17 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Features
 
-### Import wizard — attach pattern to existing destinatario
+### Mobile — capture amount live-formatting
 - **Priority:** Medium
-- **What:** Step 3 (Destinatarios) of `/import` only offers "Crear destinatario" on each unmatched suggestion. When the cleaned pattern is actually a spelling variant of a destinatario that already exists (e.g., `Rappi Colombia*Dl` vs existing `rappi colombia`), the only recoverable path today is to skip, finish the import, then edit patterns at `/destinatarios`. Add a second action to every suggestion card: "Asignar a destinatario existente" → opens a picker (reuse the zone-picker pattern), on confirm appends the pattern to that destinatario's `destinatario_patterns`, refreshes the in-memory `destinatarioRules`, re-runs `matchDestinatario`, and collapses the suggestion. Optional polish: sort the picker by match score or by destinatario-spend to surface the likely target first.
-- **Touches:** new server action `addPatternToDestinatario(destinatarioId, pattern)` in `actions/destinatarios.ts` (insert into `destinatario_patterns` with `match_type: "contains"`, `priority: 100`; `updateTag("destinatarios")`); `step-destinatarios.tsx` UI (picker + wiring); `import-wizard.tsx` passes the updated rules so later steps use them.
-- **Found:** User feedback during Nu import session, 2026-04-17
+- **What:** The centered amount TextInput in `mobile/app/capture.tsx` displays raw digits (`124124`). User expects COP-style thousand grouping (`124.124`) while typing. Solution prototyped during 2026-04-20 session: format via `raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".")` on display, strip dots + convert decimal comma → dot on onChangeText. Deferred to the mobile migration session to keep the destinatario PR focused.
+- **Found:** User feedback, 2026-04-20.
+
+### Mobile — capture "Crear destinatario" + "Asignar a existente" ungate
+- **Priority:** Medium
+- **What:** The "Opciones relacionadas" collapsible in `mobile/app/capture.tsx` currently Alerts `Próximamente` for both "Crear destinatario" and "Crear pago recurrente". Webapp equivalent already works via `createDestinatario` + `attachPatternToDestinatario` (shipped PR #202). Mobile needs analogous support before these can ungate.
+- **Gaps:** mobile `lib/repositories/destinatarios.ts` is read-only (no `createDestinatario`, no `attachPatternToDestinatario`). Need to add both, wire sync push entries for `destinatarios` + `destinatario_rules` tables, and — for "Asignar a existente" — load the destinatario list on screen mount. Same shape as the webapp new `attachPatternToDestinatario` action.
+- **Recurring template**: separate slice — also read-only on mobile (`recurring.ts` only exposes reads + confirm/skip). Needs full `createRecurringTemplate` repo + sync.
+- **Found:** Capture redesign session, 2026-04-20.
 
 ### Dashboard RECIENTE — inline category assignment on row expand
 - **Priority:** High (scoped for Phase 2 Dashboard polish)

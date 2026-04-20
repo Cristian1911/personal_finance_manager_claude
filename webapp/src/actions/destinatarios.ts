@@ -654,20 +654,11 @@ export async function addDestinatarioRule(
     return { success: false, error: parsed.error.issues[0].message };
   }
 
-  // Check for conflicting patterns
-  const { data: existingRules } = await supabase
-    .from("destinatario_rules")
-    .select("pattern, destinatario_id")
-    .eq("user_id", user.id);
-
-  const newPatternLower = parsed.data.pattern.toLowerCase();
-  const conflicts: { pattern: string; destinatarioId: string }[] = [];
-  for (const rule of existingRules ?? []) {
-    const existingLower = rule.pattern.toLowerCase();
-    if (existingLower.includes(newPatternLower) || newPatternLower.includes(existingLower)) {
-      conflicts.push({ pattern: rule.pattern, destinatarioId: rule.destinatario_id });
-    }
-  }
+  const conflicts = await findPatternConflicts(
+    supabase,
+    user.id,
+    parsed.data.pattern
+  );
 
   const { data, error } = await supabase
     .from("destinatario_rules")
@@ -682,6 +673,105 @@ export async function addDestinatarioRule(
   if (error) {
     if (error.code === "23505") {
       return { success: false, error: "Este patrón ya está en uso" };
+    }
+    return { success: false, error: error.message };
+  }
+
+  updateTag("destinatarios");
+  updateTag("attention");
+  return { success: true, data, conflicts };
+}
+
+// ─── findPatternConflicts ─────────────────────────────────────────────────────
+
+type SupabaseClient = Awaited<
+  ReturnType<typeof getAuthenticatedClient>
+>["supabase"];
+
+/**
+ * Detects overlapping patterns against the user's existing destinatario rules.
+ * A conflict is any existing rule whose (lowercased) pattern contains or is
+ * contained by the candidate — the engine's substring match would make them
+ * ambiguous. Shared by addDestinatarioRule and attachPatternToDestinatario.
+ */
+async function findPatternConflicts(
+  supabase: SupabaseClient,
+  userId: string,
+  pattern: string
+): Promise<{ pattern: string; destinatarioId: string }[]> {
+  const { data: existingRules } = await supabase
+    .from("destinatario_rules")
+    .select("pattern, destinatario_id")
+    .eq("user_id", userId);
+
+  const candidate = pattern.toLowerCase();
+  const conflicts: { pattern: string; destinatarioId: string }[] = [];
+  for (const rule of existingRules ?? []) {
+    const existing = rule.pattern.toLowerCase();
+    if (existing.includes(candidate) || candidate.includes(existing)) {
+      conflicts.push({ pattern: rule.pattern, destinatarioId: rule.destinatario_id });
+    }
+  }
+  return conflicts;
+}
+
+// ─── attachPatternToDestinatario ──────────────────────────────────────────────
+
+export type AttachPatternResult = ActionResult<DestinatarioRuleRow> & {
+  conflicts?: { pattern: string; destinatarioId: string }[];
+};
+
+/**
+ * Lean alternative to addDestinatarioRule for callers that don't use
+ * useActionState — accepts plain args and returns the created rule row
+ * along with any pattern conflicts detected (informational only, same shape
+ * as addDestinatarioRule).
+ * Used by the import wizard's "Asignar a existente" flow on step 3.
+ */
+export async function attachPatternToDestinatario(
+  destinatarioId: string,
+  pattern: string
+): Promise<AttachPatternResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const parsed = destinatarioRuleSchema.safeParse({
+    match_type: "contains",
+    pattern,
+    priority: 100,
+  });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  // Defense-in-depth: verify the destinatario belongs to the caller
+  const { data: dest } = await supabase
+    .from("destinatarios")
+    .select("id")
+    .eq("id", destinatarioId)
+    .eq("user_id", user.id)
+    .single();
+  if (!dest) return { success: false, error: "Destinatario no encontrado" };
+
+  const conflicts = await findPatternConflicts(
+    supabase,
+    user.id,
+    parsed.data.pattern
+  );
+
+  const { data, error } = await supabase
+    .from("destinatario_rules")
+    .insert({
+      user_id: user.id,
+      destinatario_id: destinatarioId,
+      ...parsed.data,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      return { success: false, error: "Este patrón ya está asignado" };
     }
     return { success: false, error: error.message };
   }
