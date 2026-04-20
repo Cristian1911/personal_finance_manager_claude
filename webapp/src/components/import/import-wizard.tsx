@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, ShieldCheck } from "lucide-react";
 import { getPendingScreenshotFile } from "@/components/mobile/mobile-sheet-provider";
@@ -234,7 +234,7 @@ export function ImportWizard({
     setStep("reconcile");
   }
 
-  function handleReset() {
+  const handleReset = useCallback(() => {
     setStep("upload");
     setParseResult(null);
     setMappings([]);
@@ -244,7 +244,7 @@ export function ImportWizard({
     setReconciliationPreview(null);
     activeEmailStatementIdRef.current = null;
     onReset?.();
-  }
+  }, [onReset]);
 
   // Reset wizard when page restores from bfcache while sitting on Results.
   // Without this, navigating away and returning via browser back leaves the
@@ -257,8 +257,7 @@ export function ImportWizard({
     }
     window.addEventListener("pageshow", handlePageShow);
     return () => window.removeEventListener("pageshow", handlePageShow);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [step, handleReset]);
 
   return (
     <div className="space-y-6">

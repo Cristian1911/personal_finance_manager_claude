@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { MobileSheet } from "../../components/ui/MobileSheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
@@ -384,23 +384,27 @@ export default function SettingsScreen() {
     loadBiometricState();
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const [accounts, storedDefault] = await Promise.all([
-        getAllAccounts(),
-        SecureStore.getItemAsync(DEFAULT_ACCOUNT_STORAGE_KEY),
-      ]);
-      if (!active) return;
-      setAccountsList(accounts);
-      const exists =
-        storedDefault && accounts.some((a) => a.id === storedDefault);
-      setDefaultAccountId(exists ? storedDefault : null);
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Reload accounts + default every time the screen gains focus so stale
+  // data (e.g. user deleted the default account elsewhere) is corrected.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const [accounts, storedDefault] = await Promise.all([
+          getAllAccounts(),
+          SecureStore.getItemAsync(DEFAULT_ACCOUNT_STORAGE_KEY),
+        ]);
+        if (!active) return;
+        setAccountsList(accounts);
+        const exists =
+          storedDefault && accounts.some((a) => a.id === storedDefault);
+        setDefaultAccountId(exists ? storedDefault : null);
+      })();
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
   const handleSelectDefaultAccount = useCallback(async (id: string | null) => {
     setDefaultAccountId(id);
