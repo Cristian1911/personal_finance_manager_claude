@@ -1,13 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Check, ChevronDown, Search, X } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
 import {
@@ -16,6 +8,7 @@ import {
   zoneBorder,
   zoneTextColor,
 } from "../../lib/utils/zone-colors";
+import { MobileSheet } from "../ui/MobileSheet";
 
 export type CategoryRow = {
   id: string;
@@ -83,7 +76,7 @@ function ZoneTile({
   isExpanded: boolean;
   onPress: () => void;
 }) {
-  const color = zone.color ?? "#938C7E";
+  const color = zone.color ?? COLORS.sageDark;
   return (
     <Pressable
       onPress={onPress}
@@ -165,7 +158,6 @@ export function CategoryZonePickerSheet({
   selectedId,
   categories,
 }: Props) {
-  const insets = useSafeAreaInsets();
   const { zones, standalone } = useMemo(
     () => groupZones(categories),
     [categories]
@@ -219,25 +211,7 @@ export function CategoryZonePickerSheet({
   }
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={handleClose}
-      statusBarTranslucent
-    >
-      <Pressable
-        onPress={handleClose}
-        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        className="flex-1 justify-end"
-      >
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          className="max-h-[82%] rounded-t-2xl border-t border-white-6 bg-background"
-          style={{ paddingBottom: insets.bottom + 16 }}
-        >
-          <View className="mx-auto mt-3 mb-3 h-1 w-10 rounded-full bg-white-10" />
-
+    <MobileSheet visible={visible} onClose={handleClose}>
           {/* Header */}
           <View className="flex-row items-center justify-between px-4 pb-3 border-b border-white-6">
             <View>
@@ -273,6 +247,7 @@ export function CategoryZonePickerSheet({
               {search.length > 0 && (
                 <Pressable
                   onPress={() => setSearch("")}
+                  accessibilityRole="button"
                   accessibilityLabel="Limpiar búsqueda"
                 >
                   <X size={14} color={COLORS.sageDark} />
@@ -293,12 +268,12 @@ export function CategoryZonePickerSheet({
                   <View key={zone.id} className="mb-4">
                     <View className="flex-row items-center gap-2 px-1 mb-1.5">
                       <View
-                        style={{ backgroundColor: zone.color ?? "#938C7E" }}
+                        style={{ backgroundColor: zone.color ?? COLORS.sageDark }}
                         className="h-2 w-2 rounded-full"
                       />
                       <Text
                         style={{ color: zoneTextColor(zone.color) }}
-                        className="text-[11px] font-inter-semibold uppercase tracking-wide"
+                        className="text-[11px] font-inter-semibold uppercase tracking-[4px]"
                       >
                         {displayName(zone)}
                       </Text>
@@ -318,7 +293,7 @@ export function CategoryZonePickerSheet({
                 ))}
                 {searchResults && searchResults.standalone.length > 0 && (
                   <View className="mb-4">
-                    <Text className="px-1 mb-1.5 text-[11px] font-inter-semibold uppercase tracking-wide text-muted-foreground">
+                    <Text className="px-1 mb-1.5 text-[11px] font-inter-semibold uppercase tracking-[4px] text-muted-foreground">
                       Otros
                     </Text>
                     <View className="gap-0.5">
@@ -384,6 +359,11 @@ export function CategoryZonePickerSheet({
                                     displayName(expandedInRow)
                                   )
                                 }
+                                accessibilityRole="button"
+                                accessibilityLabel={`Zona completa: ${displayName(expandedInRow)}`}
+                                accessibilityState={{
+                                  selected: selectedId === expandedInRow.id,
+                                }}
                                 className={`flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-white/5 ${
                                   selectedId === expandedInRow.id
                                     ? "bg-white/8"
@@ -394,7 +374,7 @@ export function CategoryZonePickerSheet({
                                   style={{
                                     color: zoneTextColor(expandedInRow.color),
                                   }}
-                                  className="flex-1 text-xs font-inter-semibold uppercase tracking-wide"
+                                  className="flex-1 text-xs font-inter-semibold uppercase tracking-[4px]"
                                 >
                                   Toda la zona
                                 </Text>
@@ -437,6 +417,9 @@ export function CategoryZonePickerSheet({
 
                 <Pressable
                   onPress={() => handleSelect(null, null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sin categoría"
+                  accessibilityState={{ selected: selectedId === null }}
                   className={`mt-4 flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-white/5 ${
                     selectedId === null ? "bg-white/8" : ""
                   }`}
@@ -450,8 +433,6 @@ export function CategoryZonePickerSheet({
               </>
             )}
           </ScrollView>
-        </Pressable>
-      </Pressable>
-    </Modal>
+    </MobileSheet>
   );
 }

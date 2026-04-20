@@ -47,6 +47,7 @@ import {
 import { createTransaction } from "../lib/repositories/transactions";
 import { toLocalDateString } from "../lib/utils/date";
 import {
+  BRASS_BUTTON_CLASS,
   PANEL_INSET_CLASS,
 } from "../lib/constants/styles";
 import { COLORS } from "../lib/constants/colors";
@@ -177,9 +178,11 @@ function AccountAccordion({
                 }`}
               >
                 <Text
-                  className={`text-sm font-inter-${
-                    isSel ? "semibold" : "medium"
-                  } ${isSel ? "text-z-brass" : "text-foreground"}`}
+                  className={`text-sm ${
+                    isSel
+                      ? "font-inter-semibold text-z-brass"
+                      : "font-inter-medium text-foreground"
+                  }`}
                   numberOfLines={1}
                 >
                   {acct.name}
@@ -467,6 +470,8 @@ export default function CaptureScreen() {
           <FieldLabel>Categoría</FieldLabel>
           <Pressable
             onPress={() => setShowCategoryPicker(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Elegir categoría"
             className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-4 py-3`}
           >
             <Text
@@ -485,6 +490,9 @@ export default function CaptureScreen() {
           <FieldLabel>Fecha</FieldLabel>
           <Pressable
             onPress={() => setShowDatePicker((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel="Seleccionar fecha"
+            accessibilityState={{ expanded: showDatePicker }}
             className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-4 py-3`}
           >
             <View className="flex-row items-center gap-2">
@@ -543,6 +551,9 @@ export default function CaptureScreen() {
         <View className="mb-5">
           <Pressable
             onPress={() => setRelatedOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel="Opciones relacionadas"
+            accessibilityState={{ expanded: relatedOpen }}
             className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-4 py-3`}
           >
             <View className="flex-1 pr-3">
@@ -570,6 +581,8 @@ export default function CaptureScreen() {
                     "Crear destinatario desde esta pantalla llega pronto."
                   )
                 }
+                accessibilityRole="button"
+                accessibilityLabel="Crear destinatario"
                 className="flex-row items-start gap-3 active:opacity-70"
               >
                 <View className="flex-1">
@@ -592,6 +605,8 @@ export default function CaptureScreen() {
                     "Crear pago recurrente desde esta pantalla llega pronto."
                   )
                 }
+                accessibilityRole="button"
+                accessibilityLabel="Crear pago recurrente"
                 className="flex-row items-start gap-3 active:opacity-70"
               >
                 <View className="flex-1">
@@ -627,15 +642,14 @@ export default function CaptureScreen() {
         <Pressable
           onPress={handleSave}
           disabled={saving}
-          className={`items-center rounded-xl py-3.5 ${
-            saving ? "bg-z-brass-20" : "bg-z-brass active:bg-z-brass-80"
+          accessibilityRole="button"
+          accessibilityLabel={submitLabel}
+          accessibilityState={{ disabled: saving }}
+          className={`${BRASS_BUTTON_CLASS} items-center rounded-xl py-3.5 ${
+            saving ? "opacity-50" : "active:bg-z-brass-80"
           }`}
         >
-          <Text
-            className={`text-base font-inter-bold ${
-              saving ? "text-z-sage-dark" : "text-z-ink"
-            }`}
-          >
+          <Text className="text-base font-inter-bold text-z-ink">
             {saving ? "Guardando…" : submitLabel}
           </Text>
         </Pressable>

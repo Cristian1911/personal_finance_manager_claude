@@ -4,9 +4,9 @@ import {
   ScrollView,
   Pressable,
   Alert,
-  Modal,
   Switch,
 } from "react-native";
+import { MobileSheet } from "../../components/ui/MobileSheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -82,6 +82,8 @@ function NavRow({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
       className={`${PANEL_INSET_CLASS} flex-row items-center justify-between gap-3 px-4 py-3 active:bg-black-10`}
     >
       <View className="min-w-0 flex-1">
@@ -254,26 +256,8 @@ function AccountPickerModal({
   selectedId: string | null;
   onSelect: (id: string | null) => void;
 }) {
-  const insets = useSafeAreaInsets();
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <Pressable
-        onPress={onClose}
-        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        className="flex-1 justify-end"
-      >
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          className="max-h-[82%] rounded-t-2xl border-t border-white-6 bg-background"
-          style={{ paddingBottom: insets.bottom + 16 }}
-        >
-          <View className="mx-auto mt-3 mb-3 h-1 w-10 rounded-full bg-white-10" />
+    <MobileSheet visible={visible} onClose={onClose}>
           <View className="flex-row items-center justify-between px-4 pb-3 border-b border-white-6">
             <Text className="text-base font-inter-bold text-foreground">
               Cuenta predeterminada
@@ -331,9 +315,7 @@ function AccountPickerModal({
               );
             })}
           </ScrollView>
-        </Pressable>
-      </Pressable>
-    </Modal>
+    </MobileSheet>
   );
 }
 

@@ -1,8 +1,8 @@
-import { Modal, Pressable, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, Text, View } from "react-native";
 import { Plus, Mic, Sparkles, Image as ImageIcon } from "lucide-react-native";
 import { COLORS } from "../../lib/constants/colors";
 import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { MobileSheet } from "./MobileSheet";
 
 export type FabMenuAction =
   | "new-transaction"
@@ -17,38 +17,20 @@ interface FabMenuSheetProps {
 }
 
 export function FabMenuSheet({ visible, onClose, onAction }: FabMenuSheetProps) {
-  const insets = useSafeAreaInsets();
-
   function handle(action: FabMenuAction) {
     onClose();
-    // Slight defer so the modal closes before the next screen mounts.
+    // Defer action so the slide-out finishes before the next screen mounts —
+    // otherwise Expo Router navigation races with the closing animation.
     setTimeout(() => onAction(action), 50);
   }
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <Pressable
-        onPress={onClose}
-        className="flex-1 justify-end"
-        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        accessibilityLabel="Cerrar menú"
-      >
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          className="rounded-t-3xl border-t border-white-6 bg-background"
-          style={{ paddingBottom: insets.bottom + 16 }}
-        >
-          <View className="mx-auto mt-3 mb-4 h-1 w-10 rounded-full bg-white-10" />
-
-          <View className="px-4 gap-3">
+    <MobileSheet visible={visible} onClose={onClose}>
+      <View className="px-4 gap-3">
             <Pressable
               onPress={() => handle("new-transaction")}
+              accessibilityRole="button"
+              accessibilityLabel="Nueva transacción"
               className="flex-row items-center gap-3 rounded-2xl border border-z-brass-30 bg-z-brass-10 px-4 py-3 active:bg-z-brass-20"
             >
               <View className="h-10 w-10 items-center justify-center rounded-full bg-z-brass">
@@ -67,6 +49,8 @@ export function FabMenuSheet({ visible, onClose, onAction }: FabMenuSheetProps) 
             <View className="flex-row gap-3">
               <Pressable
                 onPress={() => handle("voice")}
+                accessibilityRole="button"
+                accessibilityLabel="Captura por voz"
                 className={`${PANEL_INSET_CLASS} flex-1 flex-row items-center gap-2.5 px-3 py-3 active:bg-black-10`}
               >
                 <View className="h-8 w-8 items-center justify-center rounded-full bg-z-brass-15">
@@ -84,6 +68,8 @@ export function FabMenuSheet({ visible, onClose, onAction }: FabMenuSheetProps) 
 
               <Pressable
                 onPress={() => handle("quick-capture")}
+                accessibilityRole="button"
+                accessibilityLabel="Captura rápida"
                 className={`${PANEL_INSET_CLASS} flex-1 flex-row items-center gap-2.5 px-3 py-3 active:bg-black-10`}
               >
                 <View className="h-8 w-8 items-center justify-center rounded-full bg-z-brass-15">
@@ -102,6 +88,8 @@ export function FabMenuSheet({ visible, onClose, onAction }: FabMenuSheetProps) 
 
             <Pressable
               onPress={() => handle("screenshot")}
+              accessibilityRole="button"
+              accessibilityLabel="Importar pantallazo"
               className={`${PANEL_INSET_CLASS} flex-row items-center gap-2.5 px-4 py-3 active:bg-black-10`}
             >
               <View className="h-8 w-8 items-center justify-center rounded-full bg-z-brass-15">
@@ -116,9 +104,7 @@ export function FabMenuSheet({ visible, onClose, onAction }: FabMenuSheetProps) 
                 </Text>
               </View>
             </Pressable>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
+      </View>
+    </MobileSheet>
   );
 }
