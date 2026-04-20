@@ -1,24 +1,30 @@
-import { View, Text, ScrollView, Pressable, Alert, Switch } from "react-native";
-import { useRouter } from "expo-router";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  Alert,
+  Switch,
+} from "react-native";
+import { MobileSheet } from "../../components/ui/MobileSheet";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
 import {
-  User,
-  Mail,
+  Check,
   RefreshCw,
   Clock,
   LogOut,
-  Wallet,
-  Shield,
   Trash2,
-  Bug,
-  Repeat,
-  ChevronRight,
   Fingerprint,
   ShieldCheck,
-  FileText,
-  ShieldAlert,
+  ChevronRight,
+  Wallet,
+  X,
 } from "lucide-react-native";
+import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import {
   isBiometricsAvailable,
   isBiometricsEnabled,
@@ -37,12 +43,115 @@ import { disableDemoMode } from "../../lib/demo-mode";
 import { useTheme, type ThemeMode } from "../../lib/theme";
 import { COLORS } from "../../lib/constants/colors";
 import { LEGAL_URLS } from "../../lib/constants/urls";
+import {
+  BRASS_GHOST_BUTTON_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "../../lib/constants/styles";
 
-function SectionHeader({ title }: { title: string }) {
+function computeInitials(name: string, email: string): string {
+  const trimmed = name.trim();
+  if (trimmed) {
+    const parts = trimmed.split(/\s+/).slice(0, 2);
+    return parts.map((p) => p[0] ?? "").join("").toUpperCase() || "··";
+  }
+  return email.slice(0, 2).toUpperCase() || "··";
+}
+
+function SectionHeading({ label }: { label: string }) {
   return (
-    <Text className="text-z-sage-dark font-inter-semibold text-xs uppercase px-4 pt-5 pb-2">
-      {title}
-    </Text>
+    <View className="flex-row items-center gap-3 mb-2 px-1">
+      <Text className={SECTION_EYEBROW_CLASS}>{label}</Text>
+      <View className="h-px flex-1 bg-white-6" />
+    </View>
+  );
+}
+
+function NavRow({
+  title,
+  meta,
+  onPress,
+  destructive = false,
+}: {
+  title: string;
+  meta?: string;
+  onPress: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      className={`${PANEL_INSET_CLASS} flex-row items-center justify-between gap-3 px-4 py-3 active:bg-black-10`}
+    >
+      <View className="min-w-0 flex-1">
+        <Text
+          className={`text-sm font-inter-semibold ${
+            destructive ? "text-z-debt" : "text-foreground"
+          }`}
+        >
+          {title}
+        </Text>
+        {meta && (
+          <Text
+            className="mt-1 text-xs font-inter text-muted-foreground"
+            numberOfLines={1}
+          >
+            {meta}
+          </Text>
+        )}
+      </View>
+      <ChevronRight
+        size={16}
+        color={destructive ? COLORS.debt : COLORS.sageDark}
+      />
+    </Pressable>
+  );
+}
+
+function IdentityHero({
+  name,
+  email,
+  onSignOut,
+}: {
+  name: string;
+  email: string;
+  onSignOut: () => void;
+}) {
+  const initials = computeInitials(name, email);
+  const displayName = name.trim() || "Sin nombre";
+  return (
+    <View className="flex-row items-center gap-3 px-4 py-4">
+      <View className="h-14 w-14 items-center justify-center rounded-full border border-z-brass-30 bg-z-brass-10">
+        <Text className="text-lg font-inter-bold text-z-brass">{initials}</Text>
+      </View>
+      <View className="min-w-0 flex-1">
+        <Text
+          className="text-base font-inter-semibold text-foreground"
+          numberOfLines={1}
+        >
+          {displayName}
+        </Text>
+        <Text
+          className="text-xs font-inter text-muted-foreground"
+          numberOfLines={1}
+        >
+          {email || "—"}
+        </Text>
+      </View>
+      <Pressable
+        onPress={onSignOut}
+        className={`${BRASS_GHOST_BUTTON_CLASS} rounded-lg px-2.5 py-1.5`}
+        accessibilityRole="button"
+        accessibilityLabel="Cerrar sesión"
+      >
+        <Text className="text-[11px] font-inter-semibold text-z-brass">
+          Cerrar sesión
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -58,7 +167,7 @@ function ThemeSelector() {
     { id: "neutral", label: "Neutral", blurb: "Gris oscuro sin tinte", swatch: "#18181b" },
   ];
   return (
-    <View className="px-4 py-3">
+    <View className={`${PANEL_INSET_CLASS} p-3`}>
       <View className="flex-row gap-2.5">
         {options.map((opt) => {
           const selected = opt.id === mode;
@@ -102,37 +211,147 @@ function ThemeSelector() {
   );
 }
 
-function SettingsRow({
+function ToggleRow({
   icon,
   label,
   value,
-  onPress,
-  destructive = false,
+  onValueChange,
 }: {
   icon: React.ReactNode;
   label: string;
-  value?: string;
-  onPress?: () => void;
-  destructive?: boolean;
+  value: boolean;
+  onValueChange: (next: boolean) => void;
 }) {
-  const Wrapper = onPress ? Pressable : View;
   return (
-    <Wrapper
-      className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55 active:bg-black-10"
-      {...(onPress ? { onPress } : {})}
+    <View
+      className={`${PANEL_INSET_CLASS} flex-row items-center gap-3 px-4 py-3`}
     >
-      <View className="mr-3">{icon}</View>
-      <Text
-        className={`flex-1 font-inter-medium text-sm ${
-          destructive ? "text-z-expense" : "text-foreground"
-        }`}
-      >
+      <View>{icon}</View>
+      <Text className="flex-1 text-sm font-inter-medium text-foreground">
         {label}
       </Text>
-      {value && (
-        <Text className="text-muted-foreground font-inter text-sm">{value}</Text>
-      )}
-    </Wrapper>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
+        thumbColor={COLORS.foreground}
+        ios_backgroundColor={COLORS.switchTrack}
+      />
+    </View>
+  );
+}
+
+const DEFAULT_ACCOUNT_STORAGE_KEY = "zeta.default_capture_account_id";
+
+function AccountPickerModal({
+  visible,
+  onClose,
+  accounts,
+  selectedId,
+  onSelect,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  accounts: AccountRow[];
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  return (
+    <MobileSheet visible={visible} onClose={onClose}>
+          <View className="flex-row items-center justify-between px-4 pb-3 border-b border-white-6">
+            <Text className="text-base font-inter-bold text-foreground">
+              Cuenta predeterminada
+            </Text>
+            <Pressable
+              onPress={onClose}
+              className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+              accessibilityLabel="Cerrar"
+            >
+              <X size={16} color={COLORS.sageDark} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 12 }}>
+            <Pressable
+              onPress={() => {
+                onSelect(null);
+                onClose();
+              }}
+              className={`flex-row items-center gap-2.5 rounded-lg px-3 py-3 active:bg-white/5 ${
+                selectedId === null ? "bg-white/8" : ""
+              }`}
+            >
+              <X size={14} color={COLORS.sageDark} />
+              <Text className="flex-1 text-sm font-inter text-muted-foreground">
+                Sin predeterminada (usar la última)
+              </Text>
+              {selectedId === null && <Check size={16} color={COLORS.brass} />}
+            </Pressable>
+            {accounts.map((acct) => {
+              const isSel = acct.id === selectedId;
+              return (
+                <Pressable
+                  key={acct.id}
+                  onPress={() => {
+                    onSelect(acct.id);
+                    onClose();
+                  }}
+                  className={`mt-1 flex-row items-center gap-2.5 rounded-lg px-3 py-3 active:bg-white/5 ${
+                    isSel ? "bg-white/8" : ""
+                  }`}
+                >
+                  <Wallet size={14} color={COLORS.sageDark} />
+                  <Text
+                    className={`flex-1 text-sm ${
+                      isSel
+                        ? "text-z-brass font-inter-semibold"
+                        : "text-foreground font-inter-medium"
+                    }`}
+                    numberOfLines={1}
+                  >
+                    {acct.name}
+                  </Text>
+                  {isSel && <Check size={16} color={COLORS.brass} />}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+    </MobileSheet>
+  );
+}
+
+function SyncStatusRow({
+  status,
+  syncing,
+  lastSynced,
+}: {
+  status: string;
+  syncing: boolean;
+  lastSynced: Date | string | null;
+}) {
+  const label =
+    status === "syncing" || syncing
+      ? "Sincronizando…"
+      : status === "error"
+        ? "Error de sincronización"
+        : "Sincronizado";
+  return (
+    <View className={`${PANEL_INSET_CLASS} px-4 py-3 gap-2`}>
+      <View className="flex-row items-center gap-2">
+        <RefreshCw
+          size={14}
+          color={status === "error" ? COLORS.debt : COLORS.sageDark}
+        />
+        <Text className="text-sm font-inter-medium text-foreground">
+          {label}
+        </Text>
+      </View>
+      <View className="flex-row items-center gap-2">
+        <Clock size={12} color={COLORS.sageDark} />
+        <Text className="text-xs font-inter text-muted-foreground">
+          Última: {lastSynced ? formatRelativeDate(lastSynced) : "Nunca"}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -145,6 +364,9 @@ export default function SettingsScreen() {
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
   const [biometricsOn, setBiometricsOn] = useState(false);
   const [bgReauthOn, setBgReauthOn] = useState(false);
+  const [accountsList, setAccountsList] = useState<AccountRow[]>([]);
+  const [defaultAccountId, setDefaultAccountId] = useState<string | null>(null);
+  const [showAccountPicker, setShowAccountPicker] = useState(false);
 
   useEffect(() => {
     async function loadBiometricState() {
@@ -160,6 +382,37 @@ export default function SettingsScreen() {
       }
     }
     loadBiometricState();
+  }, []);
+
+  // Reload accounts + default every time the screen gains focus so stale
+  // data (e.g. user deleted the default account elsewhere) is corrected.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const [accounts, storedDefault] = await Promise.all([
+          getAllAccounts(),
+          SecureStore.getItemAsync(DEFAULT_ACCOUNT_STORAGE_KEY),
+        ]);
+        if (!active) return;
+        setAccountsList(accounts);
+        const exists =
+          storedDefault && accounts.some((a) => a.id === storedDefault);
+        setDefaultAccountId(exists ? storedDefault : null);
+      })();
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
+
+  const handleSelectDefaultAccount = useCallback(async (id: string | null) => {
+    setDefaultAccountId(id);
+    if (id) {
+      await SecureStore.setItemAsync(DEFAULT_ACCOUNT_STORAGE_KEY, id);
+    } else {
+      await SecureStore.deleteItemAsync(DEFAULT_ACCOUNT_STORAGE_KEY);
+    }
   }, []);
 
   const handleToggleBiometrics = useCallback(async (value: boolean) => {
@@ -180,8 +433,8 @@ export default function SettingsScreen() {
 
   const handleClearSyncQueue = useCallback(() => {
     Alert.alert(
-      "Limpiar cola de sincronizacion",
-      "Se eliminaran las operaciones pendientes. Los datos locales no se afectan.",
+      "Limpiar cola de sincronización",
+      "Se eliminarán las operaciones pendientes. Los datos locales no se afectan.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -191,7 +444,7 @@ export default function SettingsScreen() {
             try {
               const db = await getDatabase();
               await db.runAsync("DELETE FROM sync_queue WHERE synced_at IS NULL");
-              Alert.alert("Listo", "Cola de sincronizacion limpiada.");
+              Alert.alert("Listo", "Cola de sincronización limpiada.");
             } catch (error) {
               console.error("Clear sync queue error:", error);
             }
@@ -213,7 +466,7 @@ export default function SettingsScreen() {
   const handleFullResync = useCallback(() => {
     Alert.alert(
       "Resincronizar desde cero",
-      "Se borraran los datos locales y se volveran a descargar desde la nube. No afecta tus datos remotos.",
+      "Se borrarán los datos locales y se volverán a descargar desde la nube. No afecta tus datos remotos.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -230,7 +483,7 @@ export default function SettingsScreen() {
               console.error("Full resync error:", error);
               Alert.alert(
                 "No se pudo completar",
-                "La resincronizacion falló. Puedes intentarlo de nuevo."
+                "La resincronización falló. Puedes intentarlo de nuevo."
               );
             } finally {
               setSyncing(false);
@@ -242,10 +495,10 @@ export default function SettingsScreen() {
   }, [clear, sync]);
 
   const handleSignOut = useCallback(() => {
-    Alert.alert("Cerrar sesion", "Se eliminaran los datos locales.", [
+    Alert.alert("Cerrar sesión", "Se eliminarán los datos locales.", [
       { text: "Cancelar", style: "cancel" },
       {
-        text: "Cerrar sesion",
+        text: "Cerrar sesión",
         style: "destructive",
         onPress: async () => {
           try {
@@ -263,7 +516,7 @@ export default function SettingsScreen() {
   const handleExitDemoMode = useCallback(() => {
     Alert.alert(
       "Salir de modo demo",
-      "Se borraran los datos de prueba y volveras al login.",
+      "Se borrarán los datos de prueba y volverás al login.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -285,225 +538,170 @@ export default function SettingsScreen() {
     );
   }, [clear, router, setDemoMode]);
 
-  const syncStatusLabel =
-    status === "syncing" || syncing
-      ? "Sincronizando..."
-      : status === "error"
-        ? "Error de sincronizacion"
-        : "Sincronizado";
+  const name =
+    profile?.full_name || session?.user?.user_metadata?.full_name || "";
+  const email = session?.user?.email ?? "";
 
   const { mode: themeMode } = useTheme();
   const inkCls = themeMode === "neutral" ? "bg-z-ink-neutral" : "bg-background";
+  const insets = useSafeAreaInsets();
 
   return (
-    <ScrollView className={`flex-1 ${inkCls}`}>
-      {/* Profile section */}
-      <SectionHeader title="Perfil" />
-      <View className="bg-z-surface-2-55">
-        <SettingsRow
-          icon={<User size={18} color="#938C7E" />}
-          label="Nombre"
-          value={profile?.full_name || session?.user?.user_metadata?.full_name || "---"}
-        />
-        <View className="h-px bg-white-6 ml-12" />
-        <SettingsRow
-          icon={<Mail size={18} color="#938C7E" />}
-          label="Email"
-          value={session?.user?.email || "---"}
-        />
-        <View className="h-px bg-white-6 ml-12" />
-        <SettingsRow
-          icon={<Shield size={18} color="#938C7E" />}
-          label="Plan"
-          value="Gratuito"
-        />
-      </View>
+    <ScrollView
+      className={`flex-1 ${inkCls}`}
+      contentContainerStyle={{
+        paddingTop: insets.top,
+        paddingBottom: MOBILE_TAB_BAR_CLEARANCE,
+      }}
+    >
+      <IdentityHero
+        name={name}
+        email={email}
+        onSignOut={demoMode ? handleExitDemoMode : handleSignOut}
+      />
 
-      {/* Sync section */}
-      <SectionHeader title="Sincronizacion" />
-      <View className="bg-z-surface-2-55">
-        <SettingsRow
-          icon={
-            <RefreshCw
-              size={18}
-              color={status === "error" ? COLORS.debt : COLORS.sageDark}
+      <View className="px-4 gap-5">
+        <View>
+          <SectionHeading label="Perfil y conexiones" />
+          <View className="gap-2">
+            <NavRow
+              title="Administrar cuentas"
+              meta="Bancos, tarjetas y efectivo"
+              onPress={() => router.navigate("/(tabs)/accounts")}
             />
-          }
-          label="Estado"
-          value={syncStatusLabel}
-        />
-        <View className="h-px bg-white-6 ml-12" />
-        <SettingsRow
-          icon={<Clock size={18} color="#938C7E" />}
-          label="Ultima sincronizacion"
-          value={lastSynced ? formatRelativeDate(lastSynced) : "Nunca"}
-        />
-        <View className="h-px bg-white-6 ml-12" />
-        <Pressable
-          className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55 active:bg-black-10"
-          onPress={handleSyncNow}
-          disabled={syncing}
-        >
-          <RefreshCw size={18} color={COLORS.sageLight} />
-          <Text className="ml-3 text-primary font-inter-bold text-sm">
-            {syncing ? "Sincronizando..." : "Sincronizar ahora"}
-          </Text>
-        </Pressable>
-        <View className="h-px bg-white-6 ml-12" />
-        <Pressable
-          className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55 active:bg-black-10"
-          onPress={handleClearSyncQueue}
-        >
-          <Trash2 size={18} color={COLORS.debt} />
-          <Text className="ml-3 text-z-expense font-inter-medium text-sm">
-            Limpiar cola de sincronizacion
-          </Text>
-        </Pressable>
-        {!demoMode && (
-          <>
-            <View className="h-px bg-white-6 ml-12" />
+            <NavRow
+              title="Cuenta predeterminada"
+              meta={
+                defaultAccountId
+                  ? accountsList.find((a) => a.id === defaultAccountId)?.name ??
+                    "Seleccionar"
+                  : "Usar la última utilizada"
+              }
+              onPress={() => setShowAccountPicker(true)}
+            />
+            <NavRow
+              title="Suscripciones"
+              meta="Pagos recurrentes"
+              onPress={() => router.push("/subscriptions" as never)}
+            />
+          </View>
+        </View>
+
+        <View>
+          <SectionHeading label="Sincronización" />
+          <View className="gap-2">
+            <SyncStatusRow
+              status={status}
+              syncing={syncing}
+              lastSynced={lastSynced}
+            />
             <Pressable
-              className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55 active:bg-black-10"
-              onPress={handleFullResync}
+              className={`${PANEL_INSET_CLASS} flex-row items-center gap-3 px-4 py-3 active:bg-black-10`}
+              onPress={handleSyncNow}
               disabled={syncing}
             >
-              <RefreshCw size={18} color={COLORS.debt} />
-              <Text className="ml-3 text-z-expense font-inter-medium text-sm">
-                Resincronizar desde cero
+              <RefreshCw size={16} color={COLORS.sageLight} />
+              <Text className="flex-1 text-sm font-inter-semibold text-primary">
+                {syncing ? "Sincronizando…" : "Sincronizar ahora"}
               </Text>
             </Pressable>
-          </>
-        )}
-      </View>
-
-      {/* Appearance section */}
-      <SectionHeader title="Apariencia" />
-      <View className="bg-z-surface-2-55">
-        <ThemeSelector />
-      </View>
-
-      {/* Accounts section */}
-      <SectionHeader title="Cuentas" />
-      <View className="bg-z-surface-2-55">
-        <Pressable
-          className="flex-row items-center px-4 py-3.5 active:bg-black-10"
-          onPress={() => router.navigate("/(tabs)/accounts")}
-        >
-          <View className="mr-3">
-            <Wallet size={18} color="#938C7E" />
-          </View>
-          <Text className="flex-1 font-inter-medium text-sm text-foreground">
-            Administrar cuentas
-          </Text>
-          <ChevronRight size={16} color="#938C7E" />
-        </Pressable>
-        <View className="h-px bg-white-6 ml-12" />
-        <Pressable
-          className="flex-row items-center px-4 py-3.5 active:bg-black-10"
-          onPress={() => router.push("/subscriptions" as never)}
-        >
-          <View className="mr-3">
-            <Repeat size={18} color="#938C7E" />
-          </View>
-          <Text className="flex-1 font-inter-medium text-sm text-foreground">
-            Suscripciones
-          </Text>
-          <ChevronRight size={16} color="#938C7E" />
-        </Pressable>
-      </View>
-
-      {/* Security section */}
-      {biometricsAvailable && (
-        <>
-          <SectionHeader title="Seguridad" />
-          <View className="bg-z-surface-2-55">
-            <View className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55">
-              <View className="mr-3">
-                <Fingerprint size={18} color="#938C7E" />
-              </View>
-              <Text className="flex-1 font-inter-medium text-sm text-foreground">
-                Desbloqueo biometrico
+            <Pressable
+              className={`${PANEL_INSET_CLASS} flex-row items-center gap-3 px-4 py-3 active:bg-black-10`}
+              onPress={handleClearSyncQueue}
+            >
+              <Trash2 size={16} color={COLORS.debt} />
+              <Text className="flex-1 text-sm font-inter-medium text-z-debt">
+                Limpiar cola de sincronización
               </Text>
-              <Switch
-                value={biometricsOn}
-                onValueChange={handleToggleBiometrics}
-                trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
-                thumbColor={COLORS.foreground}
-                ios_backgroundColor={COLORS.switchTrack}
-              />
-            </View>
-            {biometricsOn && (
-              <>
-                <View className="h-px bg-white-6 ml-12" />
-                <View className="flex-row items-center px-4 py-3.5 bg-z-surface-2-55">
-                  <View className="mr-3">
-                    <ShieldCheck size={18} color="#938C7E" />
-                  </View>
-                  <Text className="flex-1 font-inter-medium text-sm text-foreground">
-                    Bloquear al salir de la app
-                  </Text>
-                  <Switch
-                    value={bgReauthOn}
-                    onValueChange={handleToggleBgReauth}
-                    trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
-                    thumbColor={COLORS.foreground}
-                    ios_backgroundColor={COLORS.switchTrack}
-                  />
-                </View>
-              </>
+            </Pressable>
+            {!demoMode && (
+              <Pressable
+                className={`${PANEL_INSET_CLASS} flex-row items-center gap-3 px-4 py-3 active:bg-black-10`}
+                onPress={handleFullResync}
+                disabled={syncing}
+              >
+                <RefreshCw size={16} color={COLORS.debt} />
+                <Text className="flex-1 text-sm font-inter-medium text-z-debt">
+                  Resincronizar desde cero
+                </Text>
+              </Pressable>
             )}
           </View>
-        </>
-      )}
+        </View>
 
-      {/* Session section */}
-      <SectionHeader title="Sesion" />
-      <View className="bg-z-surface-2-55 mb-8">
-        {demoMode ? (
-          <SettingsRow
-            icon={<LogOut size={18} color={COLORS.debt} />}
-            label="Salir modo demo"
-            onPress={handleExitDemoMode}
-            destructive
-          />
-        ) : (
-          <SettingsRow
-            icon={<LogOut size={18} color={COLORS.debt} />}
-            label="Cerrar sesion"
-            onPress={handleSignOut}
-            destructive
-          />
+        <View>
+          <SectionHeading label="Apariencia" />
+          <ThemeSelector />
+        </View>
+
+        {biometricsAvailable && (
+          <View>
+            <SectionHeading label="Seguridad" />
+            <View className="gap-2">
+              <ToggleRow
+                icon={<Fingerprint size={18} color={COLORS.sageDark} />}
+                label="Desbloqueo biométrico"
+                value={biometricsOn}
+                onValueChange={handleToggleBiometrics}
+              />
+              {biometricsOn && (
+                <ToggleRow
+                  icon={<ShieldCheck size={18} color={COLORS.sageDark} />}
+                  label="Bloquear al salir de la app"
+                  value={bgReauthOn}
+                  onValueChange={handleToggleBgReauth}
+                />
+              )}
+            </View>
+          </View>
+        )}
+
+        <View>
+          <SectionHeading label="Privacidad y soporte" />
+          <View className="gap-2">
+            <NavRow
+              title="Reportar bug"
+              meta="Envíanos comentarios o errores"
+              onPress={() => router.push("/bug-report" as never)}
+            />
+            <NavRow
+              title="Política de privacidad"
+              onPress={() => WebBrowser.openBrowserAsync(LEGAL_URLS.privacy)}
+            />
+            <NavRow
+              title="Términos de servicio"
+              onPress={() => WebBrowser.openBrowserAsync(LEGAL_URLS.terms)}
+            />
+          </View>
+        </View>
+
+        {demoMode && (
+          <View className="gap-2">
+            <Pressable
+              className={`${PANEL_INSET_CLASS} flex-row items-center gap-3 px-4 py-3 active:bg-black-10`}
+              onPress={handleExitDemoMode}
+            >
+              <LogOut size={16} color={COLORS.debt} />
+              <Text className="flex-1 text-sm font-inter-medium text-z-debt">
+                Salir de modo demo
+              </Text>
+            </Pressable>
+          </View>
         )}
       </View>
 
-      <SectionHeader title="Soporte" />
-      <View className="bg-z-surface-2-55 mb-8">
-        <SettingsRow
-          icon={<Bug size={18} color="#938C7E" />}
-          label="Quick capture de bug"
-          onPress={() => router.push("/bug-report" as never)}
-        />
-      </View>
-
-      <SectionHeader title="Legal" />
-      <View className="bg-z-surface-2-55 mb-4">
-        <SettingsRow
-          icon={<ShieldAlert size={18} color="#938C7E" />}
-          label="Política de privacidad"
-          onPress={() => WebBrowser.openBrowserAsync(LEGAL_URLS.privacy)}
-        />
-        <View className="h-px bg-white-6 ml-12" />
-        <SettingsRow
-          icon={<FileText size={18} color="#938C7E" />}
-          label="Términos de servicio"
-          onPress={() => WebBrowser.openBrowserAsync(LEGAL_URLS.terms)}
-        />
-      </View>
-
-      <Text className="px-5 pb-10 text-center font-inter text-[11px] leading-relaxed text-z-sage-dark">
+      <Text className="px-5 pt-8 pb-4 text-center font-inter text-[11px] leading-relaxed text-z-sage-dark">
         Zeta no es un asesor financiero. La información mostrada es solo para
         organizar tus finanzas personales.
       </Text>
+
+      <AccountPickerModal
+        visible={showAccountPicker}
+        onClose={() => setShowAccountPicker(false)}
+        accounts={accountsList}
+        selectedId={defaultAccountId}
+        onSelect={handleSelectDefaultAccount}
+      />
     </ScrollView>
   );
 }

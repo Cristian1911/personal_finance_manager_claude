@@ -1,17 +1,13 @@
 import { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  Modal,
-} from "react-native";
+import { View, Text, Pressable, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Settings,
   Upload,
   Wallet,
-  Menu,
-  X,
+  Users,
+  Tag,
+  ChevronRight,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAppStore } from "../../lib/store";
@@ -46,14 +42,14 @@ export function AvatarMenuTrigger() {
       <Pressable
         onPress={() => setOpen(true)}
         className="h-8 w-8 items-center justify-center rounded-full border border-z-brass-30 bg-z-brass-10"
-        accessibilityLabel="Menu de perfil"
+        accessibilityLabel="Menú de perfil"
       >
         <Text className="text-[10px] font-inter-semibold text-z-brass">
           {initials}
         </Text>
       </Pressable>
 
-      <AvatarMenuSheet
+      <AvatarMenuPopover
         open={open}
         onClose={() => setOpen(false)}
         name={name}
@@ -63,7 +59,7 @@ export function AvatarMenuTrigger() {
   );
 }
 
-function AvatarMenuSheet({
+function AvatarMenuPopover({
   open,
   onClose,
   name,
@@ -80,8 +76,7 @@ function AvatarMenuSheet({
   const navigate = useCallback(
     (path: string) => {
       onClose();
-      // Small delay to let the modal close before navigation
-      setTimeout(() => router.push(path as any), 150);
+      setTimeout(() => router.push(path as never), 120);
     },
     [onClose, router]
   );
@@ -89,68 +84,107 @@ function AvatarMenuSheet({
   return (
     <Modal
       visible={open}
-      animationType="slide"
+      animationType="fade"
       transparent
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <Pressable className="flex-1 bg-black-40" onPress={onClose} />
-      <View
-        className="bg-z-surface-2 rounded-t-2xl border-t border-white-6"
-        style={{ paddingBottom: insets.bottom + 8 }}
-      >
-        {/* Header */}
-        <View className="flex-row items-center justify-between px-4 pt-4 pb-3">
-          <View>
-            <Text className="text-sm font-inter-medium text-foreground">
-              {name ?? "Usuario"}
-            </Text>
-            {email && (
-              <Text className="mt-0.5 text-[11px] font-inter text-muted-foreground">
-                {email}
-              </Text>
-            )}
-          </View>
+      <Pressable className="flex-1" onPress={onClose}>
+        <View
+          style={{
+            position: "absolute",
+            top: insets.top + 48,
+            right: 8,
+            width: 288,
+          }}
+        >
           <Pressable
-            onPress={onClose}
-            className="h-8 w-8 items-center justify-center rounded-full"
-            accessibilityLabel="Cerrar"
+            onPress={(e) => e.stopPropagation()}
+            className="rounded-2xl border border-white-6 bg-z-surface-2-80 overflow-hidden"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.35,
+              shadowRadius: 24,
+              elevation: 12,
+            }}
           >
-            <X size={18} color={COLORS.sageDark} />
+            {/* Header */}
+            <View className="px-4 pt-4 pb-3">
+              <Text
+                className="text-base font-inter-bold text-foreground"
+                numberOfLines={1}
+              >
+                {name ?? "Usuario"}
+              </Text>
+              {email && (
+                <Text
+                  className="mt-0.5 text-[12px] font-inter text-muted-foreground"
+                  numberOfLines={1}
+                >
+                  {email}
+                </Text>
+              )}
+            </View>
+
+            <View className="h-px bg-white-6 mx-4" />
+
+            {/* Featured IMPORTAR card */}
+            <View className="px-4 pt-3 pb-2">
+              <Pressable
+                onPress={() => navigate("/(tabs)/import" as string)}
+                className="rounded-xl border border-z-brass-20 bg-z-brass-8 px-3 py-3 active:bg-z-brass-10"
+              >
+                <View className="flex-row items-start gap-2.5">
+                  <View className="mt-0.5 h-8 w-8 items-center justify-center rounded-full bg-z-brass-20">
+                    <Upload size={14} color={COLORS.brass} strokeWidth={2} />
+                  </View>
+                  <View className="flex-1">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-brass">
+                        Importar
+                      </Text>
+                      <ChevronRight size={14} color={COLORS.brass} />
+                    </View>
+                    <Text className="mt-1 text-[13px] font-inter-semibold text-foreground leading-snug">
+                      Sube un extracto PDF o captura de pantalla
+                    </Text>
+                    <Text className="mt-2 text-[11px] font-inter-semibold text-z-brass">
+                      Ir a importar
+                    </Text>
+                  </View>
+                </View>
+              </Pressable>
+            </View>
+
+            <View className="h-px bg-white-6 mx-4 mt-2" />
+
+            {/* Nav rows */}
+            <View className="py-1">
+              <MenuRow
+                icon={<Users size={16} color={COLORS.sageDark} />}
+                label="Destinatarios"
+                onPress={() => navigate("/destinatarios")}
+              />
+              <MenuRow
+                icon={<Tag size={16} color={COLORS.sageDark} />}
+                label="Categorizar"
+                onPress={() => navigate("/categorizar")}
+              />
+              <MenuRow
+                icon={<Wallet size={16} color={COLORS.sageDark} />}
+                label="Cuentas"
+                onPress={() => navigate("/accounts-list")}
+              />
+              <MenuRow
+                icon={<Settings size={16} color={COLORS.sageDark} />}
+                label="Ajustes"
+                onPress={() => navigate("/settings")}
+              />
+            </View>
           </Pressable>
         </View>
-
-        <View className="h-px bg-white-6 mx-4" />
-
-        {/* Nav items */}
-        <View className="py-2">
-          <MenuRow
-            icon={<Wallet size={16} color={COLORS.sageDark} />}
-            label="Cuentas"
-            onPress={() => navigate("/accounts-list")}
-          />
-          <MenuRow
-            icon={<Upload size={16} color={COLORS.sageDark} />}
-            label="Importar extracto"
-            onPress={() => navigate("/(tabs)/import" as string)}
-          />
-          <MenuRow
-            icon={<Settings size={16} color={COLORS.sageDark} />}
-            label="Ajustes"
-            onPress={() => navigate("/settings")}
-          />
-        </View>
-
-        <View className="h-px bg-white-6 mx-4" />
-
-        <View className="py-2">
-          <MenuRow
-            icon={<Menu size={16} color={COLORS.brass} />}
-            label="Ver todo"
-            brass
-            onPress={() => navigate("/menu")}
-          />
-        </View>
-      </View>
+      </Pressable>
     </Modal>
   );
 }
@@ -159,22 +193,18 @@ function MenuRow({
   icon,
   label,
   onPress,
-  brass = false,
 }: {
   icon: React.ReactNode;
   label: string;
   onPress: () => void;
-  brass?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-2.5 px-4 py-2.5"
+      className="flex-row items-center gap-3 px-4 py-3 active:bg-white/5"
     >
       {icon}
-      <Text
-        className={`text-sm font-inter-medium ${brass ? "text-z-brass" : "text-fg-80"}`}
-      >
+      <Text className="flex-1 text-sm font-inter-medium text-foreground">
         {label}
       </Text>
     </Pressable>
