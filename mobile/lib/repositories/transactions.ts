@@ -72,6 +72,7 @@ export type CreateTransactionParams = {
   capture_input_text?: string | null;
   status?: string;
   is_excluded?: boolean;
+  is_subscription?: boolean;
 };
 
 export type UpdateTransactionParams = {
@@ -109,6 +110,7 @@ function buildInsertPayload(id: string, now: string, params: CreateTransactionPa
     status: params.status ?? "POSTED",
     idempotency_key: idempotencyKey,
     is_excluded: params.is_excluded ?? false,
+    is_subscription: params.is_subscription ?? false,
     notes: params.notes ?? null,
     provider: params.provider ?? "MANUAL",
     capture_method: params.capture_method ?? "MANUAL_FORM",
@@ -149,9 +151,9 @@ export async function createTransaction(params: CreateTransactionParams): Promis
     await db.runAsync(
       `INSERT INTO transactions
         (id, user_id, account_id, category_id, amount, currency_code, direction, description, merchant_name, raw_description,
-         transaction_date, status, idempotency_key, is_excluded, notes, provider, capture_method, capture_input_text,
+         transaction_date, status, idempotency_key, is_excluded, is_subscription, notes, provider, capture_method, capture_input_text,
          reconciled_into_transaction_id, reconciliation_score, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         payload.id,
         payload.user_id,
@@ -167,6 +169,7 @@ export async function createTransaction(params: CreateTransactionParams): Promis
         payload.status,
         payload.idempotency_key,
         payload.is_excluded ? 1 : 0,
+        payload.is_subscription ? 1 : 0,
         payload.notes,
         payload.provider,
         payload.capture_method,

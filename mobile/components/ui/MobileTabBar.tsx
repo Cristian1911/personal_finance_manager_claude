@@ -1,9 +1,11 @@
-import { View, Pressable, Text } from "react-native";
+import { useState } from "react";
+import { Alert, View, Pressable, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeyboardState } from "react-native-keyboard-controller";
 import { Plus } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "../../lib/constants/colors";
+import { FabMenuSheet, type FabMenuAction } from "./FabMenuSheet";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -31,11 +33,36 @@ export function MobileTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  function handleFabAction(action: FabMenuAction) {
+    switch (action) {
+      case "new-transaction":
+        router.push("/capture" as never);
+        return;
+      case "quick-capture":
+        // TODO: mobile quick-capture (NL text parse) screen — reuse parseQuickCaptureText.
+        Alert.alert("Próximamente", "La captura rápida llega en la siguiente versión.");
+        return;
+      case "voice":
+        Alert.alert("Próximamente", "La captura por voz llega en la siguiente versión.");
+        return;
+      case "screenshot":
+        Alert.alert("Próximamente", "La importación por pantallazo llega en la siguiente versión.");
+        return;
+    }
+  }
 
   // Hide tab bar when keyboard is open
   if (keyboardVisible) return null;
 
   return (
+    <>
+    <FabMenuSheet
+      visible={menuOpen}
+      onClose={() => setMenuOpen(false)}
+      onAction={handleFabAction}
+    />
     <View
       className="border-t border-white-6 bg-background-92"
       style={{ paddingBottom: insets.bottom }}
@@ -70,7 +97,7 @@ export function MobileTabBar({ state, navigation }: TabBarProps) {
         {/* Center FAB */}
         <View className="items-center justify-center px-4">
           <Pressable
-            onPress={() => router.push("/capture" as any)}
+            onPress={() => setMenuOpen(true)}
             className="h-12 w-12 -mt-4 items-center justify-center rounded-full bg-z-brass"
             style={{
               shadowColor: "rgba(147,120,68,0.4)",
@@ -112,5 +139,6 @@ export function MobileTabBar({ state, navigation }: TabBarProps) {
         </View>
       </View>
     </View>
+    </>
   );
 }

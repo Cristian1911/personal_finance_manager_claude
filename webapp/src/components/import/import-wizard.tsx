@@ -246,6 +246,20 @@ export function ImportWizard({
     onReset?.();
   }
 
+  // Reset wizard when page restores from bfcache while sitting on Results.
+  // Without this, navigating away and returning via browser back leaves the
+  // user on stale import results with no fresh context.
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted && step === "results") {
+        handleReset();
+      }
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[28px] border border-white/6 bg-z-surface-2/65 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-6">

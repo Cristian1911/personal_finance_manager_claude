@@ -100,6 +100,7 @@ Spawn these specialized agents for domain-specific review and diagnosis. Each ha
 - **Mobile bottom sheets/drawers**: Always add `MOBILE_TAB_BAR_CLEARANCE_CLASS` from `@/lib/constants/styles.ts` to `SheetContent` bottom padding. Without it, sheet content is hidden behind the tab bar.
 - **Date parsing**: Never use `new Date("YYYY-MM-DD")` — it parses as midnight UTC (wrong day in Colombia UTC-5). Pass ISO date strings directly to `formatDate()` (uses `parseISO`), or append `T12:00:00` if `Date` object is needed.
 - **Debt account direction**: INFLOW to CREDIT_CARD/LOAN accounts is a payment, not income. Use `isDebtAccountType()` from `@/lib/utils/account-balance` or `item.isDebtPayment` to distinguish. Never treat raw `direction === "INFLOW"` as income without checking account type.
+- **Mobile safe area (iOS notch)**: Every top-level screen (tabs/* and stack routes) must honor `useSafeAreaInsets()` — either via `MobileHeader` (handles it) or manual `paddingTop: insets.top` on the root `ScrollView`/`View`. Without it, content clips under the status bar/notch. `zetas-front-guy` must flag any screen that mounts a `ScrollView`/`View` at the root without safe-area top padding.
 - Spawn `zetas-front-guy` after any TSX/CSS change. Spawn `frontend-auditor` for comprehensive reviews.
 
 ## Supabase
