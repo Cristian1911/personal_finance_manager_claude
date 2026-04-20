@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { ChevronDown, ChevronRight, Link2, Loader2, Plus, X } from "lucide-react";
 import {
   cleanDescription,
@@ -11,6 +11,7 @@ import type { DestinatarioRule } from "@zeta/shared";
 import {
   attachPatternToDestinatario,
   createDestinatario,
+  getDestinatarios,
 } from "@/actions/destinatarios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,32 +76,73 @@ export function StepDestinatarios({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [matchedOpen, setMatchedOpen] = useState(false);
 
-  // Unique destinatarios derivable from the rule set — covers everyone the
-  // user has at least one existing pattern for. Sorted by most-used first
-  // so likely targets surface at the top.
+  // Full destinatarios list so the "Asignar" picker includes destinatarios
+  // that have no rules yet (otherwise deriving from currentRules alone would
+  // hide them). Fetched once when the user lands on this step.
+  const [allDestinatarios, setAllDestinatarios] = useState<
+    { id: string; name: string; default_category_id: string | null }[]
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const result = await getDestinatarios();
+      if (cancelled || !result.success) return;
+      setAllDestinatarios(
+        result.data.map((d) => ({
+          id: d.id,
+          name: d.name,
+          default_category_id: d.default_category_id,
+        }))
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Merge the full list with pattern counts derived from currentRules.
+  // Sort by most-patterns-first so likely targets surface at the top.
   const existingDestinatarios = useMemo(() => {
+    const patternCounts = new Map<string, number>();
+    for (const rule of currentRules) {
+      patternCounts.set(
+        rule.destinatario_id,
+        (patternCounts.get(rule.destinatario_id) ?? 0) + 1
+      );
+    }
+
     const map = new Map<
       string,
       { id: string; name: string; defaultCategoryId: string | null; patternCount: number }
     >();
-    for (const rule of currentRules) {
-      const prev = map.get(rule.destinatario_id);
-      if (prev) {
-        prev.patternCount += 1;
-      } else {
-        map.set(rule.destinatario_id, {
-          id: rule.destinatario_id,
-          name: rule.destinatario_name,
-          defaultCategoryId: rule.default_category_id,
-          patternCount: 1,
-        });
-      }
+
+    for (const d of allDestinatarios) {
+      map.set(d.id, {
+        id: d.id,
+        name: d.name,
+        defaultCategoryId: d.default_category_id,
+        patternCount: patternCounts.get(d.id) ?? 0,
+      });
     }
+
+    // Rules can surface destinatarios created mid-session before the fetch
+    // landed — include them so the picker updates immediately.
+    for (const rule of currentRules) {
+      if (map.has(rule.destinatario_id)) continue;
+      map.set(rule.destinatario_id, {
+        id: rule.destinatario_id,
+        name: rule.destinatario_name,
+        defaultCategoryId: rule.default_category_id,
+        patternCount: patternCounts.get(rule.destinatario_id) ?? 1,
+      });
+    }
+
     return Array.from(map.values()).sort((a, b) => {
       if (b.patternCount !== a.patternCount) return b.patternCount - a.patternCount;
       return a.name.localeCompare(b.name);
     });
-  }, [currentRules]);
+  }, [allDestinatarios, currentRules]);
 
   const { matchedGroups, suggestions } = useMemo(() => {
     const prepared = prepareDestinatarioRules(currentRules);

@@ -99,6 +99,11 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Features
 
+### Mobile — capture amount live-formatting
+- **Priority:** Medium
+- **What:** The centered amount TextInput in `mobile/app/capture.tsx` displays raw digits (`124124`). User expects COP-style thousand grouping (`124.124`) while typing. Solution prototyped during 2026-04-20 session: format via `raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".")` on display, strip dots + convert decimal comma → dot on onChangeText. Deferred to the mobile migration session to keep the destinatario PR focused.
+- **Found:** User feedback, 2026-04-20.
+
 ### Mobile — capture "Crear destinatario" + "Asignar a existente" ungate
 - **Priority:** Medium
 - **What:** The "Opciones relacionadas" collapsible in `mobile/app/capture.tsx` currently Alerts `Próximamente` for both "Crear destinatario" and "Crear pago recurrente". Webapp equivalent already works via `createDestinatario` + `attachPatternToDestinatario` (shipped PR #202). Mobile needs analogous support before these can ungate.
