@@ -179,19 +179,24 @@ export function InicioRoot({
 
   const persist = useCallback(
     (next: DashboardLayout) => {
-      setLayout(next);
-      startPersist(async () => {
-        const result = await updateMobileLayout({
-          pulseRange: next.pulseRange,
-          widgets: next.widgets.map((w) => ({
-            id: w.id,
-            type: w.type,
-            size: w.size,
-          })),
+      // Optimistic update — roll back to the snapshot if the server rejects the save.
+      setLayout((prev) => {
+        startPersist(async () => {
+          const result = await updateMobileLayout({
+            pulseRange: next.pulseRange,
+            widgets: next.widgets.map((w) => ({
+              id: w.id,
+              type: w.type,
+              size: w.size,
+            })),
+          });
+          if (!result.success) {
+            console.error("updateMobileLayout failed", result.error);
+            setLayout(prev);
+            toast.error(result.error ?? "No se pudo guardar tu layout");
+          }
         });
-        if (!result.success) {
-          toast.error(result.error ?? "No se pudo guardar tu layout");
-        }
+        return next;
       });
     },
     [],

@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -70,6 +71,7 @@ function resolveStatus({
 }
 
 function Sparkline({ values, color }: { values: number[]; color: string }) {
+  const gradientId = useId();
   if (values.length < 2) {
     // Placeholder line so the Pulse card doesn't look broken with no history.
     return (
@@ -114,12 +116,12 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
       aria-hidden
     >
       <defs>
-        <linearGradient id="pulse-spark-fill" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.25} />
           <stop offset="100%" stopColor={color} stopOpacity={0} />
         </linearGradient>
       </defs>
-      <path d={area} fill="url(#pulse-spark-fill)" stroke="none" />
+      <path d={area} fill={`url(#${gradientId})`} stroke="none" />
       <polyline
         points={line}
         fill="none"
