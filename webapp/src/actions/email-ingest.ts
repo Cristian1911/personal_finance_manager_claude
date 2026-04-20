@@ -193,21 +193,39 @@ async function persistParsedEmail(params: {
 
 // ─── Read actions ────────────────────────────────────────────────────────────
 
-export async function getEmailIngestAddress(): Promise<
-  ActionResult<EmailIngestAddress | null>
-> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
+async function getEmailIngestAddressCached(
+  userId: string,
+  accessToken: string,
+): Promise<EmailIngestAddress | null> {
+  "use cache";
+  cacheTag("email-ingest");
+  cacheLife("zeta");
 
+  const supabase = createCachedClient(accessToken);
   const { data, error } = await supabase
     .from("email_ingest_addresses")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("is_active", true)
     .maybeSingle();
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data as EmailIngestAddress | null };
+  if (error) throw error;
+  return data as EmailIngestAddress | null;
+}
+
+export async function getEmailIngestAddress(): Promise<
+  ActionResult<EmailIngestAddress | null>
+> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+
+  try {
+    const data = await getEmailIngestAddressCached(user.id, accessToken);
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error loading email ingest address:", error);
+    return { success: false, error: "Error al cargar configuración de correo" };
+  }
 }
 
 async function getPendingEmailTransactionsCached(

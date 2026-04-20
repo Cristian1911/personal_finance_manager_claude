@@ -1,0 +1,1 @@
+import{i as e}from"./chunk-DseTPa7n.js";import{t}from"./react-CIi_Xeu6.js";var n=e(t(),1);function r(e){let t=n.useRef(e);return n.useEffect(()=>{t.current=e}),n.useMemo(()=>(...e)=>t.current?.(...e),[])}export{r as t};

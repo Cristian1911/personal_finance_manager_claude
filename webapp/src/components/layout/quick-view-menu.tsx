@@ -11,6 +11,9 @@ import {
   Loader2,
   ArrowRight,
   Contact,
+  FileUp,
+  Folder,
+  type LucideIcon,
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { getQuickViewData, type QuickViewData } from "@/actions/quick-view";
@@ -234,6 +237,29 @@ function QuickViewContent({
         ) : null}
       </div>
 
+      {/* Quick jumps */}
+      <div className="border-t px-4 py-3">
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Ir a
+        </p>
+        <div className="grid grid-cols-4 gap-2">
+          <QuickJump href="/accounts" icon={Wallet} label="Cuentas" onClose={onClose} />
+          <QuickJump
+            href="/plan?tab=presupuesto"
+            icon={Folder}
+            label="Categorías"
+            onClose={onClose}
+          />
+          <QuickJump
+            href="/plan?tab=recurrentes"
+            icon={CalendarClock}
+            label="Recurrentes"
+            onClose={onClose}
+          />
+          <QuickJump href="/import" icon={FileUp} label="Importar" onClose={onClose} />
+        </div>
+      </div>
+
       {/* Footer: Destinatarios + Settings + Sign out */}
       <div className="border-t px-4 py-2 flex items-center gap-1">
         <Button
@@ -272,6 +298,33 @@ function QuickViewContent({
         </Button>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// QuickJump
+// ---------------------------------------------------------------------------
+
+function QuickJump({
+  href,
+  icon: Icon,
+  label,
+  onClose,
+}: {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  onClose: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClose}
+      className="flex flex-col items-center gap-1.5 rounded-xl border border-white/6 bg-white/[0.02] px-2 py-2.5 transition-colors hover:bg-white/5"
+    >
+      <Icon className="size-4 text-muted-foreground" />
+      <span className="text-[11px] font-medium leading-none">{label}</span>
+    </Link>
   );
 }
 

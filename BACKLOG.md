@@ -53,6 +53,50 @@
 - **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
 - **Found:** 2026-04-18
 
+## Claude Design — Wireframe Handoff
+
+Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships unless noted. Each flow below = one milestone slice.
+
+### Flow 01 — Onboarding redesign (webapp)
+- **Priority:** Medium
+- **Status:** Mobile slice-2 shipped (PR #195). Webapp not yet touched.
+- **What:** 5-step wizard with populated landing — don't dump users into settings. Tutorial is the screen itself.
+
+### Flow 02 — Home redesign (webapp dashboard)
+- **Priority:** High
+- **What:** Three variants in the wireframe. A = Safe (widgets + month hero), B = Bold (widget-driven), C = Novel (timeline-scrub). Decide variant before building.
+
+### Flow 03 — Add transaction (quick-capture redesign)
+- **Priority:** Medium
+- **What:** A = structured sheet, B = conversational, C = radial action. Current webapp uses structured form; this is a rethink.
+
+### Flow 04 — Import redesign
+- **Priority:** Medium
+- **What:** A = 6-step wizard shortened, B = always-on inbox. Current import wizard is close to A but longer.
+
+### Flow 05 — Plan redesign
+- **Priority:** Medium
+- **What:** A = current de-noised, B = 50/30/20 as a story, C = calendar-first. Today's `/plan` is closest to A but noisy.
+
+### Flow 06 — Settings redesign (Variant A)
+- **Priority:** High · **Ready to merge** (branch `feat/settings-visual-polish`, 2026-04-20)
+- **Approach shift:** Original plan stood up sub-editors inside `/settings/*` for every domain (cuentas, categorías, recurrentes, fuentes). We pivoted to **trim settings to pure preferences/credentials** and route domain CRUD through existing hubs. Rationale: `/accounts`, `/plan?tab=presupuesto`, `/plan?tab=recurrentes` already expose full CRUD — duplicating editors under `/settings` was redundant.
+- **Final surfaces:**
+  - **Settings** — 7 preference rows: Perfil, Integraciones, Importación por correo, Contraseñas de PDF, Etiquetas, Actividad de uso, Reportar bug. Identity hero + search preserved.
+  - **Bandeja (`/gestionar`)** — now renders the "Ir a" link grid on desktop (was mobile-only). 8 entries: Cuentas, Categorías, Recurrentes, Destinatarios, Categorizar, Importar, Deudas, Ajustes.
+  - **Avatar quick menu** — gained a 4-icon "Ir a" row (Cuentas, Categorías, Recurrentes, Importar) above the footer. One-tap jump from anywhere.
+- **Chrome unification:** `/settings/analytics` rewrote `PageHero` → `PageHeaderRow`. All `/settings/*` sub-pages get a desktop "← Volver a Ajustes" back link. Top-level `Analytics` sidebar entry removed.
+- **Perf fix bundled:** `getEmailIngestAddress()` was uncached (DB hit every load). Now wrapped with `"use cache"` + `cacheTag("email-ingest")`. Settings page also stopped duplicating the profile query (now uses cached `getProfile()`).
+- **Deferred (not in this slice):** anonymous-telemetry toggle, export-all-data (CSV/JSON), delete-account self-serve (confirmation + soft-delete flow), settings search indexing beyond keyword arrays.
+
+### Flow 06 — Settings Variant B (People / couples mode)
+- **Priority:** Low · **Future**
+- **What:** Settings gains a People section for invite partner + shared pools + roles. Seed for couples tracking without a separate app. Needs new tables + RLS (`shared_pools`, `pool_members`, `pool_allocations`). Do not start until Variant A ships.
+
+### Flow 07 — Can I afford it? (redesign)
+- **Priority:** Medium
+- **Status:** Mobile shipped slice-5 (PR #197). Webapp equivalent not yet aligned to wireframe.
+
 ## Features
 
 ### Import wizard — attach pattern to existing destinatario
@@ -111,13 +155,30 @@
 - **Context:** Auto-tag from destinatario during import shipped in PR #138. This is the remaining work.
 
 ### Mobile app — Apple compliance (pre-submission)
-- **Priority:** High (blocks App Store submission)
-- **What:** Privacy Policy (ES + EN, hosted on webapp domain), Terms of Service, update `PrivacyInfo.xcprivacy` with accurate data types (app collects financial data, user IDs — currently declares empty), add `NSPhotoLibraryUsageDescription` + `NSCameraUsageDescription` to `app.json`, add in-app financial disclaimer ("Zeta no es un asesor financiero"), remove `NSAllowsLocalNetworking` from production builds.
-- **Context:** 2 new guardrail agents (`mobile-sync-doctor`, `mobile-webapp-parity`) are in place. Compliance is the remaining blocker before TestFlight/App Store submission.
+- **Priority:** High · **Mostly shipped** (branch `feat/settings-visual-polish`, 2026-04-20)
+- **Done:**
+  - `/privacy` + `/privacy/en` + `/terms` + `/terms/en` routes created on webapp with `LegalLayout` chrome. Host domain currently `pfm.sanson1911.cloud` (pending rebrand rename).
+  - `PrivacyInfo.xcprivacy` declares collected data types: email, user ID, other financial info, other user content — all linked to user, not tracking, purpose = app functionality.
+  - `NSAllowsLocalNetworking: true` removed from `ios/Zeta/Info.plist`. `NSBonjourServices` + `NSLocalNetworkUsageDescription` kept for Expo dev launcher discovery with Spanish description that clarifies dev-only behavior.
+  - Mobile `/settings` page: new "Legal" section with Privacy + Terms links (via `expo-web-browser` → `EXPO_PUBLIC_API_URL`) + bottom disclaimer "Zeta no es un asesor financiero".
+- **Deferred — add when actual camera/photo feature lands:**
+  - `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` in `app.json` `ios.infoPlist`. Apple flags unused permission strings — don't add preemptively. Hook into whichever PR introduces `expo-camera` / `expo-image-picker`. Current `DocumentPicker` (Files app) doesn't need either.
+- **Still required before submission:**
+  - Privacy Policy URL must be **stable** (pending webapp domain rebrand rename — coordinate so URL is final before App Store Connect submission; updating later triggers re-review).
+  - Financial-app disclosure in App Store Connect submission form.
+  - `privacy@zeta.app` + `legal@zeta.app` mailboxes must accept mail (or replace placeholders in `legal-layout.tsx` + privacy/terms-content).
 - **Found:** Mobile pages session, 2026-04-14
 
 ### Mobile app — Play Store production release (rebrand + promote from alpha/beta)
-- **Priority:** High (blocks production launch on Google Play)
+- **Priority:** High · **Tech prep done** — branch `feat/settings-visual-polish`, 2026-04-20
+- **Shipped this session:**
+  - Bundle drift fixed: `app.json` now uses `com.zetafinance.app` for both `ios.bundleIdentifier` and `android.package` (was `com.venti5.zeta`, out of sync with `build.gradle` + Xcode project).
+  - Version bumped 1.0.0 → 1.1.0 across `app.json`, `ios/Info.plist`, `android/app/build.gradle`. `versionCode` auto-increments via EAS (`appVersionSource: remote`).
+  - `AndroidManifest.xml` hardened: removed `SYSTEM_ALERT_WINDOW` (overlay permission — Play flags for finance apps); set `android:allowBackup="false"` to prevent sensitive data in ADB backups.
+  - `targetSdkVersion` + `compileSdkVersion` inherited from Expo SDK 55 version catalog → both 35+ automatically.
+  - Data Safety declaration drafted at `docs/play-store/DATA_SAFETY.md`.
+  - Spanish listing copy drafted at `docs/play-store/LISTING_ES.md` (título, descripción corta, descripción completa, categorías, screenshots checklist).
+  - In-app disclaimer + Privacy/Terms links live in mobile `/settings` (see Apple compliance entry).
 - **Goal:** Ship Zeta to Play Store production track. Existing draft is on closed (alpha/beta). Name stays "Zeta"; bundle stays `com.zetafinance.app`; palette stays (`#121412` splash bg). User will deliver new brand PNGs later.
 
 - **Assets (user-supplied, pending)**

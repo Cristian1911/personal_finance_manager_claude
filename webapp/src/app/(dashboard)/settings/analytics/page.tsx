@@ -1,9 +1,7 @@
 import { connection } from "next/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Activity,
-  ArrowRight,
   BarChart3,
   Funnel,
   ShieldCheck,
@@ -16,10 +14,9 @@ import { formatDate } from "@/lib/utils/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { Button } from "@/components/ui/button";
-import { PageHero, HeroAccentPill, HeroPill } from "@/components/ui/page-hero";
+import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { StatCard } from "@/components/ui/stat-card";
-import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { SettingsBackLink } from "@/components/settings/settings-back-link";
 
 type ProductEventRow = Pick<
   Database["public"]["Tables"]["product_events"]["Row"],
@@ -371,28 +368,18 @@ export default async function AnalyticsPage() {
   const latestCategorize = categorizeFunnel[0];
 
   return (
-    <div className="space-y-6 lg:space-y-8">
+    <div className="mx-auto max-w-5xl space-y-6 lg:space-y-8">
       <MobileHeader variant="sub" title="Actividad de uso" backHref="/settings" />
 
-      <PageHero
-        variant="brass"
-        pills={
-          <>
-            <HeroPill>Actividad propia</HeroPill>
-            <HeroAccentPill>Señales de uso</HeroAccentPill>
-          </>
-        }
-        title="Revisa cómo estás usando Zeta sin salir del shell principal"
-        description="Esta vista resume tus eventos recientes de onboarding, importación y categorización para entender qué flujos sí están funcionando y dónde todavía hay fricción."
-        actions={
-          <Button asChild className={BRASS_BUTTON_CLASS}>
-            <Link href="/settings">
-              Volver a Ajustes
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        }
-      >
+      <div className="space-y-2">
+        <SettingsBackLink />
+        <PageHeaderRow
+          title="Actividad de uso"
+          subtitle="Tus eventos recientes de onboarding, importación y categorización."
+        />
+      </div>
+
+      <section className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label={
@@ -487,7 +474,7 @@ export default async function AnalyticsPage() {
             </div>
           </div>
         </div>
-      </PageHero>
+      </section>
 
       <Card className="border-white/6 bg-z-surface-2/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
         <CardHeader>

@@ -1,0 +1,56 @@
+/*
+ * Zeta — Core Palette (Obsidian & Brass, dark-mode-first)
+ * Extracted from webapp/src/app/globals.css (canonical source)
+ */
+
+:root {
+  /* Brand core */
+  --z-ink:        #121412;  /* near-black background */
+  --z-olive-deep: #3F4632;  /* deep accent, nav/chip surfaces */
+  --z-sage:       #768053;  /* primary brand green */
+  --z-brass:      #937844;  /* CTA / primary action */
+  --z-sage-light: #D9CCB9;  /* foreground text on dark */
+  --z-sage-dark:  #938C7E;  /* muted secondary text */
+  --z-white:      #F6F0E3;  /* off-white, warm */
+
+  /* Financial semantics */
+  --z-income:    #5CB88A;
+  --z-expense:   #E8875A;
+  --z-debt:      #E05545;
+  --z-alert:     #D4A843;
+  --z-excellent: #3D9E6E;
+
+  /* Surfaces (layered dark) */
+  --z-surface:   #171A17;
+  --z-surface-2: #1E221E;
+  --z-surface-3: #262B26;
+
+  /* Borders (sage-tinted alpha, never flat gray) */
+  --z-border:        rgba(217, 204, 185, 0.08);
+  --z-border-strong: rgba(217, 204, 185, 0.16);
+}
+
+/*
+ * Typography scale
+ *
+ * display   52px / 800 / -0.04em
+ * hero      clamp(56, 8vw, 96) / 900 / -0.04em
+ * h1        28px / 700 / -0.02em
+ * body      15px / 400 / 1.7 line-height
+ * widget-lg 22px / 800
+ * widget-sm 18px / 800
+ * label     11px / 400
+ * caption   10px / 500 / tracking 0.08em  (eyebrow label)
+ * trend     11px / 400
+ *
+ * Sans family: Geist Sans. Mono family: Geist Mono.
+ * Financial numbers ALWAYS use `tabular-nums`.
+ */
+
+/*
+ * Spacing scale
+ * xs 6 / sm 8 / md 16 / lg 20 / xl 28 / 2xl 40 / 3xl 64
+ *
+ * Radius (applied via Tailwind): 0.75rem base → rounded-xl=1rem, rounded-2xl=1.25rem.
+ * Cards are rounded-2xl (large) or rounded-xl (compact). Never arbitrary radii.
+ */
