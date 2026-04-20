@@ -1,14 +1,17 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, ChevronRight, Loader2, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Link2, Loader2, Plus, X } from "lucide-react";
 import {
   cleanDescription,
   matchDestinatario,
   prepareDestinatarioRules,
 } from "@zeta/shared";
 import type { DestinatarioRule } from "@zeta/shared";
-import { createDestinatario } from "@/actions/destinatarios";
+import {
+  attachPatternToDestinatario,
+  createDestinatario,
+} from "@/actions/destinatarios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
@@ -17,6 +20,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils/currency";
 import { capitalize } from "@/lib/utils/string";
 import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
@@ -57,11 +67,40 @@ export function StepDestinatarios({
   const [currentRules, setCurrentRules] = useState<DestinatarioRule[]>(destinatarioRules);
 
   const [editingPattern, setEditingPattern] = useState<string | null>(null);
+  const [assigningPattern, setAssigningPattern] = useState<string | null>(null);
+  const [assignTargetId, setAssignTargetId] = useState<string>("");
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [matchedOpen, setMatchedOpen] = useState(false);
+
+  // Unique destinatarios derivable from the rule set — covers everyone the
+  // user has at least one existing pattern for. Sorted by most-used first
+  // so likely targets surface at the top.
+  const existingDestinatarios = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; defaultCategoryId: string | null; patternCount: number }
+    >();
+    for (const rule of currentRules) {
+      const prev = map.get(rule.destinatario_id);
+      if (prev) {
+        prev.patternCount += 1;
+      } else {
+        map.set(rule.destinatario_id, {
+          id: rule.destinatario_id,
+          name: rule.destinatario_name,
+          defaultCategoryId: rule.default_category_id,
+          patternCount: 1,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.patternCount !== a.patternCount) return b.patternCount - a.patternCount;
+      return a.name.localeCompare(b.name);
+    });
+  }, [currentRules]);
 
   const { matchedGroups, suggestions } = useMemo(() => {
     const prepared = prepareDestinatarioRules(currentRules);
@@ -133,8 +172,17 @@ export function StepDestinatarios({
 
   function handleStartEditing(suggestion: SuggestionGroup) {
     setEditingPattern(suggestion.cleanedPattern);
+    setAssigningPattern(null);
     setFormName(capitalize(suggestion.cleanedPattern));
     setFormCategory(null);
+    setFormError(null);
+    setExpanded((prev) => new Set(prev).add(suggestion.cleanedPattern));
+  }
+
+  function handleStartAssigning(suggestion: SuggestionGroup) {
+    setAssigningPattern(suggestion.cleanedPattern);
+    setEditingPattern(null);
+    setAssignTargetId(existingDestinatarios[0]?.id ?? "");
     setFormError(null);
     setExpanded((prev) => new Set(prev).add(suggestion.cleanedPattern));
   }
@@ -142,6 +190,45 @@ export function StepDestinatarios({
   function handleDismiss(pattern: string) {
     setDismissedPatterns((prev) => new Set(prev).add(pattern));
     if (editingPattern === pattern) setEditingPattern(null);
+    if (assigningPattern === pattern) setAssigningPattern(null);
+  }
+
+  function handleAssign(pattern: string) {
+    if (!assignTargetId) {
+      setFormError("Elige un destinatario");
+      return;
+    }
+    const target = existingDestinatarios.find((d) => d.id === assignTargetId);
+    if (!target) {
+      setFormError("Destinatario no encontrado");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await attachPatternToDestinatario(
+        assignTargetId,
+        pattern.toLowerCase()
+      );
+
+      if (result.success) {
+        setCurrentRules((prev) => [
+          ...prev,
+          {
+            destinatario_id: target.id,
+            destinatario_name: target.name,
+            default_category_id: target.defaultCategoryId,
+            match_type: "contains" as const,
+            pattern: pattern.toLowerCase(),
+            priority: 100,
+          },
+        ]);
+        setCreatedPatterns((prev) => new Set(prev).add(pattern));
+        setAssigningPattern(null);
+        setFormError(null);
+      } else {
+        setFormError(result.error);
+      }
+    });
   }
 
   function handleCreate(pattern: string) {
@@ -227,6 +314,7 @@ export function StepDestinatarios({
         <div className="space-y-3">
           {visibleSuggestions.map((suggestion) => {
             const isEditing = editingPattern === suggestion.cleanedPattern;
+            const isAssigning = assigningPattern === suggestion.cleanedPattern;
             const isExpanded = expanded.has(suggestion.cleanedPattern);
 
             return (
@@ -257,7 +345,7 @@ export function StepDestinatarios({
                     </p>
                   </div>
 
-                  {!isEditing && (
+                  {!isEditing && !isAssigning && (
                     <div className="flex shrink-0 items-center gap-1">
                       <Button
                         type="button"
@@ -267,8 +355,20 @@ export function StepDestinatarios({
                         onClick={() => handleStartEditing(suggestion)}
                       >
                         <Plus className="h-3 w-3" />
-                        Crear destinatario
+                        Crear
                       </Button>
+                      {existingDestinatarios.length > 0 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs"
+                          onClick={() => handleStartAssigning(suggestion)}
+                        >
+                          <Link2 className="h-3 w-3" />
+                          Asignar
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         size="sm"
@@ -296,6 +396,69 @@ export function StepDestinatarios({
                         </span>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {isAssigning && (
+                  <div className="mt-3 space-y-2 border-t pt-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Destinatario existente
+                      </label>
+                      <Select
+                        value={assignTargetId}
+                        onValueChange={(v) => {
+                          setAssignTargetId(v);
+                          if (formError) setFormError(null);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Elegir destinatario" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {existingDestinatarios.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name}
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                {d.patternCount}{" "}
+                                {d.patternCount === 1 ? "patrón" : "patrones"}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {formError && <p className="text-xs text-z-debt">{formError}</p>}
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        disabled={isPending || !assignTargetId}
+                        onClick={() => handleAssign(suggestion.cleanedPattern)}
+                      >
+                        {isPending ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Asignando...
+                          </>
+                        ) : (
+                          "Asignar patrón"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        disabled={isPending}
+                        onClick={() => setAssigningPattern(null)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
                 )}
 

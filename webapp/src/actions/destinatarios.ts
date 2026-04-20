@@ -691,6 +691,60 @@ export async function addDestinatarioRule(
   return { success: true, data, conflicts };
 }
 
+// ─── attachPatternToDestinatario ──────────────────────────────────────────────
+
+/**
+ * Lean alternative to addDestinatarioRule for callers that don't use
+ * useActionState — accepts plain args and returns the created rule row.
+ * Used by the import wizard's "Asignar a existente" flow on step 3.
+ */
+export async function attachPatternToDestinatario(
+  destinatarioId: string,
+  pattern: string
+): Promise<ActionResult<DestinatarioRuleRow>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const parsed = destinatarioRuleSchema.safeParse({
+    match_type: "contains",
+    pattern,
+    priority: 100,
+  });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  // Defense-in-depth: verify the destinatario belongs to the caller
+  const { data: dest } = await supabase
+    .from("destinatarios")
+    .select("id")
+    .eq("id", destinatarioId)
+    .eq("user_id", user.id)
+    .single();
+  if (!dest) return { success: false, error: "Destinatario no encontrado" };
+
+  const { data, error } = await supabase
+    .from("destinatario_rules")
+    .insert({
+      user_id: user.id,
+      destinatario_id: destinatarioId,
+      ...parsed.data,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      return { success: false, error: "Este patrón ya está asignado" };
+    }
+    return { success: false, error: error.message };
+  }
+
+  updateTag("destinatarios");
+  updateTag("attention");
+  return { success: true, data };
+}
+
 // ─── removeDestinatarioRule ───────────────────────────────────────────────────
 
 export async function removeDestinatarioRule(
