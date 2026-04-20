@@ -108,6 +108,13 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     ? last7Days.reduce((sum, d) => sum + d.amount, 0) / last7Days.length
     : 0;
 
+  // Last-7 series for the Pulse sparkline (oldest → newest, zero-filled for
+  // missing days so the line spans the full 7-day window).
+  const last7Spend = Array.from({ length: 7 }, (_, idx) => {
+    const day = toColombiaDateString(subDays(now, 7 - idx));
+    return dailySpending.find((d) => d.date === day)?.amount ?? 0;
+  });
+
   // Upcoming income derived from hero data — surfaces on the "Por resolver" timeline
   const upcomingIncome = heroData.incomeConfigured && heroData.nextIncomeDate
     ? [{
@@ -143,6 +150,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           spentToday,
           spentYesterday,
           avgLast7,
+          last7Spend,
           currency,
         }}
         attentionItems={attentionItemsData}

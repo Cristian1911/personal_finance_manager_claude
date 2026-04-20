@@ -1,6 +1,6 @@
 "use client";
 
-import { InicioHero } from "./inicio-hero";
+import { PulseWidget } from "./pulse-widget";
 import { InicioMetricsGrid } from "./inicio-metrics-grid";
 import { InicioToolRow } from "./inicio-tool-row";
 import { InicioActivity } from "./inicio-activity";
@@ -44,6 +44,8 @@ export interface InicioRootProps {
     spentYesterday: number;
     avgLast7: number;
     currency: CurrencyCode;
+    /** Last-7 OUTFLOW per day (oldest → newest), used for the Pulse sparkline. */
+    last7Spend: number[];
   };
   attentionItems: {
     overdueReminders: LiveDashboardData["attention"]["overdueReminders"];
@@ -126,7 +128,7 @@ export function InicioRoot({
 
   return (
     <div className="space-y-4">
-      <InicioHero
+      <PulseWidget
         availablePerDay={live.hero.availablePerDay}
         availableTotal={live.hero.availableTotal}
         daysRemaining={live.hero.daysRemaining}
@@ -137,6 +139,8 @@ export function InicioRoot({
         incomeConfigured={live.hero.incomeConfigured ?? hero.incomeConfigured ?? false}
         breakdown={live.hero.breakdown}
         primaryAccount={hero.primaryAccount}
+        spark={metrics.last7Spend}
+        avgSpend={live.metrics.avgLast7}
         expanded={activeZone === "hero"}
         onToggle={() => toggle("hero")}
       />
