@@ -18,13 +18,6 @@
 - **Fix:** Add a `set_capture_token_label(p_id, p_label, p_user_id)` RPC with `SECURITY DEFINER` that uses `zeta_encrypt_as` internally, and a `find_capture_token_by_chat_id(p_chat_id)` RPC that decrypts label server-side. Replace the four admin-client calls in the telegram webhook with these RPCs.
 - **Found:** supabase-migrator review on PR #186 (has_auth guard), 2026-04-18
 
-### Import wizard — state persists across tab/visibility changes (bfcache)
-- **Priority:** Low
-- **What:** If the user completes an import, navigates away (browser tabs, minimize, or uses the back/forward cache), and returns, the wizard still shows the `results` step instead of a fresh upload step. React state is preserved because Next.js doesn't fully remount the page when restored from bfcache. User reads this as "unfinished import flow still there".
-- **Options:** (a) add a `visibilitychange` listener that resets the wizard if it is in `results` and the document becomes hidden → visible, (b) add a prominent "Terminar y cerrar" button on the results screen that calls `handleReset()` + scrolls to top, (c) accept the behavior and document it. Mild lean toward (b) — explicit control, no surprise resets.
-- **Touches:** `webapp/src/components/import/import-wizard.tsx` (handleReset trigger), possibly `step-results.tsx` (new button).
-- **Found:** User feedback, 2026-04-17 (post PR #177).
-
 ### Promote-to-recurring — success state undersells the outcome
 - **Priority:** Medium
 - **What:** After promoting a tx, the CTA collapses to a muted grey "Ya es recurrente" badge. User just created a template + linked this tx as paid — but has no signal that a future payment is now scheduled or where to find it. Options: (a) toast on success with the next occurrence date ("Recurrente creada · Próxima: 15 mayo"), (b) badge gains a subtle link to `/plan?tab=recurrentes&template=<id>`, (c) on submit redirect to `/plan?tab=recurrentes&highlight=<template_id>` with a flash highlight.
@@ -62,9 +55,11 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **Status:** Mobile slice-2 shipped (PR #195). Webapp not yet touched.
 - **What:** 5-step wizard with populated landing — don't dump users into settings. Tutorial is the screen itself.
 
-### Flow 02 — Home redesign (webapp dashboard)
-- **Priority:** High
-- **What:** Three variants in the wireframe. A = Safe (widgets + month hero), B = Bold (widget-driven), C = Novel (timeline-scrub). Decide variant before building.
+### Flow 02 — Home redesign (webapp dashboard) · NEXT UP
+- **Priority:** High · Next slice after PR #202 merges.
+- **What:** Variant A (Safe) per project rule unless user names otherwise: month hero + widget grid. Variants B (Bold widget-driven) + C (Novel timeline-scrub) documented in `claude-ai-design/Zeta Wireframes.html` Flow 02.
+- **Scope note:** Current `webapp/src/app/(dashboard)/page.tsx` already has a Dashboard v2 (widgets + hero). This is a *rebuild*, not a greenfield. Expect: inventory existing widgets, map wireframe → existing components, split across 3–4 PRs (scaffolding, hero, widgets, polish).
+- **Related backlog to fold in:** Dashboard RECIENTE inline category assignment (see Features) — fits the dashboard redesign slice naturally.
 
 ### Flow 03 — Add transaction (quick-capture redesign)
 - **Priority:** Medium
@@ -78,16 +73,9 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **Priority:** Medium
 - **What:** A = current de-noised, B = 50/30/20 as a story, C = calendar-first. Today's `/plan` is closest to A but noisy.
 
-### Flow 06 — Settings redesign (Variant A)
-- **Priority:** High · **Ready to merge** (branch `feat/settings-visual-polish`, 2026-04-20)
-- **Approach shift:** Original plan stood up sub-editors inside `/settings/*` for every domain (cuentas, categorías, recurrentes, fuentes). We pivoted to **trim settings to pure preferences/credentials** and route domain CRUD through existing hubs. Rationale: `/accounts`, `/plan?tab=presupuesto`, `/plan?tab=recurrentes` already expose full CRUD — duplicating editors under `/settings` was redundant.
-- **Final surfaces:**
-  - **Settings** — 7 preference rows: Perfil, Integraciones, Importación por correo, Contraseñas de PDF, Etiquetas, Actividad de uso, Reportar bug. Identity hero + search preserved.
-  - **Bandeja (`/gestionar`)** — now renders the "Ir a" link grid on desktop (was mobile-only). 8 entries: Cuentas, Categorías, Recurrentes, Destinatarios, Categorizar, Importar, Deudas, Ajustes.
-  - **Avatar quick menu** — gained a 4-icon "Ir a" row (Cuentas, Categorías, Recurrentes, Importar) above the footer. One-tap jump from anywhere.
-- **Chrome unification:** `/settings/analytics` rewrote `PageHero` → `PageHeaderRow`. All `/settings/*` sub-pages get a desktop "← Volver a Ajustes" back link. Top-level `Analytics` sidebar entry removed.
-- **Perf fix bundled:** `getEmailIngestAddress()` was uncached (DB hit every load). Now wrapped with `"use cache"` + `cacheTag("email-ingest")`. Settings page also stopped duplicating the profile query (now uses cached `getProfile()`).
-- **Deferred (not in this slice):** anonymous-telemetry toggle, export-all-data (CSV/JSON), delete-account self-serve (confirmation + soft-delete flow), settings search indexing beyond keyword arrays.
+### Flow 06 — Settings Variant A · webapp follow-ups
+- **Priority:** Low · **Shipped in PR #200** (webapp trim) and PR #201 (mobile mirror + Flow 03 capture + avatar menu).
+- **Deferred from the slice:** anonymous-telemetry toggle, export-all-data (CSV/JSON), delete-account self-serve (confirmation + soft-delete flow), settings search indexing beyond keyword arrays.
 
 ### Flow 06 — Settings Variant B (People / couples mode)
 - **Priority:** Low · **Future**
@@ -155,30 +143,25 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **Context:** Auto-tag from destinatario during import shipped in PR #138. This is the remaining work.
 
 ### Mobile app — Apple compliance (pre-submission)
-- **Priority:** High · **Mostly shipped** (branch `feat/settings-visual-polish`, 2026-04-20)
-- **Done:**
-  - `/privacy` + `/privacy/en` + `/terms` + `/terms/en` routes created on webapp with `LegalLayout` chrome. Host domain currently `pfm.sanson1911.cloud` (pending rebrand rename).
-  - `PrivacyInfo.xcprivacy` declares collected data types: email, user ID, other financial info, other user content — all linked to user, not tracking, purpose = app functionality.
-  - `NSAllowsLocalNetworking: true` removed from `ios/Zeta/Info.plist`. `NSBonjourServices` + `NSLocalNetworkUsageDescription` kept for Expo dev launcher discovery with Spanish description that clarifies dev-only behavior.
-  - Mobile `/settings` page: new "Legal" section with Privacy + Terms links (via `expo-web-browser` → `EXPO_PUBLIC_API_URL`) + bottom disclaimer "Zeta no es un asesor financiero".
+- **Priority:** High · **Tech done, submission-blockers remain** (shipped in PR #200).
+- **Done in PR #200:** `/privacy` + `/privacy/en` + `/terms` + `/terms/en` routes on webapp with `LegalLayout` chrome; `PrivacyInfo.xcprivacy` declares email/user ID/other financial info/other user content (linked-not-tracking, purpose = app functionality); `NSAllowsLocalNetworking: true` removed from `ios/Zeta/Info.plist`; mobile `/settings` has Legal section + disclaimer.
 - **Deferred — add when actual camera/photo feature lands:**
   - `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` in `app.json` `ios.infoPlist`. Apple flags unused permission strings — don't add preemptively. Hook into whichever PR introduces `expo-camera` / `expo-image-picker`. Current `DocumentPicker` (Files app) doesn't need either.
 - **Still required before submission:**
   - Privacy Policy URL must be **stable** (pending webapp domain rebrand rename — coordinate so URL is final before App Store Connect submission; updating later triggers re-review).
   - Financial-app disclosure in App Store Connect submission form.
   - `privacy@zeta.app` + `legal@zeta.app` mailboxes must accept mail (or replace placeholders in `legal-layout.tsx` + privacy/terms-content).
-- **Found:** Mobile pages session, 2026-04-14
+- **Found:** Mobile pages session, 2026-04-14.
 
 ### Mobile app — Play Store production release (rebrand + promote from alpha/beta)
-- **Priority:** High · **Tech prep done** — branch `feat/settings-visual-polish`, 2026-04-20
-- **Shipped this session:**
-  - Bundle drift fixed: `app.json` now uses `com.zetafinance.app` for both `ios.bundleIdentifier` and `android.package` (was `com.venti5.zeta`, out of sync with `build.gradle` + Xcode project).
-  - Version bumped 1.0.0 → 1.1.0 across `app.json`, `ios/Info.plist`, `android/app/build.gradle`. `versionCode` auto-increments via EAS (`appVersionSource: remote`).
-  - `AndroidManifest.xml` hardened: removed `SYSTEM_ALERT_WINDOW` (overlay permission — Play flags for finance apps); set `android:allowBackup="false"` to prevent sensitive data in ADB backups.
-  - `targetSdkVersion` + `compileSdkVersion` inherited from Expo SDK 55 version catalog → both 35+ automatically.
-  - Data Safety declaration drafted at `docs/play-store/DATA_SAFETY.md`.
-  - Spanish listing copy drafted at `docs/play-store/LISTING_ES.md` (título, descripción corta, descripción completa, categorías, screenshots checklist).
-  - In-app disclaimer + Privacy/Terms links live in mobile `/settings` (see Apple compliance entry).
+- **Priority:** High · **Tech prep done** (shipped in PR #200). Blocked on user-supplied assets + compliance.
+- **Tech prep shipped in PR #200:**
+  - Bundle unified to `com.zetafinance.app` across `app.json`, `build.gradle`, Xcode project.
+  - Version 1.0.0 → 1.1.0; `versionCode` auto-increments via EAS `appVersionSource: remote`.
+  - `AndroidManifest.xml` hardened: removed `SYSTEM_ALERT_WINDOW`; set `android:allowBackup="false"`.
+  - `targetSdkVersion` + `compileSdkVersion` at 35+ via Expo SDK 55.
+  - Data Safety draft at `docs/play-store/DATA_SAFETY.md`; Spanish listing copy at `docs/play-store/LISTING_ES.md`.
+  - In-app disclaimer + Privacy/Terms links in mobile `/settings`.
 - **Goal:** Ship Zeta to Play Store production track. Existing draft is on closed (alpha/beta). Name stays "Zeta"; bundle stays `com.zetafinance.app`; palette stays (`#121412` splash bg). User will deliver new brand PNGs later.
 
 - **Assets (user-supplied, pending)**
