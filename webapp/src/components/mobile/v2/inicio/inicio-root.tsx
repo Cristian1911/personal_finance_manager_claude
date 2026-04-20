@@ -1,18 +1,42 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { Plus, RotateCcw, Settings2 } from "lucide-react";
+import { toast } from "sonner";
 import { PulseWidget } from "./pulse-widget";
-import { InicioMetricsGrid } from "./inicio-metrics-grid";
-import { InicioToolRow } from "./inicio-tool-row";
-import { InicioActivity } from "./inicio-activity";
-import { InicioAttentionTimeline } from "./inicio-attention-timeline";
 import { InicioStarter } from "./inicio-starter";
-import { InicioImportStrip } from "./inicio-import-strip";
+import { WidgetGrid, type WidgetRender } from "./widget-grid";
+import { AddWidgetSheet } from "./add-widget-sheet";
+import { SectionDivider } from "./section-divider";
+import { WidgetEditSheet } from "./widget-edit-sheet";
+import { PurchaseRecommenderDrawer } from "./purchase-recommender-drawer";
+import { renderAttentionWidget } from "./widgets/attention-widget";
+import { renderRitmoWidget } from "./widgets/ritmo-widget";
+import { renderWhereTodayWidget } from "./widgets/where-today-widget";
+import {
+  renderRecentWidget,
+  type RecentActivityTx,
+} from "./widgets/recent-widget";
+import { renderPuedoComprarloWidget } from "./widgets/puedo-comprarlo-widget";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import { useLiveDashboard } from "@/hooks/use-live-metrics";
+import { cn } from "@/lib/utils";
+import {
+  ARRANGEABLE_TYPES,
+  DEFAULT_LAYOUT,
+  SYSTEM_INSIGHTS,
+  WIDGET_CATALOG,
+  type DashboardLayout,
+  type WidgetInstance,
+  type WidgetSize,
+  type WidgetType,
+} from "@/lib/dashboard/widgets";
+import { updateMobileLayout } from "@/actions/dashboard-config";
 import type { LiveDashboardData } from "@/actions/live-dashboard";
 import type { BurnRateResponse } from "@/actions/burn-rate";
 import type { CurrencyCode } from "@/types/domain";
 import type { UpcomingIncomeItem } from "./timeline-model";
+import type { MobileDashboardLayout } from "@/types/dashboard-config";
 
 export interface InicioRootProps {
   hero: {
@@ -20,7 +44,6 @@ export interface InicioRootProps {
     availableTotal: number;
     daysRemaining: number;
     currency: CurrencyCode;
-    // Pay-cycle fields (optional for backward compatibility)
     nextIncomeDate?: string | null;
     nextIncomeAmount?: number;
     nextIncomeName?: string | null;
@@ -57,28 +80,42 @@ export interface InicioRootProps {
   totalBudget: number;
   starterMode: boolean;
   daysSinceImport: number;
-  recentTransactions: Array<{
-    id: string;
-    description: string;
-    amount: number;
-    currency_code: CurrencyCode;
-    direction: "INFLOW" | "OUTFLOW";
-    transaction_date: string;
-    account_id: string;
-    account_name: string;
-    account_color: string | null;
-    account_mask: string | null;
-    account_bank_key: string | null;
-    account_type: "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "CASH" | "INVESTMENT" | "LOAN" | "OTHER";
-    category_id: string | null;
-    category_name: string | null;
-    category_icon: string | null;
-    destinatario_id: string | null;
-    destinatario_name: string | null;
-    recurrence_group_id: string | null;
-    tags: Array<{ id: string; name: string; color: string | null; group_color: string | null }>;
-  }>;
+  recentTransactions: RecentActivityTx[];
   currency: CurrencyCode;
+  /** Server-saved layout. Undefined → DEFAULT_LAYOUT. */
+  initialLayout?: MobileDashboardLayout;
+}
+
+function generateId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `w-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
+}
+
+function normalizeLayout(
+  layout: MobileDashboardLayout | undefined,
+): DashboardLayout {
+  if (!layout) return DEFAULT_LAYOUT;
+  // Keep only arrangeable widget types — drops system widgets that may have
+  // leaked into older layouts, plus unknown types from deprecated catalogs.
+  // Also migrates the deprecated `attention XS` to S so it pairs with recent.
+  const widgets = layout.widgets
+    .filter((w) => ARRANGEABLE_TYPES.has(w.type))
+    .map((w) => {
+      const size: WidgetSize =
+        w.type === "attention" && w.size === "XS" ? "S" : w.size;
+      return {
+        id: w.id,
+        type: w.type as WidgetInstance["type"],
+        size,
+      };
+    });
+  if (widgets.length === 0) return DEFAULT_LAYOUT;
+  return {
+    pulseRange: layout.pulseRange,
+    widgets,
+  };
 }
 
 export function InicioRoot({
@@ -87,15 +124,38 @@ export function InicioRoot({
   attentionItems,
   upcomingIncome,
   burnRateData,
-  totalBudget,
   starterMode,
   daysSinceImport,
   recentTransactions,
   currency,
+  initialLayout,
 }: InicioRootProps) {
+  const [layout, setLayout] = useState<DashboardLayout>(() =>
+    normalizeLayout(initialLayout),
+  );
+  const [editing, setEditing] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
+  const [puedoOpen, setPuedoOpen] = useState(false);
+  const [, startPersist] = useTransition();
   const { activeZone, toggle } = useExpandableZone<string>();
 
-  // Must be called before any conditional return (Rules of Hooks)
+  const editingIndex = editingWidgetId
+    ? layout.widgets.findIndex((w) => w.id === editingWidgetId)
+    : -1;
+  const editingWidget = editingIndex >= 0 ? layout.widgets[editingIndex] : null;
+
+  // Lock body scroll whenever any chip is expanded so the inline accordion
+  // doesn't fight touch gestures inside horizontal-scroll widget details.
+  useEffect(() => {
+    if (!activeZone) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [activeZone]);
+
   const live = useLiveDashboard(
     {
       hero: {
@@ -106,7 +166,11 @@ export function InicioRoot({
         nextIncomeAmount: hero.nextIncomeAmount ?? 0,
         nextIncomeName: hero.nextIncomeName ?? null,
         incomeConfigured: hero.incomeConfigured ?? false,
-        breakdown: hero.breakdown ?? { totalLiquid: 0, fixedExpenses: 0, alreadySpent: 0 },
+        breakdown: hero.breakdown ?? {
+          totalLiquid: 0,
+          fixedExpenses: 0,
+          alreadySpent: 0,
+        },
       },
       metrics: {
         spentToday: metrics.spentToday,
@@ -116,6 +180,150 @@ export function InicioRoot({
       attention: attentionItems,
     },
     currency,
+  );
+
+  const persist = useCallback(
+    (next: DashboardLayout) => {
+      setLayout(next);
+      startPersist(async () => {
+        const result = await updateMobileLayout({
+          pulseRange: next.pulseRange,
+          widgets: next.widgets.map((w) => ({
+            id: w.id,
+            type: w.type,
+            size: w.size,
+          })),
+        });
+        if (!result.success) {
+          toast.error(result.error ?? "No se pudo guardar tu layout");
+        }
+      });
+    },
+    [],
+  );
+
+  const handleRemove = useCallback(
+    (id: string) =>
+      persist({ ...layout, widgets: layout.widgets.filter((w) => w.id !== id) }),
+    [layout, persist],
+  );
+
+  const handleAdd = useCallback(
+    (type: WidgetType) => {
+      const entry = WIDGET_CATALOG.find((c) => c.type === type);
+      if (!entry) return;
+      const instance: WidgetInstance = {
+        id: generateId(),
+        type,
+        size: entry.defaultSize,
+      };
+      persist({ ...layout, widgets: [...layout.widgets, instance] });
+    },
+    [layout, persist],
+  );
+
+  const handleMove = useCallback(
+    (id: string, delta: -1 | 1) => {
+      const widgets = [...layout.widgets];
+      const idx = widgets.findIndex((w) => w.id === id);
+      const target = idx + delta;
+      if (idx === -1 || target < 0 || target >= widgets.length) return;
+      [widgets[idx], widgets[target]] = [widgets[target], widgets[idx]];
+      persist({ ...layout, widgets });
+    },
+    [layout, persist],
+  );
+
+  const handleResize = useCallback(
+    (id: string, size: WidgetSize) => {
+      const current = layout.widgets.find((w) => w.id === id);
+      if (!current || current.size === size) return;
+      const widgets = layout.widgets.map((w) =>
+        w.id === id ? { ...w, size } : w,
+      );
+      persist({ ...layout, widgets });
+    },
+    [layout, persist],
+  );
+
+  const handleResetToDefault = useCallback(() => {
+    persist({
+      pulseRange: DEFAULT_LAYOUT.pulseRange,
+      widgets: DEFAULT_LAYOUT.widgets.map((w) => ({
+        ...w,
+        id: generateId(),
+      })),
+    });
+  }, [persist]);
+
+  const existingTypes = useMemo(
+    () => new Set(layout.widgets.map((w) => w.type)),
+    [layout.widgets],
+  );
+
+  const renderWidget = useCallback(
+    (w: WidgetInstance): WidgetRender => {
+      switch (w.type) {
+        case "attention":
+          return renderAttentionWidget({
+            overdueReminders: live.attention.overdueReminders,
+            upcomingPayments: live.attention.upcomingPayments,
+            pendingEmails: live.attention.pendingEmails,
+            upcomingIncome,
+            currency,
+            daysSinceImport,
+          });
+        case "ritmo":
+          return renderRitmoWidget({
+            dayOfMonth: metrics.dayOfMonth,
+            daysInMonth: metrics.daysInMonth,
+            burnRateData,
+            currency,
+          });
+        case "where_today":
+          return renderWhereTodayWidget({
+            spentToday: live.metrics.spentToday,
+            spentYesterday: live.metrics.spentYesterday,
+            avgLast7: live.metrics.avgLast7,
+            currency,
+          });
+        case "recent":
+          return renderRecentWidget({ transactions: recentTransactions });
+        case "puedo_comprarlo":
+          return renderPuedoComprarloWidget({
+            onOpen: () => setPuedoOpen(true),
+          });
+        default:
+          return {
+            tone: "muted",
+            accessibilityLabel: "Widget próximamente",
+            chip: (
+              <div className="flex h-full flex-col justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Widget
+                </p>
+                <p className="text-[12px] text-muted-foreground">Próximamente</p>
+              </div>
+            ),
+            detail: null,
+          };
+      }
+    },
+    [
+      live.attention.overdueReminders,
+      live.attention.upcomingPayments,
+      live.attention.pendingEmails,
+      live.metrics.spentToday,
+      live.metrics.spentYesterday,
+      live.metrics.avgLast7,
+      upcomingIncome,
+      currency,
+      daysSinceImport,
+      metrics.dayOfMonth,
+      metrics.daysInMonth,
+      burnRateData,
+      recentTransactions,
+    ],
   );
 
   if (starterMode) {
@@ -145,35 +353,104 @@ export function InicioRoot({
         onToggle={() => toggle("hero")}
       />
 
-      <InicioImportStrip
-        daysSinceImport={daysSinceImport}
-        hasPendingEmails={live.attention.pendingEmails.length > 0}
+      <SectionDivider label="Herramientas" />
+      <WidgetGrid
+        widgets={SYSTEM_INSIGHTS}
+        activeId={activeZone}
+        onToggle={toggle}
+        render={renderWidget}
       />
 
-      <InicioAttentionTimeline
-        overdueReminders={live.attention.overdueReminders}
-        upcomingPayments={live.attention.upcomingPayments}
-        pendingEmails={live.attention.pendingEmails}
-        upcomingIncome={upcomingIncome}
+      <SectionDivider label="Widgets" />
+      <WidgetGrid
+        widgets={layout.widgets}
+        activeId={editing ? null : activeZone}
+        onToggle={toggle}
+        render={renderWidget}
+        editing={editing}
+        onRemove={handleRemove}
+        onEdit={setEditingWidgetId}
+      />
+
+      {editing && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setCatalogOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-z-brass/30 bg-z-brass/5 py-3 text-[12px] font-semibold text-z-brass transition-colors active:bg-z-brass/10"
+          >
+            <Plus className="size-3.5" />
+            Añadir widget
+          </button>
+          <button
+            type="button"
+            onClick={handleResetToDefault}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/6 bg-white/[0.02] py-2.5 text-[11px] font-semibold text-muted-foreground transition-colors active:bg-white/[0.05]"
+          >
+            <RotateCcw className="size-3.5" />
+            Restablecer predeterminado
+          </button>
+        </div>
+      )}
+
+      <div className="flex justify-center pt-1">
+        <button
+          type="button"
+          onClick={() => setEditing((v) => !v)}
+          aria-label={editing ? "Terminar de organizar" : "Organizar widgets"}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition-colors",
+            editing
+              ? "border-z-brass/30 bg-z-brass/10 text-z-brass"
+              : "border-white/6 bg-white/[0.02] text-muted-foreground active:bg-white/[0.05]",
+          )}
+        >
+          <Settings2 className="size-3" />
+          {editing ? "Listo" : "Organizar"}
+        </button>
+      </div>
+
+      <AddWidgetSheet
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        onAdd={handleAdd}
+        existingTypes={existingTypes as Set<WidgetType>}
+      />
+
+      <WidgetEditSheet
+        open={Boolean(editingWidget)}
+        onOpenChange={(open) => {
+          if (!open) setEditingWidgetId(null);
+        }}
+        widget={editingWidget}
+        canMoveUp={editingIndex > 0}
+        canMoveDown={
+          editingIndex >= 0 && editingIndex < layout.widgets.length - 1
+        }
+        onMoveUp={() => {
+          if (!editingWidgetId) return;
+          handleMove(editingWidgetId, -1);
+        }}
+        onMoveDown={() => {
+          if (!editingWidgetId) return;
+          handleMove(editingWidgetId, 1);
+        }}
+        onResize={(size) => {
+          if (!editingWidgetId) return;
+          handleResize(editingWidgetId, size);
+        }}
+        onRemove={() => {
+          if (!editingWidgetId) return;
+          handleRemove(editingWidgetId);
+          setEditingWidgetId(null);
+        }}
+      />
+
+      <PurchaseRecommenderDrawer
+        open={puedoOpen}
+        onOpenChange={setPuedoOpen}
         currency={currency}
       />
-
-      <InicioMetricsGrid
-        daysInMonth={metrics.daysInMonth}
-        dayOfMonth={metrics.dayOfMonth}
-        spentToday={live.metrics.spentToday}
-        spentYesterday={live.metrics.spentYesterday}
-        avgLast7={live.metrics.avgLast7}
-        currency={metrics.currency}
-        burnRateData={burnRateData}
-        totalBudget={totalBudget}
-        expanded={activeZone}
-        onToggle={toggle}
-      />
-
-      <InicioToolRow currency={currency} />
-
-      <InicioActivity transactions={recentTransactions} />
     </div>
   );
 }

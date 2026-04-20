@@ -3,6 +3,7 @@ import { getAttentionItems } from "@/actions/attention-items";
 import { getBurnRate } from "@/actions/burn-rate";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getAccounts } from "@/actions/accounts";
+import { getMobileLayout } from "@/actions/dashboard-config";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import type { RecentTransaction } from "@/actions/transactions";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
@@ -18,7 +19,7 @@ interface MobileZoneProps {
 }
 
 export async function MobileZone({ month, currency, recentTx }: MobileZoneProps) {
-  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult, dailySpending, latestSnapshotDates] =
+  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult, dailySpending, latestSnapshotDates, mobileLayout] =
     await Promise.all([
       getDashboardHeroData(month, currency),
       getAttentionItems(),
@@ -27,6 +28,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
       getAccounts(),
       getDailySpending(month, currency),
       getLatestSnapshotDates(),
+      getMobileLayout(),
     ]);
 
   const allAccounts = accountsResult.success ? accountsResult.data : [];
@@ -161,6 +163,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
         daysSinceImport={daysSinceImport}
         recentTransactions={mobileRecentTx}
         currency={currency}
+        initialLayout={mobileLayout ?? undefined}
       />
     </>
   );

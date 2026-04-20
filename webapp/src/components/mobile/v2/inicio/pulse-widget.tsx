@@ -157,13 +157,13 @@ export function PulseWidget({
       ? "text-z-income"
       : status.tone === "brass"
         ? "text-z-brass"
-        : "text-muted-foreground";
+        : "text-z-sage-dark";
   const statusDotClass =
     status.tone === "income"
       ? "bg-z-income"
       : status.tone === "brass"
         ? "bg-z-brass"
-        : "bg-muted-foreground/50";
+        : "bg-z-sage-dark/40";
 
   const sparkColor =
     status.tone === "brass" ? "var(--color-z-brass)" : "var(--color-z-sage)";
@@ -180,7 +180,6 @@ export function PulseWidget({
       aria-expanded={expanded}
       aria-label="Expandir desglose del disponible diario"
     >
-      {/* Eyebrow + status */}
       <div className="flex items-center justify-between">
         <p className={SECTION_EYEBROW_CLASS}>Este mes · pulso</p>
         <span className={cn("flex items-center gap-1.5 text-[10px] font-semibold", statusToneClass)}>
@@ -189,7 +188,6 @@ export function PulseWidget({
         </span>
       </div>
 
-      {/* Value row + sparkline */}
       <div className="mt-2 flex items-end gap-3">
         <div className="min-w-0">
           <div className="flex items-baseline gap-0.5">
@@ -215,7 +213,6 @@ export function PulseWidget({
         </div>
       </div>
 
-      {/* Expandable math breakdown */}
       <div
         className="grid transition-[grid-template-rows] duration-200 ease-out"
         style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
@@ -231,7 +228,7 @@ export function PulseWidget({
               <div
                 className={cn(
                   PANEL_INSET_CLASS,
-                  "border-white/8 bg-black/20 p-3 space-y-1.5"
+                  "border-white/6 bg-black/20 p-3 space-y-1.5"
                 )}
               >
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-brass">
@@ -253,7 +250,7 @@ export function PulseWidget({
                     −{formatCurrency(breakdown.alreadySpent, currency)}
                   </span>
                 </div>
-                <div className="flex justify-between border-t border-white/8 pt-1.5 text-xs font-semibold text-foreground">
+                <div className="flex justify-between border-t border-white/6 pt-1.5 text-xs font-semibold text-foreground">
                   <span>= Disponible</span>
                   <span>{formatCurrency(availableTotal, currency)}</span>
                 </div>
@@ -263,7 +260,7 @@ export function PulseWidget({
                   {formatCurrency(availablePerDay, currency)}/día
                 </p>
                 {nextIncomeDate && (
-                  <div className="flex justify-between border-t border-white/8 pt-1.5 text-xs text-z-income">
+                  <div className="flex justify-between border-t border-white/6 pt-1.5 text-xs text-z-income">
                     <span>Próximo ingreso: {nextIncomeName}</span>
                     <span className="tabular-nums">
                       +{formatCurrency(nextIncomeAmount, currency)} el{" "}
@@ -296,7 +293,7 @@ export function PulseWidget({
                 onClick={(e) => e.stopPropagation()}
                 className={cn(
                   PANEL_INSET_CLASS,
-                  "mt-2 flex items-center justify-between border-white/8 bg-black/20 p-3 transition-colors hover:bg-white/[0.04]"
+                  "mt-2 flex items-center justify-between border-white/6 bg-black/20 p-3 transition-colors hover:bg-white/[0.04]"
                 )}
               >
                 <div>
