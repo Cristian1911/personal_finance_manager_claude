@@ -33,7 +33,7 @@ export type WidgetType =
 
 /** Types that can legally live in the arrangeable widget zone (not system-fixed). */
 export const ARRANGEABLE_TYPES: ReadonlySet<string> = new Set([
-  "attention",
+  "puedo_comprarlo",
   "recent",
 ] satisfies WidgetType[]);
 
@@ -41,7 +41,7 @@ export const ARRANGEABLE_TYPES: ReadonlySet<string> = new Set([
 export const SYSTEM_TYPES: ReadonlySet<string> = new Set([
   "ritmo",
   "where_today",
-  "puedo_comprarlo",
+  "attention",
 ] satisfies WidgetType[]);
 
 export type WidgetInstance = {
@@ -69,14 +69,13 @@ export type DashboardLayout = {
 export const SYSTEM_INSIGHTS: WidgetInstance[] = [
   { id: "sys-ritmo", type: "ritmo", size: "XS" },
   { id: "sys-where-today", type: "where_today", size: "XS" },
-  { id: "sys-puedo-comprarlo", type: "puedo_comprarlo", size: "XS" },
+  { id: "sys-attention", type: "attention", size: "XS" },
 ];
 
 export const DEFAULT_LAYOUT: DashboardLayout = {
   pulseRange: "weekly",
   widgets: [
-    // Por resolver + Reciente share a row.
-    { id: "attention", type: "attention", size: "S" },
+    { id: "puedo_comprarlo", type: "puedo_comprarlo", size: "S" },
     { id: "recent", type: "recent", size: "S" },
   ],
 };
@@ -91,16 +90,16 @@ export type CatalogEntry = {
 
 export const WIDGET_CATALOG: CatalogEntry[] = [
   {
-    type: "attention",
-    label: "Por resolver",
-    description: "Pagos vencidos, próximos y correos pendientes",
+    type: "recent",
+    label: "Movimientos recientes",
+    description: "Tus últimas transacciones",
     defaultSize: "S",
     available: true,
   },
   {
-    type: "recent",
-    label: "Movimientos recientes",
-    description: "Tus últimas transacciones",
+    type: "puedo_comprarlo",
+    label: "¿Puedo comprarlo?",
+    description: "Evalúa una compra contra el plan",
     defaultSize: "S",
     available: true,
   },

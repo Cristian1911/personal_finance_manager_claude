@@ -97,20 +97,15 @@ function normalizeLayout(
   layout: MobileDashboardLayout | undefined,
 ): DashboardLayout {
   if (!layout) return DEFAULT_LAYOUT;
-  // Keep only arrangeable widget types — drops system widgets that may have
-  // leaked into older layouts, plus unknown types from deprecated catalogs.
-  // Also migrates the deprecated `attention XS` to S so it pairs with recent.
+  // Keep only arrangeable widget types. Drops system widgets that may have
+  // leaked into older saved layouts, plus unknown types from deprecated catalogs.
   const widgets = layout.widgets
     .filter((w) => ARRANGEABLE_TYPES.has(w.type))
-    .map((w) => {
-      const size: WidgetSize =
-        w.type === "attention" && w.size === "XS" ? "S" : w.size;
-      return {
-        id: w.id,
-        type: w.type as WidgetInstance["type"],
-        size,
-      };
-    });
+    .map((w) => ({
+      id: w.id,
+      type: w.type as WidgetInstance["type"],
+      size: w.size,
+    }));
   if (widgets.length === 0) return DEFAULT_LAYOUT;
   return {
     pulseRange: layout.pulseRange,
