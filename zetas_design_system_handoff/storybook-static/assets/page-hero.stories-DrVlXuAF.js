@@ -1,0 +1,24 @@
+import{t as e}from"./jsx-runtime-Ds4jeNO1.js";import{t}from"./utils-D4bLmd5U.js";import{t as n}from"./button-CNP2-gLS.js";var r=e(),i={sage:`bg-[radial-gradient(circle_at_top_left,rgba(63,70,50,0.26),transparent_42%),linear-gradient(180deg,rgba(27,30,27,0.96),rgba(18,20,18,0.98))]`,brass:`bg-[radial-gradient(circle_at_top_left,rgba(147,120,68,0.16),transparent_40%),linear-gradient(180deg,rgba(30,30,26,0.96),rgba(18,20,18,0.98))]`};function a({variant:e=`sage`,pills:n,title:a,description:o,actions:s,children:c,className:l}){return(0,r.jsx)(`section`,{className:t(`overflow-hidden rounded-[28px] border border-white/6 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] lg:px-7`,i[e],l),children:(0,r.jsxs)(`div`,{className:`space-y-6`,children:[(0,r.jsxs)(`div`,{className:`flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between`,children:[(0,r.jsxs)(`div`,{className:`max-w-3xl space-y-3`,children:[n&&(0,r.jsx)(`div`,{className:`flex flex-wrap items-center gap-2`,children:n}),(0,r.jsxs)(`div`,{className:`space-y-2`,children:[(0,r.jsx)(`h1`,{className:`text-2xl font-semibold tracking-tight text-z-white lg:text-3xl`,children:a}),(0,r.jsx)(`p`,{className:`max-w-2xl text-sm leading-6 text-muted-foreground`,children:o})]})]}),s&&(0,r.jsx)(`div`,{className:`flex flex-wrap gap-3`,children:s})]}),c]})})}function o({children:e,className:n}){return(0,r.jsx)(`span`,{className:t(`rounded-full border border-white/6 bg-black/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-sage-light`,n),children:e})}function s({children:e,className:n}){return(0,r.jsx)(`span`,{className:t(`rounded-full border border-z-brass/30 bg-z-brass/10 px-3 py-1 text-[11px] font-medium text-z-brass`,n),children:e})}a.__docgenInfo={description:``,methods:[],displayName:`PageHero`,props:{variant:{required:!1,tsType:{name:`union`,raw:`keyof typeof GRADIENTS`,elements:[{name:`literal`,value:`sage`},{name:`literal`,value:`brass`}]},description:``,defaultValue:{value:`"sage"`,computed:!1}},pills:{required:!1,tsType:{name:`ReactReactNode`,raw:`React.ReactNode`},description:``},title:{required:!0,tsType:{name:`string`},description:``},description:{required:!0,tsType:{name:`string`},description:``},actions:{required:!1,tsType:{name:`ReactReactNode`,raw:`React.ReactNode`},description:``},children:{required:!1,tsType:{name:`ReactReactNode`,raw:`React.ReactNode`},description:``},className:{required:!1,tsType:{name:`string`},description:``}}},o.__docgenInfo={description:``,methods:[],displayName:`HeroPill`,props:{children:{required:!0,tsType:{name:`ReactReactNode`,raw:`React.ReactNode`},description:``},className:{required:!1,tsType:{name:`string`},description:``}}},s.__docgenInfo={description:``,methods:[],displayName:`HeroAccentPill`,props:{children:{required:!0,tsType:{name:`ReactReactNode`,raw:`React.ReactNode`},description:``},className:{required:!1,tsType:{name:`string`},description:``}}};var c={title:`UI/PageHero`,component:a,tags:[`autodocs`],argTypes:{variant:{control:`select`,options:[`sage`,`brass`]}}},l={args:{variant:`sage`,title:`¿Estás al día con tu presupuesto?`,description:`Gestiona tu dinero con el método 50/30/20 y conoce en qué estás gastando cada peso.`,pills:(0,r.jsxs)(r.Fragment,{children:[(0,r.jsx)(o,{children:`Presupuesto`}),(0,r.jsx)(s,{children:`Abril 2026`})]}),actions:(0,r.jsx)(n,{children:`Ver detalle`})}},u={args:{variant:`brass`,title:`Planifica tu deuda`,description:`Usa la estrategia bola de nieve o avalancha para salir de tus deudas más rápido.`,pills:(0,r.jsx)(s,{children:`Deudas activas: 3`})}},d={args:{title:`Cuentas bancarias`,description:`Conecta tus extractos para un seguimiento automático.`}};l.parameters={...l.parameters,docs:{...l.parameters?.docs,source:{originalSource:`{
+  args: {
+    variant: "sage",
+    title: "¿Estás al día con tu presupuesto?",
+    description: "Gestiona tu dinero con el método 50/30/20 y conoce en qué estás gastando cada peso.",
+    pills: <>
+        <HeroPill>Presupuesto</HeroPill>
+        <HeroAccentPill>Abril 2026</HeroAccentPill>
+      </>,
+    actions: <Button>Ver detalle</Button>
+  }
+}`,...l.parameters?.docs?.source}}},u.parameters={...u.parameters,docs:{...u.parameters?.docs,source:{originalSource:`{
+  args: {
+    variant: "brass",
+    title: "Planifica tu deuda",
+    description: "Usa la estrategia bola de nieve o avalancha para salir de tus deudas más rápido.",
+    pills: <HeroAccentPill>Deudas activas: 3</HeroAccentPill>
+  }
+}`,...u.parameters?.docs?.source}}},d.parameters={...d.parameters,docs:{...d.parameters?.docs,source:{originalSource:`{
+  args: {
+    title: "Cuentas bancarias",
+    description: "Conecta tus extractos para un seguimiento automático."
+  }
+}`,...d.parameters?.docs?.source}}};var f=[`Sage`,`Brass`,`Minimal`];export{u as Brass,d as Minimal,l as Sage,f as __namedExportsOrder,c as default};

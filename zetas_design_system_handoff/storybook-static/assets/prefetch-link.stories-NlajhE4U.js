@@ -1,0 +1,9 @@
+import{t as e}from"./jsx-runtime-Ds4jeNO1.js";import{t}from"./next-link-d5Y_CuH8.js";function n(){return{push:e=>console.log(`[Storybook] router.push:`,e),replace:e=>console.log(`[Storybook] router.replace:`,e),back:()=>console.log(`[Storybook] router.back`),forward:()=>console.log(`[Storybook] router.forward`),refresh:()=>console.log(`[Storybook] router.refresh`),prefetch:()=>Promise.resolve()}}var r=e();function i({onMouseEnter:e,...i}){let a=n();return(0,r.jsx)(t,{...i,onMouseEnter:t=>{let n=typeof i.href==`string`?i.href:i.href.pathname;n&&a.prefetch(n),e?.(t)}})}i.__docgenInfo={description:``,methods:[],displayName:`PrefetchLink`};var a={title:`UI/PrefetchLink`,component:i,tags:[`autodocs`]},o={render:()=>(0,r.jsx)(i,{href:`/dashboard`,className:`text-sm text-primary underline underline-offset-4`,children:`Ir al dashboard`})},s={render:()=>(0,r.jsx)(i,{href:`/transactions`,className:`inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground`,children:`Ver transacciones`})};o.parameters={...o.parameters,docs:{...o.parameters?.docs,source:{originalSource:`{
+  render: () => <PrefetchLink href="/dashboard" className="text-sm text-primary underline underline-offset-4">
+      Ir al dashboard
+    </PrefetchLink>
+}`,...o.parameters?.docs?.source}}},s.parameters={...s.parameters,docs:{...s.parameters?.docs,source:{originalSource:`{
+  render: () => <PrefetchLink href="/transactions" className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+      Ver transacciones
+    </PrefetchLink>
+}`,...s.parameters?.docs?.source}}};var c=[`Default`,`AsButton`];export{s as AsButton,o as Default,c as __namedExportsOrder,a as default};

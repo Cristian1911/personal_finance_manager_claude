@@ -1,0 +1,1 @@
+import{o as e}from"./components-CZKPSO4T.js";export{e as createCopyToClipboardFunction};

@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, Pressable, Alert, Switch } from "react-native";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useState } from "react";
 import {
   User,
@@ -15,6 +16,8 @@ import {
   ChevronRight,
   Fingerprint,
   ShieldCheck,
+  FileText,
+  ShieldAlert,
 } from "lucide-react-native";
 import {
   isBiometricsAvailable,
@@ -33,6 +36,7 @@ import { clearDatabase, getDatabase } from "../../lib/db/database";
 import { disableDemoMode } from "../../lib/demo-mode";
 import { useTheme, type ThemeMode } from "../../lib/theme";
 import { COLORS } from "../../lib/constants/colors";
+import { LEGAL_URLS } from "../../lib/constants/urls";
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -480,6 +484,26 @@ export default function SettingsScreen() {
           onPress={() => router.push("/bug-report" as never)}
         />
       </View>
+
+      <SectionHeader title="Legal" />
+      <View className="bg-z-surface-2-55 mb-4">
+        <SettingsRow
+          icon={<ShieldAlert size={18} color="#938C7E" />}
+          label="Política de privacidad"
+          onPress={() => WebBrowser.openBrowserAsync(LEGAL_URLS.privacy)}
+        />
+        <View className="h-px bg-white-6 ml-12" />
+        <SettingsRow
+          icon={<FileText size={18} color="#938C7E" />}
+          label="Términos de servicio"
+          onPress={() => WebBrowser.openBrowserAsync(LEGAL_URLS.terms)}
+        />
+      </View>
+
+      <Text className="px-5 pb-10 text-center font-inter text-[11px] leading-relaxed text-z-sage-dark">
+        Zeta no es un asesor financiero. La información mostrada es solo para
+        organizar tus finanzas personales.
+      </Text>
     </ScrollView>
   );
 }

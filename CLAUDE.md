@@ -13,6 +13,24 @@
 - `services/pdf_parser/` — Python/FastAPI PDF parser for Bancolombia statements
 - `supabase/` — migrations and config (linked to remote, no local Docker)
 
+## Design Source of Truth
+**Before redesigning any page, read the wireframe handoff first.** The canonical target for all redesigns lives here:
+- `claude-ai-design/Zeta Wireframes.html` — React-rendered wireframes by Claude Design (Flows 01–07)
+- `zetas_design_system_handoff/reference/` — FRONTEND_STANDARDS.md + HTML showcases
+- `zetas_design_system_handoff/mobile-screens/` — current-state screenshots (NOT the redesign target)
+- `docs/design-system/TOKENS.md` — token catalog
+
+Flows covered:
+- Flow 01 · Onboarding
+- Flow 02 · Home (variants A/B/C)
+- Flow 03 · Add transaction (variants A/B/C)
+- Flow 04 · Import (variants A/B)
+- Flow 05 · Plan (variants A/B/C)
+- Flow 06 · Settings (variants A/B) — Variant A is the ship target; B adds couples/People mode
+- Flow 07 · Can I afford it?
+
+**Rule:** When a redesign task comes in, open `Zeta Wireframes.html`, find the matching flow, and implement Variant A (Safe) unless the task explicitly names a different variant. Polishing on top of the current UI without checking the wireframe is the wrong slice.
+
 ## Code Patterns
 - Server Actions: `(prevState, formData) => Promise<ActionResult<T>>` with `useActionState`
 - Zod validation errors: `.issues[0].message` (not `.errors[0].message`)

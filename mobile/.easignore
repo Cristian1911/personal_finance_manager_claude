@@ -1,0 +1,53 @@
+# .easignore replaces .gitignore for EAS uploads — include both sets.
+
+# --- from .gitignore ---
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+.env
+.env*.local
+*.tsbuildinfo
+
+# Prebuilt native folders — EAS regenerates via prebuild
+/ios
+/android
+
+# --- EAS-specific additions ---
+.expo-shared
+.metro-cache
+.turbo
+.vscode
+.idea
+
+# Tests and fixtures not needed by native build
+__tests__
+__mocks__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+e2e
+
+# Docs
+*.md
+docs
+
+# Build artifacts
+*.map
+
+.keystore/

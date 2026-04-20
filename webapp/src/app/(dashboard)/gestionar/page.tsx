@@ -16,7 +16,7 @@ export default async function BandejaPage() {
       <MobileHeader variant="sub" title="Bandeja" />
 
       {/* Desktop */}
-      <div className="hidden lg:block space-y-6">
+      <div className="hidden lg:block space-y-8">
         <div className="space-y-1">
           <SectionEyebrow>Gestionar</SectionEyebrow>
           <PageHeaderRow
@@ -31,6 +31,10 @@ export default async function BandejaPage() {
           />
         </div>
         <AttentionHub signals={snapshot.signals} />
+        <div className="space-y-3">
+          <SectionEyebrow>Ir a</SectionEyebrow>
+          <MobileLinkGrid />
+        </div>
       </div>
 
       {/* Mobile */}

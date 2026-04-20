@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function EtiquetasPage() {
-  redirect("/settings#etiquetas");
+  redirect("/settings/etiquetas");
 }

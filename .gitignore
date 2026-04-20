@@ -41,6 +41,7 @@ webapp/e2e/.auth/
 .claude/settings.local.json
 .claude/last_session_summary.md
 .claude/plans/
+.claude/scheduled_tasks.lock
 
 # Keep skills, agents, and todo tracked
 # .claude/agents/ — tracked

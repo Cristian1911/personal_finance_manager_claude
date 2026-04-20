@@ -1,0 +1,1 @@
+import{i as e}from"./chunk-DseTPa7n.js";import{t}from"./react-CIi_Xeu6.js";var n=e(t(),1),r=globalThis?.document?n.useLayoutEffect:()=>{};export{r as t};

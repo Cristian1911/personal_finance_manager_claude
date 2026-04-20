@@ -1,7 +1,9 @@
 import Link from "next/link";
 import {
+  CalendarClock,
   Contact,
   FileUp,
+  Folder,
   Landmark,
   Settings,
   Tags,
@@ -10,17 +12,19 @@ import {
 } from "lucide-react";
 
 const LINKS: { href: string; icon: LucideIcon; label: string }[] = [
-  { href: "/categorizar", icon: Tags, label: "Categorizar" },
-  { href: "/destinatarios", icon: Contact, label: "Destinatarios" },
-  { href: "/import", icon: FileUp, label: "Importar" },
   { href: "/accounts", icon: Wallet, label: "Cuentas" },
+  { href: "/plan?tab=presupuesto", icon: Folder, label: "Categorías" },
+  { href: "/plan?tab=recurrentes", icon: CalendarClock, label: "Recurrentes" },
+  { href: "/destinatarios", icon: Contact, label: "Destinatarios" },
+  { href: "/categorizar", icon: Tags, label: "Categorizar" },
+  { href: "/import", icon: FileUp, label: "Importar" },
   { href: "/deudas", icon: Landmark, label: "Deudas" },
   { href: "/settings", icon: Settings, label: "Ajustes" },
 ];
 
 export function MobileLinkGrid() {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-3 gap-3 lg:grid-cols-4">
       {LINKS.map(({ href, icon: Icon, label }) => (
         <Link
           key={href}

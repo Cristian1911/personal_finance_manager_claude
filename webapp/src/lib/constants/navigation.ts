@@ -8,7 +8,6 @@ import {
   Inbox,
   Contact,
   Settings,
-  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,7 +55,6 @@ export const WORKSPACE_NAV: NavItem[] = [
 
 export const BOTTOM_NAV: NavItem[] = [
   { title: "Ajustes", href: "/settings", icon: Settings },
-  { title: "Analytics", href: "/settings/analytics", icon: BarChart3 },
 ];
 
 export function isNavItemActive(pathname: string, item: NavItem) {
