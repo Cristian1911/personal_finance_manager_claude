@@ -146,12 +146,3 @@ export function ChipDetailHeading({
   );
 }
 
-/** Map a tone to its value text class (use in custom chip content). */
-export function toneValueClass(tone: ChipTone): string {
-  return TONE[tone].value;
-}
-
-/** Map a tone to its accent/label text class. */
-export function toneLabelClass(tone: ChipTone): string {
-  return TONE[tone].label;
-}

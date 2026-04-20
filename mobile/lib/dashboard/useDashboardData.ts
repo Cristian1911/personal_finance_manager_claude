@@ -38,8 +38,8 @@ export type UpcomingItem = {
   accountName: string;
 };
 
-export type NextBill = UpcomingItem & { daysUntil: number } | null;
-export type NextIncome = UpcomingItem & { daysUntil: number } | null;
+export type NextBill = (UpcomingItem & { daysUntil: number }) | null;
+export type NextIncome = (UpcomingItem & { daysUntil: number }) | null;
 
 export type DashboardSummary = {
   currency: CurrencyCode;
@@ -208,25 +208,7 @@ export function useDashboardData() {
 
       const avgLast7 = last7Total / 7;
       const projectedMonthly = avgLast7 * daysInMonth;
-      const expectedByNow = (totalOutflow + pendingObligations) * (dayOfMonth / daysInMonth);
       const onTrack = projectedMonthly <= liquidBalance + totalOutflow;
-
-      // ── Next bill (earliest pending outflow in 7 days, excl credit cards) ─
-      const upcoming = pendingOccs
-        .filter((o: OccurrenceWithTemplate) => {
-          const acctType = accountMap.get(o.account_id)?.account_type ?? "";
-          const effective =
-            o.direction === "OUTFLOW" ||
-            (o.direction === "INFLOW" && isDebtAccountType(acctType));
-          const daysUntil = Math.ceil(
-            (new Date(o.occurrence_date + "T12:00:00").getTime() - now.getTime()) /
-              (1000 * 60 * 60 * 24)
-          );
-          return effective && daysUntil >= 0 && acctType !== "CREDIT_CARD";
-        })
-        .sort((a: OccurrenceWithTemplate, b: OccurrenceWithTemplate) =>
-          a.occurrence_date.localeCompare(b.occurrence_date)
-        );
 
       const daysUntilFrom = (iso: string) =>
         Math.max(
@@ -237,14 +219,40 @@ export function useDashboardData() {
           )
         );
 
-      const upcomingBills: UpcomingItem[] = upcoming.slice(0, 6).map(
-        (o: OccurrenceWithTemplate) => ({
-          id: o.id,
-          name: o.merchant_name ?? o.description ?? "Recurrente",
-          amount: o.expected_amount,
-          date: o.occurrence_date,
-          accountName: accountMap.get(o.account_id)?.name ?? "",
-        })
+      const buildUpcoming = (
+        predicate: (o: OccurrenceWithTemplate) => boolean,
+        fallbackName: string
+      ): UpcomingItem[] =>
+        pendingOccs
+          .filter(predicate)
+          .sort((a, b) => a.occurrence_date.localeCompare(b.occurrence_date))
+          .slice(0, 6)
+          .map((o) => ({
+            id: o.id,
+            name: o.merchant_name ?? o.description ?? fallbackName,
+            amount: o.expected_amount,
+            date: o.occurrence_date,
+            accountName: accountMap.get(o.account_id)?.name ?? "",
+          }));
+
+      const upcomingBills = buildUpcoming((o) => {
+        const acctType = accountMap.get(o.account_id)?.account_type ?? "";
+        const effective =
+          o.direction === "OUTFLOW" ||
+          (o.direction === "INFLOW" && isDebtAccountType(acctType));
+        return (
+          effective &&
+          daysUntilFrom(o.occurrence_date) >= 0 &&
+          acctType !== "CREDIT_CARD"
+        );
+      }, "Recurrente");
+
+      const upcomingIncomes = buildUpcoming(
+        (o) =>
+          o.direction === "INFLOW" &&
+          !isDebtAccountType(accountMap.get(o.account_id)?.account_type ?? "") &&
+          o.occurrence_date >= today,
+        "Ingreso"
       );
 
       const nextBill: NextBill =
@@ -254,27 +262,6 @@ export function useDashboardData() {
               daysUntil: daysUntilFrom(upcomingBills[0].date),
             }
           : null;
-
-      const upcomingIncomes: UpcomingItem[] = pendingOccs
-        .filter(
-          (o: OccurrenceWithTemplate) =>
-            o.direction === "INFLOW" &&
-            !isDebtAccountType(
-              accountMap.get(o.account_id)?.account_type ?? ""
-            ) &&
-            o.occurrence_date >= today
-        )
-        .sort((a: OccurrenceWithTemplate, b: OccurrenceWithTemplate) =>
-          a.occurrence_date.localeCompare(b.occurrence_date)
-        )
-        .slice(0, 6)
-        .map((o: OccurrenceWithTemplate) => ({
-          id: o.id,
-          name: o.merchant_name ?? o.description ?? "Ingreso",
-          amount: o.expected_amount,
-          date: o.occurrence_date,
-          accountName: accountMap.get(o.account_id)?.name ?? "",
-        }));
 
       const nextIncome: NextIncome =
         upcomingIncomes.length > 0
@@ -309,8 +296,6 @@ export function useDashboardData() {
       const daysLabel = nextIncomeOcc
         ? `${daysRemaining} días`
         : `${daysRemaining} días restantes`;
-
-      void expectedByNow; // reserved for future pulse heuristic
 
       setSummary({
         currency: "COP",

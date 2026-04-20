@@ -38,7 +38,7 @@ export function renderWhereTodayWidget({
 
   const sorted = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
   const topPreview = sorted.slice(0, 2);
-  const totalPreview = topPreview.reduce((s, [, v]) => s + v, 0) || 1;
+  const totalPreview = spentToday || 1;
 
   return {
     tone,
@@ -96,7 +96,7 @@ export function renderWhereTodayWidget({
         )}
       </View>
     ),
-    detail: (
+    detail: () => (
       <View className={`${PANEL_INSET_CLASS} p-3`}>
         <ChipDetailHeading tone={tone}>Gasto de hoy</ChipDetailHeading>
         {sorted.length === 0 ? (

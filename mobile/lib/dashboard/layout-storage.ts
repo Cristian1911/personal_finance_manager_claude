@@ -2,11 +2,11 @@ import { supabase } from "../supabase";
 import { getDatabase } from "../db/database";
 import { DEFAULT_LAYOUT, type DashboardLayout } from "./widgets";
 
-const PROFILE_SELECT = "mobile_dashboard_config";
-
 /**
- * Reads the layout from local SQLite first (fast), falls back to Supabase if
- * the local row is empty. Returns DEFAULT_LAYOUT when nothing is persisted.
+ * Reads the layout from local SQLite. Returns DEFAULT_LAYOUT when nothing is
+ * persisted locally. Supabase is the source of truth on write; the sync pull
+ * mirrors `profiles.mobile_dashboard_config` into SQLite so the next launch
+ * hits this path with zero latency.
  */
 export async function loadDashboardLayout(userId: string): Promise<DashboardLayout> {
   try {
@@ -69,5 +69,3 @@ function safeParse(raw: string): DashboardLayout | null {
   return null;
 }
 
-// Suppress unused warning from bundlers that tree-shake the select constant
-void PROFILE_SELECT;

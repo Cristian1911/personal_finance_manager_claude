@@ -22,7 +22,8 @@ function shortAccountName(a: AccountRow): string {
   }
   const mask = a.debit_card_mask;
   if (mask) {
-    const re = new RegExp(`\\s*·?\\s*\\*{2,}${mask}\\s*$`);
+    const escaped = mask.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`\\s*·?\\s*\\*{2,}${escaped}\\s*$`);
     const stripped = name.replace(re, "").trim();
     if (stripped.length > 0) return stripped;
   }
@@ -97,7 +98,7 @@ export function renderAccountsWidget({ accounts, currency }: AccountsWidgetData)
         )}
       </View>
     ),
-    detail: (
+    detail: () => (
       <View className={`${PANEL_INSET_CLASS} p-3`}>
         <ChipDetailHeading tone={tone}>Todas las cuentas</ChipDetailHeading>
         {sorted.length === 0 ? (

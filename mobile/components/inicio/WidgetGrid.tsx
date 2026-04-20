@@ -11,7 +11,8 @@ export type WidgetRender = {
   tone: ChipTone;
   accessibilityLabel?: string;
   chip: ReactNode;
-  detail: ReactNode;
+  /** Lazy — only invoked when the chip is the active one in its row. */
+  detail: () => ReactNode;
 };
 
 interface WidgetGridProps {
@@ -60,35 +61,35 @@ export function WidgetGrid({
   return (
     <View className="gap-2">
       {rows.map((row, i) => {
-        const activeInRow = row.find((w) => w.id === activeId);
-        const rendered = row.map((w) => ({ w, r: render(w) }));
+        const rendered = row.map((w) => ({
+          w,
+          r: render(w),
+          isActive: w.id === activeId,
+        }));
+        const active = rendered.find((x) => x.isActive);
         return (
           <View key={i} className="gap-2">
             <View className="flex-row items-stretch gap-2">
-              {rendered.map(({ w, r }) => {
-                const isActive = w.id === activeId;
-                const dimmed = Boolean(activeInRow) && !isActive;
-                return (
-                  <ExpandableChip
-                    key={w.id}
-                    tone={r.tone}
-                    active={isActive}
-                    dimmed={dimmed}
-                    editing={editing}
-                    accessibilityLabel={r.accessibilityLabel}
-                    onPress={() => onToggle(w.id)}
-                    onRemove={onRemove ? () => onRemove(w.id) : undefined}
-                  >
-                    {r.chip}
-                  </ExpandableChip>
-                );
-              })}
+              {rendered.map(({ w, r, isActive }) => (
+                <ExpandableChip
+                  key={w.id}
+                  tone={r.tone}
+                  active={isActive}
+                  dimmed={Boolean(active) && !isActive}
+                  editing={editing}
+                  accessibilityLabel={r.accessibilityLabel}
+                  onPress={() => onToggle(w.id)}
+                  onRemove={onRemove ? () => onRemove(w.id) : undefined}
+                >
+                  {r.chip}
+                </ExpandableChip>
+              ))}
             </View>
             <AnimatedAccordion
-              expanded={Boolean(activeInRow)}
+              expanded={Boolean(active)}
               estimatedHeight={800}
             >
-              {activeInRow ? render(activeInRow).detail : null}
+              {active ? active.r.detail() : null}
             </AnimatedAccordion>
           </View>
         );

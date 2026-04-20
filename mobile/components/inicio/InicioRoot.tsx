@@ -73,7 +73,7 @@ const UNKNOWN_RENDER: WidgetRender = {
       </Text>
     </View>
   ),
-  detail: null,
+  detail: () => null,
 };
 
 export function InicioRoot() {
@@ -88,17 +88,12 @@ export function InicioRoot() {
   const [editing, setEditing] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
 
-  const { activeZone, toggle, close } = useExpandableZone<string>();
+  const { activeZone, toggle } = useExpandableZone<string>();
 
   useEffect(() => {
     if (!userId) return;
     loadDashboardLayout(userId).then(setLayout).catch(() => {});
   }, [userId]);
-
-  // Close any open chip when entering/leaving edit mode
-  useEffect(() => {
-    close();
-  }, [editing, close]);
 
   const persist = useCallback(
     (next: DashboardLayout) => {

@@ -68,7 +68,7 @@ export function renderRecentWidget({ transactions }: RecentWidgetData) {
         )}
       </View>
     ),
-    detail: (
+    detail: () => (
       <View className={`${PANEL_INSET_CLASS} p-3`}>
         <ChipDetailHeading tone={tone}>Últimos movimientos</ChipDetailHeading>
         {visible.length === 0 ? (
