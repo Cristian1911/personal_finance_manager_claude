@@ -1,6 +1,5 @@
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
-import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { SettingsBackLink } from "@/components/settings/settings-back-link";
@@ -13,32 +12,28 @@ import {
   getUnrecognizedEmails,
   getAllowedSenders,
 } from "@/actions/email-ingest";
+import { getAccounts } from "@/actions/accounts";
 import type { Account } from "@/types/domain";
 
 export default async function EmailSettingsPage() {
   await connection();
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) redirect("/login");
 
   const [
-    { data: accounts },
+    accountsResult,
     emailIngestResult,
     unrecognizedResult,
     emailLogsResult,
     allowedSenders,
   ] = await Promise.all([
-    supabase
-      .from("accounts")
-      .select("id, name, currency_code, account_type, is_active")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .order("display_order"),
+    getAccounts(),
     getEmailIngestAddress(),
     getUnrecognizedEmails(),
     getEmailIngestLogs(),
     getAllowedSenders(),
   ]);
 
+  if (!accountsResult.success) redirect("/login");
+  const accounts = accountsResult.data;
   const emailIngestAddress = emailIngestResult.success ? emailIngestResult.data : null;
   const unrecognizedEmails = unrecognizedResult.success ? unrecognizedResult.data : [];
   const emailLogs = emailLogsResult.success ? emailLogsResult.data : [];
@@ -54,7 +49,7 @@ export default async function EmailSettingsPage() {
         />
       </div>
       <EmailIngestCard
-        accounts={(accounts ?? []) as Account[]}
+        accounts={accounts as Account[]}
         initialAddress={emailIngestAddress}
         initialAllowedSenders={allowedSenders}
       />

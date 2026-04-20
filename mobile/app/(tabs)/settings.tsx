@@ -36,6 +36,7 @@ import { clearDatabase, getDatabase } from "../../lib/db/database";
 import { disableDemoMode } from "../../lib/demo-mode";
 import { useTheme, type ThemeMode } from "../../lib/theme";
 import { COLORS } from "../../lib/constants/colors";
+import { LEGAL_URLS } from "../../lib/constants/urls";
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -489,13 +490,13 @@ export default function SettingsScreen() {
         <SettingsRow
           icon={<ShieldAlert size={18} color="#938C7E" />}
           label="Política de privacidad"
-          onPress={() => WebBrowser.openBrowserAsync(`${process.env.EXPO_PUBLIC_API_URL ?? "https://pfm.sanson1911.cloud"}/privacy`)}
+          onPress={() => WebBrowser.openBrowserAsync(LEGAL_URLS.privacy)}
         />
         <View className="h-px bg-white-6 ml-12" />
         <SettingsRow
           icon={<FileText size={18} color="#938C7E" />}
           label="Términos de servicio"
-          onPress={() => WebBrowser.openBrowserAsync(`${process.env.EXPO_PUBLIC_API_URL ?? "https://pfm.sanson1911.cloud"}/terms`)}
+          onPress={() => WebBrowser.openBrowserAsync(LEGAL_URLS.terms)}
         />
       </View>
 
