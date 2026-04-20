@@ -198,6 +198,29 @@
 - **What:** `debt_scenarios`, `wishlist_reflections`, `dashboard_config` tables are used by the webapp but not synced to mobile. Add to SYNC_TABLES when mobile features need them.
 - **Found:** Mobile audit, 2026-04-15
 
+### Mobile dashboard — Arrange mode (drag/resize)
+- **Priority:** Medium
+- **What:** Slice-3 shipped the widget shell (Pulse fixed + 4 widgets + catalog) with edit mode = remove/add only. The Arrange frame from the Claude Design handoff (long-press → header swaps to "Arrange · Drag · Resize · Remove" + S/M/L chips per widget) needs reanimated + gesture-handler work. All catalog entries currently render as `rounded-2xl border bg-black-10` placeholders while disabled.
+- **Touches:** `mobile/components/inicio/WidgetGrid.tsx`, new drag/resize gesture code, `widgets.ts` size contract already supports S/M/L.
+- **Found:** Slice-3 scope split, 2026-04-19
+
+### Mobile dashboard — Pulse trend data shape
+- **Priority:** Low
+- **What:** `PulseWidget` sparkline currently uses last-7 OUTFLOW sum per day (spend, not net cashflow). Design intent likely wants net cashflow (income - spend) or a moving-average disposable-per-day curve. Decide signal before hardening.
+- **Found:** Slice-3 dev, 2026-04-19
+
+### Mobile `transactions` table — `recurrence_group_id` column drift
+- **Priority:** Low
+- **What:** Supabase `transactions_enc` / `transactions` view has `recurrence_group_id` TEXT (nullable), but SQLite schema never added it. `pull.ts` silently drops it every cycle. Not blocking any feature today (`is_recurring` boolean covers the pill), but close the drift before any feature needs the group id.
+- **Fix:** `ALTER TABLE transactions ADD COLUMN recurrence_group_id TEXT` as a DB_MIGRATIONS v10 entry.
+- **Found:** mobile-sync-doctor, slice-3 audit, 2026-04-19
+
+### Mobile dashboard — widget catalog stubs
+- **Priority:** Medium
+- **What:** `spending_by_category`, `cashflow_calendar`, `debt_progress`, `merchants_this_month`, `shared_with_partner`, `goal` are listed in `WIDGET_CATALOG` but marked `available: false` and render a "Widget próximamente" placeholder if somehow added. Build them as each feature comes online so the catalog stops feeling hollow.
+- **Touches:** `mobile/lib/dashboard/widgets.ts`, new widget components under `mobile/components/inicio/widgets/`.
+- **Found:** Slice-3 scope, 2026-04-19
+
 ## Tech Debt
 
 ### Tx detail — `router.refresh()` on tag picker close

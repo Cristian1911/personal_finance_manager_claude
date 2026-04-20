@@ -1833,6 +1833,7 @@ export type Database = {
           full_name: string | null
           id: string
           locale: string
+          mobile_dashboard_config: Json | null
           monthly_salary: number | null
           onboarding_completed: boolean
           preferred_currency: Database["public"]["Enums"]["currency_code"]
@@ -1851,6 +1852,7 @@ export type Database = {
           full_name?: string | null
           id: string
           locale?: string
+          mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
@@ -1869,6 +1871,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           locale?: string
+          mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
@@ -1891,6 +1894,7 @@ export type Database = {
           full_name: string | null
           id: string
           locale: string
+          mobile_dashboard_config: Json | null
           monthly_salary: number | null
           onboarding_completed: boolean
           preferred_currency: Database["public"]["Enums"]["currency_code"]
@@ -1910,6 +1914,7 @@ export type Database = {
           full_name?: string | null
           id: string
           locale?: string
+          mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
@@ -1929,6 +1934,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           locale?: string
+          mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]

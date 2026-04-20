@@ -1,276 +1,282 @@
-import { View, ScrollView, RefreshControl } from "react-native";
-import { useCallback, useState } from "react";
-import { useFocusEffect } from "expo-router";
-import { formatDate, type CurrencyCode } from "@zeta/shared";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  RefreshControl,
+  Pressable,
+} from "react-native";
+import { Plus } from "lucide-react-native";
+import * as Crypto from "expo-crypto";
 import { useSync } from "../../lib/sync/hooks";
-import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
-import { getTransactions } from "../../lib/repositories/transactions";
-import { getPendingOccurrences, type OccurrenceWithTemplate } from "../../lib/repositories/recurring";
-import { DEBT_ACCOUNT_TYPES, isDebtAccountType, LIQUID_ACCOUNT_TYPES } from "../../lib/constants/accounts";
-import { toLocalDateString, toLocalMonthString } from "../../lib/utils/date";
+import { useAuth } from "../../lib/auth";
 import { COLORS } from "../../lib/constants/colors";
+import { toLocalDateString } from "../../lib/utils/date";
+import {
+  DEFAULT_LAYOUT,
+  WIDGET_CATALOG,
+  type DashboardLayout,
+  type PulseRange,
+  type WidgetInstance,
+  type WidgetType,
+} from "../../lib/dashboard/widgets";
+import {
+  loadDashboardLayout,
+  saveDashboardLayout,
+} from "../../lib/dashboard/layout-storage";
+import { useDashboardData } from "../../lib/dashboard/useDashboardData";
+import { useExpandableZone } from "../ui/useExpandableZone";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
-import { useExpandableZone } from "../ui/useExpandableZone";
-import { InicioHero } from "./InicioHero";
-import { InicioMetricsGrid } from "./InicioMetricsGrid";
-import { InicioAccountsHub } from "./InicioAccountsHub";
-import { InicioAttention } from "./InicioAttention";
-import { InicioActivity, type RecentTransaction } from "./InicioActivity";
-import type { AttentionPayment } from "./InicioAttention";
+import { MOBILE_TAB_BAR_CLEARANCE } from "../../lib/constants/styles";
+import { PulseWidget } from "./widgets/PulseWidget";
+import { WidgetGrid, type WidgetRender } from "./WidgetGrid";
+import { ChipEyebrow } from "../ui/ExpandableChip";
+import { AddWidgetSheet } from "./AddWidgetSheet";
+import { renderAccountsWidget } from "./widgets/AccountsWidget";
+import { renderNextBillWidget } from "./widgets/NextBillWidget";
+import { renderNextIncomeWidget } from "./widgets/NextIncomeWidget";
+import { renderWhereTodayWidget } from "./widgets/WhereTodayWidget";
+import { renderRecentWidget } from "./widgets/RecentWidget";
 
-interface DashboardState {
-  hero: {
-    availablePerDay: number;
-    availableTotal: number;
-    daysRemaining: number;
-    daysLabel: string;
-    breakdown: { totalLiquid: number; fixedExpenses: number; alreadySpent: number };
-  };
-  metrics: {
-    daysInMonth: number;
-    dayOfMonth: number;
-    spentToday: number;
-    spentYesterday: number;
-    avgLast7: number;
-  };
-  accounts: { count: number; netWorth: number };
-  upcomingPayments: AttentionPayment[];
-  recentTransactions: RecentTransaction[];
+const WEEKDAY_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const MONTH_ES = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "sep",
+  "oct",
+  "nov",
+  "dic",
+];
+
+function formatHeaderDate(d: Date): string {
+  return `${WEEKDAY_ES[d.getDay()]} · ${d.getDate()} ${MONTH_ES[d.getMonth()]}`;
 }
 
-const INITIAL_STATE: DashboardState = {
-  hero: { availablePerDay: 0, availableTotal: 0, daysRemaining: 0, daysLabel: "", breakdown: { totalLiquid: 0, fixedExpenses: 0, alreadySpent: 0 } },
-  metrics: { daysInMonth: 30, dayOfMonth: 1, spentToday: 0, spentYesterday: 0, avgLast7: 0 },
-  accounts: { count: 0, netWorth: 0 },
-  upcomingPayments: [],
-  recentTransactions: [],
+const UNKNOWN_RENDER: WidgetRender = {
+  tone: "foreground",
+  accessibilityLabel: "Widget",
+  chip: (
+    <View>
+      <ChipEyebrow tone="foreground">Widget</ChipEyebrow>
+      <Text className="mt-2 text-[20px] font-inter-bold text-z-sage-dark">
+        —
+      </Text>
+      <Text className="mt-1 text-[10px] font-inter text-muted-foreground">
+        Próximamente
+      </Text>
+    </View>
+  ),
+  detail: () => null,
 };
 
 export function InicioRoot() {
   const { sync } = useSync();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
+
+  const { summary, reload } = useDashboardData();
+
+  const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_LAYOUT);
+  const [refreshing, setRefreshing] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+
   const { activeZone, toggle } = useExpandableZone<string>();
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [data, setData] = useState<DashboardState>(INITIAL_STATE);
+  useEffect(() => {
+    if (!userId) return;
+    loadDashboardLayout(userId).then(setLayout).catch(() => {});
+  }, [userId]);
 
-  const currency: CurrencyCode = "COP";
+  const persist = useCallback(
+    (next: DashboardLayout) => {
+      setLayout(next);
+      if (userId) saveDashboardLayout(userId, next).catch(() => {});
+    },
+    [userId]
+  );
 
-  const loadData = useCallback(async () => {
-    try {
-      const now = new Date();
-      const currentMonth = toLocalMonthString(now);
-      const today = toLocalDateString(now);
-      const dayOfMonth = now.getDate();
-      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const handlePulseRangeChange = useCallback(
+    (next: PulseRange) => persist({ ...layout, pulseRange: next }),
+    [layout, persist]
+  );
 
-      const [accounts, transactions, pendingOccs] = await Promise.all([
-        getAllAccounts(),
-        getTransactions({ month: currentMonth, limit: 500 }),
-        getPendingOccurrences(),
-      ]);
+  const handleRemove = useCallback(
+    (id: string) =>
+      persist({ ...layout, widgets: layout.widgets.filter((w) => w.id !== id) }),
+    [layout, persist]
+  );
 
-      const txRows = transactions as any[];
-      const accountMap = new Map(accounts.map((a: AccountRow) => [a.id, a]));
-
-      // ── Liquid balance (CHECKING + SAVINGS only, matching webapp) ──
-      const liquidBalance = accounts
-        .filter((a: AccountRow) => LIQUID_ACCOUNT_TYPES.has(a.account_type))
-        .reduce((sum: number, a: AccountRow) => sum + a.current_balance, 0);
-
-      // ── Next income occurrence ──
-      const nextIncome = pendingOccs.find(
-        (o: OccurrenceWithTemplate) =>
-          o.direction === "INFLOW" &&
-          !isDebtAccountType(accountMap.get(o.account_id)?.account_type ?? "") &&
-          o.occurrence_date >= today
-      );
-
-      // Window end: next income date or month end
-      const windowEndDate = nextIncome
-        ? nextIncome.occurrence_date
-        : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
-
-      const daysRemaining = Math.max(
-        1,
-        Math.ceil(
-          (new Date(windowEndDate + "T12:00:00").getTime() - now.getTime()) /
-            (1000 * 60 * 60 * 24)
-        )
-      );
-
-      // ── Pending obligations (effective outflows, excl credit card) ──
-      const pendingObligations = pendingOccs
-        .filter((o: OccurrenceWithTemplate) => {
-          const acctType = accountMap.get(o.account_id)?.account_type ?? "";
-          const isEffectiveOutflow =
-            o.direction === "OUTFLOW" ||
-            (o.direction === "INFLOW" && isDebtAccountType(acctType));
-          return (
-            isEffectiveOutflow &&
-            o.occurrence_date >= today &&
-            o.occurrence_date <= windowEndDate &&
-            acctType !== "CREDIT_CARD"
-          );
-        })
-        .reduce((sum: number, o: OccurrenceWithTemplate) => sum + o.expected_amount, 0);
-
-      const disponible = Math.max(0, liquidBalance - pendingObligations);
-      const availablePerDay = Math.round(disponible / daysRemaining);
-
-      // ── Net worth ──
-      const netWorth = accounts.reduce((sum: number, a: AccountRow) => {
-        return DEBT_ACCOUNT_TYPES.has(a.account_type) ? sum - a.current_balance : sum + a.current_balance;
-      }, 0);
-
-      // ── Daily spending metrics ──
-      let spentToday = 0;
-      let spentYesterday = 0;
-      let last7Total = 0;
-      let totalOutflow = 0;
-
-      const yesterdayDate = new Date(now);
-      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-      const yesterdayStr = toLocalDateString(yesterdayDate);
-
-      for (const tx of txRows) {
-        if (tx.is_excluded || tx.direction !== "OUTFLOW") continue;
-        if (tx.transfer_group_id || tx.reconciled_into_transaction_id) continue;
-        const amount = Math.abs(tx.amount ?? 0);
-        totalOutflow += amount;
-        if (tx.transaction_date === today) spentToday += amount;
-        if (tx.transaction_date === yesterdayStr) spentYesterday += amount;
-        const txDate = new Date(tx.transaction_date + "T12:00:00");
-        const diffDays = Math.floor((now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays >= 0 && diffDays < 7) last7Total += amount;
-      }
-
-      const avgLast7 = last7Total / 7;
-
-      // ── Upcoming payments (from recurring occurrences) ──
-      const payments: AttentionPayment[] = pendingOccs
-        .filter((o: OccurrenceWithTemplate) => {
-          const acctType = accountMap.get(o.account_id)?.account_type ?? "";
-          const isEffectiveOutflow =
-            o.direction === "OUTFLOW" ||
-            (o.direction === "INFLOW" && isDebtAccountType(acctType));
-          const daysUntil = Math.ceil(
-            (new Date(o.occurrence_date + "T12:00:00").getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          return isEffectiveOutflow && daysUntil >= 0 && daysUntil <= 7;
-        })
-        .map((o: OccurrenceWithTemplate) => {
-          const daysUntil = Math.ceil(
-            (new Date(o.occurrence_date + "T12:00:00").getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          return {
-            name: o.merchant_name ?? o.description ?? "Recurrente",
-            amount: o.expected_amount,
-            daysUntil,
-            accountName: accountMap.get(o.account_id)?.name ?? "",
-          };
-        })
-        .sort((a, b) => a.daysUntil - b.daysUntil);
-
-      // ── Recent transactions ──
-      const recent: RecentTransaction[] = txRows
-        .filter((tx: any) => !tx.is_excluded && !tx.reconciled_into_transaction_id)
-        .slice(0, 10)
-        .map((tx: any) => {
-          const acct = accountMap.get(tx.account_id);
-          return {
-            id: tx.id,
-            description: tx.merchant_name ?? tx.description ?? "Sin descripcion",
-            amount: Math.abs(tx.amount),
-            currency_code: tx.currency_code ?? "COP",
-            direction: tx.direction as "INFLOW" | "OUTFLOW",
-            account_name: acct?.name ?? "",
-            account_color: acct?.color ?? null,
-            category_name_es: tx.category_name_es ?? null,
-            category_icon: tx.category_icon ?? null,
-          };
-        });
-
-      // Build human-readable days label
-      const daysLabel = nextIncome
-        ? `${daysRemaining} dias hasta ${formatDate(nextIncome.occurrence_date, "dd MMM")}`
-        : `${daysRemaining} dias restantes`;
-
-      setData({
-        hero: {
-          availablePerDay, availableTotal: disponible, daysRemaining, daysLabel,
-          breakdown: { totalLiquid: liquidBalance, fixedExpenses: pendingObligations, alreadySpent: totalOutflow },
-        },
-        metrics: { daysInMonth, dayOfMonth, spentToday, spentYesterday, avgLast7 },
-        accounts: { count: accounts.length, netWorth },
-        upcomingPayments: payments,
-        recentTransactions: recent,
-      });
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
+  const handleAdd = useCallback(
+    (type: WidgetType) => {
+      const catalogEntry = WIDGET_CATALOG.find((c) => c.type === type);
+      if (!catalogEntry) return;
+      const instance: WidgetInstance = {
+        id: Crypto.randomUUID(),
+        type,
+        size: catalogEntry.defaultSize,
+      };
+      persist({ ...layout, widgets: [...layout.widgets, instance] });
+    },
+    [layout, persist]
   );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await sync();
-      await loadData();
+      await reload();
     } finally {
       setRefreshing(false);
     }
-  }, [sync, loadData]);
+  }, [sync, reload]);
+
+  const existingTypes = useMemo(
+    () => new Set(layout.widgets.map((w) => w.type)),
+    [layout.widgets]
+  );
+
+  const today = toLocalDateString(new Date());
+  const dateLabel = formatHeaderDate(new Date());
+
+  const pulseValue =
+    layout.pulseRange === "weekly"
+      ? Math.round(summary.spentLast7 / Math.max(1, 7))
+      : summary.availablePerDay;
+  const pulseDays = layout.pulseRange === "weekly" ? 7 : summary.daysRemaining;
+  const pulseTrend =
+    layout.pulseRange === "weekly" ? summary.spentTrend7 : summary.spentTrend30;
+
+  const renderWidget = useCallback(
+    (w: WidgetInstance): WidgetRender => {
+      switch (w.type) {
+        case "accounts":
+          return renderAccountsWidget({
+            accounts: summary.accounts,
+            currency: summary.currency,
+          });
+        case "next_bill":
+          return renderNextBillWidget({
+            bill: summary.nextBill,
+            upcoming: summary.upcomingBills,
+            currency: summary.currency,
+          });
+        case "next_income":
+          return renderNextIncomeWidget({
+            income: summary.nextIncome,
+            upcoming: summary.upcomingIncomes,
+            currency: summary.currency,
+          });
+        case "where_today":
+          return renderWhereTodayWidget({
+            transactions: summary.transactions,
+            today,
+            spentToday: summary.spentToday,
+            currency: summary.currency,
+          });
+        case "recent":
+          return renderRecentWidget({
+            transactions: summary.transactions,
+          });
+        default:
+          return UNKNOWN_RENDER;
+      }
+    },
+    [summary, today]
+  );
 
   return (
     <View className="flex-1 bg-background">
-      <MobileHeader variant="main" title="Inicio" right={<AvatarMenuTrigger />} />
+      <MobileHeader
+        variant="main"
+        title="Zeta"
+        titleFont="narrator"
+        subtitle={dateLabel}
+        action={
+          <Pressable
+            onPress={() => setEditing((e) => !e)}
+            accessibilityRole="button"
+            accessibilityLabel={editing ? "Terminar" : "Organizar inicio"}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="rounded-full border border-z-brass-20 bg-z-brass-10 px-2.5 py-1.5"
+          >
+            <Text className="text-[10px] font-inter-semibold uppercase tracking-[4px] text-z-brass">
+              {editing ? "Listo" : "Organizar"}
+            </Text>
+          </Pressable>
+        }
+        right={<AvatarMenuTrigger />}
+      />
+
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+        contentContainerStyle={{
+          padding: 16,
+          gap: 8,
+          paddingBottom: MOBILE_TAB_BAR_CLEARANCE,
+        }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.brass} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={COLORS.brass}
+          />
         }
       >
-        <InicioHero
-          availablePerDay={data.hero.availablePerDay}
-          availableTotal={data.hero.availableTotal}
-          daysRemaining={data.hero.daysRemaining}
-          daysLabel={data.hero.daysLabel}
-          currency={currency}
-          breakdown={data.hero.breakdown}
-          expanded={activeZone === "hero"}
-          onToggle={() => toggle("hero")}
+        {editing && (
+          <View className="mb-1 flex-row items-center gap-2 rounded-xl border border-z-brass-20 bg-z-brass-8 px-3 py-2">
+            <Text className="flex-1 text-[11px] font-inter text-z-brass">
+              Quita chips con × o añade más abajo · Ritmo es permanente
+            </Text>
+          </View>
+        )}
+
+        <PulseWidget
+          availablePerDay={pulseValue}
+          daysRemaining={pulseDays}
+          currency={summary.currency}
+          onTrack={summary.onTrack}
+          range={layout.pulseRange}
+          onRangeChange={handlePulseRangeChange}
+          trend={pulseTrend}
         />
-        <InicioMetricsGrid
-          daysInMonth={data.metrics.daysInMonth}
-          dayOfMonth={data.metrics.dayOfMonth}
-          spentToday={data.metrics.spentToday}
-          spentYesterday={data.metrics.spentYesterday}
-          avgLast7={data.metrics.avgLast7}
-          currency={currency}
-          expanded={activeZone}
+
+        <WidgetGrid
+          widgets={layout.widgets}
+          activeId={editing ? null : activeZone}
           onToggle={toggle}
+          render={renderWidget}
+          editing={editing}
+          onRemove={handleRemove}
         />
-        <InicioAccountsHub
-          accountCount={data.accounts.count}
-          netWorth={data.accounts.netWorth}
-          currency={currency}
-        />
-        <InicioAttention
-          overdueReminders={[]}
-          upcomingPayments={data.upcomingPayments}
-          currency={currency}
-          expanded={activeZone}
-          onToggle={toggle}
-        />
-        <InicioActivity transactions={data.recentTransactions} />
+
+        {editing && (
+          <Pressable
+            onPress={() => setCatalogOpen(true)}
+            accessibilityLabel="Añadir chip"
+            className="mt-1 flex-row items-center justify-center gap-2 rounded-2xl border border-dashed border-z-brass-30 bg-z-brass-8 py-4"
+          >
+            <Plus size={14} color={COLORS.brass} />
+            <Text className="text-[12px] font-inter-semibold text-z-brass">
+              Añadir chip
+            </Text>
+          </Pressable>
+        )}
       </ScrollView>
+
+      <AddWidgetSheet
+        open={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        onAdd={handleAdd}
+        existingTypes={existingTypes}
+      />
     </View>
   );
 }

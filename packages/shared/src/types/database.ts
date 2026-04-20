@@ -338,12 +338,14 @@ export type Database = {
           app_purpose: string | null
           avatar_url: string | null
           created_at: string
+          dashboard_config: Json | null
           email: string
           estimated_monthly_expenses: number | null
           estimated_monthly_income: number | null
           full_name: string | null
           id: string
           locale: string
+          mobile_dashboard_config: Json | null
           onboarding_completed: boolean
           preferred_currency: Database["public"]["Enums"]["currency_code"]
           timezone: string
@@ -353,12 +355,14 @@ export type Database = {
           app_purpose?: string | null
           avatar_url?: string | null
           created_at?: string
+          dashboard_config?: Json | null
           email: string
           estimated_monthly_expenses?: number | null
           estimated_monthly_income?: number | null
           full_name?: string | null
           id: string
           locale?: string
+          mobile_dashboard_config?: Json | null
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
           timezone?: string
@@ -368,12 +372,14 @@ export type Database = {
           app_purpose?: string | null
           avatar_url?: string | null
           created_at?: string
+          dashboard_config?: Json | null
           email?: string
           estimated_monthly_expenses?: number | null
           estimated_monthly_income?: number | null
           full_name?: string | null
           id?: string
           locale?: string
+          mobile_dashboard_config?: Json | null
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
           timezone?: string

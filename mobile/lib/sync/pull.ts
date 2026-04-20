@@ -41,6 +41,7 @@ const BOOLEAN_FIELDS: Record<string, string[]> = {
 /** JSON fields per table that need stringification for SQLite */
 const JSON_FIELDS: Record<string, string[]> = {
   statement_snapshots: ["statement_json"],
+  profiles: ["dashboard_config", "mobile_dashboard_config"],
 };
 
 /** Tables with no updated_at — always full-replace on every sync */

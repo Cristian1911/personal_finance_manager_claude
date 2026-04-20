@@ -340,6 +340,18 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE accounts ADD COLUMN pdf_password TEXT`,
     ],
   },
+  {
+    version: 9,
+    statements: [
+      // ── profiles: dashboard layout JSONB columns ──────────────────────
+      // `dashboard_config` already exists on the Supabase view (webapp) but
+      // was never mirrored locally — pull was dropping it on every cycle
+      // (parity audit, slice-3). `mobile_dashboard_config` is new for the
+      // mobile widget layout.
+      `ALTER TABLE profiles ADD COLUMN dashboard_config TEXT`,
+      `ALTER TABLE profiles ADD COLUMN mobile_dashboard_config TEXT`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =
