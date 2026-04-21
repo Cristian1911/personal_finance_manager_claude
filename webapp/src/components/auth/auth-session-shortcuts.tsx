@@ -11,7 +11,7 @@ export function AuthSessionShortcuts() {
       <form action={startGuestSession}>
         <button
           type="submit"
-          className="text-sm text-z-sage-dark underline-offset-4 hover:text-z-white hover:underline focus-visible:outline-none focus-visible:underline"
+          className="text-sm text-z-sage-dark underline-offset-4 hover:text-z-white hover:underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-z-brass/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:underline"
         >
           Usar sin cuenta →
         </button>
@@ -19,7 +19,7 @@ export function AuthSessionShortcuts() {
       <form action={startDemoSession}>
         <button
           type="submit"
-          className="text-xs text-z-sage-dark/80 underline-offset-4 hover:text-z-white hover:underline focus-visible:outline-none focus-visible:underline"
+          className="text-xs text-z-sage-dark/80 underline-offset-4 hover:text-z-white hover:underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-z-brass/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:underline"
         >
           o ver el demo con datos de ejemplo
         </button>
