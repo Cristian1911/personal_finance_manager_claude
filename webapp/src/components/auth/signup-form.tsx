@@ -38,18 +38,6 @@ export function SignupForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="fullName">Nombre completo</Label>
-        <Input
-          id="fullName"
-          name="fullName"
-          type="text"
-          placeholder="Tu nombre"
-          required
-          autoComplete="name"
-        />
-      </div>
-
-      <div className="space-y-2">
         <Label htmlFor="email">Correo electrónico</Label>
         <Input
           id="email"
@@ -72,7 +60,9 @@ export function SignupForm() {
           minLength={8}
           autoComplete="new-password"
         />
-        <p className="text-xs text-muted-foreground">Mínimo 8 caracteres</p>
+        <p className="text-xs text-muted-foreground">
+          Mínimo 8 caracteres. Te pediremos tu nombre en el siguiente paso.
+        </p>
       </div>
 
       <Button type="submit" className="w-full" disabled={pending}>

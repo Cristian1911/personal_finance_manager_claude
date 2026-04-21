@@ -79,7 +79,6 @@ export async function signUp(
   const parsed = signupSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
-    fullName: formData.get("fullName"),
   });
 
   if (!parsed.success) {
@@ -99,7 +98,8 @@ export async function signUp(
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { full_name: parsed.data.fullName },
+      // Still sent if project-level "Confirm email" is ON. When OFF (recommended),
+      // the session is returned immediately and we skip the email dance.
       emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
     },
   });
@@ -126,6 +126,12 @@ export async function signUp(
       success: true,
       metadata: { email: parsed.data.email },
     });
+  }
+
+  // Project-level "Confirm email" disabled → session is live → go straight to onboarding.
+  // Enabled → session is null → fall through to "revisa tu correo" fallback.
+  if (data.session) {
+    redirect("/onboarding");
   }
   return { success: true };
 }

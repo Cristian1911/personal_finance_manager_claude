@@ -1,4 +1,6 @@
 import { LoginForm } from "@/components/auth/login-form";
+import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 
 const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
   auth_callback_failed: "No pudimos validar el enlace. Solicita uno nuevo.",
@@ -16,11 +18,11 @@ export default async function LoginPage({
     : null;
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold">Iniciar sesión</h2>
+    <div className="space-y-6">
+      <div className="space-y-2 text-center">
+        <h2 className="text-2xl font-bold tracking-tight">Bienvenido de nuevo.</h2>
         <p className="text-sm text-muted-foreground">
-          Ingresa tus credenciales para acceder
+          Ingresa para ver tu día en una pantalla.
         </p>
       </div>
       {callbackError && (
@@ -28,7 +30,9 @@ export default async function LoginPage({
           {callbackError}
         </div>
       )}
-      <LoginForm />
+      <div className={cn(PANEL_SURFACE_CLASS, "p-6")}>
+        <LoginForm />
+      </div>
     </div>
   );
 }
