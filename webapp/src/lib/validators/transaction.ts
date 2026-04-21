@@ -18,9 +18,14 @@ export const transactionSchema = z.object({
     (val) => (val === "" || val === null ? undefined : val),
     uuidStr().optional().nullable()
   ),
+  destinatario_id: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    uuidStr().optional().nullable()
+  ),
   notes: z.string().optional(),
   capture_input_text: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  is_subscription: formBoolean,
 });
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;

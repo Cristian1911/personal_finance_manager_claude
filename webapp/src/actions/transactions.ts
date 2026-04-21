@@ -37,6 +37,7 @@ type PersistTransactionParams = {
   notes?: string | null;
   capture_method?: Transaction["capture_method"];
   capture_input_text?: string | null;
+  is_subscription?: boolean;
 };
 
 type BalanceAccountRow = {
@@ -387,6 +388,7 @@ async function persistTransaction(
       capture_method: params.capture_method ?? "MANUAL_FORM",
       capture_input_text: params.capture_input_text ?? null,
       categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
+      is_subscription: params.is_subscription ?? false,
     })
     .select()
     .single();
@@ -652,8 +654,10 @@ export async function createTransaction(
     raw_description: formData.get("raw_description") || undefined,
     merchant_name: formData.get("merchant_name") || undefined,
     category_id: formData.get("category_id") || undefined,
+    destinatario_id: formData.get("destinatario_id") || undefined,
     notes: formData.get("notes") || undefined,
     capture_input_text: formData.get("capture_input_text") || undefined,
+    is_subscription: formData.get("is_subscription"),
   });
 
   if (!parsed.success) {
@@ -692,11 +696,14 @@ export async function createTransaction(
     parsed.data.raw_description ||
     null;
 
+  const finalDestinatarioId =
+    relatedSetup.data.destinatarioId ?? parsed.data.destinatario_id ?? null;
+
   const transactionResult = await persistTransaction(supabase, {
     userId: user.id,
     ...parsed.data,
     merchant_name: normalizedMerchantName,
-    destinatario_id: relatedSetup.data.destinatarioId,
+    destinatario_id: finalDestinatarioId,
     capture_method: "MANUAL_FORM",
   });
 
@@ -713,7 +720,7 @@ export async function createTransaction(
   await linkTransactionToOccurrence(
     parsed.data.account_id, parsed.data.transaction_date,
     parsed.data.amount, parsed.data.direction, transactionResult.data.id,
-    relatedSetup.data.destinatarioId ?? null,
+    finalDestinatarioId,
   );
 
   return transactionResult;
@@ -816,10 +823,20 @@ export async function updateTransaction(
 
   const categoryChanged = existing?.category_id !== parsed.data.category_id;
 
+  // `updateTransaction` reuses `transactionSchema` but does not read the
+  // `is_subscription` / `destinatario_id` form fields. Strip them from the
+  // spread so their Zod defaults (false / undefined) don't overwrite the
+  // existing row on every edit.
+  const {
+    is_subscription: _ignoredIsSubscription,
+    destinatario_id: _ignoredDestinatarioId,
+    ...updatableFields
+  } = parsed.data;
+
   const { data, error } = await supabase
     .from("transactions")
     .update({
-      ...parsed.data,
+      ...updatableFields,
       clean_description: parsed.data.merchant_name || parsed.data.raw_description || null,
       ...(categoryChanged ? { categorization_source: "USER_OVERRIDE" as const } : {}),
     })
