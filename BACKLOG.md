@@ -136,8 +136,18 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **What:** Settings gains a People section for invite partner + shared pools + roles. Seed for couples tracking without a separate app. Needs new tables + RLS (`shared_pools`, `pool_members`, `pool_allocations`). Do not start until Variant A ships.
 
 ### Flow 07 — Can I afford it? (redesign)
-- **Priority:** Medium
-- **Status:** Mobile shipped slice-5 (PR #197). Webapp equivalent not yet aligned to wireframe.
+- **Priority:** Done
+- **Status:** Webapp shipped PR #211 — 2026-04-21. Mobile shipped slice-5 (PR #197).
+- **What shipped (PR #211):**
+  - New `/puedo-pagar` route replaces the old dashboard-card dialog + mobile v2 drawer. Mirrors Flow 07 Variant A + R2-05 wireframes.
+  - `AffordPageClient`: sectioned form (qué · cuánto · cuenta · urgencia · pago · cuotas · categoría) → verdict hero (icon + label + score/100) → metric tiles (`PANEL_INSET_CLASS`) → reasons → "Caminos más seguros" → 3 decision actions (Comprar / Guardar en deseos [BRASS_GHOST, only for WAIT/NOT_RECOMMENDED/BUY_WITH_CAUTION] / Descartar).
+  - `saveAffordToWishlist` server action: Zod-validated (verdict enum, 3-char uppercase currency, 0–100 score), `updateTag("wishlist")`, scoped error logging.
+  - Dashboard `¿Comprarlo?` widget expands inline with a short explainer + brass CTA that navigates to the page.
+  - Entry points wired on `/transactions` (link card replacing the dialog), mobile v2 dashboard widget, `MobileLinkGrid` at `/gestionar`.
+  - Perf: page uses `useAccounts()` / `useOutflowCategories()` from `AppDataProvider`, no redundant fetch on the render path. Month is derived dynamically in the handler (not as a prop) to avoid staleness on long-lived sessions.
+  - Removed: `purchase-decision-card.tsx` (547 lines), `purchase-recommender-drawer.tsx` (470 lines). Net -920 lines.
+- **Touches:** `webapp/src/app/(dashboard)/puedo-pagar/`, `webapp/src/components/afford/`, `webapp/src/actions/wishlist.ts`, `webapp/src/components/mobile/v2/inicio/widgets/puedo-comprarlo-widget.tsx`, `webapp/src/components/mobile/mobile-link-grid.tsx`.
+- **Deferred / follow-ups:** none flagged during review.
 
 ## Features
 
@@ -508,3 +518,17 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 3. **Flow 03 webapp** — Add transaction rethink. Three variants in the wireframe, need to pick one before building.
 4. **Flow 07 webapp** — "Can I afford it?" redesign. Mobile slice-5 shipped, webapp hasn't been touched yet.
 5. **PR #190 drag-envelope UX review** — still pending user re-evaluation of long-press timing + assignment removal path.
+
+## Session handoff — 2026-04-21 (evening)
+
+### Shipped this session
+- **PR #209** — Flow 04 Variant A: mobile-first 4-step import wizard + queue refactor. *Merged.*
+- **PR #210** — Flow 03 webapp: Layout B transaction form redesign. *Merged.*
+- **PR #211** — Flow 07 webapp: dedicated `/puedo-pagar` page replacing the old dialog + drawer. Includes `saveAffordToWishlist` server action, expanded widget with inline explainer + CTA, MobileLinkGrid entry. Gemini comments addressed (dynamic month, accountId effect-init; `parseMoney` declined — webapp `CurrencyInput` already strips formatting). *Merged.*
+
+### Triage candidates for next session
+1. **Anonymous demo cleanup cron** (Tech Debt, Medium) — still pending.
+2. **Flow 02 PR 3** — drag-to-reorder + S/M/L resize for dashboard widget zone (Reanimated + gesture-handler).
+3. **Flow 05 Plan redesign** — decide: PR #170 polish sufficient, or full Variant A pass?
+4. **PR #190 drag-envelope UX review** — long-press timing + assignment removal path still pending re-evaluation.
+5. **Bugs** — promote-to-recurring success state, recurring templates 20260416 merge audit, telegram webhook RPC migration.
