@@ -1,15 +1,13 @@
+"use client";
+
 import { useMemo, useState } from "react";
-import { View, Text, Pressable } from "react-native";
-import { ChevronDown } from "lucide-react-native";
-import {
-  formatCurrency,
-  formatDate,
-  projectMinimumPayoff12mo,
-  type CurrencyCode,
-} from "@zeta/shared";
-import { COLORS } from "../../lib/constants/colors";
-import { AnimatedAccordion } from "../ui/AnimatedAccordion";
-import { useImportTheme } from "./import-theme";
+import { ChevronDown } from "lucide-react";
+import { projectMinimumPayoff12mo } from "@zeta/shared";
+import { formatCurrency } from "@/lib/utils/currency";
+import { formatDate } from "@/lib/utils/date";
+import { compactAmount } from "./format-utils";
+import { cn } from "@/lib/utils";
+import type { CurrencyCode } from "@/types/domain";
 
 type CreditCardMetadata = {
   credit_limit: number | null;
@@ -36,28 +34,19 @@ type Props = {
   summary: StatementSummary | null;
   transactionCount: number;
   active?: boolean;
-  onPress?: () => void;
 };
 
-function compactAmount(value: number, currency: CurrencyCode): string {
-  if (currency !== "COP") return formatCurrency(value, currency);
-  const abs = Math.abs(value);
-  const sign = value < 0 ? "-" : "";
-  if (abs >= 1_000_000) {
-    const m = abs / 1_000_000;
-    return `${sign}$ ${m.toFixed(m < 10 ? 2 : 1)}m`;
-  }
-  if (abs >= 1_000) return `${sign}$ ${Math.round(abs / 1_000)}k`;
-  return `${sign}$ ${Math.round(abs)}`;
-}
-
+/**
+ * Compact stacked credit-card card — one per currency. Use when a single
+ * account has multiple CC statements (e.g., dual COP/USD card). For a single
+ * CC statement, prefer `CreditCardSummary` (full hero layout).
+ */
 export function CreditCardStackCard({
   currency,
   metadata,
   summary,
   transactionCount,
   active = false,
-  onPress,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
 
@@ -74,99 +63,91 @@ export function CreditCardStackCard({
     [balance, interestRateEA, minPayment],
   );
 
-  const { neutral } = useImportTheme();
-  const borderCls = active ? "border-z-brass" : "border-white-6";
-  const bgCls = active
-    ? "bg-z-brass-8"
-    : neutral
-      ? "bg-z-surface-2-neutral"
-      : "bg-z-surface-2";
-
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Ver movimientos en ${currency}`}
-      className={`mb-2 rounded-2xl border ${borderCls} ${bgCls} p-3.5`}
+    <div
+      className={cn(
+        "rounded-2xl border p-3.5 transition-colors",
+        active
+          ? "border-z-brass bg-z-brass/10"
+          : "border-white/6 bg-z-surface-2/80",
+      )}
     >
-      <View className="flex-row items-center justify-between">
-        <Text className="text-[11px] font-inter-bold uppercase tracking-[0.18em] text-z-brass">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-z-brass">
           {currency}
-        </Text>
+        </span>
         {dueDate && (
-          <Text className="text-xs font-inter-semibold text-z-debt">
+          <span className="text-xs font-semibold text-z-debt">
             Vence {formatDate(dueDate, "d MMM")}
-          </Text>
+          </span>
         )}
-      </View>
+      </div>
 
-      <View className="mt-2 flex-row items-end gap-3">
-        <View className="flex-1">
-          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+      <div className="mt-2 flex items-end gap-3">
+        <div className="flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Saldo
-          </Text>
-          <Text className="mt-0.5 text-[22px] font-inter-bold tracking-tight text-z-white">
+          </p>
+          <p className="mt-0.5 text-[22px] font-bold tabular-nums tracking-tight text-z-white">
             {balance != null ? formatCurrency(balance, currency) : "—"}
-          </Text>
-        </View>
+          </p>
+        </div>
         {minPayment != null && (
           <>
-            <View className="h-10 w-px self-center bg-z-sage-10" />
-            <View className="flex-1">
-              <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            <div className="h-10 w-px self-center bg-white/6" />
+            <div className="flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
                 Pago mínimo
-              </Text>
-              <Text className="mt-0.5 text-[22px] font-inter-bold tracking-tight text-z-brass">
+              </p>
+              <p className="mt-0.5 text-[22px] font-bold tabular-nums tracking-tight text-z-brass">
                 {formatCurrency(minPayment, currency)}
-              </Text>
-            </View>
+              </p>
+            </div>
           </>
         )}
-      </View>
+      </div>
 
       {interestRateEA != null && (
-        <Text className="mt-1.5 text-[11px] font-inter text-z-sage-dark">
+        <p className="mt-1.5 text-[11px] text-z-sage-dark">
           Tasa {interestRateEA.toFixed(2)}% E.A.
-        </Text>
+        </p>
       )}
 
       {projection && (
-        <View className="mt-2.5 border-t border-z-sage-10 pt-2.5">
+        <div className="mt-2.5 border-t border-white/6 pt-2.5">
           {projection.growing ? (
-            <Text className="font-inter-italic text-[11px] text-z-debt">
+            <p className="text-[11px] italic text-z-debt">
               El mínimo no cubre intereses — saldo crecería.
-            </Text>
+            </p>
           ) : (
-            <Text className="font-inter-italic text-[11px] text-z-brass">
+            <p className="text-[11px] italic text-z-brass">
               Con mínimo:{" "}
-              <Text className="font-inter-bold not-italic text-z-alert">
+              <span className="font-bold not-italic text-z-alert">
                 {compactAmount(projection.interestAccrued, currency)}
-              </Text>{" "}
+              </span>{" "}
               en intereses 12 meses · queda{" "}
-              <Text className="font-inter-semibold not-italic text-z-sage-light">
+              <span className="font-semibold not-italic text-z-sage-light">
                 {compactAmount(projection.remainingBalance, currency)}
-              </Text>
-            </Text>
+              </span>
+            </p>
           )}
-        </View>
+        </div>
       )}
 
-      <Pressable
-        onPress={() => setExpanded((v) => !v)}
-        accessibilityRole="button"
-        accessibilityLabel={expanded ? "Ocultar detalles" : "Ver detalles"}
-        className="mt-2.5 flex-row items-center gap-1 self-start"
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="mt-2.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark hover:text-z-sage-light"
       >
-        <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-          {expanded ? "Ocultar detalles" : "Ver detalles"}
-        </Text>
-        <View style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}>
-          <ChevronDown size={12} color={COLORS.sageDark} />
-        </View>
-      </Pressable>
+        {expanded ? "Ocultar detalles" : "Ver detalles"}
+        <ChevronDown
+          className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")}
+        />
+      </button>
 
-      <AnimatedAccordion expanded={expanded} estimatedHeight={320}>
-        <View className="mt-2.5 gap-1.5 border-t border-z-sage-10 pt-2.5">
+      {expanded && (
+        <dl className="mt-2.5 space-y-1 border-t border-white/6 pt-2.5 text-[11px]">
           <DetailRow
             label="Cupo total"
             value={
@@ -232,20 +213,18 @@ export function CreditCardStackCard({
             }
           />
           <DetailRow label="Movimientos" value={String(transactionCount)} />
-        </View>
-      </AnimatedAccordion>
-    </Pressable>
+        </dl>
+      )}
+    </div>
   );
 }
 
 function DetailRow({ label, value }: { label: string; value: string | null }) {
   if (value == null) return null;
   return (
-    <View className="flex-row items-center justify-between">
-      <Text className="text-[11px] font-inter text-z-sage-dark">{label}</Text>
-      <Text className="text-[12px] font-inter-semibold text-z-sage-light">
-        {value}
-      </Text>
-    </View>
+    <div className="flex items-center justify-between">
+      <dt className="text-z-sage-dark">{label}</dt>
+      <dd className="font-semibold text-z-sage-light">{value}</dd>
+    </div>
   );
 }

@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import { View, Text } from "react-native";
-import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
-import { projectMinimumPayoff12mo } from "../../lib/utils/cc-projection";
+import {
+  formatCurrency,
+  formatDate,
+  projectMinimumPayoff12mo,
+  type CurrencyCode,
+} from "@zeta/shared";
 import { useImportTheme } from "./import-theme";
 
 type CreditCardMetadata = {

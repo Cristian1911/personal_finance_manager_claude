@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, RefreshCw } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, Loader2 } from "lucide-react";
+import {
+  matchDestinatario,
+  prepareDestinatarioRules,
+  type DestinatarioRule,
+} from "@zeta/shared";
+import { previewImportReconciliation } from "@/actions/import-transactions";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -11,68 +16,125 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SectionDivider } from "./section-divider";
+import { CreditCardSummary } from "./credit-card-summary";
+import { CreditCardStackCard } from "./credit-card-stack-card";
 import { StatementSummaryCard } from "./statement-summary-card";
 import { CreateAccountDialog } from "./create-account-dialog";
-import type { Account } from "@/types/domain";
-import type { ParseResponse, StatementAccountMapping } from "@/types/import";
+import { ParsedTransactionTable } from "./parsed-transaction-table";
+import { AccountAssignControl } from "./account-assign-control";
+import { WizardActionBar } from "./wizard-action-bar";
+import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
+import { trackClientEvent } from "@/lib/utils/analytics";
+import { cn } from "@/lib/utils";
+import type { Account, CurrencyCode } from "@/types/domain";
+import type {
+  ParseResponse,
+  ReconciliationPreviewResult,
+  StatementAccountMapping,
+  StatementMetaForImport,
+  TransactionToImport,
+} from "@/types/import";
+
+type ContinuePayload = {
+  transactions: TransactionToImport[];
+  statementMeta: StatementMetaForImport[];
+  reconciliationPreview: ReconciliationPreviewResult;
+};
+
+type Props = {
+  parseResult: ParseResponse;
+  accounts: Account[];
+  mappings: StatementAccountMapping[];
+  destinatarioRules: DestinatarioRule[];
+  onMappingsChange: (mappings: StatementAccountMapping[]) => void;
+  onContinue: (payload: ContinuePayload) => void;
+  onBack: () => void;
+  onAccountCreated: (account: Account) => void;
+};
 
 export function StepReview({
   parseResult,
   accounts,
   mappings,
-  onConfirm,
+  destinatarioRules,
+  onMappingsChange,
+  onContinue,
   onBack,
   onAccountCreated,
-}: {
-  parseResult: ParseResponse;
-  accounts: Account[];
-  mappings: StatementAccountMapping[];
-  onConfirm: (mappings: StatementAccountMapping[]) => void;
-  onBack: () => void;
-  onAccountCreated: (account: Account) => void;
-}) {
-  const [localMappings, setLocalMappings] =
-    useState<StatementAccountMapping[]>(mappings);
+}: Props) {
+  const [localMappings, setLocalMappings] = useState<StatementAccountMapping[]>(mappings);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogStatementIndex, setDialogStatementIndex] = useState(0);
+  const [expandedStatement, setExpandedStatement] = useState<number | null>(null);
+  const [preparing, setPreparing] = useState(false);
 
-  // Sync mappings from parent when they change (e.g. after account creation triggers re-match)
+  const [selections, setSelections] = useState<Map<number, Set<number>>>(() => {
+    const initial = new Map<number, Set<number>>();
+    parseResult.statements.forEach((stmt, idx) => {
+      initial.set(idx, new Set(stmt.transactions.map((_, i) => i)));
+    });
+    return initial;
+  });
+
+  const { destMap, catMap } = useMemo(() => {
+    const prepared = prepareDestinatarioRules(destinatarioRules);
+    const dest = new Map<string, { id: string; name: string }>();
+    const cat = new Map<string, string | null>();
+    parseResult.statements.forEach((stmt, stmtIdx) => {
+      stmt.transactions.forEach((tx, txIdx) => {
+        const match = matchDestinatario(tx.description, prepared);
+        if (match) {
+          const key = `${stmtIdx}-${txIdx}`;
+          dest.set(key, { id: match.destinatario_id, name: match.destinatario_name });
+          if (match.category_id) cat.set(key, match.category_id);
+        }
+      });
+    });
+    return { destMap: dest, catMap: cat };
+  }, [parseResult, destinatarioRules]);
+
   const [prevMappings, setPrevMappings] = useState(mappings);
   if (mappings !== prevMappings) {
     setPrevMappings(mappings);
     setLocalMappings((local) =>
       mappings.map((m) => {
-        const localEntry = local.find((l) => l.statementIndex === m.statementIndex);
-        // If parent auto-matched a previously unmatched statement, use the new match
-        if (m.autoMatched && localEntry && !localEntry.accountId) {
-          return m;
-        }
-        // Keep manual selections
-        if (localEntry && localEntry.accountId && !localEntry.autoMatched) {
-          return localEntry;
-        }
+        const entry = local.find((l) => l.statementIndex === m.statementIndex);
+        if (m.autoMatched && entry && !entry.accountId) return m;
+        if (entry && entry.accountId && !entry.autoMatched) return entry;
         return m;
-      })
+      }),
     );
   }
 
-  function updateMapping(index: number, accountId: string) {
-    setLocalMappings((prev) =>
-      prev.map((m) =>
-        m.statementIndex === index
-          ? { ...m, accountId, autoMatched: false }
-          : m
-      )
+  // Multi-CC detection: all statements are credit_card with metadata.
+  // Switch to compact stack cards instead of one hero summary per statement.
+  const allCreditCard =
+    parseResult.statements.length > 1 &&
+    parseResult.statements.every(
+      (s) => s.statement_type === "credit_card" && s.credit_card_metadata != null,
     );
+
+  function updateMapping(index: number, accountId: string) {
+    setLocalMappings((prev) => {
+      const next = prev.map((m) =>
+        m.statementIndex === index ? { ...m, accountId, autoMatched: false } : m,
+      );
+      onMappingsChange(next);
+      return next;
+    });
   }
 
   function updatePrimaryCurrency(accountId: string, currency: string) {
-    setLocalMappings((prev) =>
-      prev.map((m) => (m.accountId === accountId ? { ...m, primaryCurrency: currency } : m))
-    );
+    setLocalMappings((prev) => {
+      const next = prev.map((m) =>
+        m.accountId === accountId ? { ...m, primaryCurrency: currency } : m,
+      );
+      onMappingsChange(next);
+      return next;
+    });
   }
 
-  // Returns the set of distinct currencies mapped to a given accountId
   function getCurrenciesForAccount(accountId: string): string[] {
     const currencies = new Set<string>();
     localMappings.forEach((m) => {
@@ -84,7 +146,6 @@ export function StepReview({
     return Array.from(currencies);
   }
 
-  // Returns the default primary currency for an account (most transactions, preferring COP)
   function getDefaultPrimaryCurrency(accountId: string): string {
     let best = "";
     let bestCount = -1;
@@ -103,6 +164,28 @@ export function StepReview({
     return best;
   }
 
+  function toggleTransaction(stmtIdx: number, txIdx: number) {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      const set = new Set(next.get(stmtIdx) ?? []);
+      if (set.has(txIdx)) set.delete(txIdx);
+      else set.add(txIdx);
+      next.set(stmtIdx, set);
+      return next;
+    });
+  }
+
+  function toggleAllForStatement(stmtIdx: number) {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      const current = next.get(stmtIdx) ?? new Set();
+      const total = parseResult.statements[stmtIdx].transactions.length;
+      if (current.size === total) next.set(stmtIdx, new Set());
+      else next.set(stmtIdx, new Set(Array.from({ length: total }, (_, i) => i)));
+      return next;
+    });
+  }
+
   function openCreateDialog(stmtIndex: number) {
     setDialogStatementIndex(stmtIndex);
     setDialogOpen(true);
@@ -110,103 +193,210 @@ export function StepReview({
 
   function handleAccountCreated(account: Account) {
     onAccountCreated(account);
-    // Auto-select the new account for the statement that triggered creation
     updateMapping(dialogStatementIndex, account.id);
   }
 
-  const allMapped = localMappings.every((m) => m.accountId !== "");
+  async function buildTransactions(): Promise<TransactionToImport[]> {
+    // Collect the rows first so installment hashes can resolve in parallel.
+    type Row = {
+      stmtIdx: number;
+      txIdx: number;
+      accountId: string;
+      stmt: (typeof parseResult.statements)[number];
+      tx: (typeof parseResult.statements)[number]["transactions"][number];
+    };
+    const rows: Row[] = [];
+    for (const [stmtIdx, stmt] of parseResult.statements.entries()) {
+      const mapping = localMappings.find((m) => m.statementIndex === stmtIdx);
+      if (!mapping?.accountId) continue;
+      const sel = selections.get(stmtIdx) ?? new Set();
+      for (const txIdx of sel) {
+        rows.push({ stmtIdx, txIdx, accountId: mapping.accountId, stmt, tx: stmt.transactions[txIdx] });
+      }
+    }
 
-  // Track which accountIds have already rendered a currency selector
+    const installmentIds = await Promise.all(
+      rows.map((row) =>
+        row.tx.installment_current != null && row.tx.installment_total != null
+          ? computeInstallmentGroupId({
+              accountId: row.accountId,
+              rawDescription: row.tx.description,
+              amount: row.tx.original_amount ?? row.tx.amount,
+            })
+          : Promise.resolve<string | null>(null),
+      ),
+    );
+
+    return rows.map((row, i) => {
+      const key = `${row.stmtIdx}-${row.txIdx}`;
+      const categoryId = catMap.get(key) ?? null;
+      const destMatch = destMap.get(key);
+      const destinatarioId = destMatch?.id ?? null;
+      const merchantName = destMatch?.name ?? null;
+
+      return {
+        import_key: `${row.stmtIdx}:${row.txIdx}`,
+        account_id: row.accountId,
+        amount: row.tx.amount,
+        currency_code: row.stmt.currency,
+        direction: row.tx.direction,
+        transaction_date: row.tx.date,
+        raw_description: row.tx.description,
+        category_id: categoryId,
+        categorization_source: categoryId
+          ? destinatarioId
+            ? "USER_LEARNED"
+            : "USER_OVERRIDE"
+          : undefined,
+        categorization_confidence: categoryId && destinatarioId ? 0.8 : null,
+        installment_current: row.tx.installment_current,
+        installment_total: row.tx.installment_total,
+        installment_group_id: installmentIds[i],
+        original_amount: row.tx.original_amount,
+        destinatario_id: destinatarioId,
+        merchant_name: merchantName,
+      };
+    });
+  }
+
+  function buildStatementMeta(): StatementMetaForImport[] {
+    const result: StatementMetaForImport[] = [];
+    parseResult.statements.forEach((stmt, stmtIdx) => {
+      const mapping = localMappings.find((m) => m.statementIndex === stmtIdx);
+      if (!mapping?.accountId) return;
+      result.push({
+        accountId: mapping.accountId,
+        statementIndex: stmtIdx,
+        summary: stmt.summary,
+        creditCardMetadata: stmt.credit_card_metadata,
+        loanMetadata: stmt.loan_metadata,
+        periodFrom: stmt.period_from,
+        periodTo: stmt.period_to,
+        currency: stmt.currency,
+        transactionCount: stmt.transactions.length,
+        primaryCurrency: mapping.primaryCurrency,
+      });
+    });
+    return result;
+  }
+
+  async function handleContinue() {
+    setPreparing(true);
+    try {
+      const transactions = await buildTransactions();
+      const preview = await previewImportReconciliation(
+        transactions.map((item) => {
+          const [statementIndex, transactionIndex] = (item.import_key ?? "0:0")
+            .split(":")
+            .map(Number);
+          return {
+            statementIndex,
+            transactionIndex,
+            importedTransaction: item,
+          };
+        }),
+      );
+      await trackClientEvent({
+        event_name: "reconciliation_started",
+        flow: "import",
+        step: "reconciliation_preview",
+        entry_point: "cta",
+        success: true,
+        metadata: {
+          matches_auto: preview.autoMerge.length,
+          matches_review: preview.review.length,
+          matches_rejected: 0,
+        },
+      });
+      onContinue({
+        transactions,
+        statementMeta: buildStatementMeta(),
+        reconciliationPreview: preview,
+      });
+    } finally {
+      setPreparing(false);
+    }
+  }
+
+  const allMapped = localMappings.every((m) => m.accountId !== "");
+  const totalSelected = Array.from(selections.values()).reduce(
+    (acc, s) => acc + s.size,
+    0,
+  );
+
+  // Track rendered currency selectors so we only show one per account.
   const renderedCurrencySelector = new Set<string>();
 
   return (
     <div className="space-y-6">
-      {parseResult.statements.map((stmt, idx) => {
-        const mapping = localMappings.find((m) => m.statementIndex === idx);
-        const accountId = mapping?.accountId ?? "";
-
-        // Determine if we should show the currency selector for this statement
-        // Only show on the first statement mapped to a given account (no duplication)
-        let showCurrencySelector = false;
-        if (accountId && !renderedCurrencySelector.has(accountId)) {
-          const accountCurrencies = getCurrenciesForAccount(accountId);
-          if (accountCurrencies.length > 1) {
-            showCurrencySelector = true;
-            renderedCurrencySelector.add(accountId);
+      {allCreditCard ? (
+        <MultiCreditCardGroup
+          statements={parseResult.statements}
+          mappings={localMappings}
+          accounts={accounts}
+          selections={selections}
+          onSelectAccount={(accountId) => {
+            parseResult.statements.forEach((_, idx) => updateMapping(idx, accountId));
+          }}
+          onCreateAccount={() => openCreateDialog(0)}
+          onUpdatePrimaryCurrency={updatePrimaryCurrency}
+          getDefaultPrimaryCurrency={getDefaultPrimaryCurrency}
+          getCurrenciesForAccount={getCurrenciesForAccount}
+          onToggleTransaction={toggleTransaction}
+          onToggleAll={toggleAllForStatement}
+          expandedStatement={expandedStatement}
+          onToggleExpanded={(idx) =>
+            setExpandedStatement((p) => (p === idx ? null : idx))
           }
-        }
+        />
+      ) : (
+        parseResult.statements.map((stmt, idx) => {
+          const mapping = localMappings.find((m) => m.statementIndex === idx);
+          const accountId = mapping?.accountId ?? "";
+          const isCreditCard =
+            stmt.statement_type === "credit_card" && stmt.credit_card_metadata != null;
+          const isLoan = stmt.statement_type === "loan" && stmt.loan_metadata != null;
 
-        const primaryCurrency =
-          mapping?.primaryCurrency ?? getDefaultPrimaryCurrency(accountId);
-        const accountCurrencies = accountId ? getCurrenciesForAccount(accountId) : [];
+          let showCurrencySelector = false;
+          if (accountId && !renderedCurrencySelector.has(accountId)) {
+            const currencies = getCurrenciesForAccount(accountId);
+            if (currencies.length > 1) {
+              showCurrencySelector = true;
+              renderedCurrencySelector.add(accountId);
+            }
+          }
+          const primaryCurrency =
+            mapping?.primaryCurrency ?? getDefaultPrimaryCurrency(accountId);
+          const accountCurrencies = accountId
+            ? getCurrenciesForAccount(accountId)
+            : [];
 
-        return (
-          <div key={idx} className="space-y-3">
-            <StatementSummaryCard statement={stmt} />
-
-            <div className="space-y-2 pl-1">
-              <Label>Asignar a cuenta</Label>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={accountId}
-                  onValueChange={(val) => updateMapping(idx, val)}
-                >
-                  <SelectTrigger className="w-full max-w-xs">
-                    <SelectValue placeholder="Seleccionar cuenta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name}
-                        {acc.mask ? ` (****${acc.mask})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => openCreateDialog(idx)}
-                  aria-label="Crear cuenta"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-                {mapping?.autoMatched && (
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    (autodetectada)
-                  </span>
-                )}
-              </div>
-              {showCurrencySelector && accountCurrencies.length > 1 && (
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground">Moneda principal</span>
-                  <Select
-                    value={primaryCurrency}
-                    onValueChange={(val) => updatePrimaryCurrency(accountId, val)}
-                  >
-                    <SelectTrigger className="h-7 w-28 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accountCurrencies.map((cur) => (
-                        <SelectItem key={cur} value={cur} className="text-xs">
-                          {cur}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {accountId && (
-                <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-1">
-                  <RefreshCw className="h-3 w-3" />
-                  Los datos de esta cuenta se actualizaran con el extracto
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      })}
+          return (
+            <StatementBlock
+              key={idx}
+              stmt={stmt}
+              accounts={accounts}
+              accountId={accountId}
+              autoMatched={mapping?.autoMatched}
+              onSelectAccount={(id) => updateMapping(idx, id)}
+              onCreateAccount={() => openCreateDialog(idx)}
+              isCreditCard={isCreditCard}
+              isLoan={isLoan}
+              selections={selections.get(idx) ?? new Set()}
+              onToggleTransaction={(txIdx) => toggleTransaction(idx, txIdx)}
+              onToggleAll={() => toggleAllForStatement(idx)}
+              expanded={expandedStatement === idx}
+              onToggleExpanded={() =>
+                setExpandedStatement((p) => (p === idx ? null : idx))
+              }
+              showCurrencySelector={showCurrencySelector}
+              currencies={accountCurrencies}
+              primaryCurrency={primaryCurrency}
+              onPrimaryCurrencyChange={(c) => updatePrimaryCurrency(accountId, c)}
+            />
+          );
+        })
+      )}
 
       <CreateAccountDialog
         statement={parseResult.statements[dialogStatementIndex]}
@@ -215,13 +405,300 @@ export function StepReview({
         onCreated={handleAccountCreated}
       />
 
-      <div className="flex items-center gap-3">
+      <WizardActionBar>
         <Button variant="outline" onClick={onBack}>
           Volver
         </Button>
-        <Button onClick={() => onConfirm(localMappings)} disabled={!allMapped}>
-          Continuar
+        <Button onClick={handleContinue} disabled={!allMapped || preparing}>
+          {preparing ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Analizando...
+            </>
+          ) : (
+            `Continuar · ${totalSelected} ${totalSelected === 1 ? "movimiento" : "movimientos"}`
+          )}
         </Button>
+      </WizardActionBar>
+    </div>
+  );
+}
+
+function UnifiedStatementCard({
+  accounts,
+  accountId,
+  autoMatched,
+  onSelectAccount,
+  onCreateAccount,
+  showCurrencySelector,
+  currencies,
+  primaryCurrency,
+  onPrimaryCurrencyChange,
+}: {
+  accounts: Account[];
+  accountId: string;
+  autoMatched?: boolean;
+  onSelectAccount: (id: string) => void;
+  onCreateAccount: () => void;
+  showCurrencySelector: boolean;
+  currencies: string[];
+  primaryCurrency: string;
+  onPrimaryCurrencyChange: (c: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <AccountAssignControl
+          accounts={accounts}
+          accountId={accountId}
+          autoMatched={autoMatched}
+          onSelect={onSelectAccount}
+          onCreate={onCreateAccount}
+          variant="pill"
+        />
+      </div>
+      {showCurrencySelector && currencies.length > 1 && (
+        <Select value={primaryCurrency} onValueChange={onPrimaryCurrencyChange}>
+          <SelectTrigger className="h-9 w-auto shrink-0 gap-1 rounded-full border-z-brass/30 bg-z-brass/12 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
+            {currencies.map((cur) => (
+              <SelectItem key={cur} value={cur} className="text-xs">
+                {cur}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+}
+
+function StatementBlock({
+  stmt,
+  accounts,
+  accountId,
+  autoMatched,
+  onSelectAccount,
+  onCreateAccount,
+  isCreditCard,
+  isLoan,
+  selections,
+  onToggleTransaction,
+  onToggleAll,
+  expanded,
+  onToggleExpanded,
+  showCurrencySelector,
+  currencies,
+  primaryCurrency,
+  onPrimaryCurrencyChange,
+}: {
+  stmt: ParseResponse["statements"][number];
+  accounts: Account[];
+  accountId: string;
+  autoMatched?: boolean;
+  onSelectAccount: (id: string) => void;
+  onCreateAccount: () => void;
+  isCreditCard: boolean;
+  isLoan: boolean;
+  selections: Set<number>;
+  onToggleTransaction: (txIdx: number) => void;
+  onToggleAll: () => void;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  showCurrencySelector: boolean;
+  currencies: string[];
+  primaryCurrency: string;
+  onPrimaryCurrencyChange: (c: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <UnifiedStatementCard
+        accounts={accounts}
+        accountId={accountId}
+        autoMatched={autoMatched}
+        onSelectAccount={onSelectAccount}
+        onCreateAccount={onCreateAccount}
+        showCurrencySelector={showCurrencySelector}
+        currencies={currencies}
+        primaryCurrency={primaryCurrency}
+        onPrimaryCurrencyChange={onPrimaryCurrencyChange}
+      />
+
+      {isCreditCard && stmt.credit_card_metadata ? (
+        <>
+          <SectionDivider label="Por pagar" />
+          <CreditCardSummary
+            metadata={stmt.credit_card_metadata}
+            summary={stmt.summary ?? null}
+            transactionCount={stmt.transactions.length}
+            currency={stmt.currency as CurrencyCode}
+          />
+        </>
+      ) : isLoan ? (
+        <StatementSummaryCard statement={stmt} />
+      ) : null}
+
+      <SectionDivider label="Movimientos" />
+
+      <div className="space-y-2 rounded-2xl border border-white/6 bg-z-surface-2/60 p-3">
+        <button
+          type="button"
+          onClick={onToggleExpanded}
+          className="flex w-full items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-left hover:bg-white/5"
+          aria-expanded={expanded}
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-z-white">
+              {selections.size} de {stmt.transactions.length} seleccionadas
+            </p>
+            <p className="text-xs text-z-sage-dark">
+              {expanded ? "Ocultar detalle" : "Ver y ajustar selección"}
+            </p>
+          </div>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 text-z-sage-dark transition-transform",
+              expanded && "rotate-180",
+            )}
+          />
+        </button>
+
+        {expanded && stmt.transactions.length > 0 && (
+          <ParsedTransactionTable
+            transactions={stmt.transactions}
+            currency={stmt.currency}
+            selected={selections}
+            onToggle={onToggleTransaction}
+            onToggleAll={onToggleAll}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MultiCreditCardGroup({
+  statements,
+  mappings,
+  accounts,
+  selections,
+  onSelectAccount,
+  onCreateAccount,
+  onUpdatePrimaryCurrency,
+  getDefaultPrimaryCurrency,
+  getCurrenciesForAccount,
+  onToggleTransaction,
+  onToggleAll,
+  expandedStatement,
+  onToggleExpanded,
+}: {
+  statements: ParseResponse["statements"];
+  mappings: StatementAccountMapping[];
+  accounts: Account[];
+  selections: Map<number, Set<number>>;
+  onSelectAccount: (accountId: string) => void;
+  onCreateAccount: () => void;
+  onUpdatePrimaryCurrency: (accountId: string, currency: string) => void;
+  getDefaultPrimaryCurrency: (accountId: string) => string;
+  getCurrenciesForAccount: (accountId: string) => string[];
+  onToggleTransaction: (stmtIdx: number, txIdx: number) => void;
+  onToggleAll: (stmtIdx: number) => void;
+  expandedStatement: number | null;
+  onToggleExpanded: (stmtIdx: number) => void;
+}) {
+  const firstMapping = mappings[0];
+  const accountId = firstMapping?.accountId ?? "";
+  const autoMatched = mappings.every((m) => m.autoMatched);
+  const primaryCurrency =
+    firstMapping?.primaryCurrency ?? getDefaultPrimaryCurrency(accountId);
+  const currencies = accountId ? getCurrenciesForAccount(accountId) : [];
+  const totalSelected = statements.reduce(
+    (sum, _, idx) => sum + (selections.get(idx)?.size ?? 0),
+    0,
+  );
+  const totalTx = statements.reduce((sum, s) => sum + s.transactions.length, 0);
+
+  return (
+    <div className="space-y-3">
+      <UnifiedStatementCard
+        accounts={accounts}
+        accountId={accountId}
+        autoMatched={autoMatched}
+        onSelectAccount={onSelectAccount}
+        onCreateAccount={onCreateAccount}
+        showCurrencySelector={currencies.length > 1}
+        currencies={currencies}
+        primaryCurrency={primaryCurrency}
+        onPrimaryCurrencyChange={(v) => onUpdatePrimaryCurrency(accountId, v)}
+      />
+
+      <SectionDivider label="Por pagar" />
+      <div className="space-y-2">
+        {statements.map((stmt, i) =>
+          stmt.credit_card_metadata ? (
+            <CreditCardStackCard
+              key={`${stmt.currency}-${i}`}
+              currency={stmt.currency as CurrencyCode}
+              metadata={stmt.credit_card_metadata}
+              summary={stmt.summary ?? null}
+              transactionCount={stmt.transactions.length}
+            />
+          ) : null,
+        )}
+      </div>
+
+      <SectionDivider label="Movimientos" />
+      <div className="space-y-2 rounded-2xl border border-white/6 bg-z-surface-2/60 p-3">
+        <div className="px-2 py-1.5">
+          <p className="text-sm font-semibold text-z-white">
+            {totalSelected} de {totalTx} seleccionadas
+          </p>
+          <p className="text-xs text-z-sage-dark">
+            Expande cada moneda para ajustar su selección.
+          </p>
+        </div>
+        {statements.map((stmt, idx) => {
+          const expanded = expandedStatement === idx;
+          const sel = selections.get(idx) ?? new Set();
+          return (
+            <div key={idx} className="rounded-xl border border-white/6 bg-z-surface-3/40">
+              <button
+                type="button"
+                onClick={() => onToggleExpanded(idx)}
+                className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-white/5"
+                aria-expanded={expanded}
+              >
+                <span className="flex items-baseline gap-2 min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-brass">
+                    {stmt.currency}
+                  </span>
+                  <span className="text-xs text-z-sage-light">
+                    {sel.size} de {stmt.transactions.length} seleccionadas
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-z-sage-dark transition-transform",
+                    expanded && "rotate-180",
+                  )}
+                />
+              </button>
+              {expanded && stmt.transactions.length > 0 && (
+                <div className="border-t border-white/6 p-2">
+                  <ParsedTransactionTable
+                    transactions={stmt.transactions}
+                    currency={stmt.currency}
+                    selected={sel}
+                    onToggle={(txIdx) => onToggleTransaction(idx, txIdx)}
+                    onToggleAll={() => onToggleAll(idx)}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

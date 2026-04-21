@@ -14,6 +14,7 @@ interface Props {
   destinatarioRules: DestinatarioRule[];
   pendingStatements: PendingEmailStatement[];
   initialVaultSuggestions?: PdfPasswordSuggestion[];
+  mobileAboutPanel?: React.ReactNode;
 }
 
 export function ImportPageClient({
@@ -22,10 +23,14 @@ export function ImportPageClient({
   destinatarioRules,
   pendingStatements: initialPending,
   initialVaultSuggestions,
+  mobileAboutPanel,
 }: Props) {
   const [pendingStatements, setPendingStatements] = useState(initialPending);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedParseResult, setSelectedParseResult] = useState<ParseResponse | null>(null);
+  const [wizardStep, setWizardStep] = useState<
+    "upload" | "review" | "reconcile" | "results"
+  >("upload");
 
   const handleReviewStatement = useCallback((statement: PendingEmailStatement) => {
     if (!Array.isArray(statement.parsed_data) || statement.parsed_data.length === 0) return;
@@ -60,14 +65,10 @@ export function ImportPageClient({
     [pendingStatements, selectedId],
   );
 
-  return (
-    <>
-      <PendingEmailStatements
-        key={selectedId ?? "none"}
-        statements={visiblePending}
-        onReviewStatement={handleReviewStatement}
-      />
+  const flowActive = wizardStep !== "upload";
 
+  return (
+    <div className="space-y-6">
       <div id="import-wizard" className="scroll-mt-16">
         <ImportWizard
           key={selectedId ?? "fresh"}
@@ -78,9 +79,21 @@ export function ImportPageClient({
           pendingEmailStatementId={selectedId}
           onImportedFromEmail={handleImportedFromEmail}
           onReset={handleWizardReset}
+          onStepChange={setWizardStep}
           initialVaultSuggestions={initialVaultSuggestions}
         />
       </div>
-    </>
+
+      {!flowActive && (
+        <>
+          <PendingEmailStatements
+            key={selectedId ?? "none"}
+            statements={visiblePending}
+            onReviewStatement={handleReviewStatement}
+          />
+          {mobileAboutPanel}
+        </>
+      )}
+    </div>
   );
 }
