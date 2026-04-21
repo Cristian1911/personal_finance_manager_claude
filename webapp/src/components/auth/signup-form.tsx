@@ -5,6 +5,8 @@ import { signUp, type AuthActionResult } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 export function SignupForm() {
@@ -13,22 +15,6 @@ export function SignupForm() {
     {}
   );
 
-  if (state.success) {
-    return (
-      <div className="text-center space-y-4">
-        <div className="bg-primary/10 text-primary rounded-md p-4">
-          <p className="font-medium">¡Revisa tu correo!</p>
-          <p className="text-sm mt-1">
-            Te enviamos un enlace de confirmación para activar tu cuenta.
-          </p>
-        </div>
-        <Link href="/login" className="text-sm text-primary hover:underline">
-          Volver al inicio de sesión
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <form action={formAction} className="space-y-4">
       {state.error && (
@@ -36,18 +22,6 @@ export function SignupForm() {
           {state.error}
         </div>
       )}
-
-      <div className="space-y-2">
-        <Label htmlFor="fullName">Nombre completo</Label>
-        <Input
-          id="fullName"
-          name="fullName"
-          type="text"
-          placeholder="Tu nombre"
-          required
-          autoComplete="name"
-        />
-      </div>
 
       <div className="space-y-2">
         <Label htmlFor="email">Correo electrónico</Label>
@@ -72,10 +46,12 @@ export function SignupForm() {
           minLength={8}
           autoComplete="new-password"
         />
-        <p className="text-xs text-muted-foreground">Mínimo 8 caracteres</p>
+        <p className="text-xs text-muted-foreground">
+          Mínimo 8 caracteres. Te pediremos tu nombre en el siguiente paso.
+        </p>
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className={cn("w-full", BRASS_BUTTON_CLASS)} disabled={pending}>
         {pending ? "Creando cuenta..." : "Crear cuenta"}
       </Button>
 

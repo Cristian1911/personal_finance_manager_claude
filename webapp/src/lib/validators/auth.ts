@@ -5,9 +5,7 @@ export const loginSchema = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
 });
 
-export const signupSchema = loginSchema.extend({
-  fullName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-});
+export const signupSchema = loginSchema;
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email("Correo electrónico inválido"),

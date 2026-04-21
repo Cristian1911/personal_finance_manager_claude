@@ -59,8 +59,20 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ### Flow 01 — Onboarding redesign (webapp)
 - **Priority:** Medium
-- **Status:** Mobile slice-2 shipped (PR #195). Webapp not yet touched.
-- **What:** 5-step wizard with populated landing — don't dump users into settings. Tutorial is the screen itself.
+- **Status:** Webapp mobile-first slice shipped (PR #205, 2026-04-21). Mobile slice-2 shipped (PR #195).
+- **What shipped (PR #205):**
+  - Signup drops email confirmation — redirect straight to `/onboarding` when the session is returned, hard error if the Supabase "Confirm email" toggle is still ON.
+  - `fullName` moved from signup to onboarding step 2 (one less field before the app opens).
+  - Auth + onboarding layouts: mobile-first Obsidian & Brass shell.
+  - Onboarding: chip pickers for purpose, currency, account type. `formatCurrency` + `tabular-nums` on the disponible preview. Completed-user guard added to `/onboarding/layout.tsx`.
+  - "Ver demo" entry points (landing hero + signup page) start an anonymous Supabase session, seed demo data, land on `/dashboard`.
+  - Anonymous → real: when an anonymous visitor signs up, `signUp` promotes the session via `updateUser({ email, password })` so seeded data carries over. `DemoBanner` swaps the "Salir" button for a brass "Crear cuenta" CTA when the current user is anonymous.
+- **Operator prereqs:** `Auth → Email → Confirm email` OFF, `Auth → Anonymous Sign-Ins` ON.
+- **Deferred to follow-ups:**
+  - PIN (wireframe F2) — needs custom auth flow, Supabase has no primitive.
+  - Cadence + partner chips (wireframe F3) — needs new profile columns.
+  - Embedded parse step (wireframe F5) — import stays on `/import` after onboarding.
+  - Anonymous cleanup cron — see new Tech Debt entry.
 
 ### Flow 02 — Home redesign (webapp dashboard)
 - **Priority:** High
@@ -290,6 +302,19 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Tech Debt
 
+### Anonymous demo session — cleanup cron + rate limiting
+- **Priority:** Medium (blocks scaling "Ver demo")
+- **Context:** PR #205 (2026-04-21) shipped `startDemoSession()` — landing hero + signup page call it to let visitors try the app without registering. Each click creates a real `auth.users` row (`is_anonymous=true`) + encrypted `profiles` row + DEK + ~4 demo accounts + ~40 transactions + 5 budgets. Without cleanup these accumulate forever and count against Supabase MAU billing.
+- **What to build:**
+  1. Scheduled cleanup — delete anonymous users older than N days. Two options:
+     - Supabase cron job calling a SECURITY DEFINER function `cleanup_anonymous_demo_users(p_older_than interval)` that deletes from `auth.users WHERE is_anonymous = true AND created_at < now() - p_older_than`. Cascades to profile + accounts + transactions + budgets via FK.
+     - Next.js route `/api/cron/cleanup-demo` hit by Vercel cron (daily). Uses admin client to delete. Guard with shared secret header.
+  2. Captcha on `signInAnonymously()` — Supabase Auth → Rate Limits. Protects against bot spam that would otherwise balloon the MAU count.
+  3. Optional: monitor anonymous count weekly (`SELECT count(*) FROM auth.users WHERE is_anonymous = true;`) and alert if growth spikes.
+- **Default policy suggestion:** delete anonymous users after 7 days of inactivity. Short enough to stop MAU creep, long enough that a visitor returning the next day still has their demo data.
+- **Touches:** new migration with the cleanup function + cron trigger, or `webapp/src/app/api/cron/cleanup-demo/route.ts` + Vercel cron config.
+- **Found:** PR #205 follow-up, 2026-04-21.
+
 ### Tx detail — `router.refresh()` on tag picker close
 - **Priority:** Low
 - **What:** `transaction-detail-client.tsx` calls `router.refresh()` after the TagZonePicker drawer closes to sync `initialTags` from the server. Could be avoided by lifting `setTags` into a `onTagsChanged` callback that TagZonePicker invokes on add/remove, so the parent updates its local `tags` state optimistically and skips the round-trip.
@@ -413,3 +438,19 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - Working dir: clean on main after PR #186 merged
 - No active agent threads
 - All Gemini comments on shipped PRs replied to and resolved or declined
+
+## Session handoff — 2026-04-21
+
+### Shipped this session
+- **PR #204** — Flow 02 webapp mobile dashboard redesign (Variant B) — Pulse hero, chip-based widget grid with pack rows + shared accordion, arrangeable widgets zone, catalog sheet, Gemini comments addressed (useId for SVG gradient, optimistic-rollback snapshot on persist failure). *Merged.*
+- **PR #205** — Flow 01 onboarding redesign + anonymous demo session. See the Flow 01 entry above for the full rundown.
+
+### Discovered this session — added to backlog
+- **Anonymous demo cleanup cron + rate limiting** (Tech Debt, Medium) — necessary follow-up to PR #205's anonymous "Ver demo" entry point. Scheduled deletion of anonymous users older than 7 days + captcha on the anonymous sign-in endpoint.
+
+### Triage candidates for next session
+1. **Anonymous demo cleanup cron** (newly added Tech Debt, Medium) — short migration or cron route, unblocks scaling the demo CTA.
+2. **Flow 02 PR 3** — true drag-to-reorder + inline S/M/L resize for the widget zone (wireframe "Arrange" frame). Reanimated + gesture-handler work.
+3. **Flow 03 webapp** — Add transaction rethink. Three variants in the wireframe, need to pick one before building.
+4. **Flow 07 webapp** — "Can I afford it?" redesign. Mobile slice-5 shipped, webapp hasn't been touched yet.
+5. **PR #190 drag-envelope UX review** — still pending user re-evaluation of long-press timing + assignment removal path.

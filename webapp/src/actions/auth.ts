@@ -79,7 +79,6 @@ export async function signUp(
   const parsed = signupSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
-    fullName: formData.get("fullName"),
   });
 
   if (!parsed.success) {
@@ -95,11 +94,48 @@ export async function signUp(
   }
 
   const supabase = await createClient();
+
+  // If the visitor is mid-demo under an anonymous session, promote it in
+  // place via updateUser so their seeded data carries over. Otherwise do a
+  // fresh signUp.
+  const { data: existing } = await supabase.auth.getUser();
+  if (existing.user?.is_anonymous) {
+    const { error: promoteError } = await supabase.auth.updateUser({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
+    if (promoteError) {
+      await trackProductEvent({
+        event_name: "auth_signup_completed",
+        flow: "onboarding",
+        step: "signup",
+        entry_point: "cta",
+        success: false,
+        error_code: "signup_failed",
+        metadata: { email: parsed.data.email },
+      });
+      return { error: translateAuthError(promoteError.message) };
+    }
+    void trackProductEventForUser(existing.user.id, {
+      event_name: "auth_signup_completed",
+      flow: "onboarding",
+      step: "signup",
+      entry_point: "cta",
+      success: true,
+      metadata: { email: parsed.data.email, from_anonymous: true },
+    });
+    // Anonymous user already has a full profile (onboarding_completed=true,
+    // seeded demo data). Drop them on the dashboard — they can exit demo
+    // from the banner when they're ready.
+    redirect("/dashboard");
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { full_name: parsed.data.fullName },
+      // Still sent if project-level "Confirm email" is ON. When OFF (recommended),
+      // the session is returned immediately and we skip the email dance.
       emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
     },
   });
@@ -127,7 +163,16 @@ export async function signUp(
       metadata: { email: parsed.data.email },
     });
   }
-  return { success: true };
+
+  // Project-level "Confirm email" must be OFF so the session is returned directly.
+  // If it's still ON, the user sees a clear error instead of a blank screen.
+  if (!data.session) {
+    return {
+      error:
+        "No pudimos iniciar tu sesión. Contacta a soporte o intenta iniciar sesión.",
+    };
+  }
+  redirect("/onboarding");
 }
 
 export async function signOut(): Promise<void> {
