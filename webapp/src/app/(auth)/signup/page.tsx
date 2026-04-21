@@ -1,40 +1,30 @@
 import { SignupForm } from "@/components/auth/signup-form";
-import { startDemoSession, startGuestSession } from "@/actions/demo";
+import { AuthSessionShortcuts } from "@/components/auth/auth-session-shortcuts";
+import { createClient } from "@/lib/supabase/server";
 import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 
-export default function SignupPage() {
+export default async function SignupPage() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  const fromGuest = data.user?.is_anonymous === true;
+
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center">
         <h2 className="text-2xl font-bold tracking-tight">
-          Conoce adónde va tu plata.
+          {fromGuest ? "Guarda tus datos." : "Conoce adónde va tu plata."}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Importa una vez. Nosotros categorizamos el resto.
+          {fromGuest
+            ? "Crea tu cuenta para no perder nada de lo que ya configuraste."
+            : "Importa una vez. Nosotros categorizamos el resto."}
         </p>
       </div>
       <div className={cn(PANEL_SURFACE_CLASS, "p-6")}>
-        <SignupForm />
+        <SignupForm fromGuest={fromGuest} />
       </div>
-      <div className="flex flex-col items-center gap-2 text-center">
-        <form action={startGuestSession}>
-          <button
-            type="submit"
-            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Usar sin cuenta →
-          </button>
-        </form>
-        <form action={startDemoSession}>
-          <button
-            type="submit"
-            className="text-xs text-muted-foreground/80 underline-offset-4 hover:text-foreground hover:underline"
-          >
-            o ver el demo con datos de ejemplo
-          </button>
-        </form>
-      </div>
+      {!fromGuest && <AuthSessionShortcuts />}
     </div>
   );
 }

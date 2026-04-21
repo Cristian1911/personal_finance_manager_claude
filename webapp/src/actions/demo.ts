@@ -118,7 +118,7 @@ export async function startGuestSession(): Promise<void> {
       .from("profiles")
       .select("demo_mode, onboarding_completed")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
     // Demo → Guest transition: wipe the seeded mock set and clear both flags
     // so the visitor's own data replaces the demo through onboarding.

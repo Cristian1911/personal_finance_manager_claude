@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/auth/login-form";
+import { AuthSessionShortcuts } from "@/components/auth/auth-session-shortcuts";
 import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ export default async function LoginPage({
       <div className={cn(PANEL_SURFACE_CLASS, "p-6")}>
         <LoginForm />
       </div>
+      <AuthSessionShortcuts />
     </div>
   );
 }
