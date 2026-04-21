@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/auth/login-form";
+import { startDemoSession, startGuestSession } from "@/actions/demo";
 import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +33,24 @@ export default async function LoginPage({
       )}
       <div className={cn(PANEL_SURFACE_CLASS, "p-6")}>
         <LoginForm />
+      </div>
+      <div className="flex flex-col items-center gap-2 text-center">
+        <form action={startGuestSession}>
+          <button
+            type="submit"
+            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Usar sin cuenta →
+          </button>
+        </form>
+        <form action={startDemoSession}>
+          <button
+            type="submit"
+            className="text-xs text-muted-foreground/80 underline-offset-4 hover:text-foreground hover:underline"
+          >
+            o ver el demo con datos de ejemplo
+          </button>
+        </form>
       </div>
     </div>
   );
