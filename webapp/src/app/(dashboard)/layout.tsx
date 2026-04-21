@@ -18,6 +18,7 @@ import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
 import { DemoBanner } from "@/components/dashboard/demo-banner";
+import { GuestBanner } from "@/components/dashboard/guest-banner";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 
@@ -107,7 +108,11 @@ export default async function DashboardLayout({
             <AppDataProvider data={appData}>
               <MobileSheetProvider>
                 <main className={cn("flex-1 overflow-x-hidden p-4 lg:p-6 lg:pb-6", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
-                  {profile.demo_mode && <DemoBanner isAnonymous={user.is_anonymous ?? false} />}
+                  {profile.demo_mode ? (
+                    <DemoBanner isAnonymous={user.is_anonymous ?? false} />
+                  ) : user.is_anonymous ? (
+                    <GuestBanner />
+                  ) : null}
                   <PageTransition>
                     {children}
                   </PageTransition>

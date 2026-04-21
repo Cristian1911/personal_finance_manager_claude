@@ -1,7 +1,7 @@
 import Link from "next/link";
 import "./landing.css";
 import { FooterYear, LandingBehaviors, LandingDemo } from "./landing-demo";
-import { startDemoSession } from "@/actions/demo";
+import { startDemoSession, startGuestSession } from "@/actions/demo";
 
 export function MarketingLandingPage() {
   return (
@@ -69,10 +69,15 @@ export function MarketingLandingPage() {
                   Ver demo
                 </button>
               </form>
+              <form action={startGuestSession} className="contents">
+                <button type="submit" className="btn btn-ghost">
+                  Usar sin cuenta
+                </button>
+              </form>
             </div>
             <div className="hero-micro">
               <span className="pulse" />
-              Gratis · sin tarjeta · prueba el demo sin crear cuenta
+              Gratis · sin tarjeta · prueba sin crear cuenta
             </div>
           </div>
 

@@ -91,6 +91,77 @@ export async function startDemoSession(): Promise<void> {
   redirect("/dashboard");
 }
 
+// ─── Start an anonymous guest session (no demo, goes through onboarding) ───
+
+/**
+ * Anonymous sign-in without demo mode. Unlike `startDemoSession`, this
+ * drops the visitor into the normal onboarding flow — they build their own
+ * accounts and transactions, never see demo data. Ideal for "I want to use
+ * Zeta but I'm not ready to commit to an email yet".
+ *
+ * Operator prerequisite: **Auth → Anonymous Sign-Ins ON**.
+ *
+ * Re-entrant: real account already signed in → `/dashboard`, anonymous
+ * already signed in → route them to wherever they belong (onboarding if
+ * incomplete, dashboard if done).
+ */
+export async function startGuestSession(): Promise<void> {
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase.auth.getUser();
+  if (existing.user) {
+    if (!existing.user.is_anonymous) {
+      redirect("/dashboard");
+    }
+    const userId = existing.user.id;
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("demo_mode, onboarding_completed")
+      .eq("id", userId)
+      .single();
+
+    // Demo → Guest transition: wipe the seeded mock set and clear both flags
+    // so the visitor's own data replaces the demo through onboarding.
+    if (profile?.demo_mode) {
+      const { data: demoAccounts } = await supabase
+        .from("accounts")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_demo", true);
+      const demoAccountIds = (demoAccounts ?? []).map((a) => a.id);
+      if (demoAccountIds.length > 0) {
+        await supabase
+          .from("transactions")
+          .delete()
+          .eq("user_id", userId)
+          .in("account_id", demoAccountIds);
+        await supabase
+          .from("accounts")
+          .delete()
+          .eq("user_id", userId)
+          .eq("is_demo", true);
+      }
+      await supabase.from("budgets").delete().eq("user_id", userId).eq("is_demo", true);
+      await supabase
+        .from("profiles")
+        .update({ demo_mode: false, onboarding_completed: false })
+        .eq("id", userId);
+      revalidateAllTags();
+      redirect("/onboarding");
+    }
+
+    redirect(profile?.onboarding_completed ? "/dashboard" : "/onboarding");
+  }
+
+  const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+  if (authError || !authData.user) {
+    console.error("startGuestSession signInAnonymously failed", authError);
+    redirect("/?guest_error=1");
+  }
+
+  redirect("/onboarding");
+}
+
 // ─── Toggle demo mode ────────────────────────────────────────────────────────
 
 export async function toggleDemoMode(): Promise<ActionResult<{ demoMode: boolean }>> {
