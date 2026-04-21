@@ -91,6 +91,45 @@ export async function startDemoSession(): Promise<void> {
   redirect("/dashboard");
 }
 
+// ─── Start an anonymous guest session (no demo, goes through onboarding) ───
+
+/**
+ * Anonymous sign-in without demo mode. Unlike `startDemoSession`, this
+ * drops the visitor into the normal onboarding flow — they build their own
+ * accounts and transactions, never see demo data. Ideal for "I want to use
+ * Zeta but I'm not ready to commit to an email yet".
+ *
+ * Operator prerequisite: **Auth → Anonymous Sign-Ins ON**.
+ *
+ * Re-entrant: real account already signed in → `/dashboard`, anonymous
+ * already signed in → route them to wherever they belong (onboarding if
+ * incomplete, dashboard if done).
+ */
+export async function startGuestSession(): Promise<void> {
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase.auth.getUser();
+  if (existing.user) {
+    if (!existing.user.is_anonymous) {
+      redirect("/dashboard");
+    }
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", existing.user.id)
+      .single();
+    redirect(profile?.onboarding_completed ? "/dashboard" : "/onboarding");
+  }
+
+  const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+  if (authError || !authData.user) {
+    console.error("startGuestSession signInAnonymously failed", authError);
+    redirect("/?guest_error=1");
+  }
+
+  redirect("/onboarding");
+}
+
 // ─── Toggle demo mode ────────────────────────────────────────────────────────
 
 export async function toggleDemoMode(): Promise<ActionResult<{ demoMode: boolean }>> {
