@@ -823,10 +823,20 @@ export async function updateTransaction(
 
   const categoryChanged = existing?.category_id !== parsed.data.category_id;
 
+  // `updateTransaction` reuses `transactionSchema` but does not read the
+  // `is_subscription` / `destinatario_id` form fields. Strip them from the
+  // spread so their Zod defaults (false / undefined) don't overwrite the
+  // existing row on every edit.
+  const {
+    is_subscription: _ignoredIsSubscription,
+    destinatario_id: _ignoredDestinatarioId,
+    ...updatableFields
+  } = parsed.data;
+
   const { data, error } = await supabase
     .from("transactions")
     .update({
-      ...parsed.data,
+      ...updatableFields,
       clean_description: parsed.data.merchant_name || parsed.data.raw_description || null,
       ...(categoryChanged ? { categorization_source: "USER_OVERRIDE" as const } : {}),
     })

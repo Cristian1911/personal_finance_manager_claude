@@ -161,6 +161,11 @@ export function MobileTransactionForm({
       setCreateRecurringSetup(false);
       setAdvancedOpen(false);
       setRecurringTransferSourceAccountId("");
+      // Destinatario + suscripción don't apply to transfers — clear any
+      // stale values so hidden inputs don't submit them.
+      setIsSubscription(false);
+      setDestinatarioId(null);
+      setDestinatarioSelectedName(null);
     }
   }, [transactionType]);
 
