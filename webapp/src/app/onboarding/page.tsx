@@ -15,6 +15,8 @@ import {
     SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/currency";
+import type { CurrencyCode } from "@/types/domain";
 import { toast } from "sonner";
 import {
     Loader2,
@@ -365,8 +367,9 @@ export default function OnboardingPage() {
                     </div>
                     {incomeNumber > 0 && (
                         <div className={cn(PANEL_INSET_INTERACTIVE_CLASS, "p-3 text-sm")}>
-                            <p className="font-semibold text-foreground">
-                                Disponible para presupuesto: {availableToBudget.toLocaleString()}
+                            <p className="font-semibold tabular-nums text-foreground">
+                                Disponible para presupuesto:{" "}
+                                {formatCurrency(availableToBudget, currency as CurrencyCode)}
                             </p>
                             <p className="mt-1 text-xs text-muted-foreground">
                                 Nos ayuda a sugerirte límites desde el día 1.

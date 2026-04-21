@@ -5,6 +5,8 @@ import { signUp, type AuthActionResult } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 export function SignupForm() {
@@ -12,22 +14,6 @@ export function SignupForm() {
     signUp,
     {}
   );
-
-  if (state.success) {
-    return (
-      <div className="text-center space-y-4">
-        <div className="bg-primary/10 text-primary rounded-md p-4">
-          <p className="font-medium">¡Revisa tu correo!</p>
-          <p className="text-sm mt-1">
-            Te enviamos un enlace de confirmación para activar tu cuenta.
-          </p>
-        </div>
-        <Link href="/login" className="text-sm text-primary hover:underline">
-          Volver al inicio de sesión
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <form action={formAction} className="space-y-4">
@@ -65,7 +51,7 @@ export function SignupForm() {
         </p>
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className={cn("w-full", BRASS_BUTTON_CLASS)} disabled={pending}>
         {pending ? "Creando cuenta..." : "Crear cuenta"}
       </Button>
 

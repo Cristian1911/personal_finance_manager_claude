@@ -107,7 +107,7 @@ export default async function DashboardLayout({
             <AppDataProvider data={appData}>
               <MobileSheetProvider>
                 <main className={cn("flex-1 overflow-x-hidden p-4 lg:p-6 lg:pb-6", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
-                  {profile.demo_mode && <DemoBanner />}
+                  {profile.demo_mode && <DemoBanner isAnonymous={user.is_anonymous ?? false} />}
                   <PageTransition>
                     {children}
                   </PageTransition>

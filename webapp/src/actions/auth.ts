@@ -94,6 +94,42 @@ export async function signUp(
   }
 
   const supabase = await createClient();
+
+  // If the visitor is mid-demo under an anonymous session, promote it in
+  // place via updateUser so their seeded data carries over. Otherwise do a
+  // fresh signUp.
+  const { data: existing } = await supabase.auth.getUser();
+  if (existing.user?.is_anonymous) {
+    const { error: promoteError } = await supabase.auth.updateUser({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
+    if (promoteError) {
+      await trackProductEvent({
+        event_name: "auth_signup_completed",
+        flow: "onboarding",
+        step: "signup",
+        entry_point: "cta",
+        success: false,
+        error_code: "signup_failed",
+        metadata: { email: parsed.data.email },
+      });
+      return { error: translateAuthError(promoteError.message) };
+    }
+    void trackProductEventForUser(existing.user.id, {
+      event_name: "auth_signup_completed",
+      flow: "onboarding",
+      step: "signup",
+      entry_point: "cta",
+      success: true,
+      metadata: { email: parsed.data.email, from_anonymous: true },
+    });
+    // Anonymous user already has a full profile (onboarding_completed=true,
+    // seeded demo data). Drop them on the dashboard — they can exit demo
+    // from the banner when they're ready.
+    redirect("/dashboard");
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -128,12 +164,15 @@ export async function signUp(
     });
   }
 
-  // Project-level "Confirm email" disabled → session is live → go straight to onboarding.
-  // Enabled → session is null → fall through to "revisa tu correo" fallback.
-  if (data.session) {
-    redirect("/onboarding");
+  // Project-level "Confirm email" must be OFF so the session is returned directly.
+  // If it's still ON, the user sees a clear error instead of a blank screen.
+  if (!data.session) {
+    return {
+      error:
+        "No pudimos iniciar tu sesión. Contacta a soporte o intenta iniciar sesión.",
+    };
   }
-  return { success: true };
+  redirect("/onboarding");
 }
 
 export async function signOut(): Promise<void> {

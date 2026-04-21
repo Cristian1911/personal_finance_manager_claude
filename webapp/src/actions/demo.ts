@@ -1,11 +1,95 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { computeIdempotencyKey } from "@zeta/shared";
 import { DEMO_ACCOUNTS, getDemoTransactions, DEMO_BUDGETS } from "@/lib/demo-data";
 import type { ActionResult } from "@/types/actions";
 import type { CurrencyCode } from "@/types/domain";
+
+// ─── Start an anonymous demo session (no signup required) ───────────────────
+
+/**
+ * Lets a visitor try the app without creating an account. Uses Supabase
+ * anonymous sign-in + seeds demo data + flips the profile into demo mode.
+ *
+ * Operator prerequisite: **Auth → Sign In / Providers → "Anonymous Sign-Ins"
+ * must be ON** in the Supabase dashboard. Otherwise signInAnonymously()
+ * returns an error and we redirect back to /login with a failure reason.
+ *
+ * Re-entrant: if the visitor already has an anonymous demo session (same
+ * browser), we skip re-seeding and go straight to the dashboard.
+ *
+ * Returns void so it can be used as a `<form action>`.
+ */
+export async function startDemoSession(): Promise<void> {
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase.auth.getUser();
+  if (existing.user) {
+    if (!existing.user.is_anonymous) {
+      // Real account already signed in — don't hijack their session. Send them
+      // to settings to toggle demo mode the normal way.
+      redirect("/dashboard");
+    }
+    // Already in an anonymous session — ensure demo flag is on, then go.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("demo_mode, onboarding_completed")
+      .eq("id", existing.user.id)
+      .single();
+
+    if (profile && (!profile.demo_mode || !profile.onboarding_completed)) {
+      await supabase
+        .from("profiles")
+        .update({ demo_mode: true, onboarding_completed: true })
+        .eq("id", existing.user.id);
+      revalidateAllTags();
+    }
+    redirect("/dashboard");
+  }
+
+  // Fresh anonymous sign-in
+  const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+  if (authError || !authData.user) {
+    console.error("startDemoSession signInAnonymously failed", authError);
+    redirect("/?demo_error=1");
+  }
+
+  const userId = authData.user.id;
+
+  const seedResult = await seedDemoDataInternal(supabase, userId);
+  if (!seedResult.success) {
+    console.error("startDemoSession seed failed", seedResult.error);
+    // Sign out so a retry re-runs the full seed instead of landing on an
+    // empty "demo" dashboard under the orphaned anonymous user.
+    await supabase.auth.signOut();
+    redirect("/?demo_error=1");
+  }
+
+  // Flip demo_mode + mark onboarding done so dashboard layout doesn't bounce.
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({
+      demo_mode: true,
+      onboarding_completed: true,
+      full_name: "Invitado",
+      preferred_currency: "COP",
+    })
+    .eq("id", userId);
+
+  if (updateError) {
+    console.error("startDemoSession profile update failed", updateError);
+    await supabase.auth.signOut();
+    redirect("/?demo_error=1");
+  }
+
+  // No revalidateAllTags here — fresh anonymous user has no cached reads to
+  // evict, and updateTag is global so it would churn every user's cache.
+  redirect("/dashboard");
+}
 
 // ─── Toggle demo mode ────────────────────────────────────────────────────────
 
