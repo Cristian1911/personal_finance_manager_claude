@@ -111,6 +111,19 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Features
 
+### Budget setup — per-category opt-in + calculator shortcut
+- **Priority:** Medium
+- **What:** When setting up budgets the user wants to pick categories one by one and only assign amounts to the ones they care about — leaving the rest blank is a valid state, not an error. Also: every amount input should expose a small calculator button (popover/drawer) so the user can do quick math without leaving the form.
+- **Why:** Current budget setup assumes every category needs a number. For people starting lean, that's friction. The calculator lets "we spend ~300k on groceries + ~120k on café" become one inline add without switching apps.
+- **Touches:** budget setup UI (`webapp/src/app/presupuesto/...` or the plan presupuesto tab), `CurrencyInput` component — add an adornment button that opens a lightweight calculator.
+- **Found:** User request, 2026-04-21.
+
+### Empty-state "Primeros pasos recomendados" — 4×4 grid layout
+- **Priority:** Low
+- **What:** The "Primeros pasos recomendados" view shown when the app has no data should render the suggested actions as a 4×4 grid (or close to it) instead of the current stacked list. Gives the user a richer menu of entry points at a glance.
+- **Touches:** wherever the first-run recommendations render on the dashboard / /import / /plan empty states — locate and unify.
+- **Found:** User request, 2026-04-21.
+
 ### Mobile — capture amount live-formatting
 - **Priority:** Medium
 - **What:** The centered amount TextInput in `mobile/app/capture.tsx` displays raw digits (`124124`). User expects COP-style thousand grouping (`124.124`) while typing. Solution prototyped during 2026-04-20 session: format via `raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".")` on display, strip dots + convert decimal comma → dot on onChangeText. Deferred to the mobile migration session to keep the destinatario PR focused.
@@ -302,17 +315,13 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Tech Debt
 
-### Anonymous demo session — cleanup cron + rate limiting
-- **Priority:** Medium (blocks scaling "Ver demo")
-- **Context:** PR #205 (2026-04-21) shipped `startDemoSession()` — landing hero + signup page call it to let visitors try the app without registering. Each click creates a real `auth.users` row (`is_anonymous=true`) + encrypted `profiles` row + DEK + ~4 demo accounts + ~40 transactions + 5 budgets. Without cleanup these accumulate forever and count against Supabase MAU billing.
-- **What to build:**
-  1. Scheduled cleanup — delete anonymous users older than N days. Two options:
-     - Supabase cron job calling a SECURITY DEFINER function `cleanup_anonymous_demo_users(p_older_than interval)` that deletes from `auth.users WHERE is_anonymous = true AND created_at < now() - p_older_than`. Cascades to profile + accounts + transactions + budgets via FK.
-     - Next.js route `/api/cron/cleanup-demo` hit by Vercel cron (daily). Uses admin client to delete. Guard with shared secret header.
-  2. Captcha on `signInAnonymously()` — Supabase Auth → Rate Limits. Protects against bot spam that would otherwise balloon the MAU count.
-  3. Optional: monitor anonymous count weekly (`SELECT count(*) FROM auth.users WHERE is_anonymous = true;`) and alert if growth spikes.
-- **Default policy suggestion:** delete anonymous users after 7 days of inactivity. Short enough to stop MAU creep, long enough that a visitor returning the next day still has their demo data.
-- **Touches:** new migration with the cleanup function + cron trigger, or `webapp/src/app/api/cron/cleanup-demo/route.ts` + Vercel cron config.
+### Anonymous demo session — captcha + rate limiting
+- **Priority:** Medium (pairs with the cleanup cron that shipped via pg_cron)
+- **Context:** The daily pg_cron deletes idle anonymous users older than 7 days, but nothing stops a bot from creating 10k anonymous users in an hour. Supabase's built-in per-IP rate limit helps; captcha on the anonymous sign-in endpoint is the real guardrail.
+- **What to configure (no code):**
+  1. Supabase Dashboard → Auth → Rate Limits → reduce anonymous sign-ins per IP/hour (default 30).
+  2. Supabase Dashboard → Auth → Captcha → enable hCaptcha/Turnstile specifically for `signInAnonymously`. Requires passing a captcha token from the client — wire it into `startDemoSession` and `startGuestSession` if enabled.
+  3. Weekly observability query: `SELECT count(*) FROM auth.users WHERE is_anonymous = true;` — alert if growth spikes between cron runs.
 - **Found:** PR #205 follow-up, 2026-04-21.
 
 ### Tx detail — `router.refresh()` on tag picker close
