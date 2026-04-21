@@ -3,6 +3,7 @@ import { getAttentionItems } from "@/actions/attention-items";
 import { getBurnRate } from "@/actions/burn-rate";
 import { getBudgetSummary } from "@/actions/budgets";
 import { getAccounts } from "@/actions/accounts";
+import { getMobileLayout } from "@/actions/dashboard-config";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
 import type { RecentTransaction } from "@/actions/transactions";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
@@ -18,7 +19,7 @@ interface MobileZoneProps {
 }
 
 export async function MobileZone({ month, currency, recentTx }: MobileZoneProps) {
-  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult, dailySpending, latestSnapshotDates] =
+  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult, dailySpending, latestSnapshotDates, mobileLayout] =
     await Promise.all([
       getDashboardHeroData(month, currency),
       getAttentionItems(),
@@ -27,6 +28,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
       getAccounts(),
       getDailySpending(month, currency),
       getLatestSnapshotDates(),
+      getMobileLayout(),
     ]);
 
   const allAccounts = accountsResult.success ? accountsResult.data : [];
@@ -108,6 +110,13 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
     ? last7Days.reduce((sum, d) => sum + d.amount, 0) / last7Days.length
     : 0;
 
+  // Last-7 series for the Pulse sparkline (oldest → newest, zero-filled for
+  // missing days so the line spans the full 7-day window).
+  const last7Spend = Array.from({ length: 7 }, (_, idx) => {
+    const day = toColombiaDateString(subDays(now, 7 - idx));
+    return dailySpending.find((d) => d.date === day)?.amount ?? 0;
+  });
+
   // Upcoming income derived from hero data — surfaces on the "Por resolver" timeline
   const upcomingIncome = heroData.incomeConfigured && heroData.nextIncomeDate
     ? [{
@@ -143,6 +152,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
           spentToday,
           spentYesterday,
           avgLast7,
+          last7Spend,
           currency,
         }}
         attentionItems={attentionItemsData}
@@ -153,6 +163,7 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
         daysSinceImport={daysSinceImport}
         recentTransactions={mobileRecentTx}
         currency={currency}
+        initialLayout={mobileLayout ?? undefined}
       />
     </>
   );

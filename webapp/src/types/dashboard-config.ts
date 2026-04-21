@@ -9,6 +9,25 @@ export interface WidgetConfig {
   section: DashboardSection;
 }
 
+export type MobileWidgetSize = "XS" | "S" | "M" | "L";
+
+export type MobilePulseRange = "weekly" | "monthly";
+
+/**
+ * User-curated mobile layout — Flow 02 Variant B.
+ * Pulse is always first and non-removable, so it's not tracked here.
+ */
+export interface MobileWidgetInstance {
+  id: string;
+  type: string;
+  size: MobileWidgetSize;
+}
+
+export interface MobileDashboardLayout {
+  pulseRange: MobilePulseRange;
+  widgets: MobileWidgetInstance[];
+}
+
 export interface DashboardConfig {
   purpose: AppPurpose;
   widgets: WidgetConfig[];
