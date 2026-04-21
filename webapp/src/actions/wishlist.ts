@@ -13,6 +13,8 @@ import {
 } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
+import { z } from "zod";
+import { uuidStr } from "@/lib/validators/shared";
 import {
   createWishlistItemSchema,
   enrichWishlistItemSchema,
@@ -194,6 +196,78 @@ export async function createWishlistItem(
   if (error) {
     console.error("Error creating wishlist item:", error);
     return { success: false, error: "Error al crear el deseo" };
+  }
+
+  invalidateWishlist();
+  return { success: true, data: data as WishlistItem };
+}
+
+const saveAffordToWishlistSchema = z.object({
+  name: z.string().min(1, "El nombre es requerido").max(200),
+  amount: z.coerce.number().positive("El monto debe ser positivo"),
+  currency_code: z
+    .string()
+    .length(3, "Código de moneda inválido")
+    .transform((v) => v.toUpperCase())
+    .default("COP"),
+  urgency: z.enum(["NECESSARY", "USEFUL", "IMPULSE"]),
+  funding_type: z.enum(["ONE_TIME", "INSTALLMENTS"]),
+  installments: z.coerce.number().int().min(2).max(36).nullable().optional(),
+  account_id: uuidStr("Cuenta inválida").nullable().optional(),
+  category_id: uuidStr("Categoría inválida").nullable().optional(),
+  why: z.string().max(500).nullable().optional(),
+  last_verdict: z
+    .enum(["BUY", "BUY_WITH_CAUTION", "WAIT", "NOT_RECOMMENDED"])
+    .nullable()
+    .optional(),
+  last_score: z.coerce.number().int().min(0).max(100).nullable().optional(),
+});
+
+export async function saveAffordToWishlist(
+  rawInput: unknown,
+): Promise<ActionResult<WishlistItem>> {
+  const parsed = saveAffordToWishlistSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Datos inválidos",
+    };
+  }
+
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const now = new Date().toISOString();
+  const input = parsed.data;
+  const { data, error } = await supabase
+    .from("wishlist_items")
+    .insert({
+      user_id: user.id,
+      name: input.name,
+      amount: input.amount,
+      currency_code: input.currency_code,
+      urgency: input.urgency,
+      funding_type: input.funding_type,
+      installments:
+        input.funding_type === "INSTALLMENTS" ? (input.installments ?? null) : null,
+      account_id: input.account_id ?? null,
+      category_id: input.category_id ?? null,
+      why: input.why ?? null,
+      last_verdict: input.last_verdict ?? null,
+      last_score: input.last_score ?? null,
+      last_scored_at: input.last_score != null ? now : null,
+      enriched: true,
+      enriched_at: now,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("Error saving afford result to wishlist:", {
+      code: error.code,
+      message: error.message,
+    });
+    return { success: false, error: "Error al guardar en deseos" };
   }
 
   invalidateWishlist();

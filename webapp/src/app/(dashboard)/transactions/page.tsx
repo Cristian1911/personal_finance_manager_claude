@@ -1,5 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
+import Link from "next/link";
+import { ArrowRight, Brain } from "lucide-react";
 import { getTransactions } from "@/actions/transactions";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
@@ -15,15 +17,16 @@ import { QuickCaptureBar } from "@/components/transactions/quick-capture-bar";
 import { Pagination } from "@/components/transactions/pagination";
 import { MonthSelector } from "@/components/month-selector";
 import { MovimientosRoot } from "@/components/mobile/v2/movimientos/movimientos-root";
-import { parseMonth, formatMonthParam, formatMonthLabel } from "@/lib/utils/date";
+import { parseMonth, formatMonthLabel } from "@/lib/utils/date";
 import { formatCurrency } from "@/lib/utils/currency";
-import dynamic from "next/dynamic";
-import { PAGE_STACK_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
-
-const PurchaseDecisionCard = dynamic(
-  () => import("@/components/dashboard/purchase-decision-card").then((m) => ({ default: m.PurchaseDecisionCard })),
-  { loading: () => <div className="h-64 rounded-xl bg-muted animate-pulse" /> }
-);
+import { cn } from "@/lib/utils";
+import {
+  BRASS_BUTTON_CLASS,
+  PAGE_STACK_CLASS,
+  PANEL_INSET_CLASS,
+  PANEL_SURFACE_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "@/lib/constants/styles";
 
 export default async function TransactionsPage({
   searchParams,
@@ -33,12 +36,11 @@ export default async function TransactionsPage({
   await connection();
   const params = await searchParams;
 
-  const [transactionsResult, accountsResult, categoriesResult, outflowCategoriesResult, allTags, pendingEmailResult] =
+  const [transactionsResult, accountsResult, categoriesResult, allTags, pendingEmailResult] =
     await Promise.all([
       getTransactions(params),
       getAccounts(),
       getCategories(),
-      getCategories("OUTFLOW"),
       getAllTags(),
       getPendingEmailTransactions(),
     ]);
@@ -47,10 +49,8 @@ export default async function TransactionsPage({
 
   const accounts = accountsResult.success ? accountsResult.data : [];
   const categories = categoriesResult.success ? categoriesResult.data : [];
-  const outflowCategories = outflowCategoriesResult.success ? outflowCategoriesResult.data ?? [] : [];
   const month = params.month;
   const target = parseMonth(month);
-  const defaultMonth = month ?? formatMonthParam(target);
   const monthLabel = formatMonthLabel(target);
   const activeFilterCount = [
     params.search,
@@ -183,11 +183,38 @@ export default async function TransactionsPage({
 
         <QuickCaptureBar accounts={accounts} categories={categories} />
 
-        <PurchaseDecisionCard
-          accounts={accounts}
-          categories={outflowCategories}
-          defaultMonth={defaultMonth}
-        />
+        <Link
+          href="/puedo-pagar"
+          className={cn(
+            PANEL_SURFACE_CLASS,
+            "flex flex-wrap items-center justify-between gap-3 p-4 transition-colors hover:bg-z-surface-2",
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-z-brass/12 text-z-brass">
+              <Brain className="size-5" strokeWidth={2} />
+            </span>
+            <div>
+              <p className={SECTION_EYEBROW_CLASS}>Compra consciente</p>
+              <p className="mt-0.5 text-sm font-semibold text-foreground">
+                ¿Debería comprar esto?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Evalúa impacto en liquidez, deuda y presupuesto antes de
+                decidir.
+              </p>
+            </div>
+          </div>
+          <span
+            className={cn(
+              BRASS_BUTTON_CLASS,
+              "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold",
+            )}
+          >
+            Analizar
+            <ArrowRight className="size-4" />
+          </span>
+        </Link>
 
         <PendingEmailTransactions transactions={pendingTransactions} accounts={accounts} />
 
