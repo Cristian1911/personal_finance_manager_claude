@@ -43,6 +43,7 @@ import {
 } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatMonthParam } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 
 type Verdict = PurchaseDecisionResult["verdict"];
@@ -121,12 +122,10 @@ const ACCOUNT_ICON: Record<string, typeof Landmark> = {
 };
 
 interface AffordPageClientProps {
-  defaultMonth: string;
   defaultCurrency: CurrencyCode;
 }
 
 export function AffordPageClient({
-  defaultMonth,
   defaultCurrency,
 }: AffordPageClientProps) {
   const router = useRouter();
@@ -142,7 +141,7 @@ export function AffordPageClient({
 
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [accountId, setAccountId] = useState(activeAccounts[0]?.id ?? "");
+  const [accountId, setAccountId] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [urgency, setUrgency] = useState<PurchaseUrgency>("USEFUL");
   const [fundingType, setFundingType] =
@@ -163,6 +162,12 @@ export function AffordPageClient({
   const currency: CurrencyCode =
     (selectedAccount?.currency_code as CurrencyCode | undefined) ??
     defaultCurrency;
+
+  useEffect(() => {
+    if (!accountId && activeAccounts.length > 0) {
+      setAccountId(activeAccounts[0].id);
+    }
+  }, [accountId, activeAccounts]);
 
   useEffect(() => {
     setResult(null);
@@ -192,7 +197,7 @@ export function AffordPageClient({
         fundingType,
         installments:
           fundingType === "INSTALLMENTS" ? Number(installments || "0") : null,
-        month: defaultMonth,
+        month: formatMonthParam(new Date()),
       });
 
       if (!response.success || !response.data) {
