@@ -113,11 +113,43 @@ export async function startGuestSession(): Promise<void> {
     if (!existing.user.is_anonymous) {
       redirect("/dashboard");
     }
+    const userId = existing.user.id;
     const { data: profile } = await supabase
       .from("profiles")
-      .select("onboarding_completed")
-      .eq("id", existing.user.id)
+      .select("demo_mode, onboarding_completed")
+      .eq("id", userId)
       .single();
+
+    // Demo → Guest transition: wipe the seeded mock set and clear both flags
+    // so the visitor's own data replaces the demo through onboarding.
+    if (profile?.demo_mode) {
+      const { data: demoAccounts } = await supabase
+        .from("accounts")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_demo", true);
+      const demoAccountIds = (demoAccounts ?? []).map((a) => a.id);
+      if (demoAccountIds.length > 0) {
+        await supabase
+          .from("transactions")
+          .delete()
+          .eq("user_id", userId)
+          .in("account_id", demoAccountIds);
+        await supabase
+          .from("accounts")
+          .delete()
+          .eq("user_id", userId)
+          .eq("is_demo", true);
+      }
+      await supabase.from("budgets").delete().eq("user_id", userId).eq("is_demo", true);
+      await supabase
+        .from("profiles")
+        .update({ demo_mode: false, onboarding_completed: false })
+        .eq("id", userId);
+      revalidateAllTags();
+      redirect("/onboarding");
+    }
+
     redirect(profile?.onboarding_completed ? "/dashboard" : "/onboarding");
   }
 
