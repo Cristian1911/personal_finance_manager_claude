@@ -82,9 +82,26 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **Priority:** Medium
 - **What:** A = structured sheet, B = conversational, C = radial action. Current webapp uses structured form; this is a rethink.
 
-### Flow 04 — Import redesign
+### Flow 04 — Import redesign (webapp)
 - **Priority:** Medium
-- **What:** A = 6-step wizard shortened, B = always-on inbox. Current import wizard is close to A but longer.
+- **Status:** Variant A (mobile-first 4-step) shipped — 2026-04-21.
+- **What shipped:**
+  - Collapsed from 6 steps (upload/review/destinatarios/confirm/reconcile/results) to **4 steps** (subir/revisar/reconciliar/listo) matching the mobile app + wireframe Variant A.
+  - Destinatario matching and auto-categorization now run silently in step 2; users fix later on the dedicated `/destinatarios` and `/transactions` pages.
+  - Multi-currency credit card imports use the mobile `CreditCardStackCard` pattern — one chip + one account assignment + per-currency compact cards with inline projection, instead of a card per statement.
+  - New `AccountAssignControl` popover (replaces buried `Select`): brass attention state when unmatched, single-line pill trigger merged with the currency selector on one row.
+  - Reconcile step replaced the stat row with a 2×2 grid of expandable `ReconcileChip` tiles (Nuevos / Destinatarios / Duplicados / Ambiguos) + `Narrator` line. Clicking a chip expands a detail panel below.
+  - Sticky `WizardActionBar` pinned to the bottom of the viewport on mobile (safe-area + tab-bar clearance). Desktop reverts to inline.
+  - Pending email queue now renders **below** the wizard, collapsed by default with a summary strip ("2 listos · 1 necesita clave · 1 con error"), and hides entirely once the user starts a flow.
+  - Pending-email queue row clears automatically on completed import (skipped-only counts — previously it required `imported > 0`).
+  - Step 1 drop zone restyled (large dashed brass box + file-type hint).
+  - `projectMinimumPayoff12mo` moved from `mobile/lib/utils/cc-projection` to `@zeta/shared`.
+- **Touches:** `webapp/src/components/import/*`, `webapp/src/app/(dashboard)/import/page.tsx`, `packages/shared/src/utils/cc-projection.ts`, `mobile/components/import/CreditCard{Summary,StackCard}.tsx`.
+- **Deferred / follow-ups:**
+  - Variant B (always-on inbox) — future slice; current "Cola de importación" is a step toward it.
+  - Inline `CreateDestinatarioDialog` in the reconcile "Destinatarios" panel — today it links to `/destinatarios?new=<name>`; wiring the dialog inline requires threading `categories` through the step.
+  - Per-tx category override in the flow — removed to match mobile. If we re-add, use an accordion inside the review transaction list (data path still supports it).
+  - Manual QA pass — auth-guarded, so browser-based verification needs a real session. Walk-throughs: multi-currency CC, loan statement, email-queue re-import.
 
 ### Flow 05 — Plan redesign
 - **Priority:** Medium
@@ -314,6 +331,21 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **Found:** Slice-3 scope, 2026-04-19
 
 ## Tech Debt
+
+### Import page — defer `suggestPdfPasswordsForAccount(null, null)` to file-select time
+- **Priority:** Medium
+- **What:** `webapp/src/app/(dashboard)/import/page.tsx` fetches all vault suggestions for the user on every page load, even though the payload isn't read until the user picks an encrypted PDF. The action is intentionally uncached (plaintext passwords). Move the call into `StepUpload`, fired only after a file is selected and a bank key is detected. Removes one uncached SELECT from the initial render.
+- **Found:** perf-auditor review, 2026-04-21 (import flow redesign).
+
+### `markEmailPdfStatementImported` — redundant `revalidateFinancialViews()` call
+- **Priority:** Low
+- **What:** `webapp/src/actions/email-pdf-ingest.ts:221` invalidates every financial tag at the end of the status flip. The preceding `importTransactions` already did the work. Trim to `updateTag("email-ingest")` only.
+- **Found:** perf-auditor review, 2026-04-21.
+
+### Consolidate `ReconcileChip` into `widget-chip`'s `ExpandableChip`
+- **Priority:** Low
+- **What:** `webapp/src/components/import/reconcile-chip.tsx` duplicates the `ExpandableChip` + `ChipEyebrow` pattern from `webapp/src/components/mobile/v2/inicio/widget-chip.tsx`. Layout differs (centered label/value/hint, chevron bottom-right vs space-between) and the reconcile version needs an `"alert"` tone that doesn't exist upstream. Upstream the tone first, then fold the variants.
+- **Found:** zetas-front-guy review, 2026-04-21.
 
 ### Anonymous demo session — captcha + rate limiting
 - **Priority:** Medium (pairs with the cleanup cron that shipped via pg_cron)

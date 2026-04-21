@@ -112,90 +112,78 @@ export default async function ImportPage() {
         </PageHero>
       </div>
 
-      {/* Mobile: compact intro */}
-      <div className="lg:hidden">
-        <div className="flex items-center gap-2">
-          <span className="rounded-full border border-z-brass/30 bg-z-brass/10 px-3 py-1 text-[11px] font-medium text-z-brass">
-            Flujo guiado
-          </span>
-        </div>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Sube tu extracto o captura de pantalla para actualizar tus movimientos.
-        </p>
-      </div>
-
       <ImportPageClient
         accounts={accounts}
         categories={categories}
         destinatarioRules={destinatarioRules}
         pendingStatements={pendingStatements}
         initialVaultSuggestions={vaultSuggestions}
+        mobileAboutPanel={
+          <details className="group lg:hidden rounded-2xl border border-white/6 bg-z-surface-2/55">
+            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium text-z-sage-light marker:content-none [&::-webkit-details-marker]:hidden">
+              Más sobre este flujo
+              <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="space-y-3 px-4 pb-4">
+              <div className="grid gap-3 grid-cols-2">
+                <StatCard
+                  label="Cuentas listas"
+                  value={accounts.length}
+                  description="Bases disponibles para asociar cada extracto."
+                />
+                <StatCard
+                  label="Categorías activas"
+                  value={categories.length}
+                  description="Para revisión y confirmación final."
+                />
+                <StatCard
+                  label="Reglas aprendidas"
+                  value={destinatarioRules.length}
+                  description="Atajos para reconocer comercios."
+                />
+                <StatCard
+                  label={
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+                      <ShieldCheck className="size-4 text-z-brass" />
+                      Protección
+                    </div>
+                  }
+                  value={
+                    <span className="text-sm font-normal leading-6 text-muted-foreground">
+                      Revisión manual antes de escribir en la base.
+                    </span>
+                  }
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-white/6 bg-black/10 p-3">
+                  <div className="flex items-start gap-3">
+                    <Files className="mt-0.5 size-4 text-z-brass shrink-0" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-z-white">Qué resuelve este flujo</p>
+                      <p className="text-xs text-muted-foreground">
+                        Sube el archivo, confirma la cuenta, aprende destinatarios y resuelve duplicados.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/6 bg-black/10 p-3">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="mt-0.5 size-4 text-z-brass shrink-0" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-z-white">Si no tienes cuentas aún</p>
+                      <p className="text-xs text-muted-foreground">
+                        Puedes crear una durante la revisión sin salir del flujo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </details>
+        }
       />
-
-      {/* Mobile: collapsible info section */}
-      <details className="group lg:hidden rounded-2xl border border-white/6 bg-z-surface-2/55">
-        <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium text-z-sage-light marker:content-none [&::-webkit-details-marker]:hidden">
-          Más sobre este flujo
-          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="space-y-3 px-4 pb-4">
-          <div className="grid gap-3 grid-cols-2">
-            <StatCard
-              label="Cuentas listas"
-              value={accounts.length}
-              description="Bases disponibles para asociar cada extracto."
-            />
-            <StatCard
-              label="Categorías activas"
-              value={categories.length}
-              description="Para revisión y confirmación final."
-            />
-            <StatCard
-              label="Reglas aprendidas"
-              value={destinatarioRules.length}
-              description="Atajos para reconocer comercios."
-            />
-            <StatCard
-              label={
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-                  <ShieldCheck className="size-4 text-z-brass" />
-                  Protección
-                </div>
-              }
-              value={
-                <span className="text-sm font-normal leading-6 text-muted-foreground">
-                  Revisión manual antes de escribir en la base.
-                </span>
-              }
-            />
-          </div>
-
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-white/6 bg-black/10 p-3">
-              <div className="flex items-start gap-3">
-                <Files className="mt-0.5 size-4 text-z-brass shrink-0" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-z-white">Qué resuelve este flujo</p>
-                  <p className="text-xs text-muted-foreground">
-                    Sube el archivo, confirma la cuenta, aprende destinatarios y resuelve duplicados.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-white/6 bg-black/10 p-3">
-              <div className="flex items-start gap-3">
-                <Sparkles className="mt-0.5 size-4 text-z-brass shrink-0" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-z-white">Si no tienes cuentas aún</p>
-                  <p className="text-xs text-muted-foreground">
-                    Puedes crear una durante la revisión sin salir del flujo.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </details>
     </div>
   );
 }

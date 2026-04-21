@@ -285,12 +285,22 @@ export function StepUpload({
 
   return (
     <div className="space-y-4">
-      <div
-        className={`relative flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed p-12 transition-colors ${
+      <div className="flex items-baseline justify-between">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+          Archivo
+        </p>
+        <p className="text-[10px] italic text-z-sage-dark">PDF · PNG · JPG</p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className={cn(
+          "relative flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-10 text-center transition-colors",
           dragging
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-muted-foreground/50"
-        }`}
+            ? "border-z-brass bg-z-brass/12"
+            : "border-z-brass/30 bg-z-brass/8 hover:border-z-brass/60 hover:bg-z-brass/12",
+        )}
         onDragOver={(e) => {
           e.preventDefault();
           setDragging(true);
@@ -303,23 +313,15 @@ export function StepUpload({
           if (droppedFile) handleFile(droppedFile);
         }}
       >
-        <Upload className="h-10 w-10 text-muted-foreground" />
-        <div className="text-center">
-          <p className="text-sm font-medium">
-            Arrastra tu extracto o captura de pantalla
+        <Upload className="h-10 w-10 text-z-brass" />
+        <div>
+          <p className="text-base font-semibold text-z-white">
+            Arrastra o toca para subir
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            PDF (máx. 10MB) o imagen PNG/JPG (máx. 20MB)
+          <p className="mt-1 text-xs text-z-sage-dark">
+            PDF hasta 10MB · imagen hasta 20MB
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={GHOST_BUTTON_CLASS}
-          onClick={() => inputRef.current?.click()}
-        >
-          Seleccionar archivo
-        </Button>
         <input
           ref={inputRef}
           type="file"
@@ -330,7 +332,13 @@ export function StepUpload({
             if (f) handleFile(f);
           }}
         />
-      </div>
+      </button>
+
+      {!file && (
+        <p className="text-center text-xs italic text-z-sage-dark">
+          Detectamos el banco automáticamente — no tienes que elegirlo.
+        </p>
+      )}
 
       {file && (
         <div className="space-y-3">
@@ -416,7 +424,7 @@ export function StepUpload({
                 )}
               </div>
               {password && !passwordFromVault && (
-                <div className="rounded-md border border-dashed border-white/10 p-3 space-y-2">
+                <div className="rounded-md border border-dashed border-white/6 p-3 space-y-2">
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <input
                       type="checkbox"

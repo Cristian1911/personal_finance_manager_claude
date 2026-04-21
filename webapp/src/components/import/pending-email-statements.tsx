@@ -7,12 +7,13 @@ import {
   Lock,
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   X,
   RefreshCw,
   Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
@@ -82,6 +83,7 @@ export function PendingEmailStatements({
   const [isPending, startTransition] = useTransition();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [passwordInputs, setPasswordInputs] = useState<Record<string, string>>({});
+  const [open, setOpen] = useState(false);
 
   if (statements.length === 0) return null;
 
@@ -130,21 +132,71 @@ export function PendingEmailStatements({
   }
 
   const parsedCount = statements.filter((s) => s.status === "parsed").length;
+  const needsPasswordCount = statements.filter((s) => s.status === "needs_password").length;
+  const errorCount = statements.filter((s) => s.status === "parse_failed").length;
+  const processingCount = statements.filter(
+    (s) => s.status === "pending" || s.status === "parsing",
+  ).length;
+
+  const summaryParts: string[] = [];
+  if (parsedCount > 0)
+    summaryParts.push(`${parsedCount} ${parsedCount === 1 ? "listo" : "listos"}`);
+  if (needsPasswordCount > 0)
+    summaryParts.push(
+      `${needsPasswordCount} necesita${needsPasswordCount === 1 ? "" : "n"} clave`,
+    );
+  if (errorCount > 0)
+    summaryParts.push(`${errorCount} con error`);
+  if (processingCount > 0 && summaryParts.length === 0)
+    summaryParts.push(`${processingCount} en proceso`);
 
   return (
     <Card className="border-white/6 bg-z-surface-2/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <FileText className="size-4 text-z-brass" />
-          <CardTitle className="text-base">Extractos pendientes por correo</CardTitle>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-white/5"
+      >
+        <div className="flex min-w-0 items-center gap-2.5">
+          <FileText className="size-4 shrink-0 text-z-brass" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-z-white">
+              Cola de importación
+            </p>
+            <p className="truncate text-xs text-z-sage-dark">
+              {summaryParts.length > 0
+                ? summaryParts.join(" · ")
+                : `${statements.length} ${statements.length === 1 ? "entrada" : "entradas"}`}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           {parsedCount > 0 && (
-            <span className="rounded-full bg-z-income/20 px-2 py-0.5 text-xs font-semibold text-z-income">
-              {parsedCount} {parsedCount === 1 ? "listo" : "listos"}
+            <span className="rounded-full bg-z-income/20 px-2 py-0.5 text-[11px] font-semibold text-z-income">
+              {parsedCount}
             </span>
           )}
+          {needsPasswordCount > 0 && (
+            <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
+              {needsPasswordCount}
+            </span>
+          )}
+          {errorCount > 0 && (
+            <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+              {errorCount}
+            </span>
+          )}
+          <ChevronDown
+            className={cn(
+              "size-4 text-z-sage-dark transition-transform",
+              open && "rotate-180",
+            )}
+          />
         </div>
-      </CardHeader>
-      <CardContent className="p-0">
+      </button>
+      {open && (
+      <CardContent className="border-t border-white/6 p-0">
         <div className="divide-y divide-white/6">
           {statements.map((stmt) => {
             const config = STATUS_MAP[stmt.status] ?? STATUS_MAP.pending;
@@ -277,6 +329,7 @@ export function PendingEmailStatements({
           })}
         </div>
       </CardContent>
+      )}
     </Card>
   );
 }
