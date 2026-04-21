@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Brain,
   CalendarClock,
   Contact,
   FileUp,
@@ -19,6 +20,7 @@ const LINKS: { href: string; icon: LucideIcon; label: string }[] = [
   { href: "/categorizar", icon: Tags, label: "Categorizar" },
   { href: "/import", icon: FileUp, label: "Importar" },
   { href: "/deudas", icon: Landmark, label: "Deudas" },
+  { href: "/puedo-pagar", icon: Brain, label: "¿Comprarlo?" },
   { href: "/settings", icon: Settings, label: "Ajustes" },
 ];
 

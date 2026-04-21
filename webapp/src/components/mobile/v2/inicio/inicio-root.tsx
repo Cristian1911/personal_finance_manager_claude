@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, RotateCcw, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { PulseWidget } from "./pulse-widget";
@@ -9,7 +10,6 @@ import { WidgetGrid, type WidgetRender } from "./widget-grid";
 import { AddWidgetSheet } from "./add-widget-sheet";
 import { SectionDivider } from "./section-divider";
 import { WidgetEditSheet } from "./widget-edit-sheet";
-import { PurchaseRecommenderDrawer } from "./purchase-recommender-drawer";
 import { renderAttentionWidget } from "./widgets/attention-widget";
 import { renderRitmoWidget } from "./widgets/ritmo-widget";
 import { renderWhereTodayWidget } from "./widgets/where-today-widget";
@@ -125,13 +125,13 @@ export function InicioRoot({
   currency,
   initialLayout,
 }: InicioRootProps) {
+  const router = useRouter();
   const [layout, setLayout] = useState<DashboardLayout>(() =>
     normalizeLayout(initialLayout),
   );
   const [editing, setEditing] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
-  const [puedoOpen, setPuedoOpen] = useState(false);
   const [, startPersist] = useTransition();
   const { activeZone, toggle } = useExpandableZone<string>();
 
@@ -291,7 +291,7 @@ export function InicioRoot({
           return renderRecentWidget({ transactions: recentTransactions });
         case "puedo_comprarlo":
           return renderPuedoComprarloWidget({
-            onOpen: () => setPuedoOpen(true),
+            onOpen: () => router.push("/puedo-pagar"),
           });
         default:
           return {
@@ -323,6 +323,7 @@ export function InicioRoot({
       metrics.daysInMonth,
       burnRateData,
       recentTransactions,
+      router,
     ],
   );
 
@@ -446,11 +447,6 @@ export function InicioRoot({
         }}
       />
 
-      <PurchaseRecommenderDrawer
-        open={puedoOpen}
-        onOpenChange={setPuedoOpen}
-        currency={currency}
-      />
     </div>
   );
 }
