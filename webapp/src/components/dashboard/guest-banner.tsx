@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { UserPlus, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 
 /**
  * Banner shown when the visitor is signed in anonymously and is NOT in
@@ -14,14 +16,14 @@ export function GuestBanner() {
       <div className="flex items-center gap-2.5 text-sm">
         <UserRound className="size-4 shrink-0 text-z-brass" />
         <span className="font-medium text-z-brass">Sin cuenta</span>
-        <span className="text-muted-foreground">
-          — Crea cuenta para no perder tus datos
+        <span className="text-z-sage-dark">
+          — Tus datos se mantienen al crear cuenta
         </span>
       </div>
       <Button
         asChild
         size="sm"
-        className="h-7 gap-1.5 bg-z-brass px-2.5 text-xs text-z-ink hover:bg-z-brass/90"
+        className={cn(BRASS_BUTTON_CLASS, "h-7 gap-1.5 px-2.5 text-xs")}
       >
         <Link href="/signup">
           <UserPlus className="size-3.5" />

@@ -9,7 +9,13 @@ import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
-export function SignupForm() {
+interface SignupFormProps {
+  /** When true, signup will promote the current anonymous session in place
+   *  — we surface a copy line so the user knows their data carries over. */
+  fromGuest?: boolean;
+}
+
+export function SignupForm({ fromGuest = false }: SignupFormProps = {}) {
   const [state, formAction, pending] = useActionState<AuthActionResult, FormData>(
     signUp,
     {}
@@ -17,6 +23,11 @@ export function SignupForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      {fromGuest && (
+        <div className="rounded-md border border-z-brass/20 bg-z-brass/8 p-3 text-xs text-z-brass">
+          Tus datos se mantienen al crear la cuenta. Nada se pierde.
+        </div>
+      )}
       {state.error && (
         <div className="bg-destructive/10 text-destructive text-sm rounded-md p-3">
           {state.error}
