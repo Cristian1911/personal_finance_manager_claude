@@ -24,7 +24,10 @@ ALTER TABLE public.budgets
   ADD CONSTRAINT budgets_user_id_fkey
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
+-- pg_cron is not relocatable: it always creates its own `cron` schema for
+-- the job tables + the schedule/unschedule functions, regardless of any
+-- WITH SCHEMA hint. Leave it bare so `cron.schedule(...)` below resolves.
+CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 -- SECURITY DEFINER so it can DELETE from auth.users. Ownership stays with
 -- the migration runner (postgres / supabase_admin), execution restricted to
@@ -35,7 +38,7 @@ CREATE OR REPLACE FUNCTION public.cleanup_anonymous_demo_users(
 RETURNS INTEGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth
+SET search_path = public, auth, pg_catalog
 AS $$
 DECLARE
   deleted_count INTEGER;
