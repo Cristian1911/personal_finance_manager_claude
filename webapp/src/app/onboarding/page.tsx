@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SelectPill } from "@/components/ui/select-pill";
+import type { Database } from "@/types/database";
 import {
     BRASS_BUTTON_CLASS,
     GHOST_BUTTON_CLASS,
@@ -80,9 +82,9 @@ export default function OnboardingPage() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
-    const [purpose, setPurpose] = useState("");
+    const [purpose, setPurpose] = useState<AppPurpose | "">("");
     const [fullName, setFullName] = useState("");
-    const [currency, setCurrency] = useState("COP");
+    const [currency, setCurrency] = useState<CurrencyCode>("COP");
     const [timezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
     const [income, setIncome] = useState("");
@@ -90,7 +92,8 @@ export default function OnboardingPage() {
     const [debtCount, setDebtCount] = useState("");
 
     const [accountName, setAccountName] = useState("");
-    const [accountType, setAccountType] = useState("CHECKING");
+    const [accountType, setAccountType] =
+        useState<Database["public"]["Enums"]["account_type"]>("CHECKING");
     const [balance, setBalance] = useState("");
 
     const startedAtRef = useRef<number>(Date.now());
@@ -148,7 +151,7 @@ export default function OnboardingPage() {
     const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
     const onSubmit = async () => {
-        if (!accountName || !balance) {
+        if (!accountName.trim() || balance === "") {
             toast.error("Completa los datos de tu cuenta.");
             return;
         }
@@ -241,12 +244,14 @@ export default function OnboardingPage() {
                 </div>
             )}
 
-            <div className="space-y-1">
-                <h2 className="text-2xl font-bold tracking-tight">{headerCopy.title}</h2>
-                {headerCopy.sub && (
-                    <p className="text-sm text-muted-foreground">{headerCopy.sub}</p>
-                )}
-            </div>
+            {step < 5 && (
+                <div className="space-y-1">
+                    <h2 className="text-2xl font-bold tracking-tight">{headerCopy.title}</h2>
+                    {headerCopy.sub && (
+                        <p className="text-sm text-muted-foreground">{headerCopy.sub}</p>
+                    )}
+                </div>
+            )}
 
             {step === 1 && (
                 <div key="step1" className="animate-in fade-in slide-in-from-right-4 duration-200 space-y-4">
@@ -309,25 +314,14 @@ export default function OnboardingPage() {
                     <div className="space-y-2">
                         <Label>Moneda principal</Label>
                         <div className="flex flex-wrap gap-2">
-                            {CURRENCIES.map((c) => {
-                                const active = currency === c.code;
-                                return (
-                                    <button
-                                        key={c.code}
-                                        type="button"
-                                        onClick={() => setCurrency(c.code)}
-                                        className={cn(
-                                            "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                                            active
-                                                ? "border-z-brass/40 bg-z-brass/10 text-z-brass"
-                                                : "border-white/8 bg-white/[0.02] text-z-sage-light hover:bg-white/[0.04]",
-                                        )}
-                                        aria-pressed={active}
-                                    >
-                                        {c.label}
-                                    </button>
-                                );
-                            })}
+                            {CURRENCIES.map((c) => (
+                                <SelectPill
+                                    key={c.code}
+                                    label={c.label}
+                                    active={currency === c.code}
+                                    onClick={() => setCurrency(c.code)}
+                                />
+                            ))}
                         </div>
                     </div>
                     <div className="flex items-center justify-between pt-2">
@@ -369,7 +363,7 @@ export default function OnboardingPage() {
                         <div className={cn(PANEL_INSET_INTERACTIVE_CLASS, "p-3 text-sm")}>
                             <p className="font-semibold tabular-nums text-foreground">
                                 Disponible para presupuesto:{" "}
-                                {formatCurrency(availableToBudget, currency as CurrencyCode)}
+                                {formatCurrency(availableToBudget, currency)}
                             </p>
                             <p className="mt-1 text-xs text-muted-foreground">
                                 Nos ayuda a sugerirte límites desde el día 1.
@@ -420,25 +414,14 @@ export default function OnboardingPage() {
                     <div className="space-y-2">
                         <Label>Tipo</Label>
                         <div className="flex flex-wrap gap-2">
-                            {ACCOUNT_TYPES.map((t) => {
-                                const active = accountType === t.code;
-                                return (
-                                    <button
-                                        key={t.code}
-                                        type="button"
-                                        onClick={() => setAccountType(t.code)}
-                                        className={cn(
-                                            "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                                            active
-                                                ? "border-z-brass/40 bg-z-brass/10 text-z-brass"
-                                                : "border-white/8 bg-white/[0.02] text-z-sage-light hover:bg-white/[0.04]",
-                                        )}
-                                        aria-pressed={active}
-                                    >
-                                        {t.label}
-                                    </button>
-                                );
-                            })}
+                            {ACCOUNT_TYPES.map((t) => (
+                                <SelectPill
+                                    key={t.code}
+                                    label={t.label}
+                                    active={accountType === t.code}
+                                    onClick={() => setAccountType(t.code)}
+                                />
+                            ))}
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -457,7 +440,11 @@ export default function OnboardingPage() {
                         <Button variant="ghost" onClick={prevStep} disabled={loading} className={GHOST_BUTTON_CLASS}>
                             <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
                         </Button>
-                        <Button onClick={onSubmit} disabled={loading || !accountName || !balance} className={BRASS_BUTTON_CLASS}>
+                        <Button
+                            onClick={onSubmit}
+                            disabled={loading || !accountName.trim() || balance === ""}
+                            className={BRASS_BUTTON_CLASS}
+                        >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Finalizar
                         </Button>

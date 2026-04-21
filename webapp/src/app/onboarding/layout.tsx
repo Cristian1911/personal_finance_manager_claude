@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { getProfile } from "@/actions/profile";
 import { BrandIcon } from "@/components/app/brand-icon";
 import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 
@@ -8,16 +8,11 @@ export default async function OnboardingLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { supabase, user } = await getAuthenticatedClient();
-    if (!user) {
+    const profile = await getProfile();
+    if (!profile.success) {
         redirect("/login");
     }
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", user.id)
-        .single();
-    if (profile?.onboarding_completed) {
+    if (profile.data.onboarding_completed) {
         redirect("/dashboard");
     }
 
