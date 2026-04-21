@@ -1,5 +1,5 @@
 import { SignupForm } from "@/components/auth/signup-form";
-import { startDemoSession } from "@/actions/demo";
+import { startDemoSession, startGuestSession } from "@/actions/demo";
 import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 
@@ -17,14 +17,24 @@ export default function SignupPage() {
       <div className={cn(PANEL_SURFACE_CLASS, "p-6")}>
         <SignupForm />
       </div>
-      <form action={startDemoSession} className="text-center">
-        <button
-          type="submit"
-          className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          ¿Solo quieres mirar? Prueba el demo sin crear cuenta →
-        </button>
-      </form>
+      <div className="flex flex-col items-center gap-2 text-center">
+        <form action={startGuestSession}>
+          <button
+            type="submit"
+            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Usar sin cuenta →
+          </button>
+        </form>
+        <form action={startDemoSession}>
+          <button
+            type="submit"
+            className="text-xs text-muted-foreground/80 underline-offset-4 hover:text-foreground hover:underline"
+          >
+            o ver el demo con datos de ejemplo
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
