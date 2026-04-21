@@ -75,16 +75,28 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
   - Anonymous cleanup cron — see new Tech Debt entry.
 
 ### Flow 02 — Home redesign (webapp dashboard)
-- **Priority:** High
-- **What:** Three variants in the wireframe. A = Safe (widgets + month hero), B = Bold (widget-driven), C = Novel (timeline-scrub). Decide variant before building.
+- **Priority:** Done (mobile + desktop zones) · follow-up deferred
+- **Status:** Variant B shipped PR #204 (2026-04-20). Mobile Pulse widget + widget grid + arrange sheet; desktop `HeroZone` / `WidgetsZone` / `HealthZone` / `MobileZone` in `webapp/src/app/(dashboard)/dashboard/page.tsx`.
+- **Deferred (PR 3):** true drag-to-reorder + inline S/M/L resize for the widget zone (wireframe "Arrange" frame). Reanimated + gesture-handler work. Current edit mode = WidgetEditSheet move up/down + size chips.
 
 ### Flow 03 — Add transaction (quick-capture redesign)
-- **Priority:** Medium
-- **What:** A = structured sheet, B = conversational, C = radial action. Current webapp uses structured form; this is a rethink.
+- **Priority:** Shipped (webapp mobile viewport) · follow-ups deferred
+- **Status:** Mobile RN shipped PR #201. Webapp mobile `/transactions/new` redesigned to Layout B (sectioned: `Detalles` → `Asignar` → `Más opciones`) — 2026-04-21. Full-page route preserved (kept out of drawer due to virtual-keyboard interactions).
+- **What shipped (webapp):**
+  - Form restructured into three visual sections with `SectionEyebrow` — `Detalles` (descripción, cuenta, fecha, categoría), `Asignar` (destinatario picker), `Más opciones` collapsible (es suscripción, crear recurrente, notas).
+  - `DestinatarioZonePicker` replaces the legacy "Crear destinatario" switch — supports inline create + recents in one control.
+  - `is_subscription` now wired end-to-end: schema (`transactionSchema`) + action (`persistTransaction` INSERT) + form Switch row.
+  - `destinatario_id` now accepted by `transactionSchema` — user-picked destinatarios flow through to `persistTransaction` and `linkTransactionToOccurrence` (prior code only honored "create-via-switch" destinatarios, so occurrence matching improves).
+  - Submit button uses `BRASS_BUTTON_CLASS` (brass + `text-z-ink`, per token rule).
+- **Deferred / follow-ups:**
+  - Tags picker inline (today requires entity id; `TagZonePicker` needs a "pending tags" mode). Users add tags via transaction detail after save.
+  - Cuenta + Fecha paired side-by-side (reverted — layout clipped at narrow viewports; stacked stays).
+  - Missing `htmlFor` on DatePicker / CategoryZonePicker / DestinatarioZonePicker labels (sub-components don't expose `id`; a11y gap is loose labeling only).
+  - Desktop `TransactionFormDialog` (unchanged — out of scope per user decision).
 
 ### Flow 04 — Import redesign (webapp)
-- **Priority:** Medium
-- **Status:** Variant A (mobile-first 4-step) shipped — 2026-04-21.
+- **Priority:** Done
+- **Status:** Variant A (mobile-first 4-step) shipped PR #209 — 2026-04-21.
 - **What shipped:**
   - Collapsed from 6 steps (upload/review/destinatarios/confirm/reconcile/results) to **4 steps** (subir/revisar/reconciliar/listo) matching the mobile app + wireframe Variant A.
   - Destinatario matching and auto-categorization now run silently in step 2; users fix later on the dedicated `/destinatarios` and `/transactions` pages.
@@ -105,7 +117,8 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ### Flow 05 — Plan redesign
 - **Priority:** Medium
-- **What:** A = current de-noised, B = 50/30/20 as a story, C = calendar-first. Today's `/plan` is closest to A but noisy.
+- **Status:** PR #170 polished `/plan` (NETO, chips, templates, presupuesto grouping, zone-based tabs `PlanResumenZone` / `PlanMobileZone`). Not an explicit wireframe-Variant-A pass — decide whether polish is sufficient or full redesign is still needed.
+- **What:** A = current de-noised, B = 50/30/20 as a story, C = calendar-first.
 
 ### Flow 06 — Settings redesign (Variant A)
 - **Priority:** High · **Ready to merge** (branch `feat/settings-visual-polish`, 2026-04-20)

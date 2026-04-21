@@ -8,10 +8,12 @@ import {
   ArrowDownLeft,
   ArrowLeftRight,
   ChevronDown,
+  Repeat,
 } from "lucide-react";
 import { createTransaction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import {
   Collapsible,
   CollapsibleContent,
@@ -21,6 +23,7 @@ import { AmountInput } from "@/components/ui/amount-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import {
   Select,
   SelectContent,
@@ -30,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import type {
   Account,
   CategoryWithChildren,
@@ -137,9 +141,12 @@ export function MobileTransactionForm({
 
   const today = new Date().toISOString().split("T")[0];
   const [merchantName, setMerchantName] = useState("");
+  const [transactionDate, setTransactionDate] = useState<string>(today);
+  const [isSubscription, setIsSubscription] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [destinatarioId, setDestinatarioId] = useState<string | null>(null);
+  const [destinatarioSelectedName, setDestinatarioSelectedName] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [createDestinatarioSetup, setCreateDestinatarioSetup] = useState(false);
-  const [destinatarioName, setDestinatarioName] = useState("");
   const [createRecurringSetup, setCreateRecurringSetup] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<
     (typeof FREQUENCY_OPTIONS)[number]["value"]
@@ -151,23 +158,11 @@ export function MobileTransactionForm({
 
   useEffect(() => {
     if (transactionType === "transfer") {
-      setCreateDestinatarioSetup(false);
       setCreateRecurringSetup(false);
       setAdvancedOpen(false);
       setRecurringTransferSourceAccountId("");
     }
   }, [transactionType]);
-
-  function handleCreateDestinatarioSetup(checked: boolean) {
-    setCreateDestinatarioSetup(checked);
-
-    if (checked) {
-      setAdvancedOpen(true);
-      if (!destinatarioName.trim()) {
-        setDestinatarioName(merchantName.trim());
-      }
-    }
-  }
 
   function handleCreateRecurringSetup(checked: boolean) {
     setCreateRecurringSetup(checked);
@@ -213,19 +208,18 @@ export function MobileTransactionForm({
 
       {/* Hidden fields */}
       <input type="hidden" name="direction" value={direction} />
-      <input type="hidden" name="transaction_date" value={today} />
+      <input type="hidden" name="transaction_date" value={transactionDate} />
       <input type="hidden" name="currency_code" value={currencyCode} />
       <input
         type="hidden"
-        name="create_destinatario"
-        value={createDestinatarioSetup ? "true" : "false"}
+        name="is_subscription"
+        value={isSubscription ? "true" : "false"}
       />
       <input
         type="hidden"
         name="create_recurring_template"
         value={createRecurringSetup ? "true" : "false"}
       />
-      <input type="hidden" name="destinatario_name" value={destinatarioName} />
       <input type="hidden" name="recurring_frequency" value={recurringFrequency} />
       <input type="hidden" name="recurring_start_date" value={recurringStartDate} />
       <input
@@ -262,7 +256,10 @@ export function MobileTransactionForm({
         autoFocus={!showTypeSelector}
       />
 
-      {/* Description */}
+      {/* ── DETALLES ────────────────────────────────────────── */}
+      <SectionEyebrow>Detalles</SectionEyebrow>
+
+      {/* Description — full width */}
       <div className="space-y-2">
         <Label htmlFor="mobile-merchant">Descripción</Label>
         <Input
@@ -274,7 +271,7 @@ export function MobileTransactionForm({
         />
       </div>
 
-      {/* Account */}
+      {/* Cuenta */}
       <div className="space-y-2">
         <Label htmlFor="mobile-account">Cuenta</Label>
         <Select
@@ -282,13 +279,12 @@ export function MobileTransactionForm({
           value={selectedAccountId}
           onValueChange={(value) => {
             setSelectedAccountId(value);
-
             if (recurringTransferSourceAccountId === value) {
               setRecurringTransferSourceAccountId("");
             }
           }}
         >
-          <SelectTrigger>
+          <SelectTrigger id="mobile-account">
             <SelectValue placeholder="Seleccionar cuenta" />
           </SelectTrigger>
           <SelectContent>
@@ -301,7 +297,17 @@ export function MobileTransactionForm({
         </Select>
       </div>
 
-      {/* Category */}
+      {/* Fecha */}
+      <div className="space-y-2">
+        <Label>Fecha</Label>
+        <DatePicker
+          value={transactionDate}
+          onChange={(v) => setTransactionDate(v ?? today)}
+          placeholder="Seleccionar fecha"
+        />
+      </div>
+
+      {/* Category — full width */}
       <div className="space-y-2">
         <Label>Categoría</Label>
         <CategoryZonePicker
@@ -313,6 +319,28 @@ export function MobileTransactionForm({
           name="category_id"
         />
       </div>
+
+      {/* ── ASIGNAR ─────────────────────────────────────────── */}
+      {allowRelatedSetup && (
+        <>
+          <SectionEyebrow>Asignar</SectionEyebrow>
+
+          <div className="space-y-2">
+            <Label>Destinatario</Label>
+            <DestinatarioZonePicker
+              value={destinatarioId}
+              onValueChange={(id, name) => {
+                setDestinatarioId(id);
+                setDestinatarioSelectedName(name);
+              }}
+              selectedName={destinatarioSelectedName}
+              placeholder="Elegir o crear destinatario"
+              triggerClassName="w-full"
+            />
+            <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
+          </div>
+        </>
+      )}
 
       {allowRelatedSetup && (
         <>
@@ -327,9 +355,9 @@ export function MobileTransactionForm({
                 className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left sm:items-center"
               >
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">Opciones relacionadas</p>
+                  <p className="text-sm font-medium">Más opciones</p>
                   <p className="text-xs text-muted-foreground">
-                    Expande para crear un destinatario o sembrar este gasto como recurrente.
+                    Suscripción, pago recurrente y notas.
                   </p>
                 </div>
                 <ChevronDown
@@ -341,33 +369,26 @@ export function MobileTransactionForm({
             </CollapsibleTrigger>
 
             <CollapsibleContent className="space-y-4 border-t px-4 py-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-0.5 pr-4">
-                  <Label htmlFor="mobile-create_destinatario" className="cursor-pointer">
-                    Crear destinatario
+              {/* Es una suscripción */}
+              <div className="flex items-center gap-3">
+                <Repeat className="size-[18px] shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <Label
+                    htmlFor="mobile-is_subscription"
+                    className="cursor-pointer text-sm font-medium"
+                  >
+                    Es una suscripción
                   </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Guarda este comercio para reconocerlo más rápido la próxima vez.
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    Marca este movimiento como parte de una suscripción
                   </p>
                 </div>
                 <Switch
-                  id="mobile-create_destinatario"
-                  checked={createDestinatarioSetup}
-                  onCheckedChange={handleCreateDestinatarioSetup}
+                  id="mobile-is_subscription"
+                  checked={isSubscription}
+                  onCheckedChange={setIsSubscription}
                 />
               </div>
-
-              {createDestinatarioSetup && (
-                <div className="space-y-2">
-                  <Label htmlFor="mobile-destinatario_name">Nombre del destinatario</Label>
-                  <Input
-                    id="mobile-destinatario_name"
-                    value={destinatarioName}
-                    onChange={(event) => setDestinatarioName(event.target.value)}
-                    placeholder="Ej: Netflix"
-                  />
-                </div>
-              )}
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-0.5 pr-4">
@@ -451,13 +472,29 @@ export function MobileTransactionForm({
                   )}
                 </>
               )}
+
+              {/* Notas (opcional) */}
+              <div className="space-y-2">
+                <Label htmlFor="mobile-notes">Notas (opcional)</Label>
+                <Input
+                  id="mobile-notes"
+                  name="notes"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Detalle extra"
+                />
+              </div>
             </CollapsibleContent>
           </Collapsible>
         </>
       )}
 
       {/* Submit */}
-      <Button type="submit" className="h-12 w-full" disabled={pending}>
+      <Button
+        type="submit"
+        className={cn(BRASS_BUTTON_CLASS, "h-12 w-full")}
+        disabled={pending}
+      >
         {pending ? (
           <>
             <Loader2 className="mr-2 size-4 animate-spin" />

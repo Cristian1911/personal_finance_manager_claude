@@ -76,12 +76,8 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
   );
 
   const handleNewTransaction = useCallback(() => {
-    // Mark as "closed via back" so the cleanup effect does NOT call
-    // history.back() — that would race with the navigation and cancel it.
     closedViaBackRef.current = true;
     onOpenChange(false);
-    // Replace (not push) so the fabMenu history entry is overwritten,
-    // giving the user a clean back-button path.
     router.replace("/transactions/new");
   }, [onOpenChange, router]);
 
