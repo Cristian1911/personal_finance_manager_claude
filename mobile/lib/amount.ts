@@ -34,6 +34,14 @@ export function parseLocalizedAmount(input: string): number {
 }
 
 /**
+ * A tail is a decimal fraction when it has 0-2 digits and no separators —
+ * the user typed `,` or `,xx` rather than a thousand group.
+ */
+function isDecimalTail(tail: string): boolean {
+  return tail.length <= 2 && !/[.,]/.test(tail);
+}
+
+/**
  * Format a partial amount string for live display in an input:
  *   "5000"      -> "5.000"
  *   "1234567"   -> "1.234.567"
@@ -48,18 +56,14 @@ export function formatAmountInput(input: string): string {
   if (!sanitized) return "";
 
   const lastComma = sanitized.lastIndexOf(",");
-  let integerSource: string;
+  let integerSource = sanitized;
   let decimalPart: string | null = null;
 
-  if (lastComma === -1) {
-    integerSource = sanitized;
-  } else {
+  if (lastComma !== -1) {
     const tail = sanitized.slice(lastComma + 1);
-    if (tail.length <= 2 && !/[.,]/.test(tail)) {
+    if (isDecimalTail(tail)) {
       integerSource = sanitized.slice(0, lastComma);
       decimalPart = tail;
-    } else {
-      integerSource = sanitized;
     }
   }
 
@@ -83,7 +87,7 @@ export function parseFormattedAmount(formatted: string): number {
     return Number(sanitized.replace(/\./g, ""));
   }
   const tail = sanitized.slice(lastComma + 1);
-  if (tail.length <= 2 && !/[.,]/.test(tail)) {
+  if (isDecimalTail(tail)) {
     const integer = sanitized.slice(0, lastComma).replace(/[.,]/g, "");
     return Number(`${integer || "0"}.${tail || "0"}`);
   }
