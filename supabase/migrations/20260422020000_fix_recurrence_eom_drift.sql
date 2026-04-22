@@ -57,31 +57,22 @@ BEGIN
     RETURN;
   END IF;
 
-  v_step  := 0;
+  -- Single loop over every step from anchor; insert only when the cursor
+  -- falls inside [range_start, range_end]. Keeps the frequency CASE in one
+  -- place (vs. a duplicated advance-then-collect pattern).
+  v_step := 0;
   v_cursor := v_start_date;
-
-  -- Advance to first occurrence at or after range_start, always relative to anchor.
-  WHILE v_cursor < v_range_start LOOP
-    v_step := v_step + 1;
-    v_cursor := CASE v_frequency
-      WHEN 'WEEKLY'    THEN v_start_date + (v_step * interval '7 days')
-      WHEN 'BIWEEKLY'  THEN v_start_date + (v_step * interval '14 days')
-      WHEN 'MONTHLY'   THEN v_start_date + (v_step * interval '1 month')
-      WHEN 'QUARTERLY' THEN v_start_date + (v_step * interval '3 months')
-      WHEN 'ANNUAL'    THEN v_start_date + (v_step * interval '1 year')
-      ELSE NULL
-    END;
-    IF v_cursor IS NULL THEN RETURN; END IF;
-  END LOOP;
 
   WHILE v_cursor <= v_range_end LOOP
     IF v_end_date IS NOT NULL AND v_cursor > v_end_date THEN EXIT; END IF;
 
-    INSERT INTO recurring_occurrences
-      (template_id, user_id, occurrence_date, expected_amount, status)
-    VALUES
-      (p_template_id, v_user_id, v_cursor, v_amount, 'pending')
-    ON CONFLICT (template_id, occurrence_date) DO NOTHING;
+    IF v_cursor >= v_range_start THEN
+      INSERT INTO recurring_occurrences
+        (template_id, user_id, occurrence_date, expected_amount, status)
+      VALUES
+        (p_template_id, v_user_id, v_cursor, v_amount, 'pending')
+      ON CONFLICT (template_id, occurrence_date) DO NOTHING;
+    END IF;
 
     v_step := v_step + 1;
     v_cursor := CASE v_frequency
