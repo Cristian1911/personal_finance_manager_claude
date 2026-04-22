@@ -44,7 +44,7 @@ export function renderWhereTodayWidget({
     tone,
     accessibilityLabel: "Gasto de hoy",
     chip: (
-      <View className="h-full flex-col items-center gap-1">
+      <View className="items-center gap-1">
         <ChipEyebrow tone={tone}>Gasto de hoy</ChipEyebrow>
         <Text className="text-[20px] font-inter-bold leading-none tabular-nums text-foreground">
           {formatCurrency(spentToday, currency)}
