@@ -140,7 +140,7 @@ Ver `listing.md` para título, descripciones y assets.
 ## Orden recomendado (2–4 horas)
 
 1. **Política de privacidad** — ya existe, solo pegar URL (5 min)
-2. **Acceso a apps** — crear cuenta de prueba + pegar credenciales (15 min)
+2. **Acceso a apps** — pegar instrucciones del modo demo (ver sección 2) (5 min)
 3. **Anuncios** — clic "No" (1 min)
 4. **Clasificación de contenido** — cuestionario (15 min)
 5. **Público objetivo** — 18+ (5 min)
@@ -154,8 +154,12 @@ Ver `listing.md` para título, descripciones y assets.
 
 ## Antes de pulsar "Enviar a revisión"
 
-- [ ] Bump `version` a `1.1.0` y `versionCode` a `3` en `app.json`
-      (últimamente construido: 1.0.0 / versionCode 2)
+- [ ] `version` en `mobile/app.json` refleja la versión visible a publicar
+      (actualmente `1.1.0`). Ajustar si aún no se incrementó para el nuevo submit.
+- [ ] `versionCode` NO se toca manualmente — EAS lo gestiona remoto
+      (`mobile/eas.json` → `cli.appVersionSource: "remote"` + build profile
+      `production.autoIncrement: true`). Verifica en EAS dashboard que el
+      siguiente build supere al último (últimamente construido: versionCode 2).
 - [ ] Construir AAB: `cd mobile && eas build -p android --profile production-android`
 - [ ] Descargar AAB de EAS dashboard
 - [ ] Subirlo a Play Console → Pruebas internas

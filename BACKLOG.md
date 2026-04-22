@@ -346,6 +346,15 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **Touches:** `mobile/lib/dashboard/widgets.ts`, new widget components under `mobile/components/inicio/widgets/`.
 - **Found:** Slice-3 scope, 2026-04-19
 
+### Observabilidad — Sentry / crashlytics en mobile
+- **Priority:** Low (post-v1, antes del crecimiento más allá de beta cerrada)
+- **What:** Añadir reporte de crashes + performance para detectar bugs sin esperar a que el usuario los reporte. Candidatos: Sentry (free tier generoso, integra con Supabase), Expo's `expo-application` + custom logging, o BetterStack.
+- **Play Store implicaciones al activar:**
+  - Data Safety → App info and performance: marcar "Crash logs", "Diagnostics", "Other app performance data" (según lo que se recoja).
+  - Collected=Yes · Shared=Yes (Sentry es un tercero) · Optional · Purpose=Analytics · Encrypted in transit=Yes · User can request deletion=Yes.
+  - Actualizar política de privacidad con mención del proveedor de observabilidad.
+- **Criterio de activación:** cuando haya >50 usuarios en beta y no queramos depender solo de bug reports manuales.
+
 ### Mobile — OCR (foto de extracto) y voice capture
 - **Priority:** Medium (post-v1 launch; no bloqueante para primer Play Store submit)
 - **What:** Los botones ya existen en `FabMenuSheet` + `MobileTabBar` pero disparan `Alert.alert("Próximamente", ...)`. Implementar:

@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+const DEFAULT_CONTACT_EMAIL = "giraldo.0302@gmail.com";
+
 interface LegalLayoutProps {
   title: string;
   lastUpdated: string;
   alternateLanguage?: { href: string; label: string };
+  contactEmail?: string;
   children: ReactNode;
 }
 
@@ -12,6 +15,7 @@ export function LegalLayout({
   title,
   lastUpdated,
   alternateLanguage,
+  contactEmail = DEFAULT_CONTACT_EMAIL,
   children,
 }: LegalLayoutProps) {
   return (
@@ -59,10 +63,10 @@ export function LegalLayout({
           <p>
             ¿Preguntas? Escríbenos a{" "}
             <a
-              href="mailto:privacy@zeta.app"
+              href={`mailto:${contactEmail}`}
               className="text-foreground underline decoration-dotted underline-offset-2"
             >
-              privacy@zeta.app
+              {contactEmail}
             </a>
             .
           </p>
