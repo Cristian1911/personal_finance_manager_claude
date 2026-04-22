@@ -1,23 +1,26 @@
-import { addWeeks, addMonths, addYears, parseISO, isBefore, isAfter, startOfDay } from "date-fns";
+import { addWeeks, addMonths, addYears, format, parseISO, isBefore, isAfter, startOfDay } from "date-fns";
 import type { RecurrenceFrequency } from "../types/domain";
 
 /**
- * Advance a date by one period of the given frequency.
+ * Compute the k-th occurrence of a recurring series from its anchor start date.
+ * Computing relative to `start` (rather than iteratively from previous occurrence)
+ * avoids end-of-month drift — e.g., a series starting Jan 31 stays anchored on
+ * the 31st and only clamps in shorter months (Feb 28, Apr 30), not permanently.
  */
-function advanceByFrequency(date: Date, frequency: RecurrenceFrequency): Date {
+function occurrenceAt(start: Date, k: number, frequency: RecurrenceFrequency): Date {
   switch (frequency) {
     case "WEEKLY":
-      return addWeeks(date, 1);
+      return addWeeks(start, k);
     case "BIWEEKLY":
-      return addWeeks(date, 2);
+      return addWeeks(start, k * 2);
     case "MONTHLY":
-      return addMonths(date, 1);
+      return addMonths(start, k);
     case "QUARTERLY":
-      return addMonths(date, 3);
+      return addMonths(start, k * 3);
     case "ANNUAL":
-      return addYears(date, 1);
+      return addYears(start, k);
     case "ONCE":
-      return date; // no advancement — single occurrence at start_date
+      return start;
     default: {
       const _exhaustive: never = frequency;
       return _exhaustive;
@@ -39,27 +42,23 @@ export function getNextOccurrence(
   const start = startOfDay(parseISO(startDate));
   const end = endDate ? startOfDay(parseISO(endDate)) : null;
 
-  // If end date has passed, no more occurrences
   if (end && isBefore(end, from)) return null;
 
-  // ONCE: single occurrence at start_date
   if (frequency === "ONCE") {
-    if (end && isBefore(end, from)) return null;
     if (isBefore(start, from)) return null;
-    return start.toISOString().split("T")[0];
+    if (end && isAfter(start, end)) return null;
+    return format(start, "yyyy-MM-dd");
   }
 
+  let k = 0;
   let current = start;
-
-  // Advance until we reach or pass fromDate
   while (isBefore(current, from)) {
-    current = advanceByFrequency(current, frequency);
+    k += 1;
+    current = occurrenceAt(start, k, frequency);
   }
 
-  // Check if this occurrence is past the end date
   if (end && isAfter(current, end)) return null;
-
-  return current.toISOString().split("T")[0];
+  return format(current, "yyyy-MM-dd");
 }
 
 /**
@@ -78,28 +77,27 @@ export function getOccurrencesBetween(
   const from = startOfDay(rangeStart);
   const to = startOfDay(rangeEnd);
 
-  // ONCE: single occurrence at start_date if within range
   if (frequency === "ONCE") {
     if (!isAfter(start, to) && !isBefore(start, from)) {
       if (!end || !isAfter(start, end)) {
-        dates.push(start.toISOString().split("T")[0]);
+        dates.push(format(start, "yyyy-MM-dd"));
       }
     }
     return dates;
   }
 
+  let k = 0;
   let current = start;
-
-  // Advance to first occurrence on or after rangeStart
   while (isBefore(current, from)) {
-    current = advanceByFrequency(current, frequency);
+    k += 1;
+    current = occurrenceAt(start, k, frequency);
   }
 
-  // Collect all dates within range
   while (!isAfter(current, to)) {
     if (end && isAfter(current, end)) break;
-    dates.push(current.toISOString().split("T")[0]);
-    current = advanceByFrequency(current, frequency);
+    dates.push(format(current, "yyyy-MM-dd"));
+    k += 1;
+    current = occurrenceAt(start, k, frequency);
   }
 
   return dates;
