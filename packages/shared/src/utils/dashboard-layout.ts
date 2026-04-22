@@ -37,18 +37,22 @@ export type DashboardLayout = {
   widgets: WidgetInstance[];
 };
 
-/** Types that can legally live in the user-arrangeable widget zone. */
-export const ARRANGEABLE_TYPES: ReadonlySet<WidgetType> = new Set<WidgetType>([
+/**
+ * Types that can legally live in the user-arrangeable widget zone. Typed as
+ * `ReadonlySet<string>` so callers can validate untrusted data loaded from
+ * storage without pre-casting.
+ */
+export const ARRANGEABLE_TYPES: ReadonlySet<string> = new Set<string>([
   "puedo_comprarlo",
   "recent",
-]);
+] satisfies WidgetType[]);
 
 /** Types rendered by the fixed system-insights row (never arrangeable). */
-export const SYSTEM_TYPES: ReadonlySet<WidgetType> = new Set<WidgetType>([
+export const SYSTEM_TYPES: ReadonlySet<string> = new Set<string>([
   "ritmo",
   "where_today",
   "attention",
-]);
+] satisfies WidgetType[]);
 
 export const SYSTEM_INSIGHTS: WidgetInstance[] = [
   { id: "sys-ritmo", type: "ritmo", size: "XS" },
