@@ -13,7 +13,7 @@ import {
   type OccurrenceWithTemplate,
 } from "../../lib/repositories/recurring";
 import { computeTimeline, type TimelineData } from "../../lib/utils/timeline";
-import { toLocalMonthString } from "../../lib/utils/date";
+import { toLocalDateString, toLocalMonthString } from "../../lib/utils/date";
 import { DEBT_ACCOUNT_TYPES, LIQUID_ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileHeader } from "../ui/MobileHeader";
@@ -64,7 +64,7 @@ export function PlanRoot() {
       const now = new Date();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const daysRemaining = Math.max(1, daysInMonth - now.getDate());
-      const todayIso = now.toISOString().slice(0, 10);
+      const todayIso = toLocalDateString(now);
 
       const [txs, accounts, budgets, occurrences, templates] = await Promise.all([
         getTransactions({ month: currentMonth, limit: 500 }),

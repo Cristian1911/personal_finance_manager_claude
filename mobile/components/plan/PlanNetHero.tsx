@@ -172,7 +172,7 @@ function PlanNetHeroBase({
         </View>
 
         {/* Expandable math breakdown */}
-        <AnimatedAccordion expanded={expanded} estimatedHeight={320}>
+        <AnimatedAccordion expanded={expanded} estimatedHeight={600}>
           <View className="mt-3 gap-3">
             {/* Ingresos */}
             <View className={`${PANEL_INSET_CLASS} border-z-income-20 p-3 gap-1.5`}>

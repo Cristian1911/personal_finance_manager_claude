@@ -101,7 +101,7 @@ function PlanWeekTilesBase({ incomes, payments, currency }: PlanWeekTilesProps) 
         })}
       </View>
 
-      <AnimatedAccordion expanded={active !== null} estimatedHeight={240}>
+      <AnimatedAccordion expanded={active !== null} estimatedHeight={700}>
         {active !== null && (
           <View
             className={`${PANEL_INSET_CLASS} ${active === "income" ? "border-z-income-20" : "border-z-debt-20"} p-3`}
