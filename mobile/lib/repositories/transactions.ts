@@ -338,11 +338,23 @@ export async function getMonthlyAggregates(options: {
   };
 }
 
+/** Narrow shape for the Categorizar panel — only the columns it renders. */
+export type UncategorizedSampleRow = Pick<
+  TransactionRow,
+  | "id"
+  | "amount"
+  | "direction"
+  | "currency_code"
+  | "description"
+  | "merchant_name"
+  | "transaction_date"
+>;
+
 export async function getTopUncategorized(options: {
   month: string;
   accountId?: string;
   limit?: number;
-}): Promise<TransactionListRow[]> {
+}): Promise<UncategorizedSampleRow[]> {
   const db = await getDatabase();
   const params: (string | number)[] = [`${options.month}%`];
   let accountFilter = "";
@@ -352,12 +364,9 @@ export async function getTopUncategorized(options: {
   }
   params.push(options.limit ?? 5);
 
-  return db.getAllAsync<TransactionListRow>(
-    `SELECT t.*, c.name as category_name, c.name_es as category_name_es, c.icon as category_icon, c.color as category_color,
-            a.account_type as account_type, a.name as account_name, a.color as account_color
+  return db.getAllAsync<UncategorizedSampleRow>(
+    `SELECT t.id, t.amount, t.direction, t.currency_code, t.description, t.merchant_name, t.transaction_date
      FROM transactions t
-     LEFT JOIN categories c ON t.category_id = c.id
-     LEFT JOIN accounts a ON t.account_id = a.id
      WHERE t.direction = 'OUTFLOW'
        AND t.category_id IS NULL
        AND t.is_excluded = 0

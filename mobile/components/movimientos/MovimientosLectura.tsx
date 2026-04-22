@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import { ChevronDown } from "lucide-react-native";
 import Svg, { Polyline, Circle, Line, Text as SvgText } from "react-native-svg";
@@ -42,13 +42,16 @@ function expandDayBuckets(
   const firstDate = new Date(`${dates[0]}T12:00:00`);
   const lastDate = new Date(`${dates[dates.length - 1]}T12:00:00`);
   const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
+  // Local-timezone YYYY-MM-DD — Colombia is UTC-5, so toISOString() would
+  // return the UTC day and cause an off-by-one early-morning. See gotcha in
+  // CLAUDE.md ("Never use new Date('YYYY-MM-DD')... midnight UTC").
+  const todayStr = toLocalDateString(today);
   const endDate = lastDate > today ? lastDate : today;
 
   const result: DayData[] = [];
   const cursor = new Date(firstDate);
   while (cursor <= endDate) {
-    const dateStr = cursor.toISOString().split("T")[0];
+    const dateStr = toLocalDateString(cursor);
     const vals = dayMap.get(dateStr) ?? { income: 0, expense: 0 };
     const dayNum = cursor.getDate();
     const monthNum = cursor.getMonth() + 1;
@@ -62,6 +65,13 @@ function expandDayBuckets(
     cursor.setDate(cursor.getDate() + 1);
   }
   return result;
+}
+
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function compactAmount(amount: number): string {
@@ -201,7 +211,7 @@ function FlowChart({ days }: { days: DayData[] }) {
   );
 }
 
-export function MovimientosLectura({
+function MovimientosLecturaBase({
   count,
   totalInflow,
   totalOutflow,
@@ -273,3 +283,5 @@ export function MovimientosLectura({
     </MobileZone>
   );
 }
+
+export const MovimientosLectura = memo(MovimientosLecturaBase);

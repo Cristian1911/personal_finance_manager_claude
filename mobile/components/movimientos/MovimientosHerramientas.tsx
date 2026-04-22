@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { ArrowDownLeft, ArrowRight, ArrowUpRight, ChevronRight, FileUp, Tag } from "lucide-react-native";
 import { useRouter } from "expo-router";
@@ -12,13 +12,13 @@ import {
   PANEL_INSET_CLASS,
   SECTION_EYEBROW_CLASS,
 } from "../../lib/constants/styles";
-import type { TransactionListRow } from "../../lib/repositories/transactions";
+import type { UncategorizedSampleRow } from "../../lib/repositories/transactions";
 import type { CategoryRow } from "../../lib/repositories/categories";
 
 const MAX_ITEMS = 5;
 
 interface MovimientosHerramientasProps {
-  uncategorizedTransactions: TransactionListRow[];
+  uncategorizedTransactions: UncategorizedSampleRow[];
   uncategorizedCount: number;
   categories: CategoryRow[];
   activeTool: "categorizar" | "importar" | null;
@@ -27,7 +27,7 @@ interface MovimientosHerramientasProps {
   onRequestCategoryPicker: (transactionId: string) => void;
 }
 
-export function MovimientosHerramientas({
+function MovimientosHerramientasBase({
   uncategorizedTransactions,
   uncategorizedCount,
   categories,
@@ -147,7 +147,7 @@ function CategorizarDetail({
   onPick,
   onSeeAll,
 }: {
-  items: TransactionListRow[];
+  items: UncategorizedSampleRow[];
   visibleCount: number;
   onPick: (txId: string) => void;
   onSeeAll: () => void;
@@ -258,3 +258,5 @@ function ImportarDetail({ onOpen }: { onOpen: () => void }) {
     </View>
   );
 }
+
+export const MovimientosHerramientas = memo(MovimientosHerramientasBase);

@@ -1,9 +1,9 @@
 import * as Crypto from "expo-crypto";
 import {
-  CATEGORY_SALARIO,
+  CATEGORY_INGRESOS,
   CATEGORY_ALIMENTACION,
-  CATEGORY_SERVICIOS,
-  CATEGORY_PAGOS_DEUDA,
+  CATEGORY_HOGAR,
+  CATEGORY_OBLIGACIONES,
 } from "@zeta/shared";
 import { clearDatabase, getDatabase } from "./db/database";
 
@@ -11,7 +11,7 @@ const DEMO_USER_ID = "00000000-0000-4000-8000-000000000000";
 
 const DEMO_CATEGORIES = [
   {
-    id: CATEGORY_SALARIO,
+    id: CATEGORY_INGRESOS,
     name: "Salary",
     name_es: "Salario",
     color: "#16A34A",
@@ -29,7 +29,7 @@ const DEMO_CATEGORIES = [
     display_order: 2,
   },
   {
-    id: CATEGORY_SERVICIOS,
+    id: CATEGORY_HOGAR,
     name: "Services",
     name_es: "Servicios",
     color: "#3B82F6",
@@ -38,7 +38,7 @@ const DEMO_CATEGORIES = [
     display_order: 3,
   },
   {
-    id: CATEGORY_PAGOS_DEUDA,
+    id: CATEGORY_OBLIGACIONES,
     name: "Debt Payments",
     name_es: "Abonos a deuda",
     color: "#0EA5E9",
@@ -177,7 +177,7 @@ export async function seedDemoData(): Promise<void> {
       direction: "INFLOW",
       description: "Nomina Demo",
       date: dateShift(-15),
-      categoryId: CATEGORY_SALARIO,
+      categoryId: CATEGORY_INGRESOS,
     },
     {
       accountId: checkingId,
@@ -193,7 +193,7 @@ export async function seedDemoData(): Promise<void> {
       direction: "OUTFLOW",
       description: "Internet hogar",
       date: dateShift(-7),
-      categoryId: CATEGORY_SERVICIOS,
+      categoryId: CATEGORY_HOGAR,
     },
     {
       accountId: creditCardId,
@@ -201,7 +201,7 @@ export async function seedDemoData(): Promise<void> {
       direction: "INFLOW",
       description: "Pago tarjeta desde cuenta principal",
       date: dateShift(-5),
-      categoryId: CATEGORY_PAGOS_DEUDA,
+      categoryId: CATEGORY_OBLIGACIONES,
     },
     {
       accountId: loanId,
@@ -209,7 +209,7 @@ export async function seedDemoData(): Promise<void> {
       direction: "INFLOW",
       description: "Cuota credito vehiculo",
       date: dateShift(-2),
-      categoryId: CATEGORY_PAGOS_DEUDA,
+      categoryId: CATEGORY_OBLIGACIONES,
     },
   ];
 

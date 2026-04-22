@@ -10,6 +10,7 @@ import {
   updateTransaction,
   type MonthlyAggregates,
   type TransactionListRow,
+  type UncategorizedSampleRow,
 } from "../../lib/repositories/transactions";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { getAllCategories, type CategoryRow } from "../../lib/repositories/categories";
@@ -51,7 +52,7 @@ export function MovimientosRoot() {
     uncategorizedCount: 0,
     daysByDate: [],
   });
-  const [uncategorizedSample, setUncategorizedSample] = useState<TransactionListRow[]>([]);
+  const [uncategorizedSample, setUncategorizedSample] = useState<UncategorizedSampleRow[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,8 +122,7 @@ export function MovimientosRoot() {
   useFocusEffect(
     useCallback(() => {
       void loadData({ reset: true });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery, currentMonth, filters.accountId])
+    }, [loadData])
   );
 
   const handleRefresh = useCallback(async () => {
@@ -195,6 +195,15 @@ export function MovimientosRoot() {
     setPickerTxId(txId);
   }, []);
 
+  const handleToggleTool = useCallback(
+    (tool: ToolId) => toggle(`tool-${tool}`),
+    [toggle]
+  );
+
+  const handleToggleLectura = useCallback(() => toggle("lectura"), [toggle]);
+
+  const handleClosePicker = useCallback(() => setPickerTxId(null), []);
+
   const handleCategorySelect = useCallback(
     async (categoryId: string) => {
       const txId = pickerTxId;
@@ -260,7 +269,7 @@ export function MovimientosRoot() {
           daysByDate={daysByDate}
           currency={currency}
           expanded={activeZone === "lectura"}
-          onToggle={() => toggle("lectura")}
+          onToggle={handleToggleLectura}
         />
 
         <MovimientosHerramientas
@@ -268,7 +277,7 @@ export function MovimientosRoot() {
           uncategorizedCount={uncategorizedCount}
           categories={categories}
           activeTool={activeTool}
-          onToggleTool={(tool) => toggle(`tool-${tool}`)}
+          onToggleTool={handleToggleTool}
           onRequestCategoryPicker={handleRequestPicker}
         />
 
@@ -295,7 +304,8 @@ export function MovimientosRoot() {
       accounts,
       searchQuery,
       filters,
-      toggle,
+      handleToggleLectura,
+      handleToggleTool,
       handleRequestPicker,
     ]
   );
@@ -357,7 +367,7 @@ export function MovimientosRoot() {
           categories={categories}
           visible
           onSelect={handleCategorySelect}
-          onClose={() => setPickerTxId(null)}
+          onClose={handleClosePicker}
         />
       )}
     </View>
