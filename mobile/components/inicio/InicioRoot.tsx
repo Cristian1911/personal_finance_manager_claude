@@ -223,6 +223,37 @@ export function InicioRoot() {
           range={layout.pulseRange}
           onRangeChange={handlePulseRangeChange}
           trend={pulseTrend}
+          breakdown={{
+            liquidBalance: summary.liquidBalance,
+            pendingObligations: summary.pendingObligations,
+            alreadySpent: summary.totalSpentThisMonth,
+            availableTotal: summary.availableTotal,
+            windowEndLabel: summary.daysLabel,
+          }}
+          primaryAccount={
+            summary.accounts.find((a) => a.current_balance > 0)
+              ? {
+                  name: summary.accounts.find((a) => a.current_balance > 0)!.name,
+                  currentBalance: summary.accounts.find(
+                    (a) => a.current_balance > 0
+                  )!.current_balance,
+                  currencyCode: summary.accounts.find(
+                    (a) => a.current_balance > 0
+                  )!.currency_code as typeof summary.currency,
+                }
+              : null
+          }
+          nextIncome={
+            summary.nextIncome
+              ? {
+                  name: summary.nextIncome.name,
+                  amount: summary.nextIncome.amount,
+                  date: summary.nextIncome.date,
+                }
+              : null
+          }
+          expanded={activeZone === "hero"}
+          onToggle={() => toggle("hero")}
         />
 
         <SectionDivider label="Herramientas" />
