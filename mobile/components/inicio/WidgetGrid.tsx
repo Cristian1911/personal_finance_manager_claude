@@ -58,19 +58,18 @@ export function WidgetGrid({
           <View key={i} className="gap-2">
             <View className="flex-row items-stretch gap-2">
               {rendered.map(({ w, r, isActive }) => (
-                <View key={w.id} className="flex-1">
-                  <ExpandableChip
-                    tone={r.tone}
-                    active={isActive}
-                    dimmed={Boolean(active) && !isActive}
-                    editing={editing}
-                    accessibilityLabel={r.accessibilityLabel}
-                    onPress={() => onToggle(w.id)}
-                    onRemove={onRemove ? () => onRemove(w.id) : undefined}
-                  >
-                    {r.chip}
-                  </ExpandableChip>
-                </View>
+                <ExpandableChip
+                  key={w.id}
+                  tone={r.tone}
+                  active={isActive}
+                  dimmed={Boolean(active) && !isActive}
+                  editing={editing}
+                  accessibilityLabel={r.accessibilityLabel}
+                  onPress={() => onToggle(w.id)}
+                  onRemove={onRemove ? () => onRemove(w.id) : undefined}
+                >
+                  {r.chip}
+                </ExpandableChip>
               ))}
             </View>
             <AnimatedAccordion
