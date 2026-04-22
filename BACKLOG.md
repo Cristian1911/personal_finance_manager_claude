@@ -348,6 +348,20 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **What:** `debt_scenarios`, `wishlist_reflections`, `dashboard_config` tables are used by the webapp but not synced to mobile. Add to SYNC_TABLES when mobile features need them.
 - **Found:** Mobile audit, 2026-04-15
 
+### Mobile sync — planning_* tables for /periodo screen
+- **Priority:** Medium
+- **What:** `planning_periods`, `planning_entries`, `planning_assignments` are not in `SYNC_TABLES`. The `/periodo` screen bypasses the sync engine and hits Supabase directly (5 PostgREST queries per focus). PR #224 shipped a module-scope SWR cache (`mobile/lib/sync/periodoCache.ts`) as an interim fix — first visit still spins, subsequent refocuses paint instantly.
+- **Proper fix:** add all three tables to `SYNC_TABLES` in dependency order, add SQLite migration to `mobile/lib/db/schema.ts` for all three, add `is_active` to `BOOLEAN_FIELDS`, create repos under `mobile/lib/repositories/` (e.g. `planningPeriods.ts`), rewrite `mobile/app/periodo.tsx` to read from the repos. Once done, delete `periodoCache.ts` + the `clearPeriodoCache()` call in `lib/auth.tsx`.
+- **Notes:** no encryption concerns — tables are plaintext per migration `20260407120000_create_cashflow_planner.sql`. Spawn `mobile-sync-doctor` before starting.
+- **Found:** PR #224 (mobile plan polish), 2026-04-22.
+
+### Webapp mobile/v2/plan — parity with native execution hero
+- **Priority:** Medium
+- **What:** PR #224 moved native Plan to the execution hero (`disponible` = confirmed income − paid obligations − pending − discretionary) with inline mini-chart + expandable math breakdown. Webapp `mobile/v2/plan-root.tsx` still uses the simpler "neto del mes" projection (planned ingresos − gastos, chart expands into hero). They now diverge semantically: native answers "what's left to spend?"; webapp answers "what's the projected net?". Both render on mobile-width viewport.
+- **Direction picked (2026-04-22):** port native's execution hero back to webapp. Requires expanding `getPlanPageData()` to return the full `PlanExecution` shape (confirmedIncome/paidExpenses/pendingIncome/pendingExpenses/discretionarySpent/disponible). Also port `PlanWeekTiles` expand pattern + `PlanToolsChips` nav grid.
+- **Touches:** `webapp/src/actions/plan.ts` (data shape), `webapp/src/components/mobile/v2/plan/plan-net-hero.tsx`, `plan-expandable-chips.tsx`, `plan-drill-cards.tsx`, `plan-root.tsx`.
+- **Found:** PR #224 scope decision, 2026-04-22.
+
 ### Mobile dashboard — Arrange mode (drag/resize)
 - **Priority:** Medium
 - **What:** Slice-3 shipped the widget shell (Pulse fixed + 4 widgets + catalog) with edit mode = remove/add only. The Arrange frame from the Claude Design handoff (long-press → header swaps to "Arrange · Drag · Resize · Remove" + S/M/L chips per widget) needs reanimated + gesture-handler work. All catalog entries currently render as `rounded-2xl border bg-black-10` placeholders while disabled.
@@ -696,3 +710,31 @@ Gate pipeline: implement → `/simplify` (3 reviewers en paralelo) → aplicar (
 ### Memory added / updated
 - `feedback_mobile_perf_doctor.md` — commitment to grow the agent's bible after every mobile perf bug debugged.
 - `.claude/agents/mobile-perf-doctor.md` — added §3.2 AnimatedAccordion close-animation + scale rules, §4.4 race guards on paginated loaders, §5.2 summary totals from SQL.
+
+## Session handoff — 2026-04-22 (Plan polish)
+
+### Shipped this session
+- **PR #224** — `feat(mobile): Plan page polish` — open on `feat/mobile-plan-polish`.
+  - `PlanNetHero` rewritten: always-visible inline SVG mini-chart (balance polyline, past solid / future dashed, today marker, zero line) + `AnimatedAccordion` breakdown (ingresos/fijos/gasto libre tinted panels + bottom-line math). Wrapped in `React.memo`.
+  - New `PlanWeekTiles` (replaces `PlanExpandableChips`): two expandable tiles (próximo pago/ingreso) using shared `ExpandableChip` + `ChipEyebrow` + `ChipDetailHeading` primitives. Sooner-date tile gets brass ring hint; opposite dims when one is active. Accordion panel renders full pending list + "Crear en Recurrentes" CTA on empty state.
+  - New `PlanToolsChips` (replaces `PlanDrillCards`): 3 plain chips (Presupuesto/Periodo/Recurrentes) with brass lucide icons + narrative status — alert words emphasized via `text-z-brass-hot`, no red/yellow tinted surfaces. Deseos removed from Plan entirely (lives in dashboard widget + `/puedo-pagar`).
+  - `PlanRoot`: dropped `getWishlistCount` + `getActiveTemplates` queries. Planned totals now derived from occurrences (paid+pending+skipped sum) instead of `toMonthlyAmount × frequency` — more accurate and one less query. UTC→local date bug fixed via `toLocalDateString`.
+  - New `/presupuesto` stack route (`mobile/app/presupuesto.tsx`) renders `<BudgetsRoot variant="sub">` for the back-arrow context. `BudgetsRoot` gained an optional `variant: "main" | "sub"` prop. Plan's Presupuesto chip now routes here instead of `/(tabs)/budgets`.
+  - `/periodo` SWR cache: screen was spinning on every focus because planning_* tables aren't in `SYNC_TABLES`. Shipped module-scope cache at `mobile/lib/sync/periodoCache.ts` keyed by user_id, wired `clearPeriodoCache()` into `handleUserBoundary` (logout + user-switch).
+  - Deleted 5 dead/replaced files: `PlanFlowChart`, `PlanExpandableChips`, `PlanDrillCards`, `PlanRecurringSummary`, `PlanBudgetSection`. Net: -540 lines across the feature folder.
+  - `mobile/.gitignore` now excludes `*.aab` + `*.apk` (rescued a failed push where a 108MB EAS build was accidentally staged).
+- **`.claude/agents/mobile-sync-doctor.md`** — new rule §6 "Screen data source" catches screens that hit Supabase directly instead of going through repositories. Added failure-pattern example with SWR cache snippet. User declined a separate `mobile-cache-doctor` agent — sync-doctor is the right home.
+
+### Discovered this session — added to backlog
+- **Mobile sync — planning_* tables** (Medium). Proper fix for `/periodo` SWR workaround.
+- **Webapp mobile/v2/plan — parity with native execution hero** (Medium). Direction picked: port native's hero back to webapp. Requires expanding `getPlanPageData()` shape.
+
+### Pipeline
+Design preview → 3-col HTML mock (`claude-ai-design/plan-mobile-proposal.html`) → user picks direction → implement → `perf` + `zetas-front-guy` reviewers (parallel) → fix tokens+a11y+memo → `mobile-sync-doctor` + `feature-dev:code-reviewer` (parallel) → fix UTC date bug + accordion clip + cache leak → `/simplify` (reuse + quality + efficiency parallel) → fix ExpandableChip reuse + drop templates query + CHIP_CONFIG table → rescue from failed push (aab in gitignore).
+
+### Triage candidates for next session
+1. **Proper /periodo sync** — port planning_* tables into the engine + delete `periodoCache.ts`. Medium.
+2. **Webapp mobile/v2/plan parity PR** — port native execution hero to webapp. Medium.
+3. **Anonymous demo cleanup cron** — still pending since 2026-04-21.
+4. **Flow 02 PR 3** — dashboard drag-to-reorder + S/M/L resize.
+5. **Mobile tab polish — Deudas** (next in the sweep after Plan). Or Movimientos slice 2 if we want to return to that arc.
