@@ -3,13 +3,11 @@ import { View, ScrollView, RefreshControl } from "react-native";
 import { useFocusEffect } from "expo-router";
 import type { CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
-import { getTransactions } from "../../lib/repositories/transactions";
+import { getTransactions, type TransactionRow } from "../../lib/repositories/transactions";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { getBudgetProgress, type BudgetProgressRow } from "../../lib/repositories/budgets";
 import {
-  getActiveTemplates,
   getOccurrencesForMonth,
-  toMonthlyAmount,
   type OccurrenceWithTemplate,
 } from "../../lib/repositories/recurring";
 import { computeTimeline, type TimelineData } from "../../lib/utils/timeline";
@@ -66,32 +64,22 @@ export function PlanRoot() {
       const daysRemaining = Math.max(1, daysInMonth - now.getDate());
       const todayIso = toLocalDateString(now);
 
-      const [txs, accounts, budgets, occurrences, templates] = await Promise.all([
+      const [txs, accounts, budgets, occurrences] = await Promise.all([
         getTransactions({ month: currentMonth, limit: 500 }),
         getAllAccounts(),
         getBudgetProgress(currentMonth),
         getOccurrencesForMonth(currentMonth),
-        getActiveTemplates(),
       ]);
 
       const accountMap = new Map<string, AccountRow>(accounts.map((a: AccountRow) => [a.id, a]));
 
-      // ── 1. Planned totals from active templates (liquid + debt accounts) ──
+      // Planned + execution totals in one pass. Occurrences are the
+      // materialized monthly expansion of active templates, so we can
+      // derive `plannedIncome`/`plannedExpenses` by summing all statuses
+      // (paid + pending + skipped) instead of running a second query
+      // against `recurring_transaction_templates` with toMonthlyAmount.
       let plannedIncome = 0;
       let plannedExpenses = 0;
-      for (const t of templates) {
-        const acctType = accountMap.get(t.account_id)?.account_type ?? "";
-        if (!LIQUID_ACCOUNT_TYPES.has(acctType) && !DEBT_ACCOUNT_TYPES.has(acctType)) continue;
-        const monthlyAmt = toMonthlyAmount(t.amount, t.frequency);
-        const isDebtPayment = DEBT_ACCOUNT_TYPES.has(acctType);
-        if (t.direction === "OUTFLOW" || isDebtPayment) {
-          plannedExpenses += monthlyAmt;
-        } else {
-          plannedIncome += monthlyAmt;
-        }
-      }
-
-      // ── 2. Execution from occurrences (confirmed vs pending) ──
       let confirmedIncome = 0;
       let pendingIncome = 0;
       let paidExpenses = 0;
@@ -108,6 +96,7 @@ export function PlanRoot() {
         const isExpense = occ.direction === "OUTFLOW" || isDebtInflow;
 
         if (isIncome) {
+          plannedIncome += occ.expected_amount;
           if (occ.status === "paid") {
             confirmedIncome += occ.expected_amount;
           } else if (occ.status === "pending") {
@@ -117,6 +106,7 @@ export function PlanRoot() {
             else upcomingCount++;
           }
         } else if (isExpense) {
+          plannedExpenses += occ.expected_amount;
           if (occ.status === "paid") {
             paidExpenses += occ.expected_amount;
           } else if (occ.status === "pending") {
@@ -138,7 +128,7 @@ export function PlanRoot() {
       );
 
       let discretionarySpent = 0;
-      for (const tx of txs as any[]) {
+      for (const tx of txs as TransactionRow[]) {
         if (tx.is_excluded) continue;
         if (tx.direction !== "OUTFLOW") continue;
         if (tx.transfer_group_id) continue;

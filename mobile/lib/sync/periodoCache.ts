@@ -26,10 +26,6 @@ export function getPeriodoCache<T>(userId: string): T | undefined {
   return cache.has(userId) ? (cache.get(userId) as T) : undefined;
 }
 
-export function hasPeriodoCache(userId: string): boolean {
-  return cache.has(userId);
-}
-
 export function setPeriodoCache<T>(userId: string, value: T): void {
   cache.set(userId, value);
 }

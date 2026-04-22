@@ -5,6 +5,7 @@ import { Check, ChevronDown, ChevronUp, Clock } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { GradientCard } from "../ui/GradientCard";
 import { AnimatedAccordion } from "../ui/AnimatedAccordion";
+import { ChipDetailHeading } from "../ui/ExpandableChip";
 import { SECTION_EYEBROW_CLASS, PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { COLORS } from "../../lib/constants/colors";
 import type { TimelineData } from "../../lib/utils/timeline";
@@ -176,9 +177,7 @@ function PlanNetHeroBase({
           <View className="mt-3 gap-3">
             {/* Ingresos */}
             <View className={`${PANEL_INSET_CLASS} border-z-income-20 p-3 gap-1.5`}>
-              <Text className="text-[10px] font-inter-bold uppercase tracking-[0.18em] text-z-income">
-                Ingresos planeados
-              </Text>
+              <ChipDetailHeading tone="income">Ingresos planeados</ChipDetailHeading>
               <View className="flex-row justify-between">
                 <Text className="text-sm font-inter-bold text-foreground">
                   {formatCurrency(plannedIncome, currency)}
@@ -210,9 +209,7 @@ function PlanNetHeroBase({
 
             {/* Fijos */}
             <View className={`${PANEL_INSET_CLASS} border-z-alert-25 p-3 gap-1.5`}>
-              <Text className="text-[10px] font-inter-bold uppercase tracking-[0.18em] text-z-alert">
-                Gastos fijos planeados
-              </Text>
+              <ChipDetailHeading tone="alert">Gastos fijos planeados</ChipDetailHeading>
               <View className="flex-row justify-between">
                 <Text className="text-sm font-inter-bold text-foreground">
                   {formatCurrency(plannedExpenses, currency)}
@@ -244,9 +241,7 @@ function PlanNetHeroBase({
 
             {/* Gasto libre */}
             <View className={`${PANEL_INSET_CLASS} border-z-debt-20 p-3 gap-1`}>
-              <Text className="text-[10px] font-inter-bold uppercase tracking-[0.18em] text-z-debt">
-                Gasto libre
-              </Text>
+              <ChipDetailHeading tone="debt">Gasto libre</ChipDetailHeading>
               <Text className="text-sm font-inter-bold text-z-expense">
                 -{formatCurrency(discretionarySpent, currency)}
               </Text>

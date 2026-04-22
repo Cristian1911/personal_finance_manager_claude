@@ -37,7 +37,7 @@ interface BudgetsRootProps {
   variant?: "main" | "sub";
 }
 
-export function BudgetsRoot({ variant = "main" }: BudgetsRootProps = {}) {
+export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   const { session } = useAuth();
   const { sync } = useSync();
 
@@ -181,15 +181,17 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps = {}) {
     []
   );
 
-  const headerProps =
-    variant === "sub"
-      ? ({ variant: "sub" as const, title: "Presupuestos" })
-      : ({ variant: "main" as const, title: "Presupuestos", right: <AvatarMenuTrigger /> });
+  const header =
+    variant === "sub" ? (
+      <MobileHeader variant="sub" title="Presupuestos" />
+    ) : (
+      <MobileHeader variant="main" title="Presupuestos" right={<AvatarMenuTrigger />} />
+    );
 
   if (loading) {
     return (
       <View className="flex-1 bg-background">
-        <MobileHeader {...headerProps} />
+        {header}
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={COLORS.brass} />
         </View>
@@ -202,7 +204,7 @@ export function BudgetsRoot({ variant = "main" }: BudgetsRootProps = {}) {
       className="flex-1 bg-background"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <MobileHeader {...headerProps} />
+      {header}
 
       <FlatList
         data={items}

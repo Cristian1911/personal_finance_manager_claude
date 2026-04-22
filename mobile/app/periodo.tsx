@@ -1,9 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import {
-  getPeriodoCache,
-  hasPeriodoCache,
-  setPeriodoCache,
-} from "../lib/sync/periodoCache";
+import { getPeriodoCache, setPeriodoCache } from "../lib/sync/periodoCache";
 import {
   ActivityIndicator,
   Pressable,
@@ -93,11 +89,9 @@ export default function PeriodoScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
-  const hasCached = userId !== null && hasPeriodoCache(userId);
-  const [loading, setLoading] = useState(!hasCached);
-  const [data, setData] = useState<PeriodoData | null>(
-    userId !== null ? getPeriodoCache<PeriodoData | null>(userId) ?? null : null
-  );
+  const cached = userId !== null ? getPeriodoCache<PeriodoData | null>(userId) : undefined;
+  const [loading, setLoading] = useState(cached === undefined);
+  const [data, setData] = useState<PeriodoData | null>(cached ?? null);
   const requestIdRef = useRef(0);
   const [expandedIncome, setExpandedIncome] = useState<string | null>(null);
   const [paymentEntry, setPaymentEntry] = useState<PaymentEntry | null>(null);

@@ -5,6 +5,11 @@ import { Plus } from "lucide-react-native";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import type { OccurrenceWithTemplate } from "../../lib/repositories/recurring";
 import { AnimatedAccordion } from "../ui/AnimatedAccordion";
+import {
+  ChipDetailHeading,
+  ChipEyebrow,
+  ExpandableChip,
+} from "../ui/ExpandableChip";
 import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { COLORS } from "../../lib/constants/colors";
 
@@ -16,65 +21,81 @@ interface PlanWeekTilesProps {
 
 type ChipType = "income" | "payment";
 
+/** Per-type styling + copy lookup — collapses all the `isPayment ? ...` ternaries. */
+const CHIP_CONFIG = {
+  income: {
+    tone: "income" as const,
+    label: "Próximo ingreso",
+    emptyAction: "Mapear ingreso",
+    emptyHint: "Sin ingresos recurrentes",
+    expandedLabel: "Ingresos esperados",
+    emptyMessage: "No tienes ingresos recurrentes configurados",
+    accentText: "text-z-income",
+    ctaBg: "bg-z-income-12",
+    iconColor: COLORS.income,
+    emptyItemLabel: "Ingreso",
+  },
+  payment: {
+    tone: "debt" as const,
+    label: "Próximo pago",
+    emptyAction: "Mapear pago",
+    emptyHint: "Sin pagos recurrentes",
+    expandedLabel: "Pagos programados",
+    emptyMessage: "No tienes pagos recurrentes configurados",
+    accentText: "text-z-debt",
+    ctaBg: "bg-z-debt-12",
+    iconColor: COLORS.debt,
+    emptyItemLabel: "Pago",
+  },
+} satisfies Record<ChipType, unknown>;
+
 function PlanWeekTilesBase({ incomes, payments, currency }: PlanWeekTilesProps) {
   const router = useRouter();
   const [active, setActive] = useState<ChipType | null>(null);
 
+  const items = { income: incomes, payment: payments } as const;
   const nextIncome = incomes[0] ?? null;
   const nextPayment = payments[0] ?? null;
 
   // Order: sooner date first. Tie-breaker: payment first (debt urgency).
-  const paymentSooner = useMemo(() => {
+  const orderedTypes = useMemo<readonly ChipType[]>(() => {
     const incomeDate = nextIncome?.occurrence_date ?? null;
     const paymentDate = nextPayment?.occurrence_date ?? null;
-    if (!incomeDate && !paymentDate) return false;
-    if (!incomeDate) return true;
-    if (!paymentDate) return false;
-    return paymentDate <= incomeDate;
+    const paymentSooner =
+      (!incomeDate && !!paymentDate) ||
+      (!!incomeDate && !!paymentDate && paymentDate <= incomeDate);
+    return paymentSooner ? ["payment", "income"] : ["income", "payment"];
   }, [nextIncome, nextPayment]);
 
-  const orderedTypes: ChipType[] = paymentSooner ? ["payment", "income"] : ["income", "payment"];
-  const sooner = orderedTypes[0];
-
-  const toggle = (type: ChipType) => {
+  const toggle = (type: ChipType) =>
     setActive((prev) => (prev === type ? null : type));
-  };
 
-  const expandedList = active === "income" ? incomes : active === "payment" ? payments : [];
-  const expandedTotal = useMemo(
-    () => expandedList.reduce((sum, item) => sum + item.expected_amount, 0),
-    [expandedList]
+  const activeList = active !== null ? items[active] : null;
+  const activeTotal = useMemo(
+    () => activeList?.reduce((sum, item) => sum + item.expected_amount, 0) ?? 0,
+    [activeList]
   );
+  const activeConfig = active !== null ? CHIP_CONFIG[active] : null;
 
   return (
     <View className="gap-2">
       <View className="flex-row gap-2">
         {orderedTypes.map((type) => {
-          const isPayment = type === "payment";
-          const next = isPayment ? nextPayment : nextIncome;
+          const cfg = CHIP_CONFIG[type];
+          const next = items[type][0] ?? null;
           const isActive = active === type;
           const isDimmed = active !== null && !isActive;
-          const isSooner = type === sooner && next !== null && active === null;
-
-          const label = isPayment ? "Próximo pago" : "Próximo ingreso";
-          const emptyAction = isPayment ? "Mapear pago" : "Mapear ingreso";
-          const emptyHint = isPayment ? "Sin pagos recurrentes" : "Sin ingresos recurrentes";
-          const accentText = isPayment ? "text-z-debt" : "text-z-income";
-          const accentBorder = isPayment ? "border-z-debt-20" : "border-z-income-20";
-          const iconColor = isPayment ? COLORS.debt : COLORS.income;
-          const ringClass = isSooner ? "border-z-brass-30" : accentBorder;
 
           return (
-            <Pressable
+            <ExpandableChip
               key={type}
+              tone={cfg.tone}
+              active={isActive}
+              dimmed={isDimmed}
               onPress={() => toggle(type)}
-              accessibilityRole="button"
-              accessibilityLabel={isActive ? `Ocultar ${label.toLowerCase()}` : `Ver ${label.toLowerCase()}`}
-              className={`${PANEL_INSET_CLASS} ${ringClass} flex-1 p-3 ${isDimmed ? "opacity-60" : ""}`}
+              accessibilityLabel={isActive ? `Ocultar ${cfg.label.toLowerCase()}` : `Ver ${cfg.label.toLowerCase()}`}
             >
-              <Text className={`text-[10px] font-inter-bold uppercase tracking-[0.18em] ${accentText}`}>
-                {label}
-              </Text>
+              <ChipEyebrow tone={cfg.tone}>{cfg.label}</ChipEyebrow>
               {next ? (
                 <>
                   <Text className="mt-2 text-[16px] font-inter-bold tabular-nums text-foreground">
@@ -88,77 +109,67 @@ function PlanWeekTilesBase({ incomes, payments, currency }: PlanWeekTilesProps) 
               ) : (
                 <>
                   <View className="mt-2 flex-row items-center gap-1">
-                    <Plus size={12} color={iconColor} />
-                    <Text className={`text-xs font-inter-semibold ${accentText}`}>{emptyAction}</Text>
+                    <Plus size={12} color={cfg.iconColor} />
+                    <Text className={`text-xs font-inter-semibold ${cfg.accentText}`}>
+                      {cfg.emptyAction}
+                    </Text>
                   </View>
                   <Text className="mt-1 text-[10px] font-inter text-muted-foreground">
-                    {emptyHint}
+                    {cfg.emptyHint}
                   </Text>
                 </>
               )}
-            </Pressable>
+            </ExpandableChip>
           );
         })}
       </View>
 
       <AnimatedAccordion expanded={active !== null} estimatedHeight={700}>
-        {active !== null && (
-          <View
-            className={`${PANEL_INSET_CLASS} ${active === "income" ? "border-z-income-20" : "border-z-debt-20"} p-3`}
-          >
-            <Text
-              className={`text-[10px] font-inter-bold uppercase tracking-[0.18em] mb-2 ${active === "income" ? "text-z-income" : "text-z-debt"}`}
-            >
-              {active === "income" ? "Ingresos esperados" : "Pagos programados"}
-            </Text>
-            {expandedList.length > 0 ? (
+        {activeConfig && activeList && (
+          <View className={`${PANEL_INSET_CLASS} p-3`}>
+            <ChipDetailHeading tone={activeConfig.tone}>
+              {activeConfig.expandedLabel}
+            </ChipDetailHeading>
+            {activeList.length > 0 ? (
               <>
-                {expandedList.map((item, i) => (
+                {activeList.map((item, i) => (
                   <View
                     key={`${item.id}-${i}`}
-                    className={`flex-row items-center justify-between py-2 ${i < expandedList.length - 1 ? "border-b border-white-6" : ""}`}
+                    className={`flex-row items-center justify-between py-2 ${i < activeList.length - 1 ? "border-b border-white-6" : ""}`}
                   >
                     <View className="flex-1 pr-2">
                       <Text className="text-xs font-inter-medium text-foreground" numberOfLines={1}>
-                        {item.merchant_name ?? item.description ?? (active === "income" ? "Ingreso" : "Pago")}
+                        {item.merchant_name ?? item.description ?? activeConfig.emptyItemLabel}
                       </Text>
                       <Text className="text-[10px] font-inter text-muted-foreground">
                         {formatDate(item.occurrence_date, "dd MMM yyyy")}
                       </Text>
                     </View>
-                    <Text
-                      className={`text-sm font-inter-semibold tabular-nums ${active === "income" ? "text-z-income" : "text-z-debt"}`}
-                    >
+                    <Text className={`text-sm font-inter-semibold tabular-nums ${activeConfig.accentText}`}>
                       {formatCurrency(item.expected_amount, currency)}
                     </Text>
                   </View>
                 ))}
                 <View className="mt-2 flex-row justify-between border-t border-white-6 pt-2">
                   <Text className="text-xs font-inter text-muted-foreground">Total</Text>
-                  <Text
-                    className={`text-xs font-inter-bold tabular-nums ${active === "income" ? "text-z-income" : "text-z-debt"}`}
-                  >
-                    {formatCurrency(expandedTotal, currency)}
+                  <Text className={`text-xs font-inter-bold tabular-nums ${activeConfig.accentText}`}>
+                    {formatCurrency(activeTotal, currency)}
                   </Text>
                 </View>
               </>
             ) : (
               <View className="items-center py-3">
                 <Text className="text-xs font-inter text-muted-foreground mb-2">
-                  {active === "income"
-                    ? "No tienes ingresos recurrentes configurados"
-                    : "No tienes pagos recurrentes configurados"}
+                  {activeConfig.emptyMessage}
                 </Text>
                 <Pressable
                   onPress={() => router.push("/recurrentes" as any)}
                   accessibilityRole="button"
                   accessibilityLabel="Ir a recurrentes"
-                  className={`flex-row items-center gap-1 rounded-lg px-3 py-1.5 ${active === "income" ? "bg-z-income-12" : "bg-z-debt-12"}`}
+                  className={`flex-row items-center gap-1 rounded-lg px-3 py-1.5 ${activeConfig.ctaBg}`}
                 >
-                  <Plus size={14} color={active === "income" ? COLORS.income : COLORS.debt} />
-                  <Text
-                    className={`text-xs font-inter-semibold ${active === "income" ? "text-z-income" : "text-z-debt"}`}
-                  >
+                  <Plus size={14} color={activeConfig.iconColor} />
+                  <Text className={`text-xs font-inter-semibold ${activeConfig.accentText}`}>
                     Crear en Recurrentes
                   </Text>
                 </Pressable>
