@@ -308,7 +308,11 @@ export function useDashboardData() {
       const overdueCount = pendingOccs.filter(
         (o: OccurrenceWithTemplate) => o.occurrence_date < today
       ).length;
-      const upcomingCount = upcomingBills.length + upcomingIncomes.length;
+      // Count from the unsliced pendingOccs so users with >12 upcoming items
+      // see the real total instead of a 6+6 cap from the preview lists.
+      const upcomingCount = pendingOccs.filter(
+        (o: OccurrenceWithTemplate) => o.occurrence_date >= today
+      ).length;
 
       setSummary({
         currency: "COP",

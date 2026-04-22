@@ -170,7 +170,7 @@ export function InicioRoot() {
           return renderRitmoWidget({
             dayOfMonth: summary.dayOfMonth,
             daysInMonth: summary.daysInMonth,
-            dailyAverage: summary.avgLast7 || null,
+            dailyAverage: summary.avgLast7 ?? null,
             currency: summary.currency,
           });
         case "attention":

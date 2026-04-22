@@ -2,7 +2,10 @@ import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { ArrowRight, Lightbulb } from "lucide-react-native";
 import { ChipEyebrow } from "../../ui/ExpandableChip";
-import { PANEL_INSET_CLASS } from "../../../lib/constants/styles";
+import {
+  BRASS_BUTTON_CLASS,
+  PANEL_INSET_CLASS,
+} from "../../../lib/constants/styles";
 import { COLORS } from "../../../lib/constants/colors";
 import type { WidgetRender } from "../WidgetGrid";
 
@@ -42,7 +45,7 @@ function PuedoComprarloDetail() {
       </View>
       <Pressable
         onPress={() => router.push("/purchase-decision")}
-        className="flex-row items-center justify-center gap-2 rounded-xl bg-z-brass px-4 py-2.5"
+        className={`${BRASS_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-xl px-4 py-2.5`}
       >
         <Text className="text-sm font-inter-semibold text-z-ink">
           Abrir analizador
