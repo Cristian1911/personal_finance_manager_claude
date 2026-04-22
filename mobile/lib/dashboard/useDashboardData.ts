@@ -75,6 +75,13 @@ export type DashboardSummary = {
   liquidBalance: number;
   pendingObligations: number;
   totalSpentThisMonth: number;
+
+  /** "Por resolver" tile — counts for the HERRAMIENTAS system widget. */
+  attention: {
+    overdue: number;
+    upcoming: number;
+    pendingEmails: number;
+  };
 };
 
 const EMPTY: DashboardSummary = {
@@ -103,6 +110,7 @@ const EMPTY: DashboardSummary = {
   liquidBalance: 0,
   pendingObligations: 0,
   totalSpentThisMonth: 0,
+  attention: { overdue: 0, upcoming: 0, pendingEmails: 0 },
 };
 
 export function useDashboardData() {
@@ -297,6 +305,11 @@ export function useDashboardData() {
         ? `${daysRemaining} días`
         : `${daysRemaining} días restantes`;
 
+      const overdueCount = pendingOccs.filter(
+        (o: OccurrenceWithTemplate) => o.occurrence_date < today
+      ).length;
+      const upcomingCount = upcomingBills.length + upcomingIncomes.length;
+
       setSummary({
         currency: "COP",
         accounts,
@@ -323,6 +336,11 @@ export function useDashboardData() {
         liquidBalance,
         pendingObligations,
         totalSpentThisMonth: totalOutflow,
+        attention: {
+          overdue: overdueCount,
+          upcoming: upcomingCount,
+          pendingEmails: 0,
+        },
       });
     } catch (err) {
       console.error("[dashboard] load failed", err);
