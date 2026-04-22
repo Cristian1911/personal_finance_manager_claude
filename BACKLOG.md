@@ -58,6 +58,13 @@
 - **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
 - **Found:** 2026-04-18
 
+### Mobile — `expo-system-ui` para tema claro/oscuro en Android
+- **Priority:** Low
+- **What:** Al correr `npx expo prebuild --clean` Expo emite la advertencia `android: userInterfaceStyle: Install expo-system-ui in your project to enable this feature.` — `app.json` declara `"userInterfaceStyle": "automatic"` pero Android lo ignora sin el módulo. iOS sí honra la clave nativamente, así que el bug es sólo Android.
+- **Fix:** `cd mobile && npx expo install expo-system-ui`. No requiere config plugin adicional; Expo lo detecta y la próxima prebuild respeta la preferencia del sistema.
+- **Impacto actual:** la status bar y los fondos de Android no siguen el tema del sistema; se queda con lo que pinte la app.
+- **Found:** prebuild en `feat/mobile-capture-photo-voice`, 2026-04-22.
+
 ## Claude Design — Wireframe Handoff
 
 Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships unless noted. Each flow below = one milestone slice.
