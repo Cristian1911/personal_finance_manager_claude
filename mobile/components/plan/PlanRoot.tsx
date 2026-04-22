@@ -239,8 +239,8 @@ export function PlanRoot() {
         />
 
         <PlanWeekTiles
-          nextIncome={data.incomeOccs[0] ?? null}
-          nextPayment={data.paymentOccs[0] ?? null}
+          incomes={data.incomeOccs}
+          payments={data.paymentOccs}
           currency={currency}
         />
 

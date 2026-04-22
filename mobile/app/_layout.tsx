@@ -285,6 +285,14 @@ function RootLayoutNav() {
               options={{ presentation: "card", headerShown: false }}
             />
             <Stack.Screen
+              name="presupuesto"
+              options={{ presentation: "card", headerShown: false }}
+            />
+            <Stack.Screen
+              name="periodo"
+              options={{ presentation: "card", headerShown: false }}
+            />
+            <Stack.Screen
               name="deudas/planificador"
               options={{ presentation: "card", headerShown: false }}
             />

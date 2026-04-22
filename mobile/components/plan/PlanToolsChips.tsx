@@ -57,7 +57,7 @@ function PlanToolsChipsBase({
       key: "presupuesto",
       label: "Presupuesto",
       icon: Wallet,
-      route: "/(tabs)/budgets" as Href,
+      route: "/presupuesto" as Href,
       status:
         budgetOverLimit > 0 ? (
           <Status parts={[{ text: `${budgetOverLimit} sobre límite`, emphasis: true }]} />
