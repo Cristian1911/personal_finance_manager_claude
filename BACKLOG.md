@@ -176,13 +176,6 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **What:** The centered amount TextInput in `mobile/app/capture.tsx` displays raw digits (`124124`). User expects COP-style thousand grouping (`124.124`) while typing. Solution prototyped during 2026-04-20 session: format via `raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".")` on display, strip dots + convert decimal comma → dot on onChangeText. Deferred to the mobile migration session to keep the destinatario PR focused.
 - **Found:** User feedback, 2026-04-20.
 
-### Mobile — capture "Crear destinatario" + "Asignar a existente" ungate
-- **Priority:** Medium
-- **What:** The "Opciones relacionadas" collapsible in `mobile/app/capture.tsx` currently Alerts `Próximamente` for both "Crear destinatario" and "Crear pago recurrente". Webapp equivalent already works via `createDestinatario` + `attachPatternToDestinatario` (shipped PR #202). Mobile needs analogous support before these can ungate.
-- **Gaps:** mobile `lib/repositories/destinatarios.ts` is read-only (no `createDestinatario`, no `attachPatternToDestinatario`). Need to add both, wire sync push entries for `destinatarios` + `destinatario_rules` tables, and — for "Asignar a existente" — load the destinatario list on screen mount. Same shape as the webapp new `attachPatternToDestinatario` action.
-- **Recurring template**: separate slice — also read-only on mobile (`recurring.ts` only exposes reads + confirm/skip). Needs full `createRecurringTemplate` repo + sync.
-- **Found:** Capture redesign session, 2026-04-20.
-
 ### Dashboard RECIENTE — inline category assignment on row expand
 - **Priority:** High (scoped for Phase 2 Dashboard polish)
 - **What:** Replace the current inline yellow "Sin cat." tag with a tap-to-expand row interaction: tapping a transaction row reveals an inline panel with a category picker (and possibly: destinatario picker, mark-as-recurring, notes field). User resolves the categorization without leaving the Dashboard. Removes visual clutter from the row and turns a passive signal into a one-tap action.
@@ -539,3 +532,25 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 3. **Flow 05 Plan redesign** — decide: PR #170 polish sufficient, or full Variant A pass?
 4. **PR #190 drag-envelope UX review** — long-press timing + assignment removal path still pending re-evaluation.
 5. **Bugs** — promote-to-recurring success state, recurring templates 20260416 merge audit, telegram webhook RPC migration.
+
+## Session handoff — 2026-04-22
+
+### Shipped this session
+- **PR #212** — Mobile capture crea destinatario + recurrente + cuentas v2 tokens. *Merged* (commit `5d22762`).
+  - `mobile/app/capture.tsx`: replaced `Alert("Próximamente")` stubs with Switch toggles that run alongside `createTransaction`. DEBT account (CREDIT_CARD/LOAN) guard at UI + repo layers.
+  - `mobile/lib/repositories/destinatarios.ts` + `recurring.ts`: new write methods (`createDestinatarioWithPattern`, `createRecurringTemplate`) with local INSERT + sync_queue enqueue. SQLite migration v10 adds `destinatario_id` to `recurring_transaction_templates` for linkage.
+  - `mobile/lib/sync/queue.ts`: new `enqueueInsert/Update/Delete` helpers — used by the two new repos.
+  - `mobile/components/accounts/AccountFormFields.tsx`: extracted `FormField`, `NumericInput`, `DayPicker` (were duplicated byte-for-byte between create + edit).
+  - `mobile/app/(tabs)/accounts.tsx` + `account/create.tsx` + `account/edit/[id].tsx` + `AccountTypeGrid.tsx` + `CurrencyPicker.tsx`: pre-v2 light-mode classes (`bg-gray-100/white`, `text-gray-500/900`, `bg-primary`) → v2 tokens (`bg-background`, `text-foreground`, `bg-z-brass`, `PANEL_SURFACE_SUBTLE_CLASS`, etc.) + `MobileHeader`.
+  - Supabase migration `20260422003433_auto_generate_recurring_occurrences.sql` + `20260422010000_refine_recurring_occurrence_trigger.sql`: AFTER INSERT/UPDATE trigger on `recurring_transaction_templates_enc` auto-generates `recurring_occurrences` for current month + 14 days. UPDATE trigger has `WHEN` clause so it only fires on schedule changes.
+  - Audit/gate agents run: `mobile-webapp-parity`, `mobile-sync-doctor`, `feature-dev:code-reviewer`. Gemini comments addressed (param reassignment fixed; drift logged as cross-cutting backlog item).
+
+### Triage candidates for next session
+1. **Mobile capture amount live-formatting** (Bugs, Medium) — COP thousand grouping while typing. ~30 min slice. Finishes the capture flow polish arc.
+2. **Recurrence engine end-of-month drift** (Bugs, Medium) — paired `@zeta/shared/recurrence.ts` + Supabase trigger fix. Medium lift, rewards users with calendar-end recurring payments (31st of month).
+3. **Anonymous demo cleanup cron** (Tech Debt, Medium) — still pending from last session.
+4. **Flow 02 PR 3** — drag-to-reorder + S/M/L resize for dashboard widget zone.
+5. **Subscriptions.tsx / bug-report.tsx / annotate-screenshot.tsx / purchase-decision.tsx** — mobile stubs flagged in the mobile audit (2026-04-22). Lower urgency.
+
+### Memory added
+- `feedback_webapp_source_of_truth.md` — principle that webapp is canonical; mobile mirrors. Parity gate before any mobile Supabase mutation. Drove the "fix drift in both places or not at all" decision on Gemini's recurrence comments.
