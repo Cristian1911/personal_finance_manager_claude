@@ -140,7 +140,7 @@ export function BudgetsRoot() {
 
   const listHeader = useMemo(
     () => (
-      <View style={{ gap: 12, paddingBottom: 8 }}>
+      <View className="gap-3 pb-2">
         <View className="items-center">
           <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
         </View>

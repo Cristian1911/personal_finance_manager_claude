@@ -1,5 +1,10 @@
 import { memo, useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { ChevronDown } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { AnimatedAccordion } from "../ui/AnimatedAccordion";
@@ -43,6 +48,14 @@ function BudgetRowBase({ item, currency, saving, onSave, onDelete }: BudgetRowPr
   const toggle = useCallback(() => {
     setExpanded((prev) => !prev);
   }, []);
+
+  const chevronRotation = useSharedValue(0);
+  useEffect(() => {
+    chevronRotation.value = withTiming(expanded ? 180 : 0, { duration: 220 });
+  }, [expanded, chevronRotation]);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${chevronRotation.value}deg` }],
+  }));
 
   const handleSave = useCallback(async () => {
     const parsed = parseLocalizedAmount(amountInput);
@@ -95,11 +108,9 @@ function BudgetRowBase({ item, currency, saving, onSave, onDelete }: BudgetRowPr
             <Text className="text-xs font-inter-medium text-muted-foreground">
               {Math.round(item.progress)}%
             </Text>
-            <ChevronDown
-              size={14}
-              color={COLORS.sageDark}
-              style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}
-            />
+            <Animated.View style={chevronStyle}>
+              <ChevronDown size={14} color={COLORS.sageDark} />
+            </Animated.View>
           </View>
         </View>
 
