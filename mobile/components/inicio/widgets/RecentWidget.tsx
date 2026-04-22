@@ -128,6 +128,6 @@ export function renderRecentWidget({ transactions }: RecentWidgetData) {
         )}
       </View>
     ),
-    estimatedHeight: visible.length === 0 ? 100 : 60 + visible.length * 56,
+    estimatedHeight: visible.length === 0 ? 100 : 60 + visible.length * 64,
   };
 }

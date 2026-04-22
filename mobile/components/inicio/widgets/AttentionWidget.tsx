@@ -1,7 +1,8 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { AlertCircle, CalendarClock, CheckCircle2, Mail } from "lucide-react-native";
 import { ChipEyebrow } from "../../ui/ExpandableChip";
+import { ToneActionRow } from "../../ui/ToneActionRow";
 import { PANEL_INSET_CLASS } from "../../../lib/constants/styles";
 import { COLORS } from "../../../lib/constants/colors";
 import type { WidgetRender } from "../WidgetGrid";
@@ -99,52 +100,31 @@ function AttentionDetail({
   return (
     <View className={`${PANEL_INSET_CLASS} p-3 gap-2`}>
       {overdue > 0 && (
-        <Pressable
+        <ToneActionRow
+          tone="debt"
+          icon={AlertCircle}
+          title={`${overdue} vencido${overdue === 1 ? "" : "s"}`}
+          subtitle="Revisa los pagos atrasados"
           onPress={() => router.push("/recurrentes")}
-          className="flex-row items-center gap-3 rounded-xl border border-z-debt-30 bg-z-debt-12 px-3 py-2.5"
-        >
-          <AlertCircle size={18} color={COLORS.debt} />
-          <View className="flex-1">
-            <Text className="text-[12px] font-inter-semibold text-z-debt">
-              {overdue} vencido{overdue === 1 ? "" : "s"}
-            </Text>
-            <Text className="text-[10px] font-inter text-muted-foreground">
-              Revisa los pagos atrasados
-            </Text>
-          </View>
-        </Pressable>
+        />
       )}
       {upcoming > 0 && (
-        <Pressable
+        <ToneActionRow
+          tone="brass"
+          icon={CalendarClock}
+          title={`${upcoming} próximo${upcoming === 1 ? "" : "s"}`}
+          subtitle="Pagos o ingresos programados"
           onPress={() => router.push("/(tabs)/plan")}
-          className="flex-row items-center gap-3 rounded-xl border border-z-brass-20 bg-z-brass-8 px-3 py-2.5"
-        >
-          <CalendarClock size={18} color={COLORS.brass} />
-          <View className="flex-1">
-            <Text className="text-[12px] font-inter-semibold text-z-brass">
-              {upcoming} próximo{upcoming === 1 ? "" : "s"}
-            </Text>
-            <Text className="text-[10px] font-inter text-muted-foreground">
-              Pagos o ingresos programados
-            </Text>
-          </View>
-        </Pressable>
+        />
       )}
       {pendingEmails > 0 && (
-        <Pressable
+        <ToneActionRow
+          tone="foreground"
+          icon={Mail}
+          title={`${pendingEmails} correo${pendingEmails === 1 ? "" : "s"}`}
+          subtitle="Importaciones por confirmar"
           onPress={() => router.push("/(tabs)/import")}
-          className="flex-row items-center gap-3 rounded-xl border border-white-10 bg-white-3 px-3 py-2.5"
-        >
-          <Mail size={18} color={COLORS.sageDark} />
-          <View className="flex-1">
-            <Text className="text-[12px] font-inter-semibold text-foreground">
-              {pendingEmails} correo{pendingEmails === 1 ? "" : "s"}
-            </Text>
-            <Text className="text-[10px] font-inter text-muted-foreground">
-              Importaciones por confirmar
-            </Text>
-          </View>
-        </Pressable>
+        />
       )}
     </View>
   );

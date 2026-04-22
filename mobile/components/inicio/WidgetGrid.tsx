@@ -102,6 +102,9 @@ function WidgetGridRow({
   const [lastEstimate, setLastEstimate] = useState<number>(260);
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Snapshot the active detail at the moment of collapse so the fade has
+  // something real to render. Effect keys off the stable id — `active` is
+  // a fresh object each render and would loop.
   useEffect(() => {
     if (clearTimer.current) {
       clearTimeout(clearTimer.current);
@@ -113,13 +116,14 @@ function WidgetGridRow({
         setLastDetail(item.r.detail());
         setLastEstimate(item.r.estimatedHeight ?? 260);
       }
-      return;
+    } else {
+      clearTimer.current = setTimeout(() => setLastDetail(null), 260);
     }
-    // Keep previous detail mounted for ~260ms (slightly past the 220ms
-    // animation) so the fade actually has content to fade.
-    clearTimer.current = setTimeout(() => setLastDetail(null), 260);
     return () => {
-      if (clearTimer.current) clearTimeout(clearTimer.current);
+      if (clearTimer.current) {
+        clearTimeout(clearTimer.current);
+        clearTimer.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- rendered is
     // re-created each render; we key off the stable activeIdForRow instead.
@@ -144,7 +148,7 @@ function WidgetGridRow({
         ))}
       </View>
       <AnimatedAccordion expanded={expanded} estimatedHeight={lastEstimate}>
-        {lastDetail}
+        {active ? active.r.detail() : lastDetail}
       </AnimatedAccordion>
     </View>
   );

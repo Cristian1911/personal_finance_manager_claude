@@ -106,6 +106,6 @@ export function renderWhereTodayWidget({
         )}
       </View>
     ),
-    estimatedHeight: sorted.length === 0 ? 100 : 80 + sorted.length * 36,
+    estimatedHeight: sorted.length === 0 ? 100 : 80 + sorted.length * 44,
   };
 }

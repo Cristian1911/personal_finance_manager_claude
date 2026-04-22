@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.zetafinance.app",
+      "bundleIdentifier": "com.venti5.zeta",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSFaceIDUsageDescription": "Zeta usa Face ID para desbloquear la app de forma rápida y segura.",

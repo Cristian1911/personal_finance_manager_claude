@@ -153,6 +153,16 @@ export function InicioRoot() {
   const pulseTrend =
     layout.pulseRange === "weekly" ? summary.spentTrend7 : summary.spentTrend30;
 
+  const primaryAccount = useMemo(() => {
+    const a = summary.accounts.find((x) => x.current_balance > 0);
+    if (!a) return null;
+    return {
+      name: a.name,
+      currentBalance: a.current_balance,
+      currencyCode: a.currency_code as typeof summary.currency,
+    };
+  }, [summary.accounts, summary.currency]);
+
   const renderWidget = useCallback(
     (w: WidgetInstance): WidgetRender => {
       switch (w.type) {
@@ -230,19 +240,7 @@ export function InicioRoot() {
             availableTotal: summary.availableTotal,
             windowEndLabel: summary.daysLabel,
           }}
-          primaryAccount={
-            summary.accounts.find((a) => a.current_balance > 0)
-              ? {
-                  name: summary.accounts.find((a) => a.current_balance > 0)!.name,
-                  currentBalance: summary.accounts.find(
-                    (a) => a.current_balance > 0
-                  )!.current_balance,
-                  currencyCode: summary.accounts.find(
-                    (a) => a.current_balance > 0
-                  )!.currency_code as typeof summary.currency,
-                }
-              : null
-          }
+          primaryAccount={primaryAccount}
           nextIncome={
             summary.nextIncome
               ? {
