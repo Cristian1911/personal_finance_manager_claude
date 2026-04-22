@@ -65,6 +65,24 @@
 - **Impacto actual:** la status bar y los fondos de Android no siguen el tema del sistema; se queda con lo que pinte la app.
 - **Found:** prebuild en `feat/mobile-capture-photo-voice`, 2026-04-22.
 
+### Mobile — `budgets` SQLite missing `is_demo` column (sync drift)
+- **Priority:** Medium
+- **What:** Supabase `budgets` view exposes `is_demo: boolean`. SQLite `budgets` table in `mobile/lib/db/schema.ts` has only 7 columns (no `is_demo`). `getTableColumns()` in `mobile/lib/sync/pull.ts` silently drops the field every pull. Demo-seeded budgets cannot be distinguished from real ones on device. User-created budgets work today because Supabase defaults `is_demo=false` on insert.
+- **Fix:** DB_MIGRATIONS v11 → `ALTER TABLE budgets ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0`. Then add `budgets: ["is_demo"]` to `BOOLEAN_FIELDS` in `mobile/lib/sync/pull.ts` so pull converts `true/false → 1/0` on write.
+- **Found:** mobile-sync-doctor on PR #223, 2026-04-22.
+
+### Mobile — yearly budgets not displayed
+- **Priority:** Low
+- **What:** `getBudgetProgress` in `mobile/lib/repositories/budgets.ts` filters `b.period = 'monthly'` (hardcoded). Webapp accepts `"monthly" | "yearly"` via `budgetSchema`. Any yearly budget created on webapp is invisible on mobile.
+- **Fix:** widen the SQL filter + surface a period chip in BudgetRow. Only needed once the webapp exposes yearly creation.
+- **Found:** mobile-webapp-parity on PR #223, 2026-04-22.
+
+### Webapp — `DESTRUCTIVE_GHOST_BUTTON_CLASS` parity
+- **Priority:** Low
+- **What:** PR #223 added `DESTRUCTIVE_GHOST_BUTTON_CLASS` to `mobile/lib/constants/styles.ts` for the budget-row Eliminar button. Webapp `src/lib/constants/styles.ts` has a solid `DESTRUCTIVE_BUTTON_CLASS` but no ghost variant. Webapp components currently re-invent the pattern ad hoc when needed.
+- **Fix:** mirror the token on webapp: `DESTRUCTIVE_GHOST_BUTTON_CLASS = "border-z-debt/25 bg-black/10 text-z-expense hover:bg-z-debt/10"` (using Tailwind v4 `/` opacity syntax — webapp supports it). Opportunistic cleanup of existing ad-hoc sites follows.
+- **Found:** zetas-front-guy on PR #223, 2026-04-22.
+
 ## Claude Design — Wireframe Handoff
 
 Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships unless noted. Each flow below = one milestone slice.
