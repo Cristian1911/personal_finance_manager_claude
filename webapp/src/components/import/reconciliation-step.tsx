@@ -298,9 +298,9 @@ export function ReconciliationStep({
               {newMerchantNames.map((name) => (
                 <li
                   key={`new-m-${name}`}
-                  className="rounded-lg border border-white/6 bg-z-surface-2/40 px-3 py-2 text-xs text-z-sage-light"
+                  className="truncate rounded-lg border border-white/6 bg-z-surface-2/40 px-3 py-2 text-xs text-z-sage-light"
                 >
-                  <span className="truncate">{name}</span>
+                  {name}
                 </li>
               ))}
             </ul>
