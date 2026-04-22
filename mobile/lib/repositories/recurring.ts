@@ -206,14 +206,15 @@ export async function createRecurringTemplate(
         [params.account_id]
       )
     )?.account_type;
-  if (acctType && DEBT_ACCOUNT_TYPES.has(acctType)) {
-    if (!params.transfer_source_account_id) {
-      throw new Error(
-        "Debes seleccionar la cuenta origen para un pago de deuda."
-      );
-    }
-    params = { ...params, direction: "INFLOW" };
+  const isDebtAccount = !!acctType && DEBT_ACCOUNT_TYPES.has(acctType);
+  if (isDebtAccount && !params.transfer_source_account_id) {
+    throw new Error(
+      "Debes seleccionar la cuenta origen para un pago de deuda."
+    );
   }
+  const effectiveDirection: TransactionDirection = isDebtAccount
+    ? "INFLOW"
+    : params.direction;
 
   const payload = {
     id,
@@ -222,7 +223,7 @@ export async function createRecurringTemplate(
     category_id: params.category_id ?? null,
     amount: params.amount,
     currency_code: params.currency_code,
-    direction: params.direction,
+    direction: effectiveDirection,
     frequency: params.frequency,
     day_of_month: params.day_of_month ?? null,
     day_of_week: params.day_of_week ?? null,
