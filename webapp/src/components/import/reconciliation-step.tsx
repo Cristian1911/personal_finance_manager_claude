@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 import { GitMerge, Loader2, SplitSquareVertical } from "lucide-react";
 import { importTransactions } from "@/actions/import-transactions";
@@ -114,11 +113,14 @@ export function ReconciliationStep({
   // Allow overriding an auto-merge to keep-both when user expands Duplicados panel.
   const [rejectedAutoMerges, setRejectedAutoMerges] = useState<Set<string>>(new Set());
 
+  // Only surface raw descriptions that didn't auto-match any existing
+  // destinatario rule during step 2 — those are the truly new merchants.
   const newMerchantNames = useMemo(
     () =>
       Array.from(
         new Set(
           preview.unmatched
+            .filter((i) => !i.importedTransaction.destinatario_id)
             .map((i) => i.importedTransaction.raw_description)
             .filter((s): s is string => typeof s === "string" && s.length > 0),
         ),
@@ -287,33 +289,21 @@ export function ReconciliationStep({
       {panel === "merchants" && (
         <Panel
           title="Destinatarios sugeridos"
-          caption="Merchants que aún no están en tu lista. Asígnalos para acelerar las próximas importaciones."
+          caption="Merchants que aún no están en tu lista. Se importan sin problema — los entrenas después en Destinatarios."
         >
           {newMerchantNames.length === 0 ? (
             <EmptyNote>Ya tenías a todos registrados.</EmptyNote>
           ) : (
-            <>
-              <ul className="space-y-1.5">
-                {newMerchantNames.map((name) => (
-                  <li
-                    key={`new-m-${name}`}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-white/6 bg-z-surface-2/40 px-3 py-2"
-                  >
-                    <span className="truncate text-xs text-z-sage-light">{name}</span>
-                    <Link
-                      href={`/destinatarios?new=${encodeURIComponent(name)}`}
-                      className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-z-brass hover:underline"
-                    >
-                      Asignar
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-[11px] italic text-z-sage-dark">
-                Esto no bloquea la importación. Los creas ahora o después en
-                Destinatarios.
-              </p>
-            </>
+            <ul className="space-y-1.5">
+              {newMerchantNames.map((name) => (
+                <li
+                  key={`new-m-${name}`}
+                  className="rounded-lg border border-white/6 bg-z-surface-2/40 px-3 py-2 text-xs text-z-sage-light"
+                >
+                  <span className="truncate">{name}</span>
+                </li>
+              ))}
+            </ul>
           )}
         </Panel>
       )}
