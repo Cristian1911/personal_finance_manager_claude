@@ -92,9 +92,12 @@ function WidgetGridRow({
   }));
   const active = rendered.find((x) => x.isActive);
   const expanded = Boolean(active);
+  const activeIdForRow = active?.w.id ?? null;
 
   // Retain the last-active detail during the collapse transition so the
-  // accordion fades real content rather than an empty box.
+  // accordion fades real content rather than an empty box. Effect depends
+  // on the active id (stable string) — not on `active` (object reference
+  // changes every render, which would infinite-loop).
   const [lastDetail, setLastDetail] = useState<ReactNode>(null);
   const [lastEstimate, setLastEstimate] = useState<number>(260);
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,9 +107,12 @@ function WidgetGridRow({
       clearTimeout(clearTimer.current);
       clearTimer.current = null;
     }
-    if (active) {
-      setLastDetail(active.r.detail());
-      setLastEstimate(active.r.estimatedHeight ?? 260);
+    if (activeIdForRow) {
+      const item = rendered.find((x) => x.w.id === activeIdForRow);
+      if (item) {
+        setLastDetail(item.r.detail());
+        setLastEstimate(item.r.estimatedHeight ?? 260);
+      }
       return;
     }
     // Keep previous detail mounted for ~260ms (slightly past the 220ms
@@ -115,7 +121,9 @@ function WidgetGridRow({
     return () => {
       if (clearTimer.current) clearTimeout(clearTimer.current);
     };
-  }, [active]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rendered is
+    // re-created each render; we key off the stable activeIdForRow instead.
+  }, [activeIdForRow]);
 
   return (
     <View className="gap-2">
