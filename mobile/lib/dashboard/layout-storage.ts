@@ -1,6 +1,34 @@
 import { supabase } from "../supabase";
 import { getDatabase } from "../db/database";
-import { DEFAULT_LAYOUT, type DashboardLayout } from "./widgets";
+import {
+  ARRANGEABLE_TYPES,
+  DEFAULT_LAYOUT,
+  type DashboardLayout,
+  type WidgetInstance,
+} from "./widgets";
+
+/**
+ * Filters a persisted layout so only arrangeable widget types survive. Older
+ * layouts may reference system-widget types (`ritmo`, `where_today`,
+ * `attention`) or deprecated catalog entries (`accounts`, `next_bill`, etc.)
+ * which now belong in the fixed Herramientas row or are disabled.
+ */
+export function normalizeLayout(
+  raw: Partial<DashboardLayout> | null | undefined
+): DashboardLayout {
+  if (!raw) return DEFAULT_LAYOUT;
+  const widgets = (raw.widgets ?? [])
+    .filter(
+      (w): w is WidgetInstance =>
+        !!w && typeof w.type === "string" && ARRANGEABLE_TYPES.has(w.type)
+    )
+    .map((w) => ({ id: w.id, type: w.type, size: w.size }));
+  if (widgets.length === 0) return DEFAULT_LAYOUT;
+  return {
+    pulseRange: raw.pulseRange ?? DEFAULT_LAYOUT.pulseRange,
+    widgets,
+  };
+}
 
 /**
  * Reads the layout from local SQLite. Returns DEFAULT_LAYOUT when nothing is
@@ -18,7 +46,7 @@ export async function loadDashboardLayout(userId: string): Promise<DashboardLayo
     const raw = row?.mobile_dashboard_config;
     if (raw) {
       const parsed = safeParse(raw);
-      if (parsed) return parsed;
+      if (parsed) return normalizeLayout(parsed);
     }
   } catch (err) {
     console.warn("[dashboard] local layout read failed", err);
