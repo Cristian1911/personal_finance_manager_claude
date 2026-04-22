@@ -19,6 +19,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSFaceIDUsageDescription": "Zeta usa Face ID para desbloquear la app de forma rápida y segura.",
+        "NSCameraUsageDescription": "Zeta usa la cámara para capturar fotos de extractos bancarios o recibos y extraer transacciones automáticamente.",
+        "NSPhotoLibraryUsageDescription": "Zeta lee fotos de extractos o recibos desde tu galería para extraer transacciones automáticamente.",
         "NSLocalNetworkUsageDescription": "Zeta usa la red local únicamente en builds de desarrollo para conectar con Expo Dev Launcher. La app de producción no accede a tu red local.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": false
@@ -82,7 +84,9 @@
       "allowBackup": false,
       "permissions": [
         "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT"
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW"
@@ -105,7 +109,21 @@
       "@react-native-community/datetimepicker",
       "expo-font",
       "expo-sqlite",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite a Zeta leer fotos de extractos bancarios o recibos para extraer transacciones automáticamente.",
+          "cameraPermission": "Permite a Zeta tomar fotos de extractos o recibos para extraer transacciones automáticamente."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Zeta usa el micrófono para capturar transacciones por voz. El audio se transcribe en tu dispositivo y no se envía a ningún servidor.",
+          "speechRecognitionPermission": "Zeta convierte tu voz en texto localmente en el dispositivo para crear transacciones rápidas."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -355,19 +355,6 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
   - Actualizar política de privacidad con mención del proveedor de observabilidad.
 - **Criterio de activación:** cuando haya >50 usuarios en beta y no queramos depender solo de bug reports manuales.
 
-### Mobile — OCR (foto de extracto) y voice capture
-- **Priority:** Medium (post-v1 launch; no bloqueante para primer Play Store submit)
-- **What:** Los botones ya existen en `FabMenuSheet` + `MobileTabBar` pero disparan `Alert.alert("Próximamente", ...)`. Implementar:
-  - **Voice capture**: `expo-av` → grabar audio → enviar a webapp `/api/capture` (ya existe) o transcribir on-device → crear transacción. Requiere permiso `RECORD_AUDIO` (Android) + `NSMicrophoneUsageDescription` (iOS).
-  - **OCR / pantallazo**: `expo-image-picker` + `expo-camera` → foto de extracto o pantallazo de app bancaria → enviar a `/api/parse-image` (ya existe en webapp) → reconciliar. Requiere `CAMERA` + `READ_MEDIA_IMAGES` (Android 13+) + `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` (iOS).
-- **Play Store implicaciones al activar**:
-  - Actualizar Data Safety: marcar "Fotos y videos" → *Photos* + *Videos* (si aplica). Marcar "Archivos de audio" → *Sound recordings*.
-  - Para cada uno: Collected=Yes, Shared=No, Optional, Purpose=App functionality, Encrypted in transit=Yes, User can request deletion=Yes.
-  - Añadir `usesDataTypes` al manifest y declarar propósito de cada permiso sensible.
-  - Actualizar política de privacidad con las nuevas categorías de datos.
-- **Touches:** `mobile/app/capture.tsx`, `mobile/components/ui/MobileTabBar.tsx` (eliminar alerts), `mobile/app.json` (permisos + plugins), nueva librería de audio/imagen helpers.
-- **Endpoints ya listos:** `webapp/src/app/api/parse-image/` + `webapp/src/app/api/capture/` — solo falta el client mobile.
-
 ### In-app eliminación de cuenta (Ajustes → Eliminar cuenta)
 - **Priority:** High (antes de Play Store producción; OK para internal testing)
 - **What:** Implementar flujo self-service de eliminación de cuenta y todos los datos asociados. Hoy solo existe vía email a `giraldo.0302@gmail.com` (documentado en `/eliminar-cuenta`). Google Play prefiere in-app; lo acepta por email para v1 pero la UI más tarde reduce fricción y baja tickets.
