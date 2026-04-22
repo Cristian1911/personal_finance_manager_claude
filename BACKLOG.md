@@ -655,7 +655,7 @@ Gate pipeline: implement → `/simplify` (3 reviewers en paralelo) → aplicar (
 - **`.github/workflows/mobile-pr-verify.yml`** — new CI workflow. Runs `pnpm install --frozen-lockfile` + `npx tsc --noEmit` against `mobile/` on every PR touching `mobile/**`, `packages/shared/**`, or root lockfile. Proven green on PR #221. Mobile now has the same pre-merge gate the webapp has via `pr-build-images.yml`.
 
 ### Parity/infra follow-ups committed on branch `chore/movimientos-followups`
-- `categorization_source` alignment: mobile `updateTransaction` no longer writes `null` to `categorization_source` when clearing a category. Matches webapp (`actions/transactions.ts:841` — only flags `USER_OVERRIDE` when assigning, not when clearing). Prior behavior was silently overwriting prior-source values.
+- `categorization_source` alignment: mobile `updateTransaction` now flags `USER_OVERRIDE` on any category change (assign OR clear), matching webapp (`actions/transactions.ts:841` uses `categoryChanged`, true in both directions). Prior mobile behavior wrote `null` on clear — diverged from webapp.
 - `getTransactions SELECT t.*` narrowing was considered, **declined for now**: 6 callers each consume many columns; narrowing is a real refactor with marginal perf gain (mobile SQLite rows are plaintext, no encrypted-column parse cost). Filed as a low-priority follow-up below.
 
 ### Triage candidates for next session

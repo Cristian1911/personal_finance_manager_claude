@@ -4,7 +4,7 @@
 
 ## 1. Session Summary
 
-Shipped **PR #221** (merged, commit `81229c3`): mobile `/movimientos` tab structural parity with the webapp mobile viewport + a large perf refactor + a new `mobile-perf-doctor` review-gate agent. Addressed 5 Gemini review comments in a follow-up commit on that PR (timezone bug, useFocusEffect deps, `React.memo` + stable callbacks, narrowed `getTopUncategorized` SELECT, fixed pre-existing broken imports in `lib/demo-data.ts`). Added **`.github/workflows/mobile-pr-verify.yml`** — a new CI workflow that runs `pnpm install --frozen-lockfile` + `npx tsc --noEmit` on mobile-touching PRs; proven green on PR #221 itself. Opened **PR #222** (open at handoff) with a parity fix (don't null `categorization_source` on category clear — matches webapp) + BACKLOG handoff entry.
+Shipped **PR #221** (merged, commit `81229c3`): mobile `/movimientos` tab structural parity with the webapp mobile viewport + a large perf refactor + a new `mobile-perf-doctor` review-gate agent. Addressed 5 Gemini review comments in a follow-up commit on that PR (timezone bug, useFocusEffect deps, `React.memo` + stable callbacks, narrowed `getTopUncategorized` SELECT, fixed pre-existing broken imports in `lib/demo-data.ts`). Added **`.github/workflows/mobile-pr-verify.yml`** — a new CI workflow that runs `pnpm install --frozen-lockfile` + `npx tsc --noEmit` on mobile-touching PRs; proven green on PR #221 itself. Opened **PR #222** (open at handoff) with a parity fix (`categorization_source` is flagged `USER_OVERRIDE` on any category change — assign or clear — matching webapp `categoryChanged`) + BACKLOG handoff entry.
 
 The session's highest-value pattern went into the agent bible: prop-reference stability is the #1 mobile perf footgun. A `toItem()` "view-model" wrapper we initially wrote rebuilt objects per render → broke `React.memo` on paginated rows → every row re-rendered on every pagination. Fix is passing the repo row directly. Encoded as agent §1.1 "Golden rule".
 
@@ -30,7 +30,7 @@ Demo data unblock:
 
 ### PR #222 (open — commit `610b177`, branch `chore/movimientos-followups`)
 
-- `mobile/lib/repositories/transactions.ts` — `updateTransaction`: on category clear (`category_id → null`), no longer writes `categorization_source = null`. Matches webapp (`webapp/src/actions/transactions.ts:841` only flags `USER_OVERRIDE` when assigning; leaves prior source intact on clear). Applied to both the SQLite UPDATE branch AND the `syncPayload` sent to Supabase.
+- `mobile/lib/repositories/transactions.ts` — `updateTransaction`: whenever the caller passes `category_id` (assign OR clear), `categorization_source` is now set to `USER_OVERRIDE`. Matches webapp (`webapp/src/actions/transactions.ts:841`) which uses `categoryChanged` (true on both assign and clear). Applied to both the SQLite UPDATE branch AND the `syncPayload` sent to Supabase. Previous implementation wrote `null` on clear (incorrect); initial PR #222 attempt left prior value intact (also incorrect — Gemini caught it, see review on PR #222).
 - `BACKLOG.md` — appended "Session handoff — 2026-04-22 (late night)" entry.
 
 ### Memory additions (user-scope, persist across sessions)
