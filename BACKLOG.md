@@ -643,3 +643,31 @@ Gate pipeline: implement → `/simplify` (3 reviewers en paralelo) → aplicar (
 4. **Consolidar helpers de formato de monto en `@zeta/shared`** — `formatAmountInput`/`parseFormattedAmount` (mobile) y `formatDisplay`/`stripFormatting` (webapp `currency-input.tsx`) hacen lo mismo. Subir uno al shared package. Low priority.
 5. **Mobile stubs** — `subscriptions.tsx`, `bug-report.tsx`, `annotate-screenshot.tsx`, `purchase-decision.tsx` (usuario indica: bug-report + annotate no se usan, bajar prioridad o eliminar).
 6. **PR #190 drag-envelope UX review** — aún pendiente.
+
+## Session handoff — 2026-04-22 (late night)
+
+### Shipped this session
+- **PR #221** — `feat(mobile): Movimientos parity slice 1 + perf refactor + mobile-perf-doctor agent`. *Merged* (commit `81229c3`).
+  - Movimientos parity: `MovimientosRoot` (FlatList + pagination), `Lectura` (3-col summary + expandable SVG flow-by-day chart + rotating ChevronDown affordance), `Herramientas` (Categorizar + Importar chips with expandable inline panel, retain-last-tool close animation), `Utilidades` (search pill + MobileSheet filter drawer), `TransactionRow` (memoized, account dot + name, Categoría + Editar chips).
+  - Perf: React.memo'd rows with stable `TransactionListRow` refs (no toItem wrapper), hoisted + conditionally mounted `CategoryPickerSheet`, request-id race guard, `txCountRef` to stop `loadData` recreation on append, summary totals via new `getMonthlyAggregates` SQL rollup (prev: summed paginated feed, numbers grew as user scrolled).
+  - New agent `.claude/agents/mobile-perf-doctor.md` + `CLAUDE.md` review-gate entry. Bible sections §3.2 (AnimatedAccordion scale/close/affordance rules), §4.4 (race guards), §5.2 (summary totals from SQL) added during this PR's own review cycle.
+- **PR #221 follow-up commit** — Gemini review fixes: `toISOString` timezone bug, useFocusEffect dep simplification, React.memo on Lectura/Herramientas + stabilized callbacks to stop chart re-render on search typing, narrowed `getTopUncategorized` SELECT. Also fixed pre-existing `mobile/lib/demo-data.ts` broken imports (category constants renamed in shared package; demo mode had been compile-broken).
+- **`.github/workflows/mobile-pr-verify.yml`** — new CI workflow. Runs `pnpm install --frozen-lockfile` + `npx tsc --noEmit` against `mobile/` on every PR touching `mobile/**`, `packages/shared/**`, or root lockfile. Proven green on PR #221. Mobile now has the same pre-merge gate the webapp has via `pr-build-images.yml`.
+
+### Parity/infra follow-ups committed on branch `chore/movimientos-followups`
+- `categorization_source` alignment: mobile `updateTransaction` now flags `USER_OVERRIDE` on any category change (assign OR clear), matching webapp (`actions/transactions.ts:841` uses `categoryChanged`, true in both directions). Prior mobile behavior wrote `null` on clear — diverged from webapp.
+- `getTransactions SELECT t.*` narrowing was considered, **declined for now**: 6 callers each consume many columns; narrowing is a real refactor with marginal perf gain (mobile SQLite rows are plaintext, no encrypted-column parse cost). Filed as a low-priority follow-up below.
+
+### Triage candidates for next session
+1. **Dogfood `mobile-perf-doctor` on main** — agent was registered during PR #221 so existing sessions can't see it. Next session will have it. Spawn as a retroactive audit against `mobile/components/movimientos/*` to validate the bible rules on the merged code, then on whatever tab we polish next.
+2. **Mobile tab polish — pick one:** Budgets (smallest; still pre-v2 tokens `bg-z-surface-2-55`), Plan (`PlanRoot` parity vs `/plan` webapp; high-traffic), Deudas (`DeudasRoot` parity vs `/deudas`; high-visibility), or Movimientos slice 2 (destinatario/tag/vincular chips + email-pending sync — large, reopens recently-shipped files).
+3. **Narrow `getTransactions` SELECT** (deferred from PR #221 Gemini review) — 6 callers, marginal gain. Do only when refactoring the repo anyway.
+4. **Anonymous demo cleanup cron** — still pending from 2026-04-21.
+5. **Flow 02 PR 3** — drag-to-reorder + S/M/L resize for the dashboard widget zone.
+6. **Mobile stubs** — `subscriptions.tsx`, `bug-report.tsx`, `annotate-screenshot.tsx`, `purchase-decision.tsx` (user: bug-report + annotate unused — consider delete).
+7. **PR #190 drag-envelope UX review** — still pending.
+8. **Backfill drifted `recurring_occurrences`** — opt-in migration.
+
+### Memory added / updated
+- `feedback_mobile_perf_doctor.md` — commitment to grow the agent's bible after every mobile perf bug debugged.
+- `.claude/agents/mobile-perf-doctor.md` — added §3.2 AnimatedAccordion close-animation + scale rules, §4.4 race guards on paginated loaders, §5.2 summary totals from SQL.

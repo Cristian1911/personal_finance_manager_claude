@@ -593,9 +593,12 @@ export async function updateTransaction(
   if (params.category_id !== undefined) {
     setClauses.push("category_id = ?");
     values.push(params.category_id ?? null);
-    // Match webapp: track how the category was assigned
+    // Match webapp (actions/transactions.ts:841): flag USER_OVERRIDE on any
+    // category change — assign or clear. Webapp uses `categoryChanged` which
+    // is true in both directions; mobile mirrors by always setting the flag
+    // whenever the caller includes category_id in the update.
     setClauses.push("categorization_source = ?");
-    values.push(params.category_id ? "USER_OVERRIDE" : null);
+    values.push("USER_OVERRIDE");
   }
   if (params.notes !== undefined) {
     setClauses.push("notes = ?");
@@ -631,7 +634,7 @@ export async function updateTransaction(
   if (params.transaction_date !== undefined) syncPayload.transaction_date = params.transaction_date;
   if (params.category_id !== undefined) {
     syncPayload.category_id = params.category_id ?? null;
-    syncPayload.categorization_source = params.category_id ? "USER_OVERRIDE" : null;
+    syncPayload.categorization_source = "USER_OVERRIDE";
   }
   if (params.notes !== undefined) syncPayload.notes = params.notes ?? null;
   if (params.is_excluded !== undefined) syncPayload.is_excluded = params.is_excluded;
