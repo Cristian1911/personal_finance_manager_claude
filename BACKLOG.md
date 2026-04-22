@@ -48,13 +48,6 @@
 - **Audit SQL:** `SELECT account_id, currency_code, count(*) FROM recurring_transaction_templates_enc WHERE direction='INFLOW' AND frequency='MONTHLY' AND category_id IS NULL GROUP BY 1,2 HAVING count(*) > 1;`
 - **Found:** 2026-04-18 — fixed in PR #174; merge follow-up flagged by recurring-doctor review.
 
-### Recurrence engine — end-of-month date drift in webapp + mobile trigger
-- **Priority:** Medium
-- **What:** `packages/shared/src/utils/recurrence.ts` `getOccurrencesBetween` uses date-fns `addMonths`, which collapses Jan 31 → Feb 28 and sticks at 28 for subsequent months. The same drift exists in the Supabase trigger (`20260422003433_auto_generate_recurring_occurrences.sql`) to match webapp behavior. `day_of_month` column is stored but unused in generation.
-- **Why not fixed in PR #212:** Fixing in the trigger alone would silently diverge from webapp. Proper fix: one PR that updates both `@zeta/shared` (use `day_of_month` as anchor with end-of-month clamping) and the trigger.
-- **Surface area:** Any template whose `start_date` is the 29th/30th/31st of a month. Rare but real — payroll, rent, credit-card cutoffs.
-- **Found:** 2026-04-22 — flagged by gemini-code-assist on PR #212.
-
 ### Investigate why migration 20260416120000 stamped without running
 - **Priority:** Medium
 - **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
@@ -170,11 +163,6 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **What:** The "Primeros pasos recomendados" view shown when the app has no data should render the suggested actions as a 4×4 grid (or close to it) instead of the current stacked list. Gives the user a richer menu of entry points at a glance.
 - **Touches:** wherever the first-run recommendations render on the dashboard / /import / /plan empty states — locate and unify.
 - **Found:** User request, 2026-04-21.
-
-### Mobile — capture amount live-formatting
-- **Priority:** Medium
-- **What:** The centered amount TextInput in `mobile/app/capture.tsx` displays raw digits (`124124`). User expects COP-style thousand grouping (`124.124`) while typing. Solution prototyped during 2026-04-20 session: format via `raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".")` on display, strip dots + convert decimal comma → dot on onChangeText. Deferred to the mobile migration session to keep the destinatario PR focused.
-- **Found:** User feedback, 2026-04-20.
 
 ### Dashboard RECIENTE — inline category assignment on row expand
 - **Priority:** High (scoped for Phase 2 Dashboard polish)
@@ -554,3 +542,27 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ### Memory added
 - `feedback_webapp_source_of_truth.md` — principle that webapp is canonical; mobile mirrors. Parity gate before any mobile Supabase mutation. Drove the "fix drift in both places or not at all" decision on Gemini's recurrence comments.
+
+## Session handoff — 2026-04-22 (evening)
+
+### Shipped this session
+- **PR #213** — `feat(mobile): captura formatea monto con separadores de miles`. *Merged* (commit `79aff3f`).
+  - `mobile/app/capture.tsx`: TextInput muestra formato COP en vivo (`124124` → `124.124`) mientras el usuario escribe.
+  - `mobile/lib/amount.ts`: nuevas `formatAmountInput` + `parseFormattedAmount` (dot = miles, coma = decimal); helper privado `isDecimalTail`. `parseLocalizedAmount` intacta — otros inputs numéricos (subscriptions, edit tx, budgets, plan sheets) no cambian.
+- **PR #214** — `fix(recurrence): corrige drift de fin de mes en ambas implementaciones`. *Merged* (commit `551fc80`).
+  - `packages/shared/src/utils/recurrence.ts`: `occurrenceAt(start, k, freq)` reemplaza `advanceByFrequency(current, freq)`. Ancla en `start_date` con contador `k` → Jan 31 MONTHLY preserva 31 (Feb 28 solo cuando hay clamp).
+  - `supabase/migrations/20260422020000_fix_recurrence_eom_drift.sql`: mismo patrón con `v_start_date + (v_step * interval '1 month')`; un solo loop que inserta cuando `v_cursor >= v_range_start` (colapsa doble CASE).
+  - 8 tests cubren Jan 31 / Jan 30 MONTHLY, Jan 31 QUARTERLY, Feb 29 ANNUAL en años no bisiestos, WEEKLY y `getNextOccurrence`.
+  - Gemini HIGH comments atendidos: `toISOString().split("T")[0]` reemplazado por `format(d, "yyyy-MM-dd")` (date-fns) en las 4 apariciones para evitar off-by-one en zonas este de UTC.
+  - `recurring-doctor` agent: PASS. Alcance: solo nuevas generaciones; ocurrencias ya drifted no se auto-corrigen.
+
+### Pipeline
+Gate pipeline: implement → `/simplify` (3 reviewers en paralelo) → aplicar (SQL CASE colapsado, `isDecimalTail` extraído) → Gemini review → aplicar fix (date-fns format) / declinar (2-decimal cap intencional).
+
+### Triage candidates for next session
+1. **Anonymous demo cleanup cron** (Tech Debt, Medium) — aún pendiente desde 2026-04-21.
+2. **Flow 02 PR 3** — drag-to-reorder + S/M/L resize para widget zone del dashboard (Reanimated + gesture-handler).
+3. **Backfill de ocurrencias drifted** — `recurring_occurrences` pendientes con fechas mal generadas (ej. Feb 28 de plantilla Jan 31) no se auto-corrigen. Migración opcional: delete `status='pending' AND generated_before fix_date` + regenerar. Bajo impacto — el próximo ciclo natural ya generará bien.
+4. **Consolidar helpers de formato de monto en `@zeta/shared`** — `formatAmountInput`/`parseFormattedAmount` (mobile) y `formatDisplay`/`stripFormatting` (webapp `currency-input.tsx`) hacen lo mismo. Subir uno al shared package. Low priority.
+5. **Mobile stubs** — `subscriptions.tsx`, `bug-report.tsx`, `annotate-screenshot.tsx`, `purchase-decision.tsx` (usuario indica: bug-report + annotate no se usan, bajar prioridad o eliminar).
+6. **PR #190 drag-envelope UX review** — aún pendiente.
