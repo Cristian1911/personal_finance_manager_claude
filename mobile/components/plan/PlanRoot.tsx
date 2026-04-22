@@ -60,9 +60,21 @@ export function PlanRoot() {
   const loadData = useCallback(async () => {
     try {
       const now = new Date();
-      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const daysRemaining = Math.max(1, daysInMonth - now.getDate());
       const todayIso = toLocalDateString(now);
+      // Parse the selected month ("YYYY-MM") so daysRemaining/perDay reflect
+      // the month the user is actually viewing — not always today.
+      const [selYear, selMonth] = currentMonth.split("-").map(Number);
+      const daysInMonth = new Date(selYear, selMonth, 0).getDate();
+      const isCurrent =
+        selYear === now.getFullYear() && selMonth === now.getMonth() + 1;
+      const isFuture =
+        selYear > now.getFullYear() ||
+        (selYear === now.getFullYear() && selMonth > now.getMonth() + 1);
+      const daysRemaining = isFuture
+        ? daysInMonth
+        : isCurrent
+          ? Math.max(1, daysInMonth - now.getDate())
+          : 0;
 
       const [txs, accounts, budgets, occurrences] = await Promise.all([
         getTransactions({ month: currentMonth, limit: 500 }),
@@ -140,7 +152,9 @@ export function PlanRoot() {
       }
 
       const disponible = confirmedIncome - paidExpenses - pendingExpenses - discretionarySpent;
-      const perDay = Math.round(Math.max(0, disponible) / daysRemaining);
+      const perDay = daysRemaining > 0
+        ? Math.round(Math.max(0, disponible) / daysRemaining)
+        : 0;
 
       const liquidBalance = accounts
         .filter((a: AccountRow) => LIQUID_ACCOUNT_TYPES.has(a.account_type))

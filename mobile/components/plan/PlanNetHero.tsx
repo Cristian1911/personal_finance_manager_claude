@@ -116,18 +116,22 @@ function PlanNetHeroBase({
           <Text className={SECTION_EYEBROW_CLASS}>
             Disponible este mes
           </Text>
-          <Text className="text-xs font-inter text-muted-foreground">
-            {daysRemaining}d
-          </Text>
+          {daysRemaining > 0 && (
+            <Text className="text-xs font-inter text-muted-foreground">
+              {daysRemaining}d
+            </Text>
+          )}
         </View>
 
         {/* Headline: disponible */}
         <Text className={`mt-2 text-[32px] font-inter-bold tabular-nums ${isPositive ? "text-z-income" : "text-z-expense"}`}>
           {formatCurrency(disponible, currency)}
         </Text>
-        <Text className="text-xs font-inter text-muted-foreground">
-          · {formatCurrency(perDay, currency)}/día restante
-        </Text>
+        {daysRemaining > 0 && (
+          <Text className="text-xs font-inter text-muted-foreground">
+            · {formatCurrency(perDay, currency)}/día restante
+          </Text>
+        )}
 
         {/* Burn bar — fijos paid / libre gastado */}
         <View className="mt-3 h-2 flex-row overflow-hidden rounded-full bg-white-6">
@@ -274,9 +278,11 @@ function PlanNetHeroBase({
                   {formatCurrency(disponible, currency)}
                 </Text>
               </View>
-              <Text className="text-[9px] font-inter text-muted-foreground">
-                ÷ {daysRemaining} días = {formatCurrency(perDay, currency)}/día
-              </Text>
+              {daysRemaining > 0 && (
+                <Text className="text-[9px] font-inter text-muted-foreground">
+                  ÷ {daysRemaining} días = {formatCurrency(perDay, currency)}/día
+                </Text>
+              )}
             </View>
           </View>
         </AnimatedAccordion>
