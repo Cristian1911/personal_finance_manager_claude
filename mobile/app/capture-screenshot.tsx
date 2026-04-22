@@ -11,6 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+// Legacy submodule — `uploadAsync` only lives there; the new File/Directory API doesn't expose it.
 import * as FileSystem from "expo-file-system/legacy";
 import {
   ArrowLeft,
@@ -216,7 +217,7 @@ export default function CaptureScreenshotScreen() {
           account_id: account.id,
           category_id: isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : null,
           amount: t.amount,
-          currency_code: (parsed.currency || account.currency_code || "COP") as CurrencyCode,
+          currency_code: (parsed.currency || account.currency_code) as CurrencyCode,
           direction: t.direction,
           description: t.description,
           merchant_name: t.description,
@@ -403,7 +404,9 @@ export default function CaptureScreenshotScreen() {
                     {t.direction === "OUTFLOW" ? "-" : "+"}
                     {formatCurrency(
                       t.amount,
-                      (parsed.currency || "COP") as CurrencyCode,
+                      (parsed.currency ||
+                        accounts.find((a) => a.id === selectedAccountId)?.currency_code ||
+                        "COP") as CurrencyCode,
                     )}
                   </Text>
                 </View>

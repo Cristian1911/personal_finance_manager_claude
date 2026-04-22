@@ -54,6 +54,22 @@ type Parsed = {
   transaction_date: string;
 };
 
+/**
+ * Resolve the speech-recognition locale from the device, falling back to a
+ * regional Spanish default (`es-CO`) for Zeta's primary market. Reads
+ * `Intl.DateTimeFormat().resolvedOptions().locale` so no extra dependency is
+ * needed — Hermes supports Intl in RN 0.70+.
+ */
+function resolveLocale(): string {
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale;
+    if (locale && /^[a-z]{2}(-[A-Z]{2})?$/.test(locale)) return locale;
+  } catch {
+    /* fall through */
+  }
+  return "es-CO";
+}
+
 export default function CaptureVoiceScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -167,10 +183,12 @@ export default function CaptureVoiceScreen() {
       return;
     }
     ExpoSpeechRecognitionModule.start({
-      lang: "es-CO",
+      lang: resolveLocale(),
       interimResults: true,
       continuous: false,
-      requiresOnDeviceRecognition: false,
+      // Privacy claim in Data Safety + permission strings: transcription stays on-device.
+      // Enforce via `true` so iOS never routes audio to Apple servers.
+      requiresOnDeviceRecognition: true,
       addsPunctuation: false,
     });
     setStep("listening");
@@ -212,7 +230,7 @@ export default function CaptureVoiceScreen() {
         account_id: account.id,
         category_id: isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : null,
         amount: parsed.amount,
-        currency_code: (account.currency_code || "COP") as CurrencyCode,
+        currency_code: account.currency_code as CurrencyCode,
         direction: parsed.direction,
         description: parsed.description,
         merchant_name: parsed.description,
@@ -328,7 +346,11 @@ export default function CaptureVoiceScreen() {
                     </Text>
                   </View>
                   <Text className="text-xl font-semibold text-z-fg">
-                    {formatCurrency(parsed.amount, "COP")}
+                    {formatCurrency(
+                      parsed.amount,
+                      (accounts.find((a) => a.id === selectedAccountId)?.currency_code ||
+                        "COP") as CurrencyCode,
+                    )}
                   </Text>
                   <Text className="text-sm text-z-fg">{parsed.description}</Text>
                   <Text className="text-xs text-z-fg-dim">{parsed.transaction_date}</Text>
