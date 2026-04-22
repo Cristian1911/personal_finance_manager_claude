@@ -32,3 +32,60 @@ export function parseLocalizedAmount(input: string): number {
 
   return Number(trimmed);
 }
+
+/**
+ * Format a partial amount string for live display in an input:
+ *   "5000"      -> "5.000"
+ *   "1234567"   -> "1.234.567"
+ *   "1234,5"    -> "1.234,5"
+ *   "5.000"     -> "5.000"  (dots already placed)
+ *   "5.00"      -> "500"    (backspacing from "5.000" — dot treated as thousands)
+ * Rule: `.` is always a thousand separator; `,` is the decimal marker.
+ * This matches Colombian COP convention and keeps backspace intuitive.
+ */
+export function formatAmountInput(input: string): string {
+  const sanitized = (input ?? "").replace(/[^\d.,]/g, "");
+  if (!sanitized) return "";
+
+  const lastComma = sanitized.lastIndexOf(",");
+  let integerSource: string;
+  let decimalPart: string | null = null;
+
+  if (lastComma === -1) {
+    integerSource = sanitized;
+  } else {
+    const tail = sanitized.slice(lastComma + 1);
+    if (tail.length <= 2 && !/[.,]/.test(tail)) {
+      integerSource = sanitized.slice(0, lastComma);
+      decimalPart = tail;
+    } else {
+      integerSource = sanitized;
+    }
+  }
+
+  const digits = integerSource.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  if (digits === "" && decimalPart === null) return "";
+  const integerDigits = digits === "" ? "0" : digits;
+  const grouped = integerDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return decimalPart === null ? grouped : `${grouped},${decimalPart}`;
+}
+
+/**
+ * Parse a formatted amount input (as produced by `formatAmountInput`) to a
+ * number. Dots are treated as thousand separators, comma as the decimal mark.
+ */
+export function parseFormattedAmount(formatted: string): number {
+  const sanitized = (formatted ?? "").replace(/[^\d.,]/g, "");
+  if (!sanitized) return Number.NaN;
+
+  const lastComma = sanitized.lastIndexOf(",");
+  if (lastComma === -1) {
+    return Number(sanitized.replace(/\./g, ""));
+  }
+  const tail = sanitized.slice(lastComma + 1);
+  if (tail.length <= 2 && !/[.,]/.test(tail)) {
+    const integer = sanitized.slice(0, lastComma).replace(/[.,]/g, "");
+    return Number(`${integer || "0"}.${tail || "0"}`);
+  }
+  return Number(sanitized.replace(/[.,]/g, ""));
+}
