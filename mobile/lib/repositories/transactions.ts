@@ -53,6 +53,8 @@ export type TransactionListRow = TransactionRow & {
   category_color: string | null;
   category_icon: string | null;
   account_type: string | null;
+  account_name: string | null;
+  account_color: string | null;
 };
 
 export type CreateTransactionParams = {
@@ -239,7 +241,7 @@ export async function getTransactions(options?: {
 
   return db.getAllAsync<TransactionListRow>(
     `SELECT t.*, c.name as category_name, c.name_es as category_name_es, c.icon as category_icon, c.color as category_color,
-            a.account_type as account_type
+            a.account_type as account_type, a.name as account_name, a.color as account_color
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
      LEFT JOIN accounts a ON t.account_id = a.id
@@ -247,6 +249,123 @@ export async function getTransactions(options?: {
      ORDER BY t.transaction_date DESC, t.created_at DESC
      LIMIT ? OFFSET ?`,
     [...params, limit, offset]
+  );
+}
+
+/**
+ * Month-scope aggregates for the Movimientos summary card — computed via SQL
+ * so the totals reflect the full month regardless of feed pagination. Matches
+ * webapp `getMonthlyCashflowCached` semantics: INFLOW to CREDIT_CARD / LOAN
+ * accounts is EXCLUDED from totalInflow (it's a debt payment, not income).
+ */
+export type MonthlyAggregates = {
+  count: number;
+  totalInflow: number;
+  totalOutflow: number;
+  uncategorizedCount: number;
+  daysByDate: { date: string; income: number; expense: number }[];
+};
+
+export async function getMonthlyAggregates(options: {
+  month: string;
+  accountId?: string;
+}): Promise<MonthlyAggregates> {
+  const db = await getDatabase();
+  const params: (string | number)[] = [`${options.month}%`];
+  let accountFilter = "";
+  if (options.accountId) {
+    accountFilter = " AND t.account_id = ?";
+    params.push(options.accountId);
+  }
+
+  // Totals + count. INFLOW to debt accounts excluded from totalInflow.
+  const totalsRow = await db.getFirstAsync<{
+    count: number;
+    total_inflow: number;
+    total_outflow: number;
+    uncategorized_count: number;
+  }>(
+    `SELECT
+       COUNT(*) AS count,
+       COALESCE(SUM(CASE WHEN t.direction = 'INFLOW'
+                          AND a.account_type NOT IN ('CREDIT_CARD','LOAN')
+                          AND t.is_excluded = 0
+                         THEN t.amount ELSE 0 END), 0) AS total_inflow,
+       COALESCE(SUM(CASE WHEN t.direction = 'OUTFLOW' AND t.is_excluded = 0
+                         THEN t.amount ELSE 0 END), 0) AS total_outflow,
+       SUM(CASE WHEN t.direction = 'OUTFLOW' AND t.category_id IS NULL AND t.is_excluded = 0
+                THEN 1 ELSE 0 END) AS uncategorized_count
+     FROM transactions t
+     LEFT JOIN accounts a ON t.account_id = a.id
+     WHERE t.transaction_date LIKE ?
+       AND t.reconciled_into_transaction_id IS NULL${accountFilter}`,
+    params
+  );
+
+  // Per-day income/expense aggregation for the flow chart.
+  const dayRows = await db.getAllAsync<{
+    transaction_date: string;
+    income: number;
+    expense: number;
+  }>(
+    `SELECT
+       t.transaction_date,
+       COALESCE(SUM(CASE WHEN t.direction = 'INFLOW'
+                          AND a.account_type NOT IN ('CREDIT_CARD','LOAN')
+                         THEN t.amount ELSE 0 END), 0) AS income,
+       COALESCE(SUM(CASE WHEN t.direction = 'OUTFLOW'
+                         THEN t.amount ELSE 0 END), 0) AS expense
+     FROM transactions t
+     LEFT JOIN accounts a ON t.account_id = a.id
+     WHERE t.transaction_date LIKE ?
+       AND t.is_excluded = 0
+       AND t.reconciled_into_transaction_id IS NULL${accountFilter}
+     GROUP BY t.transaction_date
+     ORDER BY t.transaction_date ASC`,
+    params
+  );
+
+  return {
+    count: totalsRow?.count ?? 0,
+    totalInflow: totalsRow?.total_inflow ?? 0,
+    totalOutflow: totalsRow?.total_outflow ?? 0,
+    uncategorizedCount: totalsRow?.uncategorized_count ?? 0,
+    daysByDate: dayRows.map((r) => ({
+      date: r.transaction_date,
+      income: r.income,
+      expense: r.expense,
+    })),
+  };
+}
+
+export async function getTopUncategorized(options: {
+  month: string;
+  accountId?: string;
+  limit?: number;
+}): Promise<TransactionListRow[]> {
+  const db = await getDatabase();
+  const params: (string | number)[] = [`${options.month}%`];
+  let accountFilter = "";
+  if (options.accountId) {
+    accountFilter = " AND t.account_id = ?";
+    params.push(options.accountId);
+  }
+  params.push(options.limit ?? 5);
+
+  return db.getAllAsync<TransactionListRow>(
+    `SELECT t.*, c.name as category_name, c.name_es as category_name_es, c.icon as category_icon, c.color as category_color,
+            a.account_type as account_type, a.name as account_name, a.color as account_color
+     FROM transactions t
+     LEFT JOIN categories c ON t.category_id = c.id
+     LEFT JOIN accounts a ON t.account_id = a.id
+     WHERE t.direction = 'OUTFLOW'
+       AND t.category_id IS NULL
+       AND t.is_excluded = 0
+       AND t.reconciled_into_transaction_id IS NULL
+       AND t.transaction_date LIKE ?${accountFilter}
+     ORDER BY t.transaction_date DESC, t.created_at DESC
+     LIMIT ?`,
+    params
   );
 }
 
