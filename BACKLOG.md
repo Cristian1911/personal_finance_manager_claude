@@ -350,9 +350,17 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ### Mobile sync — planning_* tables for /periodo screen
 - **Priority:** Medium
-- **What:** `planning_periods`, `planning_entries`, `planning_assignments` are not in `SYNC_TABLES`. The `/periodo` screen bypasses the sync engine and hits Supabase directly (5 PostgREST queries per focus). PR #224 shipped a module-scope SWR cache (`mobile/lib/sync/periodoCache.ts`) as an interim fix — first visit still spins, subsequent refocuses paint instantly.
-- **Proper fix:** add all three tables to `SYNC_TABLES` in dependency order, add SQLite migration to `mobile/lib/db/schema.ts` for all three, add `is_active` to `BOOLEAN_FIELDS`, create repos under `mobile/lib/repositories/` (e.g. `planningPeriods.ts`), rewrite `mobile/app/periodo.tsx` to read from the repos. Once done, delete `periodoCache.ts` + the `clearPeriodoCache()` call in `lib/auth.tsx`.
-- **Notes:** no encryption concerns — tables are plaintext per migration `20260407120000_create_cashflow_planner.sql`. Spawn `mobile-sync-doctor` before starting.
+- **What:** `planning_periods`, `planning_entries`, `planning_assignments` are not in `SYNC_TABLES`. The `/periodo` screen bypasses the sync engine and hits Supabase directly (5 PostgREST queries per focus). PR #224 shipped a module-scope SWR cache (`mobile/lib/sync/periodoCache.ts`) as an interim fix — **first visit still spins** (cache is empty), subsequent refocuses paint instantly.
+- **User confirmation (2026-04-22):** first-load latency is still a noticeable UX issue. Proper fix deferred but it is the next candidate when the mobile polish sweep reaches a pause.
+- **Proper fix (concrete scope):**
+  1. SQLite schema — add 3 tables to `mobile/lib/db/schema.ts` (DB_MIGRATIONS v12+). `planning_periods` has `is_active INTEGER`, `planning_entries` has FK to periods, `planning_assignments` has FKs to income+expense entries.
+  2. `mobile/lib/sync/pull.ts` — add all three to `SYNC_TABLES` in dependency order (periods → entries → assignments). `BOOLEAN_FIELDS.planning_periods = ["is_active"]`.
+  3. New `mobile/lib/repositories/planning.ts` — `getActivePeriod()`, `getPeriodEntries(periodId)`, `getPeriodAssignments(periodId)`, composite `getActivePeriodWithEntries()` for the screen. Write methods (`markEntryPaid`, `reassignAssignment`, etc.) do SQLite update + `enqueueInsert/Update` to `sync_queue`.
+  4. Rewrite `mobile/app/periodo.tsx` `loadData` to call the repo. Rewrite `PaymentSheet.tsx` + `ReassignSheet.tsx` writes to go through the repo instead of `sb.from(...).update(...)`.
+  5. Delete `mobile/lib/sync/periodoCache.ts` + the two `clearPeriodoCache()` calls in `mobile/lib/auth.tsx`.
+- **Lazy update from Supabase**: already exists. Sync runs on app focus + pull-to-refresh and pulls deltas. Once planning_* are in `SYNC_TABLES`, webapp-side changes (or cross-device writes) land on the next sync cycle.
+- **Notes:** no encryption concerns — tables are plaintext per migration `20260407120000_create_cashflow_planner.sql`. Spawn `mobile-sync-doctor` before starting and `mobile-webapp-parity` to verify write path changes don't break webapp semantics.
+- **Estimated lift:** ~2h. Biggest risk is the PaymentSheet/ReassignSheet write refactor.
 - **Found:** PR #224 (mobile plan polish), 2026-04-22.
 
 ### Webapp mobile/v2/plan — parity with native execution hero
