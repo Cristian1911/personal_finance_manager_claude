@@ -593,9 +593,13 @@ export async function updateTransaction(
   if (params.category_id !== undefined) {
     setClauses.push("category_id = ?");
     values.push(params.category_id ?? null);
-    // Match webapp: track how the category was assigned
-    setClauses.push("categorization_source = ?");
-    values.push(params.category_id ? "USER_OVERRIDE" : null);
+    // Match webapp (actions/transactions.ts:841): only flag USER_OVERRIDE
+    // when ASSIGNING a category. On clear, leave the prior source intact —
+    // webapp does not null it, so mobile must not either (parity).
+    if (params.category_id) {
+      setClauses.push("categorization_source = ?");
+      values.push("USER_OVERRIDE");
+    }
   }
   if (params.notes !== undefined) {
     setClauses.push("notes = ?");
@@ -631,7 +635,10 @@ export async function updateTransaction(
   if (params.transaction_date !== undefined) syncPayload.transaction_date = params.transaction_date;
   if (params.category_id !== undefined) {
     syncPayload.category_id = params.category_id ?? null;
-    syncPayload.categorization_source = params.category_id ? "USER_OVERRIDE" : null;
+    // Match webapp: don't overwrite categorization_source on clear.
+    if (params.category_id) {
+      syncPayload.categorization_source = "USER_OVERRIDE";
+    }
   }
   if (params.notes !== undefined) syncPayload.notes = params.notes ?? null;
   if (params.is_excluded !== undefined) syncPayload.is_excluded = params.is_excluded;
