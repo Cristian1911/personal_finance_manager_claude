@@ -10,34 +10,37 @@ import type { ReactNode } from "react";
 interface AnimatedAccordionProps {
   expanded: boolean;
   children: ReactNode;
-  /** Estimated max height of content. Overestimate is fine. Default 500. */
+  /**
+   * Maximum visible height when expanded. Overestimate is fine — the
+   * container caps at this value but content taller than the estimate
+   * gets clipped, so tune per use-site. Default 500.
+   */
   estimatedHeight?: number;
-  /** Animation duration in ms. Default 250. */
+  /** Animation duration in ms. Default 220. */
   duration?: number;
 }
 
 /**
- * Expand/collapse container using react-native-reanimated.
- * Replaces webapp's CSS `grid-template-rows: 0fr → 1fr` transition.
- *
- * Content is always mounted (for consistent hook behavior) but
- * clipped to 0 height when collapsed.
+ * Expand/collapse container using react-native-reanimated. Animates
+ * `maxHeight` 0 → `estimatedHeight` so siblings reflow normally and there is
+ * no layout jank from native `height: 0` inside flex columns. Content is
+ * always mounted so measurements don't flicker when toggled.
  */
 export function AnimatedAccordion({
   expanded,
   children,
   estimatedHeight = 500,
-  duration = 250,
+  duration = 220,
 }: AnimatedAccordionProps) {
-  const height = useSharedValue(expanded ? 1 : 0);
+  const progress = useSharedValue(expanded ? 1 : 0);
 
   useEffect(() => {
-    height.value = withTiming(expanded ? 1 : 0, { duration });
-  }, [expanded, duration, height]);
+    progress.value = withTiming(expanded ? 1 : 0, { duration });
+  }, [expanded, duration, progress]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    maxHeight: height.value * estimatedHeight,
-    opacity: height.value,
+    maxHeight: progress.value * estimatedHeight,
+    opacity: progress.value,
     overflow: "hidden" as const,
   }));
 

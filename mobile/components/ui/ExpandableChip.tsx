@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text } from "react-native";
 import { X } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
@@ -81,17 +81,15 @@ export function ExpandableChip({
   const dimCls = dimmed && !active ? "opacity-50" : "";
 
   return (
-    <View className="relative flex-1">
-      <Pressable
-        onPress={editing ? undefined : onPress}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: active, disabled: editing }}
-        accessibilityLabel={accessibilityLabel}
-        className={`${PANEL_INSET_CLASS} p-3 ${activeCls} ${dimCls}`}
-        style={{ minHeight: 88 }}
-      >
-        {children}
-      </Pressable>
+    <Pressable
+      onPress={editing ? undefined : onPress}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: active, disabled: editing }}
+      accessibilityLabel={accessibilityLabel}
+      className={`${PANEL_INSET_CLASS} flex-1 p-3 ${activeCls} ${dimCls}`}
+      style={{ minHeight: 88 }}
+    >
+      {children}
       {editing && onRemove && (
         <Pressable
           onPress={onRemove}
@@ -102,7 +100,7 @@ export function ExpandableChip({
           <X size={12} color={COLORS.debt} />
         </Pressable>
       )}
-    </View>
+    </Pressable>
   );
 }
 

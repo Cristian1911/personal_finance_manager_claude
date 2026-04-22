@@ -12,6 +12,11 @@
 
 ## Bugs
 
+### Import reconciliation — `truncate` on `<span>` inside `<li>` ineffective
+- **Priority:** Low
+- **What:** `webapp/src/components/import/reconciliation-step.tsx:304` applies `truncate` to a `<span>` inside a block-level container. `<span>` is inline by default so `truncate` has no effect — long merchant names can overflow. Fix: move `truncate` onto the `<li>` and drop the extra `<span>`.
+- **Found:** Gemini review on PR #216, 2026-04-23.
+
 ### Telegram webhook — capture_tokens label updates via admin client never worked
 - **Priority:** Medium
 - **What:** `webapp/src/app/api/webhooks/telegram/route.ts` lines 27–35 (SELECT by encrypted `token`/`label`) and 99–102, 140–143 (UPDATE `label`) go through the `capture_tokens` view with the admin client (no JWT). Before PR #186's `has_auth` guard, the UPDATE silently NULLed the label via unguarded `zeta_encrypt()`. After the guard, the UPDATE preserves whatever was there (usually NULL). Either way, `findTokenByChatId` also decrypts via admin client → `zeta_decrypt(label)` returns NULL → `.like("label", "telegram:...")` never matches. End-to-end: the `/start <token>` deep-link and `/vincular <token>` flows never actually link a chat.
@@ -341,7 +346,48 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **Touches:** `mobile/lib/dashboard/widgets.ts`, new widget components under `mobile/components/inicio/widgets/`.
 - **Found:** Slice-3 scope, 2026-04-19
 
+### Zeta Premium — paywall + Google Play Billing / StoreKit
+- **Priority:** Medium (post-v1 launch)
+- **What:** Monetización del mobile app vía suscripción o compras únicas. Funcionalidades premium previstas: widgets avanzados del dashboard, temas visuales adicionales, posibles funciones exclusivas.
+- **Decisiones abiertas:**
+  - SDK: RevenueCat (`react-native-purchases`) vs. self-hosted `react-native-iap`. `expo-in-app-purchases` está deprecated.
+  - Modelo: suscripción (mensual/anual) vs. compras únicas por widget/tema vs. híbrido.
+  - Precio en COP vs. USD como base.
+  - Freemium con trial vs. gratis con premium opcional.
+- **Requisitos obligatorios antes de activar:**
+  - Integrar SDK de Google Play Billing (Android) + StoreKit (iOS). RevenueCat unifica ambos.
+  - Crear productos en Play Console (`zeta_premium_monthly`, `zeta_premium_yearly`, etc.) y App Store Connect.
+  - Completar perfil fiscal en Google Play Console → Pagos.
+  - Server-side receipt validation (RevenueCat webhook → Supabase Edge Function → UPSERT `user_subscriptions`).
+  - Tabla `user_subscriptions (user_id, product_id, status, expires_at, source, receipt)` con RLS.
+  - Botón "Restaurar compras" en Ajustes (obligatorio Play Store + App Store).
+  - Pantalla de paywall (revisar `claude-ai-design/Zeta Wireframes.html` por si hay flow definido).
+  - Hook `usePremium()` + componente `<PremiumLock>` para gate de features.
+  - Actualizar política de privacidad: recibir tokens de facturación (Google/Apple manejan los datos de pago, Zeta solo recibe receipt tokens).
+  - Actualizar términos de servicio: renovación automática, cancelación, reembolsos.
+  - Al activar, flipear respuestas en Play Console:
+    - Clasificación de contenido → Compras digitales: **Sí**
+    - Funciones financieras → Compras dentro de la app: **Sí**
+  - Actualizar ficha Play Store con rango de precios.
+- **Docs de referencia:** `docs/play-store/submission-checklist.md` sección 8.1 (recrear cuando se implemente), `docs/play-store/data-safety.md` (actualizar purchase history + user payment info).
+- **Estado actual:** la primera publicación a Play Store NO incluye paywall — declarar compras digitales como **No**.
+
 ## Tech Debt
+
+### Mobile Inicio parity — follow-ups from slice-1 review
+- **Priority:** Low
+- **What:** Non-blocking items deferred from the zetas-front-guy + mobile-webapp-parity + /simplify + Gemini reviews on PR #215 (2026-04-23):
+  - **Attention widget semantic alignment** — mobile `overdue` counts `pending_occurrences` with `occurrence_date < today`; webapp uses a dedicated `financial_reminders` source. `upcoming` lacks the webapp's 7-day cap. `pendingEmails` is hardcoded `0` on mobile — needs a real query. Same user sees different "Por resolver" counts across surfaces. Target: dedicated attention slice or slice 2.
+  - **Mobile layout save rollback** — `saveDashboardLayout` optimistically applies locally and only logs on Supabase failure; the next `pullAll` silently overwrites the SQLite change. Add `setLayout(prev)` rollback mirroring webapp `persist()`.
+  - **Cross-surface layout cache invalidation** — webapp `getMobileLayoutCached` tagged `dashboard-config` (stale 120s / revalidate 300s). Mobile save has no `updateTag("dashboard-config")` hook → up to 5 min of staleness on webapp. Either call a lightweight revalidation action from mobile or accept + document.
+  - **`ARRANGEABLE_TYPES` coupled with `normalizeLayout`** — future `WIDGET_CATALOG` `available: true` flips will silently disappear from saved layouts on reload because both `normalizeLayout` implementations filter on the set. Gate changes behind a matching normalizer update or document the coupling in `dashboard-layout.ts`.
+  - **Add `import_strip` to mobile `WIDGET_CATALOG`** — present on webapp (`available: false`), missing on mobile. Keep the arrays in sync even for disabled entries.
+  - **Eyebrow token consolidation** — `SECTION_EYEBROW_CLASS` already defines `text-[10px] font-inter-semibold uppercase tracking-[4px]`. Inline repeats in `InicioRoot` (Organizar pill), `PulseWidget` (breakdown headers), `SectionDivider` (9px variant), and `ExpandableChip.ChipEyebrow`/`ChipDetailHeading` should fold into the constant.
+  - **Promote `RangeChip` → shared `PillToggle`** — Pulse's Semana/Mes chips and the Organizar pill are the same shape (rounded-full, active brass border/fill, inactive white-6/black-10). Extract into `components/ui/` and reuse.
+  - **Migrate `PlanExpandableChips` onto `ExpandableChip` + `ToneActionRow`** — predates the new tone palette; currently hand-rolls inline `style={{ borderColor: 'rgba(...)' }}` tint workarounds. Now that `ExpandableChip` + `ToneActionRow` own the tinting, unify.
+  - **`useMemo` rendered rows in `WidgetGridRow`** — `render(w)` fires N times per summary tick. Not measurable yet; revisit if render thrash appears under frequent sync.
+  - **Memoize Pulse breakdown JSX** — `formatCurrency` runs 5× per Pulse render even when the accordion is collapsed. Cheap enough to ignore today; memoize if sync ticks get chatty.
+- **Found:** zetas-front-guy + mobile-webapp-parity + code-simplifier + code-reviewer + efficiency + Gemini reviews on PR #215, 2026-04-23
 
 ### Import page — defer `suggestPdfPasswordsForAccount(null, null)` to file-select time
 - **Priority:** Medium

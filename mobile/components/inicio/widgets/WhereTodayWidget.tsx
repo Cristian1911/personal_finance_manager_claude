@@ -15,6 +15,7 @@ export interface WhereTodayWidgetData {
   transactions: DashboardTx[];
   today: string;
   spentToday: number;
+  spentYesterday?: number;
   currency: CurrencyCode;
 }
 
@@ -22,9 +23,10 @@ export function renderWhereTodayWidget({
   transactions,
   today,
   spentToday,
+  spentYesterday = 0,
   currency,
 }: WhereTodayWidgetData) {
-  const tone: ChipTone = "alert";
+  const tone: ChipTone = "foreground";
 
   const todayTx = transactions.filter(
     (tx) => tx.transaction_date === today && tx.direction === "OUTFLOW"
@@ -37,63 +39,26 @@ export function renderWhereTodayWidget({
   }
 
   const sorted = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
-  const topPreview = sorted.slice(0, 2);
-  const totalPreview = spentToday || 1;
 
   return {
     tone,
-    accessibilityLabel: "Gasto hoy",
+    accessibilityLabel: "Gasto de hoy",
     chip: (
-      <View>
-        <ChipEyebrow tone={tone}>Gasto hoy</ChipEyebrow>
-        {spentToday === 0 ? (
-          <>
-            <Text className="mt-2 text-[20px] font-inter-bold text-z-sage-dark">
-              $0
-            </Text>
-            <Text className="mt-1 text-[10px] font-inter text-muted-foreground">
-              Sin gastos hoy
-            </Text>
-          </>
-        ) : (
-          <>
-            <Text className="mt-1.5 text-[18px] font-inter-bold tabular-nums text-foreground">
-              {formatCurrency(spentToday, currency)}
-            </Text>
-            <View className="mt-2 h-1.5 w-full flex-row overflow-hidden rounded-full bg-black-20">
-              {topPreview.map(([name, value], i) => (
-                <View
-                  key={name}
-                  style={{
-                    width: `${(value / totalPreview) * 100}%`,
-                    backgroundColor: BAR_COLORS[i % BAR_COLORS.length],
-                  }}
-                />
-              ))}
-            </View>
-            <View className="mt-1.5 flex-row items-center gap-2">
-              {topPreview.map(([name], i) => (
-                <View
-                  key={name}
-                  className="min-w-0 flex-row items-center gap-1"
-                >
-                  <View
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{
-                      backgroundColor: BAR_COLORS[i % BAR_COLORS.length],
-                    }}
-                  />
-                  <Text
-                    className="text-[10px] font-inter text-muted-foreground"
-                    numberOfLines={1}
-                  >
-                    {name}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
+      <View className="items-center gap-1">
+        <ChipEyebrow tone={tone}>Gasto de hoy</ChipEyebrow>
+        <Text className="text-[20px] font-inter-bold leading-none tabular-nums text-foreground">
+          {formatCurrency(spentToday, currency)}
+        </Text>
+        <Text
+          numberOfLines={1}
+          className="text-[10px] font-inter text-muted-foreground"
+        >
+          {spentToday === 0
+            ? "Sin gastos hoy"
+            : spentYesterday > 0
+              ? `Ayer ${formatCurrency(spentYesterday, currency)}`
+              : "Hoy"}
+        </Text>
       </View>
     ),
     detail: () => (
@@ -101,7 +66,7 @@ export function renderWhereTodayWidget({
         <ChipDetailHeading tone={tone}>Gasto de hoy</ChipDetailHeading>
         {sorted.length === 0 ? (
           <Text className="py-3 text-center text-[12px] font-inter text-muted-foreground">
-            Sin gastos hoy
+            No hay gastos hoy
           </Text>
         ) : (
           <View className="gap-1.5">
@@ -141,5 +106,6 @@ export function renderWhereTodayWidget({
         )}
       </View>
     ),
+    estimatedHeight: sorted.length === 0 ? 100 : 80 + sorted.length * 44,
   };
 }
