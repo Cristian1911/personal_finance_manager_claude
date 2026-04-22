@@ -98,7 +98,7 @@ export function PrivacyContentEs() {
       </ul>
       <p>
         Para ejercer estos derechos, escribe a{" "}
-        <a href="mailto:privacy@zeta.app">privacy@zeta.app</a>. Responderemos en
+        <a href="mailto:giraldo.0302@gmail.com">giraldo.0302@gmail.com</a>. Responderemos en
         un plazo máximo de 15 días hábiles.
       </p>
 
@@ -125,7 +125,7 @@ export function PrivacyContentEs() {
       <h2>8. Contacto</h2>
       <p>
         Responsable del tratamiento:{" "}
-        <a href="mailto:privacy@zeta.app">privacy@zeta.app</a>.
+        <a href="mailto:giraldo.0302@gmail.com">giraldo.0302@gmail.com</a>.
       </p>
       <p>
         Para reclamos ante la autoridad de protección de datos en Colombia,
@@ -242,7 +242,7 @@ export function PrivacyContentEn() {
       </ul>
       <p>
         To exercise these rights, email{" "}
-        <a href="mailto:privacy@zeta.app">privacy@zeta.app</a>. We respond
+        <a href="mailto:giraldo.0302@gmail.com">giraldo.0302@gmail.com</a>. We respond
         within 15 business days.
       </p>
 
@@ -269,7 +269,7 @@ export function PrivacyContentEn() {
       <h2>8. Contact</h2>
       <p>
         Data controller:{" "}
-        <a href="mailto:privacy@zeta.app">privacy@zeta.app</a>.
+        <a href="mailto:giraldo.0302@gmail.com">giraldo.0302@gmail.com</a>.
       </p>
       <p>
         For complaints with the Colombian data protection authority, you may

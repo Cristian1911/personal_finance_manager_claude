@@ -346,6 +346,50 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **Touches:** `mobile/lib/dashboard/widgets.ts`, new widget components under `mobile/components/inicio/widgets/`.
 - **Found:** Slice-3 scope, 2026-04-19
 
+### Observabilidad — Sentry / crashlytics en mobile
+- **Priority:** Low (post-v1, antes del crecimiento más allá de beta cerrada)
+- **What:** Añadir reporte de crashes + performance para detectar bugs sin esperar a que el usuario los reporte. Candidatos: Sentry (free tier generoso, integra con Supabase), Expo's `expo-application` + custom logging, o BetterStack.
+- **Play Store implicaciones al activar:**
+  - Data Safety → App info and performance: marcar "Crash logs", "Diagnostics", "Other app performance data" (según lo que se recoja).
+  - Collected=Yes · Shared=Yes (Sentry es un tercero) · Optional · Purpose=Analytics · Encrypted in transit=Yes · User can request deletion=Yes.
+  - Actualizar política de privacidad con mención del proveedor de observabilidad.
+- **Criterio de activación:** cuando haya >50 usuarios en beta y no queramos depender solo de bug reports manuales.
+
+### Mobile — OCR (foto de extracto) y voice capture
+- **Priority:** Medium (post-v1 launch; no bloqueante para primer Play Store submit)
+- **What:** Los botones ya existen en `FabMenuSheet` + `MobileTabBar` pero disparan `Alert.alert("Próximamente", ...)`. Implementar:
+  - **Voice capture**: `expo-av` → grabar audio → enviar a webapp `/api/capture` (ya existe) o transcribir on-device → crear transacción. Requiere permiso `RECORD_AUDIO` (Android) + `NSMicrophoneUsageDescription` (iOS).
+  - **OCR / pantallazo**: `expo-image-picker` + `expo-camera` → foto de extracto o pantallazo de app bancaria → enviar a `/api/parse-image` (ya existe en webapp) → reconciliar. Requiere `CAMERA` + `READ_MEDIA_IMAGES` (Android 13+) + `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` (iOS).
+- **Play Store implicaciones al activar**:
+  - Actualizar Data Safety: marcar "Fotos y videos" → *Photos* + *Videos* (si aplica). Marcar "Archivos de audio" → *Sound recordings*.
+  - Para cada uno: Collected=Yes, Shared=No, Optional, Purpose=App functionality, Encrypted in transit=Yes, User can request deletion=Yes.
+  - Añadir `usesDataTypes` al manifest y declarar propósito de cada permiso sensible.
+  - Actualizar política de privacidad con las nuevas categorías de datos.
+- **Touches:** `mobile/app/capture.tsx`, `mobile/components/ui/MobileTabBar.tsx` (eliminar alerts), `mobile/app.json` (permisos + plugins), nueva librería de audio/imagen helpers.
+- **Endpoints ya listos:** `webapp/src/app/api/parse-image/` + `webapp/src/app/api/capture/` — solo falta el client mobile.
+
+### In-app eliminación de cuenta (Ajustes → Eliminar cuenta)
+- **Priority:** High (antes de Play Store producción; OK para internal testing)
+- **What:** Implementar flujo self-service de eliminación de cuenta y todos los datos asociados. Hoy solo existe vía email a `giraldo.0302@gmail.com` (documentado en `/eliminar-cuenta`). Google Play prefiere in-app; lo acepta por email para v1 pero la UI más tarde reduce fricción y baja tickets.
+- **Touches:**
+  - `webapp/src/actions/account.ts` (nuevo) — `deleteAccount()` server action que borra cascadas de user data + `supabase.auth.admin.deleteUser(user.id)` vía admin client
+  - `webapp/src/app/(dashboard)/settings/cuenta/page.tsx` — sección "Zona de peligro" con doble confirmación
+  - Mobile: equivalente en `app/(tabs)/settings.tsx`
+  - Considerar "soft delete" con grace period (7 días) antes del purge definitivo
+- **Requisitos antes de marcar done:** actualizar `/eliminar-cuenta` para reintroducir la vía in-app como método 1; email queda como fallback.
+
+### MCP — acceso de IAs de terceros configurado por el usuario
+- **Priority:** Low (post-v1)
+- **What:** Permitir que el usuario conecte clientes MCP (Claude Desktop, Cursor, etc.) para consultar sus datos financieros vía protocolo MCP. Ya existe scaffolding en `webapp/src/app/api/mcp/`; falta mobile + documentación de onboarding.
+- **Implicaciones Play Store:**
+  - Data Safety sigue siendo **Sí** a la pregunta global (ya se recopila desde v1).
+  - En el desglose por tipo de dato: NO marcar como "Shared" siempre que (a) el usuario active MCP opt-in explícito, (b) conecte su propio cliente (no uno pre-configurado por Zeta), (c) Zeta no enrute datos a un LLM propio con su API key. Esto califica como "user-initiated action" exento según Google Data Safety FAQ.
+  - Si Zeta llegase a enrutar a un LLM de tercero con credenciales propias (ej. OpenAI con API key de la empresa), **sí** cuenta como Shared y hay que declararlo.
+  - Actualizar política de privacidad y términos para documentar qué datos quedan visibles al cliente MCP.
+  - Añadir pantalla de consentimiento explícito antes del primer uso.
+- **Touches:** `webapp/src/app/api/mcp/`, nueva settings page en mobile, tokens MCP en Supabase, docs.
+- **Estado:** scaffolding en webapp, no expuesto al usuario.
+
 ### Zeta Premium — paywall + Google Play Billing / StoreKit
 - **Priority:** Medium (post-v1 launch)
 - **What:** Monetización del mobile app vía suscripción o compras únicas. Funcionalidades premium previstas: widgets avanzados del dashboard, temas visuales adicionales, posibles funciones exclusivas.
