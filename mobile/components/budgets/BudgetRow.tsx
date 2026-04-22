@@ -1,5 +1,5 @@
-import { memo, useCallback, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { memo, useCallback, useEffect, useState } from "react";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { ChevronDown } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { AnimatedAccordion } from "../ui/AnimatedAccordion";
@@ -32,23 +32,45 @@ function BudgetRowBase({ item, currency, saving, onSave, onDelete }: BudgetRowPr
   const [expanded, setExpanded] = useState(false);
   const [amountInput, setAmountInput] = useState(String(Math.round(item.amount)));
 
-  const toggle = useCallback(() => {
+  // Re-sync input when row collapses so the next open shows the latest amount
+  // (e.g., after save + reload, or when main data refreshes).
+  useEffect(() => {
     if (!expanded) {
       setAmountInput(String(Math.round(item.amount)));
     }
-    setExpanded((prev) => !prev);
   }, [expanded, item.amount]);
+
+  const toggle = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
 
   const handleSave = useCallback(async () => {
     const parsed = parseLocalizedAmount(amountInput);
-    if (!Number.isFinite(parsed) || parsed <= 0) return;
-    await onSave(item, parsed);
-    setExpanded(false);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      Alert.alert("Monto inválido", "Ingresa un valor mayor a cero.");
+      return;
+    }
+    try {
+      await onSave(item, parsed);
+      setExpanded(false);
+    } catch (error) {
+      Alert.alert(
+        "No se pudo guardar",
+        error instanceof Error ? error.message : "Intenta de nuevo."
+      );
+    }
   }, [amountInput, item, onSave]);
 
   const handleDelete = useCallback(async () => {
-    await onDelete(item);
-    setExpanded(false);
+    try {
+      await onDelete(item);
+      setExpanded(false);
+    } catch (error) {
+      Alert.alert(
+        "No se pudo eliminar",
+        error instanceof Error ? error.message : "Intenta de nuevo."
+      );
+    }
   }, [item, onDelete]);
 
   const clamped = Math.min(item.progress, 100);

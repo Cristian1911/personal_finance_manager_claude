@@ -16,7 +16,7 @@ export const BRASS_GHOST_BUTTON_CLASS =
 
 /** Destructive ghost button — outlined in debt/25 with expense text */
 export const DESTRUCTIVE_GHOST_BUTTON_CLASS =
-  "border border-z-debt/25 bg-black-10 text-z-expense";
+  "border border-z-debt-25 bg-black-10 text-z-expense";
 
 /** Standard elevated panel */
 export const PANEL_SURFACE_CLASS =
