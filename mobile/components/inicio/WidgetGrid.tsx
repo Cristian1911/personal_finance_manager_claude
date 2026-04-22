@@ -1,6 +1,6 @@
 import { View } from "react-native";
 import type { ReactNode } from "react";
-import { widgetColSpan, type WidgetInstance } from "../../lib/dashboard/widgets";
+import { packRows, type WidgetInstance } from "../../lib/dashboard/widgets";
 import {
   ExpandableChip,
   type ChipTone,
@@ -25,9 +25,9 @@ interface WidgetGridProps {
 }
 
 /**
- * 2-column chip grid with a shared accordion per row.
- * Chips follow the Plan page behavior: tap to expand, sibling dims, tinted
- * border when active. Content inside each chip is bespoke per widget.
+ * Row-packed chip grid with a shared accordion per row. Row packing uses the
+ * shared `packRows` helper so webapp and mobile agree on capacity (XS×3,
+ * S/M×2, L×1). Chips in a row share space equally via `flex-1`.
  */
 export function WidgetGrid({
   widgets,
@@ -37,26 +37,7 @@ export function WidgetGrid({
   editing = false,
   onRemove,
 }: WidgetGridProps) {
-  const rows: WidgetInstance[][] = [];
-  let pair: WidgetInstance[] = [];
-
-  for (const w of widgets) {
-    const span = widgetColSpan(w.size);
-    if (span === 2) {
-      if (pair.length > 0) {
-        rows.push(pair);
-        pair = [];
-      }
-      rows.push([w]);
-    } else {
-      pair.push(w);
-      if (pair.length === 2) {
-        rows.push(pair);
-        pair = [];
-      }
-    }
-  }
-  if (pair.length > 0) rows.push(pair);
+  const rows = packRows(widgets);
 
   return (
     <View className="gap-2">
@@ -71,18 +52,19 @@ export function WidgetGrid({
           <View key={i} className="gap-2">
             <View className="flex-row items-stretch gap-2">
               {rendered.map(({ w, r, isActive }) => (
-                <ExpandableChip
-                  key={w.id}
-                  tone={r.tone}
-                  active={isActive}
-                  dimmed={Boolean(active) && !isActive}
-                  editing={editing}
-                  accessibilityLabel={r.accessibilityLabel}
-                  onPress={() => onToggle(w.id)}
-                  onRemove={onRemove ? () => onRemove(w.id) : undefined}
-                >
-                  {r.chip}
-                </ExpandableChip>
+                <View key={w.id} className="flex-1">
+                  <ExpandableChip
+                    tone={r.tone}
+                    active={isActive}
+                    dimmed={Boolean(active) && !isActive}
+                    editing={editing}
+                    accessibilityLabel={r.accessibilityLabel}
+                    onPress={() => onToggle(w.id)}
+                    onRemove={onRemove ? () => onRemove(w.id) : undefined}
+                  >
+                    {r.chip}
+                  </ExpandableChip>
+                </View>
               ))}
             </View>
             <AnimatedAccordion

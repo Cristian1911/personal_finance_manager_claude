@@ -31,14 +31,6 @@ export type CatalogEntry = {
   available: boolean;
 };
 
-/**
- * @deprecated Row packing replaces col-span. Remove once WidgetGrid renders
- * packed rows.
- */
-export function widgetColSpan(size: WidgetSize): 1 | 2 {
-  return size === "L" ? 2 : 1;
-}
-
 export const WIDGET_CATALOG: CatalogEntry[] = [
   { type: "recent", label: "Movimientos recientes", description: "Tus últimas transacciones", defaultSize: "S", available: true },
   { type: "puedo_comprarlo", label: "¿Puedo comprarlo?", description: "Evalúa una compra contra el plan", defaultSize: "S", available: true },
