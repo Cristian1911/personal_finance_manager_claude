@@ -1,4 +1,4 @@
-import { addWeeks, addMonths, addYears, parseISO, isBefore, isAfter, startOfDay } from "date-fns";
+import { addWeeks, addMonths, addYears, format, parseISO, isBefore, isAfter, startOfDay } from "date-fns";
 import type { RecurrenceFrequency } from "../types/domain";
 
 /**
@@ -47,7 +47,7 @@ export function getNextOccurrence(
   if (frequency === "ONCE") {
     if (isBefore(start, from)) return null;
     if (end && isAfter(start, end)) return null;
-    return start.toISOString().split("T")[0];
+    return format(start, "yyyy-MM-dd");
   }
 
   let k = 0;
@@ -58,7 +58,7 @@ export function getNextOccurrence(
   }
 
   if (end && isAfter(current, end)) return null;
-  return current.toISOString().split("T")[0];
+  return format(current, "yyyy-MM-dd");
 }
 
 /**
@@ -80,7 +80,7 @@ export function getOccurrencesBetween(
   if (frequency === "ONCE") {
     if (!isAfter(start, to) && !isBefore(start, from)) {
       if (!end || !isAfter(start, end)) {
-        dates.push(start.toISOString().split("T")[0]);
+        dates.push(format(start, "yyyy-MM-dd"));
       }
     }
     return dates;
@@ -95,7 +95,7 @@ export function getOccurrencesBetween(
 
   while (!isAfter(current, to)) {
     if (end && isAfter(current, end)) break;
-    dates.push(current.toISOString().split("T")[0]);
+    dates.push(format(current, "yyyy-MM-dd"));
     k += 1;
     current = occurrenceAt(start, k, frequency);
   }
