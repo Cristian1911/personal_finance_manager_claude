@@ -343,6 +343,17 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Tech Debt
 
+### Mobile Inicio parity — follow-ups from slice-1 review
+- **Priority:** Low
+- **What:** Non-blocking items deferred from the zetas-front-guy + mobile-webapp-parity review on the Inicio parity slice (2026-04-23):
+  - **Attention widget semantic alignment** — mobile `overdue` currently counts `pending_occurrences` with `occurrence_date < today`, but webapp uses a dedicated `financial_reminders` source. `upcoming` lacks the webapp's 7-day cap. `pendingEmails` is a hardcoded `0` placeholder on mobile — needs a real query. Same user will see different "Por resolver" counts across surfaces. Target: dedicated attention slice or slice 2.
+  - **Mobile layout save rollback** — `saveDashboardLayout` optimistically applies locally and logs on Supabase failure; a subsequent `pullAll` silently overwrites the SQLite change. Add `setLayout(prev)` rollback mirroring webapp `persist()`.
+  - **Cross-surface layout cache invalidation** — webapp `getMobileLayoutCached` tagged `dashboard-config` (stale 120s / revalidate 300s). Mobile save has no `updateTag("dashboard-config")` hook → up to 5 min of staleness on webapp. Either call a lightweight revalidation action from mobile or accept + document.
+  - **`ARRANGEABLE_TYPES` coupled with `normalizeLayout`** — future `WIDGET_CATALOG` `available: true` flips will silently disappear from saved layouts on reload because both `normalizeLayout` implementations filter on the set. Gate changes behind a matching normalizer update or document the coupling in `dashboard-layout.ts`.
+  - **Add `import_strip` to mobile `WIDGET_CATALOG`** — present on webapp (`available: false`), missing on mobile. Keep arrays in sync even for disabled entries.
+  - **Promote bespoke pill shapes to style constants** — `Organizar` pill, `Añadir widget` row, `Ver plan completo` / `Abrir analizador` CTAs in `InicioRoot` / `RitmoWidget` / `PuedoComprarloWidget` use inline class strings. Extract `MOBILE_PILL_BUTTON_CLASS` + `MOBILE_ADD_ROW_CLASS` when touching these surfaces next.
+- **Found:** zetas-front-guy + mobile-webapp-parity review on PR for `feat/mobile-inicio-parity`, 2026-04-23
+
 ### Import page — defer `suggestPdfPasswordsForAccount(null, null)` to file-select time
 - **Priority:** Medium
 - **What:** `webapp/src/app/(dashboard)/import/page.tsx` fetches all vault suggestions for the user on every page load, even though the payload isn't read until the user picks an encrypted PDF. The action is intentionally uncached (plaintext passwords). Move the call into `StepUpload`, fired only after a file is selected and a bank key is detected. Removes one uncached SELECT from the initial render.
