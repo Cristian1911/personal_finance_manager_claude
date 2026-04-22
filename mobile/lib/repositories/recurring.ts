@@ -1,5 +1,7 @@
 import * as Crypto from "expo-crypto";
+import type { RecurrenceFrequency, TransactionDirection } from "@zeta/shared";
 import { getDatabase } from "../db/database";
+import { enqueueInsert } from "../sync/queue";
 
 /** Convert a recurring amount to its monthly equivalent based on frequency. */
 export function toMonthlyAmount(amount: number, frequency: string): number {
@@ -162,8 +164,8 @@ export type CreateRecurringTemplateParams = {
   account_id: string;
   amount: number;
   currency_code: string;
-  direction: "INFLOW" | "OUTFLOW";
-  frequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL";
+  direction: TransactionDirection;
+  frequency: RecurrenceFrequency;
   start_date: string;
   end_date?: string | null;
   merchant_name?: string | null;
@@ -173,6 +175,8 @@ export type CreateRecurringTemplateParams = {
   day_of_month?: number | null;
   day_of_week?: number | null;
   transfer_source_account_id?: string | null;
+  /** Optional pre-fetched account type — lets callers skip the DEBT guard's SELECT. */
+  account_type?: string | null;
 };
 
 /**
@@ -194,11 +198,15 @@ export async function createRecurringTemplate(
   // Defense-in-depth: enforce the same debt-account rules the webapp's
   // `insertRecurringTemplateFromFormData` applies. Callers (e.g. capture.tsx)
   // should pre-check, but a stray caller must not produce corrupt rows.
-  const acct = await db.getFirstAsync<{ account_type: string }>(
-    "SELECT account_type FROM accounts WHERE id = ?",
-    [params.account_id]
-  );
-  if (acct && DEBT_ACCOUNT_TYPES.has(acct.account_type)) {
+  const acctType =
+    params.account_type ??
+    (
+      await db.getFirstAsync<{ account_type: string }>(
+        "SELECT account_type FROM accounts WHERE id = ?",
+        [params.account_id]
+      )
+    )?.account_type;
+  if (acctType && DEBT_ACCOUNT_TYPES.has(acctType)) {
     if (!params.transfer_source_account_id) {
       throw new Error(
         "Debes seleccionar la cuenta origen para un pago de deuda."
@@ -258,11 +266,7 @@ export async function createRecurringTemplate(
       ]
     );
 
-    await db.runAsync(
-      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
-       VALUES ('recurring_transaction_templates', ?, 'INSERT', ?, ?)`,
-      [id, JSON.stringify(payload), now]
-    );
+    await enqueueInsert(db, "recurring_transaction_templates", id, payload, now);
   });
 
   return id;

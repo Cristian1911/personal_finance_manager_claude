@@ -400,9 +400,16 @@ export default function CaptureScreen() {
               description: trimmedDescription,
               category_id: categoryId,
               destinatario_id: newDestinatarioId,
+              account_type: selectedAccount?.account_type ?? null,
             });
           } catch (err) {
             console.error("Create recurring template from capture failed:", err);
+            Alert.alert(
+              "No se creó el recurrente",
+              err instanceof Error
+                ? err.message
+                : "Ocurrió un error creando la plantilla recurrente."
+            );
           }
         }
       }

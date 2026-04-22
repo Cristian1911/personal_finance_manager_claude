@@ -92,7 +92,10 @@ export default function AccountsScreen() {
       <FlatList
         data={accounts}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: MOBILE_TAB_BAR_CLEARANCE,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -101,7 +104,7 @@ export default function AccountsScreen() {
           />
         }
         ListHeaderComponent={
-          <View className="px-4 pt-4 pb-2 gap-4">
+          <View className="pt-4 pb-2 gap-4">
             {/* Net Worth Card */}
             <View className={`${PANEL_SURFACE_SUBTLE_CLASS} p-5`}>
               <Text className={SECTION_EYEBROW_CLASS}>Patrimonio neto</Text>
@@ -135,7 +138,7 @@ export default function AccountsScreen() {
           </View>
         }
         ListEmptyComponent={
-          <View className="flex-1 items-center justify-center px-8 pt-8">
+          <View className="flex-1 items-center justify-center px-4 pt-8">
             <Text className="text-muted-foreground font-inter text-base text-center">
               No tienes cuentas registradas.{"\n"}Crea una para empezar.
             </Text>
@@ -143,12 +146,10 @@ export default function AccountsScreen() {
         }
         ItemSeparatorComponent={() => <View className="h-2" />}
         renderItem={({ item }) => (
-          <View className="px-4">
-            <AccountCard
-              account={item}
-              onPress={() => router.push(`/account/${item.id}`)}
-            />
-          </View>
+          <AccountCard
+            account={item}
+            onPress={() => router.push(`/account/${item.id}`)}
+          />
         )}
       />
     </View>

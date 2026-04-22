@@ -1,5 +1,4 @@
 import {
-  View,
   Text,
   TextInput,
   ScrollView,
@@ -14,6 +13,11 @@ import { useState } from "react";
 import { AccountTypeGrid } from "../../components/accounts/AccountTypeGrid";
 import { ColorPicker } from "../../components/accounts/ColorPicker";
 import { CurrencyPicker } from "../../components/accounts/CurrencyPicker";
+import {
+  DayPicker,
+  FormField,
+  NumericInput,
+} from "../../components/accounts/AccountFormFields";
 import { MobileHeader } from "../../components/ui/MobileHeader";
 import { createAccount } from "../../lib/repositories/accounts";
 import { useAuth } from "../../lib/auth";
@@ -21,95 +25,8 @@ import { setPdfPasswordForAccount } from "../../lib/pdf-passwords";
 import { COLORS } from "../../lib/constants/colors";
 import {
   BRASS_BUTTON_CLASS,
-  PANEL_INSET_CLASS,
+  FORM_INPUT_CLASS,
 } from "../../lib/constants/styles";
-
-function FormField({
-  label,
-  children,
-  required,
-}: {
-  label: string;
-  children: React.ReactNode;
-  required?: boolean;
-}) {
-  return (
-    <View className="mb-4">
-      <Text className="mb-1.5 text-[13px] font-inter-semibold text-foreground">
-        {label}
-        {required && <Text className="text-z-debt"> *</Text>}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-const INPUT_CLASS = `${PANEL_INSET_CLASS} px-4 py-3 text-sm font-inter text-foreground`;
-
-function NumericInput({
-  value,
-  onChangeText,
-  placeholder,
-}: {
-  value: string;
-  onChangeText: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <TextInput
-      className={INPUT_CLASS}
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder ?? "0"}
-      placeholderTextColor={COLORS.sageDark}
-      keyboardType="decimal-pad"
-    />
-  );
-}
-
-const CREDIT_CARD_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
-
-function DayPicker({
-  value,
-  onSelect,
-}: {
-  value: string;
-  onSelect: (v: string) => void;
-}) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 8 }}
-    >
-      {CREDIT_CARD_DAYS.map((day) => {
-        const isSelected = value === day;
-        return (
-          <Pressable
-            key={day}
-            className={`w-10 h-10 rounded-full items-center justify-center border ${
-              isSelected
-                ? "bg-z-brass border-z-brass"
-                : "bg-black-10 border-white-6"
-            }`}
-            onPress={() => onSelect(isSelected ? "" : day)}
-            accessibilityRole="button"
-            accessibilityLabel={`Día ${day}`}
-            accessibilityState={{ selected: isSelected }}
-          >
-            <Text
-              className={`font-inter-semibold text-sm ${
-                isSelected ? "text-z-ink" : "text-foreground"
-              }`}
-            >
-              {day}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
 
 export default function CreateAccountScreen() {
   const router = useRouter();
@@ -212,7 +129,7 @@ export default function CreateAccountScreen() {
         {/* Name */}
         <FormField label="Nombre" required>
           <TextInput
-            className={INPUT_CLASS}
+            className={FORM_INPUT_CLASS}
             value={name}
             onChangeText={setName}
             placeholder="Ej: Bancolombia Ahorros"
@@ -224,7 +141,7 @@ export default function CreateAccountScreen() {
         {/* Institution */}
         <FormField label="Entidad financiera">
           <TextInput
-            className={INPUT_CLASS}
+            className={FORM_INPUT_CLASS}
             value={institution}
             onChangeText={setInstitution}
             placeholder="Ej: Bancolombia"
@@ -297,7 +214,7 @@ export default function CreateAccountScreen() {
         {/* PDF password */}
         <FormField label="Contraseña del extracto PDF">
           <TextInput
-            className={INPUT_CLASS}
+            className={FORM_INPUT_CLASS}
             value={pdfPassword}
             onChangeText={setPdfPassword}
             placeholder="Si los PDFs de esta cuenta tienen clave"

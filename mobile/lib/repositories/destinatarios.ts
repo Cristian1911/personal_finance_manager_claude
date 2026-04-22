@@ -1,5 +1,6 @@
 import * as Crypto from "expo-crypto";
 import { getDatabase } from "../db/database";
+import { enqueueInsert } from "../sync/queue";
 
 export type DestinatarioRow = {
   id: string;
@@ -120,12 +121,7 @@ export async function createDestinatarioWithPattern(
         now,
       ]
     );
-
-    await db.runAsync(
-      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
-       VALUES ('destinatarios', ?, 'INSERT', ?, ?)`,
-      [destinatarioId, JSON.stringify(destPayload), now]
-    );
+    await enqueueInsert(db, "destinatarios", destinatarioId, destPayload, now);
 
     if (ruleId && params.pattern) {
       const rulePayload = {
@@ -149,12 +145,7 @@ export async function createDestinatarioWithPattern(
           now,
         ]
       );
-
-      await db.runAsync(
-        `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
-         VALUES ('destinatario_rules', ?, 'INSERT', ?, ?)`,
-        [ruleId, JSON.stringify(rulePayload), now]
-      );
+      await enqueueInsert(db, "destinatario_rules", ruleId, rulePayload, now);
     }
   });
 
