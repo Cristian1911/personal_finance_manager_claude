@@ -65,12 +65,15 @@ type Parsed = {
  */
 function resolveLocale(): string {
   try {
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale;
-    if (
-      locale &&
-      /^es(-[A-Z]{2})?$/.test(locale)
-    ) {
-      return locale;
+    const raw = Intl.DateTimeFormat().resolvedOptions().locale;
+    if (raw) {
+      // Normalize Android-style underscores + any casing variance so we can
+      // match `es`, `es-MX`, `es_MX`, `es-419`, `es-CL`, etc. — and hand the
+      // native layer a BCP-47 string (`-` separator) regardless.
+      const normalized = raw.replace(/_/g, "-");
+      if (normalized.toLowerCase().startsWith("es")) {
+        return normalized;
+      }
     }
   } catch {
     /* fall through */
