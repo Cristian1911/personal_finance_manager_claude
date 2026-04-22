@@ -77,10 +77,10 @@ export function MobileTabBar({ state, navigation }: TabBarProps) {
         Alert.alert("Próximamente", "La captura rápida llega en la siguiente versión.");
         return;
       case "voice":
-        Alert.alert("Próximamente", "La captura por voz llega en la siguiente versión.");
+        router.push("/capture-voice" as never);
         return;
       case "screenshot":
-        Alert.alert("Próximamente", "La importación por pantallazo llega en la siguiente versión.");
+        router.push("/capture-screenshot" as never);
         return;
     }
   }
