@@ -66,7 +66,7 @@ export function renderWhereTodayWidget({
         <ChipDetailHeading tone={tone}>Gasto de hoy</ChipDetailHeading>
         {sorted.length === 0 ? (
           <Text className="py-3 text-center text-[12px] font-inter text-muted-foreground">
-            Sin gastos hoy
+            No hay gastos hoy
           </Text>
         ) : (
           <View className="gap-1.5">
@@ -106,5 +106,6 @@ export function renderWhereTodayWidget({
         )}
       </View>
     ),
+    estimatedHeight: sorted.length === 0 ? 100 : 80 + sorted.length * 36,
   };
 }

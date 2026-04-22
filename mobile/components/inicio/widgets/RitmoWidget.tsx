@@ -30,6 +30,7 @@ export function renderRitmoWidget(props: RitmoWidgetProps): WidgetRender {
       </View>
     ),
     detail: () => <RitmoDetail dailyAverage={dailyAverage} currency={currency} />,
+    estimatedHeight: 120,
   };
 }
 

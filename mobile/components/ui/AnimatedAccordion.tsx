@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { View, type LayoutChangeEvent } from "react-native";
+import { useEffect } from "react";
+import { View } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,9 +11,9 @@ interface AnimatedAccordionProps {
   expanded: boolean;
   children: ReactNode;
   /**
-   * Fallback height used on first render before the content has been
-   * measured. Overestimate is fine — after the first layout pass the
-   * measured value takes over. Default 500.
+   * Maximum visible height when expanded. Overestimate is fine — the
+   * container caps at this value but content taller than the estimate
+   * gets clipped, so tune per use-site. Default 500.
    */
   estimatedHeight?: number;
   /** Animation duration in ms. Default 220. */
@@ -21,12 +21,10 @@ interface AnimatedAccordionProps {
 }
 
 /**
- * Expand/collapse container using react-native-reanimated.
- *
- * Animates `height` (not `maxHeight`) using the content's measured height, so
- * the transition tracks real content and siblings reflow smoothly. On first
- * render the `estimatedHeight` prop provides a height budget until `onLayout`
- * fires. Content is always mounted so sizing doesn't flicker.
+ * Expand/collapse container using react-native-reanimated. Animates
+ * `maxHeight` 0 → `estimatedHeight` so siblings reflow normally and there is
+ * no layout jank from native `height: 0` inside flex columns. Content is
+ * always mounted so measurements don't flicker when toggled.
  */
 export function AnimatedAccordion({
   expanded,
@@ -34,32 +32,21 @@ export function AnimatedAccordion({
   estimatedHeight = 500,
   duration = 220,
 }: AnimatedAccordionProps) {
-  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const progress = useSharedValue(expanded ? 1 : 0);
 
   useEffect(() => {
     progress.value = withTiming(expanded ? 1 : 0, { duration });
   }, [expanded, duration, progress]);
 
-  const handleLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      const h = e.nativeEvent.layout.height;
-      if (h > 0 && h !== measuredHeight) setMeasuredHeight(h);
-    },
-    [measuredHeight]
-  );
-
-  const target = measuredHeight ?? estimatedHeight;
-
   const animatedStyle = useAnimatedStyle(() => ({
-    height: progress.value * target,
+    maxHeight: progress.value * estimatedHeight,
     opacity: progress.value,
     overflow: "hidden" as const,
   }));
 
   return (
     <Animated.View style={animatedStyle}>
-      <View onLayout={handleLayout}>{children}</View>
+      <View>{children}</View>
     </Animated.View>
   );
 }

@@ -13,6 +13,12 @@ export type WidgetRender = {
   chip: ReactNode;
   /** Lazy — only invoked when the chip is the active one in its row. */
   detail: () => ReactNode;
+  /**
+   * Upper bound for the expanded detail's height. Tune per widget so the
+   * accordion caps at a realistic value and siblings don't leave a gap.
+   * Defaults to 260.
+   */
+  estimatedHeight?: number;
 };
 
 interface WidgetGridProps {
@@ -69,7 +75,7 @@ export function WidgetGrid({
             </View>
             <AnimatedAccordion
               expanded={Boolean(active)}
-              estimatedHeight={800}
+              estimatedHeight={active?.r.estimatedHeight ?? 260}
             >
               {active ? active.r.detail() : null}
             </AnimatedAccordion>

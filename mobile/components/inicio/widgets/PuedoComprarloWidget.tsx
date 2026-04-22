@@ -24,6 +24,7 @@ export function renderPuedoComprarloWidget(): WidgetRender {
       </View>
     ),
     detail: () => <PuedoComprarloDetail />,
+    estimatedHeight: 200,
   };
 }
 

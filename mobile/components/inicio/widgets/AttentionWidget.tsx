@@ -64,6 +64,13 @@ export function renderAttentionWidget(props: AttentionCounts): WidgetRender {
         pendingEmails={pendingEmails}
       />
     ),
+    estimatedHeight:
+      total === 0
+        ? 140
+        : 32 + // panel padding
+          (overdue > 0 ? 64 : 0) +
+          (upcoming > 0 ? 64 : 0) +
+          (pendingEmails > 0 ? 64 : 0),
   };
 }
 
