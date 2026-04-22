@@ -12,27 +12,24 @@ import {
   toMonthlyAmount,
   type OccurrenceWithTemplate,
 } from "../../lib/repositories/recurring";
-import { getWishlistCount } from "../../lib/repositories/wishlist";
 import { computeTimeline, type TimelineData } from "../../lib/utils/timeline";
 import { toLocalMonthString } from "../../lib/utils/date";
 import { DEBT_ACCOUNT_TYPES, LIQUID_ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
-import { useExpandableZone } from "../ui/useExpandableZone";
 import { MonthSelector } from "../common/MonthSelector";
 import { PlanNetHero, type PlanExecution } from "./PlanNetHero";
-import { PlanExpandableChips } from "./PlanExpandableChips";
-import { PlanFlowChart } from "./PlanFlowChart";
-import { PlanDrillCards } from "./PlanDrillCards";
+import { PlanWeekTiles } from "./PlanWeekTiles";
+import { PlanToolsChips } from "./PlanToolsChips";
 
 interface PlanState {
   plan: PlanExecution;
   budgetItems: BudgetProgressRow[];
-  recurringPending: number;
   incomeOccs: OccurrenceWithTemplate[];
   paymentOccs: OccurrenceWithTemplate[];
-  wishlistCount: number;
+  overdueCount: number;
+  upcomingCount: number;
   timeline: TimelineData | null;
 }
 
@@ -45,16 +42,16 @@ const EMPTY_PLAN: PlanExecution = {
 const INITIAL: PlanState = {
   plan: EMPTY_PLAN,
   budgetItems: [],
-  recurringPending: 0,
   incomeOccs: [],
   paymentOccs: [],
-  wishlistCount: 0,
+  overdueCount: 0,
+  upcomingCount: 0,
   timeline: null,
 };
 
 export function PlanRoot() {
   const { sync } = useSync();
-  const { activeZone, toggle } = useExpandableZone<string>();
+  const [heroExpanded, setHeroExpanded] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => toLocalMonthString());
@@ -67,24 +64,23 @@ export function PlanRoot() {
       const now = new Date();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const daysRemaining = Math.max(1, daysInMonth - now.getDate());
+      const todayIso = now.toISOString().slice(0, 10);
 
-      const [txs, accounts, budgets, occurrences, wishCount, templates] = await Promise.all([
+      const [txs, accounts, budgets, occurrences, templates] = await Promise.all([
         getTransactions({ month: currentMonth, limit: 500 }),
         getAllAccounts(),
         getBudgetProgress(currentMonth),
         getOccurrencesForMonth(currentMonth),
-        getWishlistCount(),
         getActiveTemplates(),
       ]);
 
       const accountMap = new Map<string, AccountRow>(accounts.map((a: AccountRow) => [a.id, a]));
 
-      // ── 1. Planned totals from active templates (liquid accounts only) ──
+      // ── 1. Planned totals from active templates (liquid + debt accounts) ──
       let plannedIncome = 0;
       let plannedExpenses = 0;
       for (const t of templates) {
         const acctType = accountMap.get(t.account_id)?.account_type ?? "";
-        // Only count templates on liquid accounts for the plan
         if (!LIQUID_ACCOUNT_TYPES.has(acctType) && !DEBT_ACCOUNT_TYPES.has(acctType)) continue;
         const monthlyAmt = toMonthlyAmount(t.amount, t.frequency);
         const isDebtPayment = DEBT_ACCOUNT_TYPES.has(acctType);
@@ -100,9 +96,10 @@ export function PlanRoot() {
       let pendingIncome = 0;
       let paidExpenses = 0;
       let pendingExpenses = 0;
+      let overdueCount = 0;
+      let upcomingCount = 0;
       const pendingIncomeOccs: OccurrenceWithTemplate[] = [];
       const pendingPaymentOccs: OccurrenceWithTemplate[] = [];
-      let totalRecurringPending = 0;
 
       for (const occ of occurrences) {
         const acctType = accountMap.get(occ.account_id)?.account_type ?? "";
@@ -116,7 +113,8 @@ export function PlanRoot() {
           } else if (occ.status === "pending") {
             pendingIncome += occ.expected_amount;
             pendingIncomeOccs.push(occ);
-            totalRecurringPending++;
+            if (occ.occurrence_date < todayIso) overdueCount++;
+            else upcomingCount++;
           }
         } else if (isExpense) {
           if (occ.status === "paid") {
@@ -124,16 +122,19 @@ export function PlanRoot() {
           } else if (occ.status === "pending") {
             pendingExpenses += occ.expected_amount;
             pendingPaymentOccs.push(occ);
-            totalRecurringPending++;
+            if (occ.occurrence_date < todayIso) overdueCount++;
+            else upcomingCount++;
           }
         }
       }
 
-      // ── 3. Discretionary spending = non-recurring outflows from liquid accounts ──
+      // Sort pending lists by date ascending (next-first)
+      pendingIncomeOccs.sort((a, b) => a.occurrence_date.localeCompare(b.occurrence_date));
+      pendingPaymentOccs.sort((a, b) => a.occurrence_date.localeCompare(b.occurrence_date));
+
+      // ── 3. Discretionary = non-recurring outflows from liquid accounts ──
       const recurringTxIds = new Set(
-        occurrences
-          .filter((o) => o.transaction_id)
-          .map((o) => o.transaction_id!)
+        occurrences.filter((o) => o.transaction_id).map((o) => o.transaction_id!)
       );
 
       let discretionarySpent = 0;
@@ -142,23 +143,19 @@ export function PlanRoot() {
         if (tx.direction !== "OUTFLOW") continue;
         if (tx.transfer_group_id) continue;
         if (tx.reconciled_into_transaction_id) continue;
-        if (recurringTxIds.has(tx.id)) continue; // already counted as paid obligation
-        // Only count from liquid accounts
+        if (recurringTxIds.has(tx.id)) continue;
         const txAcctType = accountMap.get(tx.account_id)?.account_type ?? "";
         if (!LIQUID_ACCOUNT_TYPES.has(txAcctType)) continue;
         discretionarySpent += Math.abs(tx.amount);
       }
 
-      // ── 4. Disponible = confirmed income - paid obligations - pending obligations - discretionary ──
       const disponible = confirmedIncome - paidExpenses - pendingExpenses - discretionarySpent;
       const perDay = Math.round(Math.max(0, disponible) / daysRemaining);
 
-      // Liquid balance for chart baseline
       const liquidBalance = accounts
         .filter((a: AccountRow) => LIQUID_ACCOUNT_TYPES.has(a.account_type))
         .reduce((sum: number, a: AccountRow) => sum + a.current_balance, 0);
 
-      // Timeline for chart — start from actual liquid balance
       const timeline = computeTimeline(txs, accounts, occurrences, now, liquidBalance);
 
       setData({
@@ -168,10 +165,10 @@ export function PlanRoot() {
           discretionarySpent, disponible, daysRemaining, perDay,
         },
         budgetItems: budgets,
-        recurringPending: totalRecurringPending,
         incomeOccs: pendingIncomeOccs,
         paymentOccs: pendingPaymentOccs,
-        wishlistCount: wishCount,
+        overdueCount,
+        upcomingCount,
         timeline,
       });
     } catch (error) {
@@ -195,6 +192,10 @@ export function PlanRoot() {
     }
   }, [sync, loadData]);
 
+  const toggleHero = useCallback(() => {
+    setHeroExpanded((prev) => !prev);
+  }, []);
+
   const { budgetOverLimit, budgetPct } = useMemo(() => {
     const spent = data.budgetItems.reduce((sum, b) => sum + b.spent, 0);
     const target = data.budgetItems.reduce((sum, b) => sum + b.amount, 0);
@@ -205,17 +206,22 @@ export function PlanRoot() {
     };
   }, [data.budgetItems]);
 
+  const now = new Date();
+  const isCurrentMonth =
+    currentMonth === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const subtitle = isCurrentMonth ? `${data.plan.daysRemaining}d restantes` : currentMonth;
+
   return (
     <View className="flex-1 bg-background">
       <MobileHeader
         variant="main"
         title="Plan"
-        subtitle={`${currentMonth.split("-")[1] === String(new Date().getMonth() + 1).padStart(2, "0") ? `${data.plan.daysRemaining}d restantes` : currentMonth}`}
+        subtitle={subtitle}
         right={<AvatarMenuTrigger />}
       />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.brass} />
         }
@@ -224,35 +230,27 @@ export function PlanRoot() {
           <MonthSelector month={currentMonth} onChange={setCurrentMonth} />
         </View>
 
-        {/* Live plan execution hero */}
         <PlanNetHero
           plan={data.plan}
+          timeline={data.timeline}
           currency={currency}
-          expanded={activeZone === "hero"}
-          onToggle={() => toggle("hero")}
+          expanded={heroExpanded}
+          onToggle={toggleHero}
         />
 
-        {/* Próximo ingreso / Próximo pago */}
-        <PlanExpandableChips
-          incomes={data.incomeOccs}
-          payments={data.paymentOccs}
+        <PlanWeekTiles
+          nextIncome={data.incomeOccs[0] ?? null}
+          nextPayment={data.paymentOccs[0] ?? null}
           currency={currency}
         />
 
-        {/* Cashflow chart */}
-        {data.timeline && (
-          <PlanFlowChart
-            timelineData={data.timeline}
-            currency={currency}
-          />
-        )}
-
-        {/* Navigation grid */}
-        <PlanDrillCards
+        <PlanToolsChips
           budgetOverLimit={budgetOverLimit}
           budgetPct={budgetPct}
-          recurringPending={data.recurringPending}
-          wishlistCount={data.wishlistCount}
+          periodHasActive={false}
+          periodPercentAssigned={0}
+          recurringUpcoming={data.upcomingCount}
+          recurringOverdue={data.overdueCount}
         />
       </ScrollView>
     </View>
