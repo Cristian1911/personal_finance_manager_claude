@@ -251,7 +251,7 @@ export default function CaptureScreenshotScreen() {
         >
           <ArrowLeft size={18} color={COLORS.foreground} />
         </Pressable>
-        <Text className="text-lg font-semibold text-z-fg">
+        <Text className="text-lg font-semibold text-z-white">
           Capturar extracto
         </Text>
       </View>
@@ -266,7 +266,7 @@ export default function CaptureScreenshotScreen() {
       >
         {step === "pick" && (
           <View className="mt-4 gap-3">
-            <Text className="text-sm text-z-fg-dim">
+            <Text className="text-sm text-z-sage-dark">
               Toma una foto del extracto o elige una imagen de tu galería. Zeta detecta las transacciones automáticamente.
             </Text>
             <Pressable
@@ -285,7 +285,7 @@ export default function CaptureScreenshotScreen() {
               className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
             >
               <ImageIcon size={18} color={COLORS.foreground} />
-              <Text className="text-base font-medium text-z-fg">
+              <Text className="text-base font-medium text-z-white">
                 Elegir de galería
               </Text>
             </Pressable>
@@ -300,12 +300,12 @@ export default function CaptureScreenshotScreen() {
               style={{ width: "100%", height: 420, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.06)" }}
             />
             {error ? (
-              <Text className="text-sm text-z-negative">{error}</Text>
+              <Text className="text-sm text-z-expense">{error}</Text>
             ) : null}
             {step === "parsing" ? (
               <View className="items-center py-4">
                 <ActivityIndicator color={COLORS.brass} />
-                <Text className="mt-2 text-sm text-z-fg-dim">
+                <Text className="mt-2 text-sm text-z-sage-dark">
                   Analizando imagen…
                 </Text>
               </View>
@@ -326,7 +326,7 @@ export default function CaptureScreenshotScreen() {
                   className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3`}
                 >
                   <RefreshCw size={16} color={COLORS.foreground} />
-                  <Text className="text-sm font-medium text-z-fg">
+                  <Text className="text-sm font-medium text-z-white">
                     Cambiar imagen
                   </Text>
                 </Pressable>
@@ -338,20 +338,20 @@ export default function CaptureScreenshotScreen() {
         {step === "review" && parsed && (
           <View className="mt-4 gap-4">
             <View>
-              <Text className="text-xs uppercase tracking-[0.14em] text-z-fg-dim">
+              <Text className="text-xs uppercase tracking-[0.14em] text-z-sage-dark">
                 {parsed.bank ?? "Extracto"}
               </Text>
-              <Text className="mt-1 text-base font-semibold text-z-fg">
+              <Text className="mt-1 text-base font-semibold text-z-white">
                 {parsed.transactions.length} transacciones detectadas
               </Text>
             </View>
 
             <View className="gap-2">
-              <Text className="text-xs uppercase tracking-[0.14em] text-z-fg-dim">
+              <Text className="text-xs uppercase tracking-[0.14em] text-z-sage-dark">
                 Cuenta destino
               </Text>
               {accounts.length === 0 ? (
-                <Text className="text-sm text-z-fg-dim">
+                <Text className="text-sm text-z-sage-dark">
                   No tienes cuentas creadas. Crea una primero desde Ajustes.
                 </Text>
               ) : (
@@ -371,7 +371,7 @@ export default function CaptureScreenshotScreen() {
                         >
                           <Text
                             className={`text-xs ${
-                              isSelected ? "font-semibold text-z-brass" : "text-z-fg"
+                              isSelected ? "font-semibold text-z-brass" : "text-z-white"
                             }`}
                           >
                             {a.name}
@@ -391,14 +391,14 @@ export default function CaptureScreenshotScreen() {
                   className="flex-row items-center justify-between rounded-2xl bg-z-surface-2-55 px-4 py-3"
                 >
                   <View className="flex-1 pr-3">
-                    <Text className="text-sm text-z-fg" numberOfLines={1}>
+                    <Text className="text-sm text-z-white" numberOfLines={1}>
                       {t.description || "Sin descripción"}
                     </Text>
-                    <Text className="text-xs text-z-fg-dim">{t.date}</Text>
+                    <Text className="text-xs text-z-sage-dark">{t.date}</Text>
                   </View>
                   <Text
                     className={`text-sm font-semibold ${
-                      t.direction === "OUTFLOW" ? "text-z-negative" : "text-z-positive"
+                      t.direction === "OUTFLOW" ? "text-z-expense" : "text-z-income"
                     }`}
                   >
                     {t.direction === "OUTFLOW" ? "-" : "+"}
@@ -414,7 +414,7 @@ export default function CaptureScreenshotScreen() {
             </View>
 
             {error ? (
-              <Text className="text-sm text-z-negative">{error}</Text>
+              <Text className="text-sm text-z-expense">{error}</Text>
             ) : null}
 
             <Pressable
@@ -435,14 +435,14 @@ export default function CaptureScreenshotScreen() {
         {step === "importing" && (
           <View className="mt-6 items-center gap-3">
             <ActivityIndicator color={COLORS.brass} />
-            <Text className="text-sm text-z-fg-dim">Importando transacciones…</Text>
+            <Text className="text-sm text-z-sage-dark">Importando transacciones…</Text>
           </View>
         )}
 
         {step === "done" && (
           <View className="mt-6 items-center gap-4">
             <CheckCircle size={48} color={COLORS.income} />
-            <Text className="text-lg font-semibold text-z-fg">
+            <Text className="text-lg font-semibold text-z-white">
               {importedCount} transacciones importadas
             </Text>
             <View className="w-full gap-3">
@@ -451,7 +451,7 @@ export default function CaptureScreenshotScreen() {
                 accessibilityRole="button"
                 className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
               >
-                <Text className="text-base font-medium text-z-fg">
+                <Text className="text-base font-medium text-z-white">
                   Capturar otra
                 </Text>
               </Pressable>

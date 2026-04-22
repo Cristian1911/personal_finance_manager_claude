@@ -55,15 +55,23 @@ type Parsed = {
 };
 
 /**
- * Resolve the speech-recognition locale from the device, falling back to a
- * regional Spanish default (`es-CO`) for Zeta's primary market. Reads
- * `Intl.DateTimeFormat().resolvedOptions().locale` so no extra dependency is
- * needed — Hermes supports Intl in RN 0.70+.
+ * Resolve the speech-recognition locale.
+ *
+ * Zeta is Spanish-first and the quick-capture parser only understands Spanish
+ * phrasing (e.g. `"gasté 50 mil en Éxito ayer"`), so we force a Spanish locale
+ * regardless of the device's display language. If the device is already in a
+ * Spanish variant (es-MX, es-ES, …) we honor it to get region-appropriate
+ * pronunciation; otherwise we fall back to the primary market default `es-CO`.
  */
 function resolveLocale(): string {
   try {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale;
-    if (locale && /^[a-z]{2}(-[A-Z]{2})?$/.test(locale)) return locale;
+    if (
+      locale &&
+      /^es(-[A-Z]{2})?$/.test(locale)
+    ) {
+      return locale;
+    }
   } catch {
     /* fall through */
   }
@@ -182,6 +190,24 @@ export default function CaptureVoiceScreen() {
       );
       return;
     }
+
+    // Preflight: bail out with a clear message before the native layer throws
+    // opaque errors like `kAFAssistantErrorDomain error 7` (which surfaces on
+    // simulators that lack the on-device speech model, and on real devices
+    // when the locale model hasn't been downloaded yet).
+    if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
+      setError(
+        "Reconocimiento de voz no disponible en este dispositivo.",
+      );
+      return;
+    }
+    if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
+      setError(
+        "Tu dispositivo no soporta reconocimiento de voz on-device. Pruébalo en un dispositivo físico reciente (iOS 13+ / Android con servicios de Google actualizados).",
+      );
+      return;
+    }
+
     ExpoSpeechRecognitionModule.start({
       lang: resolveLocale(),
       interimResults: true,
@@ -259,7 +285,7 @@ export default function CaptureVoiceScreen() {
         >
           <ArrowLeft size={18} color={COLORS.foreground} />
         </Pressable>
-        <Text className="text-lg font-semibold text-z-fg">
+        <Text className="text-lg font-semibold text-z-white">
           Capturar por voz
         </Text>
       </View>
@@ -273,14 +299,14 @@ export default function CaptureVoiceScreen() {
       >
         {step === "idle" && (
           <View className="mt-6 gap-4 items-center">
-            <Text className="text-sm text-z-fg-dim text-center">
+            <Text className="text-sm text-z-sage-dark text-center">
               Pulsa el micrófono y di el movimiento. Ejemplo: &quot;Gasté 50 mil en Éxito ayer&quot; o &quot;Ingreso de 3 millones por salario&quot;.
             </Text>
-            <Text className="text-xs text-z-fg-dim text-center">
+            <Text className="text-xs text-z-sage-dark text-center">
               La transcripción ocurre en tu dispositivo. El audio no se envía a ningún servidor.
             </Text>
             {error ? (
-              <Text className="text-sm text-z-negative text-center">{error}</Text>
+              <Text className="text-sm text-z-expense text-center">{error}</Text>
             ) : null}
             <Pressable
               onPress={startListening}
@@ -300,9 +326,9 @@ export default function CaptureVoiceScreen() {
             >
               <Mic size={36} color={COLORS.brass} />
             </Animated.View>
-            <Text className="text-sm font-medium text-z-fg">Escuchando…</Text>
+            <Text className="text-sm font-medium text-z-white">Escuchando…</Text>
             <View className="w-full rounded-2xl bg-z-surface-2-55 px-4 py-3 min-h-20">
-              <Text className="text-base text-z-fg">
+              <Text className="text-base text-z-white">
                 {transcript || "…"}
               </Text>
             </View>
@@ -312,7 +338,7 @@ export default function CaptureVoiceScreen() {
               className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3`}
             >
               <Square size={16} color={COLORS.foreground} />
-              <Text className="text-sm font-medium text-z-fg">Detener</Text>
+              <Text className="text-sm font-medium text-z-white">Detener</Text>
             </Pressable>
           </View>
         )}
@@ -320,10 +346,10 @@ export default function CaptureVoiceScreen() {
         {step === "review" && (
           <View className="mt-6 gap-4">
             <View className="rounded-2xl bg-z-surface-2-55 px-4 py-3">
-              <Text className="text-xs uppercase tracking-[0.14em] text-z-fg-dim">
+              <Text className="text-xs uppercase tracking-[0.14em] text-z-sage-dark">
                 Dijiste
               </Text>
-              <Text className="mt-1 text-base text-z-fg">
+              <Text className="mt-1 text-base text-z-white">
                 {finalTranscript || transcript || "(vacío)"}
               </Text>
             </View>
@@ -332,36 +358,36 @@ export default function CaptureVoiceScreen() {
               <>
                 <View className="gap-2 rounded-2xl bg-z-surface-2-55 px-4 py-3">
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-xs uppercase tracking-[0.14em] text-z-fg-dim">
+                    <Text className="text-xs uppercase tracking-[0.14em] text-z-sage-dark">
                       Detectado
                     </Text>
                     <Text
                       className={`text-sm font-semibold ${
                         parsed.direction === "OUTFLOW"
-                          ? "text-z-negative"
-                          : "text-z-positive"
+                          ? "text-z-expense"
+                          : "text-z-income"
                       }`}
                     >
                       {parsed.direction === "OUTFLOW" ? "Gasto" : "Ingreso"}
                     </Text>
                   </View>
-                  <Text className="text-xl font-semibold text-z-fg">
+                  <Text className="text-xl font-semibold text-z-white">
                     {formatCurrency(
                       parsed.amount,
                       (accounts.find((a) => a.id === selectedAccountId)?.currency_code ||
                         "COP") as CurrencyCode,
                     )}
                   </Text>
-                  <Text className="text-sm text-z-fg">{parsed.description}</Text>
-                  <Text className="text-xs text-z-fg-dim">{parsed.transaction_date}</Text>
+                  <Text className="text-sm text-z-white">{parsed.description}</Text>
+                  <Text className="text-xs text-z-sage-dark">{parsed.transaction_date}</Text>
                 </View>
 
                 <View className="gap-2">
-                  <Text className="text-xs uppercase tracking-[0.14em] text-z-fg-dim">
+                  <Text className="text-xs uppercase tracking-[0.14em] text-z-sage-dark">
                     Cuenta destino
                   </Text>
                   {accounts.length === 0 ? (
-                    <Text className="text-sm text-z-fg-dim">
+                    <Text className="text-sm text-z-sage-dark">
                       No tienes cuentas. Crea una primero desde Ajustes.
                     </Text>
                   ) : (
@@ -381,7 +407,7 @@ export default function CaptureVoiceScreen() {
                             >
                               <Text
                                 className={`text-xs ${
-                                  isSelected ? "font-semibold text-z-brass" : "text-z-fg"
+                                  isSelected ? "font-semibold text-z-brass" : "text-z-white"
                                 }`}
                               >
                                 {a.name}
@@ -395,7 +421,7 @@ export default function CaptureVoiceScreen() {
                 </View>
 
                 {error ? (
-                  <Text className="text-sm text-z-negative">{error}</Text>
+                  <Text className="text-sm text-z-expense">{error}</Text>
                 ) : null}
 
                 <View className="gap-2">
@@ -417,7 +443,7 @@ export default function CaptureVoiceScreen() {
                     className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3`}
                   >
                     <RefreshCw size={16} color={COLORS.foreground} />
-                    <Text className="text-sm font-medium text-z-fg">
+                    <Text className="text-sm font-medium text-z-white">
                       Intentar de nuevo
                     </Text>
                   </Pressable>
@@ -425,7 +451,7 @@ export default function CaptureVoiceScreen() {
               </>
             ) : (
               <View className="gap-3">
-                <Text className="text-sm text-z-negative">
+                <Text className="text-sm text-z-expense">
                   {error ?? "No pude interpretar lo que dijiste."}
                 </Text>
                 <Pressable
@@ -445,14 +471,14 @@ export default function CaptureVoiceScreen() {
         {step === "saving" && (
           <View className="mt-6 items-center gap-3">
             <ActivityIndicator color={COLORS.brass} />
-            <Text className="text-sm text-z-fg-dim">Guardando…</Text>
+            <Text className="text-sm text-z-sage-dark">Guardando…</Text>
           </View>
         )}
 
         {step === "done" && (
           <View className="mt-6 items-center gap-4">
             <CheckCircle size={48} color={COLORS.income} />
-            <Text className="text-lg font-semibold text-z-fg">
+            <Text className="text-lg font-semibold text-z-white">
               Transacción guardada
             </Text>
             <View className="w-full gap-3">
@@ -461,7 +487,7 @@ export default function CaptureVoiceScreen() {
                 accessibilityRole="button"
                 className={`${GHOST_BUTTON_CLASS} flex-row items-center justify-center gap-2 rounded-2xl px-4 py-4`}
               >
-                <Text className="text-base font-medium text-z-fg">
+                <Text className="text-base font-medium text-z-white">
                   Capturar otra
                 </Text>
               </Pressable>
