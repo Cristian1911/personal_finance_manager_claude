@@ -41,4 +41,8 @@ yarn-error.*
 /ios
 /android
 
-.keystore/
+.keystore
+
+# EAS Build outputs (AAB/APK) — never commit; can exceed GitHub 100MB limit
+*.aab
+*.apk

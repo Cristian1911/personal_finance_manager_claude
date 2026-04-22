@@ -33,7 +33,11 @@ import { BudgetRow } from "./BudgetRow";
 
 const CURRENCY: CurrencyCode = "COP";
 
-export function BudgetsRoot() {
+interface BudgetsRootProps {
+  variant?: "main" | "sub";
+}
+
+export function BudgetsRoot({ variant = "main" }: BudgetsRootProps) {
   const { session } = useAuth();
   const { sync } = useSync();
 
@@ -177,14 +181,17 @@ export function BudgetsRoot() {
     []
   );
 
+  const header =
+    variant === "sub" ? (
+      <MobileHeader variant="sub" title="Presupuestos" />
+    ) : (
+      <MobileHeader variant="main" title="Presupuestos" right={<AvatarMenuTrigger />} />
+    );
+
   if (loading) {
     return (
       <View className="flex-1 bg-background">
-        <MobileHeader
-          variant="main"
-          title="Presupuestos"
-          right={<AvatarMenuTrigger />}
-        />
+        {header}
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={COLORS.brass} />
         </View>
@@ -197,11 +204,7 @@ export function BudgetsRoot() {
       className="flex-1 bg-background"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <MobileHeader
-        variant="main"
-        title="Presupuestos"
-        right={<AvatarMenuTrigger />}
-      />
+      {header}
 
       <FlatList
         data={items}

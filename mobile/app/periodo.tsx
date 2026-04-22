@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { getPeriodoCache, setPeriodoCache } from "../lib/sync/periodoCache";
 import {
   ActivityIndicator,
   Pressable,
@@ -87,14 +88,18 @@ interface PeriodoData {
 export default function PeriodoScreen() {
   const router = useRouter();
   const { session } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<PeriodoData | null>(null);
+  const userId = session?.user?.id ?? null;
+  const cached = userId !== null ? getPeriodoCache<PeriodoData | null>(userId) : undefined;
+  const [loading, setLoading] = useState(cached === undefined);
+  const [data, setData] = useState<PeriodoData | null>(cached ?? null);
+  const requestIdRef = useRef(0);
   const [expandedIncome, setExpandedIncome] = useState<string | null>(null);
   const [paymentEntry, setPaymentEntry] = useState<PaymentEntry | null>(null);
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null);
 
   const loadData = useCallback(async () => {
     if (!session?.user?.id) { setLoading(false); return; }
+    const requestId = ++requestIdRef.current;
 
     try {
       // Cast to any — planning tables not in mobile's generated types
@@ -110,7 +115,14 @@ export default function PeriodoScreen() {
         .limit(1)
         .maybeSingle();
 
-      if (!period) { setData(null); setLoading(false); return; }
+      if (!period) {
+        if (requestId === requestIdRef.current) {
+          setPeriodoCache<PeriodoData | null>(session.user.id, null);
+          setData(null);
+          setLoading(false);
+        }
+        return;
+      }
 
       // 2. Get entries + assignments
       const [{ data: entries }, { data: assignments }, { data: accounts }] = await Promise.all([
@@ -220,7 +232,7 @@ export default function PeriodoScreen() {
       const totalExpenses = expenseEntries.reduce((s, e) => s + e.amount, 0);
       const totalAssigned = allAssignments.reduce((s, a) => s + a.assigned_amount, 0);
 
-      setData({
+      const fresh: PeriodoData = {
         period: period as PlanningPeriod,
         currency: period.currency_code as CurrencyCode,
         incomeEnvelopes,
@@ -228,11 +240,15 @@ export default function PeriodoScreen() {
         totalExpenses,
         totalAssigned,
         accountDetails: accountDetailMap,
-      });
+      };
+      if (requestId === requestIdRef.current) {
+        setPeriodoCache(session.user.id, fresh);
+        setData(fresh);
+      }
     } catch (error) {
       console.error("Failed to load periodo:", error);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [session?.user?.id]);
 

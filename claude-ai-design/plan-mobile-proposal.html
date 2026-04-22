@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Plan mobile · propuesta</title>
+  <style>
+    :root{
+      --z-ink:#121412; --z-brass:#937844; --z-brass-hot:#B29256;
+      --z-income:#5CB88A; --z-expense:#E8875A; --z-debt:#E05545; --z-alert:#D4A843;
+      --z-surface:#171A17; --z-surface-2:#1E221E; --z-surface-3:#262B26;
+      --z-border:rgba(217,204,185,0.08); --z-border-strong:rgba(217,204,185,0.16);
+      --z-text:#EAE5DA; --z-muted:rgba(234,229,218,0.55); --z-muted-2:rgba(234,229,218,0.38);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;background:#0b0d0b;color:var(--z-text);
+      font-family:-apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif;
+      padding:32px 20px 80px;line-height:1.35;
+    }
+    .wrap{max-width:1280px;margin:0 auto}
+    h1{font-size:18px;font-weight:600;letter-spacing:-.01em;margin:0 0 4px}
+    .subtitle{color:var(--z-muted);font-size:13px;margin-bottom:28px}
+    .columns{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+    @media(max-width:1080px){.columns{grid-template-columns:1fr;max-width:420px;margin:0 auto}}
+    .col-label{
+      font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+      color:var(--z-muted);margin-bottom:10px
+    }
+    .col-note{font-size:11px;color:var(--z-muted-2);margin-bottom:12px;min-height:30px}
+    .phone{
+      background:var(--z-ink);border:1px solid var(--z-border-strong);
+      border-radius:28px;padding:18px 14px 22px;
+      box-shadow:0 40px 80px rgba(0,0,0,.35);
+      overflow:hidden;
+    }
+    .phone[data-emphasis="yes"]{
+      border-color:rgba(147,120,68,.35);
+      box-shadow:0 40px 80px rgba(0,0,0,.35),0 0 0 1px rgba(147,120,68,.18);
+    }
+
+    /* ── phone chrome ── */
+    .p-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .p-title{font-weight:600;font-size:17px}
+    .p-subtitle{font-size:11px;color:var(--z-muted);margin-top:1px}
+    .avatar{width:28px;height:28px;border-radius:999px;background:var(--z-surface-3);
+      display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--z-brass);font-weight:600}
+    .month-select{display:flex;justify-content:center;gap:10px;align-items:center;
+      padding:6px 0 12px;font-size:12px;color:var(--z-muted)}
+    .month-select b{color:var(--z-text);font-weight:600}
+
+    /* ── eyebrow ── */
+    .eyebrow{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--z-brass)}
+    .eyebrow.muted{color:var(--z-muted)}
+
+    /* ── card / hero ── */
+    .card{background:var(--z-surface);border:1px solid var(--z-border);border-radius:16px;padding:14px}
+    .hero{
+      background:linear-gradient(145deg,rgba(147,120,68,.16),rgba(147,120,68,.03) 55%,transparent 80%),var(--z-surface);
+      border:1px solid rgba(147,120,68,.18);border-radius:20px;padding:16px;
+    }
+
+    /* ── hero content ── */
+    .hero-top{display:flex;align-items:center;justify-content:space-between}
+    .hero-number{font-size:32px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:6px}
+    .hero-number.income{color:var(--z-income)}
+    .hero-sub{font-size:11px;color:var(--z-muted);margin-top:2px}
+    .hero-sub b{color:var(--z-text);font-weight:600}
+
+    /* ── burn bar ── */
+    .burn{
+      position:relative;height:8px;border-radius:999px;overflow:hidden;
+      background:rgba(234,229,218,.08);margin-top:14px;display:flex
+    }
+    .burn .seg{height:100%}
+    .seg-fijos{background:var(--z-alert)}
+    .seg-libre{background:var(--z-debt)}
+    .burn-legend{display:flex;gap:14px;margin-top:6px;font-size:9.5px;color:var(--z-muted)}
+    .burn-legend span{display:inline-flex;align-items:center;gap:4px}
+    .burn-legend .dot{width:6px;height:6px;border-radius:999px;display:inline-block}
+
+    /* ── expand cta inside hero ── */
+    .hero-cta{
+      margin-top:14px;padding-top:12px;border-top:1px solid var(--z-border-strong);
+      display:flex;justify-content:center;align-items:center;gap:4px;
+      color:var(--z-brass);font-size:11px;font-weight:600
+    }
+
+    /* ── flow chart mock (inline inside hero) ── */
+    .chart{margin-top:12px}
+    .chart svg{width:100%;height:90px;display:block}
+
+    /* ── segment (week tiles) ── */
+    .week{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+    .tile{
+      background:var(--z-surface);border:1px solid var(--z-border);
+      border-radius:14px;padding:12px 12px 10px;
+    }
+    .tile[data-tone="income"]{border-color:rgba(92,184,138,.25)}
+    .tile[data-tone="debt"]{border-color:rgba(224,85,69,.25)}
+    .tile-eyebrow{font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+    .tile[data-tone="income"] .tile-eyebrow{color:var(--z-income)}
+    .tile[data-tone="debt"] .tile-eyebrow{color:var(--z-debt)}
+    .tile-value{font-size:16px;font-weight:700;letter-spacing:-.01em;margin-top:6px;font-variant-numeric:tabular-nums}
+    .tile-sub{font-size:10px;color:var(--z-muted);margin-top:3px}
+
+    /* ── drill rows (go-to) — legacy for cols 1/2 ── */
+    .drill-wrap{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+    .drill{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      background:var(--z-surface);border:1px solid var(--z-border);
+      border-radius:14px;padding:11px 12px;
+    }
+    .drill-name{font-size:13px;font-weight:600}
+    .drill-status{font-size:10.5px;color:var(--z-muted);margin-top:3px;display:flex;align-items:center;gap:6px}
+    .status-dot{width:6px;height:6px;border-radius:999px;display:inline-block;flex-shrink:0}
+    .status-dot.alert{background:var(--z-debt)}
+    .status-dot.warn{background:var(--z-alert)}
+    .status-dot.ok{background:var(--z-income)}
+    .status-dot.muted{background:rgba(234,229,218,.3)}
+    .drill-status.alert{color:var(--z-debt)}
+    .drill-status.warn{color:var(--z-alert)}
+    .drill-status.ok{color:var(--z-income)}
+    .chev{color:var(--z-muted-2);font-size:16px;line-height:1}
+
+    /* ── chips (plain minimal, matches webapp "Ir a" pattern) ── */
+    .chip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:0}
+    .chip-tile{
+      background:rgba(234,229,218,0.02);
+      border:1px solid var(--z-border);
+      border-radius:16px;padding:14px 10px 12px;
+      min-height:130px;
+      display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+      text-align:center;gap:6px;
+    }
+    .chip-eyebrow{
+      font-size:10px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;
+      color:var(--z-muted);
+    }
+    .chip-icon{color:var(--z-brass);display:flex;align-items:center;justify-content:center}
+    .chip-icon svg{width:28px;height:28px;stroke-width:1.6}
+    .chip-status{font-size:12px;color:var(--z-muted);line-height:1.25}
+    .chip-status em{font-style:normal;color:var(--z-brass-hot);font-weight:600}
+
+    /* ── section divider ── */
+    .sec-div{
+      display:flex;align-items:center;gap:10px;margin:18px 0 8px;
+      font-size:9.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--z-muted)
+    }
+    .sec-div::after{content:"";flex:1;height:1px;background:var(--z-border)}
+
+    /* ── annotations column ── */
+    .annotations{margin-top:22px;border-top:1px dashed var(--z-border-strong);padding-top:18px}
+    .annotations h3{font-size:12px;margin:0 0 10px;color:var(--z-brass);letter-spacing:.1em;text-transform:uppercase}
+    .annotations ul{margin:0;padding-left:16px;color:var(--z-muted);font-size:12px;line-height:1.5}
+    .annotations li{margin-bottom:6px}
+    .annotations code{font-family:ui-monospace,monospace;font-size:11px;color:var(--z-brass-hot);background:var(--z-surface-3);padding:1px 5px;border-radius:4px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Plan mobile · propuesta</h1>
+  <p class="subtitle">Tres versiones lado a lado. Misma pantalla, mismo momento del mes (17 abr, 13 días restantes).</p>
+
+  <div class="columns">
+
+    <!-- ═══════════ COL 1: CURRENT NATIVE ═══════════ -->
+    <div>
+      <div class="col-label">Actual · nativo (hoy)</div>
+      <div class="col-note">Héroe "Disponible" con math detallado. Chips expandibles para ingresos/pagos. Chart en card aparte. Drill cards con números crudos.</div>
+      <div class="phone">
+        <div class="p-header">
+          <div>
+            <div class="p-title">Plan</div>
+            <div class="p-subtitle">13d restantes</div>
+          </div>
+          <div class="avatar">CG</div>
+        </div>
+        <div class="month-select">← <b>abril 2026</b> →</div>
+
+        <!-- Hero: execution math -->
+        <div class="hero">
+          <div class="hero-top">
+            <span class="eyebrow">Plan del mes</span>
+            <span style="font-size:11px;color:var(--z-muted)">13 dias restantes</span>
+          </div>
+          <div class="hero-number income">$ 1.845.200</div>
+          <div class="hero-sub">disponible · <b>$ 141.938</b>/dia</div>
+          <div class="burn">
+            <div class="seg seg-fijos" style="width:26%"></div>
+            <div class="seg seg-libre" style="width:18%"></div>
+          </div>
+          <div class="burn-legend">
+            <span><i class="dot" style="background:var(--z-alert)"></i>Fijos</span>
+            <span><i class="dot" style="background:var(--z-debt)"></i>Gasto libre</span>
+            <span><i class="dot" style="background:rgba(234,229,218,.25)"></i>Disponible</span>
+          </div>
+          <div class="hero-cta">Ver desglose del plan ↓</div>
+        </div>
+
+        <!-- Chips: próximo ingreso / pago -->
+        <div class="week">
+          <div class="tile" data-tone="income">
+            <div class="tile-eyebrow">Próx. ingreso ›</div>
+            <div class="tile-value">+$ 1.200.000</div>
+            <div class="tile-sub">Apr 27 · Pago UPB</div>
+          </div>
+          <div class="tile" data-tone="debt">
+            <div class="tile-eyebrow">Próx. pago ›</div>
+            <div class="tile-value">$ 178.898</div>
+            <div class="tile-sub">Apr 27 · EPM</div>
+          </div>
+        </div>
+
+        <!-- Chart as separate card -->
+        <div class="card" style="margin-top:12px">
+          <div class="eyebrow muted" style="margin-bottom:6px">Flujo proyectado</div>
+          <div class="chart">
+            <svg viewBox="0 0 300 90" preserveAspectRatio="none">
+              <path d="M0 55 Q 30 40 60 45 T 130 48 L 155 30 L 170 28 L 200 55 T 270 60 L 300 80" fill="none" stroke="var(--z-brass)" stroke-width="2"/>
+              <circle cx="90" cy="46" r="2.5" fill="var(--z-brass-hot)"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Drill cards (raw counts) -->
+        <div class="drill-wrap" style="margin-top:12px">
+          <div class="drill"><div><div class="drill-name">Presupuesto</div><div class="drill-status">62% · 7 sobre límite</div></div><span class="chev">›</span></div>
+          <div class="drill"><div><div class="drill-name">Periodo</div><div class="drill-status">84% asignado</div></div><span class="chev">›</span></div>
+          <div class="drill"><div><div class="drill-name">Recurrentes</div><div class="drill-status">5 próximas</div></div><span class="chev">›</span></div>
+          <div class="drill"><div><div class="drill-name">Deseos</div><div class="drill-status">2 activos</div></div><span class="chev">›</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ COL 2: WEBAPP MOBILE/V2 (source of truth) ═══════════ -->
+    <div>
+      <div class="col-label">Actual · webapp mobile</div>
+      <div class="col-note">Héroe "Neto" (simple). Al tocar, el chart aparece dentro del héroe con overlay. Sin math de ejecución.</div>
+      <div class="phone">
+        <div class="p-header">
+          <div>
+            <div class="p-title">Plan</div>
+            <div class="p-subtitle">abril 2026 · 13d restantes</div>
+          </div>
+          <div class="avatar">CG</div>
+        </div>
+        <div class="month-select">← <b>abril 2026</b> →</div>
+
+        <!-- Hero: neto + inline chart -->
+        <div class="hero">
+          <div class="hero-top">
+            <span class="eyebrow">Neto del mes</span>
+            <span style="font-size:10px;color:var(--z-muted)">13 días restantes</span>
+          </div>
+          <div class="hero-number income">+$ 3.986.260</div>
+          <!-- 3-seg stacked -->
+          <div class="burn" style="margin-top:12px">
+            <div class="seg" style="background:rgba(92,184,138,.8);width:100%;position:absolute;inset:0"></div>
+            <div class="seg" style="background:rgba(224,85,69,.8);width:38%"></div>
+            <div class="seg" style="background:rgba(147,120,68,.8);width:62%;margin-left:auto"></div>
+          </div>
+          <div class="burn-legend" style="justify-content:space-between">
+            <span><i class="dot" style="background:var(--z-income)"></i>Ingresos $ 6.4m</span>
+            <span><i class="dot" style="background:var(--z-debt)"></i>Gastos $ 2.4m</span>
+            <span><i class="dot" style="background:var(--z-brass)"></i>Neto</span>
+          </div>
+          <div class="hero-cta">Toca para ver flujo ↓</div>
+          <div class="chart" style="margin-top:8px">
+            <svg viewBox="0 0 300 90" preserveAspectRatio="none">
+              <path d="M0 55 Q 30 40 60 45 T 130 48 L 155 30 L 170 28 L 200 55 T 270 60 L 300 80" fill="none" stroke="var(--z-brass)" stroke-width="2"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Expandable chips (collapsed) -->
+        <div class="week">
+          <div class="tile" data-tone="income">
+            <div class="tile-eyebrow">Próx. ingreso ↓</div>
+            <div class="tile-value">+$ 1.200.000</div>
+            <div class="tile-sub">Apr 27 · 1 tap para ver</div>
+          </div>
+          <div class="tile" data-tone="debt">
+            <div class="tile-eyebrow">Próx. pago ↓</div>
+            <div class="tile-value">$ 178.898</div>
+            <div class="tile-sub">Apr 27 · 5 próximas</div>
+          </div>
+        </div>
+
+        <!-- Drill cards (raw) -->
+        <div class="drill-wrap" style="margin-top:12px">
+          <div class="drill"><div><div class="drill-name">Presupuesto</div><div class="drill-status">62% del mes</div></div><span class="chev">›</span></div>
+          <div class="drill"><div><div class="drill-name">Periodo</div><div class="drill-status">Sin periodo activo</div></div><span class="chev">›</span></div>
+          <div class="drill"><div><div class="drill-name">Recurrentes</div><div class="drill-status">5 próximas</div></div><span class="chev">›</span></div>
+          <div class="drill"><div><div class="drill-name">Deseos</div><div class="drill-status">2 activos</div></div><span class="chev">›</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ COL 3: PROPOSED ═══════════ -->
+    <div>
+      <div class="col-label" style="color:var(--z-brass)">Propuesta · nuevo</div>
+      <div class="col-note">Héroe de ejecución (num disponible + burn bar) con chart inline. Esta semana = tiles concretas. Drill rows con status narrativo, un solo punto por fila.</div>
+      <div class="phone" data-emphasis="yes">
+        <div class="p-header">
+          <div>
+            <div class="p-title">Plan</div>
+            <div class="p-subtitle">abril · día 17 · 13 restantes</div>
+          </div>
+          <div class="avatar">CG</div>
+        </div>
+        <div class="month-select">← <b>abril 2026</b> →</div>
+
+        <!-- HERO: execution + inline chart collapsed state (tap to expand) -->
+        <div class="hero">
+          <div class="hero-top">
+            <span class="eyebrow">Disponible este mes</span>
+            <span style="font-size:10px;color:var(--z-muted)">13 días</span>
+          </div>
+          <div class="hero-number income">$ 1.845.200</div>
+          <div class="hero-sub">· <b>$ 141.938</b> / día restante</div>
+          <div class="burn">
+            <div class="seg seg-fijos" style="width:26%"></div>
+            <div class="seg seg-libre" style="width:18%"></div>
+          </div>
+          <div class="burn-legend">
+            <span><i class="dot" style="background:var(--z-alert)"></i>Fijos pagados $ 1.2m</span>
+            <span><i class="dot" style="background:var(--z-debt)"></i>Libre $ 840k</span>
+          </div>
+          <!-- Inline chart (always visible, small) -->
+          <div class="chart" style="margin-top:10px">
+            <svg viewBox="0 0 300 70" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="fill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stop-color="rgba(147,120,68,.25)"/>
+                  <stop offset="1" stop-color="rgba(147,120,68,0)"/>
+                </linearGradient>
+              </defs>
+              <path d="M0 40 Q 30 32 60 36 T 130 38 L 155 22 L 170 20 L 200 42 T 270 48 L 300 62 L 300 70 L 0 70 Z" fill="url(#fill)"/>
+              <path d="M0 40 Q 30 32 60 36 T 130 38 L 155 22 L 170 20 L 200 42 T 270 48 L 300 62" fill="none" stroke="var(--z-brass)" stroke-width="2"/>
+              <circle cx="170" cy="20" r="3" fill="var(--z-income)"/>
+              <circle cx="200" cy="42" r="3" fill="var(--z-debt)"/>
+            </svg>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--z-muted-2);margin-top:2px">
+              <span>1 abr</span><span style="color:var(--z-text)">hoy</span><span>30 abr</span>
+            </div>
+          </div>
+          <div class="hero-cta" style="border-top:1px solid var(--z-border);padding-top:10px;margin-top:10px">
+            Ver desglose del mes ↓
+          </div>
+        </div>
+
+        <!-- ESTA SEMANA -->
+        <div class="sec-div">Esta semana</div>
+        <div class="week" style="margin-top:0">
+          <div class="tile" data-tone="debt">
+            <div class="tile-eyebrow">Próximo pago</div>
+            <div class="tile-value">$ 178.898</div>
+            <div class="tile-sub">Apr 27 · EPM</div>
+          </div>
+          <div class="tile" data-tone="income">
+            <div class="tile-eyebrow">Próximo ingreso</div>
+            <div class="tile-value">+$ 1.200.000</div>
+            <div class="tile-sub">Apr 27 · Pago UPB</div>
+          </div>
+        </div>
+
+        <!-- Herramientas del mes — plain chips, icon + status -->
+        <div class="sec-div">Ir a</div>
+        <div class="chip-grid">
+          <div class="chip-tile">
+            <div class="chip-eyebrow">Presupuesto</div>
+            <div class="chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></div>
+            <div class="chip-status"><em>7 sobre límite</em></div>
+          </div>
+          <div class="chip-tile">
+            <div class="chip-eyebrow">Periodo</div>
+            <div class="chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></div>
+            <div class="chip-status">al día</div>
+          </div>
+          <div class="chip-tile">
+            <div class="chip-eyebrow">Recurrentes</div>
+            <div class="chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg></div>
+            <div class="chip-status">5 próximos · <em>1 vencida</em></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotations">
+        <h3>Lo que cambia</h3>
+        <ul>
+          <li><b>Héroe fusionado</b> → mantiene el <code>disponible</code> del nativo (ejecución real: ingreso confirmado − fijos pagados − pendientes − libre) + chart inline del webapp. Una sola tarjeta cuenta la historia del mes.</li>
+          <li><b>Expand del héroe</b> → muestra el desglose math (confirmado, pagado, pendiente) en vez de mover a otra pestaña. Chart ya está visible; expandir es para el "por qué".</li>
+          <li><b>Esta semana</b> → reemplaza los <code>PlanExpandableChips</code>. Tiles concretas, no accordion. El usuario ve la próxima fecha crítica sin tocar.</li>
+          <li><b>Ir a</b> → 3 chips planos side-by-side (mismo patrón que webapp "Ir a" desktop): eyebrow + icono brass + status. Sin fondos tintados, sin ring coloreado. Alerta solo resaltada con palabras en brass-hot ("<em>1 vencida</em>") dentro del status.</li>
+          <li><b>Deseos fuera de Plan</b> → ya existe como widget en dashboard y entry desde <code>/puedo-pagar</code>. Plan queda 100% enfocado en el mes en curso.</li>
+          <li><b>Desaparece</b> → <code>PlanFlowChart</code> como card separado (ahora está en el héroe), <code>PlanRecurringSummary</code> (resuelto por el tile y la drill row).</li>
+        </ul>
+
+        <h3 style="margin-top:14px">Para decidir</h3>
+        <ul>
+          <li>¿<b>Disponible</b> (ejecución) o <b>Neto</b> (proyección) como headline? — Propuesta: disponible. Más útil cuando ya vas por la mitad del mes.</li>
+          <li>¿Chart <b>siempre visible</b> pequeño o <b>solo al expandir</b>? — Propuesta: siempre visible, pequeño. El chart es la primera pregunta que el usuario hace.</li>
+          <li>¿Drill cards con <b>números</b> o <b>status narrativo</b>? — Propuesta: narrativo. "7 sobre límite" > "62% · 7".</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

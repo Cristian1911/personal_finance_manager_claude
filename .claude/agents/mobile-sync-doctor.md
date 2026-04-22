@@ -116,6 +116,13 @@ When reviewing mobile sync code, verify ALL of the following:
 - [ ] Writes update SQLite AND enqueue to sync_queue
 - [ ] Sync queue entries use the VIEW table name (e.g., `"destinatarios"` not `"destinatarios_enc"`)
 
+### 6. Screen data source (NEW — cache-on-mobile rule)
+- [ ] Screens under `mobile/app/**` and `mobile/components/**` read data via repositories in `mobile/lib/repositories/`, **not** via direct `supabase.from()` calls.
+- [ ] Exceptions (must be whitelisted explicitly):
+  - One-time post-auth writes (e.g. onboarding initial INSERT) — legitimate.
+  - Tables not yet in `SYNC_TABLES` — require a stale-while-revalidate (SWR) module cache AND a backlog entry to move the table into the sync engine. See `mobile/app/periodo.tsx` for the canonical SWR workaround pattern (module-scope `Map` keyed by user_id, `requestIdRef` for race guard, instant paint on refocus, background refresh).
+- [ ] If a screen hits Supabase directly, every focus = remote roundtrip = visible spinner. This is a UX regression, not just a perf concern.
+
 ### 5. Security Considerations
 - [ ] SQLite data is plaintext — acceptable because iOS Data Protection + Android FDE encrypt at rest
 - [ ] No logging of sensitive decrypted fields
@@ -153,6 +160,46 @@ payload = { name: "Cafe" }
 Webapp adds column to Supabase → mobile SQLite doesn't have it → pull's `getTableColumns()` silently drops the column → data loss on round-trip.
 
 **Fix**: Always add SQLite migration when Supabase schema changes.
+
+### ❌ Screen bypassing the sync engine (spinner on every focus)
+A screen reads data via `supabase.from("planning_*").select(...)` directly instead of a SQLite repository. Symptom: loading spinner every time the user opens the screen, even after it has loaded once this session.
+
+**Example**: `mobile/app/periodo.tsx` (fixed 2026-04-23). Planning tables aren't in `SYNC_TABLES` yet, so the screen hits remote PostgREST — 5 roundtrips per focus, visible spinner every time.
+
+**Preferred fix**: add the missing tables to `SYNC_TABLES` + SQLite schema + a repo under `mobile/lib/repositories/`. Once data is local, reads are <10ms and no spinner is needed.
+
+**Acceptable interim fix (requires backlog entry)**: module-scope SWR cache pattern:
+
+```ts
+// Shared module state — keyed by user_id, survives unmounts
+const screenCache = new Map<string, ScreenData | null>();
+export function clearScreenCache() { screenCache.clear(); }
+
+export default function Screen() {
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
+  const hasCached = userId !== null && screenCache.has(userId);
+  const [loading, setLoading] = useState(!hasCached);
+  const [data, setData] = useState<ScreenData | null>(
+    userId !== null ? screenCache.get(userId) ?? null : null
+  );
+  const requestIdRef = useRef(0);
+
+  const loadData = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    const fresh = await fetchFromSupabase();
+    if (requestId !== requestIdRef.current) return; // race guard
+    screenCache.set(userId, fresh);
+    setData(fresh);
+    setLoading(false);
+  }, [userId]);
+
+  useFocusEffect(useCallback(() => { void loadData(); }, [loadData]));
+  // ...
+}
+```
+
+Don't forget: call `clearScreenCache()` in the logout path.
 
 ## Report Format
 
