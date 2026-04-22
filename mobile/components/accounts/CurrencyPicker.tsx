@@ -18,16 +18,19 @@ export function CurrencyPicker({ selected, onSelect }: Props) {
         return (
           <Pressable
             key={currency.code}
-            className={`rounded-full px-4 py-2 border-2 active:opacity-80 ${
+            className={`rounded-full px-4 py-2 border active:opacity-80 ${
               isSelected
-                ? "bg-primary border-primary"
+                ? "bg-z-brass border-z-brass"
                 : "bg-z-surface-2-55 border-white-6"
             }`}
             onPress={() => onSelect(currency.code)}
+            accessibilityRole="button"
+            accessibilityLabel={currency.code}
+            accessibilityState={{ selected: isSelected }}
           >
             <Text
               className={`font-inter-semibold text-sm ${
-                isSelected ? "text-white" : "text-muted-foreground"
+                isSelected ? "text-z-ink" : "text-muted-foreground"
               }`}
             >
               {currency.code}

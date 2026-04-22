@@ -1,5 +1,6 @@
 import { View, Text, Pressable } from "react-native";
 import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
+import { COLORS } from "../../lib/constants/colors";
 
 type Props = {
   selected: string;
@@ -17,25 +18,31 @@ export function AccountTypeGrid({ selected, onSelect, disabled = false }: Props)
         return (
           <Pressable
             key={type.value}
-            className={`flex-1 min-w-[44%] rounded-xl p-3.5 border-2 ${
+            className={`flex-1 min-w-[44%] rounded-xl p-3.5 border ${
               isSelected
-                ? "border-primary bg-primary/10"
-                : "border-gray-200 bg-white"
-            } ${disabled ? "opacity-60" : "active:bg-gray-50"}`}
+                ? "border-z-brass bg-z-brass-8"
+                : "border-white-6 bg-z-surface-2-55"
+            } ${disabled ? "opacity-60" : "active:bg-black-10"}`}
             onPress={() => !disabled && onSelect(type.value)}
+            accessibilityRole="button"
+            accessibilityLabel={type.label}
+            accessibilityState={{ selected: isSelected, disabled }}
           >
             <Icon
               size={22}
-              color={isSelected ? "#10B981" : "#6B7280"}
+              color={isSelected ? COLORS.brass : COLORS.sageDark}
             />
             <Text
               className={`font-inter-semibold text-sm mt-2 ${
-                isSelected ? "text-primary" : "text-gray-900"
+                isSelected ? "text-z-brass" : "text-foreground"
               }`}
             >
               {type.label}
             </Text>
-            <Text className="text-gray-400 font-inter text-xs mt-0.5" numberOfLines={2}>
+            <Text
+              className="text-muted-foreground font-inter text-xs mt-0.5"
+              numberOfLines={2}
+            >
               {type.description}
             </Text>
           </Pressable>
