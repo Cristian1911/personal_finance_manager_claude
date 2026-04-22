@@ -37,7 +37,7 @@ import {
   CategoryZonePickerSheet,
   type CategoryRow as PickerCategoryRow,
 } from "../components/transactions/CategoryZonePickerSheet";
-import { parseLocalizedAmount } from "../lib/amount";
+import { formatAmountInput, parseFormattedAmount } from "../lib/amount";
 import { useAuth } from "../lib/auth";
 import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import {
@@ -272,7 +272,7 @@ export default function CaptureScreen() {
     [categories, direction]
   );
 
-  const parsedAmount = parseLocalizedAmount(amountInput);
+  const parsedAmount = parseFormattedAmount(amountInput);
   const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
   const amountToneClass =
     !hasValidAmount
@@ -481,7 +481,7 @@ export default function CaptureScreen() {
           </Text>
           <TextInput
             value={amountInput}
-            onChangeText={setAmountInput}
+            onChangeText={(next) => setAmountInput(formatAmountInput(next))}
             keyboardType="decimal-pad"
             placeholder="0"
             placeholderTextColor={COLORS.sageDark}
