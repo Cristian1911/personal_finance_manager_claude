@@ -1,0 +1,48 @@
+name: Mobile PR Verify
+
+# Lightweight pre-merge check for mobile changes: install deps with the
+# pinned lockfile and type-check the RN app. Catches broken imports, type
+# drift with @zeta/shared, and lockfile-out-of-sync bugs before they reach
+# main. Does NOT run EAS builds (those are manual / release flows).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - '.github/workflows/mobile-pr-verify.yml'
+      - 'mobile/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+
+concurrency:
+  group: mobile-pr-verify-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Mobile tsc transitively checks @zeta/shared's public types, so we
+      # don't run a separate shared typecheck here (it has pre-existing test
+      # + dev-dep noise that is unrelated to PRs).
+      - name: Typecheck mobile app
+        working-directory: mobile
+        run: npx tsc --noEmit

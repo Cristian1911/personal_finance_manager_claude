@@ -1,58 +1,262 @@
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable } from "react-native";
-import { Tag, Upload } from "lucide-react-native";
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, ChevronRight, FileUp, Tag } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileZone } from "../ui/MobileZone";
-import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { AnimatedAccordion } from "../ui/AnimatedAccordion";
+import {
+  BRASS_BUTTON_CLASS,
+  BRASS_GHOST_BUTTON_CLASS,
+  PANEL_INSET_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "../../lib/constants/styles";
+import type { UncategorizedSampleRow } from "../../lib/repositories/transactions";
+import type { CategoryRow } from "../../lib/repositories/categories";
+
+const MAX_ITEMS = 5;
 
 interface MovimientosHerramientasProps {
+  uncategorizedTransactions: UncategorizedSampleRow[];
   uncategorizedCount: number;
+  categories: CategoryRow[];
+  activeTool: "categorizar" | "importar" | null;
+  onToggleTool: (tool: "categorizar" | "importar") => void;
+  /** Delegate picker opening to the Root (which owns the single hoisted CategoryPickerSheet). */
+  onRequestCategoryPicker: (transactionId: string) => void;
 }
 
-export function MovimientosHerramientas({
+function MovimientosHerramientasBase({
+  uncategorizedTransactions,
   uncategorizedCount,
+  categories,
+  activeTool,
+  onToggleTool,
+  onRequestCategoryPicker,
 }: MovimientosHerramientasProps) {
   const router = useRouter();
+
+  void categories;
+
+  const visibleUncategorized = useMemo(
+    () => uncategorizedTransactions.slice(0, MAX_ITEMS),
+    [uncategorizedTransactions]
+  );
+
+  // Retain last-active tool during the close animation so the accordion fades
+  // real content instead of clipping an empty box.
+  // See feedback_expand_animation_keep_content_mounted.md.
+  const [lastTool, setLastTool] = useState<typeof activeTool>(activeTool);
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (clearTimer.current) {
+      clearTimeout(clearTimer.current);
+      clearTimer.current = null;
+    }
+    if (activeTool) {
+      setLastTool(activeTool);
+    } else {
+      clearTimer.current = setTimeout(() => setLastTool(null), 260);
+    }
+    return () => {
+      if (clearTimer.current) {
+        clearTimeout(clearTimer.current);
+        clearTimer.current = null;
+      }
+    };
+  }, [activeTool]);
+
+  const renderedTool = activeTool ?? lastTool;
 
   return (
     <MobileZone eyebrow="HERRAMIENTAS">
       <View className="flex-row gap-1.5">
-        {/* Categorize chip */}
         <Pressable
-          onPress={() => router.push("/categorizar" as any)}
-          className={`${PANEL_INSET_CLASS} flex-1 items-center p-3`}
+          onPress={() => onToggleTool("categorizar")}
+          className={`flex-1 rounded-2xl border p-2.5 items-center ${
+            activeTool === "categorizar"
+              ? "border-z-brass-30 bg-z-brass-10"
+              : "border-z-brass-20 bg-z-brass-6"
+          }`}
         >
-          <View className="h-8 w-8 items-center justify-center rounded-xl bg-z-brass-10 mb-1.5">
-            <Tag size={16} color={COLORS.brass} />
-          </View>
-          <Text className="text-[10px] font-inter-semibold text-muted-foreground">
+          <Text className="text-[22px] font-inter-bold leading-tight text-z-brass">
+            {uncategorizedCount}
+          </Text>
+          <Text className="mt-0.5 text-[10px] font-inter-semibold text-muted-foreground">
             Categorizar
           </Text>
-          {uncategorizedCount > 0 && (
-            <View className="mt-1 rounded-full bg-z-brass px-1.5 py-0.5">
-              <Text className="text-[9px] font-inter-bold text-z-ink">
-                {uncategorizedCount}
+          {uncategorizedCount > 0 ? (
+            <View className="mt-1 flex-row items-center gap-1">
+              <View className="h-1.5 w-1.5 rounded-full bg-z-debt" />
+              <Text className="text-[9px] font-inter text-z-debt">
+                {uncategorizedCount} por resolver
               </Text>
             </View>
+          ) : (
+            <Text className="mt-1 text-[9px] font-inter text-muted-foreground">
+              Todo en orden
+            </Text>
           )}
         </Pressable>
 
-        {/* Import chip */}
         <Pressable
-          onPress={() => router.push("/(tabs)/import" as any)}
-          className={`${PANEL_INSET_CLASS} flex-1 items-center p-3`}
+          onPress={() => onToggleTool("importar")}
+          className={`flex-1 rounded-2xl border p-2.5 items-center ${
+            activeTool === "importar"
+              ? "border-z-sage-30 bg-z-sage-20"
+              : "border-z-sage-20 bg-z-sage-10"
+          }`}
         >
-          <View className="h-8 w-8 items-center justify-center rounded-xl bg-z-brass-10 mb-1.5">
-            <Upload size={16} color={COLORS.brass} />
+          <View className="h-6 w-6 items-center justify-center rounded-lg bg-z-sage-20">
+            <FileUp size={14} color={COLORS.sageLight} />
           </View>
-          <Text className="text-[10px] font-inter-semibold text-muted-foreground">
+          <Text className="mt-1 text-[10px] font-inter-semibold text-muted-foreground">
             Importar
           </Text>
-          <Text className="mt-1 text-[9px] font-inter text-muted-fg-50">
-            PDF o extracto
+          <Text className="mt-1 text-[9px] font-inter text-z-sage-light">
+            Subir PDF
           </Text>
         </Pressable>
       </View>
+
+      <AnimatedAccordion expanded={activeTool !== null} estimatedHeight={260}>
+        <View className={`mt-1.5 ${PANEL_INSET_CLASS} border-white-8 bg-black-20 p-3`}>
+          {renderedTool === "categorizar" && (
+            <CategorizarDetail
+              items={visibleUncategorized}
+              visibleCount={uncategorizedCount}
+              onPick={onRequestCategoryPicker}
+              onSeeAll={() => router.push("/categorizar" as any)}
+            />
+          )}
+          {renderedTool === "importar" && (
+            <ImportarDetail onOpen={() => router.push("/(tabs)/import" as any)} />
+          )}
+        </View>
+      </AnimatedAccordion>
     </MobileZone>
   );
 }
+
+/* ─── Categorizar detail ─────────────────────────────────────────────── */
+
+function CategorizarDetail({
+  items,
+  visibleCount,
+  onPick,
+  onSeeAll,
+}: {
+  items: UncategorizedSampleRow[];
+  visibleCount: number;
+  onPick: (txId: string) => void;
+  onSeeAll: () => void;
+}) {
+  if (visibleCount <= 0) {
+    return (
+      <View className="gap-1.5">
+        <Text className={`${SECTION_EYEBROW_CLASS} text-z-brass`}>
+          Transacciones sin categoría
+        </Text>
+        <Text className="text-xs font-inter text-z-sage-light">
+          Todas las transacciones están categorizadas.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="gap-2">
+      <Text className={`${SECTION_EYEBROW_CLASS} text-z-brass`}>
+        Transacciones sin categoría
+      </Text>
+
+      <View>
+        {items.map((tx) => {
+          const isInflow = tx.direction === "INFLOW";
+          const label = tx.merchant_name ?? tx.description ?? "Sin descripción";
+          return (
+            <Pressable
+              key={tx.id}
+              onPress={() => onPick(tx.id)}
+              className="flex-row items-center gap-2 rounded-lg px-1.5 py-1.5 active:bg-white-5"
+            >
+              <View
+                className={`h-5 w-5 items-center justify-center rounded-md ${isInflow ? "bg-z-income-10" : "bg-z-expense-12"}`}
+              >
+                {isInflow ? (
+                  <ArrowDownLeft size={11} color={COLORS.income} />
+                ) : (
+                  <ArrowUpRight size={11} color={COLORS.expense} />
+                )}
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-xs font-inter-medium text-foreground" numberOfLines={1}>
+                  {label}
+                </Text>
+                <Text className="text-[10px] font-inter text-muted-foreground">
+                  {formatDate(tx.transaction_date, "dd MMM")}
+                </Text>
+              </View>
+              <Text className="text-xs font-inter-semibold text-foreground">
+                {formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}
+              </Text>
+              <View className={`${BRASS_GHOST_BUTTON_CLASS} ml-1 flex-row items-center gap-1 rounded-full px-2 py-0.5`}>
+                <Tag size={9} color={COLORS.brass} />
+                <Text className="text-[9px] font-inter-semibold text-z-brass">
+                  Categoría
+                </Text>
+              </View>
+              <ChevronRight size={12} color={COLORS.sageDark} />
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View className="flex-row items-center justify-between pt-1">
+        <Text className="text-[10px] font-inter text-muted-foreground">
+          Mostrando {items.length} de {visibleCount}
+        </Text>
+        <Pressable onPress={onSeeAll} className="flex-row items-center gap-1">
+          <Text className="text-[11px] font-inter-semibold text-z-brass">
+            Categorizar todas
+          </Text>
+          <ArrowRight size={11} color={COLORS.brass} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/* ─── Importar detail ────────────────────────────────────────────────── */
+
+function ImportarDetail({ onOpen }: { onOpen: () => void }) {
+  return (
+    <View className="gap-2">
+      <Text className={`${SECTION_EYEBROW_CLASS} text-z-sage-light`}>
+        Importar extracto
+      </Text>
+      <Pressable
+        onPress={onOpen}
+        className="flex-row items-center gap-3 rounded-xl p-2 active:bg-white-5"
+      >
+        <View className="h-8 w-8 items-center justify-center rounded-lg border border-z-sage-20 bg-z-sage-10">
+          <FileUp size={16} color={COLORS.sageLight} />
+        </View>
+        <View className="min-w-0 flex-1">
+          <Text className="text-[11px] font-inter-semibold text-foreground">
+            Subir PDF del banco
+          </Text>
+          <Text className="text-[9px] font-inter text-muted-foreground">
+            Extracto mensual de cualquier banco
+          </Text>
+        </View>
+        <View className={`${BRASS_BUTTON_CLASS} rounded-lg px-3 py-1`}>
+          <Text className="text-[10px] font-inter-semibold text-z-ink">Subir</Text>
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
+export const MovimientosHerramientas = memo(MovimientosHerramientasBase);
