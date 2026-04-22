@@ -4,7 +4,7 @@ import Link from "next/link";
 interface LegalLayoutProps {
   title: string;
   lastUpdated: string;
-  alternateLanguage: { href: string; label: string };
+  alternateLanguage?: { href: string; label: string };
   children: ReactNode;
 }
 
@@ -27,12 +27,14 @@ export function LegalLayout({
             </span>
             Zeta
           </Link>
-          <Link
-            href={alternateLanguage.href}
-            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {alternateLanguage.label}
-          </Link>
+          {alternateLanguage ? (
+            <Link
+              href={alternateLanguage.href}
+              className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {alternateLanguage.label}
+            </Link>
+          ) : null}
         </div>
       </header>
 
