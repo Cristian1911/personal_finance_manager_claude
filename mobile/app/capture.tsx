@@ -45,6 +45,8 @@ import {
   type CategoryRow,
 } from "../lib/repositories/categories";
 import { createTransaction } from "../lib/repositories/transactions";
+import { createDestinatarioWithPattern } from "../lib/repositories/destinatarios";
+import { createRecurringTemplate } from "../lib/repositories/recurring";
 import { toLocalDateString } from "../lib/utils/date";
 import {
   BRASS_BUTTON_CLASS,
@@ -218,6 +220,8 @@ export default function CaptureScreen() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [isSubscription, setIsSubscription] = useState(false);
+  const [createDestinatario, setCreateDestinatario] = useState(false);
+  const [createRecurring, setCreateRecurring] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -335,6 +339,7 @@ export default function CaptureScreen() {
 
     setSaving(true);
     try {
+      const trimmedDescription = description.trim();
       await createTransaction({
         user_id: session.user.id,
         account_id: accountId,
@@ -342,15 +347,65 @@ export default function CaptureScreen() {
         currency_code: currencyCode,
         direction,
         transaction_date: transactionDate,
-        description: description.trim(),
-        merchant_name: description.trim(),
-        raw_description: description.trim(),
+        description: trimmedDescription,
+        merchant_name: trimmedDescription,
+        raw_description: trimmedDescription,
         category_id: categoryId,
         notes: notes.trim() || null,
         provider: "MANUAL",
         capture_method: "MANUAL_FORM",
         is_subscription: isSubscription,
       });
+
+      let newDestinatarioId: string | null = null;
+      if (createDestinatario) {
+        try {
+          const { destinatarioId } = await createDestinatarioWithPattern({
+            user_id: session.user.id,
+            name: trimmedDescription,
+            default_category_id: categoryId,
+            pattern: trimmedDescription,
+          });
+          newDestinatarioId = destinatarioId;
+        } catch (err) {
+          console.error("Create destinatario from capture failed:", err);
+        }
+      }
+
+      if (createRecurring) {
+        // DEBT accounts (CREDIT_CARD/LOAN) require direction=INFLOW +
+        // transfer_source_account_id per webapp validator. Capture doesn't
+        // surface a source picker, so skip rather than write bad data.
+        const isDebtAccount =
+          selectedAccount?.account_type === "CREDIT_CARD" ||
+          selectedAccount?.account_type === "LOAN";
+        if (isDebtAccount) {
+          Alert.alert(
+            "No disponible en esta cuenta",
+            "Crear pago recurrente en tarjetas de crédito o préstamos requiere elegir una cuenta origen. Hazlo desde la pantalla de Recurrentes."
+          );
+        } else {
+          try {
+            const dayOfMonth = Number(transactionDate.slice(8, 10)) || 1;
+            await createRecurringTemplate({
+              user_id: session.user.id,
+              account_id: accountId,
+              amount: parsedAmount,
+              currency_code: currencyCode,
+              direction,
+              frequency: "MONTHLY",
+              start_date: transactionDate,
+              day_of_month: dayOfMonth,
+              merchant_name: trimmedDescription,
+              description: trimmedDescription,
+              category_id: categoryId,
+              destinatario_id: newDestinatarioId,
+            });
+          } catch (err) {
+            console.error("Create recurring template from capture failed:", err);
+          }
+        }
+      }
 
       await SecureStore.setItemAsync(DEFAULT_ACCOUNT_KEY, accountId);
       router.back();
@@ -574,17 +629,7 @@ export default function CaptureScreen() {
             <View
               className={`${PANEL_INSET_CLASS} mt-2 px-4 py-4 gap-4`}
             >
-              <Pressable
-                onPress={() =>
-                  Alert.alert(
-                    "Próximamente",
-                    "Crear destinatario desde esta pantalla llega pronto."
-                  )
-                }
-                accessibilityRole="button"
-                accessibilityLabel="Crear destinatario"
-                className="flex-row items-start gap-3 active:opacity-70"
-              >
+              <View className="flex-row items-start gap-3">
                 <View className="flex-1">
                   <Text className="text-sm font-inter-semibold text-foreground">
                     Crear destinatario
@@ -593,32 +638,36 @@ export default function CaptureScreen() {
                     Guarda este comercio para reconocerlo más rápido la próxima vez.
                   </Text>
                 </View>
-                <ChevronRight size={16} color={COLORS.sageDark} />
-              </Pressable>
+                <Switch
+                  value={createDestinatario}
+                  onValueChange={setCreateDestinatario}
+                  trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
+                  thumbColor={COLORS.foreground}
+                  ios_backgroundColor={COLORS.switchTrack}
+                  accessibilityLabel="Crear destinatario al guardar"
+                />
+              </View>
 
               <View className="h-px bg-white-6" />
 
-              <Pressable
-                onPress={() =>
-                  Alert.alert(
-                    "Próximamente",
-                    "Crear pago recurrente desde esta pantalla llega pronto."
-                  )
-                }
-                accessibilityRole="button"
-                accessibilityLabel="Crear pago recurrente"
-                className="flex-row items-start gap-3 active:opacity-70"
-              >
+              <View className="flex-row items-start gap-3">
                 <View className="flex-1">
                   <Text className="text-sm font-inter-semibold text-foreground">
                     Crear pago recurrente
                   </Text>
                   <Text className="mt-0.5 text-[11px] font-inter text-muted-foreground">
-                    Útil si este movimiento se repite cada semana, mes o trimestre.
+                    Útil si este movimiento se repite cada mes. Se crea una plantilla mensual.
                   </Text>
                 </View>
-                <ChevronRight size={16} color={COLORS.sageDark} />
-              </Pressable>
+                <Switch
+                  value={createRecurring}
+                  onValueChange={setCreateRecurring}
+                  trackColor={{ false: COLORS.switchTrack, true: COLORS.income }}
+                  thumbColor={COLORS.foreground}
+                  ios_backgroundColor={COLORS.switchTrack}
+                  accessibilityLabel="Crear pago recurrente al guardar"
+                />
+              </View>
             </View>
           )}
         </View>

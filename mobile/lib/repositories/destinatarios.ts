@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import { getDatabase } from "../db/database";
 
 export type DestinatarioRow = {
@@ -70,4 +71,92 @@ export async function getRulesForDestinatario(
      ORDER BY priority DESC`,
     [destinatarioId]
   );
+}
+
+export type CreateDestinatarioParams = {
+  user_id: string;
+  name: string;
+  default_category_id?: string | null;
+  notes?: string | null;
+  pattern?: string | null;
+};
+
+/**
+ * Creates a destinatario locally and (optionally) a single matching rule.
+ * Both inserts + sync_queue entries run in one SQLite transaction.
+ * Mirrors webapp/src/actions/destinatarios.ts `createDestinatario` shape.
+ */
+export async function createDestinatarioWithPattern(
+  params: CreateDestinatarioParams
+): Promise<{ destinatarioId: string; ruleId: string | null }> {
+  const db = await getDatabase();
+  const destinatarioId = Crypto.randomUUID();
+  const ruleId = params.pattern?.trim() ? Crypto.randomUUID() : null;
+  const now = new Date().toISOString();
+
+  const destPayload = {
+    id: destinatarioId,
+    user_id: params.user_id,
+    name: params.name,
+    default_category_id: params.default_category_id ?? null,
+    notes: params.notes ?? null,
+    is_active: true,
+    created_at: now,
+    updated_at: now,
+  };
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO destinatarios
+        (id, user_id, name, default_category_id, notes, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+      [
+        destPayload.id,
+        destPayload.user_id,
+        destPayload.name,
+        destPayload.default_category_id,
+        destPayload.notes,
+        now,
+        now,
+      ]
+    );
+
+    await db.runAsync(
+      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+       VALUES ('destinatarios', ?, 'INSERT', ?, ?)`,
+      [destinatarioId, JSON.stringify(destPayload), now]
+    );
+
+    if (ruleId && params.pattern) {
+      const rulePayload = {
+        id: ruleId,
+        user_id: params.user_id,
+        destinatario_id: destinatarioId,
+        pattern: params.pattern.trim(),
+        match_type: "contains" as const,
+        priority: 100,
+      };
+
+      await db.runAsync(
+        `INSERT INTO destinatario_rules
+          (id, user_id, destinatario_id, pattern, match_type, priority, match_count, created_at)
+         VALUES (?, ?, ?, ?, 'contains', 100, 0, ?)`,
+        [
+          rulePayload.id,
+          rulePayload.user_id,
+          rulePayload.destinatario_id,
+          rulePayload.pattern,
+          now,
+        ]
+      );
+
+      await db.runAsync(
+        `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at)
+         VALUES ('destinatario_rules', ?, 'INSERT', ?, ?)`,
+        [ruleId, JSON.stringify(rulePayload), now]
+      );
+    }
+  });
+
+  return { destinatarioId, ruleId };
 }
