@@ -25,6 +25,9 @@ export const PANEL_SURFACE_SUBTLE_CLASS =
 /** Compact inset surface */
 export const PANEL_INSET_CLASS = "rounded-2xl border border-white-6 bg-black-10";
 
+/** Token-based text input surface — used by all v2 form fields */
+export const FORM_INPUT_CLASS = `${PANEL_INSET_CLASS} px-4 py-3 text-sm font-inter text-foreground`;
+
 /** Mobile v2 card: inset container with padding */
 export const MOBILE_CARD_CLASS = `${PANEL_SURFACE_SUBTLE_CLASS} p-3`;
 

@@ -48,6 +48,13 @@
 - **Audit SQL:** `SELECT account_id, currency_code, count(*) FROM recurring_transaction_templates_enc WHERE direction='INFLOW' AND frequency='MONTHLY' AND category_id IS NULL GROUP BY 1,2 HAVING count(*) > 1;`
 - **Found:** 2026-04-18 — fixed in PR #174; merge follow-up flagged by recurring-doctor review.
 
+### Recurrence engine — end-of-month date drift in webapp + mobile trigger
+- **Priority:** Medium
+- **What:** `packages/shared/src/utils/recurrence.ts` `getOccurrencesBetween` uses date-fns `addMonths`, which collapses Jan 31 → Feb 28 and sticks at 28 for subsequent months. The same drift exists in the Supabase trigger (`20260422003433_auto_generate_recurring_occurrences.sql`) to match webapp behavior. `day_of_month` column is stored but unused in generation.
+- **Why not fixed in PR #212:** Fixing in the trigger alone would silently diverge from webapp. Proper fix: one PR that updates both `@zeta/shared` (use `day_of_month` as anchor with end-of-month clamping) and the trigger.
+- **Surface area:** Any template whose `start_date` is the 29th/30th/31st of a month. Rare but real — payroll, rent, credit-card cutoffs.
+- **Found:** 2026-04-22 — flagged by gemini-code-assist on PR #212.
+
 ### Investigate why migration 20260416120000 stamped without running
 - **Priority:** Medium
 - **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.

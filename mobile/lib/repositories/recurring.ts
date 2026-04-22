@@ -1,4 +1,7 @@
+import * as Crypto from "expo-crypto";
+import type { RecurrenceFrequency, TransactionDirection } from "@zeta/shared";
 import { getDatabase } from "../db/database";
+import { enqueueInsert } from "../sync/queue";
 
 /** Convert a recurring amount to its monthly equivalent based on frequency. */
 export function toMonthlyAmount(amount: number, frequency: string): number {
@@ -154,6 +157,120 @@ export async function getRecurringSummary(month: string) {
   );
 
   return row ?? { total_expected: 0, pending_count: 0, paid_count: 0, skipped_count: 0 };
+}
+
+export type CreateRecurringTemplateParams = {
+  user_id: string;
+  account_id: string;
+  amount: number;
+  currency_code: string;
+  direction: TransactionDirection;
+  frequency: RecurrenceFrequency;
+  start_date: string;
+  end_date?: string | null;
+  merchant_name?: string | null;
+  description?: string | null;
+  category_id?: string | null;
+  destinatario_id?: string | null;
+  day_of_month?: number | null;
+  day_of_week?: number | null;
+  transfer_source_account_id?: string | null;
+  /** Optional pre-fetched account type — lets callers skip the DEBT guard's SELECT. */
+  account_type?: string | null;
+};
+
+/**
+ * Create a recurring template locally and enqueue for sync.
+ * Mirrors webapp `createRecurringTemplate` shape minus sub_payments
+ * (mobile doesn't yet handle multi-currency sub-payments).
+ * Server-side occurrences generation (ensureCurrentOccurrences) happens
+ * on pull after the template syncs.
+ */
+const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
+
+export async function createRecurringTemplate(
+  params: CreateRecurringTemplateParams
+): Promise<string> {
+  const db = await getDatabase();
+  const id = Crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  // Defense-in-depth: enforce the same debt-account rules the webapp's
+  // `insertRecurringTemplateFromFormData` applies. Callers (e.g. capture.tsx)
+  // should pre-check, but a stray caller must not produce corrupt rows.
+  const acctType =
+    params.account_type ??
+    (
+      await db.getFirstAsync<{ account_type: string }>(
+        "SELECT account_type FROM accounts WHERE id = ?",
+        [params.account_id]
+      )
+    )?.account_type;
+  const isDebtAccount = !!acctType && DEBT_ACCOUNT_TYPES.has(acctType);
+  if (isDebtAccount && !params.transfer_source_account_id) {
+    throw new Error(
+      "Debes seleccionar la cuenta origen para un pago de deuda."
+    );
+  }
+  const effectiveDirection: TransactionDirection = isDebtAccount
+    ? "INFLOW"
+    : params.direction;
+
+  const payload = {
+    id,
+    user_id: params.user_id,
+    account_id: params.account_id,
+    category_id: params.category_id ?? null,
+    amount: params.amount,
+    currency_code: params.currency_code,
+    direction: effectiveDirection,
+    frequency: params.frequency,
+    day_of_month: params.day_of_month ?? null,
+    day_of_week: params.day_of_week ?? null,
+    start_date: params.start_date,
+    end_date: params.end_date ?? null,
+    merchant_name: params.merchant_name ?? null,
+    description: params.description ?? null,
+    destinatario_id: params.destinatario_id ?? null,
+    transfer_source_account_id: params.transfer_source_account_id ?? null,
+    is_active: true,
+    created_at: now,
+    updated_at: now,
+  };
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO recurring_transaction_templates
+        (id, user_id, account_id, category_id, amount, currency_code, direction, frequency,
+         day_of_month, day_of_week, start_date, end_date, merchant_name, description,
+         destinatario_id, transfer_source_account_id, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      [
+        payload.id,
+        payload.user_id,
+        payload.account_id,
+        payload.category_id,
+        payload.amount,
+        payload.currency_code,
+        payload.direction,
+        payload.frequency,
+        payload.day_of_month,
+        payload.day_of_week,
+        payload.start_date,
+        payload.end_date,
+        payload.merchant_name,
+        payload.description,
+        payload.destinatario_id,
+        payload.transfer_source_account_id,
+        now,
+        now,
+      ]
+    );
+
+    await enqueueInsert(db, "recurring_transaction_templates", id, payload, now);
+  });
+
+  return id;
 }
 
 /** Mark an occurrence as paid and enqueue for sync. */

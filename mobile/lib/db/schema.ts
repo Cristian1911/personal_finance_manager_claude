@@ -352,6 +352,16 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE profiles ADD COLUMN mobile_dashboard_config TEXT`,
     ],
   },
+  {
+    version: 10,
+    statements: [
+      // ── recurring_transaction_templates: destinatario linkage ──────────
+      // Webapp added this column in 20260417170859_add_destinatario_id_to_recurring_templates.sql.
+      // Mobile needs it so the capture flow can link a new recurring template
+      // to the destinatario created in the same save.
+      `ALTER TABLE recurring_transaction_templates ADD COLUMN destinatario_id TEXT`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

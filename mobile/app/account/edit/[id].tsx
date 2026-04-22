@@ -11,10 +11,15 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { X } from "lucide-react-native";
 import { AccountTypeGrid } from "../../../components/accounts/AccountTypeGrid";
 import { ColorPicker } from "../../../components/accounts/ColorPicker";
 import { CurrencyPicker } from "../../../components/accounts/CurrencyPicker";
+import {
+  DayPicker,
+  FormField,
+  NumericInput,
+} from "../../../components/accounts/AccountFormFields";
+import { MobileHeader } from "../../../components/ui/MobileHeader";
 import {
   getAccountById,
   updateAccount,
@@ -24,88 +29,11 @@ import {
   getPdfPasswordForAccount,
   setPdfPasswordForAccount,
 } from "../../../lib/pdf-passwords";
-
-function FormField({
-  label,
-  children,
-  required,
-}: {
-  label: string;
-  children: React.ReactNode;
-  required?: boolean;
-}) {
-  return (
-    <View className="mb-4">
-      <Text className="text-gray-700 font-inter-medium text-sm mb-1.5">
-        {label}
-        {required && <Text className="text-red-500"> *</Text>}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function NumericInput({
-  value,
-  onChangeText,
-  placeholder,
-}: {
-  value: string;
-  onChangeText: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <TextInput
-      className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder ?? "0"}
-      placeholderTextColor="#9CA3AF"
-      keyboardType="decimal-pad"
-    />
-  );
-}
-
-const CREDIT_CARD_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
-
-function DayPicker({
-  value,
-  onSelect,
-}: {
-  value: string;
-  onSelect: (v: string) => void;
-}) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 8 }}
-    >
-      {CREDIT_CARD_DAYS.map((day) => {
-        const isSelected = value === day;
-        return (
-          <Pressable
-            key={day}
-            className={`w-10 h-10 rounded-full items-center justify-center border-2 ${
-              isSelected
-                ? "bg-primary border-primary"
-                : "bg-white border-gray-200"
-            }`}
-            onPress={() => onSelect(isSelected ? "" : day)}
-          >
-            <Text
-              className={`font-inter-medium text-sm ${
-                isSelected ? "text-white" : "text-gray-700"
-              }`}
-            >
-              {day}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
+import { COLORS } from "../../../lib/constants/colors";
+import {
+  BRASS_BUTTON_CLASS,
+  FORM_INPUT_CLASS,
+} from "../../../lib/constants/styles";
 
 export default function EditAccountScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -213,30 +141,18 @@ export default function EditAccountScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color={COLORS.brass} />
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-gray-50"
+      className="flex-1 bg-background"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 pt-4 pb-2 bg-gray-50">
-        <Pressable
-          onPress={() => router.back()}
-          className="w-8 h-8 items-center justify-center rounded-full bg-gray-200 active:bg-gray-300"
-        >
-          <X size={18} color="#6B7280" />
-        </Pressable>
-        <Text className="text-gray-900 font-inter-bold text-base">
-          Editar cuenta
-        </Text>
-        <View className="w-8" />
-      </View>
+      <MobileHeader variant="sub" title="Editar cuenta" />
 
       <ScrollView
         className="flex-1"
@@ -256,11 +172,11 @@ export default function EditAccountScreen() {
         {/* Name */}
         <FormField label="Nombre" required>
           <TextInput
-            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+            className={FORM_INPUT_CLASS}
             value={name}
             onChangeText={setName}
             placeholder="Ej: Bancolombia Ahorros"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={COLORS.sageDark}
             autoCapitalize="words"
           />
         </FormField>
@@ -268,11 +184,11 @@ export default function EditAccountScreen() {
         {/* Institution */}
         <FormField label="Entidad financiera">
           <TextInput
-            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+            className={FORM_INPUT_CLASS}
             value={institution}
             onChangeText={setInstitution}
             placeholder="Ej: Bancolombia"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={COLORS.sageDark}
             autoCapitalize="words"
           />
         </FormField>
@@ -332,11 +248,11 @@ export default function EditAccountScreen() {
         {/* PDF password */}
         <FormField label="Contraseña del extracto PDF">
           <TextInput
-            className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-inter text-sm"
+            className={FORM_INPUT_CLASS}
             value={pdfPassword}
             onChangeText={setPdfPassword}
             placeholder="Si los PDFs de esta cuenta tienen clave"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={COLORS.sageDark}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
@@ -344,7 +260,7 @@ export default function EditAccountScreen() {
             importantForAutofill="no"
             textContentType="none"
           />
-          <Text className="text-gray-400 font-inter text-xs mt-1.5">
+          <Text className="mt-1.5 text-xs font-inter text-muted-foreground">
             Se sugiere automáticamente al importar extractos de esta cuenta.
           </Text>
         </FormField>
@@ -356,16 +272,19 @@ export default function EditAccountScreen() {
 
         {/* Submit */}
         <Pressable
-          className={`rounded-xl py-4 items-center mt-2 ${
-            saving ? "bg-gray-300" : "bg-primary active:bg-primary-dark"
+          className={`${BRASS_BUTTON_CLASS} rounded-xl py-4 items-center mt-2 ${
+            saving ? "opacity-50" : "active:bg-z-brass-80"
           }`}
           onPress={handleSave}
           disabled={saving}
+          accessibilityRole="button"
+          accessibilityLabel="Guardar cambios"
+          accessibilityState={{ disabled: saving }}
         >
           {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={COLORS.ink} />
           ) : (
-            <Text className="text-white font-inter-bold text-base">
+            <Text className="text-z-ink font-inter-bold text-base">
               Guardar cambios
             </Text>
           )}
