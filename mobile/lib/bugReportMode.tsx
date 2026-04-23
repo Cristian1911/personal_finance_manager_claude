@@ -1,6 +1,9 @@
 // mobile/lib/bugReportMode.tsx
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { View } from "react-native";
+import * as SecureStore from "expo-secure-store";
+
+const FAB_ENABLED_STORAGE_KEY = "zeta.bug_fab_enabled";
 
 type BugReportContextValue = {
   isBugMode: boolean;
@@ -10,6 +13,9 @@ type BugReportContextValue = {
   setPendingScreenshotUri: (uri: string | null) => void;
   annotatedScreenshotUri: string | null;
   setAnnotatedScreenshotUri: (uri: string | null) => void;
+  /** Whether the floating bug button is visible on every screen. OFF by default. */
+  isFabEnabled: boolean;
+  setFabEnabled: (value: boolean) => void;
 };
 
 const BugReportContext = createContext<BugReportContextValue | null>(null);
@@ -40,6 +46,24 @@ export function BugReportProvider({ children }: { children: ReactNode }) {
   const [isBugMode, setIsBugMode] = useState(false);
   const [pendingScreenshotUri, setPendingScreenshotUri] = useState<string | null>(null);
   const [annotatedScreenshotUri, setAnnotatedScreenshotUri] = useState<string | null>(null);
+  const [isFabEnabled, setIsFabEnabled] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await SecureStore.getItemAsync(FAB_ENABLED_STORAGE_KEY);
+        setIsFabEnabled(stored === "1");
+      } catch {
+        // SecureStore unavailable — keep default (off)
+      }
+    })();
+  }, []);
+
+  function setFabEnabled(value: boolean) {
+    setIsFabEnabled(value);
+    if (!value) setIsBugMode(false);
+    SecureStore.setItemAsync(FAB_ENABLED_STORAGE_KEY, value ? "1" : "0").catch(() => {});
+  }
 
   function toggleBugMode() {
     setIsBugMode((prev) => !prev);
@@ -55,7 +79,17 @@ export function BugReportProvider({ children }: { children: ReactNode }) {
 
   return (
     <BugReportContext.Provider
-      value={{ isBugMode, toggleBugMode, captureScreen, pendingScreenshotUri, setPendingScreenshotUri, annotatedScreenshotUri, setAnnotatedScreenshotUri }}
+      value={{
+        isBugMode,
+        toggleBugMode,
+        captureScreen,
+        pendingScreenshotUri,
+        setPendingScreenshotUri,
+        annotatedScreenshotUri,
+        setAnnotatedScreenshotUri,
+        isFabEnabled,
+        setFabEnabled,
+      }}
     >
       {children}
     </BugReportContext.Provider>

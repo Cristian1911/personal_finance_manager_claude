@@ -11,7 +11,6 @@ import * as SecureStore from "expo-secure-store";
 import { supabase } from "./supabase";
 import { disableDemoMode, isDemoModeEnabled } from "./demo-mode";
 import { clearDatabase } from "./db/database";
-import { clearPeriodoCache } from "./sync/periodoCache";
 import { syncAll } from "./sync/engine";
 
 type AuthContextType = {
@@ -72,12 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (previousUserId && nextUserId && previousUserId !== nextUserId) {
       await clearDatabase();
-      clearPeriodoCache();
       autoSyncedUserRef.current = null;
     }
 
     if (!nextUserId) {
-      clearPeriodoCache();
       await SecureStore.deleteItemAsync(LAST_AUTH_USER_KEY).catch(() => {});
       return;
     }

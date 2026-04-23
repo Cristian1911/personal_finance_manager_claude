@@ -10,11 +10,15 @@ import {
 } from "react-native";
 import { Check, X } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
-import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { COLORS } from "../../lib/constants/colors";
 import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { parseLocalizedAmount } from "../../lib/amount";
+import {
+  createAssignment,
+  deleteAssignment,
+  updateAssignmentAmount,
+} from "../../lib/repositories/planning";
 
 import { ENVELOPE_COLORS } from "../../lib/constants/envelope-colors";
 
@@ -38,6 +42,7 @@ interface ReassignSheetProps {
   target: ReassignTarget | null;
   incomeOptions: IncomeOption[];
   currency: CurrencyCode;
+  periodId: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -47,6 +52,7 @@ export function ReassignSheet({
   target,
   incomeOptions,
   currency,
+  periodId,
   onClose,
   onSuccess,
 }: ReassignSheetProps) {
@@ -84,61 +90,19 @@ export function ReassignSheet({
     setError(null);
 
     try {
-      const sb = supabase as any;
-      const userId = session.user.id;
-
       if (selectedIncomeId === target.currentIncomeEntryId) {
         // Same envelope — just update amount
-        await sb
-          .from("planning_assignments")
-          .update({ assigned_amount: amount, updated_at: new Date().toISOString() })
-          .eq("id", target.assignmentId)
-          .eq("user_id", userId);
+        await updateAssignmentAmount(target.assignmentId, amount);
       } else {
         // Different envelope — delete old, create new
-        await sb
-          .from("planning_assignments")
-          .delete()
-          .eq("id", target.assignmentId)
-          .eq("user_id", userId);
-
-        // Get period_id from the old assignment context
-        const { data: oldAssignment } = await sb
-          .from("planning_assignments")
-          .select("period_id")
-          .eq("expense_entry_id", target.expenseEntryId)
-          .eq("user_id", userId)
-          .limit(1)
-          .maybeSingle();
-
-        // If no other assignment exists, get period from the expense entry
-        let periodId: string;
-        if (oldAssignment?.period_id) {
-          periodId = oldAssignment.period_id;
-        } else {
-          const { data: entry } = await sb
-            .from("planning_entries")
-            .select("period_id")
-            .eq("id", target.expenseEntryId)
-            .eq("user_id", userId)
-            .single();
-          periodId = entry?.period_id;
-        }
-
-        if (!periodId) {
-          setError("No se pudo determinar el periodo");
-          return;
-        }
-
-        await sb
-          .from("planning_assignments")
-          .insert({
-            user_id: userId,
-            period_id: periodId,
-            income_entry_id: selectedIncomeId,
-            expense_entry_id: target.expenseEntryId,
-            assigned_amount: amount,
-          });
+        await deleteAssignment(target.assignmentId);
+        await createAssignment({
+          user_id: session.user.id,
+          period_id: periodId,
+          income_entry_id: selectedIncomeId,
+          expense_entry_id: target.expenseEntryId,
+          assigned_amount: amount,
+        });
       }
 
       handleClose();
@@ -148,7 +112,7 @@ export function ReassignSheet({
     } finally {
       setSubmitting(false);
     }
-  }, [target, selectedIncomeId, amountInput, session?.user?.id, handleClose, onSuccess]);
+  }, [target, selectedIncomeId, amountInput, session?.user?.id, periodId, handleClose, onSuccess]);
 
   if (!target) return null;
 

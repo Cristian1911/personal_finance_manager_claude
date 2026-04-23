@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Wallet,
   X,
+  Bug,
 } from "lucide-react-native";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import {
@@ -37,6 +38,7 @@ import { formatRelativeDate } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { useAppStore } from "../../lib/store";
 import { useAuth } from "../../lib/auth";
+import { useBugReport } from "../../lib/bugReportMode";
 import { supabase } from "../../lib/supabase";
 import { clearDatabase, getDatabase } from "../../lib/db/database";
 import { disableDemoMode } from "../../lib/demo-mode";
@@ -360,6 +362,7 @@ export default function SettingsScreen() {
   const { session, demoMode, setDemoMode } = useAuth();
   const { status, lastSynced, sync } = useSync();
   const { profile, clear } = useAppStore();
+  const { isFabEnabled, setFabEnabled } = useBugReport();
   const [syncing, setSyncing] = useState(false);
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
   const [biometricsOn, setBiometricsOn] = useState(false);
@@ -663,6 +666,12 @@ export default function SettingsScreen() {
               title="Reportar bug"
               meta="Envíanos comentarios o errores"
               onPress={() => router.push("/bug-report" as never)}
+            />
+            <ToggleRow
+              icon={<Bug size={18} color={COLORS.sageDark} />}
+              label="Botón flotante de reporte"
+              value={isFabEnabled}
+              onValueChange={setFabEnabled}
             />
             <NavRow
               title="Política de privacidad"

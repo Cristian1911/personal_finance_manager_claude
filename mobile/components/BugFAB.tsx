@@ -9,8 +9,16 @@ import { useBugReport } from "../lib/bugReportMode";
 export function BugFAB() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { isBugMode, toggleBugMode, captureScreen, setPendingScreenshotUri } = useBugReport();
+  const {
+    isBugMode,
+    toggleBugMode,
+    captureScreen,
+    setPendingScreenshotUri,
+    isFabEnabled,
+  } = useBugReport();
   const [capturing, setCapturing] = useState(false);
+
+  if (!isFabEnabled) return null;
 
   async function handleCapture() {
     setCapturing(true);
