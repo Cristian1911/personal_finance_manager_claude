@@ -42,6 +42,8 @@ import { useBugReport } from "../../lib/bugReportMode";
 import { supabase } from "../../lib/supabase";
 import { clearDatabase, getDatabase } from "../../lib/db/database";
 import { disableDemoMode } from "../../lib/demo-mode";
+import { resetUserData } from "../../lib/reset-data";
+import { useOnboardingStatus } from "../../lib/onboarding-status";
 import { useTheme, type ThemeMode } from "../../lib/theme";
 import { COLORS } from "../../lib/constants/colors";
 import { LEGAL_URLS } from "../../lib/constants/urls";
@@ -363,7 +365,9 @@ export default function SettingsScreen() {
   const { status, lastSynced, sync } = useSync();
   const { profile, clear } = useAppStore();
   const { isFabEnabled, setFabEnabled } = useBugReport();
+  const { markIncomplete } = useOnboardingStatus();
   const [syncing, setSyncing] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
   const [biometricsOn, setBiometricsOn] = useState(false);
   const [bgReauthOn, setBgReauthOn] = useState(false);
@@ -496,6 +500,53 @@ export default function SettingsScreen() {
       ]
     );
   }, [clear, sync]);
+
+  const handleResetAllData = useCallback(() => {
+    if (demoMode || !session?.user?.id) return;
+    const userId = session.user.id;
+
+    Alert.alert(
+      "Borrar todos mis datos",
+      "Se eliminarán cuentas, transacciones, presupuestos, deudas, recurrentes y categorías personalizadas. Tu cuenta y tu sesión se mantienen: volverás al onboarding. Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Continuar",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "¿Seguro?",
+              "Última confirmación. Tus datos se borrarán del servidor y del dispositivo.",
+              [
+                { text: "Cancelar", style: "cancel" },
+                {
+                  text: "Borrar todo",
+                  style: "destructive",
+                  onPress: async () => {
+                    setResetting(true);
+                    try {
+                      await resetUserData(userId);
+                      clear();
+                      markIncomplete();
+                      router.replace("/onboarding" as never);
+                    } catch (error) {
+                      console.error("Reset user data error:", error);
+                      Alert.alert(
+                        "No se pudo borrar",
+                        "Inténtalo de nuevo. Si persiste, cierra sesión y vuelve a entrar.",
+                      );
+                    } finally {
+                      setResetting(false);
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  }, [clear, demoMode, markIncomplete, router, session?.user?.id]);
 
   const handleSignOut = useCallback(() => {
     Alert.alert("Cerrar sesión", "Se eliminarán los datos locales.", [
@@ -683,6 +734,29 @@ export default function SettingsScreen() {
             />
           </View>
         </View>
+
+        {!demoMode && (
+          <View>
+            <SectionHeading label="Zona de peligro" />
+            <View className="gap-2">
+              <Pressable
+                className={`${PANEL_INSET_CLASS} flex-row items-center gap-3 px-4 py-3 active:bg-black-10`}
+                onPress={handleResetAllData}
+                disabled={resetting}
+              >
+                <Trash2 size={16} color={COLORS.debt} />
+                <View className="flex-1">
+                  <Text className="text-sm font-inter-semibold text-z-debt">
+                    {resetting ? "Borrando datos…" : "Borrar todos mis datos"}
+                  </Text>
+                  <Text className="mt-0.5 text-xs font-inter text-muted-foreground">
+                    Mantén tu cuenta y vuelve al onboarding
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {demoMode && (
           <View className="gap-2">

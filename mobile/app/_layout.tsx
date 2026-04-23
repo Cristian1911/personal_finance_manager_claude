@@ -212,7 +212,10 @@ function RootLayoutNav() {
   }, []);
 
   const onboardingStatusValue = useMemo(
-    () => ({ markComplete: () => setNeedsOnboarding(false) }),
+    () => ({
+      markComplete: () => setNeedsOnboarding(false),
+      markIncomplete: () => setNeedsOnboarding(true),
+    }),
     [],
   );
 
