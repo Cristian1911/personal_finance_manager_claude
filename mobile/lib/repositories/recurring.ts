@@ -89,6 +89,18 @@ export async function getTemplateById(
   );
 }
 
+export async function getTemplatesByIds(
+  ids: string[]
+): Promise<RecurringTemplateRow[]> {
+  if (ids.length === 0) return [];
+  const db = await getDatabase();
+  const placeholders = ids.map(() => "?").join(", ");
+  return db.getAllAsync<RecurringTemplateRow>(
+    `SELECT * FROM recurring_transaction_templates WHERE id IN (${placeholders})`,
+    ids
+  );
+}
+
 /**
  * Get occurrences for a given month with joined template data.
  * @param month - YYYY-MM format

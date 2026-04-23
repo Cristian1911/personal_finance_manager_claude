@@ -16,7 +16,7 @@ import { isDebtAccountType } from "../lib/constants/accounts";
 import { PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "../lib/constants/styles";
 import { getActivePeriodWithEntries } from "../lib/repositories/planning";
 import { getAllAccounts } from "../lib/repositories/accounts";
-import { getTemplateById } from "../lib/repositories/recurring";
+import { getTemplatesByIds } from "../lib/repositories/recurring";
 import {
   PaymentSheet,
   type PaymentEntry,
@@ -133,15 +133,13 @@ export default function PeriodoScreen() {
       const templateIds = Array.from(
         new Set(entries.filter((e) => e.recurring_template_id).map((e) => e.recurring_template_id!))
       );
-      const templates = await Promise.all(templateIds.map((id) => getTemplateById(id)));
+      const templates = await getTemplatesByIds(templateIds);
       const templateMap = new Map<string, { account_id: string; transfer_source_account_id: string | null }>();
       for (const t of templates) {
-        if (t) {
-          templateMap.set(t.id, {
-            account_id: t.account_id,
-            transfer_source_account_id: t.transfer_source_account_id,
-          });
-        }
+        templateMap.set(t.id, {
+          account_id: t.account_id,
+          transfer_source_account_id: t.transfer_source_account_id,
+        });
       }
 
       // Enrich entries with account names + resolve debt account from template
