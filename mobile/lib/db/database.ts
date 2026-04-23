@@ -59,6 +59,9 @@ export async function clearDatabase(): Promise<void> {
     DELETE FROM tags;
     DELETE FROM tag_groups;
     DELETE FROM transactions;
+    DELETE FROM planning_assignments;
+    DELETE FROM planning_entries;
+    DELETE FROM planning_periods;
     DELETE FROM accounts;
     DELETE FROM categories;
     DELETE FROM budgets;
