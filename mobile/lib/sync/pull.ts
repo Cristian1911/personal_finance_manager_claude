@@ -18,6 +18,9 @@ const SYNC_TABLES = [
   "transaction_tags",
   "wishlist_items",
   "statement_snapshots",
+  "planning_periods",
+  "planning_entries",
+  "planning_assignments",
 ] as const;
 
 type SyncTable = (typeof SYNC_TABLES)[number];
@@ -36,6 +39,7 @@ const BOOLEAN_FIELDS: Record<string, string[]> = {
   tags: ["is_system"],
   recurring_occurrences: ["linked_manually"],
   wishlist_items: ["enriched"],
+  planning_periods: ["is_active"],
 };
 
 /** JSON fields per table that need stringification for SQLite */

@@ -20,6 +20,7 @@ import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
 import { toLocalDateString, toLocalMonthString } from "../../lib/utils/date";
 import { parseLocalizedAmount } from "../../lib/amount";
 import { isDebtAccountType } from "../../lib/constants/accounts";
+import { markEntryCompleted } from "../../lib/repositories/planning";
 
 // ── Types ──
 
@@ -224,15 +225,8 @@ export function PaymentSheet({
         }
       }
 
-      // 2. Mark planning entry as COMPLETED
-      await sb
-        .from("planning_entries")
-        .update({
-          status: "COMPLETED",
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", entry.id)
-        .eq("user_id", userId);
+      // 2. Mark planning entry as COMPLETED (local + enqueued)
+      await markEntryCompleted(entry.id);
 
       handleClose();
       onSuccess();
@@ -329,12 +323,8 @@ export function PaymentSheet({
         }
       }
 
-      // 4. Mark planning entry COMPLETED
-      await sb
-        .from("planning_entries")
-        .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
-        .eq("id", entry.id)
-        .eq("user_id", userId);
+      // 4. Mark planning entry COMPLETED (local + enqueued)
+      await markEntryCompleted(entry.id);
 
       handleClose();
       onSuccess();

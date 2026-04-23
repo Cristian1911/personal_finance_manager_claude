@@ -362,6 +362,66 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE recurring_transaction_templates ADD COLUMN destinatario_id TEXT`,
     ],
   },
+  {
+    version: 11,
+    statements: [
+      // ── Cashflow planner (planning_*): /periodo screen now reads locally ──
+      // Supabase schema in 20260407120000_create_cashflow_planner.sql +
+      // 20260406200000_add_currency_to_planning_entries.sql. Mirror exactly
+      // so sync pull/push can round-trip payloads.
+      `CREATE TABLE IF NOT EXISTS planning_periods (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT,
+        preset TEXT NOT NULL DEFAULT 'MONTHLY',
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        currency_code TEXT NOT NULL DEFAULT 'COP',
+        is_active INTEGER NOT NULL DEFAULT 1,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS planning_entries (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        period_id TEXT NOT NULL,
+        entry_type TEXT NOT NULL,
+        label TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency_code TEXT NOT NULL DEFAULT 'COP',
+        expected_date TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'PLANNED',
+        completed_at TEXT,
+        recurring_template_id TEXT,
+        account_id TEXT,
+        category_id TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (period_id) REFERENCES planning_periods(id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS planning_assignments (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        period_id TEXT NOT NULL,
+        income_entry_id TEXT NOT NULL,
+        expense_entry_id TEXT NOT NULL,
+        assigned_amount REAL NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (income_entry_id, expense_entry_id),
+        FOREIGN KEY (period_id) REFERENCES planning_periods(id),
+        FOREIGN KEY (income_entry_id) REFERENCES planning_entries(id),
+        FOREIGN KEY (expense_entry_id) REFERENCES planning_entries(id)
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_planning_periods_user_active ON planning_periods(user_id, is_active, start_date DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_planning_entries_period ON planning_entries(period_id, entry_type, expected_date)`,
+      `CREATE INDEX IF NOT EXISTS idx_planning_assignments_income ON planning_assignments(income_entry_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_planning_assignments_expense ON planning_assignments(expense_entry_id)`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

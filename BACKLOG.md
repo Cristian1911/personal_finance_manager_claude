@@ -348,20 +348,37 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **What:** `debt_scenarios`, `wishlist_reflections`, `dashboard_config` tables are used by the webapp but not synced to mobile. Add to SYNC_TABLES when mobile features need them.
 - **Found:** Mobile audit, 2026-04-15
 
-### Mobile sync — planning_* tables for /periodo screen
+### Mobile /periodo PaymentSheet — pre-existing parity bugs (surfaced 2026-04-23)
+- **Priority:** High (data integrity)
+- **What:** `mobile/components/plan/PaymentSheet.tsx` `handleCreatePayment` + `handleLinkTransaction` write transactions + recurring_occurrences with several shape gaps vs webapp `webapp/src/actions/cashflow-planner.ts`:
+  1. **Wrong column names** (lines ~265, ~289): writes `description: "Pago: ..."` but `transactions_enc` view has `raw_description` + `clean_description`. PostgREST silently drops the unknown field, leaving both columns NULL. Breaks downstream queries (transaction list, search, reconciliation `findCandidateTransactions`).
+  2. **Raw idempotency key** (lines ~270, ~294): emits `MANUAL_FORM|${id}|${date}|${amount}|${label}` as the literal key. Webapp hashes the same inputs via `computeIdempotencyKey()` from `@zeta/shared` (SHA-256). The UNIQUE constraint compares raw vs hashed → mobile-created tx never dedups against webapp/PDF-imported counterpart.
+  3. **Missing `linked_manually: true`** in link-mode occurrence update (lines ~215-226). Webapp sets it. Breaks audit queries.
+  4. **Missing `recurrence_group_id` stamp + `categorization_source` backfill** on the linked transaction. Webapp `linkExistingTransactionToOccurrence` (occurrences.ts:915-932) handles both.
+  5. **Missing `applyAccountBalanceDelta`** on create-mode — webapp updates source + debt account `current_balance` inline; mobile waits for next pull. Balance shown on mobile/webapp diverges until next sync.
+- **Context:** Flagged by `mobile-webapp-parity` agent during the planning_* sync PR. All bugs pre-date that PR (present on main). Left intentionally out of scope to keep that PR reviewable.
+- **Scope of fix:** replace the two `transactions.insert` payloads with webapp-shaped ones + switch to `computeIdempotencyKey` + expand the occurrence UPDATE + extract/reuse a mobile `applyAccountBalanceDelta` helper (or add one in `lib/repositories/accounts.ts`).
+- **Found:** mobile-webapp-parity on planning_* sync PR, 2026-04-23.
+
+### Mobile Settings — v2 polish (layout + sizes)
 - **Priority:** Medium
-- **What:** `planning_periods`, `planning_entries`, `planning_assignments` are not in `SYNC_TABLES`. The `/periodo` screen bypasses the sync engine and hits Supabase directly (5 PostgREST queries per focus). PR #224 shipped a module-scope SWR cache (`mobile/lib/sync/periodoCache.ts`) as an interim fix — **first visit still spins** (cache is empty), subsequent refocuses paint instantly.
-- **User confirmation (2026-04-22):** first-load latency is still a noticeable UX issue. Proper fix deferred but it is the next candidate when the mobile polish sweep reaches a pause.
-- **Proper fix (concrete scope):**
-  1. SQLite schema — add 3 tables to `mobile/lib/db/schema.ts` (DB_MIGRATIONS v12+). `planning_periods` has `is_active INTEGER`, `planning_entries` has FK to periods, `planning_assignments` has FKs to income+expense entries.
-  2. `mobile/lib/sync/pull.ts` — add all three to `SYNC_TABLES` in dependency order (periods → entries → assignments). `BOOLEAN_FIELDS.planning_periods = ["is_active"]`.
-  3. New `mobile/lib/repositories/planning.ts` — `getActivePeriod()`, `getPeriodEntries(periodId)`, `getPeriodAssignments(periodId)`, composite `getActivePeriodWithEntries()` for the screen. Write methods (`markEntryPaid`, `reassignAssignment`, etc.) do SQLite update + `enqueueInsert/Update` to `sync_queue`.
-  4. Rewrite `mobile/app/periodo.tsx` `loadData` to call the repo. Rewrite `PaymentSheet.tsx` + `ReassignSheet.tsx` writes to go through the repo instead of `sb.from(...).update(...)`.
-  5. Delete `mobile/lib/sync/periodoCache.ts` + the two `clearPeriodoCache()` calls in `mobile/lib/auth.tsx`.
-- **Lazy update from Supabase**: already exists. Sync runs on app focus + pull-to-refresh and pulls deltas. Once planning_* are in `SYNC_TABLES`, webapp-side changes (or cross-device writes) land on the next sync cycle.
-- **Notes:** no encryption concerns — tables are plaintext per migration `20260407120000_create_cashflow_planner.sql`. Spawn `mobile-sync-doctor` before starting and `mobile-webapp-parity` to verify write path changes don't break webapp semantics.
-- **Estimated lift:** ~2h. Biggest risk is the PaymentSheet/ReassignSheet write refactor.
-- **Found:** PR #224 (mobile plan polish), 2026-04-22.
+- **What:** Settings screen (`mobile/app/(tabs)/settings.tsx`) funciona pero no ha pasado el sweep de v2. Usuario quiere planificarlo con calma en vez de improvisar. Slice actual solo metió la ToggleRow del BugFAB; el resto queda pendiente.
+- **Áreas a discutir antes de tocar:**
+  - **IdentityHero**: hoy vive sin card (flex row suelto con `px-4 py-4`). ¿Convertirlo en `PANEL_INSET_CLASS` con avatar más grande (h-16)? ¿O mantenerlo aéreo y solo tocar tipografía?
+  - **Agrupación**: "Limpiar cola de sincronización" + "Resincronizar desde cero" están en Sincronización — ¿mover a "Avanzado" separada? ¿o son aceptables donde están?
+  - **Spacing**: `gap-5` entre secciones, `mb-2` bajo headings, `py-3` en filas. ¿Apretar, holgar, o quedarse?
+  - **Tipografía**: Nombre en hero `text-base`, títulos de fila `text-sm`, meta `text-xs`. ¿Subir un paso para jerarquía más clara?
+  - **Pill "Cerrar sesión"**: `BRASS_GHOST_BUTTON_CLASS` + `text-[11px]`. Pequeño. ¿Crece o se convierte en icon-button?
+  - **Orden de secciones**: Perfil → Sincronización → Apariencia → Seguridad → Privacidad. ¿Cambia?
+  - **Secciones faltantes**: ¿Lugar para idioma, notificaciones, export de datos, eliminar cuenta (flagged en backlog existing)?
+- **Recomendación para arranque**: sesión corta de diseño en papel/wireframe antes de tocar TSX. Decidir 3-4 cambios concretos y ejecutar.
+- **Found:** User feedback, 2026-04-23.
+
+### Mobile Plan — restaurar "FLUJO DEL MES" chart
+- **Priority:** Medium
+- **What:** El chart de flujo diario (línea de balance + marcadores diarios de ingresos/gastos verdes/rojos + líneas verticales de ingreso/gasto + marker de "Hoy" + totales INGRESOS/GASTOS/NETO debajo) se perdió en el rediseño del Plan (PR #224). User feedback: lo quiere de vuelta. Referencia visual en el adjunto del usuario 2026-04-23.
+- **Scope:** portar como expandable section dentro de `PlanRoot` o como standalone dentro de `PlanNetHero` (o un nuevo `PlanFlowSection`). Código previo: buscar `PlanFlowChart` en history (`git show 01953a4^:mobile/components/plan/PlanFlowChart.tsx` — eliminado en el redesign).
+- **Found:** User feedback, 2026-04-23 (post PR #224).
 
 ### Webapp mobile/v2/plan — parity with native execution hero
 - **Priority:** Medium

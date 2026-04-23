@@ -26,7 +26,10 @@ type SyncTableName =
   | "transaction_tags"
   | "wishlist_items"
   | "statement_snapshots"
-  | "transactions";
+  | "transactions"
+  | "planning_periods"
+  | "planning_entries"
+  | "planning_assignments";
 
 /** Tables that don't have an updated_at column */
 const TABLES_WITHOUT_UPDATED_AT = new Set<string>([

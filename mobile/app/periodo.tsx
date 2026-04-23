@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from "react";
-import { getPeriodoCache, setPeriodoCache } from "../lib/sync/periodoCache";
 import {
   ActivityIndicator,
   Pressable,
@@ -11,11 +10,13 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
 import { ArrowLeft, Check, ChevronDown, Banknote } from "lucide-react-native";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
-import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { COLORS } from "../lib/constants/colors";
 import { isDebtAccountType } from "../lib/constants/accounts";
 import { PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "../lib/constants/styles";
+import { getActivePeriodWithEntries } from "../lib/repositories/planning";
+import { getAllAccounts } from "../lib/repositories/accounts";
+import { getTemplatesByIds } from "../lib/repositories/recurring";
 import {
   PaymentSheet,
   type PaymentEntry,
@@ -88,65 +89,37 @@ interface PeriodoData {
 export default function PeriodoScreen() {
   const router = useRouter();
   const { session } = useAuth();
-  const userId = session?.user?.id ?? null;
-  const cached = userId !== null ? getPeriodoCache<PeriodoData | null>(userId) : undefined;
-  const [loading, setLoading] = useState(cached === undefined);
-  const [data, setData] = useState<PeriodoData | null>(cached ?? null);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<PeriodoData | null>(null);
   const requestIdRef = useRef(0);
   const [expandedIncome, setExpandedIncome] = useState<string | null>(null);
   const [paymentEntry, setPaymentEntry] = useState<PaymentEntry | null>(null);
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null);
 
   const loadData = useCallback(async () => {
-    if (!session?.user?.id) { setLoading(false); return; }
+    const userId = session?.user?.id;
+    if (!userId) { setLoading(false); return; }
     const requestId = ++requestIdRef.current;
 
     try {
-      // Cast to any — planning tables not in mobile's generated types
-      const sb = supabase as any;
+      const [periodBundle, accounts] = await Promise.all([
+        getActivePeriodWithEntries(userId),
+        getAllAccounts(),
+      ]);
 
-      // 1. Get active period
-      const { data: period } = await sb
-        .from("planning_periods")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .eq("is_active", true)
-        .order("start_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!period) {
+      if (!periodBundle) {
         if (requestId === requestIdRef.current) {
-          setPeriodoCache<PeriodoData | null>(session.user.id, null);
           setData(null);
           setLoading(false);
         }
         return;
       }
 
-      // 2. Get entries + assignments
-      const [{ data: entries }, { data: assignments }, { data: accounts }] = await Promise.all([
-        sb
-          .from("planning_entries")
-          .select("id, label, amount, currency_code, entry_type, status, expected_date, account_id, recurring_template_id, category_id")
-          .eq("period_id", period.id)
-          .eq("user_id", session.user.id)
-          .order("expected_date")
-          .order("sort_order"),
-        sb
-          .from("planning_assignments")
-          .select("id, income_entry_id, expense_entry_id, assigned_amount")
-          .eq("period_id", period.id)
-          .eq("user_id", session.user.id),
-        supabase
-          .from("accounts")
-          .select("id, name, account_type, current_balance, currency_code")
-          .eq("user_id", session.user.id),
-      ]);
+      const { period, entries, assignments } = periodBundle;
 
-      const accountMap = new Map((accounts ?? []).map((a: any) => [a.id, a.name]));
+      const accountMap = new Map(accounts.map((a) => [a.id, a.name]));
       const accountDetailMap = new Map<string, AccountDetail>(
-        (accounts ?? []).map((a: any) => [a.id, {
+        accounts.map((a) => [a.id, {
           id: a.id,
           name: a.name,
           account_type: a.account_type,
@@ -154,54 +127,55 @@ export default function PeriodoScreen() {
           currency_code: a.currency_code,
         }])
       );
-      const allEntries = (entries ?? []) as PlanningEntry[];
-      const allAssignments = (assignments ?? []) as PlanningAssignment[];
 
-      // Fetch templates to resolve actual debt accounts for debt payment entries
+      // Resolve debt-payment templates to find the actual debt account
       // (entry.account_id may be the source account when transfer_source_account_id is set)
-      const templateIds = allEntries
-        .filter((e) => e.recurring_template_id)
-        .map((e) => e.recurring_template_id!);
-
-      let templateMap = new Map<string, { account_id: string; transfer_source_account_id: string | null }>();
-      if (templateIds.length > 0) {
-        const { data: templates } = await sb
-          .from("recurring_transaction_templates")
-          .select("id, account_id, transfer_source_account_id")
-          .in("id", templateIds);
-
-        if (templates) {
-          templateMap = new Map(
-            (templates as Array<{ id: string; account_id: string; transfer_source_account_id: string | null }>)
-              .map((t) => [t.id, { account_id: t.account_id, transfer_source_account_id: t.transfer_source_account_id }])
-          );
-        }
+      const templateIds = Array.from(
+        new Set(entries.filter((e) => e.recurring_template_id).map((e) => e.recurring_template_id!))
+      );
+      const templates = await getTemplatesByIds(templateIds);
+      const templateMap = new Map<string, { account_id: string; transfer_source_account_id: string | null }>();
+      for (const t of templates) {
+        templateMap.set(t.id, {
+          account_id: t.account_id,
+          transfer_source_account_id: t.transfer_source_account_id,
+        });
       }
 
       // Enrich entries with account names + resolve debt account from template
-      for (const e of allEntries) {
-        e.account_name = accountMap.get(e.account_id ?? "") ?? null;
-
-        // For debt payment templates, the template's account_id is the debt account
-        // and entry.account_id may be the source (checking/savings) account
+      const enrichedEntries: PlanningEntry[] = entries.map((e) => {
+        const next: PlanningEntry = {
+          id: e.id,
+          label: e.label,
+          amount: e.amount,
+          currency_code: e.currency_code,
+          entry_type: e.entry_type,
+          status: e.status,
+          expected_date: e.expected_date,
+          account_id: e.account_id,
+          account_name: accountMap.get(e.account_id ?? "") ?? null,
+          recurring_template_id: e.recurring_template_id,
+          category_id: e.category_id,
+        };
         if (e.recurring_template_id) {
           const template = templateMap.get(e.recurring_template_id);
           if (template) {
             const templateAccount = accountDetailMap.get(template.account_id);
             if (templateAccount && isDebtAccountType(templateAccount.account_type)) {
-              e.debt_account_id = template.account_id;
+              next.debt_account_id = template.account_id;
             }
           }
         }
-      }
+        return next;
+      });
 
       // Build income envelopes
-      const incomeEntries = allEntries.filter((e) => e.entry_type === "INCOME");
-      const expenseEntries = allEntries.filter((e) => e.entry_type === "EXPENSE");
+      const incomeEntries = enrichedEntries.filter((e) => e.entry_type === "INCOME");
+      const expenseEntries = enrichedEntries.filter((e) => e.entry_type === "EXPENSE");
       const expenseMap = new Map(expenseEntries.map((e) => [e.id, e]));
 
       const incomeEnvelopes: IncomeEnvelope[] = incomeEntries.map((entry) => {
-        const entryAssignments = allAssignments.filter((a) => a.income_entry_id === entry.id);
+        const entryAssignments = assignments.filter((a) => a.income_entry_id === entry.id);
         const assignedAmount = entryAssignments.reduce((s, a) => s + a.assigned_amount, 0);
         return {
           entry,
@@ -218,7 +192,7 @@ export default function PeriodoScreen() {
       // Build assignment chips per expense
       const incomeIndexMap = new Map(incomeEntries.map((e, i) => [e.id, i]));
       const expenseWithChips = expenseEntries.map((entry) => {
-        const chips = allAssignments
+        const chips = assignments
           .filter((a) => a.expense_entry_id === entry.id)
           .map((a) => ({
             colorIndex: incomeIndexMap.get(a.income_entry_id) ?? 0,
@@ -230,10 +204,16 @@ export default function PeriodoScreen() {
       });
 
       const totalExpenses = expenseEntries.reduce((s, e) => s + e.amount, 0);
-      const totalAssigned = allAssignments.reduce((s, a) => s + a.assigned_amount, 0);
+      const totalAssigned = assignments.reduce((s, a) => s + a.assigned_amount, 0);
 
       const fresh: PeriodoData = {
-        period: period as PlanningPeriod,
+        period: {
+          id: period.id,
+          start_date: period.start_date,
+          end_date: period.end_date,
+          currency_code: period.currency_code,
+          is_active: period.is_active === 1,
+        },
         currency: period.currency_code as CurrencyCode,
         incomeEnvelopes,
         expenseEntries: expenseWithChips,
@@ -242,7 +222,6 @@ export default function PeriodoScreen() {
         accountDetails: accountDetailMap,
       };
       if (requestId === requestIdRef.current) {
-        setPeriodoCache(session.user.id, fresh);
         setData(fresh);
       }
     } catch (error) {
@@ -435,6 +414,7 @@ export default function PeriodoScreen() {
           colorIndex: idx,
         }))}
         currency={data.currency}
+        periodId={data.period.id}
         onClose={() => setReassignTarget(null)}
         onSuccess={() => {
           setReassignTarget(null);
