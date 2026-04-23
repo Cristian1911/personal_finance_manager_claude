@@ -763,3 +763,32 @@ Design preview → 3-col HTML mock (`claude-ai-design/plan-mobile-proposal.html`
 3. **Anonymous demo cleanup cron** — still pending since 2026-04-21.
 4. **Flow 02 PR 3** — dashboard drag-to-reorder + S/M/L resize.
 5. **Mobile tab polish — Deudas** (next in the sweep after Plan). Or Movimientos slice 2 if we want to return to that arc.
+
+## Session handoff — 2026-04-23
+
+### Shipped this session
+- **PR #225** — `feat(mobile): /periodo sync via SQLite + opt-in BugFAB`. *Merged* (commit `36d2159`).
+  - Planning sync: `planning_periods` / `planning_entries` / `planning_assignments` ahora viven en SQLite + pasan por el sync engine. DB_MIGRATIONS v11 mirror exacto de Supabase (con `currency_code`), `UNIQUE(income_entry_id, expense_entry_id)` + FKs.
+  - `mobile/lib/repositories/planning.ts`: reads (`getActivePeriod`, `getPeriodEntries`, `getPeriodAssignments`, composite `getActivePeriodWithEntries`) + writes (`markEntryCompleted`, `updateAssignmentAmount`, `deleteAssignment`, `createAssignment`) con SQLite + `enqueueInsert/Update/Delete` en transacción.
+  - `mobile/lib/repositories/recurring.ts`: nueva `getTemplatesByIds(ids)` (fix N+1 flagged en review).
+  - `mobile/app/periodo.tsx` `loadData`: cero Supabase directo, lee solo de repos.
+  - `PaymentSheet.tsx` + `ReassignSheet.tsx`: escrituras a `planning_entries` / `planning_assignments` via repo. `ReassignSheet` gana `periodId` prop — elimina el fallback de re-fetch a Supabase.
+  - `mobile/lib/sync/periodoCache.ts` **eliminado**. Callsites en `auth.tsx` removidos.
+  - BugFAB opt-in: `BugReportProvider` persiste `isFabEnabled` en SecureStore (`zeta.bug_fab_enabled`, default OFF). `BugFAB` devuelve `null` si off. ToggleRow en Ajustes → Privacidad y soporte.
+
+### Discovered this session — added to backlog
+- **Mobile /periodo PaymentSheet — pre-existing parity bugs** (High, data integrity). 5 findings flagged por `mobile-webapp-parity`: `description` en vez de `raw_description`/`clean_description`, idempotency key sin hash, `linked_manually: true` faltante, `recurrence_group_id` no stampado, balance delta faltante en create-mode. Pre-existentes en main, out-of-scope del PR para mantenerlo revisable.
+- **Mobile Settings v2 polish** (Medium). Usuario quiere planificarlo con calma antes de tocar. Este PR solo metió la ToggleRow del BugFAB; todo lo demás (IdentityHero, agrupación, spacing, tipografía, orden de secciones) queda para sesión de diseño.
+- **Mobile Plan — restaurar FLUJO DEL MES chart** (Medium). Chart de flujo diario (balance line + markers + hoy + totales) se perdió en rediseño PR #224. User quiere de vuelta. Scope: `PlanFlowSection` nuevo o expandable dentro de `PlanNetHero`.
+
+### Pipeline
+orient → mobile-sync-doctor + mobile-webapp-parity (paralelo) → fix push.ts type union → zetas-front-guy + feature-dev:code-reviewer (paralelo) en BugFAB → revert settings polish por discusión con calma → review PR → aplicar fix N+1 (`getTemplatesByIds`) → responder Gemini (falso positivo, recomendó lo ya hecho).
+
+### Triage candidates for next session
+1. **Webapp mobile/v2/plan parity** — port native execution hero a webapp (expandir `getPlanPageData()` shape). Pendiente desde 2026-04-22.
+2. **PaymentSheet parity bugs** (nuevo, High) — fix los 5 gaps vs webapp. Data integrity issue, prioridad real.
+3. **Anonymous demo cleanup cron** — pendiente desde 2026-04-21.
+4. **Flow 02 PR 3** — dashboard drag-to-reorder + S/M/L resize.
+5. **Mobile tab polish — Deudas** (próximo en el sweep) o Movimientos slice 2.
+6. **Settings v2 polish** — sesión de diseño antes de tocar TSX.
+7. **Restaurar FLUJO DEL MES chart** en Plan.
