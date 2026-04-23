@@ -3515,6 +3515,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      reset_user_data: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
       get_accounts_with_masks: {
         Args: { p_user_id: string }
         Returns: {

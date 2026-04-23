@@ -29,6 +29,7 @@ import { useTheme, themeSurfaceClasses } from "../lib/theme";
 import { parseMoney } from "../lib/utils/money";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
+import { useOnboardingStatus } from "../lib/onboarding-status";
 
 const TOTAL_STEPS = 5;
 type StepIndex = 1 | 2 | 3 | 4 | 5;
@@ -71,6 +72,7 @@ const STEP_META: Record<StepIndex, StepMeta> = {
 export default function MobileOnboardingScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { markComplete } = useOnboardingStatus();
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, 12);
   const bottomInset = Math.max(insets.bottom + 8, 20);
@@ -237,6 +239,10 @@ export default function MobileOnboardingScreen() {
   }
 
   function handleFinishPrimary() {
+    // Flip the root layout's onboarding gate BEFORE navigating. Otherwise its
+    // cached `needsOnboarding=true` redirects us straight back to /onboarding
+    // on the next segment change.
+    markComplete();
     switch (data.purpose) {
       case "manage_debt":
       case "track_spending":
@@ -252,6 +258,7 @@ export default function MobileOnboardingScreen() {
   }
 
   function handleExplore() {
+    markComplete();
     router.replace("/(tabs)");
   }
 

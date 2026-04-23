@@ -49,21 +49,33 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
 
 export async function clearDatabase(): Promise<void> {
   const database = await getDatabase();
+  // Order matters: `PRAGMA foreign_keys = ON` (set in runMigrations) rejects
+  // deletes that would orphan referenced rows. Delete dependent rows first,
+  // parents last. Specifically:
+  //   budgets.default_category_id → categories (budgets before categories)
+  //   statement_snapshots.account_id → accounts (snapshots before accounts)
+  //   transactions.account_id/category_id → accounts/categories
+  //   recurring_occurrences → recurring_transaction_templates → accounts
+  //   tags.group_id → tag_groups
+  //   planning_assignments → planning_entries → planning_periods
   await database.execAsync(`
     DELETE FROM wishlist_items;
     DELETE FROM transaction_tags;
     DELETE FROM recurring_occurrences;
+    DELETE FROM planning_assignments;
+    DELETE FROM planning_entries;
+    DELETE FROM planning_periods;
     DELETE FROM recurring_transaction_templates;
     DELETE FROM destinatario_rules;
     DELETE FROM destinatarios;
-    DELETE FROM tags;
-    DELETE FROM tag_groups;
+    DELETE FROM statement_snapshots;
+    DELETE FROM budgets;
     DELETE FROM transactions;
     DELETE FROM accounts;
     DELETE FROM categories;
-    DELETE FROM budgets;
+    DELETE FROM tags;
+    DELETE FROM tag_groups;
     DELETE FROM profiles;
-    DELETE FROM statement_snapshots;
     DELETE FROM sync_queue;
     DELETE FROM sync_metadata;
   `);

@@ -17,7 +17,7 @@ import {
 import { Kalam_700Bold } from "@expo-google-fonts/kalam";
 import { Stack, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, AppState, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
@@ -34,6 +34,7 @@ import {
 } from "../lib/biometrics";
 import { BiometricLockScreen } from "../components/common/BiometricLockScreen";
 import { ZetaThemeProvider } from "../lib/theme";
+import { OnboardingStatusContext } from "../lib/onboarding-status";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -169,7 +170,13 @@ function RootLayoutNav() {
       return;
     }
 
-    if (!needsOnboarding && (inAuthGroup || inOnboarding)) {
+    // Kick users out of the auth group once they're signed-in and complete.
+    // Do NOT auto-kick from /onboarding: the onboarding screen navigates
+    // itself out via its CTAs (calling markComplete() first). Without this
+    // guardrail, a session/token refresh during persistOnboarding flips
+    // `needsOnboarding=false` and yanks the user off StepComplete before
+    // they can choose an onward path.
+    if (!needsOnboarding && inAuthGroup) {
       router.replace("/(tabs)");
     }
   }, [session, demoMode, loading, checkingOnboarding, needsOnboarding, segments, router, rootNavigationState?.key]);
@@ -204,6 +211,14 @@ function RootLayoutNav() {
     setBiometricLocked(false);
   }, []);
 
+  const onboardingStatusValue = useMemo(
+    () => ({
+      markComplete: () => setNeedsOnboarding(false),
+      markIncomplete: () => setNeedsOnboarding(true),
+    }),
+    [],
+  );
+
   const handleBiometricFallback = useCallback(async () => {
     setBiometricLocked(false);
     await supabase.auth.signOut();
@@ -215,6 +230,7 @@ function RootLayoutNav() {
     <SafeAreaProvider>
       <ZetaThemeProvider>
       <ThemeProvider value={DarkTheme}>
+        <OnboardingStatusContext.Provider value={onboardingStatusValue}>
         <BugReportViewShot>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -326,6 +342,7 @@ function RootLayoutNav() {
             <ActivityIndicator size="large" color="#937844" />
           </View>
         )}
+        </OnboardingStatusContext.Provider>
       </ThemeProvider>
       </ZetaThemeProvider>
     </SafeAreaProvider>

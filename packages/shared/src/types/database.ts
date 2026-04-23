@@ -744,7 +744,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reset_user_data: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
     }
     Enums: {
       account_type:
