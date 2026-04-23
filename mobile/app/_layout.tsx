@@ -170,7 +170,13 @@ function RootLayoutNav() {
       return;
     }
 
-    if (!needsOnboarding && (inAuthGroup || inOnboarding)) {
+    // Kick users out of the auth group once they're signed-in and complete.
+    // Do NOT auto-kick from /onboarding: the onboarding screen navigates
+    // itself out via its CTAs (calling markComplete() first). Without this
+    // guardrail, a session/token refresh during persistOnboarding flips
+    // `needsOnboarding=false` and yanks the user off StepComplete before
+    // they can choose an onward path.
+    if (!needsOnboarding && inAuthGroup) {
       router.replace("/(tabs)");
     }
   }, [session, demoMode, loading, checkingOnboarding, needsOnboarding, segments, router, rootNavigationState?.key]);
