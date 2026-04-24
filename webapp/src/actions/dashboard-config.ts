@@ -126,7 +126,7 @@ export async function updateMobileLayout(
   }
 
   updateTag("dashboard-config");
-  return { success: true, data: parsed.data };
+  return { success: true, data: parsed.data as MobileDashboardLayout };
 }
 
 export async function getMobileLayout(): Promise<MobileDashboardLayout | null> {

@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { getDefaultConfig } from "@/lib/dashboard-config-defaults";
+import { DEFAULT_LAYOUT as DEFAULT_MOBILE_LAYOUT } from "@zeta/shared";
 import type { AppPurpose } from "@/types/dashboard-config";
 
 const OPTIONAL_STEPS = new Set([1]);
@@ -42,9 +43,9 @@ type QuickWin = { label: string; href: string; icon: typeof FileUp };
 
 const QUICK_WIN: Record<string, QuickWin> = {
     manage_debt: { label: "Importa tu primer extracto", href: "/import", icon: FileUp },
-    track_spending: { label: "Registra tu primer gasto", href: "/dashboard", icon: Wallet },
-    save_money: { label: "Configura tu primer presupuesto", href: "/categories", icon: Tags },
-    improve_habits: { label: "Registra tu primer gasto", href: "/dashboard", icon: Wallet },
+    track_spending: { label: "Registra tu primer gasto", href: "/transactions/new", icon: Wallet },
+    save_money: { label: "Configura tu primer presupuesto", href: "/presupuesto", icon: Tags },
+    improve_habits: { label: "Registra tu primer gasto", href: "/transactions/new", icon: Wallet },
 };
 
 const PURPOSES = [
@@ -173,6 +174,7 @@ export default function OnboardingPage() {
                     current_balance: parseFloat(balance) || 0,
                 },
                 getDefaultConfig((purpose || "track_spending") as AppPurpose),
+                DEFAULT_MOBILE_LAYOUT,
             );
             toast.success("Configuración completada");
             void trackClientEvent({

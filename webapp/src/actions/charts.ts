@@ -729,6 +729,23 @@ export interface DashboardHeroData {
   incomeConfigured: boolean;
 }
 
+async function getOnboardingIncomeCached(
+  userId: string,
+  accessToken: string,
+): Promise<{ estimated_monthly_income: number | null; monthly_salary: number | null } | null> {
+  "use cache";
+  cacheTag("profile");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  const { data } = await supabase
+    .from("profiles")
+    .select("estimated_monthly_income, monthly_salary")
+    .eq("id", userId)
+    .maybeSingle();
+  return data;
+}
+
 export async function getDashboardHeroData(
   month?: string,
   currency?: CurrencyCode
@@ -766,12 +783,13 @@ export async function getDashboardHeroData(
   const colombiaToday = toColombiaDateString(now);
   const rangeEnd = toColombiaDateString(addDays(now, PAY_CYCLE_LOOKAHEAD_DAYS));
 
-  // All 4 fetches in parallel — no sequential waterfall
-  const [accountsResult, monthMetrics, nextIncome, pendingOccurrences] = await Promise.all([
+  // Fetch shell data in parallel — no sequential waterfall
+  const [accountsResult, monthMetrics, nextIncome, pendingOccurrences, profileIncome] = await Promise.all([
     getAccounts(),
     getMonthMetrics(month, currency),
     getNextIncomeOccurrenceCached(user.id, colombiaToday, baseCurrency, accessToken).catch(() => null),
     getPendingOccurrencesCached(user.id, colombiaToday, rangeEnd, accessToken).catch(() => [] as never[]),
+    getOnboardingIncomeCached(user.id, accessToken).catch(() => null),
   ]);
 
   // 1. Process accounts (all currencies, converted to base)
@@ -826,7 +844,10 @@ export async function getDashboardHeroData(
   const freshness = getFreshnessLevel(oldestUpdate);
 
   // 3. Compute pay-cycle window
-  const incomeConfigured = nextIncome !== null;
+  const onboardingIncome =
+    Number(profileIncome?.estimated_monthly_income ?? 0) > 0 ||
+    Number(profileIncome?.monthly_salary ?? 0) > 0;
+  const incomeConfigured = nextIncome !== null || onboardingIncome;
   let daysUntilIncome: number;
   let windowEndDate: string;
 

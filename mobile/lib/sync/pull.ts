@@ -1,6 +1,7 @@
 import { monthStartStr, monthEndStr, subMonths } from "@zeta/shared";
 import { supabase } from "../supabase";
 import { getDatabase } from "../db/database";
+import { invalidatePreferredCurrency } from "../profile";
 
 /** Tables to sync from Supabase, in dependency order (FK targets first) */
 const SYNC_TABLES = [
@@ -246,6 +247,12 @@ async function pullTable(
      ON CONFLICT(table_name) DO UPDATE SET last_synced_at = excluded.last_synced_at`,
     [table, syncedAt]
   );
+
+  // Drop in-memory caches keyed off profile columns so the next read sees
+  // fresh values (e.g. if the user changed preferred_currency elsewhere).
+  if (table === "profiles" && upserted > 0) {
+    invalidatePreferredCurrency();
+  }
 
   return upserted;
 }

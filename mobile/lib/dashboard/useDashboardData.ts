@@ -12,6 +12,7 @@ import {
   isDebtAccountType,
   LIQUID_ACCOUNT_TYPES,
 } from "../constants/accounts";
+import { getPreferredCurrency } from "../profile";
 import { toLocalDateString, toLocalMonthString } from "../utils/date";
 
 export type DashboardTx = {
@@ -124,10 +125,11 @@ export function useDashboardData() {
       const dayOfMonth = now.getDate();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
-      const [accounts, transactionsRaw, pendingOccs] = await Promise.all([
+      const [accounts, transactionsRaw, pendingOccs, preferredCurrency] = await Promise.all([
         getAllAccounts(),
         getTransactions({ month: currentMonth, limit: 500 }),
         getPendingOccurrences(),
+        getPreferredCurrency(),
       ]);
 
       const txRows = transactionsRaw as any[];
@@ -315,7 +317,7 @@ export function useDashboardData() {
       ).length;
 
       setSummary({
-        currency: "COP",
+        currency: preferredCurrency,
         accounts,
         transactions: recent,
         availablePerDay,

@@ -14,6 +14,7 @@ import { computeTimeline, type TimelineData } from "../../lib/utils/timeline";
 import { toLocalDateString, toLocalMonthString } from "../../lib/utils/date";
 import { DEBT_ACCOUNT_TYPES, LIQUID_ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { COLORS } from "../../lib/constants/colors";
+import { getPreferredCurrency } from "../../lib/profile";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
 import { MonthSelector } from "../common/MonthSelector";
@@ -54,8 +55,7 @@ export function PlanRoot() {
   const [refreshing, setRefreshing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => toLocalMonthString());
   const [data, setData] = useState<PlanState>(INITIAL);
-
-  const currency: CurrencyCode = "COP";
+  const [currency, setCurrency] = useState<CurrencyCode>("COP");
 
   const loadData = useCallback(async () => {
     try {
@@ -76,12 +76,14 @@ export function PlanRoot() {
           ? Math.max(1, daysInMonth - now.getDate())
           : 0;
 
-      const [txs, accounts, budgets, occurrences] = await Promise.all([
+      const [txs, accounts, budgets, occurrences, preferredCurrency] = await Promise.all([
         getTransactions({ month: currentMonth, limit: 500 }),
         getAllAccounts(),
         getBudgetProgress(currentMonth),
         getOccurrencesForMonth(currentMonth),
+        getPreferredCurrency(),
       ]);
+      setCurrency(preferredCurrency);
 
       const accountMap = new Map<string, AccountRow>(accounts.map((a: AccountRow) => [a.id, a]));
 

@@ -12,6 +12,7 @@ import {
   skipOccurrence,
   type OccurrenceWithTemplate,
 } from "../../lib/repositories/recurring";
+import { getPreferredCurrency } from "../../lib/profile";
 import { COLORS } from "../../lib/constants/colors";
 import { SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 import { MobileHeader } from "../ui/MobileHeader";
@@ -44,17 +45,18 @@ export function RecurrentesRoot() {
   const [occurrences, setOccurrences] = useState<OccurrenceWithTemplate[]>([]);
   const [summary, setSummary] = useState<RecurringSummary>(EMPTY_SUMMARY);
   const [completedExpanded, setCompletedExpanded] = useState(false);
-
-  const currency: CurrencyCode = "COP";
+  const [currency, setCurrency] = useState<CurrencyCode>("COP");
 
   const loadData = useCallback(async () => {
     try {
-      const [occ, sum] = await Promise.all([
+      const [occ, sum, preferredCurrency] = await Promise.all([
         getOccurrencesForMonth(currentMonth),
         getRecurringSummary(currentMonth),
+        getPreferredCurrency(),
       ]);
       setOccurrences(occ);
       setSummary(sum);
+      setCurrency(preferredCurrency);
     } catch (error) {
       console.error("Failed to load recurrentes data:", error);
     }

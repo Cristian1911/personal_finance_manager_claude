@@ -11,6 +11,7 @@ import { useFocusEffect } from "expo-router";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { Calculator, ArrowRight } from "lucide-react-native";
 import { getDebtOverview, type DebtOverviewData } from "../../lib/repositories/debt";
+import { getPreferredCurrency } from "../../lib/profile";
 import { useSync } from "../../lib/sync/hooks";
 import { COLORS } from "../../lib/constants/colors";
 import {
@@ -34,7 +35,7 @@ type Strategy = "avalanche" | "snowball";
 
 export function PlanificadorRoot() {
   const { sync } = useSync();
-  const currency: CurrencyCode = "COP";
+  const [currency, setCurrency] = useState<CurrencyCode>("COP");
 
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<DebtOverviewData | null>(null);
@@ -44,8 +45,12 @@ export function PlanificadorRoot() {
 
   const loadData = useCallback(async () => {
     try {
-      const overview = await getDebtOverview();
+      const [overview, preferredCurrency] = await Promise.all([
+        getDebtOverview(),
+        getPreferredCurrency(),
+      ]);
       setData(overview);
+      setCurrency(preferredCurrency);
     } catch (error) {
       console.error("Failed to load debt data:", error);
     }
