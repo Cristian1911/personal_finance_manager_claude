@@ -3,7 +3,7 @@ import * as SecureStore from "expo-secure-store";
 const PDF_PASSWORD_KEY_PREFIX = "zeta_pdf_password";
 
 function getPdfPasswordKey(userId: string, accountId: string) {
-  const sanitized = `${userId}_${accountId}`.replace(/[^a-zA-Z0-9.,_]/g, "_");
+  const sanitized = `${userId}_${accountId}`.replace(/[^a-zA-Z0-9._-]/g, "_");
   return `${PDF_PASSWORD_KEY_PREFIX}_${sanitized}`;
 }
 
