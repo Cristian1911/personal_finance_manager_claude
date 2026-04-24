@@ -2,6 +2,14 @@ import type { DashboardLayout } from "@zeta/shared";
 import { getDatabase } from "../db/database";
 import { invalidatePreferredCurrency } from "../profile";
 
+/**
+ * Default plan applied to the local profile row at onboarding. The real value
+ * lives in Supabase (column default); we only need this locally because
+ * SQLite doesn't mirror the server default. Kept as a named constant so
+ * future plan tiers are easy to locate.
+ */
+export const DEFAULT_PROFILE_PLAN = "free";
+
 export type BootstrapProfile = {
   id: string;
   email?: string | null;
@@ -15,6 +23,7 @@ export type BootstrapProfile = {
   onboarding_completed: boolean;
   dashboard_config?: unknown;
   mobile_dashboard_config?: DashboardLayout;
+  plan?: string;
   created_at?: string | null;
   updated_at: string;
 };
@@ -57,7 +66,7 @@ export async function bootstrapOnboardingLocally({
          estimated_monthly_expenses, preferred_currency, timezone, locale,
          onboarding_completed, plan, created_at, updated_at, dashboard_config,
          mobile_dashboard_config)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'free', ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          email = excluded.email,
          full_name = excluded.full_name,
@@ -68,6 +77,7 @@ export async function bootstrapOnboardingLocally({
          timezone = excluded.timezone,
          locale = excluded.locale,
          onboarding_completed = excluded.onboarding_completed,
+         plan = excluded.plan,
          updated_at = excluded.updated_at,
          dashboard_config = excluded.dashboard_config,
          mobile_dashboard_config = excluded.mobile_dashboard_config`,
@@ -82,6 +92,7 @@ export async function bootstrapOnboardingLocally({
         profile.timezone,
         profile.locale,
         profile.onboarding_completed ? 1 : 0,
+        profile.plan ?? DEFAULT_PROFILE_PLAN,
         profile.created_at ?? profile.updated_at,
         profile.updated_at,
         profile.dashboard_config ? JSON.stringify(profile.dashboard_config) : null,

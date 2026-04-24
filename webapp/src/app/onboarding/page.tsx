@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { getDefaultConfig } from "@/lib/dashboard-config-defaults";
-import { DEFAULT_LAYOUT as DEFAULT_MOBILE_LAYOUT } from "@/lib/dashboard/widgets";
+import { DEFAULT_LAYOUT as DEFAULT_MOBILE_LAYOUT } from "@zeta/shared";
 import type { AppPurpose } from "@/types/dashboard-config";
 
 const OPTIONAL_STEPS = new Set([1]);
