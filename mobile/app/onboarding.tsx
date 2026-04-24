@@ -8,6 +8,7 @@ import {
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
+import { DEFAULT_LAYOUT } from "@zeta/shared";
 import { AppKeyboardAwareScrollView } from "../components/common/AppKeyboardAwareScrollView";
 import { WizardProgress } from "../components/ui/WizardProgress";
 import { StepWelcome } from "../components/onboarding/StepWelcome";
@@ -30,6 +31,7 @@ import { parseMoney } from "../lib/utils/money";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useOnboardingStatus } from "../lib/onboarding-status";
+import { bootstrapOnboardingLocally } from "../lib/onboarding/bootstrap";
 
 const TOTAL_STEPS = 5;
 type StepIndex = 1 | 2 | 3 | 4 | 5;
@@ -133,7 +135,9 @@ export default function MobileOnboardingScreen() {
     try {
       const now = new Date().toISOString();
       const balanceN = parseMoney(data.balance);
-
+      const timezone =
+        Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Bogota";
+      const mobileDashboardConfig = DEFAULT_LAYOUT;
       // Two-phase write to keep `onboarding_completed` truthful:
       // 1. Save profile data EXCEPT completion flag.
       // 2. Insert the first account.
@@ -148,31 +152,37 @@ export default function MobileOnboardingScreen() {
           estimated_monthly_income: parseMoney(data.incomeMonthly),
           estimated_monthly_expenses: parseMoney(data.expensesMonthly),
           preferred_currency: data.currency,
-          timezone:
-            Intl.DateTimeFormat().resolvedOptions().timeZone ||
-            "America/Bogota",
+          timezone,
           locale: "es-CO",
+          mobile_dashboard_config: mobileDashboardConfig,
           updated_at: now,
         })
         .eq("id", session.user.id);
 
       if (profileError) throw profileError;
 
-      const { error: accountError } = await supabase.from("accounts").insert({
-        user_id: session.user.id,
-        name: data.accountName.trim(),
-        account_type: data.accountType,
-        current_balance: balanceN,
-        currency_code: data.currency,
-        is_active: true,
-        display_order: 0,
-        provider: "MANUAL",
-        connection_status: "CONNECTED",
-        created_at: now,
-        updated_at: now,
-      });
+      const { data: createdAccount, error: accountError } = await supabase
+        .from("accounts")
+        .insert({
+          user_id: session.user.id,
+          name: data.accountName.trim(),
+          account_type: data.accountType,
+          current_balance: balanceN,
+          currency_code: data.currency,
+          is_active: true,
+          display_order: 0,
+          provider: "MANUAL",
+          connection_status: "CONNECTED",
+          created_at: now,
+          updated_at: now,
+        })
+        .select(
+          "id, user_id, name, account_type, institution_name, currency_code, current_balance, available_balance, credit_limit, interest_rate, icon, color, monthly_payment, payment_day, cutoff_day, created_at, updated_at"
+        )
+        .single();
 
       if (accountError) throw accountError;
+      if (!createdAccount) throw new Error("No account returned");
 
       const { error: completeError } = await supabase
         .from("profiles")
@@ -180,6 +190,42 @@ export default function MobileOnboardingScreen() {
         .eq("id", session.user.id);
 
       if (completeError) throw completeError;
+
+      await bootstrapOnboardingLocally({
+        profile: {
+          id: session.user.id,
+          email: session.user.email ?? null,
+          full_name: data.firstName.trim(),
+          app_purpose: data.purpose,
+          estimated_monthly_income: parseMoney(data.incomeMonthly),
+          estimated_monthly_expenses: parseMoney(data.expensesMonthly),
+          preferred_currency: data.currency,
+          timezone,
+          locale: "es-CO",
+          onboarding_completed: true,
+          mobile_dashboard_config: mobileDashboardConfig,
+          updated_at: now,
+        },
+        account: {
+          id: createdAccount.id,
+          user_id: createdAccount.user_id,
+          name: createdAccount.name,
+          account_type: createdAccount.account_type,
+          institution_name: createdAccount.institution_name,
+          currency_code: createdAccount.currency_code,
+          current_balance: createdAccount.current_balance ?? balanceN,
+          available_balance: createdAccount.available_balance,
+          credit_limit: createdAccount.credit_limit,
+          interest_rate: createdAccount.interest_rate,
+          icon: createdAccount.icon,
+          color: createdAccount.color,
+          monthly_payment: createdAccount.monthly_payment,
+          payment_day: createdAccount.payment_day,
+          cutoff_day: createdAccount.cutoff_day,
+          created_at: createdAccount.created_at ?? now,
+          updated_at: createdAccount.updated_at ?? now,
+        },
+      });
 
       // Fire-and-forget: ping the webapp so its Route Cache expires the
       // profile/accounts tags. If the user opens the webapp right after, the

@@ -1,3 +1,10 @@
+import type {
+  DashboardLayout,
+  PulseRange,
+  WidgetInstance,
+  WidgetSize,
+} from "@zeta/shared";
+
 export type AppPurpose = "manage_debt" | "track_spending" | "save_money" | "improve_habits";
 
 export type DashboardSection = "hero" | "niveles" | "flujo" | "presupuesto" | "patrimonio" | "actividad" | "cuentas";
@@ -9,24 +16,15 @@ export interface WidgetConfig {
   section: DashboardSection;
 }
 
-export type MobileWidgetSize = "XS" | "S" | "M" | "L";
-
-export type MobilePulseRange = "weekly" | "monthly";
-
 /**
- * User-curated mobile layout — Flow 02 Variant B.
- * Pulse is always first and non-removable, so it's not tracked here.
+ * Mobile layout types are aliases over the shared dashboard contract so the
+ * webapp and the native mobile app can't silently drift. Pulse is always
+ * rendered first and is never part of `MobileDashboardLayout.widgets`.
  */
-export interface MobileWidgetInstance {
-  id: string;
-  type: string;
-  size: MobileWidgetSize;
-}
-
-export interface MobileDashboardLayout {
-  pulseRange: MobilePulseRange;
-  widgets: MobileWidgetInstance[];
-}
+export type MobileWidgetSize = WidgetSize;
+export type MobilePulseRange = PulseRange;
+export type MobileWidgetInstance = WidgetInstance;
+export type MobileDashboardLayout = DashboardLayout;
 
 export interface DashboardConfig {
   purpose: AppPurpose;

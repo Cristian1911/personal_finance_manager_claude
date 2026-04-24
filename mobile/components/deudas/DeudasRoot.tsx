@@ -5,6 +5,7 @@ import type { CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import { getDebtOverview, type DebtOverviewData } from "../../lib/repositories/debt";
 import { getDatabase } from "../../lib/db/database";
+import { getPreferredCurrency } from "../../lib/profile";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
@@ -30,17 +31,18 @@ export function DeudasRoot() {
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<DebtOverviewData | null>(null);
   const [monthlyIncome, setMonthlyIncome] = useState(0);
-
-  const currency: CurrencyCode = "COP";
+  const [currency, setCurrency] = useState<CurrencyCode>("COP");
 
   const loadData = useCallback(async () => {
     try {
-      const [overview, income] = await Promise.all([
+      const [overview, income, preferredCurrency] = await Promise.all([
         getDebtOverview(),
         getMonthlyIncome(),
+        getPreferredCurrency(),
       ]);
       setData(overview);
       setMonthlyIncome(income);
+      setCurrency(preferredCurrency);
     } catch (error) {
       console.error("Failed to load debt data:", error);
     }

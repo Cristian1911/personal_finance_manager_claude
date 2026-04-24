@@ -14,6 +14,7 @@ import {
 } from "../../lib/repositories/transactions";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { getAllCategories, type CategoryRow } from "../../lib/repositories/categories";
+import { getPreferredCurrency } from "../../lib/profile";
 import { toLocalMonthString } from "../../lib/utils/date";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileHeader } from "../ui/MobileHeader";
@@ -63,6 +64,7 @@ export function MovimientosRoot() {
   });
   const [currentMonth, setCurrentMonth] = useState(() => toLocalMonthString());
   const [pickerTxId, setPickerTxId] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<CurrencyCode>("COP");
 
   /** Bumped on every loadData call; stale in-flight results drop their setState. */
   const requestIdRef = useRef(0);
@@ -85,7 +87,7 @@ export function MovimientosRoot() {
         };
 
         if (reset) {
-          const [txs, accts, cats, agg, sample] = await Promise.all([
+          const [txs, accts, cats, agg, sample, preferredCurrency] = await Promise.all([
             getTransactions(queryOpts),
             getAllAccounts(),
             getAllCategories(),
@@ -98,6 +100,7 @@ export function MovimientosRoot() {
               accountId: filters.accountId ?? undefined,
               limit: 5,
             }),
+            getPreferredCurrency(),
           ]);
           if (requestId !== requestIdRef.current) return;
           setTransactions(txs);
@@ -105,6 +108,7 @@ export function MovimientosRoot() {
           setCategories(cats);
           setAggregates(agg);
           setUncategorizedSample(sample);
+          setCurrency(preferredCurrency);
           setHasMore(txs.length === PAGE_SIZE);
         } else {
           const page = await getTransactions(queryOpts);
@@ -185,7 +189,6 @@ export function MovimientosRoot() {
     return out;
   }, [filteredTransactions]);
 
-  const currency: CurrencyCode = "COP";
   const activeTool: ToolId | null =
     activeZone === "tool-categorizar" || activeZone === "tool-importar"
       ? (activeZone.replace("tool-", "") as ToolId)

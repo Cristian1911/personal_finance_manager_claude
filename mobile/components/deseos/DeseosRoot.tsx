@@ -11,6 +11,7 @@ import {
   type WishlistItemWithCategory,
 } from "../../lib/repositories/wishlist";
 import { useAuth } from "../../lib/auth";
+import { getPreferredCurrency } from "../../lib/profile";
 import { COLORS } from "../../lib/constants/colors";
 import { MobileHeader } from "../ui/MobileHeader";
 import { MCard, MCardGrid, MCardGridCell } from "../ui/MCard";
@@ -33,7 +34,7 @@ const INITIAL: DeseosState = {
 export function DeseosRoot() {
   const { sync } = useSync();
   const { session } = useAuth();
-  const currency: CurrencyCode = "COP";
+  const [currency, setCurrency] = useState<CurrencyCode>("COP");
 
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<DeseosState>(INITIAL);
@@ -43,14 +44,16 @@ export function DeseosRoot() {
 
   const loadData = useCallback(async () => {
     try {
-      const [items, summary] = await Promise.all([
+      const [items, summary, preferredCurrency] = await Promise.all([
         getActiveWishlistItems(),
         getWishlistSummary(),
+        getPreferredCurrency(),
       ]);
       setData({
         items,
         totalAmount: summary.total_amount,
       });
+      setCurrency(preferredCurrency);
     } catch (error) {
       console.error("Failed to load wishlist:", error);
     }

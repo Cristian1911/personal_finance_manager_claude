@@ -3,7 +3,7 @@
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { updateTag } from "next/cache";
 import { Database, type Json } from "@/types/database";
-import type { DashboardConfig } from "@/types/dashboard-config";
+import type { DashboardConfig, MobileDashboardLayout } from "@/types/dashboard-config";
 
 export type OnboardingProfileData = {
     app_purpose: string;
@@ -25,6 +25,7 @@ export async function finishOnboarding(
     profileData: OnboardingProfileData,
     accountData: InitialAccountData,
     dashboardConfig?: DashboardConfig | null,
+    mobileDashboardConfig?: MobileDashboardLayout | null,
 ) {
     const { supabase, user } = await getAuthenticatedClient();
 
@@ -68,6 +69,7 @@ export async function finishOnboarding(
             locale: profileData.locale,
             onboarding_completed: true,
             ...(dashboardConfig ? { dashboard_config: dashboardConfig as unknown as Json } : {}),
+            ...(mobileDashboardConfig ? { mobile_dashboard_config: mobileDashboardConfig as unknown as Json } : {}),
         })
         .eq("id", user.id);
 
