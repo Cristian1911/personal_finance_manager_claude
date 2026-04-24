@@ -83,6 +83,18 @@
 - **Fix:** mirror the token on webapp: `DESTRUCTIVE_GHOST_BUTTON_CLASS = "border-z-debt/25 bg-black/10 text-z-expense hover:bg-z-debt/10"` (using Tailwind v4 `/` opacity syntax — webapp supports it). Opportunistic cleanup of existing ad-hoc sites follows.
 - **Found:** zetas-front-guy on PR #223, 2026-04-22.
 
+### Webapp — expose "Reset all my data" in Settings
+- **Priority:** Medium
+- **What:** PR #227 shipped the `reset_user_data()` RPC + mobile Settings entry, but webapp Settings has no equivalent. Users who only use the web still can't wipe their own data. The RPC + confirmation copy already exist — webapp just needs a destructive-ghost button in `/settings` that calls the RPC, clears Route Cache (`updateTag` for all domain tags), and signs the user out to `/onboarding`.
+- **Touches:** `webapp/src/app/(dashboard)/settings/page.tsx` (or the nearest Settings surface), new server action `resetAllUserData` in `webapp/src/actions/profile.ts`.
+- **Found:** 2026-04-24, PR #227.
+
+### `reset_user_data()` RPC — drift guard
+- **Priority:** Medium
+- **What:** PR #227 took five hardening passes (`obligation_skips`, `profiles.updated_at` type, NOT NULL currency/locale, `design_reviews`, CI `clearDatabase` FK order) because the RPC hard-codes the table list and every schema change risks silent drift. Today it's resilient to dropped tables via `to_regclass` guards, but new tables added after 2026-04-24 won't be wiped unless someone remembers to touch the RPC.
+- **Fix options:** (a) CI check that diffs `information_schema.tables WHERE table_schema='public'` against the RPC's table list and fails the build on drift; (b) rewrite the RPC to iterate `information_schema` dynamically with an allowlist of system tables to preserve; (c) accept manual upkeep and add a pre-commit reminder when `supabase/migrations/*.sql` adds a `CREATE TABLE`.
+- **Found:** 2026-04-24, PR #227.
+
 ## Claude Design — Wireframe Handoff
 
 Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships unless noted. Each flow below = one milestone slice.
