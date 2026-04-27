@@ -162,10 +162,13 @@ export function MovimientosTransactionRow({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium flex items-center gap-1">
             {tx.recurrence_group_id && (
-              <Repeat
-                className="size-3 shrink-0 text-z-brass/70"
-                aria-label="Vinculado a recurrente"
-              />
+              <>
+                <Repeat
+                  className="size-3 shrink-0 text-z-brass/70"
+                  aria-hidden="true"
+                />
+                <span className="sr-only">Vinculado a recurrente:</span>
+              </>
             )}
             <span className="truncate">{description}</span>
           </p>

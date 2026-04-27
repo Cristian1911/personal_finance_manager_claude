@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/utils/date";
 import {
   PANEL_INSET_CLASS,
   HERO_CARD_GRADIENT_CLASS,
+  MOBILE_ACTION_BUTTON_CLASS,
   MOBILE_EYEBROW_CLASS,
   MOBILE_TAB_BAR_CLEARANCE_CLASS,
 } from "@/lib/constants/styles";
@@ -545,7 +546,10 @@ function CompletedSection({
                   <Link
                     href={`/transactions/${item.transactionId}`}
                     aria-label={`Ver transacción de ${item.merchant}`}
-                    className="shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] text-z-brass active:bg-white/5"
+                    className={cn(
+                      MOBILE_ACTION_BUTTON_CLASS,
+                      "shrink-0 inline-flex items-center gap-0.5",
+                    )}
                   >
                     <ExternalLink className="size-3" />
                     Ver

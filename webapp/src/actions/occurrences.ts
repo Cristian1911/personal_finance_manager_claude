@@ -327,13 +327,16 @@ export interface LinkedRecurringInfo {
  * Returns the recurring template/occurrence linked to this transaction, if any.
  * Used by transaction detail and row badges to navigate the user to the source.
  */
-export async function getLinkedRecurringForTransaction(
+async function getLinkedRecurringForTransactionCached(
+  userId: string,
   transactionId: string,
+  accessToken: string,
 ): Promise<LinkedRecurringInfo | null> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return null;
+  "use cache";
+  cacheTag("occurrences");
+  cacheLife("zeta");
 
-  if (!UUID_RE.test(transactionId)) return null;
+  const supabase = createCachedClient(accessToken);
 
   const { data } = await supabase
     .from("recurring_occurrences")
@@ -344,7 +347,7 @@ export async function getLinkedRecurringForTransaction(
       )
     `)
     .eq("transaction_id", transactionId)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .limit(1)
     .maybeSingle();
 
@@ -364,6 +367,15 @@ export async function getLinkedRecurringForTransaction(
     expectedAmount: data.expected_amount,
     currencyCode: t.currency_code,
   };
+}
+
+export async function getLinkedRecurringForTransaction(
+  transactionId: string,
+): Promise<LinkedRecurringInfo | null> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return null;
+  if (!UUID_RE.test(transactionId)) return null;
+  return getLinkedRecurringForTransactionCached(user.id, transactionId, accessToken);
 }
 
 // ─── Public actions ───────────────────────────────────────────────────────────
@@ -584,7 +596,6 @@ export async function markOccurrencePaid(
   }
 
   revalidateFinancialViews();
-  updateTag("occurrences");
   return { success: true, data: undefined };
 }
 
@@ -1036,10 +1047,24 @@ async function swapPhantomOccurrenceIfMatched(
     return;
   }
 
-  // Reverse the phantom's balance, then delete it
+  // Order: delete phantom first, then reverse balance. If the delete fails the
+  // balance is still correct; if the balance update fails after a successful
+  // delete, the account will be off by the phantom amount but the row is gone —
+  // recoverable via "recompute account balance". Without ACID transactions across
+  // PostgREST calls, this ordering minimizes the window of inconsistency.
   const phantomAccount = phantomTx.accounts as
     | { account_type: string; current_balance: number }
     | null;
+
+  const { error: delErr } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", phantomTx.id)
+    .eq("user_id", user.id);
+  if (delErr) {
+    console.error("[swapPhantomOccurrence] phantom delete failed:", delErr.message);
+    return;
+  }
 
   if (phantomAccount) {
     const reversedBalance = reverseAccountBalanceDelta({
@@ -1054,24 +1079,16 @@ async function swapPhantomOccurrenceIfMatched(
       .eq("id", phantomTx.account_id)
       .eq("user_id", user.id);
     if (balErr) {
-      console.error("[swapPhantomOccurrence] balance reverse failed:", balErr.message);
-      return;
+      console.error("[swapPhantomOccurrence] balance reverse failed after delete:", balErr.message);
+      // Continue — phantom is gone, repoint the occurrence anyway so the user
+      // sees the import as the canonical payment. Account balance can be
+      // recomputed; leaving the orphan paid occurrence is worse UX.
     }
   }
 
-  const { error: delErr } = await supabase
-    .from("transactions")
-    .delete()
-    .eq("id", phantomTx.id)
-    .eq("user_id", user.id);
-  if (delErr) {
-    console.error("[swapPhantomOccurrence] phantom delete failed:", delErr.message);
-    return;
-  }
-
   // Repoint the occurrence at the new tx, mark linked_manually so future
-  // reverts unlink (don't delete) the bank-verified transaction
-  await supabase
+  // reverts unlink (don't delete) the bank-verified transaction.
+  const { error: occErr } = await supabase
     .from("recurring_occurrences")
     .update({
       transaction_id: newTransactionId,
@@ -1080,17 +1097,22 @@ async function swapPhantomOccurrenceIfMatched(
     })
     .eq("id", match.id)
     .eq("user_id", user.id);
+  if (occErr) {
+    console.error("[swapPhantomOccurrence] occurrence repoint failed:", occErr.message);
+  }
 
   // Stamp the new tx with the existing recurrence_group_id so the Vincular
-  // button hides and downstream queries treat it as the canonical payment
-  await supabase
+  // button hides and downstream queries treat it as the canonical payment.
+  const { error: txStampErr } = await supabase
     .from("transactions")
     .update({ recurrence_group_id: phantomTx.recurrence_group_id })
     .eq("id", newTransactionId)
     .eq("user_id", user.id);
+  if (txStampErr) {
+    console.error("[swapPhantomOccurrence] new tx group stamp failed:", txStampErr.message);
+  }
 
   revalidateFinancialViews();
-  updateTag("occurrences");
 }
 
 // ─── Manual Linking ───────────────────────────────────────────────────────────
