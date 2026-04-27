@@ -13,6 +13,7 @@ import {
   Hash,
   Link2,
   MoreHorizontal,
+  Repeat,
   Tag,
   Trash2,
   UserRound,
@@ -309,7 +310,15 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium">{tx.description}</p>
+                  <p className="flex items-center gap-1 truncate text-xs font-medium">
+                    {tx.recurrence_group_id && (
+                      <Repeat
+                        className="size-3 shrink-0 text-z-brass/70"
+                        aria-label="Vinculado a recurrente"
+                      />
+                    )}
+                    <span className="truncate">{tx.description}</span>
+                  </p>
                   <p className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
                     <AccountRowIdentity
                       account={{

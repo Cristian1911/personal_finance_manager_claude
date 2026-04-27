@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Check, Tag } from "lucide-react";
+import Link from "next/link";
+import { Check, ExternalLink, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileRecurrentesTemplatesStrip } from "./mobile-recurrentes-templates-strip";
 import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
@@ -540,6 +541,16 @@ function CompletedSection({
                 <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
                 </span>
+                {item.transactionId && (
+                  <Link
+                    href={`/transactions/${item.transactionId}`}
+                    aria-label={`Ver transacción de ${item.merchant}`}
+                    className="shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] text-z-brass active:bg-white/5"
+                  >
+                    <ExternalLink className="size-3" />
+                    Ver
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => handleRevert(item)}

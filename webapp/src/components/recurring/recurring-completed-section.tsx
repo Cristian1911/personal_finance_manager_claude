@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, SkipForward, Undo2, Pencil } from "lucide-react";
+import { CheckCircle2, ExternalLink, SkipForward, Undo2, Pencil } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -76,6 +76,15 @@ export function RecurringCompletedSection({
 
               {/* Actions */}
               <div className="flex shrink-0 items-center gap-1 ml-1">
+                {item.transactionId && (
+                  <Link
+                    href={`/transactions/${item.transactionId}`}
+                    className="rounded-md p-1.5 text-green-600/70 transition-colors hover:bg-green-200/50 hover:text-green-800 dark:text-green-500/70 dark:hover:bg-green-900/40 dark:hover:text-green-300"
+                    title="Ver transacción"
+                  >
+                    <ExternalLink className="size-3.5" />
+                  </Link>
+                )}
                 <Link
                   href={`/recurrentes/${item.templateId}/edit`}
                   className="rounded-md p-1.5 text-green-600/70 transition-colors hover:bg-green-200/50 hover:text-green-800 dark:text-green-500/70 dark:hover:bg-green-900/40 dark:hover:text-green-300"

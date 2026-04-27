@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Pencil, ArrowDownLeft, ArrowUpRight, Link2 } from "lucide-react";
+import { Pencil, ArrowDownLeft, ArrowUpRight, Link2, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -160,7 +160,15 @@ export function MovimientosTransactionRow({
           {tx.direction === "INFLOW" ? <ArrowDownLeft className="size-3" /> : <ArrowUpRight className="size-3" />}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{description}</p>
+          <p className="truncate text-sm font-medium flex items-center gap-1">
+            {tx.recurrence_group_id && (
+              <Repeat
+                className="size-3 shrink-0 text-z-brass/70"
+                aria-label="Vinculado a recurrente"
+              />
+            )}
+            <span className="truncate">{description}</span>
+          </p>
           <p className="text-[11px] text-muted-foreground flex items-center gap-1">
             <span
               className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
