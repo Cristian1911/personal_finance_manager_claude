@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Check, Tag } from "lucide-react";
+import Link from "next/link";
+import { Check, ExternalLink, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileRecurrentesTemplatesStrip } from "./mobile-recurrentes-templates-strip";
 import { AccountRowIdentity } from "@/components/accounts/account-row-identity";
@@ -10,6 +11,7 @@ import { formatDate } from "@/lib/utils/date";
 import {
   PANEL_INSET_CLASS,
   HERO_CARD_GRADIENT_CLASS,
+  MOBILE_ACTION_BUTTON_CLASS,
   MOBILE_EYEBROW_CLASS,
   MOBILE_TAB_BAR_CLEARANCE_CLASS,
 } from "@/lib/constants/styles";
@@ -540,6 +542,19 @@ function CompletedSection({
                 <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {formatCurrency(item.plannedAmount, item.currencyCode as CurrencyCode)}
                 </span>
+                {item.transactionId && (
+                  <Link
+                    href={`/transactions/${item.transactionId}`}
+                    aria-label={`Ver transacción de ${item.merchant}`}
+                    className={cn(
+                      MOBILE_ACTION_BUTTON_CLASS,
+                      "shrink-0 inline-flex items-center gap-0.5",
+                    )}
+                  >
+                    <ExternalLink className="size-3" />
+                    Ver
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => handleRevert(item)}

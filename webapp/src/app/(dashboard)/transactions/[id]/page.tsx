@@ -7,6 +7,7 @@ import { getDestinatarios } from "@/actions/destinatarios";
 import { getTagsForEntity } from "@/actions/tags";
 import {
   getAccountIdsWithPendingOccurrences,
+  getLinkedRecurringForTransaction,
   isTransactionLinkedToOccurrence,
 } from "@/actions/occurrences";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
@@ -38,10 +39,12 @@ export default async function TransactionDetailPage({
     [accountsResult, categoriesResult, destinatariosResult, linkableAccountIds],
     initialTags,
     isLinkedToOccurrence,
+    linkedRecurring,
   ] = await Promise.all([
     listFetchesPromise,
     getTagsForEntity("transaction", tx.id),
     isTransactionLinkedToOccurrence(tx.id),
+    getLinkedRecurringForTransaction(tx.id),
   ]);
 
   const accounts = accountsResult.success ? accountsResult.data : [];
@@ -62,6 +65,7 @@ export default async function TransactionDetailPage({
         categories={categories}
         initialTags={initialTags}
         isLinkedToOccurrence={isLinkedToOccurrence}
+        linkedRecurring={linkedRecurring}
         linkableAccountIds={linkableAccountIds}
       />
     </div>

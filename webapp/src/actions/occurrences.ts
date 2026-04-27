@@ -314,6 +314,70 @@ export async function isTransactionLinkedToOccurrence(
   return !!data;
 }
 
+export interface LinkedRecurringInfo {
+  occurrenceId: string;
+  occurrenceDate: string;
+  templateId: string;
+  templateMerchant: string;
+  expectedAmount: number;
+  currencyCode: string;
+}
+
+/**
+ * Returns the recurring template/occurrence linked to this transaction, if any.
+ * Used by transaction detail and row badges to navigate the user to the source.
+ */
+async function getLinkedRecurringForTransactionCached(
+  userId: string,
+  transactionId: string,
+  accessToken: string,
+): Promise<LinkedRecurringInfo | null> {
+  "use cache";
+  cacheTag("occurrences");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  const { data } = await supabase
+    .from("recurring_occurrences")
+    .select(`
+      id, occurrence_date, template_id, expected_amount,
+      template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
+        merchant_name, description, currency_code
+      )
+    `)
+    .eq("transaction_id", transactionId)
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  const t = data.template as {
+    merchant_name: string | null;
+    description: string | null;
+    currency_code: string;
+  } | null;
+  if (!t) return null;
+
+  return {
+    occurrenceId: data.id,
+    occurrenceDate: data.occurrence_date,
+    templateId: data.template_id,
+    templateMerchant: t.merchant_name ?? t.description ?? "Recurrente",
+    expectedAmount: data.expected_amount,
+    currencyCode: t.currency_code,
+  };
+}
+
+export async function getLinkedRecurringForTransaction(
+  transactionId: string,
+): Promise<LinkedRecurringInfo | null> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return null;
+  if (!UUID_RE.test(transactionId)) return null;
+  return getLinkedRecurringForTransactionCached(user.id, transactionId, accessToken);
+}
+
 // ─── Public actions ───────────────────────────────────────────────────────────
 
 /**
@@ -455,8 +519,12 @@ async function deactivateOnceTemplate(
 }
 
 /**
- * Mark an occurrence as paid and link it to the created transaction.
+ * Mark an occurrence as paid and link it to a pre-existing transaction (auto-link path).
  * Only transitions from 'pending'.
+ *
+ * Stamps `recurrence_group_id` on the transaction so the "Vincular" button hides,
+ * and sets `linked_manually = true` on the occurrence so revertOccurrence unlinks
+ * the imported/manual transaction instead of deleting it.
  */
 export async function markOccurrencePaid(
   occurrenceId: string,
@@ -475,14 +543,51 @@ export async function markOccurrencePaid(
       status: "paid",
       transaction_id: transactionId,
       paid_at: new Date().toISOString(),
+      linked_manually: true,
     })
     .eq("id", occurrenceId)
     .eq("user_id", user.id)
     .eq("status", "pending")
-    .select("template_id, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(frequency)")
+    .select("template_id, occurrence_date, template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(frequency, category_id)")
     .single();
 
   if (error) return { success: false, error: error.message };
+
+  // Stamp recurrence_group_id on the linked transaction so visibility predicates
+  // (movimientos / inicio "Vincular" button) correctly hide it. Use the same
+  // deterministic UUID scheme as linkExistingTransactionToOccurrence so both
+  // paths share group identity.
+  if (occurrence?.template_id && occurrence?.occurrence_date) {
+    const { computeRecurringGroupUuid } = await import("@/actions/recurring-templates");
+    const recurrenceGroupId = await computeRecurringGroupUuid(
+      occurrence.template_id,
+      occurrence.occurrence_date,
+    );
+    const template = occurrence.template as { frequency: string; category_id: string | null } | null;
+
+    // Read existing tx to decide if we should backfill the category
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("category_id")
+      .eq("id", transactionId)
+      .eq("user_id", user.id)
+      .single();
+
+    const update: Record<string, unknown> = { recurrence_group_id: recurrenceGroupId };
+    if (tx && !tx.category_id && template?.category_id) {
+      update.category_id = template.category_id;
+      update.categorization_source = "RECURRING_TEMPLATE";
+    }
+
+    const { error: txUpdateErr } = await supabase
+      .from("transactions")
+      .update(update)
+      .eq("id", transactionId)
+      .eq("user_id", user.id);
+    if (txUpdateErr) {
+      console.error("[markOccurrencePaid] tx group stamp failed:", txUpdateErr.message);
+    }
+  }
 
   // Auto-deactivate ONCE templates after their single occurrence is resolved
   const freq = (occurrence?.template as { frequency: string } | null)?.frequency;
@@ -491,7 +596,6 @@ export async function markOccurrencePaid(
   }
 
   revalidateFinancialViews();
-  updateTag("occurrences");
   return { success: true, data: undefined };
 }
 
@@ -833,6 +937,12 @@ export async function findMatchingOccurrence(
 /**
  * Convenience: find a matching pending occurrence and mark it paid.
  * Used by all transaction creation paths (FAB, email, PDF import).
+ *
+ * Also handles the "phantom-swap" race: if no PENDING occurrence matches but
+ * a recently-paid system-created occurrence does (i.e. the user clicked
+ * "Confirmar pago" before the bank-verified import arrived), the imported
+ * transaction supersedes the phantom — the phantom tx is deleted (balance
+ * reversed) and the occurrence is repointed at the imported transaction.
  */
 export async function linkTransactionToOccurrence(
   accountId: string,
@@ -851,7 +961,158 @@ export async function linkTransactionToOccurrence(
   );
   if (matchId) {
     await markOccurrencePaid(matchId, transactionId);
+    return;
   }
+
+  await swapPhantomOccurrenceIfMatched(
+    accountId,
+    transactionDate,
+    amount,
+    direction,
+    transactionId,
+  );
+}
+
+/**
+ * Phantom-swap fallback for `linkTransactionToOccurrence`.
+ *
+ * If a recently-paid, system-created (linked_manually=false) occurrence exists
+ * in the same account/direction window with a matching amount, replace its
+ * phantom transaction with the just-inserted bank-verified one.
+ *
+ * Restricted to single-tx recurrence groups — multi-leg debt-payment phantoms
+ * (CC inflow + source outflow) require human reconciliation.
+ */
+async function swapPhantomOccurrenceIfMatched(
+  accountId: string,
+  transactionDate: string,
+  amount: number,
+  direction: "INFLOW" | "OUTFLOW",
+  newTransactionId: string,
+): Promise<void> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return;
+
+  const baseDateObj = parseISO(transactionDate + "T12:00:00");
+  const rangeStart = toColombiaDateString(addDays(baseDateObj, -3));
+  const rangeEnd = toColombiaDateString(addDays(baseDateObj, 3));
+
+  const { data: candidates, error } = await supabase
+    .from("recurring_occurrences")
+    .select(
+      `id, transaction_id, expected_amount,
+       template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
+         account_id, direction, is_active
+       )`,
+    )
+    .eq("user_id", user.id)
+    .eq("status", "paid")
+    .eq("linked_manually", false)
+    .eq("template.account_id", accountId)
+    .eq("template.direction", direction)
+    .eq("template.is_active", true)
+    .gte("occurrence_date", rangeStart)
+    .lte("occurrence_date", rangeEnd);
+
+  if (error || !candidates) return;
+
+  const tolerance = amount * 0.01;
+  const match = candidates.find(
+    (row) =>
+      row.transaction_id != null &&
+      Math.abs(row.expected_amount - amount) <= tolerance,
+  );
+  if (!match || !match.transaction_id) return;
+
+  // Read phantom tx — must be a single-tx recurrence group to swap safely
+  const { data: phantomTx } = await supabase
+    .from("transactions")
+    .select(
+      "id, recurrence_group_id, amount, direction, account_id, accounts!transactions_account_id_fkey(account_type, current_balance)",
+    )
+    .eq("id", match.transaction_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!phantomTx || !phantomTx.recurrence_group_id) return;
+
+  const { data: groupTxs } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq("recurrence_group_id", phantomTx.recurrence_group_id)
+    .eq("user_id", user.id);
+
+  if (!groupTxs || groupTxs.length !== 1) {
+    // Multi-leg phantom — leave for manual reconciliation
+    return;
+  }
+
+  // Order: delete phantom first, then reverse balance. If the delete fails the
+  // balance is still correct; if the balance update fails after a successful
+  // delete, the account will be off by the phantom amount but the row is gone —
+  // recoverable via "recompute account balance". Without ACID transactions across
+  // PostgREST calls, this ordering minimizes the window of inconsistency.
+  const phantomAccount = phantomTx.accounts as
+    | { account_type: string; current_balance: number }
+    | null;
+
+  const { error: delErr } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", phantomTx.id)
+    .eq("user_id", user.id);
+  if (delErr) {
+    console.error("[swapPhantomOccurrence] phantom delete failed:", delErr.message);
+    return;
+  }
+
+  if (phantomAccount) {
+    const reversedBalance = reverseAccountBalanceDelta({
+      currentBalance: phantomAccount.current_balance,
+      accountType: phantomAccount.account_type,
+      direction: phantomTx.direction as "INFLOW" | "OUTFLOW",
+      amount: phantomTx.amount,
+    });
+    const { error: balErr } = await supabase
+      .from("accounts")
+      .update({ current_balance: reversedBalance })
+      .eq("id", phantomTx.account_id)
+      .eq("user_id", user.id);
+    if (balErr) {
+      console.error("[swapPhantomOccurrence] balance reverse failed after delete:", balErr.message);
+      // Continue — phantom is gone, repoint the occurrence anyway so the user
+      // sees the import as the canonical payment. Account balance can be
+      // recomputed; leaving the orphan paid occurrence is worse UX.
+    }
+  }
+
+  // Repoint the occurrence at the new tx, mark linked_manually so future
+  // reverts unlink (don't delete) the bank-verified transaction.
+  const { error: occErr } = await supabase
+    .from("recurring_occurrences")
+    .update({
+      transaction_id: newTransactionId,
+      linked_manually: true,
+      paid_at: new Date().toISOString(),
+    })
+    .eq("id", match.id)
+    .eq("user_id", user.id);
+  if (occErr) {
+    console.error("[swapPhantomOccurrence] occurrence repoint failed:", occErr.message);
+  }
+
+  // Stamp the new tx with the existing recurrence_group_id so the Vincular
+  // button hides and downstream queries treat it as the canonical payment.
+  const { error: txStampErr } = await supabase
+    .from("transactions")
+    .update({ recurrence_group_id: phantomTx.recurrence_group_id })
+    .eq("id", newTransactionId)
+    .eq("user_id", user.id);
+  if (txStampErr) {
+    console.error("[swapPhantomOccurrence] new tx group stamp failed:", txStampErr.message);
+  }
+
+  revalidateFinancialViews();
 }
 
 // ─── Manual Linking ───────────────────────────────────────────────────────────

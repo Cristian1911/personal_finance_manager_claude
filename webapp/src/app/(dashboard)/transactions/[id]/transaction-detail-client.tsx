@@ -2,15 +2,18 @@
 
 import { startTransition, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowDownLeft,
   ArrowUpRight,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   EyeOff,
   Eye,
   Link2,
   Plus,
+  Repeat,
   Tag,
   Trash2,
   UserRound,
@@ -55,6 +58,7 @@ import {
   getCandidateOccurrencesForTransaction,
   linkExistingTransactionToOccurrence,
   type CandidateOccurrence,
+  type LinkedRecurringInfo,
 } from "@/actions/occurrences";
 import type {
   Account,
@@ -83,6 +87,8 @@ interface TransactionDetailClientProps {
   categories: CategoryWithChildren[];
   initialTags: TagType[];
   isLinkedToOccurrence: boolean;
+  /** Recurring template + occurrence linked to this tx, if any. */
+  linkedRecurring: LinkedRecurringInfo | null;
   /** Account IDs that have at least one pending occurrence — enables "Vincular". */
   linkableAccountIds: string[];
 }
@@ -117,6 +123,7 @@ export function TransactionDetailClient({
   categories,
   initialTags,
   isLinkedToOccurrence,
+  linkedRecurring,
   linkableAccountIds,
 }: TransactionDetailClientProps) {
   const router = useRouter();
@@ -487,6 +494,35 @@ export function TransactionDetailClient({
           />
         </div>
       </section>
+
+      {/* ── Vinculado a recurrente ─────────────────────────────────── */}
+      {linkedRecurring && (
+        <section className="px-4 pt-4">
+          <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Recurrente vinculada</p>
+          <Link
+            href={`/recurrentes/${linkedRecurring.templateId}/edit`}
+            className="flex items-center gap-3 rounded-xl border border-z-brass/20 bg-z-brass/8 px-3 py-2.5 transition-colors hover:bg-z-brass/12"
+          >
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+              <Repeat className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-z-brass">
+                {linkedRecurring.templateMerchant}
+              </span>
+              <span className="block truncate text-[11px] text-muted-foreground">
+                Pago de {formatDate(linkedRecurring.occurrenceDate, "dd MMM yyyy")} ·
+                {" "}
+                {formatCurrency(
+                  linkedRecurring.expectedAmount,
+                  linkedRecurring.currencyCode as CurrencyCode,
+                )}{" "}esperado
+              </span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-z-brass/60" />
+          </Link>
+        </section>
+      )}
 
       {/* ── Notas ──────────────────────────────────────────────────── */}
       <section className="px-4 pt-4">
