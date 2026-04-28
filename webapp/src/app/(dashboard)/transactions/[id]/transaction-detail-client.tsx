@@ -35,6 +35,7 @@ import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-
 import { TagZonePicker } from "@/components/tags/tag-zone-picker";
 import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
 import { PromoteToRecurringButton } from "@/components/transactions/promote-to-recurring-button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -667,27 +668,22 @@ export function TransactionDetailClient({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => setDeleteConfirmOpen(false)}
-              className={cn(
-                "rounded-md px-4 py-2 text-sm font-medium transition-colors border",
-                GHOST_BUTTON_CLASS,
-              )}
+              className={GHOST_BUTTON_CLASS}
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleDelete}
               disabled={deleting}
-              className={cn(
-                "rounded-md px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50",
-                DESTRUCTIVE_BUTTON_CLASS,
-              )}
+              className={DESTRUCTIVE_BUTTON_CLASS}
             >
               {deleting ? "Eliminando…" : "Eliminar"}
-            </button>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
