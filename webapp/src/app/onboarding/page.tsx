@@ -135,6 +135,7 @@ export default function OnboardingPage() {
         if (skipping) return;
         setSkipping(true);
         try {
+            await skipOnboardingWithDefaults({ timezone });
             void trackClientEvent({
                 event_name: "onboarding_skipped",
                 flow: "onboarding",
@@ -143,7 +144,6 @@ export default function OnboardingPage() {
                 success: true,
                 duration_ms: Date.now() - startedAtRef.current,
             });
-            await skipOnboardingWithDefaults({ timezone });
             router.push("/dashboard");
         } catch (error) {
             void trackClientEvent({
@@ -155,6 +155,7 @@ export default function OnboardingPage() {
                 error_code: "skip_failed",
             });
             toast.error(error instanceof Error ? error.message : "No se pudo saltar la configuración.");
+        } finally {
             setSkipping(false);
         }
     };
