@@ -680,7 +680,7 @@ export function TransactionDetailClient({
               type="button"
               onClick={handleDelete}
               disabled={deleting}
-              className={DESTRUCTIVE_BUTTON_CLASS}
+              className={cn(DESTRUCTIVE_BUTTON_CLASS, "font-semibold")}
             >
               {deleting ? "Eliminando…" : "Eliminar"}
             </Button>
