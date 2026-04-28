@@ -14,7 +14,7 @@
       "backgroundColor": "#121412"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.venti5.zeta",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
