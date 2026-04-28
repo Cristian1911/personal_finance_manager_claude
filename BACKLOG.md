@@ -12,11 +12,6 @@
 
 ## Bugs
 
-### Import reconciliation — `truncate` on `<span>` inside `<li>` ineffective
-- **Priority:** Low
-- **What:** `webapp/src/components/import/reconciliation-step.tsx:304` applies `truncate` to a `<span>` inside a block-level container. `<span>` is inline by default so `truncate` has no effect — long merchant names can overflow. Fix: move `truncate` onto the `<li>` and drop the extra `<span>`.
-- **Found:** Gemini review on PR #216, 2026-04-23.
-
 ### Telegram webhook — capture_tokens label updates via admin client never worked
 - **Priority:** Medium
 - **What:** `webapp/src/app/api/webhooks/telegram/route.ts` lines 27–35 (SELECT by encrypted `token`/`label`) and 99–102, 140–143 (UPDATE `label`) go through the `capture_tokens` view with the admin client (no JWT). Before PR #186's `has_auth` guard, the UPDATE silently NULLed the label via unguarded `zeta_encrypt()`. After the guard, the UPDATE preserves whatever was there (usually NULL). Either way, `findTokenByChatId` also decrypts via admin client → `zeta_decrypt(label)` returns NULL → `.like("label", "telegram:...")` never matches. End-to-end: the `/start <token>` deep-link and `/vincular <token>` flows never actually link a chat.
@@ -58,13 +53,6 @@
 - **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
 - **Found:** 2026-04-18
 
-### Mobile — `expo-system-ui` para tema claro/oscuro en Android
-- **Priority:** Low
-- **What:** Al correr `npx expo prebuild --clean` Expo emite la advertencia `android: userInterfaceStyle: Install expo-system-ui in your project to enable this feature.` — `app.json` declara `"userInterfaceStyle": "automatic"` pero Android lo ignora sin el módulo. iOS sí honra la clave nativamente, así que el bug es sólo Android.
-- **Fix:** `cd mobile && npx expo install expo-system-ui`. No requiere config plugin adicional; Expo lo detecta y la próxima prebuild respeta la preferencia del sistema.
-- **Impacto actual:** la status bar y los fondos de Android no siguen el tema del sistema; se queda con lo que pinte la app.
-- **Found:** prebuild en `feat/mobile-capture-photo-voice`, 2026-04-22.
-
 ### Mobile — `budgets` SQLite missing `is_demo` column (sync drift)
 - **Priority:** Medium
 - **What:** Supabase `budgets` view exposes `is_demo: boolean`. SQLite `budgets` table in `mobile/lib/db/schema.ts` has only 7 columns (no `is_demo`). `getTableColumns()` in `mobile/lib/sync/pull.ts` silently drops the field every pull. Demo-seeded budgets cannot be distinguished from real ones on device. User-created budgets work today because Supabase defaults `is_demo=false` on insert.
@@ -76,12 +64,6 @@
 - **What:** `getBudgetProgress` in `mobile/lib/repositories/budgets.ts` filters `b.period = 'monthly'` (hardcoded). Webapp accepts `"monthly" | "yearly"` via `budgetSchema`. Any yearly budget created on webapp is invisible on mobile.
 - **Fix:** widen the SQL filter + surface a period chip in BudgetRow. Only needed once the webapp exposes yearly creation.
 - **Found:** mobile-webapp-parity on PR #223, 2026-04-22.
-
-### Webapp — `DESTRUCTIVE_GHOST_BUTTON_CLASS` parity
-- **Priority:** Low
-- **What:** PR #223 added `DESTRUCTIVE_GHOST_BUTTON_CLASS` to `mobile/lib/constants/styles.ts` for the budget-row Eliminar button. Webapp `src/lib/constants/styles.ts` has a solid `DESTRUCTIVE_BUTTON_CLASS` but no ghost variant. Webapp components currently re-invent the pattern ad hoc when needed.
-- **Fix:** mirror the token on webapp: `DESTRUCTIVE_GHOST_BUTTON_CLASS = "border-z-debt/25 bg-black/10 text-z-expense hover:bg-z-debt/10"` (using Tailwind v4 `/` opacity syntax — webapp supports it). Opportunistic cleanup of existing ad-hoc sites follows.
-- **Found:** zetas-front-guy on PR #223, 2026-04-22.
 
 ### Webapp — expose "Reset all my data" in Settings
 - **Priority:** Medium
@@ -514,11 +496,6 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **What:** `webapp/src/app/(dashboard)/import/page.tsx` fetches all vault suggestions for the user on every page load, even though the payload isn't read until the user picks an encrypted PDF. The action is intentionally uncached (plaintext passwords). Move the call into `StepUpload`, fired only after a file is selected and a bank key is detected. Removes one uncached SELECT from the initial render.
 - **Found:** perf-auditor review, 2026-04-21 (import flow redesign).
 
-### `markEmailPdfStatementImported` — redundant `revalidateFinancialViews()` call
-- **Priority:** Low
-- **What:** `webapp/src/actions/email-pdf-ingest.ts:221` invalidates every financial tag at the end of the status flip. The preceding `importTransactions` already did the work. Trim to `updateTag("email-ingest")` only.
-- **Found:** perf-auditor review, 2026-04-21.
-
 ### Consolidate `ReconcileChip` into `widget-chip`'s `ExpandableChip`
 - **Priority:** Low
 - **What:** `webapp/src/components/import/reconcile-chip.tsx` duplicates the `ExpandableChip` + `ChipEyebrow` pattern from `webapp/src/components/mobile/v2/inicio/widget-chip.tsx`. Layout differs (centered label/value/hint, chevron bottom-right vs space-between) and the reconcile version needs an `"alert"` tone that doesn't exist upstream. Upstream the tone first, then fold the variants.
@@ -542,11 +519,6 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 - **Priority:** Low
 - **What:** CategoryZonePicker + DestinatarioZonePicker + TagZonePicker all render on mount with `hideTrigger + controlledOpen`. They pull from context so fetches are gated, but the Radix Dialog/Drawer portals register on mount. Mount-once-on-first-open pattern would save 3 portal registrations per detail page load. Not measurable today, revisit if picker count grows.
 - **Found:** perf-auditor review on tx detail redesign, 2026-04-18
-
-### Tx detail — delete confirm dialog uses raw `<button>` instead of shadcn `<Button>`
-- **Priority:** Low
-- **What:** `transaction-detail-client.tsx` DialogFooter uses two raw `<button>` elements with `cn(GHOST_BUTTON_CLASS, ...)` + `cn(DESTRUCTIVE_BUTTON_CLASS, ...)`. Consolidating to `<Button variant="outline" className={...}>` would inherit shadcn sizing primitives + keep consistency with other Dialogs.
-- **Found:** zetas-front-guy review on tx detail redesign, 2026-04-18
 
 ### `useRecurringMonth` callbacks use `router.refresh()` instead of `startTransition`
 - **Priority:** Medium

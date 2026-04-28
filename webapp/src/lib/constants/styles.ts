@@ -13,6 +13,14 @@ export const BRASS_GHOST_BUTTON_CLASS =
 export const DESTRUCTIVE_BUTTON_CLASS =
   "bg-z-debt text-z-white hover:bg-z-debt/90";
 
+/**
+ * Ghost-tinted destructive button — softer destructive surface for inline
+ * remove/delete affordances (row-level Eliminar buttons, secondary destructive
+ * actions). Mirrors the mobile `DESTRUCTIVE_GHOST_BUTTON_CLASS` token.
+ */
+export const DESTRUCTIVE_GHOST_BUTTON_CLASS =
+  "border-z-debt/25 bg-black/10 text-z-expense hover:bg-z-debt/10";
+
 /** Shared page shell spacing */
 export const PAGE_STACK_CLASS = "space-y-6 lg:space-y-8";
 

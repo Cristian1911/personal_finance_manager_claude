@@ -3,7 +3,6 @@
 import { cacheLife, cacheTag, updateTag } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
-import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { parsePdfBuffer } from "@/lib/email-ingest/pdf-handler";
 import { parseStatementFilename, matchAccountByLast4 } from "@/lib/email-ingest/statement-filename";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -218,7 +217,9 @@ export async function markEmailPdfStatementImported(
     await admin.storage.from("email-pdfs").remove([row.storage_path]);
   }
 
-  revalidateFinancialViews();
+  // Note: `importTransactions` (the caller's preceding step) already fired
+  // `revalidateFinancialViews()`. Only the email-ingest tag needs re-evicting
+  // here for the status flip; doing it again would be redundant work.
   updateTag("email-ingest");
   return { success: true, data: null };
 }
