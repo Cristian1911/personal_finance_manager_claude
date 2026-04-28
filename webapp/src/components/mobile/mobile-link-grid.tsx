@@ -9,9 +9,10 @@ import {
   Folder,
   Heart,
   Landmark,
+  List,
   PiggyBank,
   Settings,
-  Tags,
+  Tag,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -32,10 +33,10 @@ const CUENTAS_GROUP: Group = {
 const ORGANIZAR_GROUP: Group = {
   title: "Organizar",
   tiles: [
-    { href: "/categorizar", icon: Tags, label: "Categorizar" },
+    { href: "/categorizar", icon: List, label: "Categorizar" },
     { href: "/plan?tab=presupuesto", icon: Folder, label: "Categorías" },
     { href: "/destinatarios", icon: Contact, label: "Destinatarios" },
-    { href: "/etiquetas", icon: Tags, label: "Etiquetas" },
+    { href: "/etiquetas", icon: Tag, label: "Etiquetas" },
   ],
 };
 
