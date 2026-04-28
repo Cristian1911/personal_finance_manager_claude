@@ -68,5 +68,14 @@
         "EXPO_PUBLIC_API_URL": "https://pfm.sanson1911.cloud"
       }
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "venti5.labs@gmail.com",
+        "ascAppId": "6763683831",
+        "appleTeamId": "F5GQBU5JPS"
+      }
+    }
   }
 }
