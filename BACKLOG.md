@@ -789,3 +789,59 @@ orient → mobile-sync-doctor + mobile-webapp-parity (paralelo) → fix push.ts 
 5. **Mobile tab polish — Deudas** (próximo en el sweep) o Movimientos slice 2.
 6. **Settings v2 polish** — sesión de diseño antes de tocar TSX.
 7. **Restaurar FLUJO DEL MES chart** en Plan.
+
+---
+
+## Session handoff — 2026-04-28
+
+### Shipped this session
+- **PR #230** — `feat: Phase 1 IA shell — nav_focus, /gestionar redesigned as Más, Rappi-case account creation`. *Merged*.
+  - Migration `20260428120000_add_nav_focus_to_profiles.sql`: 6-step view+trigger rebuild adding `nav_focus` enum (`PLAN`/`DEBT`) on `profiles_enc`. Backfill: `manage_debt` purpose → `DEBT`.
+  - `NavFocusProvider` en `webapp/src/components/providers/nav-focus-provider.tsx`. Mounted en `(dashboard)/layout.tsx`. `useNavFocus()` consumido por mobile tab bar para slot variable.
+  - `webapp/src/lib/constants/mobile-nav.ts`: `getMobileTabs(focus)` → 3 tabs + Más + FAB. Tercer slot Plan|Deudas.
+  - `webapp/src/components/mobile/mobile-link-grid.tsx`: 4 secciones (Cuentas y saldos · Organizar · Planificar · Sistema) con `SECTION_EYEBROW_CLASS`. Tab inverso al `nav_focus` aparece bajo Planificar.
+  - `/gestionar` retitulado a "Más" (no rename de ruta — mantener bookmarks existentes).
+  - Onboarding actions: `finishOnboarding` deriva `nav_focus`. Settings → toggle `Foco principal`.
+  - Rappi-case fix: empty state `/accounts` promueve `Crear cuenta manual` con `BRASS_BUTTON_CLASS`. FAB ya existía.
+
+- **PR #231** — `chore: app store ios submit config`. *Merged*. `mobile/app.json` + `mobile/eas.json` + `docs/app-store/` (LISTING_ES.md, README, screenshots/preview specs). **No subió build todavía** — es solo config + checklist para próxima sesión.
+
+- **PR #232** — `feat: Phase 2 onboarding — trim + skip path + currency from timezone`. *Merged*.
+  - 5 steps → 3 funcionales + celebración. Step 1 welcome con CTA `Comenzar` + secundaria `Saltar configuración y explorar`.
+  - `webapp/src/lib/utils/currency-from-timezone.ts`: IANA → CurrencyCode (Bogota→COP, Mexico_City→MXN, Sao_Paulo→BRL, Lima→PEN, default COP). Auto-detected — currency step eliminado.
+  - `skipOnboardingWithDefaults({ full_name, timezone })` server action: idempotency guard (lee `onboarding_completed`), Zod (`timezone` regex `^[A-Za-z]+/[A-Za-z_/]+$`, name max 120), `null` para name (no placeholder), inserta "Mi cuenta" CHECKING $0. Defense-in-depth `.eq("user_id", user.id)`.
+  - Step 3 usa `<SectionDivider label="Primera cuenta" />` per TOKENS.md §5 (no más `border-t border-white/6 pt-5`).
+  - Skip handler con `try/finally` + `trackClientEvent("onboarding_skipped")` antes de `router.push("/dashboard")` (Gemini fix).
+
+- **PR #233** — `chore: quick-wins sweep (BACKLOG #4 + #7)`. *Merged*.
+  - PDF parser: `services/pdf_parser/main.py` añadió `_statements_have_content()`. Detector match con statements vacíos ahora levanta `ValueError` → fallback path → 422 `unsupported_format`. Antes el contenido vacío caía silencioso.
+  - `webapp/src/actions/email-pdf-ingest.ts`: removed redundant `revalidateFinancialViews()` from `markEmailPdfStatementImported` (caller `importTransactions` ya lo dispara).
+  - `webapp/src/app/(dashboard)/transactions/[id]/transaction-detail-client.tsx`: DialogFooter raw `<button>` → shadcn `<Button>` con `cn(DESTRUCTIVE_BUTTON_CLASS, "font-semibold")` (Gemini real regression — shadcn Button defaultea a `font-medium`, perdía peso visual).
+  - `webapp/src/lib/constants/styles.ts`: añadido `DESTRUCTIVE_GHOST_BUTTON_CLASS`.
+  - Removidos del BACKLOG: items #1, #2, #3, #6, #8 del antiguo "Quick wins" (5 ya estaban resueltos en main por PRs intermedios).
+
+### Discovered this session — added to backlog
+- **PDF redaction editor** (Low). User idea: si parser falla con `unsupported_format`, ofrecer enviar PDF a devs — pero antes permitir censurar datos sensibles (montos exactos, números de cuenta) con un editor in-browser. Diferido a future session.
+- **/import "Tu banco no aparece" CTA removido** — reemplazado por mejor empty state en `/accounts`. Si parser falla, futuro CTA pedirá consentimiento para enviar PDF a devs (depende del redaction editor).
+
+### Pipeline
+plan mode (3 fases) → spawn supabase-migrator (PR #230) → server-action-reviewer + zetas-front-guy (Phase 2) → respond Gemini (PR #230 ValueError → 500 falso positivo, parser ya mapea 422; PR #232 skip handler analytics order; PR #233 font-semibold real regression) → drain quick wins → switch to main + handoff.
+
+### Outstanding — Phase 3 (deferred)
+- **Préstamos** — table `prestamos_enc` + view + INSTEAD OF triggers, `prestamo_events_enc` lifecycle log, `/prestamos` page (Me deben / Debo), CRUD + event logging, link opcional a transactions vía `transaction_id`. Detallar diseño cuando phase 1+2 estén soak'd.
+
+### Outstanding — mobile native parity
+Expo app sigue con estructura 4-tab. Ports pendientes del IA refactor:
+- `nav_focus` en SQLite + sync engine
+- Tab bar con tercer slot variable
+- `/mas` o equivalente nativo (drawer? page?)
+- Onboarding nativo trim + skip path
+
+### Triage candidates for next session — App Store submission focus
+**Primary:** Walk through `docs/app-store/LISTING_ES.md` demo-mode validation checklist → capture preview videos (user's lane) → `eas build --profile production-ios --platform ios` → `eas submit --profile production --platform ios`.
+
+**Secondary (if blocked on Apple review):**
+1. PaymentSheet parity bugs (High, data integrity) — pendiente desde 2026-04-23.
+2. Webapp mobile/v2/plan parity (pendiente desde 2026-04-22).
+3. Phase 3 Préstamos design.
+4. Mobile native parity para Phase 1+2.
