@@ -92,11 +92,26 @@ class ParseResponse(BaseModel):
     statements: list[ParsedStatement]
 
 
+def _statements_have_content(statements: list[ParsedStatement]) -> bool:
+    """A parse is useful only if at least one statement carries transactions or
+    structured metadata. An empty list — or statements with no transactions and
+    no summary/credit_card/loan metadata — means the detector matched but the
+    extractor produced nothing, which the frontend should treat the same as
+    "format not supported"."""
+    return any(
+        s.transactions
+        or s.summary is not None
+        or s.credit_card_metadata is not None
+        or s.loan_metadata is not None
+        for s in statements
+    )
+
+
 def _attempt_fallback_parse(
     tmp_path: str, password: str | None, filename: str, reason: str
 ) -> ParseResponse | None:
     fallback_statements = try_parse_with_opendataloader(tmp_path, password=password)
-    if not fallback_statements:
+    if not fallback_statements or not _statements_have_content(fallback_statements):
         return None
 
     logger.info(
@@ -160,6 +175,19 @@ async def parse_pdf(file: UploadFile, password: str | None = Form(None)):
 
     try:
         statements = detect_and_parse(tmp_path, password=password)
+        if not _statements_have_content(statements):
+            # Detector matched but extractor produced no usable data — treat as
+            # unsupported so the user gets the "send for support" CTA instead of
+            # a silent empty result.
+            logger.warning(
+                "Detector matched but produced no usable content: filename=%s statements=%s",
+                file.filename,
+                len(statements),
+            )
+            raise ValueError(
+                "El extracto fue reconocido pero no se pudieron extraer transacciones ni metadatos. "
+                "Probablemente el formato cambió o no es uno de los soportados."
+            )
         logger.info(
             "Parsing succeeded: filename=%s statements=%s",
             file.filename,

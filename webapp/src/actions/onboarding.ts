@@ -56,6 +56,11 @@ export async function finishOnboarding(
         throw new Error("Failed to create account. Please try again.");
     }
 
+    // Derive primary nav focus from purpose: debt-focused users get the Deudas
+    // tab promoted; everyone else gets Plan.
+    const navFocus: Database["public"]["Enums"]["nav_focus"] =
+        profileData.app_purpose === "manage_debt" ? "DEBT" : "PLAN";
+
     // 2. Update Profile to include onboarding preferences and mark completed
     const { error: profileError } = await supabase
         .from("profiles")
@@ -67,6 +72,7 @@ export async function finishOnboarding(
             preferred_currency: defaultCurrency,
             timezone: profileData.timezone,
             locale: profileData.locale,
+            nav_focus: navFocus,
             onboarding_completed: true,
             ...(dashboardConfig ? { dashboard_config: dashboardConfig as unknown as Json } : {}),
             ...(mobileDashboardConfig ? { mobile_dashboard_config: mobileDashboardConfig as unknown as Json } : {}),

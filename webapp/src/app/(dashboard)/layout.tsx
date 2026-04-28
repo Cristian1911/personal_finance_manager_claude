@@ -12,6 +12,7 @@ import { getCategories } from "@/actions/categories";
 import { getDestinatarios } from "@/actions/destinatarios";
 import { getTagGroups } from "@/actions/tags";
 import { AppDataProvider } from "@/components/providers/app-data-provider";
+import { NavFocusProvider } from "@/components/providers/nav-focus-provider";
 import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
 import { MobileShellProvider } from "@/components/mobile/v2/mobile-shell-provider";
 import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
@@ -106,6 +107,7 @@ export default async function DashboardLayout({
             }}
           >
             <AppDataProvider data={appData}>
+              <NavFocusProvider value={profile.nav_focus}>
               <MobileSheetProvider>
                 <main className={cn("flex-1 overflow-x-hidden p-4 lg:p-6 lg:pb-6", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
                   {profile.demo_mode ? (
@@ -120,6 +122,7 @@ export default async function DashboardLayout({
 
                 <MobileTabBar />
               </MobileSheetProvider>
+              </NavFocusProvider>
             </AppDataProvider>
           </MobileShellProvider>
         </KeyboardInsetProvider>

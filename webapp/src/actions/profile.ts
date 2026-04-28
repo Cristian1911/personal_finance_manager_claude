@@ -56,6 +56,7 @@ const profileSchema = z.object({
   preferred_currency: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
   locale: z.string().default("es-CO"),
   timezone: z.string().default("America/Bogota"),
+  nav_focus: z.enum(["PLAN", "DEBT"]).default("PLAN"),
   monthly_salary: z.preprocess(
     (v) => (v === "" || v === undefined || v === null ? null : Number(v)),
     z.number().int().positive("El salario debe ser positivo").nullable()
@@ -87,6 +88,7 @@ export async function updateProfile(
     preferred_currency: formData.get("preferred_currency"),
     locale: formData.get("locale") || "es-CO",
     timezone: formData.get("timezone") || "America/Bogota",
+    nav_focus: formData.get("nav_focus") || "PLAN",
     monthly_salary: formData.get("monthly_salary"),
   });
 

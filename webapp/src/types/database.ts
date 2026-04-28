@@ -1835,6 +1835,7 @@ export type Database = {
           locale: string
           mobile_dashboard_config: Json | null
           monthly_salary: number | null
+          nav_focus: Database["public"]["Enums"]["nav_focus"]
           onboarding_completed: boolean
           preferred_currency: Database["public"]["Enums"]["currency_code"]
           timezone: string
@@ -1854,6 +1855,7 @@ export type Database = {
           locale?: string
           mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
+          nav_focus?: Database["public"]["Enums"]["nav_focus"]
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
           timezone?: string
@@ -1873,6 +1875,7 @@ export type Database = {
           locale?: string
           mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
+          nav_focus?: Database["public"]["Enums"]["nav_focus"]
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
           timezone?: string
@@ -1896,6 +1899,7 @@ export type Database = {
           locale: string
           mobile_dashboard_config: Json | null
           monthly_salary: number | null
+          nav_focus: Database["public"]["Enums"]["nav_focus"]
           onboarding_completed: boolean
           preferred_currency: Database["public"]["Enums"]["currency_code"]
           timezone: string
@@ -1916,6 +1920,7 @@ export type Database = {
           locale?: string
           mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
+          nav_focus?: Database["public"]["Enums"]["nav_focus"]
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
           timezone?: string
@@ -1936,6 +1941,7 @@ export type Database = {
           locale?: string
           mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
+          nav_focus?: Database["public"]["Enums"]["nav_focus"]
           onboarding_completed?: boolean
           preferred_currency?: Database["public"]["Enums"]["currency_code"]
           timezone?: string
@@ -3601,6 +3607,7 @@ export type Database = {
         | "EMAIL_IMPORT"
         | "EMAIL_PDF_IMPORT"
       occurrence_status: "pending" | "paid" | "skipped"
+      nav_focus: "PLAN" | "DEBT"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
     }

@@ -5,15 +5,16 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
-import { MOBILE_TABS, isMobileTabActive } from "@/lib/constants/mobile-nav";
+import { getMobileTabs, isMobileTabActive } from "@/lib/constants/mobile-nav";
 import { MOBILE_BG_CLASS } from "@/lib/constants/styles";
 import { useMobileActionMenu } from "@/components/mobile/mobile-sheet-provider";
+import { useNavFocus } from "@/components/providers/nav-focus-provider";
 
-const LEFT_TABS = MOBILE_TABS.slice(0, 2);
-const RIGHT_TABS = MOBILE_TABS.slice(2);
 const SAFE_AREA_BOTTOM_STYLE = { paddingBottom: "env(safe-area-inset-bottom)" } as const;
 
-function TabLinks({ tabs, pathname }: { tabs: typeof MOBILE_TABS; pathname: string }) {
+type Tab = ReturnType<typeof getMobileTabs>[number];
+
+function TabLinks({ tabs, pathname }: { tabs: Tab[]; pathname: string }) {
   return (
     <div className="flex flex-1 items-center justify-around">
       {tabs.map((tab) => {
@@ -40,9 +41,13 @@ export function MobileTabBar() {
   const pathname = usePathname();
   const { openActionMenu, isFabOpen } = useMobileActionMenu();
   const keyboardInset = useKeyboardInset();
+  const focus = useNavFocus();
 
-  // Hide tab bar when virtual keyboard is open to avoid overlapping input
   if (keyboardInset > 0) return null;
+
+  const tabs = getMobileTabs(focus);
+  const leftTabs = tabs.slice(0, 2);
+  const rightTabs = tabs.slice(2);
 
   return (
     <nav
@@ -56,7 +61,7 @@ export function MobileTabBar() {
           MOBILE_BG_CLASS
         )}
       >
-        <TabLinks tabs={LEFT_TABS} pathname={pathname} />
+        <TabLinks tabs={leftTabs} pathname={pathname} />
 
         <div className="relative flex shrink-0 items-center justify-center px-4 py-2">
           <button
@@ -69,7 +74,7 @@ export function MobileTabBar() {
           </button>
         </div>
 
-        <TabLinks tabs={RIGHT_TABS} pathname={pathname} />
+        <TabLinks tabs={rightTabs} pathname={pathname} />
       </div>
     </nav>
   );

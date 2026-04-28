@@ -193,6 +193,19 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Features
 
+### Import support — PDF redaction before "send to devs"
+- **Priority:** Medium
+- **What:** When a user opts into "send for support" on a failed import, give them a redaction step before upload so they can hide PII (name, document ID, account number, address, balances) without losing the structural data we need to build a parser.
+- **Why:** Bank statements are dense with PII. The current flow asks users to upload an unmodified PDF — many won't, even if it would help us add their bank. Privacy gate = higher conversion + safer storage of `save-unrecognized` blobs.
+- **Approach (MVP, ~2-3 days):**
+  1. Auto-redact pass on the server: extract bbox positions for known PII patterns (NIT/CC formats, common name lines via heuristics, account numbers via regex). Return a JSON of suggested redaction rectangles.
+  2. Client preview: render the PDF page-by-page (pdf.js) with the suggested rectangles overlaid as semi-opaque boxes. User can toggle each suggestion on/off and drag a new rectangle for anything missed.
+  3. On submit: client posts the redaction list + original file to `/api/save-unrecognized`. Server applies the rectangles using `pypdf` or `reportlab` (draw black rect on top of each page) and stores the redacted output. Original is discarded.
+- **Approach (full, ~1 week):** Add per-rectangle reasons ("name", "account", "amount") for analytics on what users hide most; let user blur instead of black-box; preserve text-layer for rectangles outside the redaction zone so devs can still parse the structure.
+- **Tradeoff:** image-only redaction (rasterize → paint → re-encode) loses text fidelity → defeats the dev-support purpose. Stick with vector overlay.
+- **Touches:** `services/pdf_parser/main.py` (`/save-unrecognized` accepts redaction rectangles + applies them; new `/suggest-redactions` endpoint for the auto-pass), `webapp/src/components/import/step-upload.tsx` (the existing `unsupportedFile` block grows a "Revisar y censurar" intermediate step), new `webapp/src/components/import/redaction-editor.tsx`, dependency: `pdfjs-dist` for client render + a server-side redaction lib.
+- **Found:** User request, 2026-04-28.
+
 ### Budget setup — per-category opt-in + calculator shortcut
 - **Priority:** Medium
 - **What:** When setting up budgets the user wants to pick categories one by one and only assign amounts to the ones they care about — leaving the rest blank is a valid state, not an error. Also: every amount input should expose a small calculator button (popover/drawer) so the user can do quick math without leaving the form.
