@@ -1,9 +1,11 @@
 "use server";
 
+import { z } from "zod";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { updateTag } from "next/cache";
 import { Database, type Json } from "@/types/database";
 import type { DashboardConfig, MobileDashboardLayout } from "@/types/dashboard-config";
+import { inferCurrencyFromTimezone } from "@/lib/utils/currency-from-timezone";
 
 export type OnboardingProfileData = {
     app_purpose: string;
@@ -82,6 +84,91 @@ export async function finishOnboarding(
     if (profileError) {
         console.error("Failed to update profile:", profileError);
         throw new Error("Failed to finalize onboarding setup. Please try again.");
+    }
+
+    updateTag("profile");
+    updateTag("accounts");
+    updateTag("dashboard:hero");
+    updateTag("dashboard:accounts");
+}
+
+// ─── Skip onboarding with sensible defaults ────────────────────────────────
+//
+// Lets a signed-up user land on the dashboard without filling every step.
+// Creates a placeholder cuenta + sets minimal profile values; everything is
+// editable later in Settings → Perfil and /accounts. We mark `app_purpose`
+// as `track_spending` (the most generic) so `nav_focus` defaults to PLAN.
+//
+// Idempotent: if the profile already has `onboarding_completed = true`, we
+// return without re-inserting the placeholder account (handles double-click
+// or retry).
+
+const skipInputSchema = z.object({
+    // Permissive IANA shape (Region/City). Just a sanity guard against
+    // arbitrary client input — the value is stored verbatim.
+    timezone: z.string().regex(/^[A-Za-z]+\/[A-Za-z_/]+$/).optional(),
+    full_name: z.string().trim().min(1).max(120).optional(),
+});
+
+export async function skipOnboardingWithDefaults(input: {
+    full_name?: string;
+    timezone?: string;
+}): Promise<void> {
+    const { supabase, user } = await getAuthenticatedClient();
+    if (!user) throw new Error("Unauthorized");
+
+    const parsed = skipInputSchema.safeParse(input);
+    if (!parsed.success) {
+        throw new Error("Datos de configuración inválidos.");
+    }
+
+    // Idempotency guard: if onboarding already finished (e.g. double-submit
+    // or a retry after a network blip), short-circuit so we don't insert
+    // duplicate "Mi cuenta" rows or overwrite the user's later edits.
+    const { data: existing } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", user.id)
+        .single();
+    if (existing?.onboarding_completed) return;
+
+    const timezone = parsed.data.timezone || "America/Bogota";
+    const currency = inferCurrencyFromTimezone(timezone);
+    const fullName = parsed.data.full_name ?? null;
+
+    const { error: accountError } = await supabase
+        .from("accounts")
+        .insert({
+            user_id: user.id,
+            name: "Mi cuenta",
+            account_type: "CHECKING",
+            current_balance: 0,
+            currency_code: currency,
+            is_active: true,
+            display_order: 0,
+            provider: "MANUAL",
+            connection_status: "CONNECTED",
+        });
+    if (accountError) {
+        console.error("skipOnboardingWithDefaults account insert failed:", accountError);
+        throw new Error("No se pudo crear la cuenta inicial.");
+    }
+
+    const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+            app_purpose: "track_spending",
+            full_name: fullName,
+            preferred_currency: currency,
+            timezone,
+            locale: "es-CO",
+            nav_focus: "PLAN",
+            onboarding_completed: true,
+        })
+        .eq("id", user.id);
+    if (profileError) {
+        console.error("skipOnboardingWithDefaults profile update failed:", profileError);
+        throw new Error("No se pudo finalizar la configuración.");
     }
 
     updateTag("profile");
