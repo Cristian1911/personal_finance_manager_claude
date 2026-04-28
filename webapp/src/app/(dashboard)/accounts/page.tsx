@@ -126,10 +126,14 @@ export default async function AccountsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              Crea la primera cuenta o importa un extracto para empezar.
+              Crea cualquier cuenta a mano —tarjeta, app, efectivo— en segundos.
+              Si tu banco aparece en la lista de soportados, también puedes importar un extracto.
             </p>
             <div className="flex flex-wrap gap-3">
-              <AccountFormDialog />
+              <AccountFormDialog
+                triggerLabel="Crear cuenta manual"
+                triggerClassName={BRASS_BUTTON_CLASS}
+              />
               <Button
                 asChild
                 variant="outline"
