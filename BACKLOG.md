@@ -175,6 +175,45 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Features
 
+### v1.2 — Zeta Pro subscription (monetization)
+- **Priority:** Medium (post-launch, ~4-8 weeks after v1.0 ships)
+- **What:** Free + paid subscription tier. Free remains usable; "Zeta Pro" unlocks advanced features. Recurring billing via App Store IAP / Google Play Billing.
+- **Why:** Ongoing infra cost (Supabase + parser server + Hostinger VPS) needs revenue. Personal finance is a proven subscription category — Copilot ($13/mo), Monarch ($14.99/mo), YNAB ($14.99/mo), Origin. One-time IAP caps LTV; subscription compounds.
+- **Pricing hypothesis:**
+  - **Zeta Pro · USD 4.99/mo** or **COP 19,900/mo** (local pricing matters in Colombia — set per region in ASC).
+  - Annual discount: USD 39.99/yr (~33% off).
+  - 7-day free trial via App Store intro offer.
+- **Free vs Pro split (proposal — refine after first launch data):**
+  | Feature | Free | Pro |
+  |---|---|---|
+  | Manual transactions | ✓ | ✓ |
+  | Accounts | up to 2 | unlimited |
+  | Categories + tags | ✓ | ✓ |
+  | Basic budget (50/30/20) | ✓ | ✓ |
+  | PDF import | — | ✓ |
+  | Email ingest (Bancolombia) | — | ✓ |
+  | OCR / voice quick-capture | limited (5/mo) | unlimited |
+  | Multi-currency | — | ✓ |
+  | Debt simulator + scenario engine | — | ✓ |
+  | Recurring obligations | — | ✓ |
+  | Wishlist / Deseos | — | ✓ |
+  | Dashboard widgets | basic 3 | full set |
+- **Implementation effort:** ~1.5-2 weeks
+  - StoreKit 2 + Google Play Billing integration (RevenueCat recommended — abstracts both, ~2-3 days)
+  - Paywall screen + Spanish copy + visual hierarchy (1-2 days)
+  - Entitlement gating across the app (`useEntitlement("pro")` hook, conditional renders, lock badges) (1-2 days)
+  - Server-side receipt validation (RevenueCat handles, otherwise webhook to Supabase) (1 day)
+  - Restore Purchases flow (0.5 day)
+  - Sandbox tester accounts + manual flows (1 day)
+  - Define product IDs, prices, descriptions per region in ASC + Play Console (0.5 day)
+- **Constraints:**
+  - Webapp is the design source of truth — paywall must work on web too (Stripe for web, IAP for mobile, webhook syncs entitlements).
+  - Existing users (during free-only period) → consider grandfathering: "early adopter" perpetual Pro for everyone signed up before launch date.
+  - Apple takes 15% (Small Business Program <$1M/yr) or 30%; Google takes 15%.
+- **Why not now:** zero download data → can't tier features without knowing what users actually use. Apple v1.0 review already in motion; adding IAP delays + restarts review. Free apps review faster (24h vs 48h).
+- **Trigger to start:** ~50 weekly active users OR clear feedback from early adopters that PDF import + email ingest are the magnets.
+- **Found:** User question, 2026-04-29 (App Store Connect pricing decision during first submission).
+
 ### Import support — PDF redaction before "send to devs"
 - **Priority:** Medium
 - **What:** When a user opts into "send for support" on a failed import, give them a redaction step before upload so they can hide PII (name, document ID, account number, address, balances) without losing the structural data we need to build a parser.
