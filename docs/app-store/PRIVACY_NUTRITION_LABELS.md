@@ -27,7 +27,7 @@ Reason: we collect email, financial data, and user-generated content. Supabase (
 For each type below, ASC asks 3 sub-questions:
 1. **Linked to user?** (yes — all data is tied to the Supabase `user_id`)
 2. **Used for tracking?** (no — we never share data with third parties for advertising or cross-app tracking)
-3. **Purpose** (pick from: App Functionality, Analytics, Product Personalization, App Functionality, Developer's Advertising/Marketing, Third-Party Advertising, Other)
+3. **Purpose** (pick from: App Functionality, Analytics, Product Personalization, Developer's Advertising/Marketing, Third-Party Advertising, Other)
 
 For Zeta, the answer is uniformly: **Linked = Yes, Tracking = No, Purpose = App Functionality**.
 
@@ -102,13 +102,17 @@ This means the **App Tracking Transparency (ATT) prompt is NOT required**. Do no
 
 ## Info.plist permission strings (verify present)
 
-These must exist in the iOS build for the runtime permission prompts. Check `mobile/app.json` → `ios.infoPlist`:
+These must exist in the iOS build for the runtime permission prompts. They live in two places in `mobile/app.json`:
 
+**Direct in `ios.infoPlist`:**
 - `NSCameraUsageDescription` — "Zeta usa la cámara para capturar recibos y extractos."
 - `NSPhotoLibraryUsageDescription` — "Zeta accede a tus fotos para importar recibos y extractos."
-- `NSMicrophoneUsageDescription` — "Zeta usa el micrófono para capturar transacciones por voz."
-- `NSSpeechRecognitionUsageDescription` — "Zeta transcribe tu voz en el dispositivo para registrar transacciones rápidamente."
-- `NSFaceIDUsageDescription` — "Zeta usa Face ID para proteger el acceso a tus finanzas." (if `expo-local-authentication` is wired up)
+- `NSFaceIDUsageDescription` — "Zeta usa Face ID para proteger el acceso a tus finanzas."
+
+**Auto-injected by Expo plugins (under `plugins`):**
+- `expo-image-picker` — supplies `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` if not set elsewhere.
+- `expo-speech-recognition` → `microphonePermission` + `speechRecognitionPermission` props. The plugin generates `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` at prebuild time — do **not** duplicate them in `ios.infoPlist`.
+- `expo-local-authentication` → `faceIDPermission` prop generates `NSFaceIDUsageDescription`.
 
 Reviewer rejects builds whose permission strings are missing or generic ("This app needs camera access"). Make them specific to Zeta's use case in Spanish.
 
