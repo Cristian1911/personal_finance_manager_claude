@@ -11,3 +11,5 @@ export const LEGAL_URLS = {
   privacy: `${WEBAPP_URL}/privacy`,
   terms: `${WEBAPP_URL}/terms`,
 };
+
+export const SUPPORT_EMAIL = "giraldo.0302@gmail.com";

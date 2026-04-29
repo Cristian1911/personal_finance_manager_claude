@@ -3525,6 +3525,10 @@ export type Database = {
         Args: Record<string, never>
         Returns: undefined
       }
+      delete_user_account: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
       get_accounts_with_masks: {
         Args: { p_user_id: string }
         Returns: {

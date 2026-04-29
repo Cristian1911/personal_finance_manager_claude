@@ -43,10 +43,11 @@ import { supabase } from "../lib/supabase";
 import { clearDatabase, getDatabase } from "../lib/db/database";
 import { disableDemoMode } from "../lib/demo-mode";
 import { resetUserData } from "../lib/reset-data";
+import { deleteUserAccount } from "../lib/delete-account";
 import { useOnboardingStatus } from "../lib/onboarding-status";
 import { useTheme, type ThemeMode } from "../lib/theme";
 import { COLORS } from "../lib/constants/colors";
-import { LEGAL_URLS } from "../lib/constants/urls";
+import { LEGAL_URLS, SUPPORT_EMAIL } from "../lib/constants/urls";
 import {
   BRASS_GHOST_BUTTON_CLASS,
   PANEL_INSET_CLASS,
@@ -367,6 +368,7 @@ export default function SettingsScreen() {
   const { markIncomplete } = useOnboardingStatus();
   const [syncing, setSyncing] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
   const [biometricsOn, setBiometricsOn] = useState(false);
   const [bgReauthOn, setBgReauthOn] = useState(false);
@@ -546,6 +548,52 @@ export default function SettingsScreen() {
       ],
     );
   }, [clear, demoMode, markIncomplete, router, session?.user?.id]);
+
+  const handleDeleteAccount = useCallback(() => {
+    if (demoMode || !session?.user?.id) return;
+    const userId = session.user.id;
+
+    Alert.alert(
+      "Eliminar cuenta",
+      "Se eliminarán de forma permanente tu cuenta, transacciones, presupuestos, deudas, recurrentes, destinatarios y todas tus configuraciones. Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Continuar",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Confirmación final",
+              "Tu cuenta y todos los datos se borrarán para siempre. ¿Seguro?",
+              [
+                { text: "Cancelar", style: "cancel" },
+                {
+                  text: "Eliminar cuenta",
+                  style: "destructive",
+                  onPress: async () => {
+                    setDeleting(true);
+                    try {
+                      await deleteUserAccount(userId);
+                      clear();
+                      router.replace("/(auth)/login");
+                    } catch (error) {
+                      console.error("Delete account error:", error);
+                      Alert.alert(
+                        "No se pudo eliminar",
+                        `Inténtalo de nuevo. Si persiste, contacta soporte en ${SUPPORT_EMAIL}.`,
+                      );
+                    } finally {
+                      setDeleting(false);
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  }, [clear, demoMode, router, session?.user?.id]);
 
   const handleSignOut = useCallback(() => {
     Alert.alert("Cerrar sesión", "Se eliminarán los datos locales.", [
@@ -750,6 +798,23 @@ export default function SettingsScreen() {
                   </Text>
                   <Text className="mt-0.5 text-xs font-inter text-muted-foreground">
                     Mantén tu cuenta y vuelve al onboarding
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable
+                className={`${PANEL_INSET_CLASS} flex-row items-center gap-3 px-4 py-3 active:bg-black-10`}
+                onPress={handleDeleteAccount}
+                disabled={deleting}
+                accessibilityRole="button"
+                accessibilityLabel="Eliminar cuenta"
+              >
+                <Trash2 size={16} color={COLORS.debt} />
+                <View className="flex-1">
+                  <Text className="text-sm font-inter-semibold text-z-debt">
+                    {deleting ? "Eliminando cuenta…" : "Eliminar cuenta"}
+                  </Text>
+                  <Text className="mt-0.5 text-xs font-inter text-muted-foreground">
+                    Borra tu cuenta y todos tus datos. Permanente.
                   </Text>
                 </View>
               </Pressable>
