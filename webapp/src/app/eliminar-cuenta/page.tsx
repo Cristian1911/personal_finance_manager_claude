@@ -17,40 +17,51 @@ export default function EliminarCuentaPage() {
       lastUpdated="22 de abril de 2026"
     >
       <p>
-        Esta página explica cómo puedes solicitar la eliminación de tu cuenta
-        de Zeta y de todos los datos asociados. Cumple con los requisitos de
-        Google Play Console y App Store sobre gestión de datos del usuario.
+        Esta página explica cómo puedes eliminar tu cuenta de Zeta y todos
+        los datos asociados. Cumple con los requisitos de Google Play Console
+        y App Store sobre gestión de datos del usuario.
       </p>
 
-      <h2>1. Cómo solicitar la eliminación</h2>
+      <h2>1. Eliminación dentro de la app (recomendado)</h2>
       <p>
-        Envíanos un correo a{" "}
+        Puedes eliminar tu cuenta directamente desde la app, sin enviar
+        correos ni esperas. La eliminación es inmediata.
+      </p>
+      <ul>
+        <li>
+          <strong>Web:</strong> Abre{" "}
+          <Link
+            href="/settings/perfil"
+            className="text-foreground underline decoration-dotted underline-offset-2"
+          >
+            Ajustes → Perfil
+          </Link>{" "}
+          y pulsa <em>Eliminar cuenta</em> al final de la página.
+        </li>
+        <li>
+          <strong>iOS / Android:</strong> Abre <em>Ajustes</em> en la app,
+          baja a <em>Zona de peligro</em> y toca <em>Eliminar cuenta</em>.
+        </li>
+      </ul>
+      <p>
+        Confirma la acción cuando se te pida. Tu cuenta y todos tus datos se
+        borrarán de forma permanente del servidor.
+      </p>
+
+      <h2>2. Eliminación por correo (alternativa)</h2>
+      <p>
+        Si no puedes acceder a la app, también puedes escribirnos a{" "}
         <a
           href={`mailto:${CONTACT_EMAIL}?subject=Solicitud%20de%20eliminaci%C3%B3n%20de%20cuenta%20Zeta`}
           className="text-foreground underline decoration-dotted underline-offset-2"
         >
           {CONTACT_EMAIL}
         </a>{" "}
-        con:
-      </p>
-      <ul>
-        <li>Asunto: <em>Solicitud de eliminación de cuenta Zeta</em>.</li>
-        <li>
-          El correo electrónico con el que te registraste (debe coincidir con
-          el remitente del mensaje).
-        </li>
-        <li>
-          Opcional: motivo de la solicitud (nos ayuda a mejorar, pero no es
-          requerido).
-        </li>
-      </ul>
-      <p>
-        Verificaremos tu identidad comparando el correo remitente con la
-        cuenta en nuestro sistema. Procesamos las solicitudes en un plazo
-        máximo de <strong>7 días hábiles</strong>.
+        desde el correo con el que te registraste. Procesamos las solicitudes
+        manuales en un plazo máximo de <strong>7 días hábiles</strong>.
       </p>
 
-      <h2>2. Qué datos se eliminan</h2>
+      <h2>3. Qué datos se eliminan</h2>
       <p>Al eliminar tu cuenta borramos de forma permanente:</p>
       <ul>
         <li>Tu perfil, correo electrónico y credenciales de autenticación.</li>
@@ -70,7 +81,7 @@ export default function EliminarCuentaPage() {
         </li>
       </ul>
 
-      <h2>3. Qué datos se retienen y por qué</h2>
+      <h2>4. Qué datos se retienen y por qué</h2>
       <p>
         Por obligaciones legales y de integridad del servicio, algunos datos
         pueden conservarse de forma desidentificada tras la eliminación:
@@ -91,7 +102,7 @@ export default function EliminarCuentaPage() {
         </li>
       </ul>
 
-      <h2>4. Reversibilidad</h2>
+      <h2>5. Reversibilidad</h2>
       <p>
         La eliminación es <strong>permanente e irreversible</strong>. No
         podemos recuperar una cuenta eliminada ni sus datos. Si solo quieres
@@ -99,7 +110,7 @@ export default function EliminarCuentaPage() {
         vez de eliminar.
       </p>
 
-      <h2>5. Contacto</h2>
+      <h2>6. Contacto</h2>
       <p>
         Si tienes dudas sobre el proceso o el estado de tu solicitud,
         escríbenos a{" "}
