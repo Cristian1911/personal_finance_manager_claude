@@ -66,6 +66,9 @@ export async function updateSession(request: NextRequest) {
     "/onboarding",
     "/auth",
     "/api/webhooks",
+    "/privacy",
+    "/terms",
+    "/eliminar-cuenta",
   ];
   const pathname = request.nextUrl.pathname;
   const isPublic =
