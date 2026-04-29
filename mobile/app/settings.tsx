@@ -47,7 +47,7 @@ import { deleteUserAccount } from "../lib/delete-account";
 import { useOnboardingStatus } from "../lib/onboarding-status";
 import { useTheme, type ThemeMode } from "../lib/theme";
 import { COLORS } from "../lib/constants/colors";
-import { LEGAL_URLS } from "../lib/constants/urls";
+import { LEGAL_URLS, SUPPORT_EMAIL } from "../lib/constants/urls";
 import {
   BRASS_GHOST_BUTTON_CLASS,
   PANEL_INSET_CLASS,
@@ -580,7 +580,7 @@ export default function SettingsScreen() {
                       console.error("Delete account error:", error);
                       Alert.alert(
                         "No se pudo eliminar",
-                        "Inténtalo de nuevo. Si persiste, contacta soporte en giraldo.0302@gmail.com.",
+                        `Inténtalo de nuevo. Si persiste, contacta soporte en ${SUPPORT_EMAIL}.`,
                       );
                     } finally {
                       setDeleting(false);
