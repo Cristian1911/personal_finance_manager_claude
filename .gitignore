@@ -63,3 +63,6 @@ mobile/.idea/
 
 # PDF parser local scratch folder — sample statements, not shared
 /pdfs_to_review/
+
+# App Store screen recordings — large binary previews, uploaded directly to ASC
+/docs/app-store/previews/

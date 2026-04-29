@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
 import { loginSchema, signupSchema, forgotPasswordSchema, resetPasswordSchema } from "@/lib/validators/auth";
 import { trackProductEvent, trackProductEventForUser } from "@/actions/product-events";
@@ -179,6 +180,38 @@ export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+// Permanently deletes the calling user's account and ALL associated data.
+// Required by Apple App Store Guideline 5.1.1(v) and Google Play Data
+// Safety. Wipes app tables via reset_user_data() and deletes the
+// auth.users row (cascades the rest).
+export async function deleteAccount(): Promise<AuthActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { error: "No autenticado" };
+
+  // Anonymous demo sessions: the "Eliminar cuenta" affordance is for real
+  // accounts. Demo users are cleaned up by the daily cron — letting them
+  // hit this RPC works at the DB level but is a UX footgun.
+  if (user.is_anonymous) {
+    return {
+      error:
+        "Estás en modo demo. Cierra sesión y crea una cuenta real para gestionar tus datos.",
+    };
+  }
+
+  // RPC is `SECURITY DEFINER` and re-checks `auth.uid()` server-side, so
+  // a caller can only delete their own account.
+  const { error } = await supabase.rpc("delete_user_account");
+  if (error) {
+    console.error("[deleteAccount] RPC failed:", error);
+    return {
+      error: "No se pudo eliminar la cuenta. Intenta de nuevo.",
+    };
+  }
+
+  await supabase.auth.signOut();
+  redirect("/login?deleted=1");
 }
 
 export async function resetPasswordRequest(
