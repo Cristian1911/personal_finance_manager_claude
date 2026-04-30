@@ -115,16 +115,19 @@ async function getUpcomingRecurrencesCached(
   // Read pending occurrences directly — the materialized table is the source
   // of truth. Computing dates in JS from active templates would silently
   // drift after merges or schedule edits.
+  // !inner + template.is_active filter pushes the paused-template exclusion
+  // down to PostgREST so we don't ship rows we'd discard in JS.
   const { data, error } = await supabase
     .from("recurring_occurrences")
     .select(`
       occurrence_date,
-      template:recurring_transaction_templates!recurring_occurrences_template_id_fkey(
+      template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
         ${TEMPLATE_SELECT}
       )
     `)
     .eq("user_id", userId)
     .eq("status", "pending")
+    .eq("template.is_active", true)
     .gte("occurrence_date", todayStr)
     .lte("occurrence_date", rangeEndStr)
     .order("occurrence_date");
@@ -134,7 +137,7 @@ async function getUpcomingRecurrencesCached(
   const upcoming: UpcomingRecurrence[] = [];
   for (const row of data ?? []) {
     const template = row.template as RecurringTemplateWithRelations | null;
-    if (!template || template.is_active === false) continue;
+    if (!template) continue;
     upcoming.push({ template, next_date: row.occurrence_date });
   }
 
