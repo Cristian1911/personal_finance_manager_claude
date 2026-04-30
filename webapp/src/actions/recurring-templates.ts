@@ -110,56 +110,36 @@ async function getUpcomingRecurrencesCached(
 
   const now = new Date(`${todayStr}T00:00:00`);
   const rangeEnd = addDays(now, days);
-  const rangeStartStr = todayStr;
   const rangeEndStr = toISODateString(rangeEnd);
 
-  const occurrenceKey = (templateId: string, date: string) => `${templateId}|${date}`;
+  // Read pending occurrences directly — the materialized table is the source
+  // of truth. Computing dates in JS from active templates would silently
+  // drift after merges or schedule edits.
+  // !inner + template.is_active filter pushes the paused-template exclusion
+  // down to PostgREST so we don't ship rows we'd discard in JS.
+  const { data, error } = await supabase
+    .from("recurring_occurrences")
+    .select(`
+      occurrence_date,
+      template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
+        ${TEMPLATE_SELECT}
+      )
+    `)
+    .eq("user_id", userId)
+    .eq("status", "pending")
+    .eq("template.is_active", true)
+    .gte("occurrence_date", todayStr)
+    .lte("occurrence_date", rangeEndStr)
+    .order("occurrence_date");
 
-  const [templatesRes, resolvedRes] = await Promise.all([
-    supabase
-      .from("recurring_transaction_templates")
-      .select(TEMPLATE_SELECT)
-      .eq("user_id", userId)
-      .eq("is_active", true),
-    supabase
-      .from("recurring_occurrences")
-      .select("template_id, occurrence_date")
-      .eq("user_id", userId)
-      .in("status", ["paid", "skipped"])
-      .gte("occurrence_date", rangeStartStr)
-      .lte("occurrence_date", rangeEndStr),
-  ]);
-
-  if (templatesRes.error) throw templatesRes.error;
-  if (resolvedRes.error) throw resolvedRes.error;
-
-  const templates = templatesRes.data;
-  const resolvedOccurrences = resolvedRes.data;
-
-  if (!templates || templates.length === 0) return [];
-
-  const resolvedKeys = new Set(
-    (resolvedOccurrences ?? []).map((o) => occurrenceKey(o.template_id, o.occurrence_date))
-  );
+  if (error) throw error;
 
   const upcoming: UpcomingRecurrence[] = [];
-
-  for (const template of templates as RecurringTemplateWithRelations[]) {
-    const dates = getOccurrencesBetween(
-      template.start_date,
-      template.frequency,
-      template.end_date,
-      now,
-      rangeEnd
-    );
-
-    for (const date of dates) {
-      if (resolvedKeys.has(occurrenceKey(template.id, date))) continue;
-      upcoming.push({ template, next_date: date });
-    }
+  for (const row of data ?? []) {
+    const template = row.template as RecurringTemplateWithRelations | null;
+    if (!template) continue;
+    upcoming.push({ template, next_date: row.occurrence_date });
   }
-
-  upcoming.sort((a, b) => a.next_date.localeCompare(b.next_date));
 
   return upcoming;
 }
@@ -1047,15 +1027,20 @@ export async function recordRecurringOccurrencePayment(input: {
 }
 
 /**
- * Get upcoming recurring payments for the next N days.
- * Computes occurrences on the fly from active templates.
+ * Get upcoming recurring payments for the next N days, sourced from the
+ * materialized recurring_occurrences table.
  */
 export async function getUpcomingRecurrences(
   days: number = 30
 ): Promise<UpcomingRecurrence[]> {
   const { user, accessToken } = await getAuthenticatedClient();
   if (!user || !accessToken) return [];
-  return getUpcomingRecurrencesCached(user.id, days, toISODateString(new Date()), accessToken);
+
+  // Make sure pending rows exist for the lookahead window before reading.
+  const now = new Date();
+  await ensureOccurrencesForRange(now, addDays(now, days));
+
+  return getUpcomingRecurrencesCached(user.id, days, toISODateString(now), accessToken);
 }
 
 /**
@@ -1299,6 +1284,60 @@ export async function mergeRecurringTemplates(
       .update({ template_id: keepId })
       .eq("template_id", absorbId)
       .eq("user_id", user.id);
+
+    // 3.5. Re-align keep's pending occurrences with its own schedule.
+    // The reassign in step 3 can move pending rows onto dates the absorbed
+    // template generated (e.g. day 6) that don't match the keep template's
+    // own day_of_month/frequency (e.g. day 4). Left untouched, the dashboard
+    // would show two upcoming entries per cycle instead of one.
+    // Paid/skipped rows are preserved as historical records regardless of
+    // date alignment — only pending rows are filtered against the schedule.
+    const { data: keepPendingRows } = await supabase
+      .from("recurring_occurrences")
+      .select("id, occurrence_date")
+      .eq("template_id", keepId)
+      .eq("user_id", user.id)
+      .eq("status", "pending");
+
+    if (keepPendingRows && keepPendingRows.length > 0) {
+      const sorted = [...keepPendingRows].sort((a, b) =>
+        a.occurrence_date.localeCompare(b.occurrence_date),
+      );
+      const earliest = new Date(`${sorted[0].occurrence_date}T12:00:00`);
+      const latest = new Date(`${sorted[sorted.length - 1].occurrence_date}T12:00:00`);
+      const lookaheadEnd = addDays(new Date(), 90);
+      const rangeEnd = latest > lookaheadEnd ? latest : lookaheadEnd;
+      const expectedDates = new Set(
+        getOccurrencesBetween(
+          keep.start_date,
+          keep.frequency,
+          keep.end_date,
+          earliest,
+          rangeEnd,
+        ),
+      );
+      const orphanIds = sorted
+        .filter((row) => !expectedDates.has(row.occurrence_date))
+        .map((row) => row.id);
+      if (orphanIds.length > 0) {
+        await supabase
+          .from("recurring_occurrences")
+          .delete()
+          .in("id", orphanIds)
+          .eq("user_id", user.id);
+      }
+    }
+
+    // Align expected_amount on every surviving pending row to the merged
+    // primary amount. The original keep pending still carry the pre-merge
+    // amount; without this they'd render the old number while the reassigned
+    // rows show the new merged amount.
+    await supabase
+      .from("recurring_occurrences")
+      .update({ expected_amount: primaryAmount })
+      .eq("template_id", keepId)
+      .eq("user_id", user.id)
+      .eq("status", "pending");
 
     // 4. Delete the absorbed template
     await supabase
