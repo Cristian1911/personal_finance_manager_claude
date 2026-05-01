@@ -15,7 +15,7 @@ import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import type { ActionResult } from "@/types/actions";
-import type { TablesInsert } from "@/types/database";
+import type { TablesInsert, Database } from "@/types/database";
 import type {
   CurrencyCode,
   PlanningPeriod,
@@ -107,7 +107,10 @@ async function hydratePeriodData(
   const rawEntriesTyped = (rawEntries ?? []) as unknown as (Omit<PlanningEntryWithRelations, "converted_amount">)[];
   const assignments = (rawAssignments ?? []) as unknown as PlanningAssignment[];
 
-  const occurrenceStatusByKey = new Map<string, "pending" | "paid" | "skipped">();
+  const occurrenceStatusByKey = new Map<
+    string,
+    Database["public"]["Enums"]["occurrence_status"]
+  >();
   for (const occ of rawOccurrences ?? []) {
     occurrenceStatusByKey.set(`${occ.template_id}|${occ.occurrence_date}`, occ.status);
   }

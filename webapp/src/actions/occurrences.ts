@@ -596,6 +596,7 @@ export async function markOccurrencePaid(
   }
 
   revalidateFinancialViews();
+  updateTag("cashflow-planner");
   return { success: true, data: undefined };
 }
 
@@ -633,6 +634,7 @@ export async function skipOccurrence(occurrenceId: string): Promise<ActionResult
 
   revalidateFinancialViews();
   updateTag("occurrences");
+  updateTag("cashflow-planner");
   return { success: true, data: undefined };
 }
 
@@ -791,6 +793,7 @@ export async function revertOccurrence(occurrenceId: string): Promise<ActionResu
   revalidateFinancialViews();
   updateTag("occurrences");
   updateTag("recurring");
+  updateTag("cashflow-planner");
   return { success: true, data: undefined };
 }
 

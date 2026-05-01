@@ -1028,6 +1028,7 @@ export async function recordRecurringOccurrencePayment(input: {
   updateTag("occurrences");
   updateTag("recurring");
   updateTag("impact");
+  updateTag("cashflow-planner");
 
   return {
     success: true,
