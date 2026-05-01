@@ -8,7 +8,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
-import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { applyAccountBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
 import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
@@ -29,8 +29,6 @@ import type {
   SubPayment,
   UpcomingRecurrence,
 } from "@/types/domain";
-
-const DEBT_ACCOUNT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
 
 const TEMPLATE_SELECT = `
   *,
@@ -186,7 +184,7 @@ async function getRecurringSummaryCached(
   for (const t of templates) {
     const monthlyAmount = toMonthlyAmount(t.amount, t.frequency);
     const accountType = (t.accounts as { account_type?: string } | null)?.account_type;
-    const isDebtPayment = !!accountType && DEBT_ACCOUNT_TYPES.has(accountType);
+    const isDebtPayment = !!accountType && isDebtAccountType(accountType);
     if (t.direction === "OUTFLOW" || isDebtPayment) {
       totalMonthlyExpenses += monthlyAmount;
     } else {
@@ -274,7 +272,7 @@ async function insertRecurringTemplateFromFormData(
     return { success: false, error: "Cuenta inválida para este usuario." };
   }
 
-  if (DEBT_ACCOUNT_TYPES.has(account.account_type)) {
+  if (isDebtAccountType(account.account_type)) {
     payload.direction = "INFLOW";
     payload.category_id = payload.category_id ?? getDebtPaymentCategoryId(account.account_type);
     if (!payload.transfer_source_account_id) {
@@ -429,7 +427,7 @@ export async function updateRecurringTemplate(
     return { success: false, error: "Cuenta inválida para este usuario." };
   }
 
-  if (DEBT_ACCOUNT_TYPES.has(account.account_type)) {
+  if (isDebtAccountType(account.account_type)) {
     payload.direction = "INFLOW";
     payload.category_id = payload.category_id ?? getDebtPaymentCategoryId(account.account_type);
     if (!payload.transfer_source_account_id) {
@@ -552,6 +550,7 @@ type PaymentAccountRow = {
   name: string;
   account_type: string;
   current_balance: number;
+  credit_limit: number | null;
 };
 type RecurringTxDraft = {
   account_id: string;
@@ -612,7 +611,7 @@ function resolveSourceAccountSelection(params: {
   effectiveSourceAccountId: string | null;
   error: string | null;
 } {
-  const isDebtPaymentTemplate = DEBT_ACCOUNT_TYPES.has(params.template.account.account_type);
+  const isDebtPaymentTemplate = isDebtAccountType(params.template.account.account_type);
   const effectiveSourceAccountId =
     params.sourceAccountId ?? params.template.transfer_source_account_id ?? null;
 
@@ -671,7 +670,7 @@ async function loadPaymentAccounts(params: {
 
   const { data: accountRows, error } = await params.supabase
     .from("accounts")
-    .select("id, name, account_type, current_balance")
+    .select("id, name, account_type, current_balance, credit_limit")
     .in("id", accountIds)
     .eq("user_id", params.userId);
 
@@ -849,11 +848,24 @@ async function updateBalancesForCreatedTransactions(params: {
     });
 
     account.current_balance = nextBalance;
-    await params.supabase
+
+    const updatePayload: Record<string, number> = { current_balance: nextBalance };
+    if (isDebtAccountType(account.account_type) && account.credit_limit != null) {
+      updatePayload.available_balance = account.credit_limit - nextBalance;
+    }
+
+    const { error: balanceError } = await params.supabase
       .from("accounts")
-      .update({ current_balance: nextBalance })
+      .update(updatePayload)
       .eq("id", account.id)
       .eq("user_id", params.userId);
+
+    if (balanceError) {
+      console.error(
+        "[updateBalancesForCreatedTransactions] balance update failed",
+        { accountId: account.id, error: balanceError.message }
+      );
+    }
   }
 }
 
@@ -1122,7 +1134,7 @@ export async function getRecurringTemplateImpact(
 
     // Resolve effective direction (debt accounts = INFLOW template but behaves as OUTFLOW obligation)
     const accountType = (template.account as { account_type?: string } | null)?.account_type;
-    const isDebtPayment = !!accountType && DEBT_ACCOUNT_TYPES.has(accountType);
+    const isDebtPayment = !!accountType && isDebtAccountType(accountType);
     const effectiveDirection: "INFLOW" | "OUTFLOW" = isDebtPayment ? "OUTFLOW" : template.direction;
 
     const nextDate = getNextOccurrence(
