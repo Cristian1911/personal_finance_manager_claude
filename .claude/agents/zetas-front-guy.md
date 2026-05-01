@@ -279,7 +279,11 @@ The mobile tab bar (`MobileTabBar` in `webapp/src/components/mobile/v2/mobile-ta
 
 **Flag as Warning:**
 - A page that re-applies `MOBILE_TAB_BAR_CLEARANCE_CLASS` to a child div when the dashboard `main` already supplies it — harmless but redundant noise.
-- A new full-screen flow (multi-step wizard, focus mode, planificador-like surface) that *should* hide the tab bar entirely. Recommend introducing a `hideTabBar` opt-in rather than fighting the bar with extra padding.
+- A new full-screen flow (multi-step wizard, planner, long form) that *should* hide the tab bar entirely. Recommend either:
+  - Adding the path to `FOCUS_MODE_PATHS` in `webapp/src/lib/constants/mobile-nav.ts` (static route), or
+  - Calling `useHideTabBar(active)` from `@/components/mobile/v2/tab-bar-visibility-provider` (conditional/runtime).
+
+  Required for any focus-mode screen: `MobileHeader variant="sub"` with a real `backHref` — without an explicit back affordance the user is trapped.
 
 ---
 

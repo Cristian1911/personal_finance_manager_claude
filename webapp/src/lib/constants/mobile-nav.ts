@@ -57,3 +57,31 @@ export function isMobileTabActive(pathname: string, tab: MobileTab): boolean {
   const hrefs = [tab.href, ...(tab.matchHrefs ?? [])];
   return hrefs.some((h) => pathname === h || pathname.startsWith(`${h}/`));
 }
+
+/**
+ * Pathnames that render in "focus mode" — the bottom tab bar is hidden so the
+ * user can complete the task without parallel navigation. The page must
+ * provide its own back affordance (`MobileHeader variant="sub"` does this).
+ *
+ * Add a path here when the screen is a single-task surface (form, wizard,
+ * planner). Do NOT add list/index pages — users routinely pivot away from
+ * those.
+ *
+ * For runtime/conditional hiding (e.g., wizard step changes), use
+ * `useHideTabBar()` from `@/components/mobile/v2/tab-bar-visibility-provider`
+ * instead of this list.
+ */
+const FOCUS_MODE_PATHS: ReadonlyArray<string> = [
+  "/transactions/new",
+  "/recurrentes/new",
+  "/deudas/planificador",
+] as const;
+
+const FOCUS_MODE_PATH_REGEXES: ReadonlyArray<RegExp> = [
+  /^\/recurrentes\/[^/]+\/edit$/,
+] as const;
+
+export function isFocusModePath(pathname: string): boolean {
+  if (FOCUS_MODE_PATHS.includes(pathname)) return true;
+  return FOCUS_MODE_PATH_REGEXES.some((re) => re.test(pathname));
+}
