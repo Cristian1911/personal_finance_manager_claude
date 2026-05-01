@@ -2,7 +2,7 @@ import type { AllocationData } from "@/actions/allocation";
 import type { DashboardHeroData } from "@/actions/charts";
 import type { DebtCountdownData } from "@/actions/debt-countdown";
 import type { IncomeEstimate } from "@/actions/income";
-import type { CategoryBudgetData, CurrencyCode, UpcomingRecurrence } from "@/types/domain";
+import type { AccountType, CategoryBudgetData, CurrencyCode, UpcomingRecurrence } from "@/types/domain";
 import type { Database } from "@/types/database";
 import type { DebtOverview } from "@zeta/shared";
 
@@ -57,6 +57,26 @@ export interface PlanScenarioSummary {
   count: number;
 }
 
+export interface PlanMainAccount {
+  id: string;
+  name: string;
+  account_type: AccountType;
+  current_balance: number;
+  currency_code: CurrencyCode;
+  /** Balance converted to the active plan currency (same as current_balance when currency matches). */
+  balance_in_base: number;
+  icon: string | null;
+  color: string | null;
+  bank_key: string | null;
+  mask: string | null;
+}
+
+export interface PlanMainAccountsSummary {
+  accounts: PlanMainAccount[];
+  totalInBase: number;
+  hasUnconvertibleAccounts: boolean;
+}
+
 export interface PlanPageData {
   currency: CurrencyCode;
   month?: string;
@@ -65,6 +85,7 @@ export interface PlanPageData {
   budget: PlanBudgetSummary;
   debt: PlanDebtSummary;
   recurring: PlanRecurringSummary;
+  mainAccounts: PlanMainAccountsSummary;
   scenarios: PlanScenarioSummary;
   incomeEstimate: IncomeEstimate | null;
 }

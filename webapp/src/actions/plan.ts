@@ -1,10 +1,12 @@
 "use server";
 
 import { cache } from "react";
+import { getAccounts } from "@/actions/accounts";
 import { getCategoriesWithBudgetData } from "@/actions/categories";
 import { getDebtOverview } from "@/actions/debt";
 import { getDebtFreeCountdown, type DebtCountdownData } from "@/actions/debt-countdown";
 import { getEstimatedIncome, type IncomeEstimate } from "@/actions/income";
+import { getRatesForCurrencies } from "@/actions/exchange-rate";
 import { getPreferredCurrency } from "@/actions/profile";
 import {
   getRecurringSummary,
@@ -12,11 +14,68 @@ import {
 } from "@/actions/recurring-templates";
 import { get503020Allocation, type AllocationData } from "@/actions/allocation";
 import { getDashboardHeroData, type DashboardHeroData } from "@/actions/charts";
-import type { CurrencyCode } from "@/types/domain";
+import type { Account, AccountType, CurrencyCode } from "@/types/domain";
 import type {
   PlanHeroSummary,
+  PlanMainAccountsSummary,
   PlanPageData,
 } from "@/types/plan";
+
+const MAIN_ACCOUNT_TYPES: AccountType[] = ["CHECKING", "SAVINGS", "CASH"];
+
+async function buildMainAccountsSummary(
+  accounts: Account[],
+  baseCurrency: CurrencyCode
+): Promise<PlanMainAccountsSummary> {
+  const candidates = accounts.filter(
+    (a) => MAIN_ACCOUNT_TYPES.includes(a.account_type) && a.show_in_dashboard
+  );
+
+  const otherCurrencies = [
+    ...new Set(
+      candidates
+        .map((a) => a.currency_code as CurrencyCode)
+        .filter((c) => c !== baseCurrency)
+    ),
+  ];
+  const rates = otherCurrencies.length > 0
+    ? await getRatesForCurrencies(otherCurrencies, baseCurrency)
+    : new Map<CurrencyCode, number>();
+
+  let hasUnconvertibleAccounts = false;
+  const mainAccounts = candidates
+    .map((a) => {
+      const currency = a.currency_code as CurrencyCode;
+      const balance = a.current_balance ?? 0;
+      const rate = currency === baseCurrency ? 1 : rates.get(currency);
+      if (!rate) {
+        hasUnconvertibleAccounts = true;
+        return null;
+      }
+      return {
+        id: a.id,
+        name: a.name,
+        account_type: a.account_type,
+        current_balance: balance,
+        currency_code: currency,
+        balance_in_base: balance * rate,
+        icon: a.icon,
+        color: a.color,
+        bank_key: a.bank_key,
+        mask: a.mask,
+      };
+    })
+    .filter((a): a is NonNullable<typeof a> => a !== null)
+    .sort((a, b) => b.balance_in_base - a.balance_in_base);
+
+  const totalInBase = mainAccounts.reduce((sum, a) => sum + a.balance_in_base, 0);
+
+  return {
+    accounts: mainAccounts,
+    totalInBase,
+    hasUnconvertibleAccounts,
+  };
+}
 
 function buildHeroSummary({
   heroData,
@@ -116,6 +175,7 @@ export const getPlanPageData = cache(
       incomeEstimate,
       allocation,
       heroData,
+      accountsResult,
     ] = await Promise.all([
       getCategoriesWithBudgetData(month, baseCurrency),
       getDebtOverview(baseCurrency),
@@ -125,7 +185,13 @@ export const getPlanPageData = cache(
       getEstimatedIncome(baseCurrency, month),
       get503020Allocation(month, baseCurrency),
       getDashboardHeroData(month, baseCurrency),
+      getAccounts(),
     ]);
+
+    const mainAccounts = await buildMainAccountsSummary(
+      accountsResult.success ? accountsResult.data : [],
+      baseCurrency
+    );
 
     const categories = categoriesResult.success ? categoriesResult.data.filter((category) => category.direction === "OUTFLOW") : [];
     const overLimitCategories = categories.filter((category) => (category.budget ?? 0) > 0 && category.percentUsed > 100);
@@ -198,6 +264,7 @@ export const getPlanPageData = cache(
         dueSoonTotal,
         overdueCount: recurringSummary.overdueCount,
       },
+      mainAccounts,
       scenarios: {
         savedScenarios: [],
         latestScenario: null,
