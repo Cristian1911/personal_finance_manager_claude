@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Plus, Mic, Sparkles, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
 
 export type FabAction = "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
 
@@ -102,7 +103,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
             <div className="mx-auto mt-3 mb-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
             <DrawerPrimitive.Title className="sr-only">Acciones</DrawerPrimitive.Title>
 
-            <div className={cn("min-h-0 flex-1 overflow-y-auto px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
+            <div className={cn("min-h-0 flex-1 overflow-y-auto px-4", MOBILE_SHEET_SAFE_AREA_CLASS)}>
               {/* Primary: Nueva transacción */}
               <button
                 type="button"
