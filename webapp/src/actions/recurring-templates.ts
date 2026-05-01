@@ -8,7 +8,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
-import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { applyAccountBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
 import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
@@ -552,6 +552,7 @@ type PaymentAccountRow = {
   name: string;
   account_type: string;
   current_balance: number;
+  credit_limit: number | null;
 };
 type RecurringTxDraft = {
   account_id: string;
@@ -671,7 +672,7 @@ async function loadPaymentAccounts(params: {
 
   const { data: accountRows, error } = await params.supabase
     .from("accounts")
-    .select("id, name, account_type, current_balance")
+    .select("id, name, account_type, current_balance, credit_limit")
     .in("id", accountIds)
     .eq("user_id", params.userId);
 
@@ -849,11 +850,24 @@ async function updateBalancesForCreatedTransactions(params: {
     });
 
     account.current_balance = nextBalance;
-    await params.supabase
+
+    const updatePayload: Record<string, number> = { current_balance: nextBalance };
+    if (isDebtAccountType(account.account_type) && account.credit_limit != null) {
+      updatePayload.available_balance = account.credit_limit - nextBalance;
+    }
+
+    const { error: balanceError } = await params.supabase
       .from("accounts")
-      .update({ current_balance: nextBalance })
+      .update(updatePayload)
       .eq("id", account.id)
       .eq("user_id", params.userId);
+
+    if (balanceError) {
+      console.error(
+        "[updateBalancesForCreatedTransactions] balance update failed",
+        { accountId: account.id, error: balanceError.message }
+      );
+    }
   }
 }
 
