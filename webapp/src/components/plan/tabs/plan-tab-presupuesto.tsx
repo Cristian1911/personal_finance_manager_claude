@@ -20,7 +20,7 @@ import { PlanAllocationChip } from "@/components/mobile/v2/plan/plan-allocation-
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode, CategoryBudgetData } from "@/types/domain";
 
 const BudgetWizard = dynamic(
@@ -123,14 +123,14 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
   return (
     <div className="space-y-6">
       {/* Mobile view */}
-      <div className="lg:hidden pb-20">
+      <div className={cn("lg:hidden", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
         <MobileHeader variant="sub" title="Presupuesto" backHref="/plan" />
 
         <div className="space-y-4 px-4 pt-4">
           {/* Budget hero card */}
           <div className={cn(PANEL_INSET_CLASS, "p-4")}>
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-z-sage-dark">
                 Gastado este mes
               </p>
               <StateChip label={chip.label} variant={chip.variant} />
@@ -184,7 +184,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               {over.length > 0 && (
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-expense">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-z-expense">
                       Sobre límite
                     </p>
                     <span className="text-[10px] text-muted-foreground">{over.length}</span>
@@ -199,7 +199,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               {near.length > 0 && (
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-brass">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-z-brass">
                       Cerca del límite
                     </p>
                     <span className="text-[10px] text-muted-foreground">{near.length}</span>
@@ -214,7 +214,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               {safe.length > 0 && (
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-income">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-z-income">
                       Dentro del límite
                     </p>
                     <span className="text-[10px] text-muted-foreground">{safe.length}</span>

@@ -7,6 +7,8 @@ import { PeriodHeader } from "@/components/cashflow-planner/period-header";
 import { EnvelopeBoard } from "@/components/cashflow-planner/envelope-board";
 import { PeriodSetupDialog } from "@/components/cashflow-planner/period-setup-dialog";
 import { MobilePeriodoView } from "@/components/mobile/v2/plan/mobile-periodo-view";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import { CalendarPlus } from "lucide-react";
 
 export async function PlanTabPeriodo() {
@@ -50,7 +52,7 @@ export async function PlanTabPeriodo() {
     <>
       {/* ── Mobile view ── */}
       {planData && !isExpired && (
-        <div className="lg:hidden pb-20">
+        <div className={cn("lg:hidden", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
           <MobilePeriodoView
             planData={planData}
             timelineData={timelineData}

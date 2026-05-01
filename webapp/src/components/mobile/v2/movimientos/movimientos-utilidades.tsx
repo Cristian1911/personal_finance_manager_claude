@@ -83,7 +83,7 @@ export function MovimientosUtilidades({
             <DrawerHeader>
               <DrawerTitle>Filtros</DrawerTitle>
             </DrawerHeader>
-            <div className="overflow-y-auto px-4 pb-6 space-y-4">
+            <div className="overflow-y-auto px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom))] space-y-4">
               <Suspense>
                 <TransactionFilters accounts={accounts} tags={tags} embedded />
               </Suspense>

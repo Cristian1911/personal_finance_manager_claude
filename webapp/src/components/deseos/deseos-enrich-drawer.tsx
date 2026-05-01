@@ -98,7 +98,7 @@ export function DeseosEnrichDrawer({
         </DrawerHeader>
         <form
           onSubmit={handleSubmit}
-          className="overflow-y-auto space-y-5 px-4 pb-6"
+          className="overflow-y-auto space-y-5 px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom))]"
         >
           {/* Why */}
           <div className="space-y-1.5">
