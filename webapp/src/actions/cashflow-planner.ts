@@ -15,7 +15,7 @@ import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import type { ActionResult } from "@/types/actions";
-import type { TablesInsert } from "@/types/database";
+import type { TablesInsert, Database } from "@/types/database";
 import type {
   CurrencyCode,
   PlanningPeriod,
@@ -74,7 +74,7 @@ async function hydratePeriodData(
   const supabase = createCachedClient(accessToken);
   const periodCurrency = period.currency_code;
 
-  const [{ data: rawEntries }, { data: rawAssignments }] = await Promise.all([
+  const [{ data: rawEntries }, { data: rawAssignments }, { data: rawOccurrences }] = await Promise.all([
     supabase
       .from("planning_entries")
       .select(
@@ -92,10 +92,28 @@ async function hydratePeriodData(
       .select("*")
       .eq("period_id", period.id)
       .eq("user_id", userId),
+    // recurring_occurrences is the source of truth for recurring obligations.
+    // We reconcile each planning_entry's status with its matching occurrence
+    // so payments recorded outside the planning UI (PDF import, email,
+    // recurrentes tab, manual transactions) immediately reflect here.
+    supabase
+      .from("recurring_occurrences")
+      .select("template_id, occurrence_date, status")
+      .eq("user_id", userId)
+      .gte("occurrence_date", period.start_date)
+      .lte("occurrence_date", period.end_date),
   ]);
 
   const rawEntriesTyped = (rawEntries ?? []) as unknown as (Omit<PlanningEntryWithRelations, "converted_amount">)[];
   const assignments = (rawAssignments ?? []) as unknown as PlanningAssignment[];
+
+  const occurrenceStatusByKey = new Map<
+    string,
+    Database["public"]["Enums"]["occurrence_status"]
+  >();
+  for (const occ of rawOccurrences ?? []) {
+    occurrenceStatusByKey.set(`${occ.template_id}|${occ.occurrence_date}`, occ.status);
+  }
 
   const foreignCurrencies = new Set<CurrencyCode>();
   for (const e of rawEntriesTyped) {
@@ -126,7 +144,17 @@ async function hydratePeriodData(
       const rate = exchangeRates[e.currency_code];
       convertedAmount = rate != null ? amount * rate : amount;
     }
-    return { ...e, converted_amount: convertedAmount };
+    // For recurring entries, occurrence status overrides the entry's stored
+    // status — paid/skipped occurrences must not show as Pendiente.
+    let status = e.status;
+    if (e.recurring_template_id) {
+      const occStatus = occurrenceStatusByKey.get(
+        `${e.recurring_template_id}|${e.expected_date}`
+      );
+      if (occStatus === "paid") status = "COMPLETED";
+      else if (occStatus === "skipped") status = "SKIPPED";
+    }
+    return { ...e, status, converted_amount: convertedAmount };
   });
 
   const incomeEntries = entries.filter((e) => e.entry_type === "INCOME");
