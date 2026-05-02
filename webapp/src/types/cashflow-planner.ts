@@ -8,6 +8,13 @@ import type {
   RecurringTemplate,
 } from "./domain";
 
+/**
+ * Sentinel stored in `planning_entries.notes` to flag entries that mirror an
+ * account's current balance (managed by `upsertBalanceEnvelopes`). If the user
+ * edits the notes, the entry stops being treated as balance-managed.
+ */
+export const BALANCE_SEED_NOTES = "[saldo]";
+
 export interface PlanningEntryWithRelations extends PlanningEntry {
   account: Pick<Account, "id" | "name" | "icon" | "color"> | null;
   category: Pick<Category, "id" | "name" | "name_es" | "icon" | "color"> | null;

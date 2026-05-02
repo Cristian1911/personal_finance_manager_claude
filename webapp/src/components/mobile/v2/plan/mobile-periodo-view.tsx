@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { getEnvelopeColor } from "@/lib/constants/envelope-colors";
 import { buildEnvelopeMaps, nextExpenseStatus, nextIncomeStatus } from "@/lib/utils/cashflow-planner";
 import { PlanFlowChart } from "./plan-flow-chart";
+import { BalanceSeedButton } from "@/components/cashflow-planner/balance-seed-button";
 import { EntryFormDialog } from "@/components/cashflow-planner/entry-form-dialog";
 import { EditEntryDialog } from "@/components/cashflow-planner/edit-entry-dialog";
 import { AssignmentDialog } from "@/components/cashflow-planner/assignment-dialog";
@@ -28,10 +29,11 @@ import {
   Trash2,
 } from "lucide-react";
 import type { PlanTimelineData } from "@/actions/plan-timeline";
-import type {
-  PeriodPlanData,
-  IncomeEnvelope,
-  PlanningEntryWithRelations,
+import {
+  BALANCE_SEED_NOTES,
+  type PeriodPlanData,
+  type IncomeEnvelope,
+  type PlanningEntryWithRelations,
 } from "@/types/cashflow-planner";
 import type { PlanningEntryStatus, CurrencyCode, Account, Category } from "@/types/domain";
 
@@ -95,6 +97,11 @@ export function MobilePeriodoView({
   /* ── Computed data ── */
   const { assignedPerExpense, incomeColorMap, expenseAssignmentChips } = useMemo(
     () => buildEnvelopeMaps(income_envelopes),
+    [income_envelopes],
+  );
+
+  const hasBalanceEnvelopes = useMemo(
+    () => income_envelopes.some((env) => env.entry.notes === BALANCE_SEED_NOTES),
     [income_envelopes],
   );
 
@@ -219,17 +226,23 @@ export function MobilePeriodoView({
 
       {/* ── Ingresos section ── */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className="min-w-0 truncate text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
             Ingresos
           </p>
-          <EntryFormDialog
-            periodId={period.id}
-            currency={currency}
-            defaultType="INCOME"
-            accounts={accounts}
-            categories={categories}
-          />
+          <div className="flex shrink-0 items-center gap-2">
+            <BalanceSeedButton
+              periodId={period.id}
+              hasExistingBalances={hasBalanceEnvelopes}
+            />
+            <EntryFormDialog
+              periodId={period.id}
+              currency={currency}
+              defaultType="INCOME"
+              accounts={accounts}
+              categories={categories}
+            />
+          </div>
         </div>
         {income_envelopes.length > 0 && (
           <div className="space-y-2">

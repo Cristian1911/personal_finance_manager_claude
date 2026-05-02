@@ -22,11 +22,12 @@ import type {
   PlanningEntry,
   PlanningAssignment,
 } from "@/types/domain";
-import type {
-  PlanningEntryWithRelations,
-  IncomeEnvelope,
-  AssignmentDetail,
-  PeriodPlanData,
+import {
+  BALANCE_SEED_NOTES,
+  type PlanningEntryWithRelations,
+  type IncomeEnvelope,
+  type AssignmentDetail,
+  type PeriodPlanData,
 } from "@/types/cashflow-planner";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -466,6 +467,125 @@ export async function seedPeriodFromRecurring(
 
   updateTag(TAG);
   return { success: true, data: { created: entriesToInsert.length } };
+}
+
+// ─── Balance envelopes (seed + refresh) ──────────────────────────────────────
+
+const MAIN_ACCOUNT_TYPES: Database["public"]["Enums"]["account_type"][] = [
+  "CHECKING",
+  "SAVINGS",
+  "CASH",
+];
+
+/**
+ * Seeds (first run) or refreshes (subsequent runs) one INCOME planning entry
+ * per main liquid account (`CHECKING`/`SAVINGS`/`CASH` with
+ * `show_in_dashboard = true`). Each entry mirrors the account's
+ * `current_balance` so the user can assign expenses against it.
+ *
+ * On refresh, the amount and label are overwritten — to "promote" an entry
+ * to user-managed, change its notes to anything other than `[saldo]`.
+ */
+export async function upsertBalanceEnvelopes(
+  periodId: string
+): Promise<ActionResult<{ created: number; updated: number }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: period, error: periodErr } = await supabase
+    .from("planning_periods")
+    .select("id, start_date, currency_code")
+    .eq("id", periodId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (periodErr || !period)
+    return { success: false, error: "Periodo no encontrado" };
+
+  const { data: accounts, error: accErr } = await supabase
+    .from("accounts")
+    .select("id, name, current_balance, currency_code, account_type")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .eq("show_in_dashboard", true)
+    .in("account_type", MAIN_ACCOUNT_TYPES);
+
+  if (accErr) return { success: false, error: accErr.message };
+
+  if (!accounts || accounts.length === 0) {
+    return { success: true, data: { created: 0, updated: 0 } };
+  }
+
+  const { data: existing, error: existingErr } = await supabase
+    .from("planning_entries")
+    .select("id, account_id")
+    .eq("period_id", periodId)
+    .eq("user_id", user.id)
+    .eq("entry_type", "INCOME")
+    .eq("notes", BALANCE_SEED_NOTES);
+
+  if (existingErr) return { success: false, error: existingErr.message };
+
+  const existingByAccount = new Map<string, string>();
+  for (const row of existing ?? []) {
+    if (row.account_id) existingByAccount.set(row.account_id, row.id);
+  }
+
+  let created = 0;
+  let updated = 0;
+  let firstError: string | null = null;
+
+  await Promise.all(
+    accounts.map(async (account) => {
+      const balance = Number(account.current_balance ?? 0);
+      const label = `Saldo · ${account.name}`;
+      const existingId = existingByAccount.get(account.id);
+
+      if (existingId) {
+        const { error } = await supabase
+          .from("planning_entries")
+          .update({
+            amount: balance,
+            label,
+            currency_code: account.currency_code,
+          })
+          .eq("id", existingId)
+          .eq("user_id", user.id);
+        if (error) {
+          firstError ??= error.message;
+        } else {
+          updated += 1;
+        }
+      } else {
+        const { error } = await supabase
+          .from("planning_entries")
+          .insert({
+            user_id: user.id,
+            period_id: periodId,
+            entry_type: "INCOME",
+            label,
+            amount: balance,
+            currency_code: account.currency_code,
+            expected_date: period.start_date,
+            account_id: account.id,
+            status: "PLANNED",
+            notes: BALANCE_SEED_NOTES,
+          });
+        if (error) {
+          firstError ??= error.message;
+        } else {
+          created += 1;
+        }
+      }
+    })
+  );
+
+  updateTag(TAG);
+
+  if (firstError) {
+    return { success: false, error: firstError };
+  }
+  return { success: true, data: { created, updated } };
 }
 
 // ─── Entry CRUD ──────────────────────────────────────────────────────────────
