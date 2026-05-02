@@ -12,6 +12,12 @@
 
 ## Bugs
 
+### `seedPeriodFromRecurring` — reminder dedup is title/amount-fragile
+- **Priority:** Low
+- **What:** `webapp/src/actions/cashflow-planner.ts` dedups reminder-derived `planning_entries` by `(label, due_date, amount)` since reminders have no FK in `planning_entries`. If a user renames a reminder-derived entry or changes the reminder's amount, the dedup key drifts and the next "Sincronizar recurrentes" click re-inserts the row.
+- **Fix:** Add a `source_reminder_id uuid REFERENCES financial_reminders(id) ON DELETE SET NULL` column to `planning_entries`, populate it on insert, dedup by it.
+- **Found:** server-action-reviewer on PR #244, 2026-05-02
+
 ### Telegram webhook — capture_tokens label updates via admin client never worked
 - **Priority:** Medium
 - **What:** `webapp/src/app/api/webhooks/telegram/route.ts` lines 27–35 (SELECT by encrypted `token`/`label`) and 99–102, 140–143 (UPDATE `label`) go through the `capture_tokens` view with the admin client (no JWT). Before PR #186's `has_auth` guard, the UPDATE silently NULLed the label via unguarded `zeta_encrypt()`. After the guard, the UPDATE preserves whatever was there (usually NULL). Either way, `findTokenByChatId` also decrypts via admin client → `zeta_decrypt(label)` returns NULL → `.like("label", "telegram:...")` never matches. End-to-end: the `/start <token>` deep-link and `/vincular <token>` flows never actually link a chat.

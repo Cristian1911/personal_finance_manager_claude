@@ -8,6 +8,7 @@ import { BalanceSeedButton } from "./balance-seed-button";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EditEntryDialog } from "./edit-entry-dialog";
 import { AutoAssignButton } from "./auto-assign-button";
+import { SyncRecurringButton } from "./sync-recurring-button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { buildEnvelopeMaps } from "@/lib/utils/cashflow-planner";
 import { Wallet, Receipt } from "lucide-react";
@@ -111,6 +112,7 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
               {unassigned_expenses.length > 0 && income_envelopes.length > 0 && (
                 <AutoAssignButton periodId={period.id} />
               )}
+              <SyncRecurringButton periodId={period.id} />
               <EntryFormDialog
                 periodId={period.id}
                 currency={currency}
