@@ -22,6 +22,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils";
 import {
   BRASS_BUTTON_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE_CLASS,
   PAGE_STACK_CLASS,
   PANEL_INSET_CLASS,
   PANEL_SURFACE_CLASS,
@@ -92,7 +93,7 @@ export default async function TransactionsPage({
 
   return (
     <div className={PAGE_STACK_CLASS}>
-      <div className="pb-20 lg:hidden lg:pb-0">
+      <div className={cn(MOBILE_TAB_BAR_CLEARANCE_CLASS, "lg:hidden lg:pb-0")}>
         <MovimientosRoot
           transactions={transactionsResult.data}
           categories={categories}

@@ -4,7 +4,8 @@ import { RecurringForm } from "@/components/recurring/recurring-form";
 import { getRecurringTemplate } from "@/actions/recurring-templates";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
-import { PAGE_STACK_CLASS } from "@/lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PAGE_STACK_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 
 export default async function EditRecurrentePage({
   params,
@@ -31,7 +32,7 @@ export default async function EditRecurrentePage({
         title={`Editar ${template.merchant_name}`}
         backHref="/plan?tab=recurrentes"
       />
-      <div className="px-4 pb-20">
+      <div className={cn("px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
         <RecurringForm
           template={template}
           accounts={accounts}

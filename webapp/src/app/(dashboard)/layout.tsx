@@ -15,6 +15,8 @@ import { AppDataProvider } from "@/components/providers/app-data-provider";
 import { NavFocusProvider } from "@/components/providers/nav-focus-provider";
 import { MobileTabBar } from "@/components/mobile/v2/mobile-tab-bar";
 import { MobileShellProvider } from "@/components/mobile/v2/mobile-shell-provider";
+import { TabBarVisibilityProvider } from "@/components/mobile/v2/tab-bar-visibility-provider";
+import { FocusModeAccent } from "@/components/mobile/v2/focus-mode-accent";
 import { MobileSheetProvider } from "@/components/mobile/mobile-sheet-provider";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KeyboardInsetProvider } from "@/hooks/use-keyboard-inset";
@@ -108,6 +110,7 @@ export default async function DashboardLayout({
           >
             <AppDataProvider data={appData}>
               <NavFocusProvider value={profile.nav_focus}>
+              <TabBarVisibilityProvider>
               <MobileSheetProvider>
                 <main className={cn("flex-1 overflow-x-hidden p-4 lg:p-6 lg:pb-6", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
                   {profile.demo_mode ? (
@@ -121,7 +124,9 @@ export default async function DashboardLayout({
                 </main>
 
                 <MobileTabBar />
+                <FocusModeAccent />
               </MobileSheetProvider>
+              </TabBarVisibilityProvider>
               </NavFocusProvider>
             </AppDataProvider>
           </MobileShellProvider>

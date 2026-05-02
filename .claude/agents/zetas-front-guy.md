@@ -263,6 +263,30 @@ Only three button variants are permitted in the entire application. Read `webapp
 
 ---
 
+## Check 7: Mobile Tab-Bar Clearance & z-index
+
+The mobile tab bar (`MobileTabBar` in `webapp/src/components/mobile/v2/mobile-tab-bar.tsx`) is `fixed bottom-0` at `z-40`, with a brass FAB that overshoots ~16px above the bar. Two CSS variables govern clearance: `--z-mobile-tab-bar-h` (3.5rem) and `--z-mobile-fab-overshoot` (1rem) in `webapp/src/app/globals.css`. Two utility constants in `webapp/src/lib/constants/styles.ts`:
+
+- `MOBILE_TAB_BAR_CLEARANCE_CLASS` — for **page-level scroll containers and bottom-anchored bars**. Reserves tab-bar height + FAB overshoot + safe-area inset.
+- `MOBILE_SHEET_SAFE_AREA_CLASS` — for **content INSIDE Sheet/Drawer**. Reserves only safe-area inset (the sheet itself floats above the tab bar).
+
+**Flag as Violation:**
+- Any page or scroll container using raw `pb-20`, `pb-24`, `pb-28`, `pb-32` for tab-bar clearance — those magic numbers don't track FAB overshoot or safe-area inset. Replace with `MOBILE_TAB_BAR_CLEARANCE_CLASS`.
+- Any new fixed-bottom bar (action bar, snackbar, picker chip) using `bottom-20`/`bottom-16`/etc. instead of `bottom-[calc(var(--z-mobile-tab-bar-h)_+_var(--z-mobile-fab-overshoot)_+_env(safe-area-inset-bottom))]`.
+- Sheet or Drawer content using `MOBILE_TAB_BAR_CLEARANCE_CLASS` on its inner scroll — wastes space because the sheet itself floats above the bar. Use `MOBILE_SHEET_SAFE_AREA_CLASS`.
+- Any change that raises the mobile tab bar above `z-50` — this re-creates the bug where shadcn modals (Dialog, AlertDialog, Drawer, Popover, Dropdown) get clipped by or rendered under the tab bar. Tab bar must stay at `z-40` so all shadcn primitives correctly cover it. `Sheet` and `FabMenu` use `z-[10000]` for highest priority; never copy that pattern for general overlays.
+- Bottom sheets (Drawer-based pickers like destinatario/tag/category) without ANY safe-area padding on their inner scroll — on iOS the gesture indicator can overlap the last row.
+
+**Flag as Warning:**
+- A page that re-applies `MOBILE_TAB_BAR_CLEARANCE_CLASS` to a child div when the dashboard `main` already supplies it — harmless but redundant noise.
+- A new full-screen flow (multi-step wizard, planner, long form) that *should* hide the tab bar entirely. Recommend either:
+  - Adding the path to `FOCUS_MODE_PATHS` in `webapp/src/lib/constants/mobile-nav.ts` (static route), or
+  - Calling `useHideTabBar(active)` from `@/components/mobile/v2/tab-bar-visibility-provider` (conditional/runtime).
+
+  Required for any focus-mode screen: `MobileHeader variant="sub"` with a real `backHref` — without an explicit back affordance the user is trapped.
+
+---
+
 ## Output Format
 
 Always produce the review in this exact structure:

@@ -12,6 +12,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
+import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
 import type { Account, Tag } from "@/types/domain";
 
 interface MovimientosUtilidadesProps {
@@ -83,7 +84,7 @@ export function MovimientosUtilidades({
             <DrawerHeader>
               <DrawerTitle>Filtros</DrawerTitle>
             </DrawerHeader>
-            <div className="overflow-y-auto px-4 pb-6 space-y-4">
+            <div className={cn("overflow-y-auto px-4 space-y-4", MOBILE_SHEET_SAFE_AREA_CLASS)}>
               <Suspense>
                 <TransactionFilters accounts={accounts} tags={tags} embedded />
               </Suspense>

@@ -5,10 +5,11 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
-import { getMobileTabs, isMobileTabActive } from "@/lib/constants/mobile-nav";
+import { getMobileTabs, isFocusModePath, isMobileTabActive } from "@/lib/constants/mobile-nav";
 import { MOBILE_BG_CLASS } from "@/lib/constants/styles";
 import { useMobileActionMenu } from "@/components/mobile/mobile-sheet-provider";
 import { useNavFocus } from "@/components/providers/nav-focus-provider";
+import { useTabBarVisibility } from "@/components/mobile/v2/tab-bar-visibility-provider";
 
 const SAFE_AREA_BOTTOM_STYLE = { paddingBottom: "env(safe-area-inset-bottom)" } as const;
 
@@ -42,8 +43,14 @@ export function MobileTabBar() {
   const { openActionMenu, isFabOpen } = useMobileActionMenu();
   const keyboardInset = useKeyboardInset();
   const focus = useNavFocus();
+  const { isHidden: contextHidden } = useTabBarVisibility();
 
-  if (keyboardInset > 0) return null;
+  // Hide whenever a single-task surface is in focus mode (pathname-based for
+  // static routes, context-based for dynamic ones like wizard steps), or when
+  // the soft keyboard is open (avoids covering inputs).
+  if (keyboardInset > 0 || contextHidden || isFocusModePath(pathname)) {
+    return null;
+  }
 
   const tabs = getMobileTabs(focus);
   const leftTabs = tabs.slice(0, 2);
@@ -52,7 +59,10 @@ export function MobileTabBar() {
   return (
     <nav
       data-fab-bar
-      className="fixed bottom-0 left-0 right-0 z-[9999] lg:hidden"
+      // z-40 sits below shadcn primitives (Sheet/Drawer/Dialog/Popover/Dropdown
+      // are z-50+) so modal surfaces naturally cover the bar. FabMenu is
+      // z-[10000] for the same reason.
+      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
       style={SAFE_AREA_BOTTOM_STYLE}
     >
       <div

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Plus, Mic, Sparkles, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
 
 export type FabAction = "voice" | "screenshot" | "quick-capture" | "new-recurring" | "new-account";
 
@@ -23,7 +23,8 @@ interface FabMenuProps {
   contextActions?: ContextAction[];
 }
 
-/** z-index above the tab bar (z-[9999]) so the modal overlay covers everything. */
+/** z-index above the tab bar (z-40) and shadcn primitives (z-50) so the FAB
+ * menu's modal overlay covers everything else on screen. */
 const FAB_MENU_Z = "z-[10000]";
 
 export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMenuProps) {
@@ -85,7 +86,8 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
     <div className="lg:hidden">
       {/* modal={true} gives us: overlay click-to-close, swipe-to-close,
           escape-to-close, focus trapping, body scroll lock — all built-in.
-          z-[10000] on overlay + content ensures they sit above the tab bar. */}
+          z-[10000] on overlay + content keeps the FAB menu above every other
+          floating surface (tab bar at z-40, shadcn modals at z-50). */}
       <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange}>
         <DrawerPrimitive.Portal>
           <DrawerPrimitive.Overlay
@@ -101,7 +103,7 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
             <div className="mx-auto mt-3 mb-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
             <DrawerPrimitive.Title className="sr-only">Acciones</DrawerPrimitive.Title>
 
-            <div className={cn("min-h-0 flex-1 overflow-y-auto px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
+            <div className={cn("min-h-0 flex-1 overflow-y-auto px-4", MOBILE_SHEET_SAFE_AREA_CLASS)}>
               {/* Primary: Nueva transacción */}
               <button
                 type="button"

@@ -143,6 +143,7 @@
 
   /* Mobile layout */
   --z-mobile-tab-bar-h: 3.5rem;  /* ≈56px — matches tab bar rendered height */
+  --z-mobile-fab-overshoot: 1rem; /* brass FAB protrudes ~16px above the bar; reserve space so submit buttons clear it */
 
   /* shadcn/ui variable mapping — dark mode first */
   --radius: 0.75rem;

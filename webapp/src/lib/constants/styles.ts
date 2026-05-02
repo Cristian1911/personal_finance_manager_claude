@@ -66,9 +66,30 @@ export const MOBILE_EYEBROW_CLASS = SECTION_EYEBROW_CLASS;
 /** Height of the mobile tab bar — mirrors --z-mobile-tab-bar-h in globals.css */
 export const MOBILE_TAB_BAR_HEIGHT = "3.5rem";
 
-/** Bottom padding that clears the mobile tab bar + safe area */
+/**
+ * Bottom padding that clears the mobile tab bar + the brass FAB overshoot
+ * (the `+` button sits ~16px above the bar) + the device safe area.
+ *
+ * Apply to:
+ *  - any page-level scroll container with content that ends near the bottom
+ *    (forms, lists, settings pages)
+ *  - any inline bottom-anchored action bar that should sit above the tab bar
+ *
+ * Do NOT apply inside `Sheet`/`Drawer` content — those float over the tab bar
+ * (Sheet is z-[10000]; Drawer at z-50 sits above the bar at z-40). Inside
+ * sheets/drawers, use `pb-[calc(1rem+env(safe-area-inset-bottom))]` instead so
+ * you only reserve the safe area, not the tab bar height.
+ */
 export const MOBILE_TAB_BAR_CLEARANCE_CLASS =
-  "pb-[calc(var(--z-mobile-tab-bar-h)_+_env(safe-area-inset-bottom))]";
+  "pb-[calc(var(--z-mobile-tab-bar-h)_+_var(--z-mobile-fab-overshoot)_+_env(safe-area-inset-bottom))]";
+
+/**
+ * Bottom padding for content INSIDE a `Sheet` / `Drawer` — only reserves the
+ * device safe area. The sheet itself floats above the tab bar, so no tab-bar
+ * height is needed.
+ */
+export const MOBILE_SHEET_SAFE_AREA_CLASS =
+  "pb-[calc(1rem_+_env(safe-area-inset-bottom))]";
 
 /** Mobile v2 action button (brass ghost) */
 export const MOBILE_ACTION_BUTTON_CLASS =

@@ -22,6 +22,7 @@ import { ReconciliationStep } from "./reconciliation-step";
 import { StepResults } from "./step-results";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { accountMaskSuffixMatches, normalizeAccountMaskSuffix } from "@/lib/utils/account-mask";
+import { useHideTabBar } from "@/components/mobile/v2/tab-bar-visibility-provider";
 import { cn } from "@/lib/utils";
 
 type Step = "upload" | "review" | "reconcile" | "results";
@@ -82,6 +83,12 @@ export function ImportWizard({
   useEffect(() => {
     onStepChange?.(step);
   }, [step, onStepChange]);
+
+  // Steps 2–4 (review/reconcile/results) are focus tasks: hide the bottom tab
+  // bar so the sticky WizardActionBar is the only bottom UI. Step 1 (upload)
+  // keeps the tab bar visible — it's a landing surface where the user might
+  // bail back to another part of the app.
+  useHideTabBar(step !== "upload");
 
   const searchParams = useSearchParams();
   const screenshotFileRef = useRef<File | null>(null);
@@ -229,9 +236,11 @@ export function ImportWizard({
     <div
       className={cn(
         "space-y-4 lg:space-y-6",
-        // Mobile: leave room for the sticky action bar + tab bar so the last
-        // row of content isn't trapped behind them. Desktop bar is inline.
-        step !== "upload" && "pb-[calc(var(--z-mobile-tab-bar-h)_+_env(safe-area-inset-bottom)_+_6rem)] lg:pb-0",
+        // Mobile: leave room for the sticky WizardActionBar so the last
+        // row of content isn't trapped behind it. The tab bar is hidden in
+        // steps 2–4 (see useHideTabBar above), so we only reserve safe-area
+        // + the bar's own height (~6rem). Desktop bar is inline.
+        step !== "upload" && "pb-[calc(env(safe-area-inset-bottom)_+_6rem)] lg:pb-0",
       )}
     >
       <section className="space-y-3 lg:overflow-hidden lg:rounded-3xl lg:border lg:border-white/6 lg:bg-z-surface-2/65 lg:p-6 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
