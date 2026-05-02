@@ -3,10 +3,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
-import { updateTag } from "next/cache";
 import { loginSchema, signupSchema, forgotPasswordSchema, resetPasswordSchema } from "@/lib/validators/auth";
 import { trackProductEvent, trackProductEventForUser } from "@/actions/product-events";
-import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { revalidateAllUserData } from "@/lib/cache/revalidation";
 
 export type AuthActionResult = {
   error?: string;
@@ -207,21 +206,7 @@ export async function resetUserData(): Promise<AuthActionResult> {
     return { error: "No se pudo borrar los datos. Intenta de nuevo." };
   }
 
-  revalidateFinancialViews();
-  // Domain extras not covered by revalidateFinancialViews.
-  updateTag("profile");
-  updateTag("destinatarios");
-  updateTag("dashboard-config");
-  updateTag("tags");
-  updateTag("wishlist");
-  updateTag("email-ingest");
-  updateTag("pdf-passwords");
-  updateTag("snapshots");
-  updateTag("capture-tokens");
-  updateTag("reminders");
-  updateTag("cashflow-planner");
-  updateTag("categories");
-  updateTag("impact");
+  revalidateAllUserData();
 
   redirect("/onboarding?reset=1");
 }
