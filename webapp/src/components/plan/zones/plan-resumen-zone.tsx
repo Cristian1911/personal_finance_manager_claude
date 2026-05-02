@@ -4,6 +4,7 @@ import { PlanHero } from "@/components/plan/plan-hero";
 import { PlanBudgetSection } from "@/components/plan/plan-budget-section";
 import { PlanBudgetToggle } from "@/components/plan/plan-budget-toggle";
 import { PlanDebtSection } from "@/components/plan/plan-debt-section";
+import { PlanMainAccountsSection } from "@/components/plan/plan-main-accounts-section";
 import { PlanRecurringSection } from "@/components/plan/plan-recurring-section";
 import { PlanScenarioPreview } from "@/components/plan/plan-scenario-preview";
 import { PlanTabNav, type PlanTab } from "@/components/plan/plan-tab-nav";
@@ -53,8 +54,12 @@ export async function PlanResumenZone({
           currency={planData.currency}
         />
         <div className="space-y-6">
-          <PlanDebtSection debt={planData.debt} currency={planData.currency} />
+          <PlanMainAccountsSection
+            mainAccounts={planData.mainAccounts}
+            currency={planData.currency}
+          />
           <PlanRecurringSection recurring={planData.recurring} currency={planData.currency} />
+          <PlanDebtSection debt={planData.debt} currency={planData.currency} />
         </div>
       </div>
 

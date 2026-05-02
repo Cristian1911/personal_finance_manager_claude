@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useCallback } from "react";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { PlanNetHero } from "./plan-net-hero";
 import { PlanExpandableChips } from "./plan-expandable-chips";
 import { PlanDrillCards } from "./plan-drill-cards";
+import { PlanMobileAccountsCard } from "./plan-mobile-accounts-card";
 import { MonthSelector } from "@/components/month-selector";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
@@ -36,6 +37,7 @@ export function PlanRoot({
   const { activeZone, toggle } = useExpandableZone<string>();
   const incomes = planData.recurring.upcomingIncome;
   const payments = planData.recurring.upcoming;
+  const toggleBalance = useCallback(() => toggle("chip-balance"), [toggle]);
 
   return (
     <div className={`space-y-2 ${MOBILE_TAB_BAR_CLEARANCE_CLASS}`}>
@@ -59,6 +61,14 @@ export function PlanRoot({
         currency={currency}
         daysRemaining={daysInMonth - dayOfMonth}
         timelineData={timelineData}
+      />
+
+      {/* Saldo actual — main accounts current balance */}
+      <PlanMobileAccountsCard
+        mainAccounts={planData.mainAccounts}
+        currency={currency}
+        expanded={activeZone === "chip-balance"}
+        onToggle={toggleBalance}
       />
 
       {/* Expandable chips — próximo ingreso / próximo pago */}

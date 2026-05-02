@@ -1,5 +1,6 @@
 "use server";
 
+import { cacheLife, cacheTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CurrencyCode } from "@/types/domain";
 import type { Database } from "@/types/database";
@@ -26,8 +27,11 @@ export async function getExchangeRate(
   from: CurrencyCode,
   to: CurrencyCode
 ): Promise<ExchangeRateResult | null> {
-  if (from === to) return null;
+  "use cache";
+  cacheTag("exchange-rates", `exchange-rate:${from}_${to}`);
+  cacheLife({ stale: 3600, revalidate: 3600 * 6, expire: 3600 * 24 });
 
+  if (from === to) return null;
   const pair = `${from}_${to}`;
   const supabase = createAdminClient();
 
