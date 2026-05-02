@@ -14,6 +14,7 @@ import { EditEntryDialog } from "@/components/cashflow-planner/edit-entry-dialog
 import { AssignmentDialog } from "@/components/cashflow-planner/assignment-dialog";
 import { PayExpenseDialog } from "@/components/cashflow-planner/pay-expense-dialog";
 import { AutoAssignButton } from "@/components/cashflow-planner/auto-assign-button";
+import { SyncRecurringButton } from "@/components/cashflow-planner/sync-recurring-button";
 import {
   toggleEntryStatus,
   deletePlanningEntry,
@@ -281,6 +282,7 @@ export function MobilePeriodoView({
             {hasUnassigned && income_envelopes.length > 0 && (
               <AutoAssignButton periodId={period.id} />
             )}
+            <SyncRecurringButton periodId={period.id} />
             <EntryFormDialog
               periodId={period.id}
               currency={currency}
