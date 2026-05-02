@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { IncomeEnvelopeCard } from "./income-envelope-card";
 import { ExpenseEntryRow } from "./expense-entry-row";
 import { AssignmentDialog } from "./assignment-dialog";
+import { BalanceSeedButton } from "./balance-seed-button";
 import { EntryFormDialog } from "./entry-form-dialog";
 import { EditEntryDialog } from "./edit-entry-dialog";
 import { AutoAssignButton } from "./auto-assign-button";
@@ -11,7 +12,11 @@ import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { buildEnvelopeMaps } from "@/lib/utils/cashflow-planner";
 import { Wallet, Receipt } from "lucide-react";
 import type { Account, Category } from "@/types/domain";
-import type { PeriodPlanData, PlanningEntryWithRelations } from "@/types/cashflow-planner";
+import {
+  BALANCE_SEED_NOTES,
+  type PeriodPlanData,
+  type PlanningEntryWithRelations,
+} from "@/types/cashflow-planner";
 
 interface EnvelopeBoardProps {
   data: PeriodPlanData;
@@ -31,6 +36,11 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
     [income_envelopes],
   );
 
+  const hasBalanceEnvelopes = useMemo(
+    () => income_envelopes.some((env) => env.entry.notes === BALANCE_SEED_NOTES),
+    [income_envelopes],
+  );
+
   function openAssignDialog(expense: PlanningEntryWithRelations) {
     setAssignTarget(expense);
     setAssignDialogOpen(true);
@@ -46,18 +56,24 @@ export function EnvelopeBoard({ data, accounts = [], categories = [] }: Envelope
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Income envelopes */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Wallet className="h-4 w-4 text-z-income" />
               <SectionEyebrow>Ingresos</SectionEyebrow>
             </div>
-            <EntryFormDialog
-              periodId={period.id}
-              currency={currency}
-              defaultType="INCOME"
-              accounts={accounts}
-              categories={categories}
-            />
+            <div className="flex items-center gap-2">
+              <BalanceSeedButton
+                periodId={period.id}
+                hasExistingBalances={hasBalanceEnvelopes}
+              />
+              <EntryFormDialog
+                periodId={period.id}
+                currency={currency}
+                defaultType="INCOME"
+                accounts={accounts}
+                categories={categories}
+              />
+            </div>
           </div>
 
           {income_envelopes.length === 0 ? (
