@@ -5,6 +5,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
 import { loginSchema, signupSchema, forgotPasswordSchema, resetPasswordSchema } from "@/lib/validators/auth";
 import { trackProductEvent, trackProductEventForUser } from "@/actions/product-events";
+import { revalidateAllUserData } from "@/lib/cache/revalidation";
 
 export type AuthActionResult = {
   error?: string;
@@ -180,6 +181,34 @@ export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+// Wipes ALL the calling user's app data but keeps the auth.users row and
+// active session. Mirrors the mobile flow in `mobile/lib/reset-data.ts`:
+// the SECURITY DEFINER `reset_user_data()` RPC scopes everything to
+// auth.uid(); the profile row is reset (`onboarding_completed = false`)
+// so the dashboard layout bounces the user to /onboarding on the next
+// navigation.
+export async function resetUserData(): Promise<AuthActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { error: "No autenticado" };
+
+  if (user.is_anonymous) {
+    return {
+      error:
+        "Estás en modo demo. Cierra sesión y crea una cuenta real para gestionar tus datos.",
+    };
+  }
+
+  const { error } = await supabase.rpc("reset_user_data");
+  if (error) {
+    console.error("[resetUserData] RPC failed:", error);
+    return { error: "No se pudo borrar los datos. Intenta de nuevo." };
+  }
+
+  revalidateAllUserData();
+
+  redirect("/onboarding?reset=1");
 }
 
 // Permanently deletes the calling user's account and ALL associated data.

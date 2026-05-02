@@ -5,6 +5,7 @@ import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { SettingsBackLink } from "@/components/settings/settings-back-link";
 import { DeleteAccountSection } from "@/components/settings/delete-account-section";
+import { ResetDataSection } from "@/components/settings/reset-data-section";
 import { getProfile } from "@/actions/profile";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 
@@ -27,7 +28,12 @@ export default async function PerfilSettingsPage() {
         />
       </div>
       <ProfileForm profile={profile} />
-      {!isAnonymous && <DeleteAccountSection />}
+      {!isAnonymous && (
+        <>
+          <ResetDataSection />
+          <DeleteAccountSection />
+        </>
+      )}
     </div>
   );
 }

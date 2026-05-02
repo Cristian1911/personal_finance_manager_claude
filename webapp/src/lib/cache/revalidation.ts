@@ -27,3 +27,32 @@ export function revalidateFinancialViews() {
   updateTag("occurrences");
   updateTag("recurring");
 }
+
+/**
+ * Wider sweep for actions that wipe (or replace) the entire user dataset:
+ * reset_user_data, account import that touches every domain, etc.
+ *
+ * Includes everything in `revalidateFinancialViews()` plus the per-domain
+ * tags that aren't transaction-driven (profile, destinatarios, tags,
+ * wishlist, email-ingest, pdf-passwords, snapshots, capture-tokens,
+ * reminders, cashflow-planner, categories, impact, dashboard-config).
+ *
+ * Intentionally omits `exchange-rates` — it's a global, non-user-scoped
+ * cache populated from frankfurter.app and survives user data resets.
+ */
+export function revalidateAllUserData() {
+  revalidateFinancialViews();
+  updateTag("profile");
+  updateTag("destinatarios");
+  updateTag("dashboard-config");
+  updateTag("tags");
+  updateTag("wishlist");
+  updateTag("email-ingest");
+  updateTag("pdf-passwords");
+  updateTag("snapshots");
+  updateTag("capture-tokens");
+  updateTag("reminders");
+  updateTag("cashflow-planner");
+  updateTag("categories");
+  updateTag("impact");
+}
