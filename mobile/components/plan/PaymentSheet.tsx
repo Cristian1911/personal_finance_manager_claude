@@ -56,6 +56,9 @@ async function buildIdempotencyKey(params: {
 
 // Updates accounts.current_balance on Supabase to keep the webapp + dashboard
 // in sync immediately. Local SQLite reconciles on the next pull.
+// Throws on fetch/update errors so the caller's try/catch can surface the
+// failure — silent failure would leave the transaction recorded with the
+// account balance still stale.
 async function updateAccountBalanceRemote(params: {
   accountId: string;
   userId: string;
@@ -63,13 +66,14 @@ async function updateAccountBalanceRemote(params: {
   amount: number;
 }): Promise<void> {
   const sb = supabase as any;
-  const { data: acct } = await sb
+  const { data: acct, error: fetchErr } = await sb
     .from("accounts")
     .select("current_balance, account_type")
     .eq("id", params.accountId)
     .eq("user_id", params.userId)
     .single();
-  if (!acct) return;
+  if (fetchErr) throw new Error(fetchErr.message);
+  if (!acct) throw new Error("Cuenta no encontrada");
 
   const newBalance = applyAccountBalanceDelta({
     currentBalance: acct.current_balance,
@@ -78,11 +82,12 @@ async function updateAccountBalanceRemote(params: {
     amount: params.amount,
   });
 
-  await sb
+  const { error: updateErr } = await sb
     .from("accounts")
     .update({ current_balance: newBalance })
     .eq("id", params.accountId)
     .eq("user_id", params.userId);
+  if (updateErr) throw new Error(updateErr.message);
 }
 
 // ── Types ──
@@ -302,13 +307,19 @@ export function PaymentSheet({
               txEnrichment.categorization_source = "RECURRING_TEMPLATE";
             }
           }
-          await sb
+          // Sequence: enrich tx first, only mark occurrence paid if that
+          // succeeded. Operations aren't atomic — failing the second after
+          // the first persisted is recoverable; failing the second after
+          // it persisted leaves the user with a paid occurrence pointing
+          // at an un-stamped tx, which breaks revertOccurrence.
+          const { error: txErr } = await sb
             .from("transactions")
             .update(txEnrichment)
             .eq("id", selectedCandidateId)
             .eq("user_id", userId);
+          if (txErr) throw new Error(txErr.message);
 
-          await sb
+          const { error: occErr } = await sb
             .from("recurring_occurrences")
             .update({
               status: "paid",
@@ -318,6 +329,7 @@ export function PaymentSheet({
             })
             .eq("id", occ.id)
             .eq("user_id", userId);
+          if (occErr) throw new Error(occErr.message);
         }
       }
 
@@ -441,9 +453,9 @@ export function PaymentSheet({
         }
       }
 
-      // 3. Link to recurring occurrence
+      // 3. Link to recurring occurrence (only after the OUTFLOW persisted).
       if (occurrenceRow) {
-        await sb
+        const { error: occErr } = await sb
           .from("recurring_occurrences")
           .update({
             status: "paid",
@@ -452,6 +464,7 @@ export function PaymentSheet({
           })
           .eq("id", occurrenceRow.id)
           .eq("user_id", userId);
+        if (occErr) throw new Error(occErr.message);
       }
 
       // 4. Update account balances on Supabase so the webapp reflects the
