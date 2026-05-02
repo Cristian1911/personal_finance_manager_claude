@@ -22,3 +22,4 @@ export * from "./utils/salary-breakdown";
 export * from "./utils/extra-payment";
 export * from "./utils/cc-projection";
 export * from "./utils/dashboard-layout";
+export * from "./utils/account-balance";
