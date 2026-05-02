@@ -28,7 +28,7 @@ export async function getExchangeRate(
   to: CurrencyCode
 ): Promise<ExchangeRateResult | null> {
   "use cache";
-  cacheTag(`exchange-rate:${from}_${to}`);
+  cacheTag("exchange-rates", `exchange-rate:${from}_${to}`);
   cacheLife({ stale: 3600, revalidate: 3600 * 6, expire: 3600 * 24 });
 
   if (from === to) return null;
