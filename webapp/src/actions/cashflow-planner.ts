@@ -502,29 +502,33 @@ export async function upsertBalanceEnvelopes(
   if (periodErr || !period)
     return { success: false, error: "Periodo no encontrado" };
 
-  const { data: accounts, error: accErr } = await supabase
-    .from("accounts")
-    .select("id, name, current_balance, currency_code, account_type")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .eq("show_in_dashboard", true)
-    .in("account_type", MAIN_ACCOUNT_TYPES);
+  // Accounts and existing seed entries are independent reads — fetch in parallel.
+  const [
+    { data: accounts, error: accErr },
+    { data: existing, error: existingErr },
+  ] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("id, name, current_balance, currency_code, account_type")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .eq("show_in_dashboard", true)
+      .in("account_type", MAIN_ACCOUNT_TYPES),
+    supabase
+      .from("planning_entries")
+      .select("id, account_id")
+      .eq("period_id", periodId)
+      .eq("user_id", user.id)
+      .eq("entry_type", "INCOME")
+      .eq("notes", BALANCE_SEED_NOTES),
+  ]);
 
   if (accErr) return { success: false, error: accErr.message };
+  if (existingErr) return { success: false, error: existingErr.message };
 
   if (!accounts || accounts.length === 0) {
     return { success: true, data: { created: 0, updated: 0 } };
   }
-
-  const { data: existing, error: existingErr } = await supabase
-    .from("planning_entries")
-    .select("id, account_id")
-    .eq("period_id", periodId)
-    .eq("user_id", user.id)
-    .eq("entry_type", "INCOME")
-    .eq("notes", BALANCE_SEED_NOTES);
-
-  if (existingErr) return { success: false, error: existingErr.message };
 
   const existingByAccount = new Map<string, string>();
   for (const row of existing ?? []) {
@@ -535,14 +539,17 @@ export async function upsertBalanceEnvelopes(
   let updated = 0;
   let firstError: string | null = null;
 
-  await Promise.all(
-    accounts.map(async (account) => {
-      const balance = Number(account.current_balance ?? 0);
-      const label = `Saldo · ${account.name}`;
-      const existingId = existingByAccount.get(account.id);
+  const toInsert: TablesInsert<"planning_entries">[] = [];
+  const updatePromises: PromiseLike<void>[] = [];
 
-      if (existingId) {
-        const { error } = await supabase
+  for (const account of accounts) {
+    const balance = Number(account.current_balance ?? 0);
+    const label = `Saldo · ${account.name}`;
+    const existingId = existingByAccount.get(account.id);
+
+    if (existingId) {
+      updatePromises.push(
+        supabase
           .from("planning_entries")
           .update({
             amount: balance,
@@ -550,41 +557,46 @@ export async function upsertBalanceEnvelopes(
             currency_code: account.currency_code,
           })
           .eq("id", existingId)
-          .eq("user_id", user.id);
-        if (error) {
-          firstError ??= error.message;
-        } else {
-          updated += 1;
-        }
-      } else {
-        const { error } = await supabase
-          .from("planning_entries")
-          .insert({
-            user_id: user.id,
-            period_id: periodId,
-            entry_type: "INCOME",
-            label,
-            amount: balance,
-            currency_code: account.currency_code,
-            expected_date: period.start_date,
-            account_id: account.id,
-            status: "PLANNED",
-            notes: BALANCE_SEED_NOTES,
-          });
-        if (error) {
-          firstError ??= error.message;
-        } else {
-          created += 1;
-        }
-      }
-    })
-  );
+          .eq("user_id", user.id)
+          .then(({ error }) => {
+            if (error) firstError ??= error.message;
+            else updated += 1;
+          })
+      );
+    } else {
+      toInsert.push({
+        user_id: user.id,
+        period_id: periodId,
+        entry_type: "INCOME",
+        label,
+        amount: balance,
+        currency_code: account.currency_code,
+        expected_date: period.start_date,
+        account_id: account.id,
+        status: "PLANNED",
+        notes: BALANCE_SEED_NOTES,
+      });
+    }
+  }
 
-  updateTag(TAG);
+  // Bulk insert in one round trip; updates remain per-row but run in parallel.
+  const insertPromise =
+    toInsert.length > 0
+      ? supabase
+          .from("planning_entries")
+          .insert(toInsert)
+          .then(({ error }) => {
+            if (error) firstError ??= error.message;
+            else created = toInsert.length;
+          })
+      : Promise.resolve();
+
+  await Promise.all([insertPromise, ...updatePromises]);
 
   if (firstError) {
     return { success: false, error: firstError };
   }
+  updateTag(TAG);
   return { success: true, data: { created, updated } };
 }
 
