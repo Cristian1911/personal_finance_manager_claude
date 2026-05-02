@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { ImportWizard } from "@/components/import/import-wizard";
 import { PendingEmailStatements } from "@/components/import/pending-email-statements";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import type { Account, CategoryWithChildren, PendingEmailStatement } from "@/types/domain";
 import type { DestinatarioRule } from "@zeta/shared";
 import type { ParsedStatement, ParseResponse } from "@/types/import";
@@ -69,6 +70,17 @@ export function ImportPageClient({
 
   return (
     <div className="space-y-6">
+      {/* On step 1 (upload) the header is a normal back arrow → /gestionar.
+          Once the user crosses the commit threshold (steps 2–4), swap to an
+          X icon labeled "Salir" so it's visually distinct from the wizard's
+          own "Atrás" button (which steps back without losing parsed data). */}
+      <MobileHeader
+        variant="sub"
+        title="Importar Extracto"
+        backHref="/gestionar"
+        backStyle={flowActive ? "exit" : "back"}
+      />
+
       <div id="import-wizard" className="scroll-mt-16">
         <ImportWizard
           key={selectedId ?? "fresh"}

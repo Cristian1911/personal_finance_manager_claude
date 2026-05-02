@@ -12,6 +12,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 
 type DeseosEnrichDrawerProps = {
   item: ScoredWishlistItem;
@@ -98,7 +100,7 @@ export function DeseosEnrichDrawer({
         </DrawerHeader>
         <form
           onSubmit={handleSubmit}
-          className="overflow-y-auto space-y-5 px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom))]"
+          className={cn("overflow-y-auto space-y-5 px-4", MOBILE_SHEET_SAFE_AREA_CLASS)}
         >
           {/* Why */}
           <div className="space-y-1.5">

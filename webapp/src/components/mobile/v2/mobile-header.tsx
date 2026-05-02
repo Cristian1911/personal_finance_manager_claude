@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_BG_CLASS } from "@/lib/constants/styles";
 import { MobileAvatarMenu } from "./mobile-avatar-menu";
@@ -22,6 +22,16 @@ interface SubHeaderProps {
   title: string;
   backHref?: string;
   action?: ReactNode;
+  /**
+   * Visual treatment for the back affordance:
+   *  - "back" (default): left-arrow + "Volver" label — implies stepwise return.
+   *  - "exit": X icon + "Salir" label — implies leaving a flow with state.
+   *
+   * Use "exit" on focus-mode wizards once the user has crossed a commitment
+   * threshold, so the header back is clearly distinct from any in-flow
+   * "Atrás" button (which steps backward without losing state).
+   */
+  backStyle?: "back" | "exit";
 }
 
 type MobileHeaderProps = MainHeaderProps | SubHeaderProps;
@@ -34,6 +44,9 @@ export function MobileHeader(props: MobileHeaderProps) {
   );
 
   if (props.variant === "sub") {
+    const isExit = props.backStyle === "exit";
+    const Icon = isExit ? X : ArrowLeft;
+    const label = isExit ? "Salir" : "Volver";
     return (
       <header className={base}>
         <div className="flex flex-1 items-center justify-between gap-3">
@@ -42,9 +55,9 @@ export function MobileHeader(props: MobileHeaderProps) {
               <Link
                 href={props.backHref}
                 className="flex size-8 shrink-0 items-center justify-center rounded-full text-z-sage-light transition-colors hover:bg-white/5"
-                aria-label="Volver"
+                aria-label={label}
               >
-                <ArrowLeft className="size-4" />
+                <Icon className="size-4" />
               </Link>
             ) : (
               <MobileBackButton />

@@ -7,7 +7,6 @@ import { getDestinatarioRules } from "@/actions/destinatarios";
 import { getPendingEmailStatements } from "@/actions/email-pdf-ingest";
 import { suggestPdfPasswordsForAccount } from "@/actions/pdf-passwords";
 import { ImportPageClient } from "@/components/import/import-page-client";
-import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { Button } from "@/components/ui/button";
 import { PageHero, HeroPill, HeroAccentPill } from "@/components/ui/page-hero";
 import { StatCard } from "@/components/ui/stat-card";
@@ -29,7 +28,8 @@ export default async function ImportPage() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      <MobileHeader variant="sub" title="Importar Extracto" backHref="/gestionar" />
+      {/* Mobile header is rendered inside ImportPageClient so it can react to
+          wizard step state (back arrow → X once the user has committed). */}
 
       {/* Desktop: full PageHero */}
       <div className="hidden lg:block">
