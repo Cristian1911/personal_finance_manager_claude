@@ -41,7 +41,9 @@ export function SyncRecurringButton({ periodId }: SyncRecurringButtonProps) {
       aria-label="Sincronizar recurrentes"
       className={cn(GHOST_BUTTON_CLASS, "border")}
     >
-      <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" />
+      <RefreshCw
+        className={cn("h-3.5 w-3.5 sm:mr-1.5", isPending && "animate-spin")}
+      />
       <span className="hidden sm:inline">
         {isPending ? "Sincronizando..." : "Sincronizar recurrentes"}
       </span>

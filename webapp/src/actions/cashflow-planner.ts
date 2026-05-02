@@ -382,10 +382,9 @@ export async function seedPeriodFromRecurring(
         .eq("is_active", true),
       supabase
         .from("planning_entries")
-        .select("recurring_template_id, expected_date")
+        .select("recurring_template_id, expected_date, label, amount")
         .eq("period_id", periodId)
-        .eq("user_id", user.id)
-        .not("recurring_template_id", "is", null),
+        .eq("user_id", user.id),
       supabase
         .from("financial_reminders")
         .select("*")
@@ -395,11 +394,17 @@ export async function seedPeriodFromRecurring(
         .lte("due_date", period.end_date),
     ]);
 
-  const existingKeys = new Set(
-    (existingEntries ?? []).map(
-      (e) => `${e.recurring_template_id}|${e.expected_date}`
-    )
-  );
+  // Templates dedup by (template_id, date); reminders have no FK so we
+  // signature them by (label, date, amount) against template-less rows.
+  const existingKeys = new Set<string>();
+  const existingReminderKeys = new Set<string>();
+  for (const e of existingEntries ?? []) {
+    if (e.recurring_template_id) {
+      existingKeys.add(`${e.recurring_template_id}|${e.expected_date}`);
+    } else {
+      existingReminderKeys.add(`${e.label}|${e.expected_date}|${e.amount}`);
+    }
+  }
 
   const rangeStart = parseISO(period.start_date);
   const rangeEnd = parseISO(period.end_date);
@@ -446,6 +451,8 @@ export async function seedPeriodFromRecurring(
 
   for (const reminder of reminders ?? []) {
     if (!reminder.due_date || !reminder.amount || reminder.amount <= 0) continue;
+    const dedupKey = `${reminder.title}|${reminder.due_date}|${reminder.amount}`;
+    if (existingReminderKeys.has(dedupKey)) continue;
     entriesToInsert.push({
       user_id: user.id,
       period_id: periodId,
