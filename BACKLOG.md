@@ -47,13 +47,6 @@
 - **What:** Today "Crear nueva recurrente" navigates to `/transactions/[id]?promote=1` instead of opening the dialog inline in the drawer. Code cost is small (`RecurringFormDialog` already accepts `controlledOpen`). Would remove the full-page detour. Drawback: dialog-in-drawer is visually awkward on mobile and the detail page detour gives the user a landing destination.
 - **Found:** ux-analyst review, 2026-04-17
 
-### Recurring templates — review the unran template-merge from 20260416
-- **Priority:** Medium
-- **What:** Migration `20260416120000_add_sub_payments_to_recurring_templates.sql` was stamped as applied on the remote project but its DDL never ran. `20260418130000_fix_missing_sub_payments.sql` recovers the column + view + triggers, but **intentionally skips the original step 5** (merge duplicate INFLOW/MONTHLY templates into one with `sub_payments`) to avoid destroying occurrence→tx links created over the past ~2 days. Decide: either run the merge manually via the UI, or ship a fresh migration that replicates step 5 after an audit of which dupes remain.
-- **Latent risk until merged:** `syncCreditCardRecurringTemplate` / `syncLoanRecurringTemplate` in `webapp/src/actions/import-transactions.ts` pick "the" active template by account — if two duplicates still exist, re-importing a statement may populate `sub_payments` on the non-canonical one. Non-crash, only a data-quality issue until the merge runs.
-- **Audit SQL:** `SELECT account_id, currency_code, count(*) FROM recurring_transaction_templates_enc WHERE direction='INFLOW' AND frequency='MONTHLY' AND category_id IS NULL GROUP BY 1,2 HAVING count(*) > 1;`
-- **Found:** 2026-04-18 — fixed in PR #174; merge follow-up flagged by recurring-doctor review.
-
 ### Investigate why migration 20260416120000 stamped without running
 - **Priority:** Medium
 - **What:** The remote `supabase_migrations.schema_migrations` table has `20260416120000` marked applied, but the underlying DDL (ALTER TABLE, view rebuild) never executed. Likely causes: (a) a manual `supabase migration repair --status applied`, (b) a partial `db push` that errored mid-migration but still stamped optimistically, (c) a DB reset/restore that restored the history row but not the schema. Check CI deploy logs around 2026-04-16 and grep shell history for `migration repair`. If this recurs, any future migration that depends on `sub_payments` would compile locally but fail in prod.
@@ -70,12 +63,6 @@
 - **What:** `getBudgetProgress` in `mobile/lib/repositories/budgets.ts` filters `b.period = 'monthly'` (hardcoded). Webapp accepts `"monthly" | "yearly"` via `budgetSchema`. Any yearly budget created on webapp is invisible on mobile.
 - **Fix:** widen the SQL filter + surface a period chip in BudgetRow. Only needed once the webapp exposes yearly creation.
 - **Found:** mobile-webapp-parity on PR #223, 2026-04-22.
-
-### Webapp — expose "Reset all my data" in Settings
-- **Priority:** Medium
-- **What:** PR #227 shipped the `reset_user_data()` RPC + mobile Settings entry, but webapp Settings has no equivalent. Users who only use the web still can't wipe their own data. The RPC + confirmation copy already exist — webapp just needs a destructive-ghost button in `/settings` that calls the RPC, clears Route Cache (`updateTag` for all domain tags), and signs the user out to `/onboarding`.
-- **Touches:** `webapp/src/app/(dashboard)/settings/page.tsx` (or the nearest Settings surface), new server action `resetAllUserData` in `webapp/src/actions/profile.ts`.
-- **Found:** 2026-04-24, PR #227.
 
 ### `reset_user_data()` RPC — drift guard
 - **Priority:** Medium
