@@ -422,6 +422,19 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_planning_assignments_expense ON planning_assignments(expense_entry_id)`,
     ],
   },
+  {
+    version: 12,
+    statements: [
+      // Close column drift surfaced by mobile-sync-doctor on the PaymentSheet
+      // parity PR. PaymentSheet now stamps `recurrence_group_id` on linked
+      // and system-created transactions (mirroring webapp); without the
+      // mirror, getTableColumns() in pull.ts silently drops it every cycle.
+      // (Note: `clean_description` is a separate pre-existing drift — the
+      //  local column is named `description`, pulls drop the Supabase
+      //  `clean_description` field. Out of scope for this PR.)
+      `ALTER TABLE transactions ADD COLUMN recurrence_group_id TEXT`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =
