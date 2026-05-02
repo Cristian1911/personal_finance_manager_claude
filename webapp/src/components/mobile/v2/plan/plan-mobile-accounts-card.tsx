@@ -2,6 +2,7 @@
 
 import { Wallet } from "lucide-react";
 import Link from "next/link";
+import { MOBILE_ACTION_BUTTON_CLASS } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { CurrencyCode } from "@/types/domain";
@@ -29,6 +30,7 @@ export function PlanMobileAccountsCard({
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
+        aria-label={expanded ? "Ocultar saldos de cuentas principales" : "Mostrar saldos de cuentas principales"}
         className={cn(
           "w-full rounded-xl border p-3 text-left transition-all",
           expanded
@@ -64,7 +66,7 @@ export function PlanMobileAccountsCard({
 
           {hasAccounts ? (
             <>
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-white/6">
                 {accounts.map((account) => {
                   const showBaseConversion = account.currency_code !== currency;
                   return (
@@ -93,7 +95,7 @@ export function PlanMobileAccountsCard({
                   );
                 })}
               </div>
-              <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2 text-xs">
+              <div className="mt-2 flex items-center justify-between border-t border-white/6 pt-2 text-xs">
                 <span className="text-muted-foreground">Total</span>
                 <span className="font-bold tabular-nums text-z-brass">
                   {formatCurrency(totalInBase, currency)}
@@ -112,7 +114,7 @@ export function PlanMobileAccountsCard({
               </p>
               <Link
                 href="/accounts"
-                className="inline-flex items-center gap-1 rounded-lg bg-z-brass/15 px-3 py-1.5 text-xs font-medium text-z-brass transition-colors hover:bg-z-brass/20"
+                className={cn(MOBILE_ACTION_BUTTON_CLASS, "inline-flex items-center gap-1")}
               >
                 Ver cuentas
               </Link>
