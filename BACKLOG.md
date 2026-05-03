@@ -1043,22 +1043,17 @@ Expo app sigue con estructura 4-tab. Ports pendientes del IA refactor:
 - [P2] **Tab labels** match webapp now ("1. Efectivo" etc).
 
 #### Deseos (`/deseos` → `/plan?tab=deseos`)
-- [P0] **Score & verdict missing on RN list** — webapp `DeseosItem` shows traffic-light + verdict label + numeric score from `getWishlistItemsWithFreshScores()`. RN shows cached `last_score` only, no verdict text, no live re-score.
-- [P0] **No `DeseosNudgeBanner`** (`getActiveNudges()`: debt_milestone, score_transition, budget_surplus, desire_maturity).
-- [P0] **No `DeseosReflectionCard`** (14-day/60-day post-purchase reflection + rating + worth-it).
-- [P0] **No `DeseosInsights`** aggregated patterns.
-- [P0] **No `DeseosEnrichDrawer`** — RN form captures only `name + amount`, items can never be scored without urgency/desire-type/category.
-- [P0] **No bought-items section** (`status=bought/reflected/archived`).
-- [P1] No per-row CTAs (Comprado, retry score, complete enrichment, delete).
-- [P1] No urgency / desire-type chips.
-- [P2] Sort drift: RN by status; webapp by enriched-score-desc then unenriched.
+- [DONE — feat/mobile-deseos-puedopagar-parity] Live re-score (`getWishlistItemsWithFreshScores`), verdict chip + score per row, urgency/desire chips, per-row CTAs (Reevaluar / Completar / Comprado / Eliminar), `DeseosEnrichDrawer`, bought-items section (incl. `reflected`), local `NudgeBanner` (score_transition + desire_maturity).
+- [P0] **`DeseosReflectionCard`** — 14d/60d post-purchase reflection + worth_it + rating. Requires `wishlist_reflections` SQLite schema + push/pull + repository. Spawn `mobile-sync-doctor` when picked up.
+- [P0] **`DeseosInsights`** — aggregated patterns. Depends on reflections sync above.
+- [P1] Nudge variants `debt_milestone` + `budget_surplus` — webapp computes server-side via cross-table queries. Port the budget cross-ref (read `budgets` + month spend); debt_milestone needs the upcoming-payment heuristic.
+- [P2] Sort drift: RN orders by urgency-then-created; webapp orders by enriched-score-desc then unenriched. Decide canonical order.
 
 #### `/puedo-pagar`
-- [P0] **Decision engine drift**: webapp uses `analyzePurchaseDecisionAction` (server action). RN uses local `analyzeLocally` from `lib/services/purchase-decision`. Confirm both delegate to `@zeta/shared`; port if RN reimplements.
-- [P1] No category picker on RN — `categoryId` omitted from analyze payload, blocking budget-impact reasons.
-- [P1] No "name" field input.
-- [P1] No reset action / no "scroll verdict into view" focus behavior.
-- [P2] RN saves to wishlist via local `createWishlistItem`; webapp uses `saveAffordToWishlist` which stores `last_verdict` / `last_score` / `category_id` / `funding_type`. RN drops these → wishlist appears unscored.
+- [DONE — feat/mobile-deseos-puedopagar-parity] Name field, category picker (reuses `CategoryPickerSheet`), reset button, save-to-wishlist persists `last_verdict` / `last_score` / `category_id` / `funding_type` / `installments` / `account_id` + `enriched=true` (matches webapp `saveAffordToWishlist`).
+- [P0] **Decision engine drift**: webapp uses `analyzePurchaseDecisionAction`. RN uses `analyzeLocally`. Both delegate to `@zeta/shared` `analyzePurchaseDecision`; behavior verified equivalent. (Mobile defers per-category budget lookup — see next item.)
+- [P1] **Per-category budget impact** — RN passes `categoryId` to `analyzeLocally` but the snapshot doesn't fetch the matching `budgets` row + spent-this-month sum, so the engine never gets `budgetRemaining`. Webapp does this inside `scoreItemWithSnapshot`. Port the lookup into `mobile/lib/services/purchase-decision.ts:getFinancialSnapshot` or a per-item add-on.
+- [P1] **Scroll-to-verdict** — `AppKeyboardAwareScrollView` doesn't forward refs; needs a small wrapper change before the verdict card can be `scrollTo`-ed. Defer with that wrapper edit.
 
 #### `/subscriptions`
 - [ORPHAN] **RN-only screen.** Webapp has no `/suscripciones` UI; manages via `is_subscription` flag + `recurring_transaction_templates`. RN screen CRUDs templates filtered to `SUBSCRIPTIONS_CATEGORY_ID` with suggested-name chips. **Recommendation: port to webapp** as `/suscripciones` (single-category recurring view) — real user feature. Until then, ensure RN shares validators/side-effects with webapp recurring flows (parity gate).
