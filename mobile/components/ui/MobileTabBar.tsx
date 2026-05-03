@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Alert, View, Pressable, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeyboardState } from "react-native-keyboard-controller";
@@ -20,7 +20,7 @@ interface TabBarProps {
   navigation: { navigate: (name: string) => void };
 }
 
-function TabButton({
+const TabButton = memo(function TabButton({
   tab,
   active,
   onPress,
@@ -48,7 +48,7 @@ function TabButton({
       </Text>
     </Pressable>
   );
-}
+});
 
 interface MobileTabBarProps extends TabBarProps {
   /** User preference for the dynamic 3rd tab. Defaults to "PLAN". */
@@ -62,6 +62,34 @@ export function MobileTabBar({ state, navigation, navFocus }: MobileTabBarProps)
   const keyboardVisible = useKeyboardState((s) => s.isVisible);
   const { isHidden: contextHidden } = useTabBarVisibility();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const navigate = useCallback(
+    (name: string) => navigation.navigate(name),
+    [navigation]
+  );
+
+  const tabs = useMemo(() => getMobileTabs(navFocus), [navFocus]);
+  const leftTabs = useMemo(() => tabs.slice(0, 2), [tabs]);
+  const rightTabs = useMemo(() => tabs.slice(2), [tabs]);
+
+  const renderTab = useCallback(
+    (tab: MobileTab) => {
+      const routeIndex = state.routes.findIndex((r) => r.name === tab.name);
+      const active =
+        routeIndex >= 0
+          ? state.index === routeIndex
+          : isMobileTabActive(pathname, tab);
+      return (
+        <TabButton
+          key={tab.name}
+          tab={tab}
+          active={active}
+          onPress={() => navigate(tab.name)}
+        />
+      );
+    },
+    [state, pathname, navigate]
+  );
 
   function handleFabAction(action: FabMenuAction) {
     switch (action) {
@@ -83,24 +111,6 @@ export function MobileTabBar({ state, navigation, navFocus }: MobileTabBarProps)
 
   if (keyboardVisible) return null;
   if (contextHidden || isFocusModePath(pathname)) return null;
-
-  const tabs = getMobileTabs(navFocus);
-  const leftTabs = tabs.slice(0, 2);
-  const rightTabs = tabs.slice(2);
-
-  function renderTab(tab: MobileTab) {
-    const routeIndex = state.routes.findIndex((r) => r.name === tab.name);
-    const active =
-      routeIndex >= 0 ? state.index === routeIndex : isMobileTabActive(pathname, tab);
-    return (
-      <TabButton
-        key={tab.name}
-        tab={tab}
-        active={active}
-        onPress={() => navigation.navigate(tab.name)}
-      />
-    );
-  }
 
   return (
     <>

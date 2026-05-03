@@ -1,8 +1,9 @@
 import { ScrollView, Text, View } from "react-native";
 import { Stack } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MobileHeader } from "../../components/ui/MobileHeader";
 import { useHideTabBar } from "../../components/nav/TabBarVisibilityProvider";
-import { MOBILE_TAB_BAR_CLEARANCE, PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
 
 /**
  * Manual full transaction form. Mirrors webapp `MobileTransactionForm`.
@@ -10,11 +11,12 @@ import { MOBILE_TAB_BAR_CLEARANCE, PANEL_INSET_CLASS } from "../../lib/constants
  */
 export default function NewTransactionScreen() {
   useHideTabBar();
+  const insets = useSafeAreaInsets();
   return (
     <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: false }} />
       <MobileHeader variant="sub" title="Nuevo movimiento" />
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom }}>
         <View className={`${PANEL_INSET_CLASS} p-4 gap-2`}>
           <Text className="text-sm font-inter-semibold text-foreground">
             Formulario en construcción

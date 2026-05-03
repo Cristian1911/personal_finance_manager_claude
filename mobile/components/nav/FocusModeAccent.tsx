@@ -21,7 +21,7 @@ export function FocusModeAccent() {
   return (
     <View
       pointerEvents="none"
-      className="absolute left-0 right-0 z-50 h-0.5 bg-z-brass"
+      className="absolute left-0 right-0 z-10 h-0.5 bg-z-brass"
       style={{ top: insets.top }}
     />
   );
