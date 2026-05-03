@@ -1,131 +1,71 @@
-# HANDOVER — 2026-05-03 — Mobile RN ↔ Webapp parity (Phase 0 foundations)
+# HANDOVER — 2026-05-03 — Mobile RN ↔ Webapp parity (Phase 3 wrap shipped)
 
 > Supersedes prior handovers. For earlier handovers see git history (`HANDOVER.md@HEAD~N`).
 
-Branch: `feat/mobile-shared-engines` (despite the name, it's the home for all Phase 0–2 parity work; rename on PR if desired).
+## Status snapshot
 
-## What landed (7 commits on this branch)
-
-| Commit | Phase | Summary |
+| Phase | What | Status |
 |---|---|---|
-| `398f4bd` | 0a | PayoffResultCard ported to `@zeta/shared` `runScenario` (engine drift fix). 175 LOC of local sim removed. |
-| `754119f` | 0b | Tab bar parity: `getMobileTabs(focus)`, `Más` tab, `useHideTabBar`, `FocusModeAccent`, `(tabs)/menu.tsx` relocation |
-| `9b65fa8` | 0c | Tab-bar clearance sweep — 13 files, `paddingBottom: 100/120` → `MOBILE_TAB_BAR_CLEARANCE` constant; `useTabBarClearance` hook added |
-| `15e234f` | 0d | Hardcoded color codemod — 38 files, 148 token replacements (`bg-white`, `text-gray-*`, `text-sky-*`, etc.) |
-| `903a2f5` | 1 | Scaffolded `/transactions/new` (focus-mode), `/pendientes`, `/etiquetas` |
-| `3d30b6e` | 2 | Enabled 3 dashboard widgets that already had implementations (next_bill, next_income, accounts) |
+| 0–2 | Engine drift fix, tab bar parity, clearance sweep, color codemod, page scaffolds, 3 dashboard widgets enabled | ✅ Shipped — PR #247 |
+| 3a | Planificador 4-step (Cash → Allocate → Compare → Detail), scenario A/B/C persistence | ✅ Shipped — PR #248 |
+| 3b | Deseos parity (live re-score, verdict chips, EnrichDrawer, NudgeBanner, bought section, per-row CTAs, urgency/desire chips) + Puedo-pagar parity (name, category, reset, full afford-save shape) | ✅ Shipped — PR #249 (this branch) |
+| 2 remainder | Heavy dashboard widgets (HealthZone, Flujo, Heatmap, etc.) | ⏸ Deferred |
+| 4 | Account hero variants + QuickActionsBar dialogs | ⏸ Deferred |
+| 5 | CRUD parity (destinatarios, recurrentes, categorizar, categories, etiquetas, movimientos, tx detail) | ⏸ Deferred |
+| 6 | Import wizard restoration | ⏸ Deferred |
+| 7 | Onboarding / auth / settings parity | ⏸ Deferred |
+| 8 | Webapp `/suscripciones` port | ⏸ Deferred |
 
-Mobile `tsc --noEmit` clean throughout. Shared `scenario-engine` tests green (19/19). Pre-existing failures in `auto-categorize` + `debt-stats` tests are unrelated to this branch.
+## What landed this session (PR #249 — `feat/mobile-deseos-puedopagar-parity`)
 
-## Tracked follow-ups
+| Commit | Summary |
+|---|---|
+| `6dd45dd` | Wishlist scoring + enrich/mutate repo. `getFinancialSnapshot` extracted; `scoreWishlistItemWithSnapshot` mirrors webapp `scoreItemWithSnapshot`; new repo mutations (enrich/markBought/dismissNudge/delete/persistScore) all enqueue UPDATE/DELETE through `enqueueInsert/Update/Delete`. |
+| `a7f1b9c` | Deseos UI — verdict chips, EnrichDrawer, NudgeBanner (local computation: score_transition + desire_maturity), bought section (incl. `reflected`), per-row CTAs (Reevaluar / Completar / Comprado / Eliminar), urgency/desire chips. |
+| `7feebfa` | Puedo-pagar — Name field, Category picker (reuses `CategoryPickerSheet`), Reset, save-to-wishlist with `last_verdict` / `last_score` / `funding_type` / `installments` / `account_id` / `category_id` / `enriched=true`. |
+| `9f3806d` | Gate fixes: CC `available_balance` parity (`getSelectedAccountAvailable`), `getBoughtWishlistItems` includes `reflected`, `React.memo` on `DeseosRow` + `BoughtRow`, 30s TTL on `loadData` to skip rescore-write storm on every focus. |
+| `c9edeb9` | BACKLOG entries marking Phase 3 wrap done; deferred items logged. |
+| `a2f75d3` | `/simplify` pass — 10 fixes, net −77 LOC. New `mobile/components/ui/FormField.tsx` (`FieldGroup` + `SegmentedRow`); new `mobile/lib/constants/verdict.ts` (single `VERDICT_META`); `applyScore` shared helper; `getWishlistItemById` (single-row query); no-op write skip; `persistWishlistScore` branch collapse via `COALESCE`; typed urgency/funding with shared types; `formatDate` from `@zeta/shared`. |
+| `dd71fdf` | Gemini comment — rename `selectedDebtAfterPurchase` → `selectedAccountCurrentDebt`. |
 
-- **PaymentSheet atomic balance update** (Gemini review on PR #247, line 91) — `updateAccountBalanceRemote` reads `current_balance` then writes a computed new value, which is racey under concurrent payment creation. Fix is a Supabase RPC (`update_account_balance_atomic`) that does the read+compute+update in one DB round-trip with row-level locking. Out of scope for Phase 0–2; needs `supabase-migrator` agent for the RPC + RLS check.
+Mobile `tsc --noEmit` clean. Webapp build clean. `pnpm audit --audit-level high` shows 4 high in `@xmldom/xmldom` via Expo CLI dev tooling — pre-existing on `main`, not introduced.
 
-## Why we stopped here
+Gates run: `mobile-webapp-parity` (2 issues found and fixed), `mobile-sync-doctor` (passed clean), `mobile-perf-doctor` (2 high fixed, 1 medium deferred).
 
-The audit's full P0 list (`BACKLOG.md` line 903–1199) is ~80 items spread across 12 phases. Phases 0–2 above are the mechanical/foundational subset. Phases 3–8 each represent multi-hour to multi-day feature work (planificador 4-step, account hero variants, destinatario CRUD, import wizard restoration). Pushing through all of them in one session would produce shallow, half-built work — better to ship foundations now and tackle each remaining phase as its own follow-up PR.
+## Tracked follow-ups (from this branch)
+
+Logged in `BACKLOG.md` under `/deseos` and `/puedo-pagar` sections:
+- **[P0] Reflections + Insights** — needs `wishlist_reflections` SQLite schema + push/pull + repository. User chose deferred over online-only fetch. Spawn `mobile-sync-doctor` when picked up.
+- **[P1] Nudge variants `debt_milestone` + `budget_surplus`** — webapp computes server-side via cross-table queries. Port the budget cross-ref + the upcoming-payment heuristic.
+- **[P1] Per-category `budgetRemaining`** — mobile passes `categoryId` to `analyzeLocally` but the snapshot doesn't fetch the matching `budgets` row + spent-this-month sum. Webapp does this inside `scoreItemWithSnapshot`.
+- **[P1] Scroll-to-verdict** — `AppKeyboardAwareScrollView` doesn't forward refs; needs a small wrapper change first.
+- **[P2] Single-tx batch persist** in `getWishlistItemsWithFreshScores` — collapse N `withTransactionAsync` calls into one.
+- **[P2] SQL aggregate snapshot** — replace 1k-row scan in `getFinancialSnapshot` with `SELECT direction, SUM(...) GROUP BY direction`.
+
+Carryover from PR #247:
+- **PaymentSheet atomic balance update** (Gemini review on PR #247, line 91) — `updateAccountBalanceRemote` reads then writes a computed value; racey under concurrent payment creation. Fix is a Supabase RPC with row-level locking. Needs `supabase-migrator`.
 
 ## Suggested next session
 
-Pick one of:
+Pick one:
 
-- **Phase 3 planificador 4-step** — biggest UX impact, depends only on Phase 0a engines (already merged). Webapp source: `webapp/src/components/deudas/planificador/*`. Spawn `mobile-perf-doctor` after.
-- **Phase 5 destinatarios CRUD** — biggest functional gap, low blast radius. Webapp source: `webapp/src/components/destinatarios/*` + `actions/destinatarios.ts`. Spawn `mobile-webapp-parity` + `mobile-sync-doctor`.
-- **Phase 6 import wizard** — restores feature completeness on a cluster the user runs every month. Spawn `import-flow-doctor`.
+1. **Phase 4 — Account heroes** (UX-visible, contained). Webapp source: `webapp/src/components/accounts/{flip-zone,balance-graph-hero,spending-pulse-hero,quick-actions-bar}*`. Add `flip` for CC/SAVINGS, `pulse` for CHECKING/CASH/OTHER, `graph` for LOAN/INVESTMENT. Spawn `mobile-perf-doctor` (animations) + `zetas-front-guy`.
 
-## Deferred (still P0 in BACKLOG.md §3 onwards)
+2. **Phase 2 remainder — heavy dashboard widgets** (HealthZone, Flujo, Heatmap, BurnRate, Runway, DashboardHero/StatusHeadline). The dashboard is the entry point — biggest single perceived-quality jump. Skia chart work. Spawn `mobile-perf-doctor`.
 
-Each item below is a focused session of its own. Listed with the most natural agent gate.
+3. **Phase 5 — CRUD parity** (highest functional gap, lowest UX risk). Start with `/destinatarios` (create/edit/merge/rules) since destinatarios are referenced from many surfaces. Spawn `mobile-webapp-parity` + `mobile-sync-doctor` per surface.
 
-### Phase 2 remainder — heavy widgets (mobile-perf-doctor)
-- HealthZone (multiple meters + score + runway)
-- FlujoSection (burn rate card + waterfall + cashflow charts)
-- ActividadHeatmap (calendar SVG grid)
-- DashboardAlerts banner
-- UpcomingPayments standalone widget
-- BurnRate, RunwayMiniChart sparkline
-- DashboardHero / StatusHeadline + 50/30/20 strip
-- MonthSelector / DashboardAccountPicker
-- InicioDiscoveryRail + DemoBanner / GuestBanner / DebtFreeBanner
-- `useLiveDashboard` parity (silent stale-value correction)
-- `dashboard_config` Supabase persistence (mobile currently AsyncStorage only) — `mobile-sync-doctor` gate
+4. **Phase 3 follow-ups** (small, quick wins): port the `wishlist_reflections` sync table, then build `DeseosReflectionCard` + `DeseosInsights`. Or fix per-category `budgetRemaining` + scroll-to-verdict.
 
-### Phase 3 — Decision tools (mobile-webapp-parity, mobile-perf-doctor)
-- Planificador: 4-step flow (Cash → Allocate → Compare → Detail), multi-cashEntry input, scenario persistence (`getScenarios`/save A/B/C cap)
-- Puedo-pagar: category picker, name field, scroll-to-verdict focus, `funding_type` + `last_verdict` + `last_score` + `category_id` on save-to-wishlist
-- Deseos: live re-score on list, `DeseosEnrichDrawer`, `DeseosNudgeBanner`, `DeseosReflectionCard`, bought-items section, urgency/desire-type chips, per-row CTAs
-
-### Phase 4 — Account detail heroes
-- AccountHero variants (`flip` for CC/SAVINGS, `pulse` for CHECKING/CASH/OTHER, `graph` for LOAN/INVESTMENT)
-- FlipZone / CardFace / GraphFace
-- BalanceGraphHero + RangePills (30/90/180/365)
-- SpendingPulseHero (30-day sparkline)
-- QuickActionsBar: Pagar, Transferir, Agregar, Ajustar, Más
-- QuickPaymentDialog, TransferDialog, ReconcileBalanceDialog
-- StatementSnapshotsCard / StatementHistoryTimeline
-- Move `RecentTransactions` to use webapp's full row pattern
-- Replace `Alert.alert` delete confirm with styled AlertDialog
-
-### Phase 5 — CRUD parity (mobile-webapp-parity, mobile-sync-doctor)
-- `/destinatarios`: create, edit (rename / category / active / notes), rule add/edit/delete, merge, suggestions tab, `bulkLinkToDestinatario`, delete, zone picker, spend stats / monthly chart on detail
-- `/recurrentes`: template editor (RecurringFormSheet), templates strip, link-picker / merge-picker sheets, `recurring-impact-dialog`, `recurring-mini-calendar`, payment timeline, "Próximas" 30/60/90-day tile
-- `/categorizar`: Auto-review tab + `bulkConfirmAutoCategory`, bulk-select + `bulkCategorize`, suggestion chips inline, undo toast
-- `/categories`: `IconPicker` (Lucide+emoji), zone assignment (essentials/wants/savings), kit picker, `displayOrder` drag reorder
-- `/etiquetas`: full CRUD UI (file scaffolded; needs list, create, edit, delete, assign-to-tx)
-- `/movimientos`: filter pills (`tagId`, `dateFrom`, `dateTo`, `amountMin`, `amountMax`, `capture_method`), `pendingEmails` tile, "Compra consciente" entry, inline zone pickers on rows, `Link2`/`Repeat` badges
-- `/transactions/[id]`: PromoteToRecurringButton, LinkPickerSheet, destinatario picker, tag picker, linked-recurring surface, installment surface, capture_method tier badge
-- `/pendientes`: real list + actions (file scaffolded)
-
-### Phase 6 — Import wizard parity (import-flow-doctor)
-- Restore "Confirmar" step (current RN collapses 6 → 4)
-- "Destinatarios sugeridos" sub-flow (return to wizard, not deep-link away)
-- `previewImportReconciliation` parity (use canonical `ReconciliationPreviewResult`)
-- Multi-statement / multi-account mapping table
-- "Create account from statement" inline flow
-- PDF password vault suggestions UI (`initialVaultSuggestions`)
-- Pending-email-statement entry (`EMAIL_PDF_IMPORT`)
-- Screenshot/OCR entry (`?mode=screenshot` + `getPendingScreenshotFile()`)
-- WizardActionBar parity, `STEP_DESCRIPTIONS` Narrator, `step-results.tsx` parity
-
-### Phase 7 — Onboarding / auth / settings (mobile-webapp-parity)
-- Onboarding step count: 5 → 4 (match webapp `FUNCTIONAL_STEPS=3` + celebration)
-- `finishOnboarding` server action wiring with same payload (`app_purpose`, `estimated_monthly_income/expenses`, `preferred_currency`, `timezone`, `locale`, default account, `dashboard_config`, `mobile_layout`)
-- `skipOnboardingWithDefaults` path
-- `trackClientEvent` analytics
-- Magic-link / passwordless auth path
-- `/reset-password` deep-link callback
-- Auth callback error states
-- `SettingsIdentityHero` (avatar + name + member-since)
-- `/settings/perfil`, `/integraciones`, `/email`, `/pdf-passwords`, `/etiquetas`, `/analytics`, `/bug` sub-routes
-- Tab bar: read `profile.nav_focus` from SQLite (requires column add — `mobile-sync-doctor`)
-
-### Phase 8 — Webapp `/suscripciones` (recurring-doctor, server-action-reviewer, perf-auditor, zetas-front-guy)
-- New webapp route `/suscripciones` filtering recurring templates to `SUBSCRIPTIONS_CATEGORY_ID`
-- Suggested-name chips
-- After ship, re-verify RN `/subscriptions` shape parity
+Avoid Phase 6 (import wizard) right after Phase 3 — too much serial shipping in the same area; let user soak Phase 3 first.
 
 ## How to ship this branch
 
+PR #249 is open. Once approved:
+
 ```sh
-git push -u origin feat/mobile-shared-engines
-gh pr create --title "Mobile parity foundations (Phase 0–2)" --body "$(cat <<'EOF'
-## Summary
-Foundations subset of the mobile RN ↔ webapp parity audit (BACKLOG.md §903+).
-- Engine drift fix: PayoffResultCard now uses @zeta/shared runScenario
-- Tab bar parity: getMobileTabs(focus), Más tab, focus-mode hide, brass accent
-- Tab-bar clearance sweep (13 files), color token codemod (38 files)
-- Scaffolds: /transactions/new, /pendientes, /etiquetas
-- 3 dashboard widgets enabled (next_bill, next_income, accounts)
-
-Phases 3–8 are deferred — see HANDOVER.md.
-
-## Test plan
-- [ ] Mobile typecheck (`pnpm --filter mobile exec tsc --noEmit`)
-- [ ] Open /menu from Más tab, verify navigation
-- [ ] Open /transactions/new, confirm tab bar hides + brass accent shows
-- [ ] Confirm /pendientes and /etiquetas reachable
-- [ ] Open AddWidgetSheet, confirm Próximo pago/Próximo ingreso/Cuentas selectable
-- [ ] Run planificador, confirm payoff numbers match webapp scenario tool
-EOF
-)"
+gh pr merge 249 --squash --delete-branch
+git checkout main && git pull origin main
 ```
+
+Then for the next session, pick a phase from the table above and create a fresh branch (`feat/mobile-phase4-account-heroes` or similar).
