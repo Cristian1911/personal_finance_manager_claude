@@ -128,8 +128,8 @@ function SubRow({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: isSelected }}
-      className={`flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-white/5 ${
-        isSelected ? "bg-white/8" : ""
+      className={`flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-z-surface-2/5 ${
+        isSelected ? "bg-z-surface-2/8" : ""
       }`}
     >
       <View
@@ -224,7 +224,7 @@ export function CategoryZonePickerSheet({
             </View>
             <Pressable
               onPress={handleClose}
-              className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+              className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
               accessibilityLabel="Cerrar"
             >
               <X size={16} color={COLORS.sageDark} />
@@ -364,9 +364,9 @@ export function CategoryZonePickerSheet({
                                 accessibilityState={{
                                   selected: selectedId === expandedInRow.id,
                                 }}
-                                className={`flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-white/5 ${
+                                className={`flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-z-surface-2/5 ${
                                   selectedId === expandedInRow.id
-                                    ? "bg-white/8"
+                                    ? "bg-z-surface-2/8"
                                     : ""
                                 }`}
                               >
@@ -420,8 +420,8 @@ export function CategoryZonePickerSheet({
                   accessibilityRole="button"
                   accessibilityLabel="Sin categoría"
                   accessibilityState={{ selected: selectedId === null }}
-                  className={`mt-4 flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-white/5 ${
-                    selectedId === null ? "bg-white/8" : ""
+                  className={`mt-4 flex-row items-center gap-2.5 rounded-lg px-3 py-2.5 active:bg-z-surface-2/5 ${
+                    selectedId === null ? "bg-z-surface-2/8" : ""
                   }`}
                 >
                   <X size={14} color={COLORS.sageDark} />

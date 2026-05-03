@@ -12,7 +12,7 @@ import {
 } from "../../lib/repositories/destinatarios";
 import { getDatabase } from "../../lib/db/database";
 import { COLORS } from "../../lib/constants/colors";
-import { SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 import { MobileHeader } from "../ui/MobileHeader";
 import { MCard, MListRow } from "../ui/MCard";
 import { StateChip } from "../ui/StateChip";
@@ -93,7 +93,7 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -175,7 +175,7 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
                       {rule.match_type}
                     </Text>
                     {rule.match_count > 0 && (
-                      <View className="rounded-full bg-white-8 px-2 py-0.5">
+                      <View className="rounded-full bg-z-surface-2-8 px-2 py-0.5">
                         <Text className="text-[10px] font-inter-medium text-muted-foreground">
                           {rule.match_count}
                         </Text>

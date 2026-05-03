@@ -20,6 +20,7 @@ import {
   SECTION_EYEBROW_CLASS,
   BRASS_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE,
 } from "../../lib/constants/styles";
 
 interface DeseosState {
@@ -110,7 +111,7 @@ export function DeseosRoot() {
       />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.brass} />
         }

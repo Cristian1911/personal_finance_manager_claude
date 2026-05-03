@@ -7,6 +7,7 @@ import { getDebtOverview, type DebtOverviewData } from "../../lib/repositories/d
 import { getDatabase } from "../../lib/db/database";
 import { getPreferredCurrency } from "../../lib/profile";
 import { COLORS } from "../../lib/constants/colors";
+import { MOBILE_TAB_BAR_CLEARANCE } from "../../lib/constants/styles";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
 import { useExpandableZone } from "../ui/useExpandableZone";
@@ -74,7 +75,7 @@ export function DeudasRoot() {
       />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

@@ -16,6 +16,7 @@ import { useSync } from "../../lib/sync/hooks";
 import { COLORS } from "../../lib/constants/colors";
 import {
   BRASS_BUTTON_CLASS,
+  MOBILE_TAB_BAR_CLEARANCE,
   PANEL_SURFACE_SUBTLE_CLASS,
 } from "../../lib/constants/styles";
 import { MobileHeader } from "../ui/MobileHeader";
@@ -105,7 +106,7 @@ export function PlanificadorRoot() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

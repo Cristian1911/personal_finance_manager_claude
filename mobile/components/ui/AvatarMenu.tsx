@@ -127,7 +127,7 @@ function AvatarMenuPopover({
               )}
             </View>
 
-            <View className="h-px bg-white-6 mx-4" />
+            <View className="h-px bg-z-surface-2-6 mx-4" />
 
             {/* Featured IMPORTAR card */}
             <View className="px-4 pt-3 pb-2">
@@ -157,7 +157,7 @@ function AvatarMenuPopover({
               </Pressable>
             </View>
 
-            <View className="h-px bg-white-6 mx-4 mt-2" />
+            <View className="h-px bg-z-surface-2-6 mx-4 mt-2" />
 
             {/* Nav rows */}
             <View className="py-1">
@@ -201,7 +201,7 @@ function MenuRow({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-3 px-4 py-3 active:bg-white/5"
+      className="flex-row items-center gap-3 px-4 py-3 active:bg-z-surface-2/5"
     >
       {icon}
       <Text className="flex-1 text-sm font-inter-medium text-foreground">

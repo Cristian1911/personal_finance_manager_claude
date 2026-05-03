@@ -1,5 +1,14 @@
 import { View, Text } from "react-native";
-import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import {
+  formatCurrency,
+  expandCashEntries,
+  runScenario,
+  type CashEntry,
+  type CurrencyCode,
+  type DebtAccount,
+  type ScenarioInput,
+  type ScenarioResult,
+} from "@zeta/shared";
 import { Calendar, TrendingDown, DollarSign } from "lucide-react-native";
 import { MCard } from "../ui/MCard";
 import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
@@ -7,6 +16,8 @@ import { COLORS } from "../../lib/constants/colors";
 import type { DebtAccountInfo } from "../../lib/repositories/debt";
 
 type Strategy = "avalanche" | "snowball";
+
+const SIMULATION_HORIZON_MONTHS = 360; // 30-year cap, matches shared engine behavior
 
 interface PayoffResult {
   accountId: string;
@@ -33,16 +44,77 @@ interface PayoffResultCardProps {
   currency: CurrencyCode;
 }
 
-/**
- * Simulate monthly debt payoff using the chosen strategy.
- * Extra cash is applied to the top-priority account on top of minimum payments.
- */
+function toSharedDebtAccount(info: DebtAccountInfo): DebtAccount {
+  return {
+    id: info.id,
+    name: info.name,
+    type: info.type,
+    balance: info.balance,
+    creditLimit: info.creditLimit > 0 ? info.creditLimit : null,
+    interestRate: info.interestRate,
+    monthlyPayment: info.monthlyPayment,
+    paymentDay: info.paymentDay,
+    cutoffDay: null,
+    currency: info.currency as CurrencyCode,
+    color: null,
+    institutionName: null,
+    currencyBreakdown: null,
+    loanAmount: null,
+  };
+}
+
+function buildCashEntries(
+  extraCash: number,
+  currency: CurrencyCode,
+  startMonth: string
+): CashEntry[] {
+  if (extraCash <= 0) return [];
+  return expandCashEntries([
+    {
+      id: "extra",
+      amount: extraCash,
+      month: startMonth,
+      currency,
+      recurring: { months: SIMULATION_HORIZON_MONTHS },
+    },
+  ]);
+}
+
+function summarizePerAccount(
+  accounts: DebtAccountInfo[],
+  result: ScenarioResult
+): PayoffResult[] {
+  const interestByAccount = new Map<string, number>();
+  for (const m of result.timeline) {
+    for (const a of m.accounts) {
+      interestByAccount.set(
+        a.accountId,
+        (interestByAccount.get(a.accountId) ?? 0) + a.interestAccrued
+      );
+    }
+  }
+  const payoffMonthByAccount = new Map<string, number>();
+  for (const entry of result.payoffOrder) {
+    payoffMonthByAccount.set(entry.accountId, entry.month);
+  }
+
+  return accounts.map((a) => ({
+    accountId: a.id,
+    name: a.name,
+    balance: a.balance,
+    interestRate: a.interestRate,
+    monthlyPayment: a.monthlyPayment,
+    payoffMonth: payoffMonthByAccount.get(a.id) ?? SIMULATION_HORIZON_MONTHS,
+    totalInterest: Math.round(interestByAccount.get(a.id) ?? 0),
+  }));
+}
+
 function calculatePayoff(
   accounts: DebtAccountInfo[],
   extraCash: number,
-  strategy: Strategy
+  strategy: Strategy,
+  currency: CurrencyCode
 ): PayoffSummary {
-  // Filter to accounts with a balance
   const active = accounts.filter((a) => a.balance > 0);
   if (active.length === 0) {
     return {
@@ -54,125 +126,27 @@ function calculatePayoff(
     };
   }
 
-  // Sort by strategy
-  const sorted = [...active].sort((a, b) =>
-    strategy === "avalanche"
-      ? (b.interestRate ?? 0) - (a.interestRate ?? 0)
-      : a.balance - b.balance
-  );
+  const startMonth = new Date().toISOString().slice(0, 7);
+  const sharedAccounts = active.map(toSharedDebtAccount);
+  const baseInput: Omit<ScenarioInput, "cashEntries"> = {
+    accounts: sharedAccounts,
+    strategy,
+    allocations: { manualOverrides: [], cascadeRedirects: [] },
+    startMonth,
+  };
 
-  // ── With extra cash ─────────────────────────────────────────────
-  const withExtra = simulate(sorted, extraCash);
-
-  // ── Baseline (minimum payments only) ────────────────────────────
-  const baseline = simulate(sorted, 0);
+  const withExtra = runScenario({
+    ...baseInput,
+    cashEntries: buildCashEntries(extraCash, currency, startMonth),
+  });
+  const baseline = runScenario({ ...baseInput, cashEntries: [] });
 
   return {
     totalMonths: withExtra.totalMonths,
-    totalInterestPaid: Math.round(withExtra.totalInterest),
+    totalInterestPaid: Math.round(withExtra.totalInterestPaid),
     baselineMonths: baseline.totalMonths,
-    baselineInterest: Math.round(baseline.totalInterest),
-    results: withExtra.perAccount.map((r) => ({
-      accountId: r.id,
-      name: r.name,
-      balance: r.originalBalance,
-      interestRate: r.interestRate,
-      monthlyPayment: r.monthlyPayment,
-      payoffMonth: r.payoffMonth,
-      totalInterest: Math.round(r.interestPaid),
-    })),
-  };
-}
-
-function simulate(
-  accounts: DebtAccountInfo[],
-  extraCash: number
-): {
-  totalMonths: number;
-  totalInterest: number;
-  perAccount: {
-    id: string;
-    name: string;
-    originalBalance: number;
-    interestRate: number;
-    monthlyPayment: number;
-    payoffMonth: number;
-    interestPaid: number;
-  }[];
-} {
-  const MAX_MONTHS = 360; // 30-year cap
-
-  // Working balances
-  const balances = accounts.map((a) => a.balance);
-  const paidOff = accounts.map(() => false);
-  const payoffMonths = accounts.map(() => 0);
-  const interestPaid = accounts.map(() => 0);
-  let month = 0;
-
-  // Track freed minimums from paid-off debts (snowball/avalanche cascade)
-  let freedMinimums = 0;
-
-  while (balances.some((b, i) => !paidOff[i] && b > 0) && month < MAX_MONTHS) {
-    month++;
-
-    // 1. Apply monthly interest
-    for (let i = 0; i < accounts.length; i++) {
-      if (paidOff[i]) continue;
-      const monthlyRate = (accounts[i].interestRate ?? 0) / 100 / 12;
-      const interest = balances[i] * monthlyRate;
-      interestPaid[i] += interest;
-      balances[i] += interest;
-    }
-
-    // 2. Apply minimum payments
-    for (let i = 0; i < accounts.length; i++) {
-      if (paidOff[i]) continue;
-      const minPay = Math.min(accounts[i].monthlyPayment, balances[i]);
-      balances[i] -= minPay;
-      if (balances[i] <= 0.01) {
-        balances[i] = 0;
-        paidOff[i] = true;
-        payoffMonths[i] = month;
-        // Freed minimum rolls into the extra pool for remaining debts
-        freedMinimums += accounts[i].monthlyPayment;
-      }
-    }
-
-    // 3. Apply extra cash + freed minimums to priority-order debts
-    let remaining = extraCash + freedMinimums;
-    for (let i = 0; i < accounts.length; i++) {
-      if (paidOff[i] || remaining <= 0) continue;
-      const payment = Math.min(remaining, balances[i]);
-      balances[i] -= payment;
-      remaining -= payment;
-      if (balances[i] <= 0.01) {
-        balances[i] = 0;
-        paidOff[i] = true;
-        payoffMonths[i] = month;
-        freedMinimums += accounts[i].monthlyPayment;
-      }
-    }
-  }
-
-  // Handle accounts that couldn't be paid off within the cap
-  for (let i = 0; i < accounts.length; i++) {
-    if (!paidOff[i]) {
-      payoffMonths[i] = MAX_MONTHS;
-    }
-  }
-
-  return {
-    totalMonths: Math.max(...payoffMonths),
-    totalInterest: interestPaid.reduce((a, b) => a + b, 0),
-    perAccount: accounts.map((a, i) => ({
-      id: a.id,
-      name: a.name,
-      originalBalance: a.balance,
-      interestRate: a.interestRate,
-      monthlyPayment: a.monthlyPayment,
-      payoffMonth: payoffMonths[i],
-      interestPaid: interestPaid[i],
-    })),
+    baselineInterest: Math.round(baseline.totalInterestPaid),
+    results: summarizePerAccount(active, withExtra),
   };
 }
 
@@ -191,7 +165,7 @@ export function PayoffResultCard({
   extraCash,
   currency,
 }: PayoffResultCardProps) {
-  const summary = calculatePayoff(accounts, extraCash, strategy);
+  const summary = calculatePayoff(accounts, extraCash, strategy, currency);
 
   if (summary.results.length === 0) {
     return (

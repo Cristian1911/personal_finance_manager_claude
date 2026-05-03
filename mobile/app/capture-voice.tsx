@@ -284,7 +284,7 @@ export default function CaptureVoiceScreen() {
           onPress={() => (step === "idle" ? router.back() : reset())}
           accessibilityRole="button"
           accessibilityLabel={step === "idle" ? "Volver" : "Reiniciar"}
-          className="h-10 w-10 items-center justify-center rounded-full bg-white-6"
+          className="h-10 w-10 items-center justify-center rounded-full bg-z-surface-2-6"
         >
           <ArrowLeft size={18} color={COLORS.foreground} />
         </Pressable>

@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { AppKeyboardAwareScrollView } from "./AppKeyboardAwareScrollView";
+import { MOBILE_TAB_BAR_CLEARANCE } from "../../lib/constants/styles";
 
 export function KeyboardScreen({
   title,
@@ -23,7 +24,7 @@ export function KeyboardScreen({
       <View className="flex-row items-center justify-between border-b border-white-6 bg-z-surface-2-55 px-4 pb-2 pt-4">
         <Pressable
           onPress={onBack}
-          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
         >
           <ArrowLeft size={18} color="#938C7E" />
         </Pressable>
@@ -34,7 +35,7 @@ export function KeyboardScreen({
       <AppKeyboardAwareScrollView
         avoidKeyboard={false}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         bottomOffset={20}
       >
         {children}

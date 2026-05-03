@@ -11,7 +11,7 @@ import {
 } from "../../lib/repositories/categories";
 import { getDatabase } from "../../lib/db/database";
 import { COLORS } from "../../lib/constants/colors";
-import { SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 import { MobileHeader } from "../ui/MobileHeader";
 import { MCard } from "../ui/MCard";
 import { CategoryRow } from "./CategoryRow";
@@ -311,7 +311,7 @@ export function CategoriesRoot() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

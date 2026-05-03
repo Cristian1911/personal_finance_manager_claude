@@ -171,7 +171,7 @@ export function PulseWidget({
                 value={`−${formatCurrency(breakdown.alreadySpent, currency)}`}
                 tone="debt"
               />
-              <View className="mt-1 h-px bg-white-6" />
+              <View className="mt-1 h-px bg-z-surface-2-6" />
               <Row
                 label="= Disponible"
                 value={formatCurrency(breakdown.availableTotal, currency)}
@@ -184,7 +184,7 @@ export function PulseWidget({
 
               {nextIncome && (
                 <>
-                  <View className="mt-1 h-px bg-white-6" />
+                  <View className="mt-1 h-px bg-z-surface-2-6" />
                   <View className="flex-row items-start justify-between gap-2">
                     <Text className="flex-1 text-[11px] font-inter-semibold text-z-income">
                       Próximo ingreso: {nextIncome.name}

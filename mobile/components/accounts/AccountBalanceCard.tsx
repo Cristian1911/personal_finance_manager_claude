@@ -44,7 +44,7 @@ export function AccountBalanceCard({ account }: Props) {
   };
 
   return (
-    <View className="bg-white rounded-2xl p-5 border border-gray-100">
+    <View className="bg-z-surface-2 rounded-2xl p-5 border border-white-6">
       {/* Top: Icon + type badge + currency */}
       <View className="flex-row items-center justify-between mb-4">
         <View className="flex-row items-center gap-2">
@@ -54,26 +54,26 @@ export function AccountBalanceCard({ account }: Props) {
           >
             {Icon && <Icon size={20} color={color} />}
           </View>
-          <View className="bg-gray-100 rounded-full px-2.5 py-1">
-            <Text className="text-gray-600 font-inter-medium text-xs">
+          <View className="bg-z-surface-2 rounded-full px-2.5 py-1">
+            <Text className="text-muted-foreground font-inter-medium text-xs">
               {ACCOUNT_TYPE_LABELS[account.account_type] ?? account.account_type}
             </Text>
           </View>
         </View>
-        <View className="bg-gray-100 rounded-full px-2.5 py-1">
-          <Text className="text-gray-500 font-inter-semibold text-xs">
+        <View className="bg-z-surface-2 rounded-full px-2.5 py-1">
+          <Text className="text-muted-foreground font-inter-semibold text-xs">
             {account.currency_code}
           </Text>
         </View>
       </View>
 
       {/* Balance */}
-      <Text className="text-gray-500 font-inter text-xs mb-1">
+      <Text className="text-muted-foreground font-inter text-xs mb-1">
         Balance actual
       </Text>
       <Text
         className={`font-inter-bold text-3xl ${
-          isDebt ? "text-red-600" : "text-gray-900"
+          isDebt ? "text-z-expense" : "text-foreground"
         }`}
       >
         {formatCurrency(account.current_balance, currency)}
@@ -83,7 +83,7 @@ export function AccountBalanceCard({ account }: Props) {
       {showUtilization && (
         <View className="mt-4">
           <View className="flex-row items-center justify-between mb-1.5">
-            <Text className="text-gray-500 font-inter text-xs">
+            <Text className="text-muted-foreground font-inter text-xs">
               Utilizacion de credito
             </Text>
             <Text
@@ -94,7 +94,7 @@ export function AccountBalanceCard({ account }: Props) {
             </Text>
           </View>
           {/* Track */}
-          <View className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+          <View className="h-2.5 bg-z-surface-2 rounded-full overflow-hidden">
             {/* Fill */}
             <View
               className="h-full rounded-full"
@@ -105,10 +105,10 @@ export function AccountBalanceCard({ account }: Props) {
             />
           </View>
           <View className="flex-row items-center justify-between mt-1">
-            <Text className="text-gray-400 font-inter text-[10px]">
+            <Text className="text-muted-fg-70 font-inter text-[10px]">
               {formatCurrency(Math.abs(account.current_balance), currency)} usado
             </Text>
-            <Text className="text-gray-400 font-inter text-[10px]">
+            <Text className="text-muted-fg-70 font-inter text-[10px]">
               {formatCurrency(account.credit_limit!, currency)} limite
             </Text>
           </View>

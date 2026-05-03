@@ -53,7 +53,7 @@ export function AddWidgetSheet({
           </Pressable>
         </View>
 
-        <View className="h-px bg-white-6 mx-4" />
+        <View className="h-px bg-z-surface-2-6 mx-4" />
 
         <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
           {WIDGET_CATALOG.map((entry) => (

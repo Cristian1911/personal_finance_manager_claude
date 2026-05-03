@@ -179,7 +179,7 @@ function CategorizarDetail({
             <Pressable
               key={tx.id}
               onPress={() => onPick(tx.id)}
-              className="flex-row items-center gap-2 rounded-lg px-1.5 py-1.5 active:bg-white-5"
+              className="flex-row items-center gap-2 rounded-lg px-1.5 py-1.5 active:bg-z-surface-2-5"
             >
               <View
                 className={`h-5 w-5 items-center justify-center rounded-md ${isInflow ? "bg-z-income-10" : "bg-z-expense-12"}`}
@@ -238,7 +238,7 @@ function ImportarDetail({ onOpen }: { onOpen: () => void }) {
       </Text>
       <Pressable
         onPress={onOpen}
-        className="flex-row items-center gap-3 rounded-xl p-2 active:bg-white-5"
+        className="flex-row items-center gap-3 rounded-xl p-2 active:bg-z-surface-2-5"
       >
         <View className="h-8 w-8 items-center justify-center rounded-lg border border-z-sage-20 bg-z-sage-10">
           <FileUp size={16} color={COLORS.sageLight} />

@@ -65,7 +65,7 @@ export function TagSelector({ selectedTagIds, onChange }: Props) {
   if (tags.length === 0) {
     return (
       <View className="py-2">
-        <Text className="text-gray-400 font-inter text-xs text-center">
+        <Text className="text-muted-fg-70 font-inter text-xs text-center">
           No hay tags disponibles
         </Text>
       </View>
@@ -79,7 +79,7 @@ export function TagSelector({ selectedTagIds, onChange }: Props) {
     <View>
       {grouped.map((group) => (
         <View key={group.groupName} className="mb-3">
-          <Text className="text-gray-500 font-inter-medium text-xs mb-1.5">
+          <Text className="text-muted-foreground font-inter-medium text-xs mb-1.5">
             {group.groupName}
           </Text>
           <View className="flex-row flex-wrap gap-1.5">
@@ -93,7 +93,7 @@ export function TagSelector({ selectedTagIds, onChange }: Props) {
                   className={`rounded-full px-2.5 py-1 border ${
                     isSelected
                       ? "border-amber-600 bg-amber-50"
-                      : "border-gray-200 bg-gray-50"
+                      : "border-white-8 bg-z-surface-2-55"
                   }`}
                   style={
                     isSelected
@@ -103,7 +103,7 @@ export function TagSelector({ selectedTagIds, onChange }: Props) {
                 >
                   <Text
                     className={`font-inter-medium text-xs ${
-                      isSelected ? "text-amber-700" : "text-gray-600"
+                      isSelected ? "text-z-alert" : "text-muted-foreground"
                     }`}
                     style={isSelected ? { color: "#937844" } : undefined}
                   >

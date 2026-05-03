@@ -48,7 +48,7 @@ export function MobileSheet({
           style={{ paddingBottom: insets.bottom + 16 }}
         >
           {!hideHandle && (
-            <View className="mx-auto mt-3 mb-3 h-1 w-10 rounded-full bg-white-10" />
+            <View className="mx-auto mt-3 mb-3 h-1 w-10 rounded-full bg-z-surface-2-10" />
           )}
           {children}
         </Pressable>
