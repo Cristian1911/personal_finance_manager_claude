@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -126,12 +126,18 @@ export function DeseosRoot() {
   const [formName, setFormName] = useState("");
   const [formAmount, setFormAmount] = useState("");
   const [enrichTarget, setEnrichTarget] = useState<WishlistItemWithCategory | null>(null);
+  const lastLoadRef = useRef<number>(0);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (force = false) => {
     if (!userId) {
       setData(INITIAL);
       return;
     }
+    // Skip rescore work on rapid focus events (tab back, drawer close, etc.).
+    // Pull-to-refresh + post-mutation reloads pass force=true.
+    const now = Date.now();
+    if (!force && now - lastLoadRef.current < 30_000) return;
+    lastLoadRef.current = now;
     try {
       const [scored, bought, preferredCurrency] = await Promise.all([
         getWishlistItemsWithFreshScores({ user_id: userId }),
@@ -161,7 +167,7 @@ export function DeseosRoot() {
     setRefreshing(true);
     try {
       await sync();
-      await loadData();
+      await loadData(true);
     } finally {
       setRefreshing(false);
     }
@@ -181,7 +187,7 @@ export function DeseosRoot() {
     setFormName("");
     setFormAmount("");
     setShowForm(false);
-    await loadData();
+    await loadData(true);
   }, [formName, formAmount, userId, loadData]);
 
   const handleEnrich = useCallback((item: WishlistItemWithCategory) => {
@@ -200,7 +206,7 @@ export function DeseosRoot() {
             text: "Sí, comprado",
             onPress: async () => {
               await markWishlistItemBought({ id: item.id, user_id: userId });
-              await loadData();
+              await loadData(true);
             },
           },
         ]
@@ -222,7 +228,7 @@ export function DeseosRoot() {
             style: "destructive",
             onPress: async () => {
               await deleteWishlistItem({ id: item.id, user_id: userId });
-              await loadData();
+              await loadData(true);
             },
           },
         ]
@@ -235,7 +241,7 @@ export function DeseosRoot() {
     async (item: ScoredWishlistItem) => {
       if (!userId) return;
       await rescoreWishlistItem({ id: item.id, user_id: userId });
-      await loadData();
+      await loadData(true);
     },
     [userId, loadData]
   );
@@ -244,7 +250,7 @@ export function DeseosRoot() {
     async (itemId: string) => {
       if (!userId) return;
       await dismissWishlistNudge({ id: itemId, user_id: userId });
-      await loadData();
+      await loadData(true);
     },
     [userId, loadData]
   );
@@ -407,7 +413,7 @@ export function DeseosRoot() {
         item={enrichTarget}
         userId={userId ?? ""}
         onClose={() => setEnrichTarget(null)}
-        onSaved={loadData}
+        onSaved={() => loadData(true)}
       />
     </View>
   );
@@ -443,7 +449,7 @@ function NudgeBanner({
   );
 }
 
-function DeseosRow({
+const DeseosRow = memo(function DeseosRow({
   item,
   currency,
   onEnrich,
@@ -586,7 +592,7 @@ function DeseosRow({
       </View>
     </MCard>
   );
-}
+});
 
 function ActionPill({
   label,
@@ -638,7 +644,7 @@ function ActionPill({
   );
 }
 
-function BoughtRow({
+const BoughtRow = memo(function BoughtRow({
   item,
   currency,
 }: {
@@ -666,4 +672,4 @@ function BoughtRow({
       </View>
     </MCard>
   );
-}
+});

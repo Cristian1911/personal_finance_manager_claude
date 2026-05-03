@@ -111,6 +111,11 @@ export async function getFinancialSnapshot(month: string): Promise<FinancialSnap
 
 export function getSelectedAccountAvailable(account: AccountRow): number {
   if (account.account_type === "CREDIT_CARD") {
+    // Webapp parity: prefer bank-reported `available_balance` when present —
+    // captures pending charges + holds the computed headroom can't see.
+    if (account.available_balance != null) {
+      return Math.max(account.available_balance, 0);
+    }
     return Math.max(
       (account.credit_limit ?? 0) - Math.abs(account.current_balance ?? 0),
       0

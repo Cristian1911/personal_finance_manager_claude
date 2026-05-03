@@ -57,13 +57,16 @@ export async function getActiveWishlistItems(): Promise<WishlistItemWithCategory
 
 export async function getBoughtWishlistItems(): Promise<WishlistItemWithCategory[]> {
   const db = await getDatabase();
+  // Include 'reflected' — webapp transitions bought → reflected after the user
+  // submits a reflection. Without this, reflected purchases vanish from
+  // mobile's history.
   return db.getAllAsync<WishlistItemWithCategory>(
     `SELECT
       w.*,
       COALESCE(c.name_es, c.name) AS category_name
     FROM wishlist_items w
     LEFT JOIN categories c ON w.category_id = c.id
-    WHERE w.status = 'bought'
+    WHERE w.status IN ('bought', 'reflected')
     ORDER BY w.bought_at DESC
     LIMIT 20`
   );
