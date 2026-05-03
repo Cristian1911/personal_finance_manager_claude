@@ -241,14 +241,14 @@ export default async function DashboardPage({
       {/* Mobile dashboard — gated so recharts in the desktop branch never
           mounts inside a display:none container (suppresses spurious
           ResponsiveContainer width=0 warnings). */}
-      <ViewportGate query="(max-width: 1023px)">
+      <ViewportGate query="(max-width: 1023px)" className="lg:hidden">
         <Suspense fallback={<MobileZoneSkeleton />}>
           <MobileZone month={month} currency={currency as CurrencyCode} recentTx={recentTx} />
         </Suspense>
       </ViewportGate>
 
       {/* Desktop dashboard — section-based layout */}
-      <ViewportGate query="(min-width: 1024px)">
+      <ViewportGate query="(min-width: 1024px)" className="hidden lg:block">
         <DashboardConfigProvider
           serverConfig={dashboardConfigData.config}
           appPurpose={dashboardConfigData.appPurpose}
