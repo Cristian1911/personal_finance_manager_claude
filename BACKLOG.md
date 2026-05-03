@@ -1036,16 +1036,11 @@ Expo app sigue con estructura 4-tab. Ports pendientes del IA refactor:
 - [P2] Verify `monthlyInterestEstimate` math parity (webapp `getDebtOverview` vs RN local `monthlyInterest`).
 
 #### `/deudas/planificador`
-- [P0] **Strategy gap**: only `avalanche` + `snowball`. Webapp adds manual allocations (`manualOverrides`, `cascadeRedirects`) + saved scenarios.
-- [P0] **Scenario persistence**: webapp loads/saves via `getScenarios()` + `ScenarioManager` (3-cap, A/B/C). RN simulation is ephemeral.
-- [P0] **Compare step missing**: webapp 4-step (Cash → Allocate → Compare → Detail) with side-by-side comparison + baseline. RN has 3 tabs, no comparison.
-- [P0] **Cash entries are richer on web**: webapp accepts multiple `cashEntry` (one-off, recurring, time-bounded) via `expandCashEntries`. RN accepts single flat number.
-- [P0] **Detail step missing**: webapp `DetailStep` shows month-by-month payoff schedule + interest curve + income context. RN shows aggregate totals only.
-- [P0] Uses local SQLite `calculatePayoff` (`PayoffResultCard.tsx`) instead of shared `runScenario()` from `@zeta/shared` — engines drift; port to shared.
-- [P1] No empty-state "No hay deudas activas" — RN crashes silently if `data` null.
-- [P1] No `PageHero` stat row (Deudas activas / Saldo / Escenarios / Ingreso).
-- [P1] No income context in results ("X% of income to debt").
-- [P2] Strategy descriptions missing Spanish accents ("interes", "rapidas").
+- [DONE — feat/mobile-planificador-4step] 4-step flow (Cash → Estrategia → Comparar → Detalle), multi-cashEntry input, custom strategy + cascade redirects, multi-scenario A/B/C, scenario persistence (getScenarios/saveScenario/deleteScenario via Supabase), empty state, income context. Uses shared `runScenario()`.
+- [P1] **Compare/Detail timeline area chart deferred** — RN has no recharts; needs Skia line/area component. Mobile currently shows a comparison table + savings callouts only. Webapp `salary-timeline-chart.tsx` is the heaviest port and `compare-step.tsx` overlay is the chart users will most miss.
+- [P1] **runScenario perf on multi-year debts** — `useMemo` recomputes all (≤3) scenarios synchronously on every dispatch. With a 90-month debt + 3 scenarios this can block the JS thread ~50–150ms on mid-tier Android. Defer via `useEffect`-driven state, or split into per-scenario memos so only the active scenario recomputes on `UPDATE_SCENARIO`.
+- [P2] **CashStep form state lost on step switch** — `showForm` + `form` are local state; switching to step 2 and back resets the partial entry. Lift in-progress fields into the reducer or keep all step subtrees mounted with conditional visibility.
+- [P2] **Tab labels** match webapp now ("1. Efectivo" etc).
 
 #### Deseos (`/deseos` → `/plan?tab=deseos`)
 - [P0] **Score & verdict missing on RN list** — webapp `DeseosItem` shows traffic-light + verdict label + numeric score from `getWishlistItemsWithFreshScores()`. RN shows cached `last_score` only, no verdict text, no live re-score.
@@ -1070,7 +1065,6 @@ Expo app sigue con estructura 4-tab. Ports pendientes del IA refactor:
 
 #### Cross-cutting (decision tools)
 - [P1] Confirm `useSafeAreaInsets` honored on all RN debt/deseos screens.
-- [P1] Planificador tab labels drift: RN "Extra/Estrategia/Resultados" vs webapp "1. Efectivo / 2. Estrategia / 3. Comparar / 4. Detalle".
 - [P2] RN Deseos summary uses `text-z-alert` for total; webapp uses neutral. Pick one tone token.
 
 ### 5. Import / Categorizar / Destinatarios / Categories / Etiquetas
