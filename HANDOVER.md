@@ -17,6 +17,10 @@ Branch: `feat/mobile-shared-engines` (despite the name, it's the home for all Ph
 
 Mobile `tsc --noEmit` clean throughout. Shared `scenario-engine` tests green (19/19). Pre-existing failures in `auto-categorize` + `debt-stats` tests are unrelated to this branch.
 
+## Tracked follow-ups
+
+- **PaymentSheet atomic balance update** (Gemini review on PR #247, line 91) — `updateAccountBalanceRemote` reads `current_balance` then writes a computed new value, which is racey under concurrent payment creation. Fix is a Supabase RPC (`update_account_balance_atomic`) that does the read+compute+update in one DB round-trip with row-level locking. Out of scope for Phase 0–2; needs `supabase-migrator` agent for the RPC + RLS check.
+
 ## Why we stopped here
 
 The audit's full P0 list (`BACKLOG.md` line 903–1199) is ~80 items spread across 12 phases. Phases 0–2 above are the mechanical/foundational subset. Phases 3–8 each represent multi-hour to multi-day feature work (planificador 4-step, account hero variants, destinatario CRUD, import wizard restoration). Pushing through all of them in one session would produce shallow, half-built work — better to ship foundations now and tackle each remaining phase as its own follow-up PR.
