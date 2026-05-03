@@ -417,7 +417,9 @@ export function PaymentSheet({
           recurrence_group_id: recurrenceGroupId,
         });
 
-      if (outflowErr) throw new Error(outflowErr.message);
+      if (outflowErr && !outflowErr.message?.includes("23505")) {
+        throw new Error(outflowErr.message);
+      }
 
       // 2. INFLOW on debt account
       if (debtAccount && transferGroupId) {
