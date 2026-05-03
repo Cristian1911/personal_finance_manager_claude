@@ -74,7 +74,7 @@ function MovimientosHerramientasBase({
       <View className="flex-row gap-1.5">
         <Pressable
           onPress={() => onToggleTool("categorizar")}
-          className={`flex-1 rounded-2xl border p-2.5 items-center ${
+          className={`flex-1 rounded-2xl border p-2.5 items-center justify-center ${
             activeTool === "categorizar"
               ? "border-z-brass-30 bg-z-brass-10"
               : "border-z-brass-20 bg-z-brass-6"
@@ -102,7 +102,7 @@ function MovimientosHerramientasBase({
 
         <Pressable
           onPress={() => onToggleTool("importar")}
-          className={`flex-1 rounded-2xl border p-2.5 items-center ${
+          className={`flex-1 rounded-2xl border p-2.5 items-center justify-center ${
             activeTool === "importar"
               ? "border-z-sage-30 bg-z-sage-20"
               : "border-z-sage-20 bg-z-sage-10"

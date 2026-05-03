@@ -239,9 +239,11 @@ export default async function DashboardPage({
     <>
       {/* Mobile dashboard — CSS handles visibility, both zones always render */}
       <div className="lg:hidden">
-        <Suspense fallback={<MobileZoneSkeleton />}>
-          <MobileZone month={month} currency={currency as CurrencyCode} recentTx={recentTx} />
-        </Suspense>
+        <div className="mx-auto w-full max-w-md">
+          <Suspense fallback={<MobileZoneSkeleton />}>
+            <MobileZone month={month} currency={currency as CurrencyCode} recentTx={recentTx} />
+          </Suspense>
+        </div>
       </div>
 
       {/* Desktop dashboard — section-based layout */}
