@@ -739,6 +739,45 @@ export type Database = {
           },
         ]
       }
+      debt_scenarios: {
+        Row: {
+          allocations: Json
+          cash_entries: Json
+          created_at: string
+          id: string
+          name: string | null
+          results: Json | null
+          snapshot_accounts: Json
+          strategy: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allocations?: Json
+          cash_entries: Json
+          created_at?: string
+          id?: string
+          name?: string | null
+          results?: Json | null
+          snapshot_accounts: Json
+          strategy?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allocations?: Json
+          cash_entries?: Json
+          created_at?: string
+          id?: string
+          name?: string | null
+          results?: Json | null
+          snapshot_accounts?: Json
+          strategy?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
