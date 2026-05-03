@@ -53,6 +53,7 @@ import { HeroZone } from "@/components/dashboard/zones/hero-zone";
 import { WidgetsZone } from "@/components/dashboard/zones/widgets-zone";
 import { HealthZone } from "@/components/dashboard/zones/health-zone";
 import { MobileZone } from "@/components/dashboard/zones/mobile-zone";
+import { ViewportGate } from "@/components/ui/viewport-gate";
 import type { HealthMetersData } from "@/actions/health-meters";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -237,15 +238,17 @@ export default async function DashboardPage({
 
   return (
     <>
-      {/* Mobile dashboard — CSS handles visibility, both zones always render */}
-      <div className="lg:hidden">
+      {/* Mobile dashboard — gated so recharts in the desktop branch never
+          mounts inside a display:none container (suppresses spurious
+          ResponsiveContainer width=0 warnings). */}
+      <ViewportGate query="(max-width: 1023px)">
         <Suspense fallback={<MobileZoneSkeleton />}>
           <MobileZone month={month} currency={currency as CurrencyCode} recentTx={recentTx} />
         </Suspense>
-      </div>
+      </ViewportGate>
 
       {/* Desktop dashboard — section-based layout */}
-      <div className="hidden lg:block">
+      <ViewportGate query="(min-width: 1024px)">
         <DashboardConfigProvider
           serverConfig={dashboardConfigData.config}
           appPurpose={dashboardConfigData.appPurpose}
@@ -371,7 +374,7 @@ export default async function DashboardPage({
             </DashboardSection>
           </div>
         </DashboardConfigProvider>
-      </div>
+      </ViewportGate>
     </>
   );
 }
