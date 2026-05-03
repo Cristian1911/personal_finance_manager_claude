@@ -20,7 +20,7 @@ export function DestinatarioRow({
   return (
     <Pressable
       onPress={() => onPress(id)}
-      className="flex-row items-center px-3.5 py-2.5 active:bg-white-4"
+      className="flex-row items-center px-3.5 py-2.5 active:bg-z-surface-2-4"
       accessibilityLabel={`Ver detalles de ${name}`}
     >
       {/* Left: icon + name + category */}
@@ -48,7 +48,7 @@ export function DestinatarioRow({
       {/* Right: count badge + chevron */}
       <View className="flex-row items-center gap-2">
         {transactionCount > 0 && (
-          <View className="rounded-full bg-white-8 px-2 py-0.5">
+          <View className="rounded-full bg-z-surface-2-8 px-2 py-0.5">
             <Text className="text-[10px] font-inter-medium text-muted-foreground">
               {transactionCount}
             </Text>

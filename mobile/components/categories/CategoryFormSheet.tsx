@@ -184,7 +184,7 @@ export function CategoryFormSheet({
                       setParentId(null);
                       setParentPickerOpen(false);
                     }}
-                    className={`px-3.5 py-2.5 active:bg-white/5 border-b border-white-6 ${
+                    className={`px-3.5 py-2.5 active:bg-z-surface-2/5 border-b border-white-6 ${
                       !parentId ? "bg-z-brass-8" : ""
                     }`}
                   >
@@ -203,7 +203,7 @@ export function CategoryFormSheet({
                         setParentId(parent.id);
                         setParentPickerOpen(false);
                       }}
-                      className={`flex-row items-center gap-2.5 px-3.5 py-2.5 active:bg-white/5 ${
+                      className={`flex-row items-center gap-2.5 px-3.5 py-2.5 active:bg-z-surface-2/5 ${
                         idx < parentCategories.length - 1
                           ? "border-b border-white-6"
                           : ""
@@ -278,7 +278,7 @@ export function CategoryFormSheet({
                   className="flex-row items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/8 py-3 active:opacity-80"
                 >
                   <Trash2 size={14} color="#E05545" />
-                  <Text className="text-[13px] font-inter-semibold text-red-400">
+                  <Text className="text-[13px] font-inter-semibold text-z-expense">
                     Eliminar categoria
                   </Text>
                 </Pressable>

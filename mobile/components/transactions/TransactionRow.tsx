@@ -38,7 +38,7 @@ export function TransactionRow({
 
   return (
     <Pressable
-      className="flex-row items-center px-4 py-3 bg-z-surface-2-55 active:bg-white/5"
+      className="flex-row items-center px-4 py-3 bg-z-surface-2-55 active:bg-z-surface-2/5"
       onPress={() => router.push(`/transaction/${id}`)}
     >
       {/* Category icon circle */}
@@ -72,7 +72,7 @@ export function TransactionRow({
       {/* Amount */}
       <Text
         className={`font-inter-bold text-sm ${
-          isDebtPayment ? "text-sky-600" : isInflow ? "text-green-600" : "text-foreground"
+          isDebtPayment ? "text-z-brass" : isInflow ? "text-z-income" : "text-foreground"
         }`}
       >
         {isInflow ? "+" : "-"}

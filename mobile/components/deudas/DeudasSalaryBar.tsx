@@ -30,7 +30,7 @@ export function DeudasSalaryBar({
       </Text>
 
       {/* Stacked bar */}
-      <View className="h-3 rounded-full bg-white-6 overflow-hidden flex-row">
+      <View className="h-3 rounded-full bg-z-surface-2-6 overflow-hidden flex-row">
         <View
           className="h-full rounded-l-full"
           style={{

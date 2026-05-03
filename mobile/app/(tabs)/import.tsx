@@ -191,7 +191,7 @@ type ReconciliationPreview = {
 };
 
 function ItemSeparator() {
-  return <View className="ml-12 h-px bg-white-6" />;
+  return <View className="ml-12 h-px bg-z-surface-2-6" />;
 }
 
 function AccountSelector({

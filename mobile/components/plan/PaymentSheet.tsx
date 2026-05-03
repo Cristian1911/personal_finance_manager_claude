@@ -692,7 +692,7 @@ export function PaymentSheet({
                             <Pressable
                               key={acc.id}
                               onPress={() => { setSelectedSourceId(acc.id); setShowSourcePicker(false); }}
-                              className={`flex-row items-center justify-between px-3 py-2.5 active:bg-white/5 ${i > 0 ? "border-t border-white-6" : ""}`}
+                              className={`flex-row items-center justify-between px-3 py-2.5 active:bg-z-surface-2/5 ${i > 0 ? "border-t border-white-6" : ""}`}
                             >
                               <Text className="text-[13px] font-inter-medium text-foreground">{acc.name}</Text>
                               {acc.id === selectedSourceId && <Check size={14} color={COLORS.income} />}

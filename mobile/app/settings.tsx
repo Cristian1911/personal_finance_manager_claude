@@ -67,7 +67,7 @@ function SectionHeading({ label }: { label: string }) {
   return (
     <View className="flex-row items-center gap-3 mb-2 px-1">
       <Text className={SECTION_EYEBROW_CLASS}>{label}</Text>
-      <View className="h-px flex-1 bg-white-6" />
+      <View className="h-px flex-1 bg-z-surface-2-6" />
     </View>
   );
 }
@@ -268,7 +268,7 @@ function AccountPickerModal({
             </Text>
             <Pressable
               onPress={onClose}
-              className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+              className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
               accessibilityLabel="Cerrar"
             >
               <X size={16} color={COLORS.sageDark} />
@@ -280,8 +280,8 @@ function AccountPickerModal({
                 onSelect(null);
                 onClose();
               }}
-              className={`flex-row items-center gap-2.5 rounded-lg px-3 py-3 active:bg-white/5 ${
-                selectedId === null ? "bg-white/8" : ""
+              className={`flex-row items-center gap-2.5 rounded-lg px-3 py-3 active:bg-z-surface-2/5 ${
+                selectedId === null ? "bg-z-surface-2/8" : ""
               }`}
             >
               <X size={14} color={COLORS.sageDark} />
@@ -299,8 +299,8 @@ function AccountPickerModal({
                     onSelect(acct.id);
                     onClose();
                   }}
-                  className={`mt-1 flex-row items-center gap-2.5 rounded-lg px-3 py-3 active:bg-white/5 ${
-                    isSel ? "bg-white/8" : ""
+                  className={`mt-1 flex-row items-center gap-2.5 rounded-lg px-3 py-3 active:bg-z-surface-2/5 ${
+                    isSel ? "bg-z-surface-2/8" : ""
                   }`}
                 >
                   <Wallet size={14} color={COLORS.sageDark} />

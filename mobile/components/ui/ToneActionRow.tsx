@@ -8,7 +8,7 @@ const SURFACE: Record<ChipTone, string> = {
   income: "border-z-income-30 bg-z-income-10",
   debt: "border-z-debt-30 bg-z-debt-12",
   alert: "border-z-alert-25 bg-z-alert-12",
-  foreground: "border-white-10 bg-white-3",
+  foreground: "border-white-10 bg-z-surface-2-3",
 };
 
 const TITLE_COLOR: Record<ChipTone, string> = {

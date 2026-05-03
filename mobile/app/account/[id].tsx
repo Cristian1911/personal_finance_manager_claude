@@ -33,16 +33,16 @@ type TransactionRow = {
 };
 
 function getAmountColorClass(isDebtPayment: boolean, isInflow: boolean): string {
-  if (isDebtPayment) return "text-sky-600";
-  if (isInflow) return "text-green-600";
-  return "text-gray-900";
+  if (isDebtPayment) return "text-z-brass";
+  if (isInflow) return "text-z-income";
+  return "text-foreground";
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <View className="flex-row items-start py-3 border-b border-gray-100">
-      <Text className="text-gray-500 font-inter text-sm w-24 mt-0.5">{label}</Text>
-      <Text className="text-gray-900 font-inter-medium text-sm text-right flex-1 ml-4 leading-5">
+    <View className="flex-row items-start py-3 border-b border-white-6">
+      <Text className="text-muted-foreground font-inter text-sm w-24 mt-0.5">{label}</Text>
+      <Text className="text-foreground font-inter-medium text-sm text-right flex-1 ml-4 leading-5">
         {value}
       </Text>
     </View>
@@ -118,7 +118,7 @@ export default function AccountDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
+      <View className="flex-1 items-center justify-center bg-z-surface-2">
         <ActivityIndicator size="large" color="#10B981" />
       </View>
     );
@@ -126,19 +126,19 @@ export default function AccountDetailScreen() {
 
   if (!account) {
     return (
-      <View className="flex-1 bg-white">
+      <View className="flex-1 bg-z-surface-2">
         <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
           <Pressable
             onPress={() => router.back()}
-            className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+            className="w-8 h-8 items-center justify-center rounded-full bg-z-surface-2 active:bg-z-surface-3"
           >
             <X size={18} color="#6B7280" />
           </Pressable>
-          <Text className="text-gray-900 font-inter-bold text-base">Cuenta</Text>
+          <Text className="text-foreground font-inter-bold text-base">Cuenta</Text>
           <View className="w-8" />
         </View>
         <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-gray-400 font-inter text-base">
+          <Text className="text-muted-fg-70 font-inter text-base">
             Cuenta no encontrada
           </Text>
         </View>
@@ -152,20 +152,20 @@ export default function AccountDetailScreen() {
   const currency = (account.currency_code as CurrencyCode) ?? "COP";
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-z-surface-2">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
         <Pressable
           onPress={() => router.back()}
-          className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+          className="w-8 h-8 items-center justify-center rounded-full bg-z-surface-2 active:bg-z-surface-3"
         >
           <X size={18} color="#6B7280" />
         </Pressable>
-        <Text className="text-gray-900 font-inter-bold text-base">Detalle</Text>
+        <Text className="text-foreground font-inter-bold text-base">Detalle</Text>
         <View className="flex-row gap-2">
           <Pressable
             onPress={() => router.push(`/account/edit/${id}`)}
-            className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+            className="w-8 h-8 items-center justify-center rounded-full bg-z-surface-2 active:bg-z-surface-3"
           >
             <Pencil size={16} color="#6B7280" />
           </Pressable>
@@ -180,23 +180,23 @@ export default function AccountDetailScreen() {
 
       <ScrollView className="flex-1">
         {/* Hero */}
-        <View className="items-center pt-6 pb-5 border-b border-gray-100 mx-4">
+        <View className="items-center pt-6 pb-5 border-b border-white-6 mx-4">
           <View
             className="w-16 h-16 rounded-full items-center justify-center mb-3"
             style={{ backgroundColor: color + "20" }}
           >
             {Icon && <Icon size={30} color={color} />}
           </View>
-          <Text className="text-gray-900 font-inter-bold text-xl">
+          <Text className="text-foreground font-inter-bold text-xl">
             {account.name}
           </Text>
           {account.institution_name && (
-            <Text className="text-gray-500 font-inter text-sm mt-1">
+            <Text className="text-muted-foreground font-inter text-sm mt-1">
               {account.institution_name}
             </Text>
           )}
-          <View className="bg-gray-100 rounded-full px-3 py-1 mt-2">
-            <Text className="text-gray-600 font-inter-medium text-xs">
+          <View className="bg-z-surface-2 rounded-full px-3 py-1 mt-2">
+            <Text className="text-muted-foreground font-inter-medium text-xs">
               {typeDef?.label ?? account.account_type}
             </Text>
           </View>
@@ -210,28 +210,28 @@ export default function AccountDetailScreen() {
         {/* Monthly spending summary */}
         {spendingSummary && spendingSummary.tx_count > 0 && (
           <View className="mx-4 mt-4">
-            <Text className="text-gray-500 font-inter-semibold text-xs uppercase mb-2">
+            <Text className="text-muted-foreground font-inter-semibold text-xs uppercase mb-2">
               Resumen del mes
             </Text>
             <View className="flex-row gap-3">
-              <View className="flex-1 bg-white rounded-xl p-4 border border-gray-100 items-center">
-                <Text className="text-gray-400 font-inter text-xs mb-1">
+              <View className="flex-1 bg-z-surface-2 rounded-xl p-4 border border-white-6 items-center">
+                <Text className="text-muted-fg-70 font-inter text-xs mb-1">
                   Gastos del mes
                 </Text>
-                <Text className="text-gray-900 font-inter-semibold text-sm">
+                <Text className="text-foreground font-inter-semibold text-sm">
                   {formatCurrency(spendingSummary.total_out, currency)}
                 </Text>
               </View>
-              <View className="flex-1 bg-white rounded-xl p-4 border border-gray-100 items-center">
-                <Text className="text-gray-400 font-inter text-xs mb-1">
+              <View className="flex-1 bg-z-surface-2 rounded-xl p-4 border border-white-6 items-center">
+                <Text className="text-muted-fg-70 font-inter text-xs mb-1">
                   Ingresos del mes
                 </Text>
-                <Text className="text-green-600 font-inter-semibold text-sm">
+                <Text className="text-z-income font-inter-semibold text-sm">
                   {formatCurrency(spendingSummary.total_in, currency)}
                 </Text>
               </View>
             </View>
-            <Text className="text-gray-400 font-inter text-xs mt-1.5 text-center">
+            <Text className="text-muted-fg-70 font-inter text-xs mt-1.5 text-center">
               {spendingSummary.tx_count} transacciones este mes
             </Text>
           </View>
@@ -241,10 +241,10 @@ export default function AccountDetailScreen() {
         {(account.account_type === "CREDIT_CARD" ||
           account.account_type === "LOAN") && (
           <View className="mx-4 mt-4">
-            <Text className="text-gray-500 font-inter-semibold text-xs uppercase mb-2">
+            <Text className="text-muted-foreground font-inter-semibold text-xs uppercase mb-2">
               Detalles
             </Text>
-            <View className="bg-white rounded-xl px-4 border border-gray-100">
+            <View className="bg-z-surface-2 rounded-xl px-4 border border-white-6">
               {account.credit_limit != null && (
                 <DetailRow
                   label="Limite de credito"
@@ -275,17 +275,17 @@ export default function AccountDetailScreen() {
 
         {/* Recent transactions */}
         <View className="mx-4 mt-4 mb-8">
-          <Text className="text-gray-500 font-inter-semibold text-xs uppercase mb-2">
+          <Text className="text-muted-foreground font-inter-semibold text-xs uppercase mb-2">
             Ultimas transacciones
           </Text>
           {recentTx.length === 0 ? (
-            <View className="bg-white rounded-xl px-4 py-6 border border-gray-100 items-center">
-              <Text className="text-gray-400 font-inter text-sm">
+            <View className="bg-z-surface-2 rounded-xl px-4 py-6 border border-white-6 items-center">
+              <Text className="text-muted-fg-70 font-inter text-sm">
                 Sin transacciones
               </Text>
             </View>
           ) : (
-            <View className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <View className="bg-z-surface-2 rounded-xl border border-white-6 overflow-hidden">
               {recentTx.map((tx, index) => {
                 const isInflow = tx.direction === "INFLOW";
                 const isDebtPayment = isDebtInflow({
@@ -295,21 +295,21 @@ export default function AccountDetailScreen() {
                 return (
                   <Pressable
                     key={tx.id}
-                    className="flex-row items-center px-4 py-3 active:bg-gray-50"
+                    className="flex-row items-center px-4 py-3 active:bg-z-surface-2-55"
                     onPress={() => router.push(`/transaction/${tx.id}`)}
                   >
                     {index > 0 && (
-                      <View className="absolute top-0 left-4 right-4 h-px bg-gray-100" />
+                      <View className="absolute top-0 left-4 right-4 h-px bg-z-surface-2" />
                     )}
                     <View className="flex-1 min-w-0">
                       <Text
-                        className="text-gray-900 font-inter-medium text-sm"
+                        className="text-foreground font-inter-medium text-sm"
                         numberOfLines={1}
                       >
                         {tx.merchant_name ?? tx.description ?? "Sin descripcion"}
                       </Text>
                       {(tx.category_name_es || isDebtPayment) && (
-                        <Text className="text-gray-400 font-inter text-xs mt-0.5">
+                        <Text className="text-muted-fg-70 font-inter text-xs mt-0.5">
                           {isDebtPayment ? "Abono a deuda" : tx.category_name_es}
                         </Text>
                       )}

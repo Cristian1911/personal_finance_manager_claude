@@ -312,7 +312,7 @@ export default function TransactionDetailScreen() {
         <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
           <Pressable
             onPress={() => router.back()}
-            className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+            className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
           >
             <X size={18} color="#938C7E" />
           </Pressable>
@@ -379,7 +379,7 @@ export default function TransactionDetailScreen() {
           <>
             <Pressable
               onPress={() => router.back()}
-              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
             >
               <X size={18} color="#938C7E" />
             </Pressable>
@@ -389,7 +389,7 @@ export default function TransactionDetailScreen() {
             <View className="flex-row gap-2">
               <Pressable
                 onPress={enterEditMode}
-                className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+                className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
               >
                 <Pencil size={16} color="#938C7E" />
               </Pressable>
@@ -464,7 +464,7 @@ export default function TransactionDetailScreen() {
             <FormField label="Fecha" required>
               <Pressable
                 onPress={() => setShowDatePicker(true)}
-                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-white/10"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-z-surface-2/10"
               >
                 <Text className="text-foreground font-inter text-sm">
                   {editDate.toLocaleDateString("es-CO", {
@@ -481,17 +481,17 @@ export default function TransactionDetailScreen() {
             <FormField label="Categoría">
               {isDebtPayment ? (
                 <View className="bg-sky-900/20 border border-sky-700/30 rounded-xl px-4 py-3 flex-row items-center justify-between">
-                  <Text className="font-inter-medium text-sm text-sky-400">
+                  <Text className="font-inter-medium text-sm text-z-brass">
                     Abono a deuda
                   </Text>
-                  <Text className="font-inter text-xs text-sky-500">
+                  <Text className="font-inter text-xs text-z-brass">
                     Categoria fija
                   </Text>
                 </View>
               ) : (
                 <Pressable
                   onPress={() => setShowCategoryPicker(true)}
-                  className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-white/10"
+                  className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-z-surface-2/10"
                 >
                   <Text
                     className={`font-inter text-sm ${

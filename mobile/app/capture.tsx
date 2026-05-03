@@ -455,7 +455,7 @@ export default function CaptureScreen() {
       >
         <Pressable
           onPress={() => router.back()}
-          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
           accessibilityLabel="Volver"
         >
           <ArrowLeft size={16} color={COLORS.sageDark} />
@@ -655,7 +655,7 @@ export default function CaptureScreen() {
                 />
               </View>
 
-              <View className="h-px bg-white-6" />
+              <View className="h-px bg-z-surface-2-6" />
 
               <View className="flex-row items-start gap-3">
                 <View className="flex-1">

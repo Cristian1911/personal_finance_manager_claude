@@ -238,7 +238,7 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           className={`mt-3 rounded-lg py-3.5 items-center border ${
-            demoLoading ? "border-white-6 bg-white-5" : "border-white-6 bg-z-surface-2-55"
+            demoLoading ? "border-white-6 bg-z-surface-2-5" : "border-white-6 bg-z-surface-2-55"
           }`}
           onPress={handleTryDemo}
           disabled={demoLoading || loading}

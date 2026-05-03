@@ -247,7 +247,7 @@ export default function CaptureScreenshotScreen() {
           onPress={() => (step === "pick" ? router.back() : resetFlow())}
           accessibilityRole="button"
           accessibilityLabel={step === "pick" ? "Volver" : "Reiniciar"}
-          className="h-10 w-10 items-center justify-center rounded-full bg-white-6"
+          className="h-10 w-10 items-center justify-center rounded-full bg-z-surface-2-6"
         >
           <ArrowLeft size={18} color={COLORS.foreground} />
         </Pressable>

@@ -28,7 +28,7 @@ function MovimientosTransactionRowBase({
     <View className={expanded ? "border-l-2 border-l-z-brass pl-2" : ""}>
       <Pressable
         onPress={() => setExpanded((prev) => !prev)}
-        className={`flex-row items-center gap-2 rounded-xl px-1.5 py-2 active:bg-white-5 ${isExcluded ? "opacity-40" : ""}`}
+        className={`flex-row items-center gap-2 rounded-xl px-1.5 py-2 active:bg-z-surface-2-5 ${isExcluded ? "opacity-40" : ""}`}
       >
         <View
           className={`h-[22px] w-[22px] items-center justify-center rounded-md ${isInflow ? "bg-z-income-10" : "bg-z-expense-12"}`}
@@ -113,7 +113,7 @@ function MovimientosTransactionRowBase({
 
           <Pressable
             onPress={() => router.push(`/transaction/${tx.id}` as any)}
-            className="flex-row items-center gap-1 rounded-full border border-white-8 bg-black-10 px-2.5 py-1 active:bg-white-5"
+            className="flex-row items-center gap-1 rounded-full border border-white-8 bg-black-10 px-2.5 py-1 active:bg-z-surface-2-5"
           >
             <Pencil size={10} color={COLORS.sageDark} />
             <Text className="text-[10px] font-inter-semibold text-muted-foreground">

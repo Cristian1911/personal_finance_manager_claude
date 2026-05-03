@@ -264,7 +264,7 @@ function AccountOption({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row items-center gap-3 px-3.5 py-2.5 border-b border-white-6 last:border-b-0 ${active ? "bg-z-brass-10" : ""} active:bg-white-5`}
+      className={`flex-row items-center gap-3 px-3.5 py-2.5 border-b border-white-6 last:border-b-0 ${active ? "bg-z-brass-10" : ""} active:bg-z-surface-2-5`}
     >
       {color ? (
         <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />

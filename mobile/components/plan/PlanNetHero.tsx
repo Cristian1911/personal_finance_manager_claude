@@ -134,7 +134,7 @@ function PlanNetHeroBase({
         )}
 
         {/* Burn bar — fijos paid / libre gastado */}
-        <View className="mt-3 h-2 flex-row overflow-hidden rounded-full bg-white-6">
+        <View className="mt-3 h-2 flex-row overflow-hidden rounded-full bg-z-surface-2-6">
           <View className="bg-z-alert" style={{ width: `${plannedExpenses > 0 ? Math.min((paidExpenses / (confirmedIncome || 1)) * 100, 100) : 0}%` }} />
           <View className="bg-z-debt" style={{ width: `${Math.min((discretionarySpent / (confirmedIncome || 1)) * 100, 100 - (paidExpenses / (confirmedIncome || 1)) * 100)}%` }} />
         </View>
@@ -190,7 +190,7 @@ function PlanNetHeroBase({
                   {Math.round(incomePct)}% recibido
                 </Text>
               </View>
-              <View className="h-1.5 flex-row overflow-hidden rounded-full bg-white-6">
+              <View className="h-1.5 flex-row overflow-hidden rounded-full bg-z-surface-2-6">
                 <View className="bg-z-income rounded-full" style={{ width: `${incomePct}%` }} />
               </View>
               {confirmedIncome > 0 && (
@@ -222,7 +222,7 @@ function PlanNetHeroBase({
                   {Math.round(expensePct)}% pagado
                 </Text>
               </View>
-              <View className="h-1.5 flex-row overflow-hidden rounded-full bg-white-6">
+              <View className="h-1.5 flex-row overflow-hidden rounded-full bg-z-surface-2-6">
                 <View className="bg-z-alert rounded-full" style={{ width: `${expensePct}%` }} />
               </View>
               {paidExpenses > 0 && (

@@ -442,7 +442,7 @@ function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; bg: string; text: string }> = {
     PLANNED: { label: "Pendiente", bg: "bg-z-alert/10", text: "text-z-alert" },
     COMPLETED: { label: "Pagado", bg: "bg-z-income/10", text: "text-z-income" },
-    SKIPPED: { label: "Omitido", bg: "bg-white/5", text: "text-muted-foreground" },
+    SKIPPED: { label: "Omitido", bg: "bg-z-surface-2/5", text: "text-muted-foreground" },
   };
   const c = config[status] ?? config.PLANNED;
   return (
@@ -495,13 +495,13 @@ function IncomeCard({
                   <Check size={12} color={color} />
                 </View>
               ) : (
-                <View className="h-5 w-5 rounded-md border border-white/10 bg-white/5" />
+                <View className="h-5 w-5 rounded-md border border-white/10 bg-z-surface-2/5" />
               )}
             </View>
           </View>
 
           {/* Progress bar */}
-          <View className="h-1.5 w-full rounded-full bg-white-6 overflow-hidden">
+          <View className="h-1.5 w-full rounded-full bg-z-surface-2-6 overflow-hidden">
             <View className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
           </View>
 

@@ -38,7 +38,7 @@ export function PurposeOption({
     >
       <View
         className={`h-10 w-10 items-center justify-center rounded-xl ${
-          selected ? "bg-z-brass-20" : "bg-white-6"
+          selected ? "bg-z-brass-20" : "bg-z-surface-2-6"
         }`}
       >
         <Icon

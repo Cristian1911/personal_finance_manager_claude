@@ -252,17 +252,17 @@ export default function BugReportScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-gray-100"
+      className="flex-1 bg-z-surface-2"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View className="flex-row items-center justify-between px-4 pt-4 pb-2 bg-white border-b border-gray-100">
+      <View className="flex-row items-center justify-between px-4 pt-4 pb-2 bg-z-surface-2 border-b border-white-6">
         <Pressable
           onPress={() => router.back()}
-          className="w-8 h-8 items-center justify-center rounded-full bg-gray-100 active:bg-gray-200"
+          className="w-8 h-8 items-center justify-center rounded-full bg-z-surface-2 active:bg-z-surface-3"
         >
           <ArrowLeft size={18} color="#6B7280" />
         </Pressable>
-        <Text className="text-gray-900 font-inter-bold text-base">
+        <Text className="text-foreground font-inter-bold text-base">
           Quick Capture de Bug
         </Text>
         <View className="w-8" />
@@ -274,25 +274,25 @@ export default function BugReportScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
-        <View className="rounded-xl border border-gray-200 bg-white p-4">
-          <Text className="text-gray-900 font-inter-semibold text-base">
+        <View className="rounded-xl border border-white-8 bg-z-surface-2 p-4">
+          <Text className="text-foreground font-inter-semibold text-base">
             Describe lo que fallo
           </Text>
-          <Text className="text-gray-500 font-inter text-xs mt-1">
+          <Text className="text-muted-foreground font-inter text-xs mt-1">
             Esto crea un ticket en Supabase y adjunta evidencia para revisarlo desde local.
           </Text>
 
-          <Text className="mt-4 mb-1 text-sm font-inter-medium text-gray-700">
+          <Text className="mt-4 mb-1 text-sm font-inter-medium text-foreground">
             Titulo del bug
           </Text>
           <TextInput
             value={title}
             onChangeText={setTitle}
             placeholder="Ej: En editar transaccion se solapan fecha y cuenta"
-            className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+            className="rounded-xl border border-white-10 bg-z-surface-2-55 px-3 py-2.5 text-foreground"
           />
 
-          <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">
+          <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">
             Descripcion
           </Text>
           <TextInput
@@ -300,28 +300,28 @@ export default function BugReportScreen() {
             onChangeText={setDescription}
             placeholder="Que hiciste, que esperabas y que ocurrio"
             multiline
-            className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+            className="rounded-xl border border-white-10 bg-z-surface-2-55 px-3 py-2.5 text-foreground"
             style={{ minHeight: 88, textAlignVertical: "top" }}
           />
 
-          <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">
+          <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">
             Pantalla/ruta (opcional)
           </Text>
           <TextInput
             value={routeHint}
             onChangeText={setRouteHint}
             placeholder="Ej: /transaction/123"
-            className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+            className="rounded-xl border border-white-10 bg-z-surface-2-55 px-3 py-2.5 text-foreground"
           />
 
-          <Text className="mt-3 mb-1 text-sm font-inter-medium text-gray-700">
+          <Text className="mt-3 mb-1 text-sm font-inter-medium text-foreground">
             Zona afectada (opcional)
           </Text>
           <TextInput
             value={areaHint}
             onChangeText={setAreaHint}
             placeholder="Ej: parte superior derecha, bloque fecha/cuenta"
-            className="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2.5 text-gray-900"
+            className="rounded-xl border border-white-10 bg-z-surface-2-55 px-3 py-2.5 text-foreground"
           />
 
           {pendingScreenshotUri ? (
@@ -331,7 +331,7 @@ export default function BugReportScreen() {
             />
           ) : (
             <Pressable
-              className="mt-4 rounded-xl border border-gray-300 bg-white px-3 py-3 flex-row items-center justify-center active:bg-gray-50"
+              className="mt-4 rounded-xl border border-white-10 bg-z-surface-2 px-3 py-3 flex-row items-center justify-center active:bg-z-surface-2-55"
               onPress={handlePickAttachment}
               disabled={picking || submitting}
             >
@@ -340,7 +340,7 @@ export default function BugReportScreen() {
               ) : (
                 <>
                   <Paperclip size={16} color="#6B7280" />
-                  <Text className="ml-2 text-gray-700 font-inter-medium text-sm">
+                  <Text className="ml-2 text-foreground font-inter-medium text-sm">
                     Adjuntar captura o PDF
                   </Text>
                 </>
@@ -350,11 +350,11 @@ export default function BugReportScreen() {
 
           {!pendingScreenshotUri && attachment && (
             <View className="mt-2 rounded-lg bg-sky-50 border border-sky-200 px-3 py-2">
-              <Text className="text-sky-700 font-inter text-xs" numberOfLines={2}>
+              <Text className="text-z-brass font-inter text-xs" numberOfLines={2}>
                 Archivo: {attachment.name}
               </Text>
               {typeof attachment.size === "number" && (
-                <Text className="text-sky-700 font-inter text-xs mt-1">
+                <Text className="text-z-brass font-inter text-xs mt-1">
                   Tamaño: {formatBytes(attachment.size)}
                 </Text>
               )}
@@ -363,7 +363,7 @@ export default function BugReportScreen() {
                 className="mt-2 self-start rounded-md border border-sky-300 px-2 py-1 active:bg-sky-100"
                 disabled={submitting}
               >
-                <Text className="text-sky-700 font-inter-medium text-xs">
+                <Text className="text-z-brass font-inter-medium text-xs">
                   Quitar adjunto
                 </Text>
               </Pressable>
@@ -372,7 +372,7 @@ export default function BugReportScreen() {
         </View>
         <Pressable
           className={`mt-5 rounded-xl py-3.5 items-center flex-row justify-center ${
-            canSubmit && !submitting ? "bg-primary" : "bg-gray-300"
+            canSubmit && !submitting ? "bg-primary" : "bg-z-surface-3"
           }`}
           onPress={handleSubmit}
           disabled={!canSubmit || submitting}

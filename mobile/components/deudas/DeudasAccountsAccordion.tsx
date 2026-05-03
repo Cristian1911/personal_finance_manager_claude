@@ -58,7 +58,7 @@ export function DeudasAccountsAccordion({
 
               {/* Progress bar */}
               {account.creditLimit > 0 && (
-                <View className="h-2 rounded-full bg-white-6 overflow-hidden">
+                <View className="h-2 rounded-full bg-z-surface-2-6 overflow-hidden">
                   <View
                     className={`h-full rounded-full ${barColor}`}
                     style={{ width: `${Math.min(utilization, 100)}%` }}

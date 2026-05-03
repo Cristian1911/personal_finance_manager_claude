@@ -414,7 +414,7 @@ export default function SubscriptionsScreen() {
             </Text>
             {accounts.length === 0 ? (
               <View className="rounded-xl border border-amber-700/30 bg-amber-900/20 px-3 py-2.5">
-                <Text className="text-amber-400 font-inter text-xs">
+                <Text className="text-z-alert font-inter text-xs">
                   Crea una cuenta primero para registrar suscripciones.
                 </Text>
               </View>
@@ -571,7 +571,7 @@ export default function SubscriptionsScreen() {
                         {togglingId === item.id ? (
                           <ActivityIndicator size="small" color="#0284C7" />
                         ) : (
-                          <Text className="text-sky-400 font-inter-medium text-xs">
+                          <Text className="text-z-brass font-inter-medium text-xs">
                             {item.is_active ? "Pausar" : "Activar"}
                           </Text>
                         )}

@@ -42,7 +42,7 @@ const TONE: Record<ChipTone, ToneStyles> = {
     value: "text-foreground",
     label: "text-z-sage-dark",
     activeBorder: "border-white-25",
-    activeFill: "bg-white-10",
+    activeFill: "bg-z-surface-2-10",
   },
 };
 

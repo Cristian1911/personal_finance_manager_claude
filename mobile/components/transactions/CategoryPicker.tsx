@@ -117,7 +117,7 @@ export function CategoryPicker({
             </Text>
             <Pressable
               onPress={handleClose}
-              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
             >
               <X size={18} color="#938C7E" />
             </Pressable>
@@ -139,9 +139,9 @@ export function CategoryPicker({
           {/* "None" option */}
           <Pressable
             onPress={() => handleSelect(null, null)}
-            className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-white/5"
+            className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-z-surface-2/5"
           >
-            <View className="w-3 h-3 rounded-full bg-white/15 mr-3" />
+            <View className="w-3 h-3 rounded-full bg-z-surface-2/15 mr-3" />
             <Text className="text-muted-foreground font-inter text-sm flex-1">
               Sin categoría
             </Text>
@@ -171,7 +171,7 @@ export function CategoryPicker({
                   onPress={() =>
                     handleSelect(item.item.id, displayName(item.item))
                   }
-                  className={`flex-row items-center ${paddingLeft} pr-4 py-3.5 active:bg-white/5`}
+                  className={`flex-row items-center ${paddingLeft} pr-4 py-3.5 active:bg-z-surface-2/5`}
                 >
                   {item.item.color ? (
                     <View
@@ -179,7 +179,7 @@ export function CategoryPicker({
                       style={{ backgroundColor: item.item.color }}
                     />
                   ) : (
-                    <View className="w-3 h-3 rounded-full bg-white/15 mr-3" />
+                    <View className="w-3 h-3 rounded-full bg-z-surface-2/15 mr-3" />
                   )}
                   <Text
                     className={`font-inter text-sm flex-1 ${
@@ -193,7 +193,7 @@ export function CategoryPicker({
               );
             }}
             ItemSeparatorComponent={() => (
-              <View className="h-px bg-white-6 ml-4" />
+              <View className="h-px bg-z-surface-2-6 ml-4" />
             )}
           />
         </View>

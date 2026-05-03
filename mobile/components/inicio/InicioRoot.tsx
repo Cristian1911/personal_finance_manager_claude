@@ -287,7 +287,7 @@ export function InicioRoot() {
             <Pressable
               onPress={handleResetToDefault}
               accessibilityLabel="Restablecer predeterminado"
-              className="flex-row items-center justify-center gap-2 rounded-2xl border border-white-6 bg-white-3 py-2.5"
+              className="flex-row items-center justify-center gap-2 rounded-2xl border border-white-6 bg-z-surface-2-3 py-2.5"
             >
               <RotateCcw size={14} color={COLORS.sageDark} />
               <Text className="text-[11px] font-inter-semibold text-muted-foreground">
@@ -306,7 +306,7 @@ export function InicioRoot() {
             className={
               editing
                 ? "flex-row items-center gap-1.5 rounded-full border border-z-brass-30 bg-z-brass-10 px-3 py-1.5"
-                : "flex-row items-center gap-1.5 rounded-full border border-white-6 bg-white-3 px-3 py-1.5"
+                : "flex-row items-center gap-1.5 rounded-full border border-white-6 bg-z-surface-2-3 px-3 py-1.5"
             }
           >
             <Settings2

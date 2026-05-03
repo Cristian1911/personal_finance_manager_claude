@@ -175,7 +175,7 @@ export function DestinatarioDetail({ id }: DestinatarioDetailProps) {
                       {rule.match_type}
                     </Text>
                     {rule.match_count > 0 && (
-                      <View className="rounded-full bg-white-8 px-2 py-0.5">
+                      <View className="rounded-full bg-z-surface-2-8 px-2 py-0.5">
                         <Text className="text-[10px] font-inter-medium text-muted-foreground">
                           {rule.match_count}
                         </Text>

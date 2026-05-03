@@ -107,7 +107,7 @@ export function CategoryPickerSheet({
                     <Pressable
                       key={child.id}
                       onPress={() => handleSelect(child.id)}
-                      className={`flex-row items-center gap-3 px-3.5 py-2.5 active:bg-white/5 ${
+                      className={`flex-row items-center gap-3 px-3.5 py-2.5 active:bg-z-surface-2/5 ${
                         idx < children.length - 1
                           ? "border-b border-white-6"
                           : ""
@@ -142,7 +142,7 @@ export function CategoryPickerSheet({
                     <Pressable
                       key={cat.id}
                       onPress={() => handleSelect(cat.id)}
-                      className={`flex-row items-center gap-3 px-3.5 py-2.5 active:bg-white/5 ${
+                      className={`flex-row items-center gap-3 px-3.5 py-2.5 active:bg-z-surface-2/5 ${
                         idx < grouped.standalone.length - 1
                           ? "border-b border-white-6"
                           : ""

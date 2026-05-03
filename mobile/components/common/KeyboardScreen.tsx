@@ -24,7 +24,7 @@ export function KeyboardScreen({
       <View className="flex-row items-center justify-between border-b border-white-6 bg-z-surface-2-55 px-4 pb-2 pt-4">
         <Pressable
           onPress={onBack}
-          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-white/10"
+          className="h-8 w-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
         >
           <ArrowLeft size={18} color="#938C7E" />
         </Pressable>
