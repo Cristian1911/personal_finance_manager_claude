@@ -7,8 +7,8 @@ import {
   PiggyBank,
   Repeat,
 } from "lucide-react-native";
-import { MobileHeader } from "../components/ui/MobileHeader";
-import { HubEntry } from "../components/ui/HubEntry";
+import { MobileHeader } from "../../components/ui/MobileHeader";
+import { HubEntry } from "../../components/ui/HubEntry";
 
 export default function MenuScreen() {
   const router = useRouter();
