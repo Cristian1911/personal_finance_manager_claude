@@ -34,9 +34,9 @@ export type CatalogEntry = {
 export const WIDGET_CATALOG: CatalogEntry[] = [
   { type: "recent", label: "Movimientos recientes", description: "Tus últimas transacciones", defaultSize: "S", available: true },
   { type: "puedo_comprarlo", label: "¿Puedo comprarlo?", description: "Evalúa una compra contra el plan", defaultSize: "S", available: true },
-  { type: "next_bill", label: "Próximo pago", description: "La siguiente obligación a pagar", defaultSize: "S", available: false },
-  { type: "next_income", label: "Próximo ingreso", description: "Tu siguiente entrada de dinero", defaultSize: "S", available: false },
-  { type: "accounts", label: "Cuentas", description: "Tus cuentas principales", defaultSize: "S", available: false },
+  { type: "next_bill", label: "Próximo pago", description: "La siguiente obligación a pagar", defaultSize: "S", available: true },
+  { type: "next_income", label: "Próximo ingreso", description: "Tu siguiente entrada de dinero", defaultSize: "S", available: true },
+  { type: "accounts", label: "Cuentas", description: "Tus cuentas principales", defaultSize: "S", available: true },
   { type: "goal", label: "Meta de ahorro", description: "Progreso de tu objetivo", defaultSize: "S", available: false },
   { type: "spending_by_category", label: "Gasto por categoría", description: "Top categorías del mes", defaultSize: "M", available: false },
   { type: "cashflow_calendar", label: "Calendario de flujo", description: "Ingresos y pagos por día", defaultSize: "L", available: false },

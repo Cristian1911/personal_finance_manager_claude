@@ -40,6 +40,9 @@ import { renderAttentionWidget } from "./widgets/AttentionWidget";
 import { renderWhereTodayWidget } from "./widgets/WhereTodayWidget";
 import { renderRecentWidget } from "./widgets/RecentWidget";
 import { renderPuedoComprarloWidget } from "./widgets/PuedoComprarloWidget";
+import { renderNextBillWidget } from "./widgets/NextBillWidget";
+import { renderNextIncomeWidget } from "./widgets/NextIncomeWidget";
+import { renderAccountsWidget } from "./widgets/AccountsWidget";
 
 const WEEKDAY_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTH_ES = [
@@ -193,6 +196,23 @@ export function InicioRoot() {
           });
         case "puedo_comprarlo":
           return renderPuedoComprarloWidget();
+        case "next_bill":
+          return renderNextBillWidget({
+            bill: summary.nextBill,
+            upcoming: summary.upcomingBills,
+            currency: summary.currency,
+          });
+        case "next_income":
+          return renderNextIncomeWidget({
+            income: summary.nextIncome,
+            upcoming: summary.upcomingIncomes,
+            currency: summary.currency,
+          });
+        case "accounts":
+          return renderAccountsWidget({
+            accounts: summary.accounts,
+            currency: summary.currency,
+          });
         default:
           return UNKNOWN_RENDER;
       }
