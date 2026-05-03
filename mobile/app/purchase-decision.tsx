@@ -1,24 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeft,
-  ShieldCheck,
-  TriangleAlert,
-  Clock,
-  Ban,
-  Heart,
   CheckCircle2,
+  ChevronRight,
   CreditCard,
+  Heart,
   Landmark,
   PiggyBank,
+  RotateCcw,
   Wallet,
 } from "lucide-react-native";
 import type { LucideProps } from "lucide-react-native";
@@ -34,6 +26,10 @@ import { AppKeyboardAwareScrollView } from "../components/common/AppKeyboardAwar
 import { Narrator } from "../components/common/Narrator";
 import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import { createWishlistItem } from "../lib/repositories/wishlist";
+import { getAllCategories, type CategoryRow } from "../lib/repositories/categories";
+import { CategoryPickerSheet } from "../components/categorizar/CategoryPickerSheet";
+import { FieldGroup, SegmentedRow } from "../components/ui/FormField";
+import { VERDICT_META } from "../lib/constants/verdict";
 import { analyzeLocally } from "../lib/services/purchase-decision";
 import { useAuth } from "../lib/auth";
 import { COLORS } from "../lib/constants/colors";
@@ -46,73 +42,16 @@ import { useTheme, themeSurfaceClasses } from "../lib/theme";
 import { parseMoney } from "../lib/utils/money";
 import { toLocalMonthString } from "../lib/utils/date";
 
-type Verdict = PurchaseDecisionResult["verdict"];
-
-const URGENCY_OPTIONS: { value: PurchaseUrgency; label: string }[] = [
+const URGENCY_OPTIONS: ReadonlyArray<{ value: PurchaseUrgency; label: string }> = [
   { value: "NECESSARY", label: "Necesidad" },
   { value: "USEFUL", label: "Útil" },
   { value: "IMPULSE", label: "Capricho" },
 ];
 
-const FUNDING_OPTIONS: { value: PurchaseFundingType; label: string }[] = [
+const FUNDING_OPTIONS: ReadonlyArray<{ value: PurchaseFundingType; label: string }> = [
   { value: "ONE_TIME", label: "Pago único" },
   { value: "INSTALLMENTS", label: "Cuotas" },
 ];
-
-type VerdictMeta = {
-  label: string;
-  icon: ComponentType<LucideProps>;
-  iconColor: string;
-  badgeBg: string;
-  badgeText: string;
-  scoreColor: string;
-  border: string;
-  /** Short, one-line summary narrator can wrap. */
-  narratorTone: "brass" | "sage";
-};
-
-const VERDICT_META: Record<Verdict, VerdictMeta> = {
-  BUY: {
-    label: "Sí, adelante",
-    icon: ShieldCheck,
-    iconColor: COLORS.income,
-    badgeBg: "bg-z-income-12",
-    badgeText: "text-z-income",
-    scoreColor: "text-z-income",
-    border: "border-z-income-30",
-    narratorTone: "brass",
-  },
-  BUY_WITH_CAUTION: {
-    label: "Sí, con cautela",
-    icon: TriangleAlert,
-    iconColor: COLORS.alert,
-    badgeBg: "bg-z-alert-12",
-    badgeText: "text-z-alert",
-    scoreColor: "text-z-alert",
-    border: "border-z-alert-25",
-    narratorTone: "brass",
-  },
-  WAIT: {
-    label: "Mejor espera",
-    icon: Clock,
-    iconColor: COLORS.expense,
-    badgeBg: "bg-z-expense-12",
-    badgeText: "text-z-expense",
-    scoreColor: "text-z-expense",
-    border: "border-z-expense-30",
-    narratorTone: "sage",
-  },
-  NOT_RECOMMENDED: {
-    label: "No recomendado",
-    icon: Ban,
-    iconColor: COLORS.debt,
-    badgeBg: "bg-z-debt-12",
-    badgeText: "text-z-debt",
-    scoreColor: "text-z-debt",
-    border: "border-z-debt-30",
-    narratorTone: "sage",
-  },
-};
 
 const SEVERITY_DOT: Record<string, string> = {
   positive: "bg-z-income",
@@ -138,10 +77,16 @@ export default function PurchaseDecisionScreen() {
   const surface = neutral ? "bg-z-surface-2-neutral" : "bg-z-surface-2";
 
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
     null,
   );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [urgency, setUrgency] = useState<PurchaseUrgency>("USEFUL");
   const [fundingType, setFundingType] =
     useState<PurchaseFundingType>("ONE_TIME");
@@ -151,7 +96,6 @@ export default function PurchaseDecisionScreen() {
   const [result, setResult] = useState<PurchaseDecisionResult | null>(null);
   const [savedToWishlist, setSavedToWishlist] = useState(false);
   const [savingWishlist, setSavingWishlist] = useState(false);
-
   useEffect(() => {
     getAllAccounts().then((rows) => {
       const payable = rows.filter(
@@ -162,7 +106,7 @@ export default function PurchaseDecisionScreen() {
         setSelectedAccountId(payable[0].id);
       }
     });
-    // intentionally empty deps — only run once on mount
+    getAllCategories().then(setCategories);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -173,7 +117,7 @@ export default function PurchaseDecisionScreen() {
   useEffect(() => {
     setResult(null);
     setSavedToWishlist(false);
-  }, [amount, selectedAccountId, urgency, fundingType, installments]);
+  }, [amount, selectedAccountId, selectedCategoryId, urgency, fundingType, installments]);
 
   const selectedAccount = useMemo(
     () => accounts.find((a) => a.id === selectedAccountId) ?? null,
@@ -209,6 +153,7 @@ export default function PurchaseDecisionScreen() {
             ? Math.max(1, Math.round(parseMoney(installments)) || 1)
             : null,
         month,
+        categoryId: selectedCategoryId,
       });
       setResult(res);
     } catch (err) {
@@ -221,10 +166,23 @@ export default function PurchaseDecisionScreen() {
     loading,
     amount,
     selectedAccountId,
+    selectedCategoryId,
     urgency,
     fundingType,
     installments,
   ]);
+
+  const handleReset = useCallback(() => {
+    setName("");
+    setAmount("");
+    setSelectedCategoryId(null);
+    setUrgency("USEFUL");
+    setFundingType("ONE_TIME");
+    setInstallments("");
+    setResult(null);
+    setError(null);
+    setSavedToWishlist(false);
+  }, []);
 
   const handleSaveToWishlist = useCallback(async () => {
     if (savingWishlist || savedToWishlist) return;
@@ -232,20 +190,34 @@ export default function PurchaseDecisionScreen() {
     const numAmount = parseMoney(amount);
     if (!numAmount) return;
 
-    const name =
+    const fallbackName =
       result.summary.length > 60
         ? result.summary.slice(0, 57).trim() + "…"
         : result.summary || "Compra por decidir";
+    const itemName = name.trim() || fallbackName;
 
     setSavingWishlist(true);
     try {
+      // Webapp parity: persist `last_verdict`, `last_score`, `funding_type`,
+      // `account_id`, `category_id` so the saved item can be re-scored later
+      // without losing context (and shows a verdict chip on Deseos immediately).
       await createWishlistItem({
         user_id: session.user.id,
-        name,
+        name: itemName,
         amount: numAmount,
         currency_code: currency,
         urgency,
+        funding_type: fundingType,
+        installments:
+          fundingType === "INSTALLMENTS"
+            ? Math.max(2, Math.min(36, Math.round(parseMoney(installments)) || 2))
+            : null,
+        account_id: selectedAccountId,
+        category_id: selectedCategoryId,
+        last_verdict: result.verdict,
+        last_score: result.score,
         why: result.reasons[0]?.detail ?? null,
+        enriched: true,
       });
       setSavedToWishlist(true);
     } catch (err) {
@@ -254,7 +226,27 @@ export default function PurchaseDecisionScreen() {
     } finally {
       setSavingWishlist(false);
     }
-  }, [savingWishlist, savedToWishlist, session, result, amount, currency, urgency]);
+  }, [
+    savingWishlist,
+    savedToWishlist,
+    session,
+    result,
+    amount,
+    currency,
+    urgency,
+    fundingType,
+    installments,
+    selectedAccountId,
+    selectedCategoryId,
+    name,
+  ]);
+
+  const selectedCategory = selectedCategoryId
+    ? categories.find((c) => c.id === selectedCategoryId) ?? null
+    : null;
+  const categoryLabel = selectedCategory
+    ? selectedCategory.name_es ?? selectedCategory.name
+    : "Sin categoría";
 
   const verdictMeta = result ? VERDICT_META[result.verdict] : null;
   // Offer the save-to-deseos bridge whenever the user might want to defer —
@@ -296,8 +288,25 @@ export default function PurchaseDecisionScreen() {
         }}
         bottomOffset={24}
       >
-        {/* Monto */}
+        {/* Nombre */}
         <View className="gap-1.5">
+          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Nombre (opcional)
+          </Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            autoCorrect={false}
+            placeholder="Auriculares Sony"
+            placeholderTextColor={COLORS.sageDark}
+            accessibilityLabel="Nombre de la compra"
+            maxLength={100}
+            className={`rounded-xl border border-white-6 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white`}
+          />
+        </View>
+
+        {/* Monto */}
+        <View className="mt-5 gap-1.5">
           <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Monto
           </Text>
@@ -373,98 +382,74 @@ export default function PurchaseDecisionScreen() {
           )}
         </View>
 
-        {/* Urgencia */}
-        <View className="mt-5 gap-1.5">
-          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Urgencia
-          </Text>
-          <View
-            accessibilityLabel="Selección"
-            className="flex-row gap-2"
-          >
-            {URGENCY_OPTIONS.map((opt) => {
-              const isSelected = urgency === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setUrgency(opt.value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={opt.label}
-                  className={`flex-1 items-center rounded-xl border py-3 ${
-                    isSelected
-                      ? "border-z-brass bg-z-brass-12"
-                      : `border-white-6 ${surface}`
-                  }`}
-                >
-                  <Text
-                    className={`font-inter-semibold text-sm ${
-                      isSelected ? "text-z-white" : "text-z-sage-light"
-                    }`}
-                  >
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+        <View className="mt-5">
+          <FieldGroup label="Urgencia">
+            <SegmentedRow value={urgency} onChange={setUrgency} options={URGENCY_OPTIONS} />
+          </FieldGroup>
         </View>
 
-        {/* Forma de pago */}
-        <View className="mt-5 gap-1.5">
-          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Forma de pago
-          </Text>
-          <View
-            accessibilityLabel="Selección"
-            className="flex-row gap-2"
-          >
-            {FUNDING_OPTIONS.map((opt) => {
-              const isSelected = fundingType === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setFundingType(opt.value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={opt.label}
-                  className={`flex-1 items-center rounded-xl border py-3 ${
-                    isSelected
-                      ? "border-z-brass bg-z-brass-12"
-                      : `border-white-6 ${surface}`
-                  }`}
-                >
-                  <Text
-                    className={`font-inter-semibold text-sm ${
-                      isSelected ? "text-z-white" : "text-z-sage-light"
-                    }`}
-                  >
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+        <View className="mt-5">
+          <FieldGroup label="Forma de pago">
+            <SegmentedRow
+              value={fundingType}
+              onChange={setFundingType}
+              options={FUNDING_OPTIONS}
+            />
+          </FieldGroup>
         </View>
 
         {fundingType === "INSTALLMENTS" && (
-          <View className="mt-5 gap-1.5">
-            <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Número de cuotas
-            </Text>
-            <TextInput
-              value={installments}
-              onChangeText={setInstallments}
-              keyboardType="numeric"
-              autoCorrect={false}
-              autoCapitalize="none"
-              placeholder="12"
-              placeholderTextColor={COLORS.sageDark}
-              accessibilityLabel="Número de cuotas"
-              className={`rounded-xl border border-white-6 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
-            />
+          <View className="mt-5">
+            <FieldGroup label="Número de cuotas">
+              <TextInput
+                value={installments}
+                onChangeText={setInstallments}
+                keyboardType="numeric"
+                autoCorrect={false}
+                autoCapitalize="none"
+                placeholder="12"
+                placeholderTextColor={COLORS.sageDark}
+                accessibilityLabel="Número de cuotas"
+                className={`rounded-xl border border-white-6 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
+              />
+            </FieldGroup>
           </View>
         )}
+
+        {/* Categoría — webapp parity for budget-impact reasons */}
+        <View className="mt-5 gap-1.5">
+          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Categoría (opcional)
+          </Text>
+          <Pressable
+            onPress={() => setCategoryPickerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Elegir categoría"
+            className={`flex-row items-center justify-between rounded-xl border border-white-6 ${surface} px-4 py-3.5`}
+          >
+            <Text className="font-inter-semibold text-sm text-z-white">
+              {categoryLabel}
+            </Text>
+            <View className="flex-row items-center gap-2">
+              {selectedCategoryId && (
+                <Pressable
+                  hitSlop={8}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setSelectedCategoryId(null);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Quitar categoría"
+                >
+                  <Text className="font-inter-semibold text-xs text-z-sage-dark">
+                    Quitar
+                  </Text>
+                </Pressable>
+              )}
+              <ChevronRight size={16} color={COLORS.sageDark} />
+            </View>
+          </Pressable>
+        </View>
 
         {error ? (
           <View className="mt-5 rounded-xl border border-z-debt-20 bg-z-debt-5 px-4 py-3">
@@ -474,30 +459,44 @@ export default function PurchaseDecisionScreen() {
           </View>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Analizar la compra"
-          accessibilityState={{ disabled: loading || accounts.length === 0 }}
-          onPress={handleAnalyze}
-          disabled={loading || accounts.length === 0}
-          className={`mt-6 flex-row items-center justify-center gap-2 rounded-xl py-3.5 ${
-            loading || accounts.length === 0
-              ? "bg-z-surface-2"
-              : `${BRASS_BUTTON_CLASS} active:opacity-90`
-          }`}
-        >
-          {loading ? (
-            <ActivityIndicator color={COLORS.ink} />
-          ) : (
-            <Text
-              className={`font-inter-bold text-base ${
-                accounts.length === 0 ? "text-z-sage-dark" : "text-z-ink"
-              }`}
-            >
-              Analizar
+        <View className="mt-6 flex-row gap-2">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Analizar la compra"
+            accessibilityState={{ disabled: loading || accounts.length === 0 }}
+            onPress={handleAnalyze}
+            disabled={loading || accounts.length === 0}
+            className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl py-3.5 ${
+              loading || accounts.length === 0
+                ? "bg-z-surface-2"
+                : `${BRASS_BUTTON_CLASS} active:opacity-90`
+            }`}
+          >
+            {loading ? (
+              <ActivityIndicator color={COLORS.ink} />
+            ) : (
+              <Text
+                className={`font-inter-bold text-base ${
+                  accounts.length === 0 ? "text-z-sage-dark" : "text-z-ink"
+                }`}
+              >
+                Analizar
+              </Text>
+            )}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Reiniciar formulario"
+            onPress={handleReset}
+            disabled={loading}
+            className={`flex-row items-center justify-center gap-1.5 rounded-xl border border-white-6 ${surface} px-4`}
+          >
+            <RotateCcw size={14} color={COLORS.sageLight} strokeWidth={2} />
+            <Text className="font-inter-semibold text-sm text-z-sage-light">
+              Reiniciar
             </Text>
-          )}
-        </Pressable>
+          </Pressable>
+        </View>
 
         {/* Results */}
         {result && verdictMeta && (
@@ -704,6 +703,13 @@ export default function PurchaseDecisionScreen() {
           </View>
         )}
       </AppKeyboardAwareScrollView>
+
+      <CategoryPickerSheet
+        categories={categories}
+        visible={categoryPickerOpen}
+        onClose={() => setCategoryPickerOpen(false)}
+        onSelect={(id) => setSelectedCategoryId(id)}
+      />
     </View>
   );
 }

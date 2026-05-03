@@ -1,15 +1,43 @@
-import { useCallback, useState } from "react";
-import { View, Text, ScrollView, RefreshControl, Pressable, TextInput } from "react-native";
+import { memo, useCallback, useRef, useState } from "react";
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useFocusEffect } from "expo-router";
-import { Heart, Plus, ShoppingBag, Sparkles, Target } from "lucide-react-native";
-import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import {
+  Check,
+  CheckCircle2,
+  Heart,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react-native";
+import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import {
-  getActiveWishlistItems,
-  getWishlistSummary,
   createWishlistItem,
+  deleteWishlistItem,
+  dismissWishlistNudge,
+  getBoughtWishlistItems,
+  markWishlistItemBought,
   type WishlistItemWithCategory,
 } from "../../lib/repositories/wishlist";
+import {
+  getWishlistItemsWithFreshScores,
+  rescoreWishlistItem,
+  type ScoredWishlistItem,
+} from "../../lib/services/wishlist-scoring";
+import {
+  computeActiveNudges,
+  type WishlistNudge,
+} from "../../lib/services/wishlist-nudges";
 import { useAuth } from "../../lib/auth";
 import { getPreferredCurrency } from "../../lib/profile";
 import { COLORS } from "../../lib/constants/colors";
@@ -22,43 +50,77 @@ import {
   GHOST_BUTTON_CLASS,
   MOBILE_TAB_BAR_CLEARANCE,
 } from "../../lib/constants/styles";
+import { DeseosEnrichDrawer } from "./DeseosEnrichDrawer";
+import { VERDICT_META, type Verdict } from "../../lib/constants/verdict";
+
+const URGENCY_LABEL: Record<string, string> = {
+  NECESSARY: "Necesario",
+  USEFUL: "Útil",
+  IMPULSE: "Impulso",
+};
+
+const DESIRE_LABEL: Record<string, string> = {
+  long_held: "Hace rato",
+  recent: "Reciente",
+  spontaneous: "Espontáneo",
+};
 
 interface DeseosState {
-  items: WishlistItemWithCategory[];
+  active: ScoredWishlistItem[];
+  bought: WishlistItemWithCategory[];
   totalAmount: number;
+  nudges: WishlistNudge[];
 }
 
 const INITIAL: DeseosState = {
-  items: [], totalAmount: 0,
+  active: [],
+  bought: [],
+  totalAmount: 0,
+  nudges: [],
 };
 
 export function DeseosRoot() {
   const { sync } = useSync();
   const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
   const [currency, setCurrency] = useState<CurrencyCode>("COP");
-
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<DeseosState>(INITIAL);
   const [showForm, setShowForm] = useState(false);
+  const [showBought, setShowBought] = useState(false);
   const [formName, setFormName] = useState("");
   const [formAmount, setFormAmount] = useState("");
+  const [enrichTarget, setEnrichTarget] = useState<WishlistItemWithCategory | null>(null);
+  const lastLoadRef = useRef<number>(0);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (force = false) => {
+    if (!userId) {
+      setData(INITIAL);
+      return;
+    }
+    // Skip rescore work on rapid focus events (tab back, drawer close, etc.).
+    // Pull-to-refresh + post-mutation reloads pass force=true.
+    const now = Date.now();
+    if (!force && now - lastLoadRef.current < 30_000) return;
+    lastLoadRef.current = now;
     try {
-      const [items, summary, preferredCurrency] = await Promise.all([
-        getActiveWishlistItems(),
-        getWishlistSummary(),
+      const [scored, bought, preferredCurrency] = await Promise.all([
+        getWishlistItemsWithFreshScores({ user_id: userId }),
+        getBoughtWishlistItems(),
         getPreferredCurrency(),
       ]);
+      const total = scored.reduce((sum, i) => sum + (i.amount ?? 0), 0);
       setData({
-        items,
-        totalAmount: summary.total_amount,
+        active: scored,
+        bought,
+        totalAmount: total,
+        nudges: computeActiveNudges(scored),
       });
       setCurrency(preferredCurrency);
     } catch (error) {
       console.error("Failed to load wishlist:", error);
     }
-  }, []);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,7 +132,7 @@ export function DeseosRoot() {
     setRefreshing(true);
     try {
       await sync();
-      await loadData();
+      await loadData(true);
     } finally {
       setRefreshing(false);
     }
@@ -79,10 +141,10 @@ export function DeseosRoot() {
   const handleCreate = useCallback(async () => {
     const amount = parseFloat(formAmount);
     if (!formName.trim() || isNaN(amount) || amount <= 0) return;
-    if (!session?.user?.id) return;
+    if (!userId) return;
 
     await createWishlistItem({
-      user_id: session.user.id,
+      user_id: userId,
       name: formName.trim(),
       amount,
     });
@@ -90,10 +152,78 @@ export function DeseosRoot() {
     setFormName("");
     setFormAmount("");
     setShowForm(false);
-    await loadData();
-  }, [formName, formAmount, session, loadData]);
+    await loadData(true);
+  }, [formName, formAmount, userId, loadData]);
 
-  const totalItems = data.items.length;
+  const handleEnrich = useCallback((item: WishlistItemWithCategory) => {
+    setEnrichTarget(item);
+  }, []);
+
+  const handleMarkBought = useCallback(
+    async (item: WishlistItemWithCategory) => {
+      if (!userId) return;
+      Alert.alert(
+        "Marcar como comprado",
+        `¿Confirmar la compra de "${item.name}"?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Sí, comprado",
+            onPress: async () => {
+              await markWishlistItemBought({ id: item.id, user_id: userId });
+              await loadData(true);
+            },
+          },
+        ]
+      );
+    },
+    [userId, loadData]
+  );
+
+  const handleDelete = useCallback(
+    async (item: WishlistItemWithCategory) => {
+      if (!userId) return;
+      Alert.alert(
+        "Eliminar deseo",
+        `¿Eliminar "${item.name}"?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Eliminar",
+            style: "destructive",
+            onPress: async () => {
+              await deleteWishlistItem({ id: item.id, user_id: userId });
+              await loadData(true);
+            },
+          },
+        ]
+      );
+    },
+    [userId, loadData]
+  );
+
+  const handleRescore = useCallback(
+    async (item: ScoredWishlistItem) => {
+      if (!userId) return;
+      await rescoreWishlistItem({ id: item.id, user_id: userId });
+      await loadData(true);
+    },
+    [userId, loadData]
+  );
+
+  const handleDismissNudge = useCallback(
+    async (itemId: string) => {
+      if (!userId) return;
+      await dismissWishlistNudge({ id: itemId, user_id: userId });
+      await loadData(true);
+    },
+    [userId, loadData]
+  );
+
+  const totalActive = data.active.length;
+  const totalBought = data.bought.length;
+
+  const activeNudge = data.nudges[0] ?? null;
 
   return (
     <View className="flex-1 bg-background">
@@ -102,8 +232,10 @@ export function DeseosRoot() {
         title="Deseos"
         action={
           <Pressable
-            onPress={() => setShowForm(!showForm)}
+            onPress={() => setShowForm((v) => !v)}
             className="h-7 w-7 items-center justify-center rounded-full bg-z-brass"
+            accessibilityRole="button"
+            accessibilityLabel="Agregar deseo"
           >
             <Plus size={14} color={COLORS.ink} strokeWidth={2.5} />
           </Pressable>
@@ -111,17 +243,31 @@ export function DeseosRoot() {
       />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
+        contentContainerStyle={{
+          padding: 16,
+          gap: 8,
+          paddingBottom: MOBILE_TAB_BAR_CLEARANCE,
+        }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.brass} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={COLORS.brass}
+          />
         }
       >
-        {/* Summary */}
-        {totalItems > 0 && (
+        {activeNudge && (
+          <NudgeBanner
+            nudge={activeNudge}
+            onDismiss={() => handleDismissNudge(activeNudge.itemId)}
+          />
+        )}
+
+        {totalActive > 0 && (
           <MCardGrid>
             <MCardGridCell borderRight>
               <Text className="text-[18px] font-inter-bold text-foreground">
-                {totalItems}
+                {totalActive}
               </Text>
               <Text className="text-[9px] font-inter text-muted-foreground mt-0.5">
                 Deseos activos
@@ -138,7 +284,6 @@ export function DeseosRoot() {
           </MCardGrid>
         )}
 
-        {/* Quick add form */}
         {showForm && (
           <MCard>
             <Text className={`mb-2 ${SECTION_EYEBROW_CLASS}`}>NUEVO DESEO</Text>
@@ -174,8 +319,7 @@ export function DeseosRoot() {
           </MCard>
         )}
 
-        {/* Wishlist items */}
-        {data.items.length === 0 && !showForm ? (
+        {totalActive === 0 && !showForm ? (
           <View className="items-center justify-center py-16">
             <Heart size={48} color={COLORS.sageDark} />
             <Text className="text-[15px] font-inter-semibold text-foreground mt-3">
@@ -186,70 +330,304 @@ export function DeseosRoot() {
             </Text>
           </View>
         ) : (
-          <MobileZone eyebrow="MIS DESEOS">
-            <View className="gap-1.5">
-              {data.items.map((item) => (
-                <WishlistRow key={item.id} item={item} currency={currency} />
-              ))}
-            </View>
-          </MobileZone>
+          totalActive > 0 && (
+            <MobileZone eyebrow="MIS DESEOS">
+              <View className="gap-1.5">
+                {data.active.map((item) => (
+                  <DeseosRow
+                    key={item.id}
+                    item={item}
+                    currency={currency}
+                    onEnrich={handleEnrich}
+                    onBought={handleMarkBought}
+                    onDelete={handleDelete}
+                    onRescore={handleRescore}
+                  />
+                ))}
+              </View>
+            </MobileZone>
+          )
+        )}
+
+        {totalBought > 0 && (
+          <View className="mt-2">
+            <Pressable
+              onPress={() => setShowBought((v) => !v)}
+              className="flex-row items-center justify-between py-2"
+            >
+              <Text className={SECTION_EYEBROW_CLASS}>
+                COMPRADOS · {totalBought}
+              </Text>
+              <Text className="text-[11px] font-inter-semibold text-z-brass">
+                {showBought ? "Ocultar" : "Ver"}
+              </Text>
+            </Pressable>
+            {showBought && (
+              <View className="gap-1.5">
+                {data.bought.map((item) => (
+                  <BoughtRow key={item.id} item={item} currency={currency} />
+                ))}
+              </View>
+            )}
+          </View>
         )}
       </ScrollView>
+
+      <DeseosEnrichDrawer
+        visible={enrichTarget !== null}
+        item={enrichTarget}
+        userId={userId ?? ""}
+        onClose={() => setEnrichTarget(null)}
+        onSaved={() => loadData(true)}
+      />
     </View>
   );
 }
 
-function WishlistRow({
+function NudgeBanner({
+  nudge,
+  onDismiss,
+}: {
+  nudge: WishlistNudge;
+  onDismiss: () => void;
+}) {
+  return (
+    <View className="rounded-xl border border-z-brass-30 bg-z-brass-8 px-3.5 py-3 flex-row items-start gap-3">
+      <Sparkles size={16} color={COLORS.brass} strokeWidth={2} />
+      <View className="flex-1">
+        <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-brass">
+          {nudge.type === "score_transition" ? "Pasó a verde" : "Llegó la hora"}
+        </Text>
+        <Text className="font-inter text-xs text-z-white mt-0.5">
+          {nudge.message}
+        </Text>
+      </View>
+      <Pressable
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Descartar aviso"
+        className="h-6 w-6 items-center justify-center rounded-full"
+      >
+        <X size={14} color={COLORS.sageDark} />
+      </Pressable>
+    </View>
+  );
+}
+
+const DeseosRow = memo(function DeseosRow({
+  item,
+  currency,
+  onEnrich,
+  onBought,
+  onDelete,
+  onRescore,
+}: {
+  item: ScoredWishlistItem;
+  currency: CurrencyCode;
+  onEnrich: (item: WishlistItemWithCategory) => void;
+  onBought: (item: WishlistItemWithCategory) => void;
+  onDelete: (item: WishlistItemWithCategory) => void;
+  onRescore: (item: ScoredWishlistItem) => void;
+}) {
+  const verdict = (item.freshVerdict ?? item.last_verdict) as Verdict | null;
+  const verdictMeta = verdict ? VERDICT_META[verdict] : null;
+  const score = item.freshScore ?? item.last_score;
+  const VerdictIcon = verdictMeta?.icon ?? null;
+  const needsEnrichment = !item.enriched;
+
+  return (
+    <MCard>
+      <View className="gap-2.5">
+        {/* Top row: name + price + verdict */}
+        <View className="flex-row items-start gap-3">
+          <View className="flex-1 min-w-0">
+            <Text
+              className="text-[14px] font-inter-semibold text-foreground"
+              numberOfLines={1}
+            >
+              {item.name}
+            </Text>
+            <View className="flex-row items-center gap-2 mt-0.5">
+              <Text className="text-[12px] font-inter-medium text-foreground">
+                {formatCurrency(item.amount, currency)}
+              </Text>
+              {item.category_name && (
+                <Text className="text-[10px] font-inter text-muted-foreground">
+                  · {item.category_name}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {verdictMeta && VerdictIcon ? (
+            <View className="items-end gap-1">
+              <View
+                className={`flex-row items-center gap-1 rounded-full ${verdictMeta.badgeBg} px-2 py-0.5`}
+              >
+                <VerdictIcon size={10} color={verdictMeta.iconColor} strokeWidth={2.2} />
+                <Text className={`text-[10px] font-inter-bold ${verdictMeta.badgeText}`}>
+                  {verdictMeta.shortLabel}
+                </Text>
+              </View>
+              {score != null && (
+                <Text className="text-[14px] font-inter-bold text-z-white tabular-nums">
+                  {Math.round(score)}
+                  <Text className="text-[10px] text-muted-foreground"> /100</Text>
+                </Text>
+              )}
+            </View>
+          ) : needsEnrichment ? (
+            <Pressable
+              onPress={() => onEnrich(item)}
+              className="rounded-full border border-z-brass-30 bg-z-brass-8 px-2.5 py-1"
+              accessibilityRole="button"
+              accessibilityLabel="Completar para evaluar"
+            >
+              <Text className="text-[10px] font-inter-bold text-z-brass">
+                Completar
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* Chips row: urgency + desire type */}
+        {(item.urgency || item.desire_type) && (
+          <View className="flex-row flex-wrap gap-1.5">
+            {item.urgency && (
+              <View className="rounded-full border border-white-6 px-2 py-0.5">
+                <Text className="text-[10px] font-inter-semibold text-z-sage-light">
+                  {URGENCY_LABEL[item.urgency] ?? item.urgency}
+                </Text>
+              </View>
+            )}
+            {item.desire_type && (
+              <View className="rounded-full border border-white-6 px-2 py-0.5">
+                <Text className="text-[10px] font-inter-semibold text-z-sage-light">
+                  {DESIRE_LABEL[item.desire_type] ?? item.desire_type}
+                </Text>
+              </View>
+            )}
+            {item.scoreError && (
+              <View className="rounded-full border border-z-debt-30 bg-z-debt-5 px-2 py-0.5">
+                <Text className="text-[10px] font-inter-semibold text-z-debt">
+                  Error al puntuar
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Action row */}
+        <View className="flex-row gap-1.5 -mr-1">
+          {!needsEnrichment && (
+            <ActionPill
+              label="Reevaluar"
+              icon={Sparkles}
+              onPress={() => onRescore(item)}
+            />
+          )}
+          {needsEnrichment && (
+            <ActionPill
+              label="Completar"
+              icon={Pencil}
+              onPress={() => onEnrich(item)}
+              tone="brass"
+            />
+          )}
+          <ActionPill
+            label="Comprado"
+            icon={Check}
+            onPress={() => onBought(item)}
+            tone="income"
+          />
+          <ActionPill
+            label="Eliminar"
+            icon={Trash2}
+            onPress={() => onDelete(item)}
+            tone="danger"
+          />
+        </View>
+      </View>
+    </MCard>
+  );
+});
+
+function ActionPill({
+  label,
+  icon: Icon,
+  onPress,
+  tone = "neutral",
+}: {
+  label: string;
+  icon: typeof Check;
+  onPress: () => void;
+  tone?: "neutral" | "brass" | "income" | "danger";
+}) {
+  const colorMap: Record<string, { iconColor: string; textClass: string; borderClass: string }> = {
+    neutral: {
+      iconColor: COLORS.sageLight,
+      textClass: "text-z-sage-light",
+      borderClass: "border-white-6",
+    },
+    brass: {
+      iconColor: COLORS.brass,
+      textClass: "text-z-brass",
+      borderClass: "border-z-brass-30",
+    },
+    income: {
+      iconColor: COLORS.income,
+      textClass: "text-z-income",
+      borderClass: "border-z-income-30",
+    },
+    danger: {
+      iconColor: COLORS.debt,
+      textClass: "text-z-debt",
+      borderClass: "border-z-debt-30",
+    },
+  };
+  const styles = colorMap[tone];
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className={`flex-row items-center gap-1 rounded-full border ${styles.borderClass} px-2.5 py-1`}
+    >
+      <Icon size={11} color={styles.iconColor} strokeWidth={2} />
+      <Text className={`text-[11px] font-inter-semibold ${styles.textClass}`}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+const BoughtRow = memo(function BoughtRow({
   item,
   currency,
 }: {
   item: WishlistItemWithCategory;
   currency: CurrencyCode;
 }) {
-  const STATUS_MAP: Record<string, { icon: typeof Target; color: string }> = {
-    WANT: { icon: ShoppingBag, color: COLORS.alert },
-    SAVING: { icon: Sparkles, color: COLORS.brass },
-    READY: { icon: Target, color: COLORS.income },
-    BOUGHT: { icon: Heart, color: COLORS.income },
-  };
-  const { icon: StatusIcon, color: statusColor } = STATUS_MAP[item.status] ?? {
-    icon: Heart,
-    color: COLORS.alert,
-  };
-
   return (
     <MCard>
       <View className="flex-row items-center gap-3">
         <View
           className="h-9 w-9 items-center justify-center rounded-xl"
-          style={{ backgroundColor: `${statusColor}20` }}
+          style={{ backgroundColor: `${COLORS.income}20` }}
         >
-          <StatusIcon size={16} color={statusColor} />
+          <CheckCircle2 size={16} color={COLORS.income} />
         </View>
         <View className="flex-1 min-w-0">
-          <Text className="text-[14px] font-inter-semibold text-foreground" numberOfLines={1}>
+          <Text className="text-[13px] font-inter-semibold text-foreground" numberOfLines={1}>
             {item.name}
           </Text>
-          <View className="flex-row items-center gap-2 mt-0.5">
-            <Text className="text-[12px] font-inter-medium text-foreground">
-              {formatCurrency(item.amount, currency)}
-            </Text>
-            {item.category_name && (
-              <Text className="text-[10px] font-inter text-muted-foreground">
-                · {item.category_name}
-              </Text>
-            )}
-          </View>
+          <Text className="text-[11px] font-inter text-muted-foreground mt-0.5">
+            {formatCurrency(item.amount, currency)}
+            {item.bought_at && ` · ${formatDate(item.bought_at)}`}
+          </Text>
         </View>
-        {item.last_score != null && (
-          <View className="items-center">
-            <Text className="text-[16px] font-inter-bold text-z-brass">
-              {Math.round(item.last_score)}
-            </Text>
-            <Text className="text-[8px] font-inter text-muted-foreground">puntos</Text>
-          </View>
-        )}
       </View>
     </MCard>
   );
-}
+});
