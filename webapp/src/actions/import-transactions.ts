@@ -125,7 +125,14 @@ function sanitizeEaRate(
 function parsePayload(formData: FormData) {
   const rawPayload = formData.get("payload") as string;
   try {
-    return importPayloadSchema.safeParse(JSON.parse(rawPayload));
+    const result = importPayloadSchema.safeParse(JSON.parse(rawPayload));
+    if (!result.success) {
+      console.error(
+        "[importTransactions] payload validation failed:",
+        JSON.stringify(result.error.issues, null, 2),
+      );
+    }
+    return result;
   } catch (error) {
     console.error("Error parsing import payload:", error);
     return null;
@@ -854,6 +861,7 @@ export async function importTransactions(
 
   const parsed = parsePayload(formData);
   if (!parsed || !parsed.success) {
+    const firstIssue = parsed && !parsed.success ? parsed.error.issues[0] : null;
     await trackProductEvent({
       event_name: "import_completed",
       flow: "import",
@@ -862,7 +870,12 @@ export async function importTransactions(
       success: false,
       error_code: "invalid_payload",
     });
-    return { success: false, error: "Datos inválidos" };
+    return {
+      success: false,
+      error: firstIssue
+        ? `No pudimos validar la importación: ${firstIssue.message}`
+        : "No pudimos validar la importación. Intenta de nuevo.",
+    };
   }
 
   const { transactions, statementMeta, reconciliationDecisions = [], captureMethod = "PDF_IMPORT" } = parsed.data;
