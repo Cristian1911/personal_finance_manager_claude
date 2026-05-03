@@ -194,7 +194,7 @@ export function scoreWishlistItemWithSnapshot(params: {
       );
   if (!selectedRow) return null;
 
-  const selectedDebtAfterPurchase =
+  const selectedAccountCurrentDebt =
     selectedRow.account_type === "CREDIT_CARD"
       ? computeDebtBalance(toDomainAccount(selectedRow))
       : null;
@@ -208,7 +208,7 @@ export function scoreWishlistItemWithSnapshot(params: {
     selectedAccountAvailable: getSelectedAccountAvailable(selectedRow),
     selectedAccountType: selectedRow.account_type as PurchaseDecisionInput["selectedAccountType"],
     selectedAccountCreditLimit: selectedRow.credit_limit,
-    selectedAccountCurrentDebt: selectedDebtAfterPurchase,
+    selectedAccountCurrentDebt,
     monthlyIncome: params.snapshot.monthlyIncome,
     monthlyExpenses: params.snapshot.monthlyExpenses,
     upcomingCommittedPayments: params.snapshot.upcomingCommittedPayments,
