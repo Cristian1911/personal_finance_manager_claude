@@ -13,7 +13,7 @@ import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { useAuth } from "../lib/auth";
 import { COLORS } from "../lib/constants/colors";
 import { isDebtAccountType } from "../lib/constants/accounts";
-import { PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "../lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "../lib/constants/styles";
 import { getActivePeriodWithEntries } from "../lib/repositories/planning";
 import { getAllAccounts } from "../lib/repositories/accounts";
 import { getTemplatesByIds } from "../lib/repositories/recurring";
@@ -265,7 +265,7 @@ export default function PeriodoScreen() {
       <Header onBack={() => router.back()} />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
       >
         {/* Period summary */}
         <View className={`${PANEL_INSET_CLASS} flex-row items-center justify-between px-4 py-2.5`}>

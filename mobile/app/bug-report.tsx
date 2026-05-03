@@ -13,6 +13,7 @@ import {
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import * as DocumentPicker from "expo-document-picker";
+import { MOBILE_TAB_BAR_CLEARANCE } from "../lib/constants/styles";
 import { ArrowLeft, Paperclip, Send } from "lucide-react-native";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
@@ -269,7 +270,7 @@ export default function BugReportScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >

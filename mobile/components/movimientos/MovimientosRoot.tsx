@@ -29,7 +29,7 @@ import {
 } from "./MovimientosUtilidades";
 import { MovimientosTransactionRow } from "./MovimientosTransactionRow";
 import { CategoryPickerSheet } from "../categorizar/CategoryPickerSheet";
-import { SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 
 type ToolId = "categorizar" | "importar";
 const PAGE_SIZE = 25;
@@ -349,7 +349,7 @@ export function MovimientosRoot() {
         renderItem={renderItem}
         ListHeaderComponent={listHeader}
         ListFooterComponent={listFooter}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

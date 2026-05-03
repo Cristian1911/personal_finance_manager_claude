@@ -14,6 +14,7 @@ import { computeTimeline, type TimelineData } from "../../lib/utils/timeline";
 import { toLocalDateString, toLocalMonthString } from "../../lib/utils/date";
 import { DEBT_ACCOUNT_TYPES, LIQUID_ACCOUNT_TYPES } from "../../lib/constants/accounts";
 import { COLORS } from "../../lib/constants/colors";
+import { MOBILE_TAB_BAR_CLEARANCE } from "../../lib/constants/styles";
 import { getPreferredCurrency } from "../../lib/profile";
 import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
@@ -227,7 +228,7 @@ export function PlanRoot() {
       />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.brass} />
         }
