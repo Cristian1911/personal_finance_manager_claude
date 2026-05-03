@@ -1,24 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeft,
-  ShieldCheck,
-  TriangleAlert,
-  Clock,
   Ban,
-  Heart,
   CheckCircle2,
+  ChevronRight,
+  Clock,
   CreditCard,
+  Heart,
   Landmark,
   PiggyBank,
+  RotateCcw,
+  ShieldCheck,
+  TriangleAlert,
   Wallet,
 } from "lucide-react-native";
 import type { LucideProps } from "lucide-react-native";
@@ -34,6 +30,8 @@ import { AppKeyboardAwareScrollView } from "../components/common/AppKeyboardAwar
 import { Narrator } from "../components/common/Narrator";
 import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import { createWishlistItem } from "../lib/repositories/wishlist";
+import { getAllCategories, type CategoryRow } from "../lib/repositories/categories";
+import { CategoryPickerSheet } from "../components/categorizar/CategoryPickerSheet";
 import { analyzeLocally } from "../lib/services/purchase-decision";
 import { useAuth } from "../lib/auth";
 import { COLORS } from "../lib/constants/colors";
@@ -138,10 +136,16 @@ export default function PurchaseDecisionScreen() {
   const surface = neutral ? "bg-z-surface-2-neutral" : "bg-z-surface-2";
 
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
     null,
   );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [urgency, setUrgency] = useState<PurchaseUrgency>("USEFUL");
   const [fundingType, setFundingType] =
     useState<PurchaseFundingType>("ONE_TIME");
@@ -151,7 +155,6 @@ export default function PurchaseDecisionScreen() {
   const [result, setResult] = useState<PurchaseDecisionResult | null>(null);
   const [savedToWishlist, setSavedToWishlist] = useState(false);
   const [savingWishlist, setSavingWishlist] = useState(false);
-
   useEffect(() => {
     getAllAccounts().then((rows) => {
       const payable = rows.filter(
@@ -162,6 +165,7 @@ export default function PurchaseDecisionScreen() {
         setSelectedAccountId(payable[0].id);
       }
     });
+    getAllCategories().then(setCategories);
     // intentionally empty deps — only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -173,7 +177,7 @@ export default function PurchaseDecisionScreen() {
   useEffect(() => {
     setResult(null);
     setSavedToWishlist(false);
-  }, [amount, selectedAccountId, urgency, fundingType, installments]);
+  }, [amount, selectedAccountId, selectedCategoryId, urgency, fundingType, installments]);
 
   const selectedAccount = useMemo(
     () => accounts.find((a) => a.id === selectedAccountId) ?? null,
@@ -209,6 +213,7 @@ export default function PurchaseDecisionScreen() {
             ? Math.max(1, Math.round(parseMoney(installments)) || 1)
             : null,
         month,
+        categoryId: selectedCategoryId,
       });
       setResult(res);
     } catch (err) {
@@ -221,10 +226,23 @@ export default function PurchaseDecisionScreen() {
     loading,
     amount,
     selectedAccountId,
+    selectedCategoryId,
     urgency,
     fundingType,
     installments,
   ]);
+
+  const handleReset = useCallback(() => {
+    setName("");
+    setAmount("");
+    setSelectedCategoryId(null);
+    setUrgency("USEFUL");
+    setFundingType("ONE_TIME");
+    setInstallments("");
+    setResult(null);
+    setError(null);
+    setSavedToWishlist(false);
+  }, []);
 
   const handleSaveToWishlist = useCallback(async () => {
     if (savingWishlist || savedToWishlist) return;
@@ -232,20 +250,34 @@ export default function PurchaseDecisionScreen() {
     const numAmount = parseMoney(amount);
     if (!numAmount) return;
 
-    const name =
+    const fallbackName =
       result.summary.length > 60
         ? result.summary.slice(0, 57).trim() + "…"
         : result.summary || "Compra por decidir";
+    const itemName = name.trim() || fallbackName;
 
     setSavingWishlist(true);
     try {
+      // Webapp parity: persist `last_verdict`, `last_score`, `funding_type`,
+      // `account_id`, `category_id` so the saved item can be re-scored later
+      // without losing context (and shows a verdict chip on Deseos immediately).
       await createWishlistItem({
         user_id: session.user.id,
-        name,
+        name: itemName,
         amount: numAmount,
         currency_code: currency,
         urgency,
+        funding_type: fundingType,
+        installments:
+          fundingType === "INSTALLMENTS"
+            ? Math.max(2, Math.min(36, Math.round(parseMoney(installments)) || 2))
+            : null,
+        account_id: selectedAccountId,
+        category_id: selectedCategoryId,
+        last_verdict: result.verdict,
+        last_score: result.score,
         why: result.reasons[0]?.detail ?? null,
+        enriched: true,
       });
       setSavedToWishlist(true);
     } catch (err) {
@@ -254,7 +286,27 @@ export default function PurchaseDecisionScreen() {
     } finally {
       setSavingWishlist(false);
     }
-  }, [savingWishlist, savedToWishlist, session, result, amount, currency, urgency]);
+  }, [
+    savingWishlist,
+    savedToWishlist,
+    session,
+    result,
+    amount,
+    currency,
+    urgency,
+    fundingType,
+    installments,
+    selectedAccountId,
+    selectedCategoryId,
+    name,
+  ]);
+
+  const selectedCategory = selectedCategoryId
+    ? categories.find((c) => c.id === selectedCategoryId) ?? null
+    : null;
+  const categoryLabel = selectedCategory
+    ? selectedCategory.name_es ?? selectedCategory.name
+    : "Sin categoría";
 
   const verdictMeta = result ? VERDICT_META[result.verdict] : null;
   // Offer the save-to-deseos bridge whenever the user might want to defer —
@@ -296,8 +348,25 @@ export default function PurchaseDecisionScreen() {
         }}
         bottomOffset={24}
       >
-        {/* Monto */}
+        {/* Nombre */}
         <View className="gap-1.5">
+          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Nombre (opcional)
+          </Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            autoCorrect={false}
+            placeholder="Auriculares Sony"
+            placeholderTextColor={COLORS.sageDark}
+            accessibilityLabel="Nombre de la compra"
+            maxLength={100}
+            className={`rounded-xl border border-white-6 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white`}
+          />
+        </View>
+
+        {/* Monto */}
+        <View className="mt-5 gap-1.5">
           <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
             Monto
           </Text>
@@ -466,6 +535,41 @@ export default function PurchaseDecisionScreen() {
           </View>
         )}
 
+        {/* Categoría — webapp parity for budget-impact reasons */}
+        <View className="mt-5 gap-1.5">
+          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            Categoría (opcional)
+          </Text>
+          <Pressable
+            onPress={() => setCategoryPickerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Elegir categoría"
+            className={`flex-row items-center justify-between rounded-xl border border-white-6 ${surface} px-4 py-3.5`}
+          >
+            <Text className="font-inter-semibold text-sm text-z-white">
+              {categoryLabel}
+            </Text>
+            <View className="flex-row items-center gap-2">
+              {selectedCategoryId && (
+                <Pressable
+                  hitSlop={8}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setSelectedCategoryId(null);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Quitar categoría"
+                >
+                  <Text className="font-inter-semibold text-xs text-z-sage-dark">
+                    Quitar
+                  </Text>
+                </Pressable>
+              )}
+              <ChevronRight size={16} color={COLORS.sageDark} />
+            </View>
+          </Pressable>
+        </View>
+
         {error ? (
           <View className="mt-5 rounded-xl border border-z-debt-20 bg-z-debt-5 px-4 py-3">
             <Text className="font-inter-semibold text-sm text-z-debt">
@@ -474,30 +578,44 @@ export default function PurchaseDecisionScreen() {
           </View>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Analizar la compra"
-          accessibilityState={{ disabled: loading || accounts.length === 0 }}
-          onPress={handleAnalyze}
-          disabled={loading || accounts.length === 0}
-          className={`mt-6 flex-row items-center justify-center gap-2 rounded-xl py-3.5 ${
-            loading || accounts.length === 0
-              ? "bg-z-surface-2"
-              : `${BRASS_BUTTON_CLASS} active:opacity-90`
-          }`}
-        >
-          {loading ? (
-            <ActivityIndicator color={COLORS.ink} />
-          ) : (
-            <Text
-              className={`font-inter-bold text-base ${
-                accounts.length === 0 ? "text-z-sage-dark" : "text-z-ink"
-              }`}
-            >
-              Analizar
+        <View className="mt-6 flex-row gap-2">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Analizar la compra"
+            accessibilityState={{ disabled: loading || accounts.length === 0 }}
+            onPress={handleAnalyze}
+            disabled={loading || accounts.length === 0}
+            className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl py-3.5 ${
+              loading || accounts.length === 0
+                ? "bg-z-surface-2"
+                : `${BRASS_BUTTON_CLASS} active:opacity-90`
+            }`}
+          >
+            {loading ? (
+              <ActivityIndicator color={COLORS.ink} />
+            ) : (
+              <Text
+                className={`font-inter-bold text-base ${
+                  accounts.length === 0 ? "text-z-sage-dark" : "text-z-ink"
+                }`}
+              >
+                Analizar
+              </Text>
+            )}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Reiniciar formulario"
+            onPress={handleReset}
+            disabled={loading}
+            className={`flex-row items-center justify-center gap-1.5 rounded-xl border border-white-6 ${surface} px-4`}
+          >
+            <RotateCcw size={14} color={COLORS.sageLight} strokeWidth={2} />
+            <Text className="font-inter-semibold text-sm text-z-sage-light">
+              Reiniciar
             </Text>
-          )}
-        </Pressable>
+          </Pressable>
+        </View>
 
         {/* Results */}
         {result && verdictMeta && (
@@ -704,6 +822,13 @@ export default function PurchaseDecisionScreen() {
           </View>
         )}
       </AppKeyboardAwareScrollView>
+
+      <CategoryPickerSheet
+        categories={categories}
+        visible={categoryPickerOpen}
+        onClose={() => setCategoryPickerOpen(false)}
+        onSelect={(id) => setSelectedCategoryId(id)}
+      />
     </View>
   );
 }
