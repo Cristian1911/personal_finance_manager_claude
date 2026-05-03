@@ -44,16 +44,16 @@ export function renderAttentionWidget(props: AttentionWidgetProps): WidgetRender
     tone,
     accessibilityLabel: total > 0 ? `Por resolver: ${total}` : "Sin pendientes",
     chip: (
-      <div className="flex h-full flex-col items-center gap-1.5 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center">
         <ChipEyebrow tone={eyebrowTone}>Por resolver</ChipEyebrow>
         {total === 0 ? (
-          <div className="flex flex-1 items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             <CheckCircle2 className="size-4 text-z-income" aria-hidden />
             <span className="text-[12px] font-semibold text-foreground">Al día</span>
           </div>
         ) : (
-          <div className="flex flex-1 items-baseline gap-1.5">
-            <span className="text-[26px] font-bold leading-none tabular-nums text-foreground">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[22px] font-bold leading-none tabular-nums text-foreground">
               {total}
             </span>
             <span className="text-[10px] text-muted-foreground">
@@ -61,7 +61,7 @@ export function renderAttentionWidget(props: AttentionWidgetProps): WidgetRender
             </span>
           </div>
         )}
-        <p className="truncate text-[10px] text-muted-foreground">
+        <p className="w-full truncate text-[10px] text-muted-foreground">
           {overdueCount > 0
             ? `${overdueCount} vencido${overdueCount === 1 ? "" : "s"}`
             : upcomingCount > 0

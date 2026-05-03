@@ -60,10 +60,10 @@ export function renderRitmoWidget(props: RitmoWidgetProps): WidgetRender {
     tone: "brass",
     accessibilityLabel: `Ritmo: día ${dayOfMonth} de ${daysInMonth}`,
     chip: (
-      <div className="flex h-full flex-col items-center gap-1.5 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center">
         <ChipEyebrow>Ritmo</ChipEyebrow>
         <ArcRing percentage={percentage} />
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-[10px] text-muted-foreground whitespace-nowrap">
           día {dayOfMonth} de {daysInMonth}
         </p>
       </div>

@@ -86,8 +86,8 @@ export function ExpandableChip({
       accessibilityRole="button"
       accessibilityState={{ expanded: active, disabled: editing }}
       accessibilityLabel={accessibilityLabel}
-      className={`${PANEL_INSET_CLASS} flex-1 p-3 ${activeCls} ${dimCls}`}
-      style={{ minHeight: 88 }}
+      className={`${PANEL_INSET_CLASS} flex-1 items-center justify-center px-2 py-3 ${activeCls} ${dimCls}`}
+      style={{ minHeight: 96 }}
     >
       {children}
       {editing && onRemove && (
@@ -118,7 +118,8 @@ export function ChipEyebrow({
   const t = TONE[tone];
   return (
     <Text
-      className={`text-[10px] font-inter-semibold uppercase tracking-[4px] ${t.label}`}
+      className={`text-[10px] font-inter-semibold uppercase ${t.label}`}
+      style={{ letterSpacing: 1.2 }}
       numberOfLines={1}
     >
       {children}
@@ -137,7 +138,8 @@ export function ChipDetailHeading({
   const t = TONE[tone];
   return (
     <Text
-      className={`mb-2 text-[10px] font-inter-semibold uppercase tracking-[4px] ${t.label}`}
+      className={`mb-2 text-[10px] font-inter-semibold uppercase ${t.label}`}
+      style={{ letterSpacing: 2 }}
     >
       {children}
     </Text>

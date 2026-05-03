@@ -1,5 +1,6 @@
 import { View, Text } from "react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import { formatCurrencyCompact } from "../../../lib/utils/money";
 import {
   ChipEyebrow,
   ChipDetailHeading,
@@ -44,10 +45,14 @@ export function renderWhereTodayWidget({
     tone,
     accessibilityLabel: "Gasto de hoy",
     chip: (
-      <View className="items-center gap-1">
+      <View className="flex-1 items-center justify-center gap-1.5">
         <ChipEyebrow tone={tone}>Gasto de hoy</ChipEyebrow>
-        <Text className="text-[20px] font-inter-bold leading-none tabular-nums text-foreground">
-          {formatCurrency(spentToday, currency)}
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          className="text-[22px] font-inter-bold leading-none tabular-nums text-foreground"
+        >
+          {formatCurrencyCompact(spentToday, currency)}
         </Text>
         <Text
           numberOfLines={1}
@@ -56,8 +61,8 @@ export function renderWhereTodayWidget({
           {spentToday === 0
             ? "Sin gastos hoy"
             : spentYesterday > 0
-              ? `Ayer ${formatCurrency(spentYesterday, currency)}`
-              : "Hoy"}
+              ? `Ayer ${formatCurrencyCompact(spentYesterday, currency)}`
+              : "gastado hoy"}
         </Text>
       </View>
     ),

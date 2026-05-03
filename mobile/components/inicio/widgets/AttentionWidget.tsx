@@ -23,7 +23,7 @@ export function renderAttentionWidget(props: AttentionCounts): WidgetRender {
     tone,
     accessibilityLabel: total > 0 ? `Por resolver: ${total}` : "Sin pendientes",
     chip: (
-      <View className="items-center gap-1">
+      <View className="flex-1 items-center justify-center gap-1.5">
         <ChipEyebrow tone={overdue > 0 ? "debt" : "foreground"}>
           Por resolver
         </ChipEyebrow>

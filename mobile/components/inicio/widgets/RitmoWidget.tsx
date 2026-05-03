@@ -21,10 +21,13 @@ export function renderRitmoWidget(props: RitmoWidgetProps): WidgetRender {
     tone: "brass",
     accessibilityLabel: `Ritmo: día ${dayOfMonth} de ${daysInMonth}`,
     chip: (
-      <View className="items-center gap-1">
+      <View className="flex-1 items-center justify-center gap-1">
         <ChipEyebrow tone="foreground">Ritmo</ChipEyebrow>
-        <RingChart percentage={percentage} size={56} />
-        <Text className="text-[10px] font-inter text-muted-foreground">
+        <RingChart percentage={percentage} size={52} />
+        <Text
+          numberOfLines={1}
+          className="text-[10px] font-inter text-muted-foreground"
+        >
           día {dayOfMonth} de {daysInMonth}
         </Text>
       </View>

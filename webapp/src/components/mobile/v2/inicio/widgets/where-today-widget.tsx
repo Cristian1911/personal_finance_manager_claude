@@ -23,17 +23,17 @@ export function renderWhereTodayWidget(props: WhereTodayWidgetProps): WidgetRend
     tone,
     accessibilityLabel: `Gasto de hoy: ${formatCurrency(spentToday, currency)}`,
     chip: (
-      <div className="flex h-full flex-col items-center gap-1.5 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center">
         <ChipEyebrow>Gasto de hoy</ChipEyebrow>
         <p
           className={cn(
-            "flex-1 text-[26px] font-bold leading-none tabular-nums",
+            "text-[22px] font-bold leading-none tabular-nums whitespace-nowrap",
             spentToday === 0 ? "text-z-sage-light" : "text-foreground",
           )}
         >
           {formatCurrencyCompact(spentToday, currency)}
         </p>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-[10px] text-muted-foreground whitespace-nowrap">
           {spentToday === 0 ? "Sin gastos hoy" : "gastado hoy"}
         </p>
       </div>

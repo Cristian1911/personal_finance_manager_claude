@@ -104,7 +104,7 @@ export function ChipEyebrow({ tone = "foreground", children }: ChipEyebrowProps)
   return (
     <p
       className={cn(
-        "text-[10px] font-semibold uppercase tracking-[0.18em]",
+        "text-[10px] font-semibold uppercase tracking-[0.12em] whitespace-nowrap",
         TONE_TEXT[tone],
       )}
     >
