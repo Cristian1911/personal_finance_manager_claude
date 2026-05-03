@@ -55,6 +55,24 @@ export async function getActiveWishlistItems(): Promise<WishlistItemWithCategory
   );
 }
 
+export async function getWishlistItemById(
+  id: string,
+  user_id: string
+): Promise<WishlistItemWithCategory | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<WishlistItemWithCategory>(
+    `SELECT
+      w.*,
+      COALESCE(c.name_es, c.name) AS category_name
+    FROM wishlist_items w
+    LEFT JOIN categories c ON w.category_id = c.id
+    WHERE w.id = ? AND w.user_id = ?
+    LIMIT 1`,
+    [id, user_id]
+  );
+  return row ?? null;
+}
+
 export async function getBoughtWishlistItems(): Promise<WishlistItemWithCategory[]> {
   const db = await getDatabase();
   // Include 'reflected' — webapp transitions bought → reflected after the user
@@ -244,6 +262,8 @@ export async function persistWishlistScore(params: {
   const db = await getDatabase();
   const now = new Date().toISOString();
 
+  // COALESCE preserves the existing ready_at when the caller passes null/undefined,
+  // so we collapse the "set ready_at" and "leave ready_at" branches into one query.
   const update: Record<string, unknown> = {
     last_score: params.last_score,
     last_verdict: params.last_verdict,
@@ -253,30 +273,17 @@ export async function persistWishlistScore(params: {
   if (params.ready_at) update.ready_at = params.ready_at;
 
   await db.withTransactionAsync(async () => {
-    if (params.ready_at) {
-      await db.runAsync(
-        `UPDATE wishlist_items
-           SET last_score = ?, last_verdict = ?, last_scored_at = ?,
-               ready_at = ?, updated_at = ?
-         WHERE id = ? AND user_id = ?`,
-        [
-          params.last_score, params.last_verdict, now,
-          params.ready_at, now,
-          params.id, params.user_id,
-        ]
-      );
-    } else {
-      await db.runAsync(
-        `UPDATE wishlist_items
-           SET last_score = ?, last_verdict = ?, last_scored_at = ?, updated_at = ?
-         WHERE id = ? AND user_id = ?`,
-        [
-          params.last_score, params.last_verdict, now, now,
-          params.id, params.user_id,
-        ]
-      );
-    }
-
+    await db.runAsync(
+      `UPDATE wishlist_items
+         SET last_score = ?, last_verdict = ?, last_scored_at = ?,
+             ready_at = COALESCE(?, ready_at), updated_at = ?
+       WHERE id = ? AND user_id = ?`,
+      [
+        params.last_score, params.last_verdict, now,
+        params.ready_at ?? null, now,
+        params.id, params.user_id,
+      ]
+    );
     await enqueueUpdate(db, "wishlist_items", params.id, { id: params.id, ...update }, now);
   });
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { ChevronRight, X } from "lucide-react-native";
+import type { PurchaseFundingType, PurchaseUrgency } from "@zeta/shared";
 import {
   enrichWishlistItem,
   type WishlistItemWithCategory,
@@ -10,28 +11,31 @@ import { getAllCategories, type CategoryRow } from "../../lib/repositories/categ
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { CategoryPickerSheet } from "../categorizar/CategoryPickerSheet";
 import { MobileSheet } from "../ui/MobileSheet";
+import { FieldGroup, SegmentedRow } from "../ui/FormField";
 import { COLORS } from "../../lib/constants/colors";
 import {
   BRASS_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
 } from "../../lib/constants/styles";
 
-const URGENCY_OPTIONS = [
+type DesireType = "long_held" | "recent" | "spontaneous";
+
+const URGENCY_OPTIONS: ReadonlyArray<{ value: PurchaseUrgency; label: string }> = [
   { value: "NECESSARY", label: "Necesario" },
   { value: "USEFUL", label: "Útil" },
   { value: "IMPULSE", label: "Impulso" },
-] as const;
+];
 
-const DESIRE_TYPE_OPTIONS = [
+const DESIRE_TYPE_OPTIONS: ReadonlyArray<{ value: DesireType; label: string }> = [
   { value: "long_held", label: "Hace rato" },
   { value: "recent", label: "Reciente" },
   { value: "spontaneous", label: "Espontáneo" },
-] as const;
+];
 
-const FUNDING_OPTIONS = [
+const FUNDING_OPTIONS: ReadonlyArray<{ value: PurchaseFundingType; label: string }> = [
   { value: "ONE_TIME", label: "De contado" },
   { value: "INSTALLMENTS", label: "Cuotas" },
-] as const;
+];
 
 interface Props {
   visible: boolean;
@@ -287,56 +291,5 @@ export function DeseosEnrichDrawer({ visible, item, userId, onClose, onSaved }: 
         onSelect={(id) => setCategoryId(id)}
       />
     </>
-  );
-}
-
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View className="gap-1.5">
-      <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-        {label}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function SegmentedRow<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: string;
-  onChange: (next: T) => void;
-  options: ReadonlyArray<{ value: T; label: string }>;
-}) {
-  return (
-    <View className="flex-row gap-2">
-      {options.map((opt) => {
-        const isSelected = value === opt.value;
-        return (
-          <Pressable
-            key={opt.value}
-            onPress={() => onChange(opt.value)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: isSelected }}
-            accessibilityLabel={opt.label}
-            className={`flex-1 items-center rounded-xl border py-2.5 ${
-              isSelected
-                ? "border-z-brass bg-z-brass-12"
-                : "border-white-6 bg-z-surface-2"
-            }`}
-          >
-            <Text
-              className={`font-inter-semibold text-xs ${
-                isSelected ? "text-z-white" : "text-z-sage-light"
-              }`}
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }

@@ -4,17 +4,13 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeft,
-  Ban,
   CheckCircle2,
   ChevronRight,
-  Clock,
   CreditCard,
   Heart,
   Landmark,
   PiggyBank,
   RotateCcw,
-  ShieldCheck,
-  TriangleAlert,
   Wallet,
 } from "lucide-react-native";
 import type { LucideProps } from "lucide-react-native";
@@ -32,6 +28,8 @@ import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import { createWishlistItem } from "../lib/repositories/wishlist";
 import { getAllCategories, type CategoryRow } from "../lib/repositories/categories";
 import { CategoryPickerSheet } from "../components/categorizar/CategoryPickerSheet";
+import { FieldGroup, SegmentedRow } from "../components/ui/FormField";
+import { VERDICT_META } from "../lib/constants/verdict";
 import { analyzeLocally } from "../lib/services/purchase-decision";
 import { useAuth } from "../lib/auth";
 import { COLORS } from "../lib/constants/colors";
@@ -44,73 +42,16 @@ import { useTheme, themeSurfaceClasses } from "../lib/theme";
 import { parseMoney } from "../lib/utils/money";
 import { toLocalMonthString } from "../lib/utils/date";
 
-type Verdict = PurchaseDecisionResult["verdict"];
-
-const URGENCY_OPTIONS: { value: PurchaseUrgency; label: string }[] = [
+const URGENCY_OPTIONS: ReadonlyArray<{ value: PurchaseUrgency; label: string }> = [
   { value: "NECESSARY", label: "Necesidad" },
   { value: "USEFUL", label: "Útil" },
   { value: "IMPULSE", label: "Capricho" },
 ];
 
-const FUNDING_OPTIONS: { value: PurchaseFundingType; label: string }[] = [
+const FUNDING_OPTIONS: ReadonlyArray<{ value: PurchaseFundingType; label: string }> = [
   { value: "ONE_TIME", label: "Pago único" },
   { value: "INSTALLMENTS", label: "Cuotas" },
 ];
-
-type VerdictMeta = {
-  label: string;
-  icon: ComponentType<LucideProps>;
-  iconColor: string;
-  badgeBg: string;
-  badgeText: string;
-  scoreColor: string;
-  border: string;
-  /** Short, one-line summary narrator can wrap. */
-  narratorTone: "brass" | "sage";
-};
-
-const VERDICT_META: Record<Verdict, VerdictMeta> = {
-  BUY: {
-    label: "Sí, adelante",
-    icon: ShieldCheck,
-    iconColor: COLORS.income,
-    badgeBg: "bg-z-income-12",
-    badgeText: "text-z-income",
-    scoreColor: "text-z-income",
-    border: "border-z-income-30",
-    narratorTone: "brass",
-  },
-  BUY_WITH_CAUTION: {
-    label: "Sí, con cautela",
-    icon: TriangleAlert,
-    iconColor: COLORS.alert,
-    badgeBg: "bg-z-alert-12",
-    badgeText: "text-z-alert",
-    scoreColor: "text-z-alert",
-    border: "border-z-alert-25",
-    narratorTone: "brass",
-  },
-  WAIT: {
-    label: "Mejor espera",
-    icon: Clock,
-    iconColor: COLORS.expense,
-    badgeBg: "bg-z-expense-12",
-    badgeText: "text-z-expense",
-    scoreColor: "text-z-expense",
-    border: "border-z-expense-30",
-    narratorTone: "sage",
-  },
-  NOT_RECOMMENDED: {
-    label: "No recomendado",
-    icon: Ban,
-    iconColor: COLORS.debt,
-    badgeBg: "bg-z-debt-12",
-    badgeText: "text-z-debt",
-    scoreColor: "text-z-debt",
-    border: "border-z-debt-30",
-    narratorTone: "sage",
-  },
-};
 
 const SEVERITY_DOT: Record<string, string> = {
   positive: "bg-z-income",
@@ -166,7 +107,6 @@ export default function PurchaseDecisionScreen() {
       }
     });
     getAllCategories().then(setCategories);
-    // intentionally empty deps — only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -442,96 +382,37 @@ export default function PurchaseDecisionScreen() {
           )}
         </View>
 
-        {/* Urgencia */}
-        <View className="mt-5 gap-1.5">
-          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Urgencia
-          </Text>
-          <View
-            accessibilityLabel="Selección"
-            className="flex-row gap-2"
-          >
-            {URGENCY_OPTIONS.map((opt) => {
-              const isSelected = urgency === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setUrgency(opt.value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={opt.label}
-                  className={`flex-1 items-center rounded-xl border py-3 ${
-                    isSelected
-                      ? "border-z-brass bg-z-brass-12"
-                      : `border-white-6 ${surface}`
-                  }`}
-                >
-                  <Text
-                    className={`font-inter-semibold text-sm ${
-                      isSelected ? "text-z-white" : "text-z-sage-light"
-                    }`}
-                  >
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+        <View className="mt-5">
+          <FieldGroup label="Urgencia">
+            <SegmentedRow value={urgency} onChange={setUrgency} options={URGENCY_OPTIONS} />
+          </FieldGroup>
         </View>
 
-        {/* Forma de pago */}
-        <View className="mt-5 gap-1.5">
-          <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Forma de pago
-          </Text>
-          <View
-            accessibilityLabel="Selección"
-            className="flex-row gap-2"
-          >
-            {FUNDING_OPTIONS.map((opt) => {
-              const isSelected = fundingType === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setFundingType(opt.value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={opt.label}
-                  className={`flex-1 items-center rounded-xl border py-3 ${
-                    isSelected
-                      ? "border-z-brass bg-z-brass-12"
-                      : `border-white-6 ${surface}`
-                  }`}
-                >
-                  <Text
-                    className={`font-inter-semibold text-sm ${
-                      isSelected ? "text-z-white" : "text-z-sage-light"
-                    }`}
-                  >
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+        <View className="mt-5">
+          <FieldGroup label="Forma de pago">
+            <SegmentedRow
+              value={fundingType}
+              onChange={setFundingType}
+              options={FUNDING_OPTIONS}
+            />
+          </FieldGroup>
         </View>
 
         {fundingType === "INSTALLMENTS" && (
-          <View className="mt-5 gap-1.5">
-            <Text className="text-[10px] font-inter-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-              Número de cuotas
-            </Text>
-            <TextInput
-              value={installments}
-              onChangeText={setInstallments}
-              keyboardType="numeric"
-              autoCorrect={false}
-              autoCapitalize="none"
-              placeholder="12"
-              placeholderTextColor={COLORS.sageDark}
-              accessibilityLabel="Número de cuotas"
-              className={`rounded-xl border border-white-6 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
-            />
+          <View className="mt-5">
+            <FieldGroup label="Número de cuotas">
+              <TextInput
+                value={installments}
+                onChangeText={setInstallments}
+                keyboardType="numeric"
+                autoCorrect={false}
+                autoCapitalize="none"
+                placeholder="12"
+                placeholderTextColor={COLORS.sageDark}
+                accessibilityLabel="Número de cuotas"
+                className={`rounded-xl border border-white-6 ${surface} px-4 py-3 font-inter-semibold text-base text-z-white tabular-nums`}
+              />
+            </FieldGroup>
           </View>
         )}
 

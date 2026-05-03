@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -10,20 +10,16 @@ import {
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import {
-  Ban,
   Check,
   CheckCircle2,
-  Clock,
   Heart,
   Pencil,
   Plus,
-  ShieldCheck,
   Sparkles,
   Trash2,
-  TriangleAlert,
   X,
 } from "lucide-react-native";
-import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
 import { useSync } from "../../lib/sync/hooks";
 import {
   createWishlistItem,
@@ -55,38 +51,7 @@ import {
   MOBILE_TAB_BAR_CLEARANCE,
 } from "../../lib/constants/styles";
 import { DeseosEnrichDrawer } from "./DeseosEnrichDrawer";
-
-type Verdict = "BUY" | "BUY_WITH_CAUTION" | "WAIT" | "NOT_RECOMMENDED";
-
-const VERDICT_META: Record<
-  Verdict,
-  { label: string; iconColor: string; chipBg: string; chipText: string }
-> = {
-  BUY: {
-    label: "Adelante",
-    iconColor: COLORS.income,
-    chipBg: "bg-z-income-12",
-    chipText: "text-z-income",
-  },
-  BUY_WITH_CAUTION: {
-    label: "Con cautela",
-    iconColor: COLORS.alert,
-    chipBg: "bg-z-alert-12",
-    chipText: "text-z-alert",
-  },
-  WAIT: {
-    label: "Espera",
-    iconColor: COLORS.expense,
-    chipBg: "bg-z-expense-12",
-    chipText: "text-z-expense",
-  },
-  NOT_RECOMMENDED: {
-    label: "No",
-    iconColor: COLORS.debt,
-    chipBg: "bg-z-debt-12",
-    chipText: "text-z-debt",
-  },
-};
+import { VERDICT_META, type Verdict } from "../../lib/constants/verdict";
 
 const URGENCY_LABEL: Record<string, string> = {
   NECESSARY: "Necesario",
@@ -467,14 +432,7 @@ const DeseosRow = memo(function DeseosRow({
   const verdict = (item.freshVerdict ?? item.last_verdict) as Verdict | null;
   const verdictMeta = verdict ? VERDICT_META[verdict] : null;
   const score = item.freshScore ?? item.last_score;
-  const VerdictIcon = useMemo(() => {
-    if (!verdict) return null;
-    if (verdict === "BUY") return ShieldCheck;
-    if (verdict === "BUY_WITH_CAUTION") return TriangleAlert;
-    if (verdict === "WAIT") return Clock;
-    return Ban;
-  }, [verdict]);
-
+  const VerdictIcon = verdictMeta?.icon ?? null;
   const needsEnrichment = !item.enriched;
 
   return (
@@ -504,11 +462,11 @@ const DeseosRow = memo(function DeseosRow({
           {verdictMeta && VerdictIcon ? (
             <View className="items-end gap-1">
               <View
-                className={`flex-row items-center gap-1 rounded-full ${verdictMeta.chipBg} px-2 py-0.5`}
+                className={`flex-row items-center gap-1 rounded-full ${verdictMeta.badgeBg} px-2 py-0.5`}
               >
                 <VerdictIcon size={10} color={verdictMeta.iconColor} strokeWidth={2.2} />
-                <Text className={`text-[10px] font-inter-bold ${verdictMeta.chipText}`}>
-                  {verdictMeta.label}
+                <Text className={`text-[10px] font-inter-bold ${verdictMeta.badgeText}`}>
+                  {verdictMeta.shortLabel}
                 </Text>
               </View>
               {score != null && (
@@ -666,7 +624,7 @@ const BoughtRow = memo(function BoughtRow({
           </Text>
           <Text className="text-[11px] font-inter text-muted-foreground mt-0.5">
             {formatCurrency(item.amount, currency)}
-            {item.bought_at && ` · ${new Date(item.bought_at).toLocaleDateString("es-CO")}`}
+            {item.bought_at && ` · ${formatDate(item.bought_at)}`}
           </Text>
         </View>
       </View>
