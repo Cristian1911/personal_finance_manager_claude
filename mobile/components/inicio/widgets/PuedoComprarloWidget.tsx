@@ -14,12 +14,15 @@ export function renderPuedoComprarloWidget(): WidgetRender {
     tone: "brass",
     accessibilityLabel: "¿Puedo comprarlo? — evaluar una compra",
     chip: (
-      <View className="items-center gap-1.5">
+      <View className="flex-1 items-center justify-center gap-1.5">
         <ChipEyebrow tone="brass">¿Comprarlo?</ChipEyebrow>
         <View className="h-10 w-10 items-center justify-center rounded-xl bg-z-brass-12">
           <Lightbulb size={20} color={COLORS.brass} />
         </View>
-        <Text className="text-[10px] font-inter text-muted-foreground">
+        <Text
+          className="text-[10px] font-inter text-muted-foreground"
+          numberOfLines={1}
+        >
           Evaluar
         </Text>
       </View>

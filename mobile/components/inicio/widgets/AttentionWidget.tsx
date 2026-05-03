@@ -36,7 +36,7 @@ export function renderAttentionWidget(props: AttentionCounts): WidgetRender {
           </View>
         ) : (
           <View className="flex-row items-baseline gap-1.5">
-            <Text className="text-[26px] font-inter-bold leading-none text-foreground">
+            <Text className="text-[22px] font-inter-bold leading-none text-foreground">
               {total}
             </Text>
             <Text className="text-[10px] font-inter text-muted-foreground">

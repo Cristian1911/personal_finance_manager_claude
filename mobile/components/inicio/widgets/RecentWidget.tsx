@@ -24,7 +24,7 @@ export function renderRecentWidget({ transactions }: RecentWidgetData) {
     tone,
     accessibilityLabel: "Movimientos recientes",
     chip: (
-      <View>
+      <View className="flex-1 self-stretch">
         <ChipEyebrow tone={tone}>Recientes</ChipEyebrow>
         {preview.length === 0 ? (
           <Text className="mt-2 text-[11px] font-inter text-muted-foreground">

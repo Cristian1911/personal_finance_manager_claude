@@ -1,5 +1,6 @@
 import { View, Text } from "react-native";
 import { formatCurrency, formatDate, type CurrencyCode } from "@zeta/shared";
+import { formatCurrencyCompact } from "../../../lib/utils/money";
 import {
   ChipEyebrow,
   ChipDetailHeading,
@@ -143,32 +144,36 @@ export function renderUpcomingRecurringWidget({
     tone,
     accessibilityLabel,
     chip: (
-      <View>
+      <View className="flex-1 items-center justify-center gap-1">
         <ChipEyebrow tone={tone}>{eyebrow}</ChipEyebrow>
         {item ? (
           <>
             <Text
-              className={`mt-2 text-[24px] font-inter-bold tabular-nums ${amountCls}`}
+              className={`text-[22px] font-inter-bold leading-none tabular-nums ${amountCls}`}
               numberOfLines={1}
+              adjustsFontSizeToFit
             >
-              {formatCurrency(item.amount, currency)}
+              {formatCurrencyCompact(item.amount, currency)}
             </Text>
             <Text
-              className="mt-1 text-[11px] font-inter text-foreground"
+              className="text-[11px] font-inter text-foreground"
               numberOfLines={1}
             >
               {item.name}
             </Text>
-            <Text className="text-[10px] font-inter text-muted-foreground">
+            <Text
+              className="text-[10px] font-inter text-muted-foreground"
+              numberOfLines={1}
+            >
               {daysUntilLabel(item.daysUntil, todayLabel)}
             </Text>
           </>
         ) : (
           <>
-            <Text className="mt-2 text-[24px] font-inter-bold text-z-sage-dark">
+            <Text className="text-[22px] font-inter-bold leading-none text-z-sage-dark">
               —
             </Text>
-            <Text className="mt-1 text-[11px] font-inter text-muted-foreground">
+            <Text className="text-[11px] font-inter text-muted-foreground" numberOfLines={1}>
               {emptyLabel}
             </Text>
           </>

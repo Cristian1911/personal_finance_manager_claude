@@ -62,7 +62,7 @@ export function renderAccountsWidget({ accounts, currency }: AccountsWidgetData)
     tone,
     accessibilityLabel: "Cuentas",
     chip: (
-      <View>
+      <View className="flex-1 self-stretch">
         <ChipEyebrow tone={tone}>Cuentas</ChipEyebrow>
         {preview.length === 0 ? (
           <Text className="mt-2 text-[11px] font-inter text-muted-foreground">
