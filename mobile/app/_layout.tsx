@@ -289,10 +289,6 @@ function RootLayoutNav() {
               options={{ presentation: "card", headerShown: false }}
             />
             <Stack.Screen
-              name="menu"
-              options={{ presentation: "card", headerShown: false }}
-            />
-            <Stack.Screen
               name="categorizar"
               options={{ presentation: "card", headerShown: false }}
             />
