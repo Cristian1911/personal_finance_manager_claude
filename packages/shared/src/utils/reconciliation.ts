@@ -68,7 +68,11 @@ function tokenSimilarity(a: string, b: string): number {
   for (const token of aTokens) {
     if (bTokens.has(token)) overlap++;
   }
-  return overlap / Math.max(aTokens.size, bTokens.size);
+  // Containment-based: if the shorter side is fully present in the longer
+  // side, similarity = 1. Cross-source pairs (e.g. terse PDF "AMAZON.COM"
+  // vs verbose email "Compraste COP180.865 en AMAZON.COM con tu T.Cred…")
+  // would otherwise be diluted by the longer side's noise tokens.
+  return overlap / Math.min(aTokens.size, bTokens.size);
 }
 
 export function scoreReconciliationCandidate(

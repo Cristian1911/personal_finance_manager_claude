@@ -219,9 +219,15 @@ def _parse_transaction_line(
         if cuota_match:
             try:
                 cuota_amount = _parse_colombian_number(cuota_match.group(1))
-                # Use cuota as amount, full price as original_amount
-                amount = cuota_amount
-                original_amount = valor_movimiento
+                # 1/1 single-pay charges have no separate cuota column — the
+                # second `$` is saldo pendiente (typically 0). Fall back to
+                # valor_movimiento per the pdf-parser convention.
+                if cuota_amount == 0 and valor_movimiento != 0:
+                    amount = valor_movimiento
+                    original_amount = None
+                else:
+                    amount = cuota_amount
+                    original_amount = valor_movimiento
             except ValueError:
                 pass
 
