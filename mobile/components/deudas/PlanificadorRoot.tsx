@@ -1,5 +1,13 @@
 import { useCallback, useMemo, useReducer, useState } from "react";
-import { View, Text, Pressable, ScrollView, RefreshControl } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useFocusEffect } from "expo-router";
 import {
   expandCashEntries,
@@ -222,6 +230,10 @@ export function PlanificadorRoot() {
         })}
       </ScrollView>
 
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -287,6 +299,7 @@ export function PlanificadorRoot() {
           onSaved={refreshScenarios}
         />
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

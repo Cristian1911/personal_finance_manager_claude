@@ -1,13 +1,5 @@
 import { memo, useCallback, useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  Switch,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { View, Text, TextInput, Pressable, Switch } from "react-native";
 import * as Crypto from "expo-crypto";
 import {
   formatCurrency,
@@ -241,10 +233,7 @@ function CashEntryForm({
 }: CashEntryFormProps) {
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="rounded-2xl border border-dashed border-white-8 bg-z-surface-2 p-3 gap-3"
-    >
+    <View className="rounded-2xl border border-dashed border-white-8 bg-z-surface-2 p-3 gap-3">
       <View className="flex-row items-center gap-2">
         <CalendarPlus size={14} color={COLORS.brass} />
         <Text className="text-[13px] font-inter-semibold text-foreground">
@@ -352,7 +341,7 @@ function CashEntryForm({
           </Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

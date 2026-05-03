@@ -1,10 +1,14 @@
 import { supabase } from "../supabase";
 import type {
   CashEntry,
+  Database,
+  Json,
   ScenarioAllocations,
   ScenarioResult,
   ScenarioStrategy,
 } from "@zeta/shared";
+
+type DebtScenarioInsert = Database["public"]["Tables"]["debt_scenarios"]["Insert"];
 
 export interface SavedScenario {
   id: string;
@@ -64,8 +68,7 @@ export async function getScenarios(): Promise<SavedScenario[]> {
   const userId = await getCurrentUserId();
   if (!userId) return [];
 
-  const sb = supabase as any;
-  const { data, error } = await sb
+  const { data, error } = await supabase
     .from(TABLE)
     .select("*")
     .eq("user_id", userId)
@@ -76,7 +79,7 @@ export async function getScenarios(): Promise<SavedScenario[]> {
     console.error("[scenarios] getScenarios failed:", error.message);
     return [];
   }
-  return (data ?? []) as SavedScenario[];
+  return ((data ?? []) as unknown) as SavedScenario[];
 }
 
 export async function saveScenario(
@@ -85,19 +88,18 @@ export async function saveScenario(
   const userId = await getCurrentUserId();
   if (!userId) return { ok: false, error: "No autenticado" };
 
-  const row = {
+  const row: DebtScenarioInsert = {
     user_id: userId,
     name: payload.name,
-    cash_entries: payload.cashEntries,
+    cash_entries: payload.cashEntries as unknown as Json,
     strategy: payload.strategy,
-    allocations: payload.allocations,
-    snapshot_accounts: payload.snapshotAccounts,
-    results: payload.results,
+    allocations: payload.allocations as unknown as Json,
+    snapshot_accounts: payload.snapshotAccounts as unknown as Json,
+    results: payload.results as unknown as Json,
   };
 
-  const sb = supabase as any;
   if (payload.id) {
-    const { data, error } = await sb
+    const { data, error } = await supabase
       .from(TABLE)
       .update(row)
       .eq("id", payload.id)
@@ -105,16 +107,16 @@ export async function saveScenario(
       .select()
       .single();
     if (error) return { ok: false, error: "No se pudo actualizar el plan" };
-    return { ok: true, scenario: data as SavedScenario };
+    return { ok: true, scenario: (data as unknown) as SavedScenario };
   }
 
-  const { data, error } = await sb
+  const { data, error } = await supabase
     .from(TABLE)
     .insert(row)
     .select()
     .single();
   if (error) return { ok: false, error: "No se pudo guardar el plan" };
-  return { ok: true, scenario: data as SavedScenario };
+  return { ok: true, scenario: (data as unknown) as SavedScenario };
 }
 
 export async function deleteScenario(
@@ -123,8 +125,7 @@ export async function deleteScenario(
   const userId = await getCurrentUserId();
   if (!userId) return { ok: false, error: "No autenticado" };
 
-  const sb = supabase as any;
-  const { error } = await sb
+  const { error } = await supabase
     .from(TABLE)
     .delete()
     .eq("id", id)

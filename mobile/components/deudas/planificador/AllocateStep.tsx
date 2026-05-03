@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import {
   formatCurrency,
@@ -39,27 +39,25 @@ export const AllocateStep = memo(function AllocateStep({
   currency,
   dispatch,
 }: Props) {
-  const sortedPreview = useMemo(() => {
-    if (scenario.strategy === "custom") return [];
-    return [...accounts]
-      .filter((a) => a.balance > 0)
-      .sort((a, b) =>
-        scenario.strategy === "avalanche"
-          ? (b.interestRate ?? 0) - (a.interestRate ?? 0) || a.balance - b.balance
-          : a.balance - b.balance || (b.interestRate ?? 0) - (a.interestRate ?? 0)
-      );
-  }, [accounts, scenario.strategy]);
+  const sortedPreview =
+    scenario.strategy === "custom"
+      ? []
+      : [...accounts]
+          .filter((a) => a.balance > 0)
+          .sort((a, b) =>
+            scenario.strategy === "avalanche"
+              ? b.interestRate - a.interestRate || a.balance - b.balance
+              : a.balance - b.balance || b.interestRate - a.interestRate
+          );
 
-  const [customPriority, setCustomPriority] = useState<string[]>(
-    scenario.allocations.customPriority ?? accounts.map((a) => a.id)
-  );
+  const currentPriority =
+    scenario.allocations.customPriority ?? accounts.map((a) => a.id);
 
   function changeStrategy(next: ScenarioStrategy) {
     const nextPriority =
       next === "custom"
         ? scenario.allocations.customPriority ?? accounts.map((a) => a.id)
         : scenario.allocations.customPriority;
-    if (next === "custom") setCustomPriority(nextPriority ?? []);
     dispatch({
       type: "UPDATE_SCENARIO",
       index: scenarioIndex,
@@ -68,18 +66,19 @@ export const AllocateStep = memo(function AllocateStep({
         allocations: {
           ...scenario.allocations,
           customPriority:
-            next === "custom" ? nextPriority ?? accounts.map((a) => a.id) : scenario.allocations.customPriority,
+            next === "custom"
+              ? nextPriority
+              : scenario.allocations.customPriority,
         },
       },
     });
   }
 
   function move(idx: number, dir: "up" | "down") {
-    const next = [...customPriority];
+    const next = [...currentPriority];
     const swap = dir === "up" ? idx - 1 : idx + 1;
     if (swap < 0 || swap >= next.length) return;
     [next[idx], next[swap]] = [next[swap], next[idx]];
-    setCustomPriority(next);
     dispatch({
       type: "UPDATE_SCENARIO",
       index: scenarioIndex,
@@ -116,7 +115,7 @@ export const AllocateStep = memo(function AllocateStep({
 
   const orderedAccounts =
     scenario.strategy === "custom"
-      ? customPriority
+      ? currentPriority
           .map((id) => accounts.find((a) => a.id === id))
           .filter((a): a is DebtAccountInfo => Boolean(a))
       : accounts;
