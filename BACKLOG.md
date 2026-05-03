@@ -876,14 +876,24 @@ Expo app sigue con estructura 4-tab. Ports pendientes del IA refactor:
 - `/mas` o equivalente nativo (drawer? page?)
 - Onboarding nativo trim + skip path
 
-### Triage candidates for next session — App Store submission focus
-**Primary:** Walk through `docs/app-store/LISTING_ES.md` demo-mode validation checklist → capture preview videos (user's lane) → `eas build --profile production-ios --platform ios` → `eas submit --profile production --platform ios`.
+### Triage candidates for next session — Phase 4+ continuation
 
-**Secondary (if blocked on Apple review):**
-1. PaymentSheet parity bugs (High, data integrity) — pendiente desde 2026-04-23.
-2. Webapp mobile/v2/plan parity (pendiente desde 2026-04-22).
-3. Phase 3 Préstamos design.
-4. Mobile native parity para Phase 1+2.
+Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 and #249. Next slices:
+
+**Primary (highest UX impact):**
+1. **Phase 4 — Account heroes** — flip/pulse/graph variants + QuickActionsBar dialogs. Visible on every account tap. Spawn `mobile-perf-doctor` (animations) + `zetas-front-guy`.
+2. **Phase 2 remainder — heavy widgets** — HealthZone, FlujoSection, ActividadHeatmap, DashboardAlerts, UpcomingPayments, BurnRate, RunwayMiniChart, MonthSelector, DashboardHero. Skia chart work on the dashboard. Spawn `mobile-perf-doctor`.
+3. **Phase 5 — CRUD parity** — destinatarios, recurrentes, categorizar, categories, etiquetas, movimientos filters, transactions detail. Largest volume; biggest functional gap. Spawn `mobile-webapp-parity` + `mobile-sync-doctor`.
+
+**Secondary (lower priority but contained):**
+4. **Phase 3 follow-ups** — Reflections + Insights (needs `wishlist_reflections` SQLite sync), `debt_milestone` + `budget_surplus` nudges (server cross-refs), per-category `budgetRemaining` in mobile snapshot, scroll-to-verdict on puedo-pagar, single-tx batch persist + SQL aggregate snapshot perf wins.
+5. **Phase 6 — Import wizard restoration** — Confirmar step, multi-statement table, password vault, email entry, screenshot mode. User runs imports monthly. Spawn `import-flow-doctor`.
+6. **App Store submission** — `docs/app-store/LISTING_ES.md` demo-mode walkthrough → preview videos (user's lane) → `eas build` + `eas submit`.
+
+**Lower priority (kept here for context):**
+7. Phase 7 — Onboarding step alignment, magic-link auth, `nav_focus` SQLite column, settings sub-routes.
+8. Phase 8 — Webapp `/suscripciones` port (closes RN orphan).
+9. Phase 3 Préstamos design (different "Phase 3" — informal loans table; deferred from 2026-04 IA refactor).
 
 ---
 
