@@ -39,14 +39,14 @@ export function AccountCard({ account, onPress }: Props) {
           {account.name}
         </Text>
         <View className="flex-row items-center mt-0.5 gap-2">
-          {account.institution_name && (
+          {account.institution_name ? (
             <Text
               className="text-muted-foreground font-inter text-xs"
               numberOfLines={1}
             >
               {account.institution_name}
             </Text>
-          )}
+          ) : null}
           <View className="bg-black-10 rounded px-1.5 py-0.5">
             <Text className="text-muted-foreground font-inter text-xs">{shortLabel}</Text>
           </View>

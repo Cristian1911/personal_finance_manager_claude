@@ -148,11 +148,11 @@ export function InicioRoot() {
   const today = toLocalDateString(new Date());
   const dateLabel = formatHeaderDate(new Date());
 
+  const pulseDays = layout.pulseRange === "weekly" ? 7 : summary.daysRemaining;
   const pulseValue =
     layout.pulseRange === "weekly"
-      ? Math.round(summary.spentLast7 / Math.max(1, 7))
+      ? Math.round(summary.availableTotal / Math.max(1, pulseDays))
       : summary.availablePerDay;
-  const pulseDays = layout.pulseRange === "weekly" ? 7 : summary.daysRemaining;
   const pulseTrend =
     layout.pulseRange === "weekly" ? summary.spentTrend7 : summary.spentTrend30;
 

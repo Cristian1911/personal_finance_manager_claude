@@ -8,7 +8,9 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { X, Pencil, Trash2 } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { X } from "lucide-react-native";
+import { COLORS } from "../../lib/constants/colors";
 import {
   getAccountById,
   deleteAccount,
@@ -16,10 +18,20 @@ import {
 } from "../../lib/repositories/accounts";
 import { getTransactions } from "../../lib/repositories/transactions";
 import { getDatabase } from "../../lib/db/database";
-import { ACCOUNT_TYPES } from "../../lib/constants/accounts";
+import {
+  getBalanceHistory,
+  getSpendingPulse,
+  type SnapshotPoint,
+  type DailyPoint,
+} from "../../lib/repositories/accounts-detail";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { isDebtInflow } from "../../lib/transaction-semantics";
-import { AccountBalanceCard } from "../../components/accounts/AccountBalanceCard";
+import { AccountHero } from "../../components/accounts/AccountHero";
+import { QuickActionsBar } from "../../components/accounts/QuickActionsBar";
+import {
+  MOBILE_TAB_BAR_CLEARANCE,
+  SECTION_EYEBROW_CLASS,
+} from "../../lib/constants/styles";
 
 type TransactionRow = {
   id: string;
@@ -52,6 +64,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 export default function AccountDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [account, setAccount] = useState<AccountRow | null>(null);
   const [recentTx, setRecentTx] = useState<TransactionRow[]>([]);
   const [spendingSummary, setSpendingSummary] = useState<{
@@ -59,10 +72,15 @@ export default function AccountDetailScreen() {
     total_in: number;
     tx_count: number;
   } | null>(null);
+  const [snapshotData, setSnapshotData] = useState<SnapshotPoint[]>([]);
+  const [trendPercent, setTrendPercent] = useState<number | undefined>(undefined);
+  const [monthlySpent, setMonthlySpent] = useState(0);
+  const [dailyActivity, setDailyActivity] = useState<DailyPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     (async () => {
       try {
         const now = new Date();
@@ -81,22 +99,44 @@ export default function AccountDetailScreen() {
             [id, `${month}%`]
           ),
         ]);
+        if (cancelled) return;
         setAccount(acc);
         setRecentTx(txs as TransactionRow[]);
         setSpendingSummary(summary);
+
+        if (acc) {
+          const [history, pulse] = await Promise.all([
+            getBalanceHistory(id, acc.current_balance ?? 0),
+            getSpendingPulse(id),
+          ]);
+          if (cancelled) return;
+          setSnapshotData(history);
+          if (history.length >= 2) {
+            const first = history[0].balance;
+            const last = history[history.length - 1].balance;
+            if (first !== 0) {
+              setTrendPercent(((last - first) / Math.abs(first)) * 100);
+            }
+          }
+          setMonthlySpent(pulse.monthlySpent);
+          setDailyActivity(pulse.dailyActivity);
+        }
       } catch (error) {
         console.error("Failed to load account:", error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const handleDelete = () => {
     if (!id) return;
     Alert.alert(
       "Eliminar cuenta",
-      "Esta accion no se puede deshacer. Se eliminaran tambien todas las transacciones de esta cuenta.",
+      "Esta acción no se puede deshacer. Se eliminarán también todas las transacciones de esta cuenta.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -118,21 +158,24 @@ export default function AccountDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-z-surface-2">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View
+        className="flex-1 items-center justify-center bg-z-surface-2"
+        style={{ paddingTop: insets.top }}
+      >
+        <ActivityIndicator size="large" color={COLORS.brass} />
       </View>
     );
   }
 
   if (!account) {
     return (
-      <View className="flex-1 bg-z-surface-2">
+      <View className="flex-1 bg-z-surface-2" style={{ paddingTop: insets.top }}>
         <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
           <Pressable
             onPress={() => router.back()}
             className="w-8 h-8 items-center justify-center rounded-full bg-z-surface-2 active:bg-z-surface-3"
           >
-            <X size={18} color="#6B7280" />
+            <X size={18} color={COLORS.sageDark} />
           </Pressable>
           <Text className="text-foreground font-inter-bold text-base">Cuenta</Text>
           <View className="w-8" />
@@ -146,71 +189,50 @@ export default function AccountDetailScreen() {
     );
   }
 
-  const typeDef = ACCOUNT_TYPES.find((t) => t.value === account.account_type);
-  const Icon = typeDef?.icon;
-  const color = account.color ?? "#6B7280";
   const currency = (account.currency_code as CurrencyCode) ?? "COP";
 
   return (
-    <View className="flex-1 bg-z-surface-2">
+    <View className="flex-1 bg-z-surface-2" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
         <Pressable
           onPress={() => router.back()}
           className="w-8 h-8 items-center justify-center rounded-full bg-z-surface-2 active:bg-z-surface-3"
         >
-          <X size={18} color="#6B7280" />
+          <X size={18} color={COLORS.sageDark} />
         </Pressable>
         <Text className="text-foreground font-inter-bold text-base">Detalle</Text>
-        <View className="flex-row gap-2">
-          <Pressable
-            onPress={() => router.push(`/account/edit/${id}`)}
-            className="w-8 h-8 items-center justify-center rounded-full bg-z-surface-2 active:bg-z-surface-3"
-          >
-            <Pencil size={16} color="#6B7280" />
-          </Pressable>
-          <Pressable
-            onPress={handleDelete}
-            className="w-8 h-8 items-center justify-center rounded-full bg-red-50 active:bg-red-100"
-          >
-            <Trash2 size={16} color="#EF4444" />
-          </Pressable>
-        </View>
+        <View className="w-8" />
       </View>
 
-      <ScrollView className="flex-1">
-        {/* Hero */}
-        <View className="items-center pt-6 pb-5 border-b border-white-6 mx-4">
-          <View
-            className="w-16 h-16 rounded-full items-center justify-center mb-3"
-            style={{ backgroundColor: color + "20" }}
-          >
-            {Icon && <Icon size={30} color={color} />}
-          </View>
-          <Text className="text-foreground font-inter-bold text-xl">
-            {account.name}
-          </Text>
-          {account.institution_name && (
-            <Text className="text-muted-foreground font-inter text-sm mt-1">
-              {account.institution_name}
-            </Text>
-          )}
-          <View className="bg-z-surface-2 rounded-full px-3 py-1 mt-2">
-            <Text className="text-muted-foreground font-inter-medium text-xs">
-              {typeDef?.label ?? account.account_type}
-            </Text>
-          </View>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: MOBILE_TAB_BAR_CLEARANCE }}
+      >
+        {/* Hero — variant by account type */}
+        <View className="mx-4 mt-4">
+          <AccountHero
+            account={account}
+            snapshotData={snapshotData}
+            trendPercent={trendPercent}
+            monthlySpent={monthlySpent}
+            dailyActivity={dailyActivity}
+          />
         </View>
 
-        {/* Balance card with utilization */}
+        {/* Quick actions */}
         <View className="mx-4 mt-4">
-          <AccountBalanceCard account={account} />
+          <QuickActionsBar
+            account={account}
+            onEdit={() => router.push(`/account/edit/${id}`)}
+            onDelete={handleDelete}
+          />
         </View>
 
         {/* Monthly spending summary */}
         {spendingSummary && spendingSummary.tx_count > 0 && (
           <View className="mx-4 mt-4">
-            <Text className="text-muted-foreground font-inter-semibold text-xs uppercase mb-2">
+            <Text className={`${SECTION_EYEBROW_CLASS} mb-2`}>
               Resumen del mes
             </Text>
             <View className="flex-row gap-3">
@@ -241,7 +263,7 @@ export default function AccountDetailScreen() {
         {(account.account_type === "CREDIT_CARD" ||
           account.account_type === "LOAN") && (
           <View className="mx-4 mt-4">
-            <Text className="text-muted-foreground font-inter-semibold text-xs uppercase mb-2">
+            <Text className={`${SECTION_EYEBROW_CLASS} mb-2`}>
               Detalles
             </Text>
             <View className="bg-z-surface-2 rounded-xl px-4 border border-white-6">
@@ -274,8 +296,8 @@ export default function AccountDetailScreen() {
         )}
 
         {/* Recent transactions */}
-        <View className="mx-4 mt-4 mb-8">
-          <Text className="text-muted-foreground font-inter-semibold text-xs uppercase mb-2">
+        <View className="mx-4 mt-4">
+          <Text className={`${SECTION_EYEBROW_CLASS} mb-2`}>
             Ultimas transacciones
           </Text>
           {recentTx.length === 0 ? (
@@ -299,7 +321,7 @@ export default function AccountDetailScreen() {
                     onPress={() => router.push(`/transaction/${tx.id}`)}
                   >
                     {index > 0 && (
-                      <View className="absolute top-0 left-4 right-4 h-px bg-z-surface-2" />
+                      <View className="absolute top-0 left-4 right-4 h-px bg-white-6" />
                     )}
                     <View className="flex-1 min-w-0">
                       <Text
