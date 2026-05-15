@@ -876,6 +876,15 @@ Expo app sigue con estructura 4-tab. Ports pendientes del IA refactor:
 - `/mas` o equivalente nativo (drawer? page?)
 - Onboarding nativo trim + skip path
 
+### Mobile SQLite — perf nits (P2)
+- **Partial index for visible-tx filter** — surfaced by `mobile-sync-doctor` during Phase 4 Stage A review. The composite `idx_transactions_reconciled_visible(reconciled_into_transaction_id, transaction_date)` with `IS NULL` on the leading column causes a full index scan on dense histories. Fix in a future migration:
+  ```sql
+  CREATE INDEX IF NOT EXISTS idx_transactions_not_reconciled
+    ON transactions(account_id, transaction_date)
+    WHERE reconciled_into_transaction_id IS NULL;
+  ```
+  Touches every visible-tx query (account detail, lists). Bundle with the next mobile schema migration; not a correctness bug.
+
 ### Triage candidates for next session — Phase 4+ continuation
 
 Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 and #249. Next slices:

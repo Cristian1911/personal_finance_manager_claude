@@ -141,7 +141,7 @@ export function PulseWidget({
         </View>
         {canExpand && (
           <View className="flex-row items-center gap-1">
-            <Text className="text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-sage-dark">
+            <Text className={SECTION_EYEBROW_CLASS}>
               {expanded ? "Ocultar" : "Ver cálculo"}
             </Text>
             <ChevronDown
@@ -166,12 +166,7 @@ export function PulseWidget({
                 value={`−${formatCurrency(breakdown.pendingObligations, currency)}`}
                 tone="debt"
               />
-              <Row
-                label="– Ya gastado"
-                value={`−${formatCurrency(breakdown.alreadySpent, currency)}`}
-                tone="debt"
-              />
-              <View className="mt-1 h-px bg-z-surface-2-6" />
+              <View className="mt-1 h-px bg-white-6" />
               <Row
                 label="= Disponible"
                 value={formatCurrency(breakdown.availableTotal, currency)}
@@ -181,10 +176,18 @@ export function PulseWidget({
                 ÷ {daysRemaining} días ({breakdown.windowEndLabel}) ={" "}
                 {formatCurrency(availablePerDay, currency)}/día
               </Text>
+              <View className="mt-1 h-px bg-white-6" />
+              <Row
+                label="Ya gastado este mes"
+                value={formatCurrency(breakdown.alreadySpent, currency)}
+              />
+              <Text className="text-[10px] font-inter text-muted-foreground">
+                Ya descontado del saldo líquido — informativo
+              </Text>
 
               {nextIncome && (
                 <>
-                  <View className="mt-1 h-px bg-z-surface-2-6" />
+                  <View className="mt-1 h-px bg-white-6" />
                   <View className="flex-row items-start justify-between gap-2">
                     <Text className="flex-1 text-[11px] font-inter-semibold text-z-income">
                       Próximo ingreso: {nextIncome.name}

@@ -6,6 +6,7 @@ import {
   Alert,
   Switch,
 } from "react-native";
+import { MobileHeader } from "../components/ui/MobileHeader";
 import { MobileSheet } from "../components/ui/MobileSheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -67,7 +68,7 @@ function SectionHeading({ label }: { label: string }) {
   return (
     <View className="flex-row items-center gap-3 mb-2 px-1">
       <Text className={SECTION_EYEBROW_CLASS}>{label}</Text>
-      <View className="h-px flex-1 bg-z-surface-2-6" />
+      <View className="h-px flex-1 bg-white-6" />
     </View>
   );
 }
@@ -648,13 +649,14 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <ScrollView
-      className={`flex-1 ${inkCls}`}
-      contentContainerStyle={{
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom + 24,
-      }}
-    >
+    <View className={`flex-1 ${inkCls}`}>
+      <MobileHeader variant="sub" title="Ajustes" />
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + 24,
+        }}
+      >
       <IdentityHero
         name={name}
         email={email}
@@ -849,6 +851,7 @@ export default function SettingsScreen() {
         selectedId={defaultAccountId}
         onSelect={handleSelectDefaultAccount}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
