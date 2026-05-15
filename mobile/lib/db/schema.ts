@@ -435,6 +435,50 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE transactions ADD COLUMN recurrence_group_id TEXT`,
     ],
   },
+  {
+    version: 13,
+    statements: [
+      // ── Transaction time-of-day + linked location ─────────────────────
+      `ALTER TABLE transactions ADD COLUMN transaction_time TEXT`,
+      `ALTER TABLE transactions ADD COLUMN location_id TEXT`,
+
+      // ── Opt-in flag on the local profile mirror ───────────────────────
+      `ALTER TABLE profiles ADD COLUMN location_tracking_enabled INTEGER NOT NULL DEFAULT 0`,
+
+      // ── transaction_locations: synced (decrypted view in Supabase) ────
+      `CREATE TABLE IF NOT EXISTS transaction_locations (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        accuracy_m REAL,
+        place_name TEXT,
+        place_locality TEXT,
+        place_country TEXT,
+        captured_at TEXT NOT NULL,
+        linked_transaction_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_tx_locations_user_captured ON transaction_locations(user_id, captured_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_tx_locations_linked_tx ON transaction_locations(linked_transaction_id)`,
+
+      // ── location_pings: local-only buffer, never synced ───────────────
+      // Background task writes here; linker.findNearestPing reads here.
+      // Pings are pruned after they're consumed or after 14 days.
+      `CREATE TABLE IF NOT EXISTS location_pings (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        accuracy_m REAL,
+        captured_at TEXT NOT NULL,
+        consumed INTEGER NOT NULL DEFAULT 0
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_location_pings_user_captured ON location_pings(user_id, captured_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_location_pings_consumed ON location_pings(consumed, captured_at)`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

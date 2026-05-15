@@ -27,6 +27,7 @@ type SyncTableName =
   | "wishlist_items"
   | "statement_snapshots"
   | "transactions"
+  | "transaction_locations"
   | "planning_periods"
   | "planning_entries"
   | "planning_assignments";

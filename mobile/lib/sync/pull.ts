@@ -15,6 +15,7 @@ const SYNC_TABLES = [
   "destinatario_rules",
   "recurring_transaction_templates",
   "transactions",
+  "transaction_locations",
   "recurring_occurrences",
   "transaction_tags",
   "wishlist_items",
@@ -31,7 +32,7 @@ const TABLE_COLUMNS_CACHE = new Map<string, Set<string>>();
 /** Boolean fields per table that need integer conversion for SQLite */
 const BOOLEAN_FIELDS: Record<string, string[]> = {
   accounts: ["is_active", "show_in_dashboard", "is_payroll_deducted"],
-  profiles: ["onboarding_completed"],
+  profiles: ["onboarding_completed", "location_tracking_enabled"],
   categories: ["is_system"],
   transactions: ["is_excluded", "is_subscription", "is_recurring"],
   recurring_transaction_templates: ["is_active"],
@@ -64,6 +65,7 @@ const FULL_REPLACE_TABLES = new Set<SyncTable>([
  */
 const WINDOWED_TABLES: Partial<Record<SyncTable, { column: string }>> = {
   transactions: { column: "transaction_date" },
+  transaction_locations: { column: "captured_at" },
   recurring_occurrences: { column: "occurrence_date" },
 };
 
