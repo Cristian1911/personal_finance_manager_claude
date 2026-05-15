@@ -12,6 +12,7 @@ import {
   EyeOff,
   Eye,
   Link2,
+  MapPin,
   Plus,
   Repeat,
   Tag,
@@ -22,7 +23,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate } from "@/lib/utils/date";
+import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
 import {
   DESTRUCTIVE_BUTTON_CLASS,
@@ -51,6 +52,7 @@ import {
 } from "@/actions/categorize";
 import {
   deleteTransaction,
+  getTransactionLocation,
   toggleExcludeTransaction,
   updateTransactionNotes,
 } from "@/actions/transactions";
@@ -67,6 +69,7 @@ import type {
   CurrencyCode,
   Tag as TagType,
   Transaction,
+  TransactionLocation,
 } from "@/types/domain";
 
 /** Neutral chip button used in the Acciones row. Brass-solid "Hacer recurrente"
@@ -133,6 +136,21 @@ export function TransactionDetailClient({
     () => accounts.find((a) => a.id === tx.account_id) ?? null,
     [accounts, tx.account_id],
   );
+
+  /* ─── Linked location (lazy fetch — only when tx.location_id is set) ─── */
+  const [location, setLocation] = useState<TransactionLocation | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
+  useEffect(() => {
+    if (!tx.location_id) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await getTransactionLocation(tx.location_id!);
+      if (!cancelled && result.success) setLocation(result.data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tx.location_id]);
 
   /* ─── Optimistic category ─────────────────────────────────────────── */
   const [optCategoryId, setOptCategoryId] = useState<string | null>(tx.category_id);
@@ -362,7 +380,7 @@ export function TransactionDetailClient({
         </p>
 
         <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-          <span>{formatDate(tx.transaction_date, "dd MMM yyyy")}</span>
+          <span>{formatDateTime(tx.transaction_date, tx.transaction_time)}</span>
           {account && (
             <>
               <span className="text-white/15">·</span>
@@ -522,6 +540,50 @@ export function TransactionDetailClient({
             </span>
             <ChevronRight className="size-4 shrink-0 text-z-brass/60" />
           </Link>
+        </section>
+      )}
+
+      {/* ── Ubicación ──────────────────────────────────────────────── */}
+      {location && (
+        <section className="px-4 pt-4">
+          <p className={cn(SECTION_EYEBROW_CLASS, "mb-2")}>Ubicación</p>
+          <div className="rounded-xl border border-white/6 bg-white/[0.04] p-3">
+            <div className="flex items-center gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-z-brass/15 text-z-brass">
+                <MapPin className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {location.place_name ?? "Ubicación registrada"}
+                </p>
+                {(location.place_locality || location.place_country) && (
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {[location.place_locality, location.place_country]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMapOpen((v) => !v)}
+                className="shrink-0 text-[11px] font-semibold text-z-brass hover:underline"
+              >
+                {mapOpen ? "Ocultar mapa" : "Ver mapa"}
+              </button>
+            </div>
+            {mapOpen && (
+              <div className="mt-3 overflow-hidden rounded-lg border border-white/6">
+                <iframe
+                  title="Mapa de la transacción"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.longitude - 0.005},${location.latitude - 0.003},${location.longitude + 0.005},${location.latitude + 0.003}&layer=mapnik&marker=${location.latitude},${location.longitude}`}
+                  className="h-48 w-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            )}
+          </div>
         </section>
       )}
 

@@ -20,7 +20,7 @@ import {
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate } from "@/lib/utils/date";
+import { formatDateTime } from "@/lib/utils/date";
 import { toggleExcludeTransaction } from "@/actions/transactions";
 import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
 import { toast } from "sonner";
@@ -142,7 +142,7 @@ function MobileTransactionCard({
               </>
             )}
             {" · "}
-            {formatDate(tx.transaction_date)}
+            {formatDateTime(tx.transaction_date, tx.transaction_time)}
             {tx.status !== "POSTED" && (
               <span>
                 {" · "}
@@ -215,7 +215,7 @@ function TransactionRow({
         <InlineCategoryEdit tx={tx} categories={categories} />
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
-        {formatDate(tx.transaction_date)}
+        {formatDateTime(tx.transaction_date, tx.transaction_time)}
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1.5">

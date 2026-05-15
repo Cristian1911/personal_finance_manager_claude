@@ -6,6 +6,22 @@ export type AccountRow = Tables<"accounts">;
 /** Account without sensitive fields — safe for client serialization */
 export type Account = Omit<AccountRow, "pdf_password">;
 export type Transaction = Tables<"transactions">;
+
+/** Approximate location captured by mobile and linked to a transaction. */
+export interface TransactionLocation {
+  id: string;
+  user_id: string;
+  latitude: number;
+  longitude: number;
+  accuracy_m: number | null;
+  place_name: string | null;
+  place_locality: string | null;
+  place_country: string | null;
+  captured_at: string;
+  linked_transaction_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
 export type Category = Tables<"categories">;
 export type Budget = Tables<"budgets">;
 
@@ -125,6 +141,11 @@ export type TransactionWithAccount = Transaction & {
   account: Pick<Account, "id" | "name" | "icon" | "color">;
   category: Pick<Category, "id" | "name" | "name_es" | "icon" | "color"> | null;
   destinatario: { id: string; name: string } | null;
+};
+
+// Transaction with linked location (detail view)
+export type TransactionWithLocation = TransactionWithAccount & {
+  location: TransactionLocation | null;
 };
 
 // Transaction with joined relations

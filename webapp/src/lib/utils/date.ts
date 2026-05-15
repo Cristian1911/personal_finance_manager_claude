@@ -14,6 +14,40 @@ export function formatDate(date: string | Date, pattern = "dd MMM yyyy"): string
   return format(parsed, pattern, { locale: es });
 }
 
+/**
+ * Format a TIME string (e.g. "14:32" or "14:32:05") as "HH:mm".
+ * Returns null when the input is null/empty.
+ */
+export function formatTime(time: string | null | undefined, pattern = "HH:mm"): string | null {
+  if (!time) return null;
+  const match = time.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return null;
+  const hh = match[1].padStart(2, "0");
+  const mm = match[2];
+  const ss = match[3] ?? "00";
+  // Build a Date in local time so date-fns can format with the requested pattern.
+  const ref = new Date();
+  ref.setHours(Number(hh), Number(mm), Number(ss), 0);
+  return format(ref, pattern, { locale: es });
+}
+
+/**
+ * Combine a date string (YYYY-MM-DD) and an optional time string (HH:mm[:ss])
+ * into a single user-facing label. Falls back to date-only when time is null.
+ */
+export function formatDateTime(
+  date: string | Date,
+  time: string | null | undefined,
+  pattern = "dd MMM yyyy HH:mm",
+): string {
+  if (!time) return formatDate(date);
+  const datePart = typeof date === "string" ? parseISO(date) : date;
+  const match = time.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return formatDate(date);
+  datePart.setHours(Number(match[1]), Number(match[2]), Number(match[3] ?? "0"), 0);
+  return format(datePart, pattern, { locale: es });
+}
+
 export function formatRelativeDate(date: string | Date): string {
   const parsed = typeof date === "string" ? parseISO(date) : date;
   return formatDistanceToNow(parsed, { addSuffix: true, locale: es });

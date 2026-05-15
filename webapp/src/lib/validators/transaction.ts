@@ -12,6 +12,10 @@ export const transactionSchema = z.object({
   currency_code: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
   direction: z.enum(["INFLOW", "OUTFLOW"]),
   transaction_date: z.string().min(1, "La fecha es requerida"),
+  transaction_time: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Hora inválida").optional().nullable()
+  ),
   raw_description: z.string().optional(),
   merchant_name: z.string().optional(),
   category_id: z.preprocess(
