@@ -28,9 +28,14 @@ export function filterByRange(
   range: RangeValue,
 ): SnapshotPoint[] {
   if (range === 0 || data.length === 0) return data;
+  // Snapshot dates come from accounts-detail.ts as Colombia-local YYYY-MM-DD
+  // (en-CA + America/Bogota). Use the same format for the cutoff to avoid a
+  // UTC-shifted off-by-one at night in UTC-5.
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - range);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoffStr = cutoff.toLocaleDateString("en-CA", {
+    timeZone: "America/Bogota",
+  });
   return data.filter((p) => p.date >= cutoffStr);
 }
 

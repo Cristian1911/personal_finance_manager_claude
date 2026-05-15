@@ -103,10 +103,6 @@ export default function AccountDetailScreen() {
         setAccount(acc);
         setRecentTx(txs as TransactionRow[]);
         setSpendingSummary(summary);
-        // Release the full-screen spinner once shell data lands so the user
-        // sees the hero shell + QuickActionsBar + recent-tx immediately. The
-        // chart/pulse data continues to stream in behind heroLoading.
-        setLoading(false);
 
         if (acc) {
           const [history, pulse] = await Promise.all([
@@ -127,6 +123,7 @@ export default function AccountDetailScreen() {
         }
       } catch (error) {
         console.error("Failed to load account:", error);
+      } finally {
         if (!cancelled) setLoading(false);
       }
     })();

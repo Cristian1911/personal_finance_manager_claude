@@ -29,9 +29,8 @@ const DEBT_TYPES = new Set(["CREDIT_CARD", "LOAN"]);
 
 function computeNetWorth(accounts: AccountRow[]) {
   return accounts.reduce((sum, acc) => {
-    return DEBT_TYPES.has(acc.account_type)
-      ? sum - acc.current_balance
-      : sum + acc.current_balance;
+    const balance = acc.current_balance ?? 0;
+    return DEBT_TYPES.has(acc.account_type) ? sum - balance : sum + balance;
   }, 0);
 }
 
