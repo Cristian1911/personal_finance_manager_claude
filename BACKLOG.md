@@ -890,12 +890,20 @@ Expo app sigue con estructura 4-tab. Ports pendientes del IA refactor:
   ```
   Touches every visible-tx query (account detail, lists). Bundle with the next mobile schema migration; not a correctness bug.
 
-### Triage candidates for next session — Phase 4+ continuation
+### Phase 4 follow-ups (PR #252 shipped 2026-05-15)
 
-Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 and #249. Next slices:
+PR #252 landed the three hero variants (flip / pulse / graph), `accounts-detail.ts` repo, and a QuickActionsBar **shell**. Remaining work:
+
+- **QuickActionsBar dialogs — real ports.** `Pagar` / `Transferir` / `Ajustar` are currently `Alert.alert("Próximamente", …)` stubs in `mobile/components/accounts/QuickActionsBar.tsx`. Each needs to port the webapp dialog (`webapp/src/components/accounts/quick-payment-dialog.tsx`, `transfer-dialog.tsx`, `reconcile-balance-dialog.tsx`). Per dialog, this is: form UI + local SQLite mutation + sync engine push payload + `mobile-webapp-parity` + `mobile-sync-doctor` review. Treat each dialog as its own slice — bundling all three in one PR is multi-session work.
+- **iOS sim verification of Phase 4** — never ran during the PR #252 session. Type-clean does NOT mean the flip animation, the "Más" Alert sheet, the safe-area inset, or the range-pills interaction work as expected. Open an account of each type (CREDIT_CARD, SAVINGS, CHECKING+debit, CASH, LOAN, INVESTMENT) and spot-check before piling more on top.
+- **Empty-history fallback for `BalanceGraphHero`** — `accounts-detail.ts:48` returns a single point `[{today, currentBalance}]` when there are no txs; `GraphFace` then renders "Sin datos suficientes" because length < 2. Acceptable, but a brand-new account permanently shows that copy. Consider a separate `EmptyChartFace` with copy like "Aún sin movimientos" + an "Agregar primer movimiento" CTA.
+
+### Triage candidates for next session — mobile parity continuation
+
+Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 and #249. Phase 4 (heroes + QuickActionsBar shell) shipped via PR #252. Next slices:
 
 **Primary (highest UX impact):**
-1. **Phase 4 — Account heroes** — flip/pulse/graph variants + QuickActionsBar dialogs. Visible on every account tap. Spawn `mobile-perf-doctor` (animations) + `zetas-front-guy`.
+1. **Phase 4 follow-up — QuickActionsBar real dialogs.** See "Phase 4 follow-ups" above.
 2. **Phase 2 remainder — heavy widgets** — HealthZone, FlujoSection, ActividadHeatmap, DashboardAlerts, UpcomingPayments, BurnRate, RunwayMiniChart, MonthSelector, DashboardHero. Skia chart work on the dashboard. Spawn `mobile-perf-doctor`.
 3. **Phase 5 — CRUD parity** — destinatarios, recurrentes, categorizar, categories, etiquetas, movimientos filters, transactions detail. Largest volume; biggest functional gap. Spawn `mobile-webapp-parity` + `mobile-sync-doctor`.
 
