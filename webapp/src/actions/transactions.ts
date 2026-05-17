@@ -572,39 +572,50 @@ export async function getTransaction(id: string): Promise<ActionResult<Transacti
   }
 }
 
+async function getTransactionLocationCached(
+  userId: string,
+  locationId: string,
+  accessToken: string,
+): Promise<TransactionLocation | null> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  // `transaction_locations` view is not yet in the regenerated Database types
+  // (manual patch covered transactions/profiles columns only). Narrow the cast
+  // to just the `data` field so misuse upstream still type-checks.
+  const { data, error } = await supabase
+    .from("transaction_locations" as never)
+    .select("*")
+    .eq("id", locationId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as TransactionLocation | null;
+}
+
 /**
  * Fetch the encrypted location row linked to a transaction (if any).
  * Returns null when no location is linked or the row is missing.
  * Webapp consumes this for the transaction-detail "Ubicación" block — capture
- * itself is mobile-only.
+ * itself is mobile-only. Cached under the `"transactions"` tag so a mutation
+ * elsewhere on the transaction (which invalidates `transactions`) also drops
+ * the linked-location cache.
  */
 export async function getTransactionLocation(
   locationId: string,
 ): Promise<ActionResult<TransactionLocation | null>> {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return { success: false, error: "No autenticado" };
-
-  // The transaction_locations view is not yet present in the regenerated
-  // Database types — fall back to an untyped from() until types are refreshed.
-  const { data, error } = await (supabase as unknown as {
-    from: (table: string) => {
-      select: (cols: string) => {
-        eq: (col: string, val: string) => {
-          eq: (col: string, val: string) => {
-            maybeSingle: () => Promise<{ data: TransactionLocation | null; error: { message: string } | null }>;
-          };
-        };
-      };
-    };
-  })
-    .from("transaction_locations")
-    .select("*")
-    .eq("id", locationId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data ?? null };
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getTransactionLocationCached(user.id, locationId, accessToken);
+    return { success: true, data };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error al cargar la ubicación";
+    return { success: false, error: message };
+  }
 }
 
 // ─── Recent transactions (dashboard) ────────────────────────────────────────

@@ -585,7 +585,7 @@ export default function CaptureScreen() {
               <Calendar size={16} color={COLORS.sageDark} />
               <Text className="text-sm font-inter-medium text-foreground">
                 {transactionTime
-                  ? `${formatDate(transactionDate, "dd MMM yyyy")} · ${transactionTime}`
+                  ? `${formatDate(transactionDate, "dd MMM yyyy")} · ${transactionTime.slice(0, 5)}`
                   : formatDate(transactionDate, "dd MMM yyyy")}
               </Text>
             </View>
@@ -609,7 +609,9 @@ export default function CaptureScreen() {
                   setTransactionDate(toLocalDateString(selected));
                   const hh = String(selected.getHours()).padStart(2, "0");
                   const mm = String(selected.getMinutes()).padStart(2, "0");
-                  setTransactionTime(`${hh}:${mm}`);
+                  // PostgreSQL TIME requires HH:mm:ss; append :00 here so the
+                  // sync push doesn't get rejected by the column type cast.
+                  setTransactionTime(`${hh}:${mm}:00`);
                 }
               }}
             />
