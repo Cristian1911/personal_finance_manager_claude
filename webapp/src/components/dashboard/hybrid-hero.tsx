@@ -79,19 +79,31 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
   const [view, setView] = useState<ExpandedView>("calc");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  const allowedTone =
-    data.allowedToday <= 0
-      ? "text-z-debt"
-      : data.spentFraction >= 0.85
-        ? "text-z-alert"
-        : "text-z-income";
-
+  // Status reflects the PERIOD, not today's micro-spend. A user can blow
+  // through today's allowance and still have plenty of headroom for the
+  // rest of the month — that's "Hoy a tope", not "Te pasaste".
+  // - availableTotal < 0 → period exhausted (debt red)
+  // - spentFraction >= 0.85 → period almost gone (alert amber)
+  // - allowedToday <= 0 && availableTotal > 0 → today maxed, period OK (alert)
+  // - otherwise → healthy (income green)
   const status: { label: string; tone: "income" | "alert" | "debt" } =
-    data.allowedToday <= 0
+    data.availableTotal < 0
       ? { label: "Te pasaste", tone: "debt" }
       : data.spentFraction >= 0.85
         ? { label: "Vas justo", tone: "alert" }
-        : { label: "Vas bien", tone: "income" };
+        : data.allowedToday <= 0
+          ? { label: "Hoy a tope", tone: "alert" }
+          : { label: "Vas bien", tone: "income" };
+
+  // Amount tone tracks the same period-aware status. Today-exhausted-but-
+  // period-fine renders the $0 in amber, not red — the user has more
+  // available tomorrow.
+  const allowedTone =
+    status.tone === "debt"
+      ? "text-z-debt"
+      : status.tone === "alert"
+        ? "text-z-alert"
+        : "text-z-income";
   const statusToneClass =
     status.tone === "debt"
       ? "bg-z-debt"

@@ -20,7 +20,7 @@ import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import { autoCategorize } from "@zeta/shared";
 import { matchTransactionToDestinatario } from "@/actions/destinatarios";
 import { linkTransactionToOccurrence } from "@/actions/occurrences";
-import { revalidateFinancialViews } from "@/lib/cache/revalidation";
+import { revalidateFinancialViewsFromWebhook } from "@/lib/cache/revalidation";
 import type { Json } from "@/types/database";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -902,8 +902,11 @@ async function processEmail(ctx: {
       errorMessage: null,
     });
 
-    // Invalidate caches so dashboard reflects the new transaction
-    revalidateFinancialViews();
+    // Invalidate caches so dashboard reflects the new transaction.
+    // Route Handler context — must use `revalidateTag` (not `updateTag`)
+    // so the user's next navigation sees fresh data. See
+    // `revalidateFinancialViewsFromWebhook` docs for the why.
+    revalidateFinancialViewsFromWebhook();
     revalidateTag("email-ingest", "zeta");
 
     return NextResponse.json({ ok: true });
