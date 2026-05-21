@@ -933,11 +933,13 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 
 ---
 
-## Mobile RN ↔ Webapp mobile-view parity audit (2026-05-02)
+## Mobile RN ↔ Webapp mobile-view parity audit (2026-05-16)
 
 > Source: 6 parallel audit agents comparing webapp's mobile view (design source of truth) against the Expo RN app, page-by-page, component-by-component. Webapp mobile view is more polished; below is the work to bring RN to parity.
 >
 > Severity tags: **[P0]** missing feature / broken behavior · **[P1]** visible polish gap · **[P2]** minor cosmetic/copy · **[ORPHAN]** RN-only feature (decide: port to webapp or remove).
+>
+> **Re-sweep 2026-05-16:** 26 items resolved, 2 new gaps added since previous audit (2026-05-02). Resolved by PRs #246–#252.
 
 ### 1. Home / Dashboard / Accounts
 
@@ -945,40 +947,31 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 - [P0] Missing **HealthZone / HealthScore** section (`webapp/.../zones/health-zone.tsx`) — no health meters, score, runway equivalent.
 - [P0] Missing **FlujoSection** — burn rate card, waterfall, cashflow charts (`flujo-section.tsx`, `flujo-waterfall.tsx`, `flujo-charts.tsx`).
 - [P0] Missing **ActividadHeatmap** (calendar-style activity heatmap).
-- [P0] Missing **AccountsOverview** section in dashboard (sparklined account cards under "Cuentas"). `mobile/components/dashboard/` only has unused stubs (`BalanceCard`, `MonthSummary`, `CategoryBreakdown`, `PurchaseDecisionCard`).
-- [P0] Missing **DashboardAlerts** banner (`dashboard-alerts.tsx`).
-- [P0] Missing **PaymentReminders / UpcomingPayments** card — RN exposes only an `attention` chip widget.
-- [P0] Missing widgets: **DebtProgress, EmergencyFund, Deseos, SavingsRate, InterestPaid, BurnRate, RunwayMiniChart**. RN `WIDGET_CATALOG` (`mobile/lib/dashboard/widgets.ts`) only has: `ritmo`, `attention`, `where_today`, `recent`, `puedo_comprarlo` + pulse hero.
-- [P0] Missing **MonthSelector / DashboardAccountPicker** — no scope selector.
-- [P0] Missing **DashboardHero / StatusHeadline** ("Tu estado financiero de hoy" + KPIs + 50/30/20 allocation strip).
+- [P0] **AccountsOverview** widget renders account cards but without sparklines — `AccountCard.tsx` shows balance only; port `getAccountsWithSparklineData` into `AccountsWidget`.
+- [P0] Missing **DashboardAlerts** banner (`dashboard-alerts.tsx`) — attention widget in Herramientas is not equivalent.
+- [P0] **PaymentReminders** partially done — `NextBillWidget` + `NextIncomeWidget` exist but lack the full `UpcomingPayments` card layout (reminder count, overdue badge, pay-now CTA).
+- [P0] WIDGET_CATALOG partially implemented — `ritmo`, `attention`, `where_today`, `recent`, `puedo_comprarlo`, `next_bill`, `next_income`, `accounts` available; **DebtProgress, EmergencyFund, Deseos, SavingsRate, InterestPaid, BurnRate, RunwayMiniChart** are `available: false` stubs only (`mobile/lib/dashboard/widgets.ts`).
+- [P0] Missing **MonthSelector / DashboardAccountPicker** — only `PulseRange` weekly/daily toggle; no month or account scope selector.
 - [P0] Missing **InicioDiscoveryRail** (entry chips into Plan/Deseos/Decisión).
 - [P1] Missing **DemoBanner / GuestBanner / DebtFreeBanner** conditional banners.
 - [P1] Missing **dashboard customization persistence beyond widget list** — webapp persists `profiles.dashboard_config` via `getDashboardConfigWithPurpose` + `DashboardConfigProvider`; RN persists widget array via AsyncStorage only (not synced to Supabase — spawn `mobile-sync-doctor` if parity required).
 - [P1] Missing **content-shaped skeletons** — RN has no per-widget skeleton.
-- [P1] No **live metrics hook** — webapp `useLiveDashboard` silently corrects stale values; RN `useDashboardData` reloads only on `useFocusEffect`.
 - [P2] Header subtitle differs: RN shows date pill; webapp shows month + tagline.
 
 #### `/accounts` (lista) — `mobile/app/(tabs)/accounts.tsx`
-- [P0] Missing **SummaryCard "Base financiera"** (patrimonio neto + cuentas activas + presión de deuda).
 - [P0] Missing **AttentionCard** from `getAttentionSnapshot`.
 - [P0] Missing **multi-currency footer** (secondary currency totals).
 - [P0] Missing **liquidity vs debt grouping** ("Liquidez y ahorro" / "Deuda" sections).
-- [P1] `AccountCard` has no sparkline / trend / brass accents — webapp uses `getAccountsWithSparklineData`.
-- [P1] Empty state is one centered line; webapp has empty Card with "Crear cuenta" + "Importar extracto" CTAs.
-- [P2] Dead/orphan file `mobile/app/accounts-list.tsx` — remove or wire.
+- [P1] `AccountCard` has no sparkline / trend / brass accents — port `getAccountsWithSparklineData`.
+- [P1] Empty state has "Nueva cuenta" CTA but is missing "Importar extracto" CTA.
+- [P2] Dead/orphan file `mobile/app/accounts-list.tsx` — near-duplicate of `(tabs)/accounts.tsx`; remove or wire.
 
 #### `/accounts/[id]` (detalle) — `mobile/app/account/[id].tsx`
-- [P0] Missing **AccountHero variants** (`flip` for CC/SAVINGS, `pulse` for CHECKING/CASH/OTHER, `graph` for LOAN/INVESTMENT). RN renders centered icon only.
-- [P0] Missing **FlipZone / CardFace / GraphFace** (CC flip animation + back-side balance graph).
-- [P0] Missing **BalanceGraphHero** + **RangePills** (30/90/180/365) snapshot-based area chart.
-- [P0] Missing **SpendingPulseHero** (30-day sparkline + monthly spend badge).
-- [P0] Missing **QuickActionsBar**: Pagar / Transferir / Agregar / Ajustar / Más. RN only has Pencil/Trash icons.
-- [P0] Missing **QuickPaymentDialog** (CC payments).
-- [P0] Missing **TransferDialog** (between accounts).
-- [P0] Missing **ReconcileBalanceDialog** (manual balance adjust).
+- [P0] Missing **QuickPaymentDialog** (CC payments) — `QuickActionsBar` "Pagar" shows `Alert.alert` stub.
+- [P0] Missing **TransferDialog** (between accounts) — `QuickActionsBar` "Transferir" shows `Alert.alert` stub.
+- [P0] Missing **ReconcileBalanceDialog** (manual balance adjust) — `QuickActionsBar` "Ajustar" shows `Alert.alert` stub.
 - [P0] Missing **StatementSnapshotsCard / StatementHistoryTimeline** (CC/loan/savings statement history with metrics + due dates).
-- [P1] `RecentTransactions` thin row vs webapp's full `recent-transactions.tsx` with category chip, destinatario, brass tokens.
-- [P1] Hardcoded colors throughout (`text-gray-900`, `bg-white`, `text-sky-600`, `text-green-600`) — port to `text-z-*`, `bg-z-surface-2`, `border-white/6` design tokens.
+- [P1] `RecentTransactions` shows category chip but missing destinatario field (only `merchant_name`); no brass tokens on row badges.
 - [P1] Header is bespoke instead of `MobileHeader variant="sub"`.
 - [P1] No skeleton; uses `ActivityIndicator`.
 - [P2] Stat tiles use raw `bg-white` / `border-gray-100` instead of `PANEL_INSET_CLASS`.
@@ -988,10 +981,10 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 ### 2. Transactions / Capture
 
 #### `/(tabs)/transactions` — `MovimientosRoot`
-- [P0] `MovimientosUtilidades` missing filter pills: `tagId`, `dateFrom`, `dateTo`, `amountMin`, `amountMax`, `capture_method` (only `accountId`, `direction`, `showExcluded` exist vs 9 in webapp).
+- [P0] `MovimientosUtilidades` filter pills incomplete — `accountId`, `direction`, `showExcluded` present; missing `tagId`, `dateFrom`, `dateTo`, `amountMin`, `amountMax`, `capture_method`.
 - [P0] `MovimientosHerramientas` missing `pendingEmails` tile/prop (Bancolombia email-ingest approval flow).
 - [P0] No "Compra consciente / ¿Debería comprar esto?" entry tile.
-- [P1] `MovimientosTransactionRow` lacks inline `CategoryZonePicker` / `DestinatarioZonePicker` / `TagZonePicker` / `LinkPickerSheet` chips — RN navigates to detail.
+- [P1] `MovimientosTransactionRow` has inline `CategoryZonePicker` only — missing `DestinatarioZonePicker`, `TagZonePicker`, `LinkPickerSheet` chips; RN navigates to detail for those.
 - [P1] No `Link2` (link-to-occurrence) or `Repeat` (recurring) badge on rows.
 - [P1] No "Cargar más" / count indicator on infinite scroll.
 - [P2] Verify `MovimientosLectura` parity (chart needs `transactions` + `debtAccountIds`).
@@ -1007,38 +1000,35 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 - [P1] RN status mapping (`CLEARED/PENDING/POSTED`) is placeholder — webapp has no such field; remove or align.
 - [P2] Verify `is_excluded` 1/0 boolean round-trip via sync (`mobile-sync-doctor`).
 
-#### `/transactions/new` — **does not exist on RN**
-- [P0] No equivalent of webapp's `MobileTransactionForm` (full form: date, amount, account, category, destinatario, currency, notes, tags, "create destinatario" + "create recurring template" toggles). RN only offers capture/screenshot/voice — no deliberate "manual full form" path.
+#### `/transactions/new` — `mobile/app/transactions/new.tsx`
+- [P0] File exists but is a stub ("Formulario en construcción") — full `MobileTransactionForm` (date, amount, account, category, destinatario, currency, notes, tags, "create destinatario" + "create recurring template" toggles) not implemented.
 - [P0] No `?type=expense|income|transfer` preset routing.
-- [P0] No transfer-between-accounts flow.
+- [P0] No transfer-between-accounts flow — `capture.tsx` transfer option shows `Alert.alert` stub.
 - [P1] No installment fields on RN capture.
 
 #### Capture flows
-- [P0] RN `capture.tsx` (726 LOC) calls local repo `createTransaction`, NOT the `createQuickCaptureTransaction` server action — verify same `parseQuickCaptureText` + `autoCategorize` + idempotency parity.
+- [P0] RN `capture.tsx` calls local repo `createTransaction`, NOT the `createQuickCaptureTransaction` server action — verify same `parseQuickCaptureText` + `autoCategorize` + idempotency parity.
 - [ORPHAN] `capture-screenshot`, `capture-voice`, `annotate-screenshot` — RN-only. Verify screenshot uses `OCR_BATCH` capture_method correctly. Voice already shares `parseQuickCaptureText`.
 - [P1] No discoverability — list/detail tabs don't expose all 3 capture entry points.
 
 ### 3. Plan / Periodo / Presupuesto / Recurrentes / Pendientes
 
 #### `/plan` — `PlanRoot`
-- [P0] No month navigation (`MonthSelector` + `?month=`); RN locked to current month.
 - [P0] No tab nav (Resumen / Presupuesto / Periodo / Recurrentes / Deseos) — RN exposes only via `PlanToolsChips` separate stack routes.
-- [P0] No `PlanMainAccountsSection` (current balance per main account, totalInBase, unconvertible warning) — webapp `plan-mobile-accounts-card`.
+- [P0] No `PlanMainAccountsSection` (current balance per main account, totalInBase, unconvertible warning) — `mobile/components/plan/PlanMainAccountsCard.tsx` does not exist.
+- [P1] Plan-expandable-chips partially done — `PlanToolsChips` renders status chips and `PlanWeekTiles` shows income/payment week tiles, but no inline `plan-drill-cards` drill into pending vs paid.
 - [P1] No `plan-distribution` / `plan-flow-chart` (planned-vs-confirmed cashflow).
-- [P1] No `plan-drill-cards` / `plan-expandable-chips` (inline drill into pending vs paid).
 - [P1] No deseos/wishlist link in plan surface.
 
 #### `/periodo` — `mobile/app/periodo.tsx`
 - [P0] No entry create/edit (`EntryFormDialog` for INCOME/EXPENSE) — RN periodo is read-only.
 - [P0] No `AutoAssignButton` for unassigned expenses.
 - [P0] No delete entry, no toggle income status (`onToggleStatus`, `handleDeleteEntry`).
-- [P0] No "balance envelope" support (PR #243/244 main-accounts-as-planning-income).
-- [P1] Period summary chip minimal — webapp shows `percentAssigned` + unassigned count + dates.
+- [P1] **Missing "Sincronizar recurrentes" button** — webapp gained `seedPeriodFromRecurring` trigger (cd5345c); RN `/periodo` has no equivalent sync action. *(New gap since 2026-05-02)*
 - [P1] Status enum mismatch: RN `PLANNED/COMPLETED/SKIPPED` vs webapp lowercase `pending/paid/skipped` from occurrences. Confirm sync layer maps both.
-- [P2] Bespoke `pt-14`/`ArrowLeft` header instead of `MobileHeader variant="sub"`.
+- [P2] Header still uses bespoke `pt-14`/`ArrowLeft` instead of `MobileHeader variant="sub"`.
 
 #### `/presupuesto` — `BudgetsRoot`
-- [P0] No month navigation.
 - [P0] No 50/30/20 allocation chip + `Plan5030_20Sheet` (essential vs wants %).
 - [P0] No category grouping by pressure (over → near → safe) — RN renders flat list.
 - [P0] No treemap visualization.
@@ -1056,16 +1046,14 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 - [P2] `RecurringSummaryCard` shows 4 counters; webapp shows total expected + breakdown chips with status colors.
 
 #### `/pendientes`
-- [P0] **No mobile route at all.** Pending occurrences only visible inside `/recurrentes`. Add dedicated screen or surface in PlanRoot.
+- [P0] Route exists (`mobile/app/pendientes.tsx`) as scaffold only — shows "Próximamente" placeholder; full pending-occurrences list (chronological, pay/skip actions) not implemented.
 
 #### Cross-cutting (plan cluster)
-- [P1] Hand-rolled `pt-14` headers + `paddingBottom: 100` magic numbers — should use `MobileHeader` + `MOBILE_TAB_BAR_CLEARANCE_CLASS` + safe-area inset.
 - [P1] Status badge palette (`bg-z-alert/10`, `bg-z-income/10`) diverges from webapp pending/paid (`pendiente` brass, `pagado` sage).
-- [P2] Tab order in `(tabs)/_layout.tsx` exposes `plan` + `budgets` + `deudas` as siblings; webapp consolidates Plan as single hub.
+- [P2] Tab order in `(tabs)/_layout.tsx` exposes `plan` + `deudas` as top-level tabs with `budgets` hidden; webapp consolidates Plan as single hub with internal tabs.
 
 #### New RN files needed
 - `mobile/components/recurrentes/RecurringFormSheet.tsx`
-- `mobile/app/pendientes.tsx`
 - `mobile/components/budgets/AllocationSheet.tsx`
 - `mobile/components/plan/PlanMainAccountsCard.tsx`
 
@@ -1077,9 +1065,8 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 - [P0] No `ExchangeRateNudge` (USD/COP vs 30d avg).
 - [P0] No month selector for past-month reads.
 - [P1] No "closest debt-free" tile (`closestExitName` + months + progress per loan).
-- [P1] `DeudasSalaryBar` uses raw `monthlyIncome`; webapp uses `getCurrentSalaryBreakdown()` from `@zeta/shared` — port for parity.
+- [P1] `DeudasSalaryBar` uses prop-passed `monthlyIncome`; port `getCurrentSalaryBreakdown()` from `@zeta/shared` for parity.
 - [P1] No "Simular pagos" chip-row pattern above salary bar.
-- [P2] Verify `monthlyInterestEstimate` math parity (webapp `getDebtOverview` vs RN local `monthlyInterest`).
 
 #### `/deudas/planificador`
 - [DONE — feat/mobile-planificador-4step] 4-step flow (Cash → Estrategia → Comparar → Detalle), multi-cashEntry input, custom strategy + cascade redirects, multi-scenario A/B/C, scenario persistence (getScenarios/saveScenario/deleteScenario via Supabase), empty state, income context. Uses shared `runScenario()`.
@@ -1092,14 +1079,12 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 - [DONE — feat/mobile-deseos-puedopagar-parity] Live re-score (`getWishlistItemsWithFreshScores`), verdict chip + score per row, urgency/desire chips, per-row CTAs (Reevaluar / Completar / Comprado / Eliminar), `DeseosEnrichDrawer`, bought-items section (incl. `reflected`), local `NudgeBanner` (score_transition + desire_maturity).
 - [P0] **`DeseosReflectionCard`** — 14d/60d post-purchase reflection + worth_it + rating. Requires `wishlist_reflections` SQLite schema + push/pull + repository. Spawn `mobile-sync-doctor` when picked up.
 - [P0] **`DeseosInsights`** — aggregated patterns. Depends on reflections sync above.
-- [P1] Nudge variants `debt_milestone` + `budget_surplus` — webapp computes server-side via cross-table queries. Port the budget cross-ref (read `budgets` + month spend); debt_milestone needs the upcoming-payment heuristic.
+- [P1] Nudge variants `debt_milestone` + `budget_surplus` deferred — require server-side cross-table queries (budget spend + upcoming-payment heuristic); local nudge service skips them.
 - [P2] Sort drift: RN orders by urgency-then-created; webapp orders by enriched-score-desc then unenriched. Decide canonical order.
 
 #### `/puedo-pagar`
-- [DONE — feat/mobile-deseos-puedopagar-parity] Name field, category picker (reuses `CategoryPickerSheet`), reset button, save-to-wishlist persists `last_verdict` / `last_score` / `category_id` / `funding_type` / `installments` / `account_id` + `enriched=true` (matches webapp `saveAffordToWishlist`).
-- [P0] **Decision engine drift**: webapp uses `analyzePurchaseDecisionAction`. RN uses `analyzeLocally`. Both delegate to `@zeta/shared` `analyzePurchaseDecision`; behavior verified equivalent. (Mobile defers per-category budget lookup — see next item.)
-- [P1] **Per-category budget impact** — RN passes `categoryId` to `analyzeLocally` but the snapshot doesn't fetch the matching `budgets` row + spent-this-month sum, so the engine never gets `budgetRemaining`. Webapp does this inside `scoreItemWithSnapshot`. Port the lookup into `mobile/lib/services/purchase-decision.ts:getFinancialSnapshot` or a per-item add-on.
-- [P1] **Scroll-to-verdict** — `AppKeyboardAwareScrollView` doesn't forward refs; needs a small wrapper change before the verdict card can be `scrollTo`-ed. Defer with that wrapper edit.
+- [DONE — feat/mobile-deseos-puedopagar-parity] Name field, category picker (reuses `CategoryPickerSheet`), reset button, save-to-wishlist persists `last_verdict` / `last_score` / `category_id` / `funding_type` / `installments` / `account_id` + `enriched=true` (matches webapp `saveAffordToWishlist`). Uses `@zeta/shared` `analyzePurchaseDecision` (same engine as webapp).
+- [P1] **Scroll-to-verdict** — `AppKeyboardAwareScrollView` doesn't forward refs; results appear inline at bottom without auto-scroll. Small wrapper edit needed.
 - [P2] **Deseos perf — single-tx batch persist** in `getWishlistItemsWithFreshScores`. Each item's `persistWishlistScore` opens its own `withTransactionAsync` (SQLite serializes them). Collect score deltas synchronously, then a single transaction running all UPDATE + sync_queue inserts. Cuts wall-time roughly N× on mid-tier Android.
 - [P2] **Deseos perf — SQL aggregate for snapshot** in `getFinancialSnapshot`. Currently materializes up to 1000 transaction rows through JS to compute `monthlyIncome`/`monthlyExpenses`. Replace with `SELECT direction, SUM(ABS(amount)) ... GROUP BY direction` (excluding debt-account inflows) — two scalars instead of 1k rows.
 
@@ -1113,17 +1098,10 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 ### 5. Import / Categorizar / Destinatarios / Categories / Etiquetas
 
 #### `/import`
-- [P0] No separate "Confirmar" step — webapp 6 steps, RN collapses to 4.
-- [P0] No "Destinatarios sugeridos" sub-flow — RN deep-links away to `/destinatarios` instead of returning to wizard.
-- [P0] No `previewImportReconciliation` parity — RN builds ad-hoc preview shape (lines 677–711) instead of canonical `ReconciliationPreviewResult`.
-- [P0] No multi-statement / multi-account mapping table (`parsed-transaction-table.tsx` 320 LOC) — RN assumes single `selectedAccount`.
-- [P0] No "Create account from statement" inline flow (`create-account-dialog.tsx`).
-- [P0] No PDF password vault suggestions UI (`initialVaultSuggestions`).
+- [P0] Step count gap — webapp 6 steps, RN condenses to 4 (`pick` → `review` → `reconcile` → `result`); "Destinatarios sugeridos" assignment and final confirmation are implicit rather than dedicated wizard pages.
+- [P0] `previewImportReconciliation` not used — RN builds ad-hoc reconciliation preview inline (`import.tsx:609–720`) instead of the canonical `ReconciliationPreviewResult`; cross-source AUTO_MERGE scoring fixes from #250 (1/1-cuota, terse descriptions) not applied. *(Scoring drift widened since 2026-05-02 — see new gap below)*
 - [P0] No pending-email-statement entry (`pending-email-statements.tsx`) — can't pick up `EMAIL_PDF_IMPORT` queued by email ingest.
-- [P0] No screenshot/OCR entry (`?mode=screenshot` + `getPendingScreenshotFile()`).
-- [P1] No `WizardActionBar` parity (sticky-bar overshoot/safe-area pattern).
-- [P1] No `Narrator`/`STEP_DESCRIPTIONS` per step.
-- [P1] No `step-results.tsx` parity (counts breakdown + post-import actions).
+- [P0] No screenshot/OCR entry (`?mode=screenshot` + `getPendingScreenshotFile()`) in import wizard — screenshot capture is a separate standalone route, not integrated into the import flow.
 
 #### `/categorizar`
 - [P0] No "Auto-review" tab + `bulkConfirmAutoCategory`.
@@ -1134,42 +1112,35 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 #### `/destinatarios`
 - [P0] No create destinatario flow (`create-destinatario-dialog.tsx`).
 - [P0] No edit (rename, change category, toggle active, edit notes) — detail read-only.
-- [P0] No rule add/edit/delete on detail (`addDestinatarioRule` / `removeDestinatarioRule`).
+- [P0] Rule display exists on detail but no add/edit/delete controls (`addDestinatarioRule` / `removeDestinatarioRule` absent).
 - [P0] No merge destinatarios (`merge-dialog.tsx`).
 - [P0] No "Suggestions" tab (`destinatario-suggestions-tab.tsx`) — clusters of unassigned merchants.
 - [P0] No `bulkLinkToDestinatario` retroactive matcher.
 - [P0] No delete destinatario.
 - [P0] No zone picker (`destinatario-zone-picker.tsx`).
 - [P1] No spend stats / monthly chart / direction split / cashflow / top categories on detail (webapp 838 LOC).
-- [P1] No sort/filter on list (zone, active, count).
 
 #### `/categories`
-- [P0] No icon picker — `CategoryFormSheet` has color presets only (webapp has `IconPicker` Lucide+emoji).
+- [P0] `CategoryFormSheet` has color presets but no icon picker — webapp has `IconPicker` with Lucide icons + emoji.
 - [P0] No zone assignment (essentials/wants/savings).
 - [P0] No category kit selection / onboarding kit picker.
 - [P1] No `displayOrder` reordering (drag).
-- [P1] Verify `name` (English) field parity.
 
 #### `/etiquetas` (tags)
-- [P0] **Entire route missing on mobile.** SQLite tables + sync push wired, but zero UI to view/create/edit/delete/assign tags.
+- [P0] Route exists (`mobile/app/etiquetas.tsx`) as scaffold only — shows "Próximamente"; full CRUD to view/create/edit/delete/assign tags not implemented.
 
 #### `/gestionar` (Más hub)
 - [P1] `menu.tsx` does not surface `AttentionHub` (signals + action/suggestion counts) — static link grid only.
 
 #### Cross-cutting (data hygiene)
-- [P1] Raw `paddingBottom: 100` instead of `MOBILE_TAB_BAR_CLEARANCE_CLASS` across `DestinatariosRoot`, `DestinatarioDetail`, `CategorizarRoot`, `CategoriesRoot`.
 - [P1] Empty states minimal vs richer webapp empty states with primary CTAs.
 - [P2] Unaccented strings: `categorizar.tsx` ("categoria", "transaccion") and `CategoriesRoot.tsx` ("Categorias", "personalizadas", "sincronizaran").
 
 ### 6. Settings / Auth / Nav shell
 
 #### Tab bar — `MobileTabBar.tsx`
-- [P0] Hardcoded entries — webapp swaps 3rd tab via `profile.nav_focus` (`Plan` vs `Deudas`). Add `getMobileTabs(focus)` parity.
-- [P0] No 5th `Más` tab (`/gestionar`, `LayoutGrid`) — `menu.tsx` unreachable from bar.
-- [P0] No focus-mode hide (`FOCUS_MODE_PATHS` + runtime `useHideTabBar()`). RN only hides on keyboard.
-- [P1] No `FocusModeAccent` (2px brass top accent when bar hidden).
-- [P1] FAB context-actions hardcoded — webapp `FabMenu` accepts per-route `contextActions` (`new-recurring`, `new-account`).
-- [P1] Quick-capture is TODO Alert ("Próximamente"); webapp ships it.
+- [P1] FAB context-actions hardcoded in `handleFabAction()` switch — webapp `FabMenu` accepts per-route `contextActions` (`new-recurring`, `new-account`); RN serves the same fixed menu regardless of active tab.
+- [P1] Quick-capture shows "Próximamente" `Alert.alert` — webapp ships it; wire to `capture.tsx` (`parseQuickCaptureText`).
 - [P2] Active label `text-muted-fg-70` non-default token — verify NativeWind resolution.
 
 #### Header — `MobileHeader.tsx`
@@ -1180,23 +1151,21 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 #### `/settings`
 - [P0] Flat single screen vs sectioned `SettingsNavigationList`. Missing sub-routes: `/settings/perfil`, `/integraciones`, `/email`, `/pdf-passwords`, `/etiquetas`, `/analytics`, `/bug`.
 - [P0] Missing surfaces: Integraciones (Telegram/MCP/IA tokens), Email ingest, PDF passwords manager, Tags editor, Analytics activity, Bug report form, Demo-mode card UX, Review-mode toggle (dev), Build info.
-- [P0] No `SettingsIdentityHero` (avatar + name + member-since).
 - [P1] RN-only biometrics + sync controls — keep but reorganize under sectioned list for layout parity.
 - [P1] Missing disclaimer copy ("Zeta no es un asesor financiero…").
 - [P2] `menu.tsx` duplicates settings entry-points instead of pointing to `/gestionar` parity.
 
 #### `/onboarding`
 - [P1] Step counts differ: webapp 4 (`FUNCTIONAL_STEPS=3` + celebration) vs RN 5 (welcome/profile/pulse/account/complete) — eyebrows say "Paso 1 de 3" vs "Paso 1 de 5".
-- [P0] RN persists via `bootstrapOnboardingLocally` (SQLite) — verify also calls `finishOnboarding` server action with same payload (`app_purpose`, `estimated_monthly_income/expenses`, `preferred_currency`, `timezone`, `locale`, default account, `dashboard_config`, `mobile_layout`). Parity gate.
+- [P0] RN persists via `bootstrapOnboardingLocally` (SQLite) but does NOT call `finishOnboarding` server action — verify `app_purpose`, `estimated_monthly_income/expenses`, `preferred_currency`, `timezone`, `locale`, default account, `dashboard_config`, `mobile_layout` sync to Supabase on complete. Parity gate.
 - [P1] No `skipOnboardingWithDefaults` path on RN.
 - [P1] No `trackClientEvent` analytics (`onboarding_started/step_completed/skipped/completed`).
 - [P2] Step copy diverges ("Sobre ti" vs "Tu perfil").
 
 #### `/auth`
 - [P0] No magic-link / passwordless path (webapp `AuthSessionShortcuts`).
-- [P0] No `/reset-password` deep-link callback handling — file exists, verify `supabase://reset` routes correctly.
+- [P1] Auth callback error states partially wired (`reset-password` has basic handling) — `auth_callback_failed` and `auth_callback_missing_params` states missing.
 - [P1] RN-only biometrics — keep, but ensure no duplication.
-- [P1] No callback error states (`auth_callback_failed`, `auth_callback_missing_params`).
 - [P2] Webapp wraps login in `PANEL_SURFACE_CLASS` card with hero copy; RN renders form on background. Align hero copy.
 
 #### Modals / sheets / safe area
@@ -1204,19 +1173,22 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 - [P1] Confirm every focus-mode screen honors `useSafeAreaInsets()` — `menu.tsx` to verify.
 
 #### Visual polish (shell)
-- [P1] Port `mobile-settings.tsx` sectioned card pattern (`rounded-xl border divide-y` + `ChevronRight`).
+- [P1] Port `mobile-settings.tsx` sectioned card pattern (`rounded-xl border divide-y` + `ChevronRight`) — settings is currently flat monolithic screen.
 - [P2] Lucide icon mismatch: `menu.tsx` uses `Wallet/Upload/Settings/PiggyBank/Repeat`; webapp `mobile-nav.ts` uses `LayoutDashboard/ArrowLeftRight/PiggyBank/Landmark/LayoutGrid`. Align `Más` hub icon with `LayoutGrid`.
 
 ### Triage (parity)
 
-**P0 count is high (~80 items).** Suggested attack order:
-1. **Fill missing routes** — `/transactions/new` form, `/pendientes`, `/etiquetas`, `/settings/*` sub-routes.
-2. **Decision engines parity** — port RN deudas planificador + puedo-pagar to `@zeta/shared` shared engines (avoid drift).
-3. **Dashboard widget catalog** — import the 8 missing widgets (HealthZone, Flujo, Heatmap, AccountsOverview, DashboardAlerts, UpcomingPayments, BurnRate, RunwayMiniChart).
-4. **Account detail heroes** — flip/pulse/graph variants + QuickActionsBar (Pagar/Transferir/Ajustar dialogs).
-5. **CRUD gaps** — destinatarios edit/create/merge, recurring template editor, deseos enrich drawer.
-6. **Import wizard step parity** — restore Confirmar, multi-statement table, password vault, email-statement entry.
-7. **Tab bar / shell** — `nav_focus`, 5-slot `Más` tab, focus-mode hide.
-8. **Polish sweep** — design tokens (no hardcoded colors), `MobileHeader`, `MOBILE_TAB_BAR_CLEARANCE_CLASS`, accents in copy.
+**P0 count reduced from ~80 → ~62 items.** Suggested attack order:
+1. **Fill missing route implementations** — `/transactions/new` full form, `/pendientes` list, `/etiquetas` CRUD, `/settings/*` sub-routes.
+2. **Dashboard widget catalog** — import 7 missing widgets (HealthZone, Flujo, Heatmap, DashboardAlerts, BurnRate, RunwayMiniChart, MonthSelector scope).
+3. **Account detail dialogs** — QuickPaymentDialog / TransferDialog / ReconcileBalanceDialog (bar shell done, dialogs stubbed).
+4. **CRUD gaps** — destinatarios edit/create/merge, recurring template editor, deseos reflection + insights.
+5. **Import wizard** — previewImportReconciliation parity (apply #250 scoring), email-statement entry, screenshot/OCR integration.
+6. **Budgets** — 50/30/20 allocation chip, pressure grouping, treemap.
+7. **Polish sweep** — `MobileHeader variant="sub"` on `/periodo`, FAB context-actions per-route, "Sincronizar recurrentes" in `/periodo`, accented copy strings.
+
+**New gaps since 2026-05-02:**
+- **[P1] `/periodo` missing "Sincronizar recurrentes"** — webapp cd5345c added `seedPeriodFromRecurring` call; RN not updated.
+- **[P2] Import AUTO_MERGE scoring drift** — webapp #250 fixed 1/1-cuota detection and cross-source AUTO_MERGE scoring; RN ad-hoc reconciliation builder (`import.tsx:609–720`) pre-dates these fixes.
 
 **ORPHANS to decide:** `/subscriptions` (port to webapp recommended), `capture-screenshot` + `capture-voice` + `annotate-screenshot` (RN-only by design — verify they share shared utils).
