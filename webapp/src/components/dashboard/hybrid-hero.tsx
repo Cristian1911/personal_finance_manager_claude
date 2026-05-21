@@ -149,13 +149,15 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
   }, [selectedDay, selectedEntry, cumulativeByDate, data.periodBudget]);
 
   return (
-    <div className="rounded-2xl border border-white/6 bg-z-surface p-5">
+    <div className="rounded-2xl border border-white/6 bg-z-surface-2/80 p-5">
       {/* Top row: eyebrow ("Gasto de hoy") + status pill. */}
       <div className="flex items-center justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
           Gasto de hoy
         </p>
         <span
+          role="status"
+          aria-label={`Estado del gasto: ${status.label}`}
           className={cn(
             "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
             "bg-white/[0.04] border border-white/6",
@@ -217,7 +219,7 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
           style={{
             width: `${Math.min(100, Math.round(data.spentFraction * 100))}%`,
             background:
-              "linear-gradient(to right, var(--color-z-excellent, #3D9E6E) 0%, var(--color-z-sage, #768053) 30%, var(--color-z-alert, #D4A843) 70%, var(--color-z-debt, #E05545) 100%)",
+              "linear-gradient(to right, var(--color-z-excellent) 0%, var(--color-z-sage) 30%, var(--color-z-alert) 70%, var(--color-z-debt) 100%)",
             transition: "width 0.5s ease",
           }}
         />
@@ -245,7 +247,7 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/6 px-3 py-2 text-[11px] font-semibold tracking-wide text-z-sage-light hover:bg-white/[0.02]"
+        className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/6 px-3 py-2 text-[11px] font-semibold tracking-[0.12em] text-z-sage-light hover:bg-white/[0.02]"
         aria-expanded={expanded}
       >
         <span>{expanded ? "Ocultar detalle" : "Ver detalle"}</span>
@@ -451,10 +453,10 @@ function Sparkline({
   const pad = 3;
   const stroke =
     tone === "debt"
-      ? "var(--color-z-debt, #E05545)"
+      ? "var(--color-z-debt)"
       : tone === "alert"
-        ? "var(--color-z-alert, #D4A843)"
-        : "var(--color-z-sage, #768053)";
+        ? "var(--color-z-alert)"
+        : "var(--color-z-sage)";
 
   if (values.length === 0) return null;
 

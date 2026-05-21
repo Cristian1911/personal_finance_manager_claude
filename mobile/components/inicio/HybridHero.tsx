@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { ChevronDown, ChevronRight } from "lucide-react-native";
 import Svg, { Polyline, Line, Defs, LinearGradient, Stop, Rect } from "react-native-svg";
@@ -45,9 +45,12 @@ interface HybridHeroProps {
 
 const BUCKET_TONE: Record<string, string> = {
   none: "bg-z-surface-2",
-  low: "bg-z-income/20",
-  med: "bg-z-alert/30",
-  high: "bg-z-debt/40",
+  // NativeWind v3 cannot parse Tailwind v4's `/N` opacity modifier — the
+  // class compiles to nothing and renders fully transparent. Use the
+  // pre-computed tokens from mobile/tailwind.config.js instead.
+  low: "bg-z-income-20",
+  med: "bg-z-alert-30",
+  high: "bg-z-debt-40",
 };
 
 const BUCKET_LABEL: Record<string, string> = {
@@ -82,7 +85,11 @@ function formatShortDate(iso: string): string {
   });
 }
 
-export function HybridHero({
+// Wrapped in memo so InicioRoot state changes (editing toggle, catalog
+// open, refresh, layout edits, widget activation) don't cascade into a
+// hero re-render. All props from InicioRoot are stable primitives or
+// useMemo-gated objects.
+export const HybridHero = memo(function HybridHero({
   today,
   endOfMonth,
   liquidBalance,
@@ -271,7 +278,7 @@ export function HybridHero({
           <View className="mb-3 flex-row gap-1 rounded-lg border border-white-6 bg-z-surface-2 p-0.5">
             <Pressable
               onPress={() => setView("calc")}
-              className={`flex-1 rounded-md px-2 py-1.5 ${view === "calc" ? "bg-z-brass/20" : ""}`}
+              className={`flex-1 rounded-md px-2 py-1.5 ${view === "calc" ? "bg-z-brass-20" : ""}`}
             >
               <Text
                 className="text-center text-[10px] font-inter-semibold uppercase tracking-[1.2px]"
@@ -282,7 +289,7 @@ export function HybridHero({
             </Pressable>
             <Pressable
               onPress={() => setView("pattern")}
-              className={`flex-1 rounded-md px-2 py-1.5 ${view === "pattern" ? "bg-z-brass/20" : ""}`}
+              className={`flex-1 rounded-md px-2 py-1.5 ${view === "pattern" ? "bg-z-brass-20" : ""}`}
             >
               <Text
                 className="text-center text-[10px] font-inter-semibold uppercase tracking-[1.2px]"
@@ -326,7 +333,7 @@ export function HybridHero({
       )}
     </View>
   );
-}
+});
 
 function Sparkline({
   values,

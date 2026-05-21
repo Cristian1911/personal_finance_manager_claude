@@ -59,20 +59,28 @@ export function revalidateAllUserData() {
 
 /**
  * Route-Handler-safe variant of `revalidateFinancialViews()`. Used by
- * webhooks (`/api/webhooks/email-ingest`, telegram, cron jobs) where
- * `updateTag()` doesn't work as expected — its read-your-own-writes
- * semantics are request-scoped to the current Server Action, but a
- * webhook's request ends before any client navigates, so the user's
- * NEXT request never sees the invalidation. `revalidateTag(tag, "zeta")`
- * marks the cache entries stale for subsequent reads (stale-while-
- * revalidate is acceptable here — eventual consistency is fine for
- * background-ingested data).
+ * webhooks (`/api/webhooks/email-ingest`, telegram, cron jobs).
+ *
+ * `updateTag()` is the right call from Server Actions because it pairs
+ * Data Cache eviction with Router Cache eviction for the *initiating
+ * client* — the user gets read-your-own-writes on their very next
+ * navigation. Route Handlers have no such client attachment: the
+ * webhook is initiated by Bancolombia / Telegram / cron, not the user
+ * the data belongs to, so there is no Router Cache to flush in the
+ * same request. `revalidateTag(tag, "zeta")` persistently marks the
+ * Data Cache entries stale; the user's subsequent navigation pays one
+ * SWR refresh and sees fresh data. Eventual consistency is acceptable
+ * for background-ingested rows.
+ *
+ * Do NOT call this from Server Actions — it bypasses the Router Cache
+ * eviction that `updateTag` provides, so the action's own caller would
+ * still see stale data until the next full reload. The `updateTag`
+ * path in `revalidateFinancialViews()` is correct for those.
  *
  * Discovered 2026-05-21 when an email-imported transaction appeared on
  * /transactions + /accounts/[id] but was missing from the dashboard
- * hero. Both surfaces are tagged `"transactions"`, but only the former
- * was getting invalidated because `getRitmo` / hero queries are read by
- * subsequent navigations, not the webhook's own response.
+ * hero, because the prior webhook code reused `updateTag` and silently
+ * no-op'd outside a Server Action context.
  */
 export function revalidateFinancialViewsFromWebhook() {
   revalidateTag("transactions", "zeta");
