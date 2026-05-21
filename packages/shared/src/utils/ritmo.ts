@@ -153,14 +153,15 @@ export function computeRitmo(input: RitmoInput): RitmoResult {
   const spentFraction =
     periodBudget > 0 ? Math.min(1, spentMonth / periodBudget) : availableTotal < 0 ? 1 : 0;
 
-  // On-track = projected month-end spend (using last-7-day avg as
-  // best-guess pace) doesn't exceed what we have. Tolerant of inputs
-  // where dailyOutflows is short (early in month).
+  // On-track = projected spend for the REMAINING window (using last-7-day
+  // avg as best-guess pace) fits within `availableTotal` — which already
+  // nets out pendingObligations. Comparing remaining-vs-remaining is more
+  // precise than projecting the whole month against total cash, and it
+  // correctly fails when a big bill is pending.
   const last7Days = input.dailyOutflows.slice(-7);
   const last7Total = last7Days.reduce((s, r) => s + r.expense, 0);
   const avgLast7 = last7Days.length > 0 ? last7Total / last7Days.length : 0;
-  const projectedMonthly = avgLast7 * daysInMonth;
-  const onTrack = projectedMonthly <= input.liquidBalance + spentMonth;
+  const onTrack = avgLast7 * daysRemaining <= availableTotal;
 
   // Calendar buckets — relative to month-to-date daily average.
   const dailyAvg = daysElapsed > 0 ? spentMonth / daysElapsed : 0;

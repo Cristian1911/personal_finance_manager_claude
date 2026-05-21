@@ -1,64 +1,24 @@
 "use server";
 
-import { cacheTag, cacheLife } from "next/cache";
 import { computeRitmo, type RitmoResult } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
-import { createCachedClient } from "@/lib/supabase/cached";
-import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import {
   parseMonth,
-  monthStartStr,
   monthEndStr,
   toColombiaDateString,
 } from "@/lib/utils/date";
-import { getDashboardHeroData } from "@/actions/charts";
+import { getDashboardHeroData, getDailySpending } from "@/actions/charts";
 import type { CurrencyCode } from "@/types/domain";
 
 /**
  * Canonical "ritmo" data for the dashboard hero. Wraps `getDashboardHeroData`
- * (for liquid balance + pending obligations + next-income date) and adds the
- * per-day OUTFLOW timeline needed for the V7 hero's progress bar + calendar
- * heatmap. Calls `computeRitmo` from @zeta/shared so mobile and webapp
- * produce identical numbers by construction.
+ * (for liquid balance + pending obligations + next-income date) and reuses
+ * `getDailySpending` for the per-day OUTFLOW timeline so the hero, the
+ * charts page, and the "Patrón del mes" view all share the exact same
+ * filtering (currency, transfer exclusion, demo scope). Calls `computeRitmo`
+ * from @zeta/shared so mobile and webapp produce identical numbers by
+ * construction.
  */
-
-async function getDailyOutflowsCached(
-  userId: string,
-  accessToken: string,
-  dateFrom: string,
-  dateTo: string,
-): Promise<{ date: string; expense: number }[]> {
-  "use cache";
-  cacheTag("transactions");
-  cacheLife("zeta");
-
-  const supabase = createCachedClient(accessToken);
-  const isDemo = await getIsDemoFilter(userId);
-  const demoAccountIds = await getDemoAccountIds(supabase, userId, isDemo);
-  if (!demoAccountIds) return [];
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("transaction_date, amount")
-    .eq("user_id", userId)
-    .in("account_id", demoAccountIds)
-    .eq("direction", "OUTFLOW")
-    .eq("is_excluded", false)
-    .is("reconciled_into_transaction_id", null)
-    .gte("transaction_date", dateFrom)
-    .lte("transaction_date", dateTo);
-
-  if (error) throw error;
-
-  const byDate = new Map<string, number>();
-  for (const row of data ?? []) {
-    const key = row.transaction_date as string;
-    byDate.set(key, (byDate.get(key) ?? 0) + (row.amount as number));
-  }
-  return Array.from(byDate.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, expense]) => ({ date, expense }));
-}
 
 export interface RitmoData extends RitmoResult {
   currency: CurrencyCode;
@@ -83,15 +43,21 @@ export async function getRitmo(
 
   try {
     const target = parseMonth(month);
-    const dateFrom = monthStartStr(target);
     const dateTo = monthEndStr(target);
     const today = toColombiaDateString(new Date());
     const usedCurrency = (currency ?? "COP") as CurrencyCode;
 
-    const [heroData, dailyOutflows] = await Promise.all([
+    // Reuse getDailySpending so the hero shares the canonical
+    // filtering with the charts page (currency_code, transfer_group_id,
+    // demo scope) — avoids parallel "almost the same" SQL diverging.
+    const [heroData, dailySpending] = await Promise.all([
       getDashboardHeroData(month, usedCurrency),
-      getDailyOutflowsCached(user.id, accessToken, dateFrom, dateTo),
+      getDailySpending(month, usedCurrency),
     ]);
+    const dailyOutflows = dailySpending.map((d) => ({
+      date: d.date,
+      expense: d.amount,
+    }));
 
     const ritmo = computeRitmo({
       today,
