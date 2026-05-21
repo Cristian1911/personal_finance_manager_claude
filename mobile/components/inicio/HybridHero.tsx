@@ -546,10 +546,13 @@ function PatternView(props: {
         Toca un día para ver su detalle
       </Text>
 
-      {/* Weekday header — one flex-row of 7 equal columns. */}
+      {/* Each cell slot occupies exactly 1/7 of the row width with
+          internal padding creating the visual gap. This avoids the
+          flex-1 + gap combo that was collapsing empty cells in partial
+          rows and misaligning columns. */}
       <View className="flex-row">
         {WEEKDAYS.map((label) => (
-          <View key={label} className="flex-1 items-center">
+          <View key={label} style={{ width: `${100 / 7}%`, alignItems: "center" }}>
             <Text className="text-[9px] font-inter-semibold uppercase tracking-wider text-z-sage-dark">
               {label}
             </Text>
@@ -557,46 +560,47 @@ function PatternView(props: {
         ))}
       </View>
 
-      {/* Week rows */}
       {weeks.map((week, wi) => (
-        <View key={`w-${wi}`} className="mt-1.5 flex-row" style={{ gap: 6 }}>
+        <View key={`w-${wi}`} className="mt-1.5 flex-row">
           {week.map((day, di) => {
             if (!day) {
               return (
                 <View
                   key={`empty-${wi}-${di}`}
-                  className="flex-1"
-                  style={{ aspectRatio: 1 }}
+                  style={{ width: `${100 / 7}%`, aspectRatio: 1 }}
                 />
               );
             }
             const isSelected = day.date === selectedDay;
             return (
-              <Pressable
+              <View
                 key={day.date}
-                onPress={() => onSelect(day.date)}
-                className={`flex-1 items-end justify-start rounded-md px-1 py-0.5 ${BUCKET_TONE[day.bucket]}`}
-                style={{
-                  aspectRatio: 1,
-                  opacity: day.isFuture ? 0.3 : 1,
-                  borderWidth: day.isToday || isSelected ? 2 : 0,
-                  borderColor: isSelected
-                    ? COLORS.brass
-                    : day.isToday
-                      ? COLORS.foreground
-                      : "transparent",
-                }}
+                style={{ width: `${100 / 7}%`, padding: 3 }}
               >
-                <Text
-                  className="text-[10px]"
+                <Pressable
+                  onPress={() => onSelect(day.date)}
+                  className={`items-end justify-start rounded-md px-1 py-0.5 ${BUCKET_TONE[day.bucket]}`}
                   style={{
-                    color: day.bucket === "high" ? COLORS.foreground : COLORS.sageDark,
-                    fontVariant: ["tabular-nums"],
+                    aspectRatio: 1,
+                    opacity: day.isFuture ? 0.3 : 1,
+                    borderWidth: day.isToday || isSelected ? 2 : 0,
+                    // Brass for both today AND selected so the indicator
+                    // stays on-brand. Selected wins when both apply.
+                    borderColor:
+                      isSelected || day.isToday ? COLORS.brass : "transparent",
                   }}
                 >
-                  {dayOfMonth(day.date)}
-                </Text>
-              </Pressable>
+                  <Text
+                    className="text-[10px]"
+                    style={{
+                      color: day.bucket === "high" ? COLORS.foreground : COLORS.sageDark,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {dayOfMonth(day.date)}
+                  </Text>
+                </Pressable>
+              </View>
             );
           })}
         </View>
