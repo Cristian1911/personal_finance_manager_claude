@@ -515,6 +515,24 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Tech Debt
 
+### Mobile ↔ Webapp parity — live walkthrough findings (2026-05-21)
+- **Priority:** High (the first two items, others Medium)
+- **Where:** captured during the live walkthrough phase of `docs/parity-audit-2026-05-21.md` after PR #257 / #258 / #259 merged. Real-account auth on both surfaces, iPhone 16e simulator + Chrome at iPhone viewport.
+- **What:**
+  1. **❌ CRITICAL — Resumen del mes aggregates disagree by 7-33×.** Same account, same month (Mayo 2026), opening Movimientos LECTURA card on each surface: mobile shows 112 movimientos / $3.787.610 ingresos / $9.946.089 gastos; webapp shows 1.371 / $200.000 / $1.423.639. Categorizar count: mobile 33 vs webapp 0. The per-row transaction data matches, so the divergence is purely in the aggregation logic. Likely culprits: different time window (calendar-month vs all-time), different exclusion semantics (excluded txns, debt-account INFLOWs, reconciled rows), different definition of "uncategorized" (NULL vs NULL-or-SYSTEM_DEFAULT). Two surfaces showing the same user the same screen but disagreeing on aggregates by orders of magnitude — high-trust UX hit.
+     - Fix: pick a canonical definition (probably webapp's, since it surfaces things like email-ingest count too), extract to `@zeta/shared`, and have both surfaces consume it.
+  2. **❌ CRITICAL — Dashboard hero "ritmo" gives opposite verdicts.** Same day, same account: mobile shows "RITMO $33.682/día · fuera de ritmo"; webapp shows "ESTE MES · PULSO $47.155/día · Arriba del ritmo". Mobile reads a rolling 7-day average; webapp projects a per-day spend over the remaining days of the month. Different formulae, same eyebrow concept — the user can't trust either.
+     - Fix: align both surfaces on one canonical "ritmo" formula. This is adjacent to the existing BACKLOG item "Mobile Inicio parity — attention widget semantic alignment".
+  3. **⚠️ Transaction detail screen feature gap.** Confirms audit M4/M5/M6/M7. Mobile detail is missing (vs webapp): destinatario picker, etiquetas/tag UI, "Hacer recurrente" promote button, "Vincular" link-to-recurring action, "Eliminar" destructive button (mobile has a header trash icon but no AXLabel and no destructive styling). Mobile also has a "Estado: Registrada" row webapp lacks. Label divergence: mobile "Excluir de totales" vs webapp "Excluir de métricas".
+  4. **⚠️ Row-expand affordances asymmetric.** Both surfaces expand the same inline category-edit chip on row tap (parity ✓), but webapp also surfaces destinatario picker, tag picker, and a "Vincular" button in the expand. Mobile only shows the category chip and an "Editar" link.
+  5. **⚠️ POR RESOLVER count mismatch (audit M23 confirmed live).** Mobile dashboard shows 5 items / 5 próximos; webapp shows 11 / 6. The 6-item gap is the pending-email-ingested transactions that mobile hardcodes to 0 in `AttentionWidget.tsx`.
+  6. **⚠️ Header avatar divergence.** Mobile top-right uses `gearshape.fill` icon labeled "Menú de perfil"; webapp uses circular "CG" initials avatar. Same destination, conflicting visual language.
+  7. **⚠️ Mobile import wizard 4 steps; webapp 6 (audit C9 confirmed live).** Mobile shows "PASO 1 DE 4" with 4-segment progress; webapp wizard has Upload → Review → Destinatarios → Confirm → Reconcile → Results. Mobile is missing the Destinatarios step.
+  8. **⚠️ Accessibility: mobile detail header icons (back / edit / trash) have NO AXLabel.** Screen-reader users can't navigate. Same icons on mobile Movimientos header are also unlabeled. Add `accessibilityLabel` props.
+  9. **⚠️ Webapp internal inconsistency.** /accounts shows "681 transacciones sin categorizar"; /transactions shows "0 Categorizar". Both webapp, same session. Either the two surfaces use different scopes (all-time vs current-month) or different definitions of "uncategorized". Not a mobile parity issue but the same underlying definition problem as #1 and #5.
+  10. **⚠️ Mobile Ajustes copy typo:** "Perfil, sincronizacion, seguridad" → should be "sincronización" (accent missing).
+- **Found:** Live mobile↔webapp walkthrough, 2026-05-21, after #257/#258/#259 merged.
+
 ### Transaction time + location — follow-ups from review agents
 - **Priority:** Medium
 - **What:** Non-blocking items deferred from supabase-migrator, mobile-webapp-parity, server-action-reviewer, cache-doctor, and zetas-front-guy reviews on the `claude/add-transaction-location-time-jJ7WZ` branch:
