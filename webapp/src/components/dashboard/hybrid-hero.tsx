@@ -182,8 +182,12 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
         )}
       </div>
 
-      {/* Period progress bar — gradient mapped to spentFraction */}
-      <div className="relative mt-5 h-2.5 w-full overflow-hidden rounded-full bg-z-surface-2">
+      {/* Period progress bar. The % indicator floats just above the
+          bar's right edge so it never competes with the legend below. */}
+      <div className="mt-5 flex items-end justify-end text-[10px] font-medium text-z-sage-light tabular-nums">
+        <span>{Math.round(data.spentFraction * 100)}% del período</span>
+      </div>
+      <div className="relative mt-1 h-2.5 w-full overflow-hidden rounded-full bg-z-surface-2">
         <div
           className="h-full rounded-full"
           style={{
@@ -194,15 +198,25 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
           }}
         />
       </div>
-      <div className="mt-2 flex items-baseline justify-between gap-3 text-[11px] text-z-sage-dark tabular-nums">
-        <span className="truncate">
-          {formatCurrency(data.spentMonth, data.currency)} gastados ·{" "}
-          {formatCurrency(data.availableTotal, data.currency)} restantes
-        </span>
-        <span className="shrink-0 font-medium text-z-sage-light">
-          {Math.round(data.spentFraction * 100)}% del período
-        </span>
-      </div>
+      {/* Legend below — each metric on its own line so they breathe. */}
+      <dl className="mt-3 space-y-1 text-[11px] tabular-nums">
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-z-sage-dark">Gastados</dt>
+          <dd className="text-z-sage-light">
+            {formatCurrency(data.spentMonth, data.currency)}
+          </dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-z-sage-dark">Restantes</dt>
+          <dd
+            className={cn(
+              data.availableTotal < 0 ? "text-z-debt" : "text-z-sage-light",
+            )}
+          >
+            {formatCurrency(data.availableTotal, data.currency)}
+          </dd>
+        </div>
+      </dl>
 
       <button
         type="button"
