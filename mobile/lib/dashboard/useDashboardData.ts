@@ -76,6 +76,11 @@ export type DashboardSummary = {
   liquidBalance: number;
   pendingObligations: number;
   totalSpentThisMonth: number;
+  /** Per-day OUTFLOW totals for the current calendar month — drives the
+   *  V7 HybridHero calendar heatmap and the period progress bar. Ordered
+   *  by date ascending. Excluded + reconciled + transfer rows already
+   *  removed by the same filter the totals use. */
+  dailyOutflowsThisMonth: { date: string; expense: number }[];
 
   /** "Por resolver" tile — counts for the HERRAMIENTAS system widget. */
   attention: {
@@ -111,6 +116,7 @@ const EMPTY: DashboardSummary = {
   liquidBalance: 0,
   pendingObligations: 0,
   totalSpentThisMonth: 0,
+  dailyOutflowsThisMonth: [],
   attention: { overdue: 0, upcoming: 0, pendingEmails: 0 },
 };
 
@@ -190,6 +196,8 @@ export function useDashboardData() {
       let last7Total = 0;
       let last30Total = 0;
       let totalOutflow = 0;
+      // Per-day OUTFLOW bucket keyed by ISO date for the V7 hero calendar.
+      const outflowByDate = new Map<string, number>();
 
       const yesterdayDate = new Date(now);
       yesterdayDate.setDate(yesterdayDate.getDate() - 1);
@@ -202,6 +210,10 @@ export function useDashboardData() {
         totalOutflow += amount;
         if (tx.transaction_date === today) spentToday += amount;
         if (tx.transaction_date === yesterdayStr) spentYesterday += amount;
+        outflowByDate.set(
+          tx.transaction_date,
+          (outflowByDate.get(tx.transaction_date) ?? 0) + amount,
+        );
         const txDate = new Date(tx.transaction_date + "T12:00:00");
         const diffDays = Math.floor(
           (now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -215,6 +227,10 @@ export function useDashboardData() {
           spentTrend30[29 - diffDays] += amount;
         }
       }
+
+      const dailyOutflowsThisMonth = Array.from(outflowByDate.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, expense]) => ({ date, expense }));
 
       const avgLast7 = last7Total / 7;
       const projectedMonthly = avgLast7 * daysInMonth;
@@ -342,6 +358,7 @@ export function useDashboardData() {
         liquidBalance,
         pendingObligations,
         totalSpentThisMonth: totalOutflow,
+        dailyOutflowsThisMonth,
         attention: {
           overdue: overdueCount,
           upcoming: upcomingCount,

@@ -19,6 +19,7 @@ export interface ParsedEmailTransaction {
     | "pago_pse"
     | "bre_b"
     | "pago_recibido"
+    | "pago_recibido_cuenta"
     | "nomina"
     | "avance"
     | "qr_recibido"
@@ -327,6 +328,26 @@ const PATTERNS: PatternDef[] = [
       pattern_type: "pago_recibido",
     }),
   },
+  // Pattern 13: Pago recibido a cuenta con etiqueta (INFLOW) — formato Bre-B con nombre de cuenta
+  // "Recibiste un pago por $1,100,000.00 de GIRALDO CRISTIA a tu cuenta AHORROS, el 12:43 a las 21/05/2026"
+  // Note: time/date order is reversed vs other patterns ("el HH:MM a las DD/MM/YYYY")
+  {
+    type: "pago_recibido_cuenta",
+    regex:
+      /Recibiste un pago por \$([\d.,]+) de (.+?) a tu cuenta (.+?),? el (\d{2}:\d{2}) a las (\d{2}\/\d{2}\/\d{4})/,
+    extract: (m) => ({
+      direction: "INFLOW",
+      amount: parseAmount(m[1]),
+      currency: "COP",
+      merchant: m[2].trim(),
+      destination: null,
+      card_last4: "",
+      card_type: "Cta",
+      transaction_date: parseDateDMY(m[5]),
+      transaction_time: m[4],
+      pattern_type: "pago_recibido_cuenta",
+    }),
+  },
   // Pattern 9: Nomina (INFLOW)
   // "Recibiste un pago de Nomina de UNIVERSIDAD PON por $1,203,850.00 en tu cuenta de Ahorros el 27/03/2026 a las 03:32"
   {
@@ -376,7 +397,7 @@ export function parseBancolombiaEmail(
       const parsed = pattern.extract(match);
       if (parsed) {
         // Extract raw_line from the alert segment only, excluding trailing support/marketing copy.
-        const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|¿Dudas|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|$)/);
+        const rawLineMatch = normalized.match(/Bancolombia:\s*([\s\S]+?)(?:\.\s*(?:Si tienes dudas|¿Dudas|¿Tienes dudas|Encuentranos aqui|Con codigo QR|Con Bre-b|A tu lado|Estamos cerca)|$)/);
         const raw_line = rawLineMatch ? rawLineMatch[1].trim() : normalized;
         return { ...parsed, raw_line };
       }

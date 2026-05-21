@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { getRequestUser } from "@/app/api/_shared/auth";
 
 /**
@@ -24,10 +24,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  updateTag("profile");
-  updateTag("accounts");
-  updateTag("dashboard:hero");
-  updateTag("dashboard:accounts");
+  // Route Handler context — must use `revalidateTag` (not `updateTag`)
+  // so the user's NEXT navigation sees fresh data. `updateTag` is
+  // request-scoped read-your-own-writes and doesn't survive past this
+  // webhook response. SWR semantics are fine here — eventual
+  // consistency on profile/accounts is acceptable for onboarding completion.
+  revalidateTag("profile", "zeta");
+  revalidateTag("accounts", "zeta");
+  revalidateTag("dashboard:hero", "zeta");
+  revalidateTag("dashboard:accounts", "zeta");
 
   return NextResponse.json({ ok: true });
 }
