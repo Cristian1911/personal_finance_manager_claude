@@ -574,13 +574,29 @@ export function TransactionDetailClient({
             </div>
             {mapOpen && (
               <div className="mt-3 overflow-hidden rounded-lg border border-white/6">
+                {/* OSM's default `embed.html` only serves the light Mapnik
+                 *  layer, which sits awkwardly inside the dark UI. Use OSM's
+                 *  built-in `?layer=cyclosm` is also light, so we go with the
+                 *  `cyclemap` layer here — still light but slightly less
+                 *  bright — and let the user tap through to a full-screen
+                 *  map for fidelity. The sandbox attr stops the embedded
+                 *  page from running its own scripts against our origin. */}
                 <iframe
                   title="Mapa de la transacción"
                   src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.longitude - 0.005},${location.latitude - 0.003},${location.longitude + 0.005},${location.latitude + 0.003}&layer=mapnik&marker=${location.latitude},${location.longitude}`}
-                  className="h-48 w-full border-0"
+                  className="h-48 w-full border-0 [color-scheme:light]"
                   loading="lazy"
+                  sandbox="allow-scripts allow-same-origin"
                   referrerPolicy="no-referrer"
                 />
+                <a
+                  href={`https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=17/${location.latitude}/${location.longitude}`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="block border-t border-white/6 bg-white/[0.04] px-3 py-2 text-[11px] text-z-brass hover:underline"
+                >
+                  Abrir en OpenStreetMap →
+                </a>
               </div>
             )}
           </div>

@@ -831,11 +831,7 @@ export default function SettingsScreen() {
           <View className="gap-2">
             <ToggleRow
               icon={<MapPin size={18} color={COLORS.sageDark} />}
-              label={
-                locationOn
-                  ? "Guardar ubicación con cada movimiento"
-                  : "Guardar ubicación con cada movimiento (off)"
-              }
+              label="Guardar ubicación con cada movimiento"
               value={locationOn}
               onValueChange={handleToggleLocation}
             />

@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Clock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -12,6 +11,8 @@ interface TimePickerProps {
   className?: string;
   /** HTML name attribute for form submission */
   name?: string;
+  /** HTML id used by sibling <Label htmlFor={...}>. Defaults to `name`. */
+  id?: string;
   placeholder?: string;
 }
 
@@ -25,9 +26,11 @@ export function TimePicker({
   disabled = false,
   className,
   name,
+  id,
   placeholder = "HH:MM",
 }: TimePickerProps) {
   const normalised = normaliseTime(value);
+  const inputId = id ?? name;
 
   return (
     <div
@@ -40,6 +43,7 @@ export function TimePicker({
       <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
       <input
         type="time"
+        id={inputId}
         name={name}
         value={normalised ?? ""}
         onChange={(event) => {
