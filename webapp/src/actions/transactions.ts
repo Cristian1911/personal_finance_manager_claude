@@ -2,7 +2,12 @@
 
 import { cacheTag, cacheLife, updateTag } from "next/cache";
 import { createCachedClient } from "@/lib/supabase/cached";
-import { autoCategorize, computeIdempotencyKey } from "@zeta/shared";
+import {
+  autoCategorize,
+  computeIdempotencyKey,
+  computeMonthlyAggregates,
+  type MonthlyAggregatesResult,
+} from "@zeta/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createDestinatario, matchTransactionToDestinatario } from "@/actions/destinatarios";
 import { createRecurringTemplate } from "@/actions/recurring-templates";
@@ -535,6 +540,101 @@ export async function getTransactions(
     );
   } catch {
     return { data: [], count: 0, page: params.page, pageSize: params.pageSize, totalPages: 0 };
+  }
+}
+
+// ─── Monthly aggregates (Resumen del mes / LECTURA card) ────────────────────
+//
+// Canonical aggregation for the Movimientos summary card. The list endpoint
+// (`getTransactionsCached`) returns a paginated `data[]` and an unfiltered
+// `count`, so reducing inflows/outflows/uncategorized from that response gives
+// page-1-only totals (the bug behind the 2026-05-21 live walkthrough's 7-33×
+// divergence). This action does a slim SELECT for the entire month and
+// reduces via the shared `computeMonthlyAggregates` helper that mobile uses
+// too — same numbers by construction.
+
+async function getMonthlyAggregatesCached(
+  userId: string,
+  accessToken: string,
+  dateFrom: string,
+  dateTo: string,
+  accountId: string | undefined,
+): Promise<MonthlyAggregatesResult> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  const isDemo = await getIsDemoFilter(userId);
+  const demoAccountIds = await getDemoAccountIds(supabase, userId, isDemo);
+  if (!demoAccountIds) {
+    return {
+      count: 0,
+      totalInflow: 0,
+      totalOutflow: 0,
+      uncategorizedCount: 0,
+      daysByDate: [],
+    };
+  }
+
+  let query = supabase
+    .from("transactions")
+    .select(
+      "amount, direction, account_id, category_id, is_excluded, reconciled_into_transaction_id, transaction_date",
+    )
+    .eq("user_id", userId)
+    .in("account_id", demoAccountIds)
+    .gte("transaction_date", dateFrom)
+    .lte("transaction_date", dateTo)
+    .is("reconciled_into_transaction_id", null);
+
+  if (accountId) query = query.eq("account_id", accountId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  // Resolve debt accounts once so the helper can skip debt-INFLOWs from totalInflow.
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("id, account_type")
+    .eq("user_id", userId);
+  const debtAccountIds = new Set(
+    (accounts ?? [])
+      .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
+      .map((a) => a.id),
+  );
+
+  return computeMonthlyAggregates(data ?? [], { debtAccountIds });
+}
+
+/**
+ * Public entry for the Movimientos card. Always month-scoped (defaults to the
+ * current month if `month` is missing) — the calling page may render a label
+ * like "Mayo 2026" without passing a URL param, and the count must agree
+ * with the label.
+ */
+export async function getMonthlyAggregates(
+  month?: string,
+  accountId?: string,
+): Promise<ActionResult<MonthlyAggregatesResult>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  try {
+    const target = parseMonth(month);
+    const dateFrom = monthStartStr(target);
+    const dateTo = monthEndStr(target);
+    const data = await getMonthlyAggregatesCached(
+      user.id,
+      accessToken,
+      dateFrom,
+      dateTo,
+      accountId,
+    );
+    return { success: true, data };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Error al cargar el resumen mensual";
+    return { success: false, error: message };
   }
 }
 

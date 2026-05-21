@@ -1,6 +1,7 @@
 import * as Crypto from "expo-crypto";
 import {
   computeIdempotencyKey,
+  computeMonthlyAggregates,
   findReconciliationCandidates,
   mergeTransactionMetadata,
   type DataProvider,
@@ -299,64 +300,35 @@ export async function getMonthlyAggregates(options: {
     params.push(options.accountId);
   }
 
-  // Totals + count. INFLOW to debt accounts excluded from totalInflow.
-  const totalsRow = await db.getFirstAsync<{
-    count: number;
-    total_inflow: number;
-    total_outflow: number;
-    uncategorized_count: number;
-  }>(
-    `SELECT
-       COUNT(*) AS count,
-       COALESCE(SUM(CASE WHEN t.direction = 'INFLOW'
-                          AND a.account_type NOT IN ('CREDIT_CARD','LOAN')
-                          AND t.is_excluded = 0
-                         THEN t.amount ELSE 0 END), 0) AS total_inflow,
-       COALESCE(SUM(CASE WHEN t.direction = 'OUTFLOW' AND t.is_excluded = 0
-                         THEN t.amount ELSE 0 END), 0) AS total_outflow,
-       SUM(CASE WHEN t.direction = 'OUTFLOW' AND t.category_id IS NULL AND t.is_excluded = 0
-                THEN 1 ELSE 0 END) AS uncategorized_count
-     FROM transactions t
-     LEFT JOIN accounts a ON t.account_id = a.id
-     WHERE t.transaction_date LIKE ?
-       AND t.reconciled_into_transaction_id IS NULL${accountFilter}`,
-    params
-  );
-
-  // Per-day income/expense aggregation for the flow chart.
-  const dayRows = await db.getAllAsync<{
+  // Single slim SELECT for the month; the canonical aggregation lives in
+  // @zeta/shared/utils/monthly-aggregates so mobile and webapp produce the
+  // same numbers by construction. The previous SQL had a bug — COUNT(*)
+  // omitted the `t.is_excluded = 0` predicate that the sibling SUMs applied,
+  // inflating the row count whenever the user had excluded transactions.
+  const rows = await db.getAllAsync<{
+    amount: number;
+    direction: "INFLOW" | "OUTFLOW";
+    account_id: string;
+    category_id: string | null;
+    is_excluded: number;
+    reconciled_into_transaction_id: string | null;
     transaction_date: string;
-    income: number;
-    expense: number;
   }>(
-    `SELECT
-       t.transaction_date,
-       COALESCE(SUM(CASE WHEN t.direction = 'INFLOW'
-                          AND a.account_type NOT IN ('CREDIT_CARD','LOAN')
-                         THEN t.amount ELSE 0 END), 0) AS income,
-       COALESCE(SUM(CASE WHEN t.direction = 'OUTFLOW'
-                         THEN t.amount ELSE 0 END), 0) AS expense
-     FROM transactions t
-     LEFT JOIN accounts a ON t.account_id = a.id
-     WHERE t.transaction_date LIKE ?
-       AND t.is_excluded = 0
-       AND t.reconciled_into_transaction_id IS NULL${accountFilter}
-     GROUP BY t.transaction_date
-     ORDER BY t.transaction_date ASC`,
+    `SELECT t.amount, t.direction, t.account_id, t.category_id, t.is_excluded,
+            t.reconciled_into_transaction_id, t.transaction_date
+       FROM transactions t
+      WHERE t.transaction_date LIKE ?
+        AND t.reconciled_into_transaction_id IS NULL${accountFilter}`,
     params
   );
 
-  return {
-    count: totalsRow?.count ?? 0,
-    totalInflow: totalsRow?.total_inflow ?? 0,
-    totalOutflow: totalsRow?.total_outflow ?? 0,
-    uncategorizedCount: totalsRow?.uncategorized_count ?? 0,
-    daysByDate: dayRows.map((r) => ({
-      date: r.transaction_date,
-      income: r.income,
-      expense: r.expense,
-    })),
-  };
+  // Resolve debt accounts so INFLOWs into them are excluded from totalInflow.
+  const debtRows = await db.getAllAsync<{ id: string }>(
+    `SELECT id FROM accounts WHERE account_type IN ('CREDIT_CARD','LOAN')`
+  );
+  const debtAccountIds = new Set(debtRows.map((r) => r.id));
+
+  return computeMonthlyAggregates(rows, { debtAccountIds });
 }
 
 /** Narrow shape for the Categorizar panel — only the columns it renders. */

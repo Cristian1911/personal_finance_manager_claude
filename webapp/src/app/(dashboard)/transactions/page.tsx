@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight, Brain } from "lucide-react";
-import { getTransactions } from "@/actions/transactions";
+import { getTransactions, getMonthlyAggregates } from "@/actions/transactions";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { getAllTags } from "@/actions/tags";
@@ -37,14 +37,21 @@ export default async function TransactionsPage({
   await connection();
   const params = await searchParams;
 
-  const [transactionsResult, accountsResult, categoriesResult, allTags, pendingEmailResult] =
-    await Promise.all([
-      getTransactions(params),
-      getAccounts(),
-      getCategories(),
-      getAllTags(),
-      getPendingEmailTransactions(),
-    ]);
+  const [
+    transactionsResult,
+    accountsResult,
+    categoriesResult,
+    allTags,
+    pendingEmailResult,
+    monthlyAggregatesResult,
+  ] = await Promise.all([
+    getTransactions(params),
+    getAccounts(),
+    getCategories(),
+    getAllTags(),
+    getPendingEmailTransactions(),
+    getMonthlyAggregates(params.month, params.accountId),
+  ]);
 
   const pendingTransactions = pendingEmailResult.success ? pendingEmailResult.data : [];
 
@@ -72,6 +79,8 @@ export default async function TransactionsPage({
       .filter((a) => a.account_type === "CREDIT_CARD" || a.account_type === "LOAN")
       .map((a) => a.id)
   );
+  // Desktop "Vista" cards show what's currently filtered+visible (the original
+  // semantic). Mobile LECTURA card needs full-month scope — see below.
   const inflowVisible = visibleTransactions
     .filter((tx) => tx.direction === "INFLOW" && !debtAccountIds.has(tx.account_id))
     .reduce((sum, tx) => sum + tx.amount, 0);
@@ -81,12 +90,15 @@ export default async function TransactionsPage({
   const uncategorizedVisible = visibleTransactions.filter(
     (tx) => tx.direction === "OUTFLOW" && !tx.category_id
   ).length;
-  const scopeLabel =
-    transactionsResult.totalPages > 1
-      ? "en esta página"
-      : hasActiveFilters
-        ? "en esta vista"
-        : "visibles";
+
+  // Mobile LECTURA card ("Resumen del mes") is scoped to the full selected
+  // month via `computeMonthlyAggregates`, not derived from the paginated
+  // `transactionsResult.data`. This ensures the card agrees with the displayed
+  // month label and matches mobile native by construction (same shared helper).
+  const monthlyAggregates = monthlyAggregatesResult.success
+    ? monthlyAggregatesResult.data
+    : { count: 0, totalInflow: 0, totalOutflow: 0, uncategorizedCount: 0, daysByDate: [] };
+  const scopeLabel = hasActiveFilters ? "en esta vista" : monthLabel.toLowerCase();
   const description = hasActiveFilters
     ? `Estás viendo ${transactionsResult.count} movimientos filtrados ${scopeLabel}. Úsalos para limpiar ruido y corregir criterio antes de que afecten presupuesto y plan.`
     : `${monthLabel} en una sola vista: ingresos, gastos y excepciones para leer rápido qué pasó antes de bajar al detalle.`;
@@ -99,10 +111,10 @@ export default async function TransactionsPage({
           categories={categories}
           accounts={accounts}
           tags={allTags}
-          count={transactionsResult.count}
-          totalInflow={inflowVisible}
-          totalOutflow={outflowVisible}
-          uncategorizedCount={uncategorizedVisible}
+          count={monthlyAggregates.count}
+          totalInflow={monthlyAggregates.totalInflow}
+          totalOutflow={monthlyAggregates.totalOutflow}
+          uncategorizedCount={monthlyAggregates.uncategorizedCount}
           pendingEmails={pendingTransactions}
           currency={summaryCurrency}
         />
