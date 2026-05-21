@@ -113,19 +113,19 @@ export function HybridHero({
     [today, endOfMonth, liquidBalance, nextIncomeDate, nextIncomeAmount, pendingObligations, dailyOutflows],
   );
 
-  // Period-aware status (not today-micro-spend). availableTotal < 0
-  // means actually overspent; "Hoy a tope" is the softer "today's
-  // allowance is gone but period is fine" copy.
+  // Status: red on overspend (today OR period), amber on period strain.
+  const overspentToday = ritmo.spentToday > ritmo.availablePerDay;
   const status: { label: string; color: string } =
-    ritmo.availableTotal < 0
+    ritmo.availableTotal < 0 || overspentToday
       ? { label: "Te pasaste", color: COLORS.debt }
       : ritmo.spentFraction >= 0.85
         ? { label: "Vas justo", color: COLORS.alert }
-        : ritmo.allowedToday <= 0
-          ? { label: "Hoy a tope", color: COLORS.alert }
-          : { label: "Vas bien", color: COLORS.income };
+        : { label: "Vas bien", color: COLORS.income };
 
-  const amountColor = status.color;
+  const amountColor =
+    status.color === COLORS.income && ritmo.spentToday === 0
+      ? COLORS.sageLight
+      : status.color;
 
   const sparkValues = ritmo.calendar.slice(-7).map((d) => d.expense);
   const sparkMax = sparkValues.reduce((m, v) => Math.max(m, v), 0);
@@ -156,7 +156,7 @@ export function HybridHero({
       {/* Top row: eyebrow + status pill */}
       <View className="flex-row items-center justify-between">
         <Text className="text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-sage-dark">
-          Hoy puedes gastar
+          Gasto de hoy
         </Text>
         <View
           className="flex-row items-center gap-1.5 rounded-full border border-white-6 bg-white-4 px-2.5 py-1"
@@ -171,18 +171,31 @@ export function HybridHero({
         </View>
       </View>
 
-      {/* Bottom row: amount + sparkline */}
+      {/* Bottom row: today's spend (headline fact) + sparkline. */}
       <View className="mt-2 flex-row items-end justify-between">
         <Text
           className="text-[44px] font-inter-bold tracking-[-1.6px]"
           style={{ color: amountColor, fontVariant: ["tabular-nums"] }}
         >
-          {formatCurrency(ritmo.allowedToday, currency)}
+          {formatCurrency(ritmo.spentToday, currency)}
         </Text>
         {sparkValues.length > 0 && (
           <Sparkline values={sparkValues} max={sparkMax} color={status.color} />
         )}
       </View>
+
+      {/* Daily allowance context — always rendered. */}
+      <Text
+        className="mt-2 text-[12px]"
+        style={{
+          color: overspentToday ? COLORS.alert : COLORS.sageLight,
+          fontVariant: ["tabular-nums"],
+        }}
+      >
+        {overspentToday
+          ? `Por encima de ${formatCurrency(ritmo.availablePerDay, currency)} al día`
+          : `de ${formatCurrency(ritmo.availablePerDay, currency)} al día`}
+      </Text>
 
       {/* % del período above bar */}
       <View className="mt-5 flex-row items-end justify-end">

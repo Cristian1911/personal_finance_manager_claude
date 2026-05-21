@@ -79,31 +79,26 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
   const [view, setView] = useState<ExpandedView>("calc");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  // Status reflects the PERIOD, not today's micro-spend. A user can blow
-  // through today's allowance and still have plenty of headroom for the
-  // rest of the month — that's "Hoy a tope", not "Te pasaste".
-  // - availableTotal < 0 → period exhausted (debt red)
-  // - spentFraction >= 0.85 → period almost gone (alert amber)
-  // - allowedToday <= 0 && availableTotal > 0 → today maxed, period OK (alert)
-  // - otherwise → healthy (income green)
+  // Status: red on overspend (today OR period), amber on period strain.
+  // Today's overspend = red because the user's ritmo is broken for the
+  // day — that's an immediate signal even if the period still has room.
+  const overspentToday = data.spentToday > data.availablePerDay;
   const status: { label: string; tone: "income" | "alert" | "debt" } =
-    data.availableTotal < 0
+    data.availableTotal < 0 || overspentToday
       ? { label: "Te pasaste", tone: "debt" }
       : data.spentFraction >= 0.85
         ? { label: "Vas justo", tone: "alert" }
-        : data.allowedToday <= 0
-          ? { label: "Hoy a tope", tone: "alert" }
-          : { label: "Vas bien", tone: "income" };
+        : { label: "Vas bien", tone: "income" };
 
-  // Amount tone tracks the same period-aware status. Today-exhausted-but-
-  // period-fine renders the $0 in amber, not red — the user has more
-  // available tomorrow.
-  const allowedTone =
+  // The big number is today's actual spend. Tone tracks status.
+  const todayTone =
     status.tone === "debt"
       ? "text-z-debt"
       : status.tone === "alert"
         ? "text-z-alert"
-        : "text-z-income";
+        : data.spentToday > 0
+          ? "text-z-income"
+          : "text-z-sage-light";
   const statusToneClass =
     status.tone === "debt"
       ? "bg-z-debt"
@@ -155,12 +150,10 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
 
   return (
     <div className="rounded-2xl border border-white/6 bg-z-surface p-5">
-      {/* Top row: eyebrow on the left, status pill on the right.
-          Both are small text — they balance each other and let the big
-          amount + sparkline pair up on the row below. */}
+      {/* Top row: eyebrow ("Gasto de hoy") + status pill. */}
       <div className="flex items-center justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-          Hoy puedes gastar
+          Gasto de hoy
         </p>
         <span
           className={cn(
@@ -174,16 +167,15 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
         </span>
       </div>
 
-      {/* Bottom row: big amount on the left, sparkline on the right.
-          Heavy visual elements paired so neither side looks empty. */}
+      {/* Bottom row: today's spend (the headline fact) + sparkline. */}
       <div className="mt-2 flex items-end justify-between gap-3">
         <p
           className={cn(
             "text-[44px] font-bold leading-none tracking-[-0.04em] tabular-nums",
-            allowedTone,
+            todayTone,
           )}
         >
-          {formatCurrency(data.allowedToday, data.currency)}
+          {formatCurrency(data.spentToday, data.currency)}
         </p>
         {sparkData.values.length > 0 && (
           <Sparkline
@@ -193,6 +185,26 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
           />
         )}
       </div>
+
+      {/* Daily allowance context line. Always rendered — it's the
+          baseline the headline is being compared against. Tone shifts
+          to amber when today is over the daily budget. */}
+      <p
+        className={cn(
+          "mt-2 text-[12px] tabular-nums",
+          overspentToday ? "text-z-alert" : "text-z-sage-light",
+        )}
+      >
+        {overspentToday ? (
+          <>
+            Por encima de {formatCurrency(data.availablePerDay, data.currency)} al día
+          </>
+        ) : (
+          <>
+            de {formatCurrency(data.availablePerDay, data.currency)} al día
+          </>
+        )}
+      </p>
 
       {/* Period progress bar. The % indicator floats just above the
           bar's right edge so it never competes with the legend below. */}
