@@ -19,7 +19,7 @@ End-to-end static parity sweep of 26 mobile screens against ~30 webapp routes, r
 - **Live smoke test**: iOS simulator (iPhone 16e) + webapp dev server, walked screen-by-screen.
 - **Sample data**: user's real Supabase account, read-only — only created and immediately deleted disposable test rows.
 
-Plan reference: `/Users/cristian/.claude/plans/smooth-bouncing-cerf.md`.
+Plan reference: stored locally in the operator's `~/.claude/plans/` directory (intentionally not committed).
 
 ---
 
@@ -80,10 +80,8 @@ Plan reference: `/Users/cristian/.claude/plans/smooth-bouncing-cerf.md`.
 - **Impact**: Categories created/edited on mobile lack `direction`, `is_essential`, `icon`, `is_active`, `expense_type`. `direction = NULL` is the most damaging — webapp filters categories by direction for budget allocation and pickers. Mobile-created categories pollute both INFLOW and OUTFLOW pickers.
 - **Fix size**: Small. Add the missing fields to INSERT/UPDATE payloads + the UI form.
 
-### C12. Mobile category UPDATE writes to `slug` column that doesn't exist locally
-- **Where**: `mobile/components/categories/CategoriesRoot.tsx` UPDATE statement (SQLite). `mobile/lib/db/schema.ts:30-41` v1 categories table has no `slug` column.
-- **Impact**: Any category edit on mobile throws at SQLite layer. Either silently caught and ignored, or surfaces as a runtime error.
-- **Fix size**: Small. Add `slug TEXT` to `categories` table in a v14 SQLite migration, or remove `slug` from the UPDATE binding.
+### ~~C12. Mobile category UPDATE writes to `slug` column that doesn't exist locally~~
+**WITHDRAWN — false positive.** Initial scan checked only the v1 `CREATE TABLE` block (`mobile/lib/db/schema.ts:30-41`), which has no `slug` column. The column is actually added in a later migration (`ALTER TABLE categories ADD COLUMN slug TEXT`), so the SQLite UPDATE writing to `slug` works at runtime. Caught by Gemini on PR #257 review. Leaving the entry as a strikethrough placeholder so the C-numbering stays stable for downstream references.
 
 ### C13. `mobile/app/subscriptions.tsx` writes directly to Supabase, bypassing sync queue
 - **Where**: lines 229-263. Inserts/updates/deletes `recurring_transaction_templates` via `supabase.from(...)` without going through the repository.
@@ -179,9 +177,8 @@ Plan reference: `/Users/cristian/.claude/plans/smooth-bouncing-cerf.md`.
 
 1. **C5** — `categorization_source` 2-line fix in `buildInsertPayload`
 2. **C10** — `installmentCurrent` in import idempotency key
-3. **C12** — `slug` column SQLite migration OR remove from UPDATE binding
-4. **C14 + C15** — `nav_focus` and `dashboard_config` in mobile onboarding
-5. **M7** — actually call `saveTransactionTags` on tx detail save
+3. **C14 + C15** — `nav_focus` and `dashboard_config` in mobile onboarding
+4. **M7** — actually call `saveTransactionTags` on tx detail save
 6. **C4** — wire `destinatario_id` into mobile capture's tx create payload
 
 Total: ~50-80 lines across ~6 files. One follow-up PR.
