@@ -108,27 +108,32 @@ CREATE TRIGGER transaction_locations_view_insert_trg
   INSTEAD OF INSERT ON public.transaction_locations
   FOR EACH ROW EXECUTE FUNCTION public.transaction_locations_view_insert();
 
--- UPDATE trigger
+-- UPDATE trigger — SELECT INTO _old pattern (one fetch vs. N subqueries)
 CREATE OR REPLACE FUNCTION public.transaction_locations_view_update()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
 DECLARE
   has_auth BOOLEAN;
+  _old public.transaction_locations_enc;
 BEGIN
   has_auth := (SELECT auth.uid()) IS NOT NULL;
 
+  IF NOT has_auth THEN
+    SELECT * INTO _old FROM public.transaction_locations_enc WHERE id = OLD.id;
+  END IF;
+
   UPDATE public.transaction_locations_enc SET
     user_id = NEW.user_id,
-    latitude = CASE WHEN has_auth THEN zeta_encrypt(NEW.latitude::TEXT) ELSE (SELECT te.latitude FROM transaction_locations_enc te WHERE te.id = OLD.id) END,
-    longitude = CASE WHEN has_auth THEN zeta_encrypt(NEW.longitude::TEXT) ELSE (SELECT te.longitude FROM transaction_locations_enc te WHERE te.id = OLD.id) END,
+    latitude = CASE WHEN has_auth THEN zeta_encrypt(NEW.latitude::TEXT) ELSE _old.latitude END,
+    longitude = CASE WHEN has_auth THEN zeta_encrypt(NEW.longitude::TEXT) ELSE _old.longitude END,
     accuracy_m = NEW.accuracy_m,
-    place_name = CASE WHEN has_auth THEN zeta_encrypt(NEW.place_name) ELSE (SELECT te.place_name FROM transaction_locations_enc te WHERE te.id = OLD.id) END,
-    place_locality = CASE WHEN has_auth THEN zeta_encrypt(NEW.place_locality) ELSE (SELECT te.place_locality FROM transaction_locations_enc te WHERE te.id = OLD.id) END,
+    place_name = CASE WHEN has_auth THEN zeta_encrypt(NEW.place_name) ELSE _old.place_name END,
+    place_locality = CASE WHEN has_auth THEN zeta_encrypt(NEW.place_locality) ELSE _old.place_locality END,
     place_country = NEW.place_country,
     captured_at = NEW.captured_at,
     linked_transaction_id = NEW.linked_transaction_id,
-    updated_at = COALESCE(NEW.updated_at, now())
+    updated_at = NEW.updated_at
   WHERE id = OLD.id;
   RETURN NEW;
 END;
@@ -265,20 +270,25 @@ LANGUAGE plpgsql
 AS $function$
 DECLARE
   has_auth BOOLEAN;
+  _old public.transactions_enc;
 BEGIN
   has_auth := (SELECT auth.uid()) IS NOT NULL;
+
+  IF NOT has_auth THEN
+    SELECT * INTO _old FROM public.transactions_enc WHERE id = OLD.id;
+  END IF;
 
   UPDATE public.transactions_enc SET
     account_id = NEW.account_id,
     amount = NEW.amount,
     amount_in_base_currency = NEW.amount_in_base_currency,
-    capture_input_text = CASE WHEN has_auth THEN zeta_encrypt(NEW.capture_input_text) ELSE (SELECT te.capture_input_text FROM transactions_enc te WHERE te.id = OLD.id) END,
+    capture_input_text = CASE WHEN has_auth THEN zeta_encrypt(NEW.capture_input_text) ELSE _old.capture_input_text END,
     capture_method = NEW.capture_method,
     categorization_confidence = NEW.categorization_confidence,
     categorization_source = NEW.categorization_source,
     category_id = NEW.category_id,
-    clean_description = CASE WHEN has_auth THEN zeta_encrypt(NEW.clean_description) ELSE (SELECT te.clean_description FROM transactions_enc te WHERE te.id = OLD.id) END,
-    clean_description_hmac = CASE WHEN has_auth THEN zeta_hmac(NEW.clean_description) ELSE (SELECT te.clean_description_hmac FROM transactions_enc te WHERE te.id = OLD.id) END,
+    clean_description = CASE WHEN has_auth THEN zeta_encrypt(NEW.clean_description) ELSE _old.clean_description END,
+    clean_description_hmac = CASE WHEN has_auth THEN zeta_hmac(NEW.clean_description) ELSE _old.clean_description_hmac END,
     created_at = NEW.created_at,
     currency_code = NEW.currency_code,
     destinatario_id = NEW.destinatario_id,
@@ -294,14 +304,14 @@ BEGIN
     location_id = NEW.location_id,
     merchant_category_code = NEW.merchant_category_code,
     merchant_logo_url = NEW.merchant_logo_url,
-    merchant_name = CASE WHEN has_auth THEN zeta_encrypt(NEW.merchant_name) ELSE (SELECT te.merchant_name FROM transactions_enc te WHERE te.id = OLD.id) END,
-    merchant_name_hmac = CASE WHEN has_auth THEN zeta_hmac(NEW.merchant_name) ELSE (SELECT te.merchant_name_hmac FROM transactions_enc te WHERE te.id = OLD.id) END,
-    notes = CASE WHEN has_auth THEN zeta_encrypt(NEW.notes) ELSE (SELECT te.notes FROM transactions_enc te WHERE te.id = OLD.id) END,
+    merchant_name = CASE WHEN has_auth THEN zeta_encrypt(NEW.merchant_name) ELSE _old.merchant_name END,
+    merchant_name_hmac = CASE WHEN has_auth THEN zeta_hmac(NEW.merchant_name) ELSE _old.merchant_name_hmac END,
+    notes = CASE WHEN has_auth THEN zeta_encrypt(NEW.notes) ELSE _old.notes END,
     original_amount = NEW.original_amount,
     posting_date = NEW.posting_date,
     provider = NEW.provider,
     provider_transaction_id = NEW.provider_transaction_id,
-    raw_description = CASE WHEN has_auth THEN zeta_encrypt(NEW.raw_description) ELSE (SELECT te.raw_description FROM transactions_enc te WHERE te.id = OLD.id) END,
+    raw_description = CASE WHEN has_auth THEN zeta_encrypt(NEW.raw_description) ELSE _old.raw_description END,
     reconciled_into_transaction_id = NEW.reconciled_into_transaction_id,
     reconciliation_score = NEW.reconciliation_score,
     recurrence_group_id = NEW.recurrence_group_id,
