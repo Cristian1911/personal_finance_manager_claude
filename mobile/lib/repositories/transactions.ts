@@ -75,6 +75,10 @@ export type CreateTransactionParams = {
   status?: string;
   is_excluded?: boolean;
   is_subscription?: boolean;
+  /** Optional time-of-day, "HH:mm" or "HH:mm:ss". NULL when unknown. */
+  transaction_time?: string | null;
+  /** Optional FK to a transaction_locations row. Filled by the location linker. */
+  location_id?: string | null;
 };
 
 export type UpdateTransactionParams = {
@@ -82,12 +86,14 @@ export type UpdateTransactionParams = {
   merchant_name?: string | null;
   amount?: number;
   transaction_date?: string;
+  transaction_time?: string | null;
   category_id?: string | null;
   notes?: string | null;
   is_excluded?: boolean;
   reconciled_into_transaction_id?: string | null;
   reconciliation_score?: number | null;
   capture_input_text?: string | null;
+  location_id?: string | null;
 };
 
 export type LocalReconciliationDecision = {
@@ -109,6 +115,8 @@ function buildInsertPayload(id: string, now: string, params: CreateTransactionPa
     merchant_name: params.merchant_name ?? null,
     raw_description: params.raw_description ?? null,
     transaction_date: params.transaction_date,
+    transaction_time: params.transaction_time ?? null,
+    location_id: params.location_id ?? null,
     status: params.status ?? "POSTED",
     idempotency_key: idempotencyKey,
     is_excluded: params.is_excluded ?? false,
@@ -153,9 +161,9 @@ export async function createTransaction(params: CreateTransactionParams): Promis
     await db.runAsync(
       `INSERT INTO transactions
         (id, user_id, account_id, category_id, amount, currency_code, direction, description, merchant_name, raw_description,
-         transaction_date, status, idempotency_key, is_excluded, is_subscription, notes, provider, capture_method, capture_input_text,
-         reconciled_into_transaction_id, reconciliation_score, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         transaction_date, transaction_time, location_id, status, idempotency_key, is_excluded, is_subscription, notes, provider,
+         capture_method, capture_input_text, reconciled_into_transaction_id, reconciliation_score, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         payload.id,
         payload.user_id,
@@ -168,6 +176,8 @@ export async function createTransaction(params: CreateTransactionParams): Promis
         payload.merchant_name,
         payload.raw_description,
         payload.transaction_date,
+        payload.transaction_time,
+        payload.location_id,
         payload.status,
         payload.idempotency_key,
         payload.is_excluded ? 1 : 0,
@@ -590,6 +600,14 @@ export async function updateTransaction(
     setClauses.push("transaction_date = ?");
     values.push(params.transaction_date);
   }
+  if (params.transaction_time !== undefined) {
+    setClauses.push("transaction_time = ?");
+    values.push(params.transaction_time ?? null);
+  }
+  if (params.location_id !== undefined) {
+    setClauses.push("location_id = ?");
+    values.push(params.location_id ?? null);
+  }
   if (params.category_id !== undefined) {
     setClauses.push("category_id = ?");
     values.push(params.category_id ?? null);
@@ -632,6 +650,8 @@ export async function updateTransaction(
   if (params.merchant_name !== undefined) syncPayload.merchant_name = params.merchant_name ?? null;
   if (params.amount !== undefined) syncPayload.amount = params.amount;
   if (params.transaction_date !== undefined) syncPayload.transaction_date = params.transaction_date;
+  if (params.transaction_time !== undefined) syncPayload.transaction_time = params.transaction_time ?? null;
+  if (params.location_id !== undefined) syncPayload.location_id = params.location_id ?? null;
   if (params.category_id !== undefined) {
     syncPayload.category_id = params.category_id ?? null;
     syncPayload.categorization_source = "USER_OVERRIDE";

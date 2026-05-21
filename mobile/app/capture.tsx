@@ -45,6 +45,11 @@ import {
   type CategoryRow,
 } from "../lib/repositories/categories";
 import { createTransaction } from "../lib/repositories/transactions";
+import { getLocalProfile } from "../lib/profile";
+import {
+  captureCurrentLocation,
+  linkNearestPingToTransaction,
+} from "../lib/services/location";
 import { createDestinatarioWithPattern } from "../lib/repositories/destinatarios";
 import { createRecurringTemplate } from "../lib/repositories/recurring";
 import { toLocalDateString } from "../lib/utils/date";
@@ -215,6 +220,7 @@ export default function CaptureScreen() {
   const [accountId, setAccountId] = useState("");
   const [amountInput, setAmountInput] = useState("");
   const [transactionDate, setTransactionDate] = useState(toLocalDateString());
+  const [transactionTime, setTransactionTime] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -340,13 +346,14 @@ export default function CaptureScreen() {
     setSaving(true);
     try {
       const trimmedDescription = description.trim();
-      await createTransaction({
+      const newTxId = await createTransaction({
         user_id: session.user.id,
         account_id: accountId,
         amount: parsedAmount,
         currency_code: currencyCode,
         direction,
         transaction_date: transactionDate,
+        transaction_time: transactionTime,
         description: trimmedDescription,
         merchant_name: trimmedDescription,
         raw_description: trimmedDescription,
@@ -356,6 +363,23 @@ export default function CaptureScreen() {
         capture_method: "MANUAL_FORM",
         is_subscription: isSubscription,
       });
+
+      // Best-effort: link a recent location ping if the user has opted in.
+      // Failures are silent — capturing the transaction must always succeed.
+      try {
+        const profile = await getLocalProfile();
+        if (profile?.location_tracking_enabled === 1) {
+          await captureCurrentLocation();
+          await linkNearestPingToTransaction({
+            userId: session.user.id,
+            transactionId: newTxId,
+            date: transactionDate,
+            time: transactionTime,
+          });
+        }
+      } catch (err) {
+        if (__DEV__) console.warn("[capture] location link failed", err);
+      }
 
       let newDestinatarioId: string | null = null;
       if (createDestinatario) {
@@ -560,7 +584,9 @@ export default function CaptureScreen() {
             <View className="flex-row items-center gap-2">
               <Calendar size={16} color={COLORS.sageDark} />
               <Text className="text-sm font-inter-medium text-foreground">
-                {formatDate(transactionDate, "dd MMM yyyy")}
+                {transactionTime
+                  ? `${formatDate(transactionDate, "dd MMM yyyy")} · ${transactionTime.slice(0, 5)}`
+                  : formatDate(transactionDate, "dd MMM yyyy")}
               </Text>
             </View>
             <ChevronDown
@@ -571,15 +597,22 @@ export default function CaptureScreen() {
           </Pressable>
           {showDatePicker && (
             <DateTimePicker
-              value={new Date(`${transactionDate}T12:00:00`)}
-              mode="date"
+              value={new Date(`${transactionDate}T${transactionTime ?? "12:00"}:00`)}
+              mode="datetime"
               display={Platform.OS === "ios" ? "inline" : "default"}
               maximumDate={new Date()}
               themeVariant="dark"
               accentColor={COLORS.brass}
               onChange={(_event, selected) => {
                 setShowDatePicker(false);
-                if (selected) setTransactionDate(toLocalDateString(selected));
+                if (selected) {
+                  setTransactionDate(toLocalDateString(selected));
+                  const hh = String(selected.getHours()).padStart(2, "0");
+                  const mm = String(selected.getMinutes()).padStart(2, "0");
+                  // PostgreSQL TIME requires HH:mm:ss; append :00 here so the
+                  // sync push doesn't get rejected by the column type cast.
+                  setTransactionTime(`${hh}:${mm}:00`);
+                }
               }}
             />
           )}

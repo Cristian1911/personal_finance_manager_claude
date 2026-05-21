@@ -12,6 +12,11 @@ import { supabase } from "./supabase";
 import { disableDemoMode, isDemoModeEnabled } from "./demo-mode";
 import { clearDatabase } from "./db/database";
 import { syncAll } from "./sync/engine";
+import { getLocalProfile } from "./profile";
+import {
+  getCurrentPermissionLevel,
+  startBackgroundLocationTracking,
+} from "./services/location";
 
 type AuthContextType = {
   session: Session | null;
@@ -87,9 +92,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userId = nextSession.user.id;
     if (autoSyncedUserRef.current === userId) return;
     autoSyncedUserRef.current = userId;
-    syncAll().catch((error) => {
-      console.warn(logLabel, error);
-    });
+    syncAll()
+      .then(() => maybeResumeLocationTracking())
+      .catch((error) => {
+        console.warn(logLabel, error);
+      });
+  }
+
+  async function maybeResumeLocationTracking() {
+    try {
+      const profile = await getLocalProfile();
+      if (profile?.location_tracking_enabled !== 1) return;
+      const level = await getCurrentPermissionLevel();
+      if (level === "background") {
+        await startBackgroundLocationTracking();
+      }
+    } catch (err) {
+      if (__DEV__) console.warn("Resume location tracking failed:", err);
+    }
   }
 
   async function initializeAuthState() {

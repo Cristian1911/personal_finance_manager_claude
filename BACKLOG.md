@@ -515,6 +515,20 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Tech Debt
 
+### Transaction time + location — follow-ups from review agents
+- **Priority:** Medium
+- **What:** Non-blocking items deferred from supabase-migrator, mobile-webapp-parity, server-action-reviewer, cache-doctor, and zetas-front-guy reviews on the `claude/add-transaction-location-time-jJ7WZ` branch:
+  - **Regenerate `webapp/src/types/database.ts`** after `supabase db push` lands. The PR ships with a manual patch that covers `transaction_time` / `location_id` columns on `transactions` and `location_tracking_enabled` on `profiles`, but the new `transaction_locations` table/view is NOT in the types. `getTransactionLocation` uses a narrow `from("transaction_locations" as never)` cast — remove it once types include the view.
+  - **`mergeTransactionMetadata` loses `location_id` on reconcile-merge** — `packages/shared/src/utils/reconciliation.ts` returns only `{ category_id, notes, capture_method }`. When a Tier-1 PDF import wins over a Tier-3 MANUAL_FORM transaction that has `location_id` set, the UPDATE issued by `import-transactions.ts` overwrites the row without `location_id`, NULL-ing the bidirectional pointer. `transaction_locations.linked_transaction_id` still points at the tx, so a fallback lookup by `linked_transaction_id` in `getTransactionLocation` would also work. Pick one before users hit it.
+  - **Mobile → webapp revalidation hook** — webapp's `getTransactionLocationCached` is tagged `"transactions"` so any webapp-side mutation invalidates it, but mobile-written `location_id` only appears on webapp after the cacheLife stale window (120s). Two paths: (a) lightweight route handler `/api/internal/revalidate?tag=transactions` called from mobile after `pushPendingChanges`; (b) Supabase DB webhook on `transactions UPDATE` → same handler. Use `revalidateTag` (SWR is acceptable for eventual consistency).
+  - **OSM iframe — dark-tile theming** — the embedded map renders in OSM's default light Mapnik tiles inside the dark detail UI. Replace with CARTO dark-matter tiles, swap to a static map image, or accept the contrast (we already offer "Abrir en OpenStreetMap" as a fallback link). Decide and ship.
+  - **Email-time parsing per bank** — the generic email parser sets `transaction_time` when the bank includes it, but bank-specific parsers (Bancolombia, Bogotá, Davivienda, Nu, Falabella, Nequi, Confiar, Popular) currently leave it NULL. One follow-up ticket per bank for time extraction.
+  - **Retroactive location matching** — transactions created before the toggle was enabled have no `location_id` even if pings would have been available. A one-shot backfill ("Vincular ubicaciones a movimientos previos") is doable for users who opt in late.
+  - **Time-aware sort within a day** — list query currently orders by `transaction_date DESC, created_at DESC`. With `transaction_time` now populated for live captures, sort should be `transaction_date DESC, transaction_time DESC NULLS LAST, created_at DESC`. Index already exists.
+  - **Webapp browser geolocation** — explicitly excluded from this PR. If we revisit, the schema/RLS already support it; only the webapp form needs a one-shot geolocation prompt + permission state.
+  - **TimePicker composes shadcn `<Input>`** — current `time-picker.tsx` re-implements the input shell rather than composing `@/components/ui/input`. Refactor to add a leading-icon slot to Input or a `prefixIcon` prop and remove the duplication.
+- **Found:** supabase-migrator + mobile-webapp-parity + server-action-reviewer + cache-doctor + zetas-front-guy reviews on `claude/add-transaction-location-time-jJ7WZ`, 2026-05-21
+
 ### Mobile Inicio parity — follow-ups from slice-1 review
 - **Priority:** Low
 - **What:** Non-blocking items deferred from the zetas-front-guy + mobile-webapp-parity + /simplify + Gemini reviews on PR #215 (2026-04-23):

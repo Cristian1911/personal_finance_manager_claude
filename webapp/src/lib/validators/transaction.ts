@@ -12,6 +12,18 @@ export const transactionSchema = z.object({
   currency_code: z.enum(["COP", "BRL", "MXN", "USD", "EUR", "PEN", "CLP", "ARS"]),
   direction: z.enum(["INFLOW", "OUTFLOW"]),
   transaction_date: z.string().min(1, "La fecha es requerida"),
+  transaction_time: z.preprocess(
+    (val) => {
+      if (val === "" || val === null || val === undefined) return undefined;
+      // HTML <input type="time"> emits "HH:mm"; Postgres TIME wants "HH:mm:ss".
+      // Normalise at the validator boundary so every write path (manual form,
+      // quick-capture, mobile sync) lands with the right precision.
+      if (typeof val !== "string") return val;
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(val)) return `${val}:00`;
+      return val;
+    },
+    z.string().regex(/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/, "Hora inválida").optional().nullable()
+  ),
   raw_description: z.string().optional(),
   merchant_name: z.string().optional(),
   category_id: z.preprocess(

@@ -21,7 +21,7 @@ import {
   reverseAccountBalanceDelta,
 } from "@/lib/utils/account-balance";
 import type { ActionResult, PaginatedResult } from "@/types/actions";
-import type { Transaction, TransactionWithAccount } from "@/types/domain";
+import type { Transaction, TransactionLocation, TransactionWithAccount } from "@/types/domain";
 
 type PersistTransactionParams = {
   userId: string;
@@ -30,6 +30,7 @@ type PersistTransactionParams = {
   currency_code: Transaction["currency_code"];
   direction: Transaction["direction"];
   transaction_date: string;
+  transaction_time?: string | null;
   raw_description?: string | null;
   merchant_name?: string | null;
   category_id?: string | null;
@@ -38,6 +39,7 @@ type PersistTransactionParams = {
   capture_method?: Transaction["capture_method"];
   capture_input_text?: string | null;
   is_subscription?: boolean;
+  location_id?: string | null;
 };
 
 type BalanceAccountRow = {
@@ -377,6 +379,7 @@ async function persistTransaction(
       currency_code: params.currency_code,
       direction: params.direction,
       transaction_date: params.transaction_date,
+      transaction_time: params.transaction_time ?? null,
       raw_description: params.raw_description ?? null,
       clean_description: params.merchant_name || params.raw_description || null,
       merchant_name: params.merchant_name ?? null,
@@ -389,6 +392,7 @@ async function persistTransaction(
       capture_input_text: params.capture_input_text ?? null,
       categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
       is_subscription: params.is_subscription ?? false,
+      location_id: params.location_id ?? null,
     })
     .select()
     .single();
@@ -568,6 +572,52 @@ export async function getTransaction(id: string): Promise<ActionResult<Transacti
   }
 }
 
+async function getTransactionLocationCached(
+  userId: string,
+  locationId: string,
+  accessToken: string,
+): Promise<TransactionLocation | null> {
+  "use cache";
+  cacheTag("transactions");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+  // `transaction_locations` view is not yet in the regenerated Database types
+  // (manual patch covered transactions/profiles columns only). Narrow the cast
+  // to just the `data` field so misuse upstream still type-checks.
+  const { data, error } = await supabase
+    .from("transaction_locations" as never)
+    .select("*")
+    .eq("id", locationId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as TransactionLocation | null;
+}
+
+/**
+ * Fetch the encrypted location row linked to a transaction (if any).
+ * Returns null when no location is linked or the row is missing.
+ * Webapp consumes this for the transaction-detail "Ubicación" block — capture
+ * itself is mobile-only. Cached under the `"transactions"` tag so a mutation
+ * elsewhere on the transaction (which invalidates `transactions`) also drops
+ * the linked-location cache.
+ */
+export async function getTransactionLocation(
+  locationId: string,
+): Promise<ActionResult<TransactionLocation | null>> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
+  try {
+    const data = await getTransactionLocationCached(user.id, locationId, accessToken);
+    return { success: true, data };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error al cargar la ubicación";
+    return { success: false, error: message };
+  }
+}
+
 // ─── Recent transactions (dashboard) ────────────────────────────────────────
 
 export type RecentTransaction = {
@@ -651,6 +701,7 @@ export async function createTransaction(
     currency_code: formData.get("currency_code"),
     direction: formData.get("direction"),
     transaction_date: formData.get("transaction_date"),
+    transaction_time: formData.get("transaction_time") || undefined,
     raw_description: formData.get("raw_description") || undefined,
     merchant_name: formData.get("merchant_name") || undefined,
     category_id: formData.get("category_id") || undefined,
@@ -740,6 +791,7 @@ export async function createQuickCaptureTransaction(
     currency_code: formData.get("currency_code"),
     direction: formData.get("direction"),
     transaction_date: formData.get("transaction_date"),
+    transaction_time: formData.get("transaction_time") || undefined,
     raw_description: formData.get("raw_description"),
     merchant_name: formData.get("merchant_name"),
     category_id: formData.get("category_id") || undefined,
@@ -799,6 +851,7 @@ export async function updateTransaction(
     currency_code: formData.get("currency_code"),
     direction: formData.get("direction"),
     transaction_date: formData.get("transaction_date"),
+    transaction_time: formData.get("transaction_time") || undefined,
     raw_description: formData.get("raw_description") || undefined,
     merchant_name: formData.get("merchant_name") || undefined,
     category_id: formData.get("category_id") || undefined,

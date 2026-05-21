@@ -1833,6 +1833,7 @@ export type Database = {
           full_name: string | null
           id: string
           locale: string
+          location_tracking_enabled: boolean
           mobile_dashboard_config: Json | null
           monthly_salary: number | null
           nav_focus: Database["public"]["Enums"]["nav_focus"]
@@ -1853,6 +1854,7 @@ export type Database = {
           full_name?: string | null
           id: string
           locale?: string
+          location_tracking_enabled?: boolean
           mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
           nav_focus?: Database["public"]["Enums"]["nav_focus"]
@@ -1873,6 +1875,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           locale?: string
+          location_tracking_enabled?: boolean
           mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
           nav_focus?: Database["public"]["Enums"]["nav_focus"]
@@ -1897,6 +1900,7 @@ export type Database = {
           full_name: string | null
           id: string
           locale: string
+          location_tracking_enabled: boolean
           mobile_dashboard_config: Json | null
           monthly_salary: number | null
           nav_focus: Database["public"]["Enums"]["nav_focus"]
@@ -1918,6 +1922,7 @@ export type Database = {
           full_name?: string | null
           id: string
           locale?: string
+          location_tracking_enabled?: boolean
           mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
           nav_focus?: Database["public"]["Enums"]["nav_focus"]
@@ -1939,6 +1944,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           locale?: string
+          location_tracking_enabled?: boolean
           mobile_dashboard_config?: Json | null
           monthly_salary?: number | null
           nav_focus?: Database["public"]["Enums"]["nav_focus"]
@@ -2743,6 +2749,7 @@ export type Database = {
           is_excluded: boolean
           is_recurring: boolean
           is_subscription: boolean
+          location_id: string | null
           merchant_category_code: string | null
           merchant_logo_url: string | null
           merchant_name: string | null
@@ -2760,6 +2767,7 @@ export type Database = {
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[] | null
           transaction_date: string
+          transaction_time: string | null
           transfer_group_id: string | null
           updated_at: string
           user_id: string
@@ -2788,6 +2796,7 @@ export type Database = {
           is_excluded?: boolean
           is_recurring?: boolean
           is_subscription?: boolean
+          location_id?: string | null
           merchant_category_code?: string | null
           merchant_logo_url?: string | null
           merchant_name?: string | null
@@ -2805,6 +2814,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           transaction_date: string
+          transaction_time?: string | null
           transfer_group_id?: string | null
           updated_at?: string
           user_id: string
@@ -2833,6 +2843,7 @@ export type Database = {
           is_excluded?: boolean
           is_recurring?: boolean
           is_subscription?: boolean
+          location_id?: string | null
           merchant_category_code?: string | null
           merchant_logo_url?: string | null
           merchant_name?: string | null
@@ -2850,6 +2861,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           transaction_date?: string
+          transaction_time?: string | null
           transfer_group_id?: string | null
           updated_at?: string
           user_id?: string
@@ -2952,6 +2964,7 @@ export type Database = {
           is_excluded: boolean
           is_recurring: boolean
           is_subscription: boolean
+          location_id: string | null
           merchant_category_code: string | null
           merchant_logo_url: string | null
           merchant_name: string | null
@@ -2969,6 +2982,7 @@ export type Database = {
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[] | null
           transaction_date: string
+          transaction_time: string | null
           transfer_group_id: string | null
           updated_at: string
           user_id: string
@@ -2997,6 +3011,7 @@ export type Database = {
           is_excluded?: boolean
           is_recurring?: boolean
           is_subscription?: boolean
+          location_id?: string | null
           merchant_category_code?: string | null
           merchant_logo_url?: string | null
           merchant_name?: string | null
@@ -3014,6 +3029,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           transaction_date: string
+          transaction_time?: string | null
           transfer_group_id?: string | null
           updated_at?: string
           user_id: string
@@ -3042,6 +3058,7 @@ export type Database = {
           is_excluded?: boolean
           is_recurring?: boolean
           is_subscription?: boolean
+          location_id?: string | null
           merchant_category_code?: string | null
           merchant_logo_url?: string | null
           merchant_name?: string | null
@@ -3059,6 +3076,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
           transaction_date?: string
+          transaction_time?: string | null
           transfer_group_id?: string | null
           updated_at?: string
           user_id?: string

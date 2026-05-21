@@ -22,6 +22,7 @@ import {
   Fingerprint,
   ShieldCheck,
   ChevronRight,
+  MapPin,
   Wallet,
   X,
   Bug,
@@ -46,6 +47,13 @@ import { disableDemoMode } from "../lib/demo-mode";
 import { resetUserData } from "../lib/reset-data";
 import { deleteUserAccount } from "../lib/delete-account";
 import { useOnboardingStatus } from "../lib/onboarding-status";
+import { getLocalProfile, setLocationTrackingEnabled } from "../lib/profile";
+import {
+  isTracking,
+  requestLocationPermissions,
+  startBackgroundLocationTracking,
+  stopBackgroundLocationTracking,
+} from "../lib/services/location";
 import { useTheme, type ThemeMode } from "../lib/theme";
 import { COLORS } from "../lib/constants/colors";
 import { LEGAL_URLS, SUPPORT_EMAIL } from "../lib/constants/urls";
@@ -376,6 +384,8 @@ export default function SettingsScreen() {
   const [accountsList, setAccountsList] = useState<AccountRow[]>([]);
   const [defaultAccountId, setDefaultAccountId] = useState<string | null>(null);
   const [showAccountPicker, setShowAccountPicker] = useState(false);
+  const [locationOn, setLocationOn] = useState(false);
+  const [locationBusy, setLocationBusy] = useState(false);
 
   useEffect(() => {
     async function loadBiometricState() {
@@ -392,6 +402,65 @@ export default function SettingsScreen() {
     }
     loadBiometricState();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [profile, running] = await Promise.all([
+        getLocalProfile(),
+        isTracking().catch(() => false),
+      ]);
+      if (cancelled) return;
+      setLocationOn(profile?.location_tracking_enabled === 1 || running);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleToggleLocation = useCallback(
+    async (next: boolean) => {
+      if (locationBusy) return;
+      setLocationBusy(true);
+      try {
+        if (next) {
+          const level = await requestLocationPermissions();
+          if (level === "denied") {
+            setLocationOn(false);
+            Alert.alert(
+              "Permiso requerido",
+              "Activa el permiso de ubicación en Ajustes para que podamos guardarla con cada movimiento.",
+            );
+            return;
+          }
+          await setLocationTrackingEnabled(true);
+          setLocationOn(true);
+          if (level === "background") {
+            await startBackgroundLocationTracking();
+            Alert.alert(
+              "Ubicación activada",
+              "Guardaremos tu ubicación aproximada con cada movimiento que registres.",
+            );
+          } else {
+            Alert.alert(
+              "Activada en primer plano",
+              "Solo guardaremos tu ubicación cuando la app esté abierta. Activa el permiso de fondo para cobertura completa.",
+            );
+          }
+        } else {
+          await stopBackgroundLocationTracking().catch(() => undefined);
+          await setLocationTrackingEnabled(false);
+          setLocationOn(false);
+        }
+      } catch (err) {
+        console.error("Toggle location tracking failed:", err);
+        Alert.alert("No se pudo cambiar", "Inténtalo de nuevo en un momento.");
+      } finally {
+        setLocationBusy(false);
+      }
+    },
+    [locationBusy],
+  );
 
   // Reload accounts + default every time the screen gains focus so stale
   // data (e.g. user deleted the default account elsewhere) is corrected.
@@ -762,6 +831,17 @@ export default function SettingsScreen() {
         <View>
           <SectionHeading label="Privacidad y soporte" />
           <View className="gap-2">
+            <ToggleRow
+              icon={<MapPin size={18} color={COLORS.sageDark} />}
+              label="Guardar ubicación con cada movimiento"
+              value={locationOn}
+              onValueChange={handleToggleLocation}
+            />
+            <Text className="px-2 -mt-1 text-[11px] font-inter text-muted-foreground">
+              Apagado por defecto. Si lo activas, registramos tu ubicación
+              aproximada de fondo y la enlazamos al movimiento más cercano en
+              tiempo. Útil para recordar dónde gastaste.
+            </Text>
             <NavRow
               title="Reportar bug"
               meta="Envíanos comentarios o errores"
