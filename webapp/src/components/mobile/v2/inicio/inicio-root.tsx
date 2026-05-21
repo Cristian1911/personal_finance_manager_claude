@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation";
 import { Plus, RotateCcw, Settings2 } from "lucide-react";
 import { toast } from "sonner";
-import { PulseWidget } from "./pulse-widget";
 import { InicioStarter } from "./inicio-starter";
 import { WidgetGrid, type WidgetRender } from "./widget-grid";
 import { AddWidgetSheet } from "./add-widget-sheet";
@@ -337,22 +336,13 @@ export function InicioRoot({
 
   return (
     <div className="space-y-4">
-      <PulseWidget
-        availablePerDay={live.hero.availablePerDay}
-        availableTotal={live.hero.availableTotal}
-        daysRemaining={live.hero.daysRemaining}
-        currency={hero.currency}
-        nextIncomeDate={live.hero.nextIncomeDate ?? hero.nextIncomeDate ?? null}
-        nextIncomeAmount={live.hero.nextIncomeAmount ?? hero.nextIncomeAmount ?? 0}
-        nextIncomeName={live.hero.nextIncomeName ?? hero.nextIncomeName ?? null}
-        incomeConfigured={live.hero.incomeConfigured ?? hero.incomeConfigured ?? false}
-        breakdown={live.hero.breakdown}
-        primaryAccount={hero.primaryAccount}
-        spark={metrics.last7Spend}
-        avgSpend={live.metrics.avgLast7}
-        expanded={activeZone === "hero"}
-        onToggle={() => toggle("hero")}
-      />
+      {/* Old PulseWidget hero ("ESTE MES · PULSO") removed 2026-05-21.
+          Replaced by the V7 HybridHero rendered above this component in
+          MobileZone (Option A predictive-runway canonical, see #264).
+          The `hero` + `metrics` props are still received but their hero-
+          related fields are no longer rendered here; `metrics.last7Spend`
+          is still consumed by downstream widgets if any. The PulseWidget
+          component file is kept as a 1-line rollback target if needed. */}
 
       <SectionDivider label="Herramientas" />
       <WidgetGrid

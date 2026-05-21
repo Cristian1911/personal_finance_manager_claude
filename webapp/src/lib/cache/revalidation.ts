@@ -1,4 +1,20 @@
-import { updateTag } from "next/cache";
+import { updateTag, revalidateTag } from "next/cache";
+
+const FINANCIAL_TAGS = [
+  "transactions",
+  "accounts",
+  "dashboard:accounts",
+  "dashboard:charts",
+  "dashboard:budgets",
+  "dashboard:cashflow",
+  "dashboard:hero",
+  "categorize",
+  "debt",
+  "budgets",
+  "attention",
+  "occurrences",
+  "recurring",
+] as const;
 
 /**
  * Immediately expire all financial Data Cache entries. Call after any
@@ -13,19 +29,7 @@ import { updateTag } from "next/cache";
  *   updateTag("email-ingest");   // domain extra
  */
 export function revalidateFinancialViews() {
-  updateTag("transactions");
-  updateTag("accounts");
-  updateTag("dashboard:accounts");
-  updateTag("dashboard:charts");
-  updateTag("dashboard:budgets");
-  updateTag("dashboard:cashflow");
-  updateTag("dashboard:hero");
-  updateTag("categorize");
-  updateTag("debt");
-  updateTag("budgets");
-  updateTag("attention");
-  updateTag("occurrences");
-  updateTag("recurring");
+  for (const tag of FINANCIAL_TAGS) updateTag(tag);
 }
 
 /**
@@ -55,4 +59,25 @@ export function revalidateAllUserData() {
   updateTag("cashflow-planner");
   updateTag("categories");
   updateTag("impact");
+}
+
+/**
+ * Route-Handler-safe variant of `revalidateFinancialViews()`. Used by
+ * webhooks (`/api/webhooks/email-ingest`, telegram, cron jobs).
+ *
+ * `updateTag()` pairs Data Cache eviction with Router Cache eviction
+ * for the *initiating client*, giving Server Action callers read-your-
+ * own-writes on their very next navigation. Route Handlers have no
+ * attached client (the webhook is initiated by Bancolombia / Telegram /
+ * cron, not the user the data belongs to), so the Router Cache half of
+ * `updateTag` no-ops. `revalidateTag(tag, "zeta")` persistently marks
+ * the Data Cache entries stale; the user's subsequent navigation pays
+ * one SWR refresh and sees fresh data.
+ *
+ * Do NOT call this from Server Actions — it skips the Router Cache
+ * eviction that `updateTag` provides, so the action's own caller would
+ * still see stale data until the next full reload.
+ */
+export function revalidateFinancialViewsFromWebhook() {
+  for (const tag of FINANCIAL_TAGS) revalidateTag(tag, "zeta");
 }

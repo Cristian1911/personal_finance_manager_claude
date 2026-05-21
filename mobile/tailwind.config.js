@@ -80,11 +80,13 @@ module.exports = {
         "z-debt-20": "rgba(224,85,69,0.20)",
         "z-debt-25": "rgba(224,85,69,0.25)",
         "z-debt-30": "rgba(224,85,69,0.30)",
+        "z-debt-40": "rgba(224,85,69,0.40)",
         "z-debt-70": "rgba(224,85,69,0.70)",
 
         // z-alert (base #D4A843 = rgb(212,168,67))
         "z-alert-12": "rgba(212,168,67,0.12)",
         "z-alert-25": "rgba(212,168,67,0.25)",
+        "z-alert-30": "rgba(212,168,67,0.30)",
 
         // z-sage (base #D9CCB9 = rgb(217,204,185) for light)
         "z-sage-10": "rgba(217,204,185,0.10)",

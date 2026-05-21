@@ -17,7 +17,6 @@ import {
   SYSTEM_INSIGHTS,
   WIDGET_CATALOG,
   type DashboardLayout,
-  type PulseRange,
   type WidgetInstance,
   type WidgetType,
 } from "../../lib/dashboard/widgets";
@@ -31,7 +30,7 @@ import { MobileHeader } from "../ui/MobileHeader";
 import { AvatarMenuTrigger } from "../ui/AvatarMenu";
 import { SectionDivider } from "../ui/SectionDivider";
 import { MOBILE_TAB_BAR_CLEARANCE } from "../../lib/constants/styles";
-import { PulseWidget } from "./widgets/PulseWidget";
+import { HybridHero } from "./HybridHero";
 import { WidgetGrid, type WidgetRender } from "./WidgetGrid";
 import { ChipEyebrow } from "../ui/ExpandableChip";
 import { AddWidgetSheet } from "./AddWidgetSheet";
@@ -98,11 +97,6 @@ export function InicioRoot() {
     [userId]
   );
 
-  const handlePulseRangeChange = useCallback(
-    (next: PulseRange) => persist({ ...layout, pulseRange: next }),
-    [layout, persist]
-  );
-
   const handleRemove = useCallback(
     (id: string) =>
       persist({ ...layout, widgets: layout.widgets.filter((w) => w.id !== id) }),
@@ -147,19 +141,20 @@ export function InicioRoot() {
 
   const today = toLocalDateString(new Date());
   const dateLabel = formatHeaderDate(new Date());
-
-  const pulseDays = layout.pulseRange === "weekly" ? 7 : summary.daysRemaining;
-  const pulseValue =
-    layout.pulseRange === "weekly"
-      ? Math.round(summary.availableTotal / Math.max(1, pulseDays))
-      : summary.availablePerDay;
-  const pulseTrend =
-    layout.pulseRange === "weekly" ? summary.spentTrend7 : summary.spentTrend30;
+  const endOfMonth = useMemo(() => {
+    // Last day of `today`'s month, YYYY-MM-DD. Recomputed only when the
+    // local date string rolls over, so HybridHero's memoized props stay
+    // reference-stable across InicioRoot state changes.
+    const [y, m] = today.split("-").map(Number);
+    const last = new Date(y, m, 0).getDate();
+    return `${y}-${String(m).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+  }, [today]);
 
   const primaryAccount = useMemo(() => {
     const a = summary.accounts.find((x) => x.current_balance > 0);
     if (!a) return null;
     return {
+      id: a.id,
       name: a.name,
       currentBalance: a.current_balance,
       currencyCode: a.currency_code as typeof summary.currency,
@@ -245,33 +240,17 @@ export function InicioRoot() {
           />
         }
       >
-        <PulseWidget
-          availablePerDay={pulseValue}
-          daysRemaining={pulseDays}
+        <HybridHero
+          today={today}
+          endOfMonth={endOfMonth}
+          liquidBalance={summary.liquidBalance}
+          pendingObligations={summary.pendingObligations}
+          nextIncomeDate={summary.nextIncome?.date ?? null}
+          nextIncomeAmount={summary.nextIncome?.amount ?? 0}
+          nextIncomeName={summary.nextIncome?.name ?? null}
+          dailyOutflows={summary.dailyOutflowsThisMonth}
           currency={summary.currency}
-          onTrack={summary.onTrack}
-          range={layout.pulseRange}
-          onRangeChange={handlePulseRangeChange}
-          trend={pulseTrend}
-          breakdown={{
-            liquidBalance: summary.liquidBalance,
-            pendingObligations: summary.pendingObligations,
-            alreadySpent: summary.totalSpentThisMonth,
-            availableTotal: summary.availableTotal,
-            windowEndLabel: summary.daysLabel,
-          }}
-          primaryAccount={primaryAccount}
-          nextIncome={
-            summary.nextIncome
-              ? {
-                  name: summary.nextIncome.name,
-                  amount: summary.nextIncome.amount,
-                  date: summary.nextIncome.date,
-                }
-              : null
-          }
-          expanded={activeZone === "hero"}
-          onToggle={() => toggle("hero")}
+          primaryAccount={primaryAccount ?? undefined}
         />
 
         <SectionDivider label="Herramientas" />
