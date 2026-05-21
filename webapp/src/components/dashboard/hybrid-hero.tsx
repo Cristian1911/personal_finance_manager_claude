@@ -143,29 +143,12 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
 
   return (
     <div className="rounded-2xl border border-white/6 bg-z-surface p-5">
-      {/* Top row: eyebrow on the left, sparkline on the right.
-          Sparkline reads from data.calendar's last 7 days. */}
-      <div className="flex items-start justify-between gap-3">
+      {/* Top row: eyebrow on the left, status pill on the right.
+          Both are small text — they balance each other and let the big
+          amount + sparkline pair up on the row below. */}
+      <div className="flex items-center justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
           Hoy puedes gastar
-        </p>
-        {sparkData.values.length > 0 && (
-          <Sparkline
-            values={sparkData.values}
-            max={sparkData.max}
-            tone={status.tone}
-          />
-        )}
-      </div>
-
-      <div className="mt-2 flex items-baseline justify-between gap-3">
-        <p
-          className={cn(
-            "text-[44px] font-bold leading-none tracking-[-0.04em] tabular-nums",
-            allowedTone,
-          )}
-        >
-          {formatCurrency(data.allowedToday, data.currency)}
         </p>
         <span
           className={cn(
@@ -177,6 +160,26 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
           <span className={cn("size-1.5 rounded-full", statusToneClass)} />
           {status.label}
         </span>
+      </div>
+
+      {/* Bottom row: big amount on the left, sparkline on the right.
+          Heavy visual elements paired so neither side looks empty. */}
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <p
+          className={cn(
+            "text-[44px] font-bold leading-none tracking-[-0.04em] tabular-nums",
+            allowedTone,
+          )}
+        >
+          {formatCurrency(data.allowedToday, data.currency)}
+        </p>
+        {sparkData.values.length > 0 && (
+          <Sparkline
+            values={sparkData.values}
+            max={sparkData.max}
+            tone={status.tone}
+          />
+        )}
       </div>
 
       {/* Period progress bar — gradient mapped to spentFraction */}
