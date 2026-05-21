@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Zeta — Hero runway brainstorm</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --z-ink: #121412;
+  --z-surface: #171A17;
+  --z-surface-2: #1E221E;
+  --z-surface-3: #262B26;
+  --z-olive-deep: #3F4632;
+  --z-sage: #768053;
+  --z-sage-light: #D9CCB9;
+  --z-sage-dark: #938C7E;
+  --z-brass: #937844;
+  --z-white: #F6F0E3;
+
+  --z-income: #5CB88A;
+  --z-expense: #E8875A;
+  --z-debt: #E05545;
+  --z-alert: #D4A843;
+  --z-excellent: #3D9E6E;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--z-ink);
+  color: var(--z-sage-light);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  padding: 32px 24px 96px;
+}
+.intro {
+  max-width: 800px;
+  margin: 0 auto 48px;
+}
+.intro h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--z-white);
+  margin-bottom: 8px;
+}
+.intro p {
+  font-size: 14px;
+  color: var(--z-sage-dark);
+  line-height: 1.6;
+}
+.intro .pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid var(--z-brass);
+  border-radius: 999px;
+  color: var(--z-brass);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 32px;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+.card {
+  background: var(--z-surface);
+  border: 1px solid rgba(217, 204, 185, 0.06);
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.card-header {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid rgba(217, 204, 185, 0.06);
+}
+.card-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--z-brass);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.card-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--z-white);
+}
+.card-header p {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--z-sage-dark);
+  line-height: 1.5;
+}
+.phone {
+  background: var(--z-ink);
+  padding: 24px;
+  flex: 1;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--z-sage-dark);
+  margin-bottom: 10px;
+}
+.tradeoffs {
+  padding: 14px 22px 18px;
+  background: var(--z-surface-2);
+  border-top: 1px solid rgba(217, 204, 185, 0.06);
+  font-size: 11px;
+  color: var(--z-sage-dark);
+  line-height: 1.6;
+}
+.tradeoffs strong {
+  color: var(--z-sage-light);
+  font-weight: 600;
+}
+
+/* ─── V1 — Runway days ──────────────────────────────────────────── */
+.v1 .runway-days {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.v1 .big {
+  font-size: 64px;
+  font-weight: 700;
+  color: var(--z-white);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-feature-settings: 'tnum' 1;
+}
+.v1 .unit {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--z-sage-dark);
+}
+.v1 .verdict {
+  font-size: 15px;
+  color: var(--z-sage-light);
+  line-height: 1.4;
+  margin-bottom: 18px;
+}
+.v1 .verdict strong { color: var(--z-alert); }
+.v1 .spark {
+  height: 28px;
+  width: 100%;
+}
+
+/* ─── V2 — Today's permission ──────────────────────────────────── */
+.v2 .perm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.v2 .amount {
+  font-size: 52px;
+  font-weight: 700;
+  color: var(--z-excellent);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 6px;
+  font-feature-settings: 'tnum' 1;
+}
+.v2 .label {
+  font-size: 13px;
+  color: var(--z-sage-light);
+  margin-bottom: 18px;
+}
+.v2 .bar-wrap {
+  width: 100%;
+  height: 6px;
+  background: var(--z-surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.v2 .bar-fill {
+  height: 100%;
+  width: 38%;
+  background: linear-gradient(to right, var(--z-excellent), var(--z-alert));
+  border-radius: 999px;
+}
+.v2 .bar-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--z-sage-dark);
+}
+
+/* ─── V3 — End-of-month projection ────────────────────────────── */
+.v3 .proj {
+  font-size: 20px;
+  color: var(--z-sage-light);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.v3 .proj .amt {
+  display: block;
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--z-debt);
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.02em;
+  margin-top: 8px;
+}
+.v3 .delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--z-sage-dark);
+  background: var(--z-surface-2);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+.v3 .delta .arrow { color: var(--z-debt); font-weight: 700; }
+
+/* ─── V4 — Runway bar with day marker ──────────────────────────── */
+.v4 .heading {
+  font-size: 14px;
+  color: var(--z-sage-light);
+  margin-bottom: 6px;
+}
+.v4 .heading b { color: var(--z-white); font-size: 28px; font-weight: 600; }
+.v4 .sub {
+  font-size: 11px;
+  color: var(--z-sage-dark);
+  margin-bottom: 24px;
+}
+.v4 .timeline {
+  position: relative;
+  height: 56px;
+  background: var(--z-surface-2);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.v4 .elapsed {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 68%;
+  background: linear-gradient(to right, var(--z-sage) 0%, var(--z-alert) 60%, var(--z-debt) 100%);
+}
+.v4 .today {
+  position: absolute;
+  top: -6px; bottom: -6px;
+  left: 68%;
+  width: 2px;
+  background: var(--z-white);
+  box-shadow: 0 0 12px rgba(246, 240, 227, 0.6);
+}
+.v4 .today::after {
+  content: 'Hoy';
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--z-white);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.v4 .scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--z-sage-dark);
+}
+
+/* ─── V5 — Calendar heatmap ────────────────────────────────────── */
+.v5 .summary {
+  font-size: 14px;
+  color: var(--z-sage-light);
+  margin-bottom: 12px;
+}
+.v5 .summary b {
+  color: var(--z-white);
+  font-size: 22px;
+  font-weight: 600;
+}
+.v5 .grid-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.v5 .day {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--z-surface-2);
+  font-size: 9px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 4px;
+  color: var(--z-sage-dark);
+}
+.v5 .day.spent-low { background: rgba(92, 184, 138, 0.18); }
+.v5 .day.spent-med { background: rgba(212, 168, 67, 0.32); }
+.v5 .day.spent-high { background: rgba(224, 85, 69, 0.42); color: var(--z-white); }
+.v5 .day.future { opacity: 0.32; }
+.v5 .day.today { outline: 2px solid var(--z-white); outline-offset: -2px; }
+.v5 .legend {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 10px;
+  color: var(--z-sage-dark);
+}
+.v5 .legend .sw {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* ─── V6 — Dual chip ────────────────────────────────────────────── */
+.v6 .chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.v6 .chip {
+  background: var(--z-surface-2);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+}
+.v6 .chip .lbl {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--z-sage-dark);
+  margin-bottom: 6px;
+}
+.v6 .chip .val {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--z-white);
+  font-feature-settings: 'tnum' 1;
+  margin-bottom: 4px;
+}
+.v6 .chip.pace .val { color: var(--z-alert); }
+.v6 .chip.bud .val { color: var(--z-income); }
+.v6 .chip .sub { font-size: 10px; color: var(--z-sage-dark); }
+.v6 .pace-bar {
+  height: 4px;
+  background: var(--z-surface-3);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.v6 .pace-bar .fill { height: 100%; width: 68%; background: var(--z-alert); }
+.v6 .bud-bar .fill { width: 42%; background: var(--z-income); }
+.v6 .summary {
+  font-size: 12px;
+  color: var(--z-sage-light);
+  line-height: 1.5;
+  background: rgba(212, 168, 67, 0.08);
+  border: 1px solid rgba(212, 168, 67, 0.2);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.v6 .summary b { color: var(--z-alert); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <div class="pill">Brainstorm — Hero Inicio</div>
+  <h1>"Am I on track?" — six ways to answer at a glance</h1>
+  <p>
+    The current dashboard hero shows a big peso/día number with an "Arriba/fuera del ritmo" dot. Live walkthrough feedback: <em>it has become just noise</em>. Below, six alternative framings of the same predictive-runway answer (Option A: mobile formula = canonical). Each is a single, focused statement instead of an abstract average. Real-ish numbers from a sample account on Mayo 2026.
+  </p>
+</div>
+
+<div class="grid">
+
+  <!-- V1 — Runway days -->
+  <div class="card v1">
+    <div class="card-header">
+      <h2>Variante 1</h2>
+      <h3>Runway en días</h3>
+      <p>One bold number, one unit. Days remaining at current pace. No abstract pesos/día.</p>
+    </div>
+    <div class="phone">
+      <div class="eyebrow">A este ritmo</div>
+      <div class="runway-days">
+        <div class="big">6</div>
+        <div class="unit">días<br>antes de quedar en rojo</div>
+      </div>
+      <div class="verdict">Tu cuenta líquida cubre <strong>6 días más</strong> de gasto al ritmo de esta semana. Tienes 10 días por delante en mayo.</div>
+      <svg class="spark" viewBox="0 0 200 28" preserveAspectRatio="none">
+        <polyline points="0,18 18,16 36,20 54,22 72,15 90,18 108,21 126,17 144,12 162,14 180,11 200,6" fill="none" stroke="#D4A843" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="tradeoffs">
+      <strong>Pro:</strong> Emotionally truthful. "6 días" lands harder than "$47k/día".<br>
+      <strong>Con:</strong> Needs a "rojo" threshold (overdraft? <$X buffer?). Edge case: positive runway → "Llegas con margen".
+    </div>
+  </div>
+
+  <!-- V2 — Today's permission -->
+  <div class="card v2">
+    <div class="card-header">
+      <h2>Variante 2</h2>
+      <h3>Permiso de hoy</h3>
+      <p>Backward calc from remaining balance ÷ remaining days. Tells the user the answer they actually want.</p>
+    </div>
+    <div class="phone">
+      <div class="eyebrow">Hoy puedes gastar</div>
+      <div class="perm">
+        <div class="amount">$45.000</div>
+        <div class="label">y aún llegas a fin de mes con tu colchón</div>
+        <div class="bar-wrap">
+          <div class="bar-fill"></div>
+        </div>
+        <div class="bar-legend">
+          <span>Hoy gastado · $17.200</span>
+          <span>38% del cupo</span>
+        </div>
+      </div>
+    </div>
+    <div class="tradeoffs">
+      <strong>Pro:</strong> Directly answers "¿puedo comprar esto?". Familiar mental model (limite diario).<br>
+      <strong>Con:</strong> Implies a per-day cap which the user never set. Recovers from overspend by silently lowering tomorrow's limit.
+    </div>
+  </div>
+
+  <!-- V3 — End-of-month projection -->
+  <div class="card v3">
+    <div class="card-header">
+      <h2>Variante 3</h2>
+      <h3>Llegada proyectada</h3>
+      <p>Declarative single sentence + the projected end-of-month balance number. The bluntest of the bunch.</p>
+    </div>
+    <div class="phone">
+      <div class="eyebrow">Si sigues así</div>
+      <div class="proj">
+        Llegas a fin de mes con
+        <span class="amt">−$203.000</span>
+      </div>
+      <div class="delta">
+        <span class="arrow">▲</span>
+        Llevas $47k/día — tu ritmo típico es $32k/día
+      </div>
+    </div>
+    <div class="tradeoffs">
+      <strong>Pro:</strong> Truth-telling. Hard to ignore a red minus number. Encourages mid-month correction.<br>
+      <strong>Con:</strong> Can be alarmist when projection swings (one big day inflates). Needs smoothing or a confidence band.
+    </div>
+  </div>
+
+  <!-- V4 — Runway bar -->
+  <div class="card v4">
+    <div class="card-header">
+      <h2>Variante 4</h2>
+      <h3>Barra de ritmo</h3>
+      <p>Spatial metaphor. Where on the month-runway are you? Color shifts from sage→alert→debt as you burn through.</p>
+    </div>
+    <div class="phone">
+      <div class="heading"><b>Día 21</b> de 31 — vas al 68% del ritmo seguro</div>
+      <div class="sub">Cuenta líquida + ingresos pendientes − gastos del mes</div>
+      <div class="timeline">
+        <div class="elapsed"></div>
+        <div class="today"></div>
+      </div>
+      <div class="scale">
+        <span>1 may</span>
+        <span>15 may</span>
+        <span>31 may</span>
+      </div>
+    </div>
+    <div class="tradeoffs">
+      <strong>Pro:</strong> Spatial = instant read. Color gradient = emotional cue without text.<br>
+      <strong>Con:</strong> Less precise than a number. Easy to misread (is "68%" good or bad?). Needs a clear "safe" baseline.
+    </div>
+  </div>
+
+  <!-- V5 — Calendar heatmap -->
+  <div class="card v5">
+    <div class="card-header">
+      <h2>Variante 5</h2>
+      <h3>Calendario del mes</h3>
+      <p>Heatmap of daily spend with a "today" marker. Shows the SHAPE of the month, not just a number.</p>
+    </div>
+    <div class="phone">
+      <div class="summary">Mayo: <b>$1.42M</b> gastado · 10 días por delante</div>
+      <div class="grid-cal">
+        <!-- 35 cells = 5 weeks. First day of May 2026 is a Friday → offset 4. -->
+        <div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div>
+        <div class="day spent-low">1</div><div class="day spent-low">2</div><div class="day spent-med">3</div>
+        <div class="day spent-low">4</div><div class="day spent-high">5</div><div class="day spent-med">6</div><div class="day spent-low">7</div><div class="day spent-med">8</div><div class="day spent-low">9</div><div class="day spent-low">10</div>
+        <div class="day spent-low">11</div><div class="day spent-med">12</div><div class="day spent-low">13</div><div class="day spent-low">14</div><div class="day spent-high">15</div><div class="day spent-high">16</div><div class="day spent-med">17</div>
+        <div class="day spent-low">18</div><div class="day spent-low">19</div><div class="day spent-low today">20</div><div class="day spent-med today">21</div><div class="day future">22</div><div class="day future">23</div><div class="day future">24</div>
+        <div class="day future">25</div><div class="day future">26</div><div class="day future">27</div><div class="day future">28</div><div class="day future">29</div><div class="day future">30</div><div class="day future">31</div>
+      </div>
+      <div class="legend">
+        <span><i class="sw" style="background:rgba(92,184,138,0.18)"></i>Día tranquilo</span>
+        <span><i class="sw" style="background:rgba(212,168,67,0.32)"></i>Día normal</span>
+        <span><i class="sw" style="background:rgba(224,85,69,0.42)"></i>Día caro</span>
+      </div>
+    </div>
+    <div class="tradeoffs">
+      <strong>Pro:</strong> Pattern recognition is fast. Reveals weekend / pay-week clusters. Memorable. <br>
+      <strong>Con:</strong> No single number to anchor on. Less actionable on its own — needs a runway/limit chip alongside.
+    </div>
+  </div>
+
+  <!-- V6 — Dual chip -->
+  <div class="card v6">
+    <div class="card-header">
+      <h2>Variante 6</h2>
+      <h3>Pace + Presupuesto</h3>
+      <p>Two chips side-by-side. Predictive runway AND allocation status. Compromise from the audit's Option C — keeps both formulas surfaced.</p>
+    </div>
+    <div class="phone">
+      <div class="chips">
+        <div class="chip pace">
+          <div class="lbl">Ritmo</div>
+          <div class="val">6 días</div>
+          <div class="sub">cubierto al ritmo actual</div>
+          <div class="pace-bar"><div class="fill"></div></div>
+        </div>
+        <div class="chip bud bud-bar">
+          <div class="lbl">Presupuesto</div>
+          <div class="val">42%</div>
+          <div class="sub">usado este mes</div>
+          <div class="pace-bar"><div class="fill"></div></div>
+        </div>
+      </div>
+      <div class="summary">
+        <b>Mayo 2026 — vas justo en ritmo.</b> Tienes margen de presupuesto pero estás gastando rápido. Frena un par de días o ajusta los próximos compromisos.
+      </div>
+    </div>
+    <div class="tradeoffs">
+      <strong>Pro:</strong> Acknowledges both questions (runway + adherence). No information lost.<br>
+      <strong>Con:</strong> More to parse. The single-glance promise dilutes. Best for power users.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
