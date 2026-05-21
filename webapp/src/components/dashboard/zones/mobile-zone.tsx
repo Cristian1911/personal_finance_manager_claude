@@ -5,7 +5,9 @@ import { getBudgetSummary } from "@/actions/budgets";
 import { getAccounts } from "@/actions/accounts";
 import { getMobileLayout } from "@/actions/dashboard-config";
 import { getLatestSnapshotDates } from "@/actions/statement-snapshots";
+import { getRitmo } from "@/actions/ritmo";
 import type { RecentTransaction } from "@/actions/transactions";
+import { HybridHero } from "@/components/dashboard/hybrid-hero";
 import { InicioRoot } from "@/components/mobile/v2/inicio/inicio-root";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { toColombiaDateString } from "@/lib/utils/date";
@@ -19,17 +21,27 @@ interface MobileZoneProps {
 }
 
 export async function MobileZone({ month, currency, recentTx }: MobileZoneProps) {
-  const [heroData, attentionItemsData, burnRateData, budgetSummary, accountsResult, dailySpending, latestSnapshotDates, mobileLayout] =
-    await Promise.all([
-      getDashboardHeroData(month, currency),
-      getAttentionItems(),
-      getBurnRate(currency),
-      getBudgetSummary(month),
-      getAccounts(),
-      getDailySpending(month, currency),
-      getLatestSnapshotDates(),
-      getMobileLayout(),
-    ]);
+  const [
+    heroData,
+    ritmoResult,
+    attentionItemsData,
+    burnRateData,
+    budgetSummary,
+    accountsResult,
+    dailySpending,
+    latestSnapshotDates,
+    mobileLayout,
+  ] = await Promise.all([
+    getDashboardHeroData(month, currency),
+    getRitmo(month, currency),
+    getAttentionItems(),
+    getBurnRate(currency),
+    getBudgetSummary(month),
+    getAccounts(),
+    getDailySpending(month, currency),
+    getLatestSnapshotDates(),
+    getMobileLayout(),
+  ]);
 
   const allAccounts = accountsResult.success ? accountsResult.data : [];
 
@@ -129,6 +141,14 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
   return (
     <>
       <MobileHeader variant="main" title="Zeta" />
+      {/* V7 hybrid hero — Option A, predictive runway. Renders ABOVE the
+          existing InicioRoot for now so users can compare; once accepted,
+          InicioRoot's hero block is removed in a follow-up PR. */}
+      {ritmoResult.success && (
+        <div className="px-4 pb-4">
+          <HybridHero data={ritmoResult.data} />
+        </div>
+      )}
       <InicioRoot
         hero={{
           availablePerDay: heroData.availableToSpend / daysRemaining,

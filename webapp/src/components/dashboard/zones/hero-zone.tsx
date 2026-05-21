@@ -3,7 +3,8 @@ import { get503020Allocation } from "@/actions/allocation";
 import { getDebtFreeCountdown } from "@/actions/debt-countdown";
 import { getAttentionSnapshot } from "@/actions/attention";
 import { getAccounts } from "@/actions/accounts";
-import { DashboardHero } from "@/components/dashboard/dashboard-hero";
+import { getRitmo } from "@/actions/ritmo";
+import { HybridHero } from "@/components/dashboard/hybrid-hero";
 import { DebtFreeBanner } from "@/components/dashboard/debt-free-banner";
 import { AttentionCard } from "@/components/ui/attention-card";
 import { UpcomingPayments } from "@/components/dashboard/upcoming-payments";
@@ -22,14 +23,23 @@ interface HeroZoneProps {
 }
 
 export async function HeroZone({ month, currency, monthLabel }: HeroZoneProps) {
-  const [heroData, allocationData, debtCountdownData, attentionSnapshot, accountsResult] =
-    await Promise.all([
-      getDashboardHeroData(month, currency),
-      get503020Allocation(month, currency),
-      getDebtFreeCountdown(currency),
-      getAttentionSnapshot(),
-      getAccounts(),
-    ]);
+  // Hero is now the V7 predictive-runway model (Option A, see scoping doc
+  // PR #261). Allocation lens (50/30/20) still feeds PlanTeaserCard below.
+  const [
+    heroData,
+    ritmoResult,
+    allocationData,
+    debtCountdownData,
+    attentionSnapshot,
+    accountsResult,
+  ] = await Promise.all([
+    getDashboardHeroData(month, currency),
+    getRitmo(month, currency),
+    get503020Allocation(month, currency),
+    getDebtFreeCountdown(currency),
+    getAttentionSnapshot(),
+    getAccounts(),
+  ]);
 
   const allAccounts = accountsResult.success ? accountsResult.data : [];
 
@@ -47,11 +57,10 @@ export async function HeroZone({ month, currency, monthLabel }: HeroZoneProps) {
     <>
       {/* Hero + Attention — 2/3 hero, 1/3 attention */}
       <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
-        <DashboardHero
-          data={heroData}
-          allocationData={allocationData}
-          debtFreeBanner={<DebtFreeBanner data={debtCountdownData} />}
-        />
+        <div className="space-y-3">
+          {ritmoResult.success && <HybridHero data={ritmoResult.data} />}
+          <DebtFreeBanner data={debtCountdownData} />
+        </div>
         <AttentionCard signals={attentionSnapshot.signals} className="h-fit" />
       </div>
 
