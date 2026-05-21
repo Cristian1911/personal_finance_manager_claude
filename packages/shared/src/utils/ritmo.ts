@@ -129,8 +129,13 @@ export function computeRitmo(input: RitmoInput): RitmoResult {
   const daysElapsed = daysBetween(startOfMonth, input.today);
   const daysInMonth = daysBetween(startOfMonth, input.endOfMonth);
 
-  const availableTotal = clampPositive(input.liquidBalance - input.pendingObligations);
-  const availablePerDay = Math.round(availableTotal / daysRemaining);
+  // availableTotal is signed — the UI uses it to surface "you're overspent"
+  // (negative Disponible). The daily allowance and progress bar consume
+  // the clamped non-negative version so we never tell the user "you can
+  // spend -$5,000 per day".
+  const availableTotal = input.liquidBalance - input.pendingObligations;
+  const availableTotalClamped = clampPositive(availableTotal);
+  const availablePerDay = Math.round(availableTotalClamped / daysRemaining);
 
   let spentMonth = 0;
   let spentToday = 0;
@@ -141,8 +146,12 @@ export function computeRitmo(input: RitmoInput): RitmoResult {
 
   const allowedToday = clampPositive(availablePerDay - spentToday);
 
-  const periodBudget = spentMonth + availableTotal;
-  const spentFraction = periodBudget > 0 ? spentMonth / periodBudget : 0;
+  // periodBudget uses the clamped headroom — when availableTotal is
+  // negative, the budget IS what's been spent (no headroom left). The
+  // progress bar pegs at 100% via Math.min below.
+  const periodBudget = spentMonth + availableTotalClamped;
+  const spentFraction =
+    periodBudget > 0 ? Math.min(1, spentMonth / periodBudget) : availableTotal < 0 ? 1 : 0;
 
   // On-track = projected month-end spend (using last-7-day avg as
   // best-guess pace) doesn't exceed what we have. Tolerant of inputs

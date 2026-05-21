@@ -95,6 +95,24 @@ describe("computeRitmo", () => {
     expect(r.spentFraction).toBeCloseTo(0.3, 5);
   });
 
+  it("surfaces a negative availableTotal when pending obligations exceed liquid balance", () => {
+    const input: RitmoInput = {
+      today: "2026-05-21",
+      endOfMonth: "2026-05-31",
+      liquidBalance: 58_000,
+      pendingObligations: 217_516,
+      dailyOutflows: days("2026-05-01", 21, 0),
+    };
+    const r = computeRitmo(input);
+
+    // availableTotal is signed so the UI can render "Disponible: −$159.516".
+    expect(r.availableTotal).toBe(-159_516);
+    // Daily allowance is clamped at zero so we never say "spend -$N per day".
+    expect(r.availablePerDay).toBe(0);
+    // Progress bar pegs at 100% — caller is fully overspent for the period.
+    expect(r.spentFraction).toBe(1);
+  });
+
   it("can exceed 1.0 on spentFraction when the user has overspent", () => {
     const input: RitmoInput = {
       today: "2026-05-25",

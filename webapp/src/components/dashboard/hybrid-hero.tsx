@@ -1,27 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import type { CurrencyCode } from "@/types/domain";
 import type { RitmoData } from "@/actions/ritmo";
 
 /**
- * V7 hybrid hero — Option A canonical. Predictive-runway model:
- *   - "Hoy puedes gastar" as the bold anchor
- *   - Period progress bar (sage → amber → red as user burns through the
- *     period's available balance)
- *   - Collapsible month calendar showing daily spend buckets relative to
- *     the user's own pace
+ * V7 hybrid hero — Option A canonical, predictive-runway model.
  *
- * Replaces the 50/30/20 allocation hero. Allocation lens belongs in
- * /presupuesto. See claude-ai-design/hero-runway-brainstorm.html for the
- * design spec.
+ *   ┌─ Primary  : "Hoy puedes gastar $N" + period-progress bar
+ *   ├─ Expand   : tab between "Cómo se calcula" (line items) and
+ *   │             "Patrón del mes" (calendar heatmap)
+ *   └─ Calendar : day cells are clickable; selection drops a detail
+ *                 strip showing that day's spend and bucket label.
+ *
+ * Replaces both the webapp 50/30/20 hero and the iOS RitmoWidget. Lives
+ * in webapp only for now; native iOS will wire to the same shared
+ * `computeRitmo` helper in a follow-up.
  */
+
+export interface PrimaryAccountSummary {
+  id: string;
+  name: string;
+  currentBalance: number;
+  currencyCode: CurrencyCode;
+}
 
 interface HybridHeroProps {
   data: RitmoData;
-  /** Initial expanded state for the calendar — persisted via localStorage. */
+  primaryAccount?: PrimaryAccountSummary;
   defaultExpanded?: boolean;
 }
 
@@ -32,20 +42,42 @@ const BUCKET_CLASS: Record<string, string> = {
   high: "bg-z-debt/45 text-z-white",
 };
 
-const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"]; // Spanish week, Mon-start
+const BUCKET_LABEL: Record<string, string> = {
+  none: "Sin gasto",
+  low: "Día tranquilo",
+  med: "Día normal",
+  high: "Día caro",
+};
+
+const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
+
+type ExpandedView = "calc" | "pattern";
 
 function dayOfMonth(iso: string): number {
   return parseInt(iso.slice(8, 10), 10);
 }
 
 function weekdayMondayStart(iso: string): number {
-  // JS getDay(): 0=Sun..6=Sat. Map to 0=Mon..6=Sun for ES calendars.
   const d = new Date(`${iso}T12:00:00`).getDay();
   return (d + 6) % 7;
 }
 
-export function HybridHero({ data, defaultExpanded = false }: HybridHeroProps) {
+function formatDayLabel(iso: string): string {
+  // e.g. "vie 21 may" — strip the locale's incidental periods and Title Case
+  // so it reads consistently across browsers (Chrome on macOS likes to
+  // capitalise the weekday).
+  const raw = new Date(`${iso}T12:00:00`).toLocaleDateString("es-CO", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+  return raw.replace(/\./g, "").toLowerCase();
+}
+
+export function HybridHero({ data, primaryAccount, defaultExpanded = false }: HybridHeroProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [view, setView] = useState<ExpandedView>("calc");
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const allowedTone =
     data.allowedToday <= 0
@@ -61,13 +93,45 @@ export function HybridHero({ data, defaultExpanded = false }: HybridHeroProps) {
         ? "y aún llegas al cierre del período con tu colchón."
         : "pero vas rápido — revisa los próximos días.";
 
+  // Cumulative outflow through each day in the month. Used to compute
+  // "remaining balance after this day" on the calendar-click detail.
+  // Indexed by date so the lookup is O(1) on selection.
+  const cumulativeByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    let running = 0;
+    for (const day of data.calendar) {
+      running += day.expense;
+      map.set(day.date, running);
+    }
+    return map;
+  }, [data.calendar]);
+
+  const selectedEntry = useMemo(
+    () => (selectedDay ? data.calendar.find((d) => d.date === selectedDay) : null),
+    [selectedDay, data.calendar],
+  );
+
+  const selectedBalance = useMemo(() => {
+    if (!selectedDay || !selectedEntry) return null;
+    // Period budget minus cumulative spend through this date = headroom
+    // remaining after this day's transactions. For FUTURE days the value
+    // assumes only the past spend has fired.
+    const cumulative = cumulativeByDate.get(selectedDay) ?? 0;
+    return data.periodBudget - cumulative;
+  }, [selectedDay, selectedEntry, cumulativeByDate, data.periodBudget]);
+
   return (
     <div className="rounded-2xl border border-white/6 bg-z-surface p-5">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark mb-2">
         Hoy puedes gastar
       </p>
 
-      <p className={cn("text-[44px] font-bold leading-none tracking-[-0.04em] tabular-nums", allowedTone)}>
+      <p
+        className={cn(
+          "text-[44px] font-bold leading-none tracking-[-0.04em] tabular-nums",
+          allowedTone,
+        )}
+      >
         {formatCurrency(data.allowedToday, data.currency)}
       </p>
 
@@ -85,12 +149,12 @@ export function HybridHero({ data, defaultExpanded = false }: HybridHeroProps) {
           }}
         />
       </div>
-      <div className="mt-2 flex items-baseline justify-between text-[11px] text-z-sage-dark tabular-nums">
-        <span>
+      <div className="mt-2 flex items-baseline justify-between gap-3 text-[11px] text-z-sage-dark tabular-nums">
+        <span className="truncate">
           {formatCurrency(data.spentMonth, data.currency)} gastados ·{" "}
           {formatCurrency(data.availableTotal, data.currency)} restantes
         </span>
-        <span className="font-medium text-z-sage-light">
+        <span className="shrink-0 font-medium text-z-sage-light">
           {Math.round(data.spentFraction * 100)}% del período
         </span>
       </div>
@@ -101,7 +165,7 @@ export function HybridHero({ data, defaultExpanded = false }: HybridHeroProps) {
         className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/6 px-3 py-2 text-[11px] font-semibold tracking-wide text-z-sage-light hover:bg-white/[0.02]"
         aria-expanded={expanded}
       >
-        <span>{expanded ? "Ocultar patrón del mes" : "Ver patrón del mes"}</span>
+        <span>{expanded ? "Ocultar detalle" : "Ver detalle"}</span>
         <ChevronDown
           className={cn(
             "size-3.5 text-z-brass transition-transform",
@@ -113,67 +177,233 @@ export function HybridHero({ data, defaultExpanded = false }: HybridHeroProps) {
 
       {expanded && (
         <div className="mt-4 border-t border-dashed border-white/6 pt-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark mb-3">
-            Patrón de gasto · este mes
-          </p>
-          <CalendarHeatmap data={data} />
-          <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-z-sage-dark">
-            <span className="inline-flex items-center gap-1.5">
-              <i className="size-2.5 rounded-sm bg-z-income/20" /> Día tranquilo
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <i className="size-2.5 rounded-sm bg-z-alert/35" /> Día normal
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <i className="size-2.5 rounded-sm bg-z-debt/45" /> Día caro
-            </span>
+          {/* View tabs */}
+          <div className="mb-3 flex gap-1 rounded-lg border border-white/6 bg-z-surface-2 p-0.5">
+            <button
+              type="button"
+              onClick={() => setView("calc")}
+              className={cn(
+                "flex-1 rounded-md px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors",
+                view === "calc"
+                  ? "bg-z-brass/20 text-z-brass"
+                  : "text-z-sage-dark hover:text-z-sage-light",
+              )}
+              aria-pressed={view === "calc"}
+            >
+              Cómo se calcula
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("pattern")}
+              className={cn(
+                "flex-1 rounded-md px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors",
+                view === "pattern"
+                  ? "bg-z-brass/20 text-z-brass"
+                  : "text-z-sage-dark hover:text-z-sage-light",
+              )}
+              aria-pressed={view === "pattern"}
+            >
+              Patrón del mes
+            </button>
           </div>
+
+          {view === "calc" ? (
+            <CalculoView data={data} primaryAccount={primaryAccount} />
+          ) : (
+            <>
+              <CalendarHeatmap
+                data={data}
+                selectedDay={selectedDay}
+                onSelect={(date) => setSelectedDay((prev) => (prev === date ? null : date))}
+              />
+              <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-z-sage-dark">
+                <span className="inline-flex items-center gap-1.5">
+                  <i className="size-2.5 rounded-sm bg-z-income/20" /> Día tranquilo
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <i className="size-2.5 rounded-sm bg-z-alert/35" /> Día normal
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <i className="size-2.5 rounded-sm bg-z-debt/45" /> Día caro
+                </span>
+              </div>
+              {selectedEntry && (
+                <div className="mt-3 rounded-lg border border-white/6 bg-z-surface-2 p-3 text-xs">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-semibold text-z-sage-light">
+                      {formatDayLabel(selectedEntry.date)}
+                    </span>
+                    <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-z-sage-dark">
+                      {BUCKET_LABEL[selectedEntry.bucket] ?? ""}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+                    {selectedEntry.expense > 0
+                      ? `−${formatCurrency(selectedEntry.expense, data.currency)}`
+                      : "Sin gasto"}
+                  </p>
+                  {selectedBalance !== null && (
+                    <p
+                      className={cn(
+                        "mt-1 text-[11px] tabular-nums",
+                        selectedBalance < 0 ? "text-z-debt" : "text-z-sage-dark",
+                      )}
+                    >
+                      Restante después de este día:{" "}
+                      <span className="font-semibold">
+                        {formatCurrency(selectedBalance, data.currency)}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function CalendarHeatmap({ data }: { data: RitmoData }) {
-  // Lay out the month in a 7-column grid, Monday-first. Future days from the
-  // current month appear with low opacity. Empty leading slots align the
-  // first-of-the-month to its weekday column.
+/** Línea-por-línea de cómo se calcula el "Disponible" / "Hoy puedes gastar". */
+function CalculoView({
+  data,
+  primaryAccount,
+}: {
+  data: RitmoData;
+  primaryAccount?: PrimaryAccountSummary;
+}) {
+  const dailyValue = `${formatCurrency(data.availablePerDay, data.currency)}/día`;
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-white/6 bg-z-surface-2 p-3 space-y-1.5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-brass">
+          Cómo se calcula
+        </p>
+        <div className="flex justify-between text-xs text-z-sage-light">
+          <span>Saldo líquido</span>
+          <span className="tabular-nums">
+            {formatCurrency(data.liquidBalance, data.currency)}
+          </span>
+        </div>
+        <div className="flex justify-between text-xs text-z-sage-light">
+          <span>− Obligaciones pendientes</span>
+          <span className="tabular-nums text-z-expense">
+            −{formatCurrency(data.pendingObligationsTotal, data.currency)}
+          </span>
+        </div>
+        <div className="flex justify-between text-xs text-z-sage-light">
+          <span>− Ya gastado</span>
+          <span className="tabular-nums text-z-expense">
+            −{formatCurrency(data.spentMonth, data.currency)}
+          </span>
+        </div>
+        <div className="flex justify-between border-t border-white/6 pt-1.5 text-xs font-semibold text-foreground">
+          <span>= Disponible</span>
+          <span
+            className={cn(
+              "tabular-nums",
+              data.availableTotal <= 0 && "text-z-debt",
+            )}
+          >
+            {formatCurrency(data.availableTotal, data.currency)}
+          </span>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          ÷ {data.daysRemaining} días (hasta {data.windowEndLabel}) = {dailyValue}
+        </p>
+        {data.nextIncomeDateLabel && data.nextIncomeAmount > 0 && (
+          <div className="flex justify-between border-t border-white/6 pt-1.5 text-xs text-z-income">
+            <span className="truncate">
+              Próximo ingreso: {data.nextIncomeName ?? "ingreso"}
+            </span>
+            <span className="shrink-0 tabular-nums">
+              +{formatCurrency(data.nextIncomeAmount, data.currency)} el{" "}
+              {data.nextIncomeDateLabel}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {primaryAccount && (
+        <Link
+          href={`/accounts/${primaryAccount.id}`}
+          className="flex items-center justify-between rounded-lg border border-white/6 bg-black/20 p-3 transition-colors hover:bg-white/[0.04]"
+        >
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+              Cuenta principal
+            </p>
+            <p className="mt-0.5 truncate text-[12px] text-z-sage-light">
+              {primaryAccount.name}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <p className="text-[15px] font-bold tabular-nums text-foreground">
+              {formatCurrency(primaryAccount.currentBalance, primaryAccount.currencyCode)}
+            </p>
+            <ChevronRight className="size-3.5 text-muted-foreground/50" />
+          </div>
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function CalendarHeatmap({
+  data,
+  selectedDay,
+  onSelect,
+}: {
+  data: RitmoData;
+  selectedDay: string | null;
+  onSelect: (date: string) => void;
+}) {
   if (data.calendar.length === 0) return null;
 
   const firstIso = data.calendar[0].date;
   const leadingEmpty = weekdayMondayStart(firstIso);
 
   return (
-    <div className="grid grid-cols-7 gap-1.5">
-      {WEEKDAY_LABELS.map((label) => (
-        <div
-          key={label}
-          className="text-center text-[9px] font-semibold uppercase tracking-wider text-z-sage-dark"
-        >
-          {label}
-        </div>
-      ))}
-      {Array.from({ length: leadingEmpty }).map((_, i) => (
-        <div key={`empty-${i}`} className="aspect-square" />
-      ))}
-      {data.calendar.map((day) => (
-        <div
-          key={day.date}
-          className={cn(
-            "flex aspect-square items-start justify-end rounded-md px-1 py-0.5 text-[9px] tabular-nums",
-            BUCKET_CLASS[day.bucket] ?? BUCKET_CLASS.none,
-            day.isFuture && "opacity-30",
-            day.isToday && "outline outline-2 outline-offset-[-2px] outline-white",
-          )}
-          title={
-            day.expense > 0
-              ? `${day.date}: ${formatCurrency(day.expense, data.currency)}`
-              : day.date
-          }
-        >
-          {dayOfMonth(day.date)}
-        </div>
-      ))}
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark mb-2">
+        Toca un día para ver su detalle
+      </p>
+      <div className="grid grid-cols-7 gap-1.5">
+        {WEEKDAY_LABELS.map((label) => (
+          <div
+            key={label}
+            className="text-center text-[9px] font-semibold uppercase tracking-wider text-z-sage-dark"
+          >
+            {label}
+          </div>
+        ))}
+        {Array.from({ length: leadingEmpty }).map((_, i) => (
+          <div key={`empty-${i}`} className="aspect-square" />
+        ))}
+        {data.calendar.map((day) => {
+          const isSelected = day.date === selectedDay;
+          return (
+            <button
+              key={day.date}
+              type="button"
+              onClick={() => onSelect(day.date)}
+              className={cn(
+                "flex aspect-square items-start justify-end rounded-md px-1 py-0.5 text-[9px] tabular-nums transition-transform active:scale-95",
+                BUCKET_CLASS[day.bucket] ?? BUCKET_CLASS.none,
+                day.isFuture && "opacity-30",
+                day.isToday && "outline outline-2 outline-offset-[-2px] outline-white",
+                isSelected && "outline outline-2 outline-offset-[-2px] outline-z-brass",
+              )}
+              aria-pressed={isSelected}
+              aria-label={`${formatDayLabel(day.date)} — ${BUCKET_LABEL[day.bucket]}, ${day.expense > 0 ? `−${formatCurrency(day.expense, data.currency)}` : "sin gasto"}`}
+            >
+              {dayOfMonth(day.date)}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

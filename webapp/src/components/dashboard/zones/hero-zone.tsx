@@ -53,12 +53,35 @@ export async function HeroZone({ month, currency, monthLabel }: HeroZoneProps) {
     displayOrder: account.display_order,
   }));
 
+  // Pick a "primary" account to feature in the hero's Cálculo view — same
+  // selection rule as MobileZone for visual parity.
+  const primaryAccount = (() => {
+    const primary =
+      allAccounts.find(
+        (a) =>
+          (a.account_type === "SAVINGS" || a.account_type === "CHECKING") &&
+          a.show_in_dashboard,
+      ) ??
+      allAccounts.find(
+        (a) => a.account_type === "SAVINGS" || a.account_type === "CHECKING",
+      );
+    if (!primary) return undefined;
+    return {
+      id: primary.id,
+      name: primary.name,
+      currentBalance: primary.current_balance ?? 0,
+      currencyCode: primary.currency_code as CurrencyCode,
+    };
+  })();
+
   return (
     <>
       {/* Hero + Attention — 2/3 hero, 1/3 attention */}
       <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
         <div className="space-y-3">
-          {ritmoResult.success && <HybridHero data={ritmoResult.data} />}
+          {ritmoResult.success && (
+            <HybridHero data={ritmoResult.data} primaryAccount={primaryAccount} />
+          )}
           <DebtFreeBanner data={debtCountdownData} />
         </div>
         <AttentionCard signals={attentionSnapshot.signals} className="h-fit" />

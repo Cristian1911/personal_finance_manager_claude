@@ -68,6 +68,10 @@ export interface RitmoData extends RitmoResult {
   liquidBalance: number;
   /** Sum of pending obligation amounts in the window, for the secondary panel. */
   pendingObligationsTotal: number;
+  /** Next-income metadata for the "Próximo ingreso" line in the Cálculo view. */
+  nextIncomeName: string | null;
+  nextIncomeAmount: number;
+  nextIncomeDateLabel: string | null;
 }
 
 export async function getRitmo(
@@ -105,6 +109,12 @@ export async function getRitmo(
       day: "numeric",
       month: "short",
     });
+    const nextIncomeDateLabel = heroData.nextIncomeDate
+      ? new Date(`${heroData.nextIncomeDate}T12:00:00`).toLocaleDateString("es-CO", {
+          day: "numeric",
+          month: "short",
+        })
+      : null;
 
     return {
       success: true,
@@ -114,6 +124,9 @@ export async function getRitmo(
         windowEndLabel,
         liquidBalance: heroData.totalLiquid,
         pendingObligationsTotal: heroData.windowObligations,
+        nextIncomeName: heroData.nextIncomeName,
+        nextIncomeAmount: heroData.nextIncomeAmount,
+        nextIncomeDateLabel,
       },
     };
   } catch (error) {

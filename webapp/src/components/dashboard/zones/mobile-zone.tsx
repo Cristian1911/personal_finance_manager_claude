@@ -143,10 +143,12 @@ export async function MobileZone({ month, currency, recentTx }: MobileZoneProps)
       <MobileHeader variant="main" title="Zeta" />
       {/* V7 hybrid hero — Option A, predictive runway. Renders ABOVE the
           existing InicioRoot for now so users can compare; once accepted,
-          InicioRoot's hero block is removed in a follow-up PR. */}
+          InicioRoot's hero block is removed in a follow-up PR.
+          No wrapper padding — InicioRoot's parent already provides the
+          page-level horizontal margin; the hero card uses internal p-5. */}
       {ritmoResult.success && (
-        <div className="px-4 pb-4">
-          <HybridHero data={ritmoResult.data} />
+        <div className="mb-4">
+          <HybridHero data={ritmoResult.data} primaryAccount={primaryAccount} />
         </div>
       )}
       <InicioRoot
