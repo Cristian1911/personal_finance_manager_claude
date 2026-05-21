@@ -144,6 +144,13 @@ export default function MobileOnboardingScreen() {
       // 3. Flip `onboarding_completed = true` only if both succeeded.
       // Not atomic without an RPC, but guarantees the flag never implies
       // "complete without an account".
+      // Match webapp finishOnboarding (actions/onboarding.ts): users whose
+      // primary purpose is debt-payoff get a DEBT-focused nav rail; everyone
+      // else gets PLAN. Without this, mobile-onboarded users land on the
+      // webapp with the database default (PLAN) regardless of intent.
+      const navFocus: "DEBT" | "PLAN" =
+        data.purpose === "manage_debt" ? "DEBT" : "PLAN";
+
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -154,6 +161,7 @@ export default function MobileOnboardingScreen() {
           preferred_currency: data.currency,
           timezone,
           locale: "es-CO",
+          nav_focus: navFocus,
           mobile_dashboard_config: mobileDashboardConfig,
           updated_at: now,
         })

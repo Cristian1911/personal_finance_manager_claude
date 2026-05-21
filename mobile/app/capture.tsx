@@ -346,6 +346,27 @@ export default function CaptureScreen() {
     setSaving(true);
     try {
       const trimmedDescription = description.trim();
+
+      // Resolve the destinatario *before* persisting the transaction so the
+      // new transaction row carries `destinatario_id` from the start. This
+      // mirrors webapp's persistTransaction (actions/transactions.ts:706),
+      // where destinatarioId is passed into the insert payload — not stamped
+      // afterwards. If destinatario creation fails the tx still saves.
+      let newDestinatarioId: string | null = null;
+      if (createDestinatario) {
+        try {
+          const { destinatarioId } = await createDestinatarioWithPattern({
+            user_id: session.user.id,
+            name: trimmedDescription,
+            default_category_id: categoryId,
+            pattern: trimmedDescription,
+          });
+          newDestinatarioId = destinatarioId;
+        } catch (err) {
+          console.error("Create destinatario from capture failed:", err);
+        }
+      }
+
       const newTxId = await createTransaction({
         user_id: session.user.id,
         account_id: accountId,
@@ -358,6 +379,7 @@ export default function CaptureScreen() {
         merchant_name: trimmedDescription,
         raw_description: trimmedDescription,
         category_id: categoryId,
+        destinatario_id: newDestinatarioId,
         notes: notes.trim() || null,
         provider: "MANUAL",
         capture_method: "MANUAL_FORM",
@@ -379,21 +401,6 @@ export default function CaptureScreen() {
         }
       } catch (err) {
         if (__DEV__) console.warn("[capture] location link failed", err);
-      }
-
-      let newDestinatarioId: string | null = null;
-      if (createDestinatario) {
-        try {
-          const { destinatarioId } = await createDestinatarioWithPattern({
-            user_id: session.user.id,
-            name: trimmedDescription,
-            default_category_id: categoryId,
-            pattern: trimmedDescription,
-          });
-          newDestinatarioId = destinatarioId;
-        } catch (err) {
-          console.error("Create destinatario from capture failed:", err);
-        }
       }
 
       if (createRecurring) {

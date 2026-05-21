@@ -68,6 +68,7 @@ export type CreateTransactionParams = {
   merchant_name?: string | null;
   raw_description?: string | null;
   category_id?: string | null;
+  destinatario_id?: string | null;
   notes?: string | null;
   provider?: DataProvider;
   capture_method?: TransactionCaptureMethod;
@@ -88,6 +89,7 @@ export type UpdateTransactionParams = {
   transaction_date?: string;
   transaction_time?: string | null;
   category_id?: string | null;
+  destinatario_id?: string | null;
   notes?: string | null;
   is_excluded?: boolean;
   reconciled_into_transaction_id?: string | null;
@@ -108,6 +110,12 @@ function buildInsertPayload(id: string, now: string, params: CreateTransactionPa
     user_id: params.user_id,
     account_id: params.account_id,
     category_id: params.category_id ?? null,
+    // Mirror webapp persistTransaction (webapp/src/actions/transactions.ts):
+    // mark as USER_CREATED only when the caller passes a category; otherwise
+    // fall back to SYSTEM_DEFAULT so dashboards that filter on this column
+    // count mobile-created rows the same as webapp-created rows.
+    categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
+    destinatario_id: params.destinatario_id ?? null,
     amount: params.amount,
     currency_code: params.currency_code,
     direction: params.direction,
@@ -160,15 +168,18 @@ export async function createTransaction(params: CreateTransactionParams): Promis
   await db.withTransactionAsync(async () => {
     await db.runAsync(
       `INSERT INTO transactions
-        (id, user_id, account_id, category_id, amount, currency_code, direction, description, merchant_name, raw_description,
-         transaction_date, transaction_time, location_id, status, idempotency_key, is_excluded, is_subscription, notes, provider,
-         capture_method, capture_input_text, reconciled_into_transaction_id, reconciliation_score, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, user_id, account_id, category_id, categorization_source, destinatario_id, amount, currency_code, direction,
+         description, merchant_name, raw_description, transaction_date, transaction_time, location_id, status, idempotency_key,
+         is_excluded, is_subscription, notes, provider, capture_method, capture_input_text, reconciled_into_transaction_id,
+         reconciliation_score, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         payload.id,
         payload.user_id,
         payload.account_id,
         payload.category_id,
+        payload.categorization_source,
+        payload.destinatario_id,
         payload.amount,
         payload.currency_code,
         payload.direction,
@@ -618,6 +629,10 @@ export async function updateTransaction(
     setClauses.push("categorization_source = ?");
     values.push("USER_OVERRIDE");
   }
+  if (params.destinatario_id !== undefined) {
+    setClauses.push("destinatario_id = ?");
+    values.push(params.destinatario_id ?? null);
+  }
   if (params.notes !== undefined) {
     setClauses.push("notes = ?");
     values.push(params.notes ?? null);
@@ -656,6 +671,7 @@ export async function updateTransaction(
     syncPayload.category_id = params.category_id ?? null;
     syncPayload.categorization_source = "USER_OVERRIDE";
   }
+  if (params.destinatario_id !== undefined) syncPayload.destinatario_id = params.destinatario_id ?? null;
   if (params.notes !== undefined) syncPayload.notes = params.notes ?? null;
   if (params.is_excluded !== undefined) syncPayload.is_excluded = params.is_excluded;
   if (params.reconciled_into_transaction_id !== undefined) {

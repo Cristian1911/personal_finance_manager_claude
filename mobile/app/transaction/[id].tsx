@@ -249,6 +249,11 @@ export default function TransactionDetailScreen() {
         notes: editNotes.trim() || null,
         is_excluded: editIsExcluded,
       });
+      // Persist tag changes — the TagSelector mutates `editTagIds` but the
+      // tx-update path doesn't carry tags. `saveTransactionTags` does a
+      // REPLACE on `transaction_tags` for this id and enqueues a sync row.
+      // Mirrors the webapp transaction-form `saveTags` call.
+      await saveTransactionTags(id, editTagIds);
       // Reload from DB to get fresh joined data (category_name_es, etc.)
       const updated = (await getTransactionById(id)) as TransactionDetail;
       setTransaction(updated);
