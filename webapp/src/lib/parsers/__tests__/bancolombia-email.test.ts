@@ -230,6 +230,25 @@ describe("parseBancolombiaEmail", () => {
     expect(result!.pattern_type).toBe("qr_recibido");
   });
 
+  // Pattern 13: Pago recibido a cuenta con etiqueta (INFLOW)
+  it("parses generic payment received with account label and reversed time/date order", () => {
+    const line =
+      "Logo Bancolombia [https://example.com/logo.png] yellow-icon [https://example.com/chulo.png] ¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste un pago por $1,100,000.00 de GIRALDO CRISTIA a tu cuenta AHORROS, el 12:43 a las 21/05/2026. ¿Tienes dudas? Encuentranos aqui:018000931987. Estamos cerca";
+    const result = parseBancolombiaEmail(line);
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("INFLOW");
+    expect(result!.amount).toBe(1100000);
+    expect(result!.merchant).toBe("GIRALDO CRISTIA");
+    expect(result!.card_last4).toBe("");
+    expect(result!.card_type).toBe("Cta");
+    expect(result!.transaction_date).toBe("2026-05-21");
+    expect(result!.transaction_time).toBe("12:43");
+    expect(result!.pattern_type).toBe("pago_recibido_cuenta");
+    expect(result!.raw_line).toBe(
+      "Recibiste un pago por $1,100,000.00 de GIRALDO CRISTIA a tu cuenta AHORROS, el 12:43 a las 21/05/2026"
+    );
+  });
+
   // Unrecognized emails
   it("returns null for non-Bancolombia email", () => {
     const line = "Your Amazon order has shipped!";
