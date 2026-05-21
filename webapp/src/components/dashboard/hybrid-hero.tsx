@@ -1,26 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import {
+  BUCKET_LABEL,
+  WEEKDAYS_MONDAY_START,
+  deriveRitmoStatus,
+  weekdayMondayStart,
+  type DailyBucket,
+  type RitmoStatusTone,
+} from "@zeta/shared";
 import type { CurrencyCode } from "@/types/domain";
 import type { RitmoData } from "@/actions/ritmo";
-
-/**
- * V7 hybrid hero — Option A canonical, predictive-runway model.
- *
- *   ┌─ Primary  : "Hoy puedes gastar $N" + period-progress bar
- *   ├─ Expand   : tab between "Cómo se calcula" (line items) and
- *   │             "Patrón del mes" (calendar heatmap)
- *   └─ Calendar : day cells are clickable; selection drops a detail
- *                 strip showing that day's spend and bucket label.
- *
- * Replaces both the webapp 50/30/20 hero and the iOS RitmoWidget. Lives
- * in webapp only for now; native iOS will wire to the same shared
- * `computeRitmo` helper in a follow-up.
- */
 
 export interface PrimaryAccountSummary {
   id: string;
@@ -35,21 +29,30 @@ interface HybridHeroProps {
   defaultExpanded?: boolean;
 }
 
-const BUCKET_CLASS: Record<string, string> = {
+const BUCKET_CLASS: Record<DailyBucket, string> = {
   none: "bg-z-surface-2 text-z-white",
   low: "bg-z-income/20 text-z-white",
   med: "bg-z-alert/35 text-z-white",
   high: "bg-z-debt/45 text-z-white",
 };
 
-const BUCKET_LABEL: Record<string, string> = {
-  none: "Sin gasto",
-  low: "Día tranquilo",
-  med: "Día normal",
-  high: "Día caro",
+const TONE_TEXT_CLASS: Record<RitmoStatusTone, string> = {
+  income: "text-z-income",
+  alert: "text-z-alert",
+  debt: "text-z-debt",
 };
 
-const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
+const TONE_BG_CLASS: Record<RitmoStatusTone, string> = {
+  income: "bg-z-income",
+  alert: "bg-z-alert",
+  debt: "bg-z-debt",
+};
+
+const TONE_STROKE: Record<RitmoStatusTone, string> = {
+  income: "var(--color-z-sage)",
+  alert: "var(--color-z-alert)",
+  debt: "var(--color-z-debt)",
+};
 
 type ExpandedView = "calc" | "pattern";
 
@@ -57,15 +60,9 @@ function dayOfMonth(iso: string): number {
   return parseInt(iso.slice(8, 10), 10);
 }
 
-function weekdayMondayStart(iso: string): number {
-  const d = new Date(`${iso}T12:00:00`).getDay();
-  return (d + 6) % 7;
-}
-
 function formatDayLabel(iso: string): string {
-  // e.g. "vie 21 may" — strip the locale's incidental periods and Title Case
-  // so it reads consistently across browsers (Chrome on macOS likes to
-  // capitalise the weekday).
+  // Chrome on macOS title-cases the weekday and keeps a trailing period
+  // ("Vie. 21 may"); strip both so the label reads consistently.
   const raw = new Date(`${iso}T12:00:00`).toLocaleDateString("es-CO", {
     weekday: "short",
     day: "numeric",
@@ -79,38 +76,16 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
   const [view, setView] = useState<ExpandedView>("calc");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  // Status: red on overspend (today OR period), amber on period strain.
-  // Today's overspend = red because the user's ritmo is broken for the
-  // day — that's an immediate signal even if the period still has room.
   const overspentToday = data.spentToday > data.availablePerDay;
-  const status: { label: string; tone: "income" | "alert" | "debt" } =
-    data.availableTotal < 0 || overspentToday
-      ? { label: "Te pasaste", tone: "debt" }
-      : data.spentFraction >= 0.85
-        ? { label: "Vas justo", tone: "alert" }
-        : { label: "Vas bien", tone: "income" };
-
-  // The big number is today's actual spend. Tone tracks status.
+  const status = deriveRitmoStatus(data);
+  const statusTextClass = TONE_TEXT_CLASS[status.tone];
+  const statusToneClass = TONE_BG_CLASS[status.tone];
+  // "income" tone falls through to a muted color when nothing was spent
+  // today — there's no "you spent $0" achievement to celebrate in green.
   const todayTone =
-    status.tone === "debt"
-      ? "text-z-debt"
-      : status.tone === "alert"
-        ? "text-z-alert"
-        : data.spentToday > 0
-          ? "text-z-income"
-          : "text-z-sage-light";
-  const statusToneClass =
-    status.tone === "debt"
-      ? "bg-z-debt"
-      : status.tone === "alert"
-        ? "bg-z-alert"
-        : "bg-z-income";
-  const statusTextClass =
-    status.tone === "debt"
-      ? "text-z-debt"
-      : status.tone === "alert"
-        ? "text-z-alert"
-        : "text-z-income";
+    status.tone === "income" && data.spentToday === 0
+      ? "text-z-sage-light"
+      : statusTextClass;
 
   // Last-7-days OUTFLOW series for the mini sparkline — read from
   // data.calendar so it scales with the user's actual month-to-date data.
@@ -180,7 +155,7 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
           {formatCurrency(data.spentToday, data.currency)}
         </p>
         {sparkData.values.length > 0 && (
-          <Sparkline
+          <HeroSparkline
             values={sparkData.values}
             max={sparkData.max}
             tone={status.tone}
@@ -208,11 +183,9 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
         )}
       </p>
 
-      {/* Period progress bar. The % indicator floats just above the
-          bar's right edge so it never competes with the legend below. */}
-      <div className="mt-5 flex items-end justify-end text-[10px] font-medium text-z-sage-light tabular-nums">
-        <span>{Math.round(data.spentFraction * 100)}% del período</span>
-      </div>
+      <p className="mt-5 text-right text-[10px] font-medium text-z-sage-light tabular-nums">
+        {Math.round(data.spentFraction * 100)}% del período
+      </p>
       <div className="relative mt-1 h-2.5 w-full overflow-hidden rounded-full bg-z-surface-2">
         <div
           className="h-full rounded-full"
@@ -351,7 +324,7 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
 }
 
 /** Línea-por-línea de cómo se calcula el "Disponible" / "Hoy puedes gastar". */
-function CalculoView({
+const CalculoView = memo(function CalculoView({
   data,
   primaryAccount,
 }: {
@@ -434,29 +407,24 @@ function CalculoView({
       )}
     </div>
   );
-}
+});
 
 /** Tiny inline sparkline of the last-N OUTFLOW series. Stroke colour tracks
  *  the hero's status so a "Te pasaste" hero shows a red rhythm and a
  *  "Vas bien" hero shows a sage one — same emotional cue as the main amount. */
-function Sparkline({
+const HeroSparkline = memo(function HeroSparkline({
   values,
   max,
   tone,
 }: {
   values: number[];
   max: number;
-  tone: "income" | "alert" | "debt";
+  tone: RitmoStatusTone;
 }) {
   const width = 96;
   const height = 32;
   const pad = 3;
-  const stroke =
-    tone === "debt"
-      ? "var(--color-z-debt)"
-      : tone === "alert"
-        ? "var(--color-z-alert)"
-        : "var(--color-z-sage)";
+  const stroke = TONE_STROKE[tone];
 
   if (values.length === 0) return null;
 
@@ -498,9 +466,9 @@ function Sparkline({
       />
     </svg>
   );
-}
+});
 
-function CalendarHeatmap({
+const CalendarHeatmap = memo(function CalendarHeatmap({
   data,
   selectedDay,
   onSelect,
@@ -520,7 +488,7 @@ function CalendarHeatmap({
         Toca un día para ver su detalle
       </p>
       <div className="grid grid-cols-7 gap-1.5">
-        {WEEKDAY_LABELS.map((label) => (
+        {WEEKDAYS_MONDAY_START.map((label) => (
           <div
             key={label}
             className="text-center text-[9px] font-semibold uppercase tracking-wider text-z-sage-dark"
@@ -554,4 +522,4 @@ function CalendarHeatmap({
       </div>
     </div>
   );
-}
+});

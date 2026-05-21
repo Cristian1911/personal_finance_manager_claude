@@ -6,22 +6,16 @@ import { useRouter } from "expo-router";
 import {
   formatCurrency,
   computeRitmo,
+  BUCKET_LABEL,
+  WEEKDAYS_MONDAY_START,
+  deriveRitmoStatus,
+  weekdayMondayStart,
   type CurrencyCode,
+  type DailyBucket,
   type RitmoResult,
+  type RitmoStatusTone,
 } from "@zeta/shared";
 import { COLORS } from "../../lib/constants/colors";
-
-/**
- * V7 hybrid hero (React Native) — Option A canonical, predictive-runway
- * model. Mirrors webapp/src/components/dashboard/hybrid-hero.tsx exactly
- * via the shared `computeRitmo` helper.
- *
- *   ┌─ Eyebrow + status pill           (top row, both small)
- *   ├─ Big "Hoy puedes gastar" + sparkline (heavy visuals paired)
- *   ├─ Period progress bar with gradient
- *   ├─ Gastados / Restantes legend (each on its own row)
- *   └─ Expand → tabs (Cómo se calcula / Patrón del mes with clickable days)
- */
 
 export interface PrimaryAccountSummary {
   id: string;
@@ -43,32 +37,24 @@ interface HybridHeroProps {
   primaryAccount?: PrimaryAccountSummary;
 }
 
-const BUCKET_TONE: Record<string, string> = {
+// NativeWind v3 can't parse Tailwind v4's `/N` opacity modifier — those
+// classes compile to nothing. Use the pre-computed tokens from
+// mobile/tailwind.config.js instead.
+const BUCKET_TONE: Record<DailyBucket, string> = {
   none: "bg-z-surface-2",
-  // NativeWind v3 cannot parse Tailwind v4's `/N` opacity modifier — the
-  // class compiles to nothing and renders fully transparent. Use the
-  // pre-computed tokens from mobile/tailwind.config.js instead.
   low: "bg-z-income-20",
   med: "bg-z-alert-30",
   high: "bg-z-debt-40",
 };
 
-const BUCKET_LABEL: Record<string, string> = {
-  none: "Sin gasto",
-  low: "Día tranquilo",
-  med: "Día normal",
-  high: "Día caro",
+const TONE_COLOR: Record<RitmoStatusTone, string> = {
+  income: COLORS.income,
+  alert: COLORS.alert,
+  debt: COLORS.debt,
 };
-
-const WEEKDAYS = ["L", "M", "X", "J", "V", "S", "D"];
 
 function dayOfMonth(iso: string): number {
   return parseInt(iso.slice(8, 10), 10);
-}
-
-function weekdayMondayStart(iso: string): number {
-  const d = new Date(`${iso}T12:00:00`).getDay();
-  return (d + 6) % 7;
 }
 
 function formatDayLabel(iso: string): string {
@@ -85,10 +71,6 @@ function formatShortDate(iso: string): string {
   });
 }
 
-// Wrapped in memo so InicioRoot state changes (editing toggle, catalog
-// open, refresh, layout edits, widget activation) don't cascade into a
-// hero re-render. All props from InicioRoot are stable primitives or
-// useMemo-gated objects.
 export const HybridHero = memo(function HybridHero({
   today,
   endOfMonth,
@@ -120,22 +102,17 @@ export const HybridHero = memo(function HybridHero({
     [today, endOfMonth, liquidBalance, nextIncomeDate, nextIncomeAmount, pendingObligations, dailyOutflows],
   );
 
-  // Status: red on overspend (today OR period), amber on period strain.
   const overspentToday = ritmo.spentToday > ritmo.availablePerDay;
-  const status: { label: string; color: string } =
-    ritmo.availableTotal < 0 || overspentToday
-      ? { label: "Te pasaste", color: COLORS.debt }
-      : ritmo.spentFraction >= 0.85
-        ? { label: "Vas justo", color: COLORS.alert }
-        : { label: "Vas bien", color: COLORS.income };
-
+  const status = deriveRitmoStatus(ritmo);
+  const statusColor = TONE_COLOR[status.tone];
   const amountColor =
-    status.color === COLORS.income && ritmo.spentToday === 0
-      ? COLORS.sageLight
-      : status.color;
+    status.tone === "income" && ritmo.spentToday === 0 ? COLORS.sageLight : statusColor;
 
-  const sparkValues = ritmo.calendar.slice(-7).map((d) => d.expense);
-  const sparkMax = sparkValues.reduce((m, v) => Math.max(m, v), 0);
+  const spark = useMemo(() => {
+    const values = ritmo.calendar.slice(-7).map((d) => d.expense);
+    const max = values.reduce((m, v) => Math.max(m, v), 0);
+    return { values, max };
+  }, [ritmo.calendar]);
 
   const cumulativeByDate = useMemo(() => {
     const map = new Map<string, number>();
@@ -147,19 +124,24 @@ export const HybridHero = memo(function HybridHero({
     return map;
   }, [ritmo.calendar]);
 
-  const selectedEntry = selectedDay
-    ? ritmo.calendar.find((d) => d.date === selectedDay)
-    : null;
-  const selectedBalance = selectedEntry
-    ? ritmo.periodBudget - (cumulativeByDate.get(selectedEntry.date) ?? 0)
-    : null;
+  const selectedEntry = useMemo(
+    () => (selectedDay ? ritmo.calendar.find((d) => d.date === selectedDay) ?? null : null),
+    [selectedDay, ritmo.calendar],
+  );
+  const selectedBalance = useMemo(
+    () =>
+      selectedEntry
+        ? ritmo.periodBudget - (cumulativeByDate.get(selectedEntry.date) ?? 0)
+        : null,
+    [selectedEntry, cumulativeByDate, ritmo.periodBudget],
+  );
 
   const windowEndLabel = formatShortDate(ritmo.windowEndDate);
   const nextIncomeDateLabel = nextIncomeDate ? formatShortDate(nextIncomeDate) : null;
   const dailyValue = `${formatCurrency(ritmo.availablePerDay, currency)}/día`;
 
   return (
-    <View className="mx-4 mb-3 rounded-2xl border border-white-6 bg-z-surface p-5">
+    <View className="rounded-2xl border border-white-6 bg-z-surface p-5">
       {/* Top row: eyebrow + status pill */}
       <View className="flex-row items-center justify-between">
         <Text className="text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-sage-dark">
@@ -168,10 +150,10 @@ export const HybridHero = memo(function HybridHero({
         <View
           className="flex-row items-center gap-1.5 rounded-full border border-white-6 bg-white-4 px-2.5 py-1"
         >
-          <View className="size-1.5 rounded-full" style={{ backgroundColor: status.color }} />
+          <View className="size-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
           <Text
             className="text-[10px] font-inter-semibold uppercase tracking-[1.2px]"
-            style={{ color: status.color }}
+            style={{ color: statusColor }}
           >
             {status.label}
           </Text>
@@ -181,13 +163,13 @@ export const HybridHero = memo(function HybridHero({
       {/* Bottom row: today's spend (headline fact) + sparkline. */}
       <View className="mt-2 flex-row items-end justify-between">
         <Text
-          className="text-[44px] font-inter-bold tracking-[-1.6px]"
+          className="text-[34px] font-inter-bold tracking-[-1.2px]"
           style={{ color: amountColor, fontVariant: ["tabular-nums"] }}
         >
           {formatCurrency(ritmo.spentToday, currency)}
         </Text>
-        {sparkValues.length > 0 && (
-          <Sparkline values={sparkValues} max={sparkMax} color={status.color} />
+        {spark.values.length > 0 && (
+          <Sparkline values={spark.values} max={spark.max} color={statusColor} />
         )}
       </View>
 
@@ -335,7 +317,7 @@ export const HybridHero = memo(function HybridHero({
   );
 });
 
-function Sparkline({
+const Sparkline = memo(function Sparkline({
   values,
   max,
   color,
@@ -385,9 +367,9 @@ function Sparkline({
       />
     </Svg>
   );
-}
+});
 
-function CalcView(props: {
+const CalcView = memo(function CalcView(props: {
   ritmo: RitmoResult;
   liquidBalance: number;
   pendingObligations: number;
@@ -484,7 +466,7 @@ function CalcView(props: {
       )}
     </View>
   );
-}
+});
 
 function Row({
   label,
@@ -517,7 +499,7 @@ function Row({
   );
 }
 
-function PatternView(props: {
+const PatternView = memo(function PatternView(props: {
   ritmo: RitmoResult;
   currency: CurrencyCode;
   selectedDay: string | null;
@@ -558,7 +540,7 @@ function PatternView(props: {
           flex-1 + gap combo that was collapsing empty cells in partial
           rows and misaligning columns. */}
       <View className="flex-row">
-        {WEEKDAYS.map((label) => (
+        {WEEKDAYS_MONDAY_START.map((label) => (
           <View key={label} style={{ width: `${100 / 7}%`, alignItems: "center" }}>
             <Text className="text-[9px] font-inter-semibold uppercase tracking-wider text-z-sage-dark">
               {label}
@@ -614,9 +596,9 @@ function PatternView(props: {
 
       {/* Legend */}
       <View className="mt-3 flex-row flex-wrap gap-3">
-        <LegendDot color="rgba(92,184,138,0.30)" label="Día tranquilo" />
-        <LegendDot color="rgba(212,168,67,0.40)" label="Día normal" />
-        <LegendDot color="rgba(224,85,69,0.50)" label="Día caro" />
+        <LegendDot color="rgba(92,184,138,0.30)" label={BUCKET_LABEL.low} />
+        <LegendDot color="rgba(212,168,67,0.40)" label={BUCKET_LABEL.med} />
+        <LegendDot color="rgba(224,85,69,0.50)" label={BUCKET_LABEL.high} />
       </View>
 
       {selectedEntry && (
@@ -655,7 +637,7 @@ function PatternView(props: {
       )}
     </View>
   );
-}
+});
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (

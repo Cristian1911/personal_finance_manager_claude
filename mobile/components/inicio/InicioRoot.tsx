@@ -141,6 +141,14 @@ export function InicioRoot() {
 
   const today = toLocalDateString(new Date());
   const dateLabel = formatHeaderDate(new Date());
+  const endOfMonth = useMemo(() => {
+    // Last day of `today`'s month, YYYY-MM-DD. Recomputed only when the
+    // local date string rolls over, so HybridHero's memoized props stay
+    // reference-stable across InicioRoot state changes.
+    const [y, m] = today.split("-").map(Number);
+    const last = new Date(y, m, 0).getDate();
+    return `${y}-${String(m).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+  }, [today]);
 
   const primaryAccount = useMemo(() => {
     const a = summary.accounts.find((x) => x.current_balance > 0);
@@ -232,30 +240,18 @@ export function InicioRoot() {
           />
         }
       >
-        {(() => {
-          // V7 HybridHero — Option A, predictive runway canonical.
-          // PulseWidget removed 2026-05-21; the component file is kept
-          // in place as a 1-line rollback target if needed.
-          const now = new Date();
-          const m = String(now.getMonth() + 1).padStart(2, "0");
-          const today = `${now.getFullYear()}-${m}-${String(now.getDate()).padStart(2, "0")}`;
-          const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-          const endOfMonth = `${now.getFullYear()}-${m}-${String(lastDay).padStart(2, "0")}`;
-          return (
-            <HybridHero
-              today={today}
-              endOfMonth={endOfMonth}
-              liquidBalance={summary.liquidBalance}
-              pendingObligations={summary.pendingObligations}
-              nextIncomeDate={summary.nextIncome?.date ?? null}
-              nextIncomeAmount={summary.nextIncome?.amount ?? 0}
-              nextIncomeName={summary.nextIncome?.name ?? null}
-              dailyOutflows={summary.dailyOutflowsThisMonth}
-              currency={summary.currency}
-              primaryAccount={primaryAccount ?? undefined}
-            />
-          );
-        })()}
+        <HybridHero
+          today={today}
+          endOfMonth={endOfMonth}
+          liquidBalance={summary.liquidBalance}
+          pendingObligations={summary.pendingObligations}
+          nextIncomeDate={summary.nextIncome?.date ?? null}
+          nextIncomeAmount={summary.nextIncome?.amount ?? 0}
+          nextIncomeName={summary.nextIncome?.name ?? null}
+          dailyOutflows={summary.dailyOutflowsThisMonth}
+          currency={summary.currency}
+          primaryAccount={primaryAccount ?? undefined}
+        />
 
         <SectionDivider label="Herramientas" />
         <WidgetGrid

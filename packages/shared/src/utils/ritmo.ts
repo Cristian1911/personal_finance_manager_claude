@@ -1,25 +1,54 @@
 /**
- * Canonical "ritmo" computation for the dashboard hero on both mobile and
- * webapp. Predictive runway model (audit Option A, picked 2026-05-21):
+ * Canonical "ritmo" (runway) computation for the dashboard hero, shared
+ * by webapp + mobile. Pure function over plain inputs:
  *
  *   ┌─ Today's permission = available balance for the period ÷ days remaining
  *   ├─ Period progress    = fraction of the period's available balance already spent
  *   └─ Daily buckets      = per-day spend classified relative to month-avg
- *
- * Pure function over plain inputs so both platforms produce identical
- * numbers. Mobile feeds it from SQLite + local profile; webapp feeds it
- * from cached Supabase actions.
- *
- * Replaces:
- *  - mobile/lib/dashboard/useDashboardData.ts (lines ~140-220) — the
- *    avgLast7 × daysInMonth projection
- *  - webapp/src/actions/allocation.ts (50/30/20 allocation that was
- *    surfaced in the dashboard hero) — deprecated for the hero; the
- *    allocation lens still belongs in /presupuesto.
  */
 
 /** Calendar-bucket label for the V7 calendar heatmap. */
 export type DailyBucket = "none" | "low" | "med" | "high";
+
+/** Spanish UI labels for each bucket (legend + a11y). Both platforms read from this. */
+export const BUCKET_LABEL: Record<DailyBucket, string> = {
+  none: "Sin gasto",
+  low: "Día tranquilo",
+  med: "Día normal",
+  high: "Día caro",
+};
+
+/** Single-letter Spanish weekday header for Monday-start calendars: L M X J V S D. */
+export const WEEKDAYS_MONDAY_START = ["L", "M", "X", "J", "V", "S", "D"] as const;
+
+/**
+ * Weekday index for a Monday-start grid. `2026-05-04` (Mon) → 0,
+ * `2026-05-10` (Sun) → 6. Pure ISO-string math, no locale branch.
+ */
+export function weekdayMondayStart(iso: string): number {
+  const d = new Date(`${iso}T12:00:00`).getDay();
+  return d === 0 ? 6 : d - 1;
+}
+
+/** Status tone for the runway hero. */
+export type RitmoStatusTone = "income" | "alert" | "debt";
+
+/**
+ * Derives the status pill content. Both platforms read the same logic so
+ * the verdict (red/amber/green) stays consistent across web + mobile.
+ *
+ * Why: overspent today OR negative period balance is always "debt" (red).
+ * Past 85% of the period budget is "alert" (amber). Otherwise "income".
+ */
+export function deriveRitmoStatus(ritmo: Pick<RitmoResult, "availableTotal" | "spentToday" | "availablePerDay" | "spentFraction">): {
+  tone: RitmoStatusTone;
+  label: string;
+} {
+  const overspentToday = ritmo.spentToday > ritmo.availablePerDay;
+  if (ritmo.availableTotal < 0 || overspentToday) return { tone: "debt", label: "Te pasaste" };
+  if (ritmo.spentFraction >= 0.85) return { tone: "alert", label: "Vas justo" };
+  return { tone: "income", label: "Vas bien" };
+}
 
 export interface RitmoDailyOutflow {
   /** YYYY-MM-DD. */
