@@ -36,9 +36,9 @@ interface HybridHeroProps {
 }
 
 const BUCKET_CLASS: Record<string, string> = {
-  none: "bg-z-surface-2 text-z-sage-dark",
-  low: "bg-z-income/20 text-z-sage-dark",
-  med: "bg-z-alert/35 text-z-sage-dark",
+  none: "bg-z-surface-2 text-z-white",
+  low: "bg-z-income/20 text-z-white",
+  med: "bg-z-alert/35 text-z-white",
   high: "bg-z-debt/45 text-z-white",
 };
 
@@ -540,7 +540,6 @@ function CalendarHeatmap({
                 "flex aspect-square items-start justify-end rounded-md px-1 py-0.5 text-[9px] tabular-nums transition-transform active:scale-95",
                 BUCKET_CLASS[day.bucket] ?? BUCKET_CLASS.none,
                 day.isFuture && "opacity-30",
-                day.isToday && "outline outline-2 outline-offset-[-2px] outline-white",
                 isSelected && "outline outline-2 outline-offset-[-2px] outline-z-brass",
               )}
               aria-pressed={isSelected}

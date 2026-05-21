@@ -582,18 +582,17 @@ function PatternView(props: {
                   className={`items-end justify-start rounded-md px-1 py-0.5 ${BUCKET_TONE[day.bucket]}`}
                   style={{
                     aspectRatio: 1,
+                    // Future days dim naturally — no separate "today"
+                    // ring needed (today is the last fully-bright cell).
                     opacity: day.isFuture ? 0.3 : 1,
-                    borderWidth: day.isToday || isSelected ? 2 : 0,
-                    // Brass for both today AND selected so the indicator
-                    // stays on-brand. Selected wins when both apply.
-                    borderColor:
-                      isSelected || day.isToday ? COLORS.brass : "transparent",
+                    borderWidth: isSelected ? 2 : 0,
+                    borderColor: isSelected ? COLORS.brass : "transparent",
                   }}
                 >
                   <Text
                     className="text-[10px]"
                     style={{
-                      color: day.bucket === "high" ? COLORS.foreground : COLORS.sageDark,
+                      color: COLORS.foreground,
                       fontVariant: ["tabular-nums"],
                     }}
                   >
