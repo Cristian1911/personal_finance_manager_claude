@@ -520,53 +520,87 @@ function PatternView(props: {
 }) {
   const { ritmo, currency, selectedDay, onSelect, selectedEntry, selectedBalance } = props;
   if (ritmo.calendar.length === 0) return null;
+
+  // Build week rows. RN doesn't have CSS Grid, so we emit 7-cell rows
+  // explicitly — each cell flex-1 + aspectRatio 1 to stay square.
   const firstIso = ritmo.calendar[0].date;
   const leadingEmpty = weekdayMondayStart(firstIso);
+  type Cell = RitmoResult["calendar"][number] | null;
+  const weeks: Cell[][] = [];
+  let row: Cell[] = new Array<Cell>(leadingEmpty).fill(null);
+  for (const day of ritmo.calendar) {
+    row.push(day);
+    if (row.length === 7) {
+      weeks.push(row);
+      row = [];
+    }
+  }
+  if (row.length > 0) {
+    while (row.length < 7) row.push(null);
+    weeks.push(row);
+  }
 
   return (
     <View>
       <Text className="mb-2 text-[10px] font-inter-semibold uppercase tracking-[2px] text-z-sage-dark">
         Toca un día para ver su detalle
       </Text>
-      <View className="flex-row flex-wrap gap-1.5">
+
+      {/* Weekday header — one flex-row of 7 equal columns. */}
+      <View className="flex-row">
         {WEEKDAYS.map((label) => (
-          <View key={label} style={{ width: "13.5%", alignItems: "center" }}>
+          <View key={label} className="flex-1 items-center">
             <Text className="text-[9px] font-inter-semibold uppercase tracking-wider text-z-sage-dark">
               {label}
             </Text>
           </View>
         ))}
-        {Array.from({ length: leadingEmpty }).map((_, i) => (
-          <View key={`empty-${i}`} style={{ width: "13.5%", aspectRatio: 1 }} />
-        ))}
-        {ritmo.calendar.map((day) => {
-          const isSelected = day.date === selectedDay;
-          return (
-            <Pressable
-              key={day.date}
-              onPress={() => onSelect(day.date)}
-              className={`items-end justify-start rounded-md px-1 py-0.5 ${BUCKET_TONE[day.bucket]}`}
-              style={{
-                width: "13.5%",
-                aspectRatio: 1,
-                opacity: day.isFuture ? 0.3 : 1,
-                borderWidth: day.isToday || isSelected ? 2 : 0,
-                borderColor: isSelected ? COLORS.brass : day.isToday ? COLORS.foreground : "transparent",
-              }}
-            >
-              <Text
-                className="text-[9px]"
+      </View>
+
+      {/* Week rows */}
+      {weeks.map((week, wi) => (
+        <View key={`w-${wi}`} className="mt-1.5 flex-row" style={{ gap: 6 }}>
+          {week.map((day, di) => {
+            if (!day) {
+              return (
+                <View
+                  key={`empty-${wi}-${di}`}
+                  className="flex-1"
+                  style={{ aspectRatio: 1 }}
+                />
+              );
+            }
+            const isSelected = day.date === selectedDay;
+            return (
+              <Pressable
+                key={day.date}
+                onPress={() => onSelect(day.date)}
+                className={`flex-1 items-end justify-start rounded-md px-1 py-0.5 ${BUCKET_TONE[day.bucket]}`}
                 style={{
-                  color: day.bucket === "high" ? COLORS.foreground : COLORS.sageDark,
-                  fontVariant: ["tabular-nums"],
+                  aspectRatio: 1,
+                  opacity: day.isFuture ? 0.3 : 1,
+                  borderWidth: day.isToday || isSelected ? 2 : 0,
+                  borderColor: isSelected
+                    ? COLORS.brass
+                    : day.isToday
+                      ? COLORS.foreground
+                      : "transparent",
                 }}
               >
-                {dayOfMonth(day.date)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+                <Text
+                  className="text-[10px]"
+                  style={{
+                    color: day.bucket === "high" ? COLORS.foreground : COLORS.sageDark,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {dayOfMonth(day.date)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
 
       {/* Legend */}
       <View className="mt-3 flex-row flex-wrap gap-3">
