@@ -86,12 +86,33 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
         ? "text-z-alert"
         : "text-z-income";
 
-  const sub =
+  const status: { label: string; tone: "income" | "alert" | "debt" } =
     data.allowedToday <= 0
-      ? "Hoy te pasaste del cupo diario — frena para llegar al cierre."
-      : data.onTrack
-        ? "y aún llegas al cierre del período con tu colchón."
-        : "pero vas rápido — revisa los próximos días.";
+      ? { label: "Te pasaste", tone: "debt" }
+      : data.spentFraction >= 0.85
+        ? { label: "Vas justo", tone: "alert" }
+        : { label: "Vas bien", tone: "income" };
+  const statusToneClass =
+    status.tone === "debt"
+      ? "bg-z-debt"
+      : status.tone === "alert"
+        ? "bg-z-alert"
+        : "bg-z-income";
+  const statusTextClass =
+    status.tone === "debt"
+      ? "text-z-debt"
+      : status.tone === "alert"
+        ? "text-z-alert"
+        : "text-z-income";
+
+  // Last-7-days OUTFLOW series for the mini sparkline — read from
+  // data.calendar so it scales with the user's actual month-to-date data.
+  // If the month is fresh (< 7 days), we just plot what we have.
+  const sparkData = useMemo(() => {
+    const slice = data.calendar.slice(-7);
+    const max = slice.reduce((m, d) => Math.max(m, d.expense), 0);
+    return { values: slice.map((d) => d.expense), max };
+  }, [data.calendar]);
 
   // Cumulative outflow through each day in the month. Used to compute
   // "remaining balance after this day" on the calendar-click detail.
@@ -122,20 +143,41 @@ export function HybridHero({ data, primaryAccount, defaultExpanded = false }: Hy
 
   return (
     <div className="rounded-2xl border border-white/6 bg-z-surface p-5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark mb-2">
-        Hoy puedes gastar
-      </p>
-
-      <p
-        className={cn(
-          "text-[44px] font-bold leading-none tracking-[-0.04em] tabular-nums",
-          allowedTone,
+      {/* Top row: eyebrow on the left, sparkline on the right.
+          Sparkline reads from data.calendar's last 7 days. */}
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+          Hoy puedes gastar
+        </p>
+        {sparkData.values.length > 0 && (
+          <Sparkline
+            values={sparkData.values}
+            max={sparkData.max}
+            tone={status.tone}
+          />
         )}
-      >
-        {formatCurrency(data.allowedToday, data.currency)}
-      </p>
+      </div>
 
-      <p className="mt-2 text-sm text-z-sage-light leading-snug">{sub}</p>
+      <div className="mt-2 flex items-baseline justify-between gap-3">
+        <p
+          className={cn(
+            "text-[44px] font-bold leading-none tracking-[-0.04em] tabular-nums",
+            allowedTone,
+          )}
+        >
+          {formatCurrency(data.allowedToday, data.currency)}
+        </p>
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
+            "bg-white/[0.04] border border-white/6",
+            statusTextClass,
+          )}
+        >
+          <span className={cn("size-1.5 rounded-full", statusToneClass)} />
+          {status.label}
+        </span>
+      </div>
 
       {/* Period progress bar — gradient mapped to spentFraction */}
       <div className="relative mt-5 h-2.5 w-full overflow-hidden rounded-full bg-z-surface-2">
@@ -348,6 +390,70 @@ function CalculoView({
         </Link>
       )}
     </div>
+  );
+}
+
+/** Tiny inline sparkline of the last-N OUTFLOW series. Stroke colour tracks
+ *  the hero's status so a "Te pasaste" hero shows a red rhythm and a
+ *  "Vas bien" hero shows a sage one — same emotional cue as the main amount. */
+function Sparkline({
+  values,
+  max,
+  tone,
+}: {
+  values: number[];
+  max: number;
+  tone: "income" | "alert" | "debt";
+}) {
+  const width = 96;
+  const height = 32;
+  const pad = 3;
+  const stroke =
+    tone === "debt"
+      ? "var(--color-z-debt, #E05545)"
+      : tone === "alert"
+        ? "var(--color-z-alert, #D4A843)"
+        : "var(--color-z-sage, #768053)";
+
+  if (values.length === 0) return null;
+
+  // Single-day case: draw a flat baseline so the SVG still occupies space.
+  if (values.length === 1) {
+    return (
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden>
+        <line
+          x1={pad}
+          x2={width - pad}
+          y1={height / 2}
+          y2={height / 2}
+          stroke={stroke}
+          strokeWidth={2}
+          strokeLinecap="round"
+          opacity={0.6}
+        />
+      </svg>
+    );
+  }
+
+  const safeMax = max > 0 ? max : 1;
+  const step = (width - pad * 2) / (values.length - 1);
+  const points = values.map((v, i) => {
+    const x = pad + step * i;
+    const y = height - pad - (v / safeMax) * (height - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden>
+      <polyline
+        points={points.join(" ")}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
