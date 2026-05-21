@@ -381,6 +381,171 @@ body {
   padding: 10px 12px;
 }
 .v6 .summary b { color: var(--z-alert); font-weight: 600; }
+
+/* ─── V7 — Hybrid (V2 + V5) — chosen direction ──────────────────── */
+.chosen-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: var(--z-brass);
+  color: var(--z-ink);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.v7-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+@media (max-width: 720px) {
+  .v7-row { grid-template-columns: 1fr; }
+}
+.v7-state-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--z-sage-dark);
+  margin-bottom: 10px;
+}
+.v7 .hero {
+  background: linear-gradient(180deg, rgba(147, 120, 68, 0.04) 0%, transparent 100%);
+  border: 1px solid rgba(217, 204, 185, 0.06);
+  border-radius: 20px;
+  padding: 20px;
+}
+.v7 .eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--z-sage-dark);
+  margin-bottom: 8px;
+}
+.v7 .amount {
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--z-excellent);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 6px;
+  font-feature-settings: 'tnum' 1;
+}
+.v7 .amount.warning { color: var(--z-alert); }
+.v7 .amount.danger { color: var(--z-debt); }
+.v7 .sub {
+  font-size: 12px;
+  color: var(--z-sage-light);
+  margin-bottom: 18px;
+  line-height: 1.4;
+}
+.v7 .period-bar {
+  position: relative;
+  height: 10px;
+  background: var(--z-surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.v7 .period-fill {
+  height: 100%;
+  width: 71%;
+  background: linear-gradient(to right,
+    var(--z-excellent) 0%,
+    var(--z-sage) 30%,
+    var(--z-alert) 70%,
+    var(--z-debt) 100%);
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+.v7 .period-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--z-sage-dark);
+  font-feature-settings: 'tnum' 1;
+}
+.v7 .period-legend .right { color: var(--z-sage-light); font-weight: 500; }
+.v7 .expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid rgba(217, 204, 185, 0.1);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--z-sage-light);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.v7 .expand-btn .chev {
+  color: var(--z-brass);
+  font-weight: 700;
+  transition: transform 0.2s ease;
+}
+.v7 .expanded .expand-btn .chev { transform: rotate(180deg); }
+
+/* Expanded state */
+.v7 .pattern {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px dashed rgba(217, 204, 185, 0.1);
+}
+.v7 .pattern-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--z-sage-dark);
+  margin-bottom: 12px;
+}
+.v7 .grid-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-bottom: 12px;
+}
+.v7 .day {
+  aspect-ratio: 1;
+  border-radius: 5px;
+  background: var(--z-surface-2);
+  font-size: 9px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 3px;
+  color: var(--z-sage-dark);
+}
+.v7 .day.spent-low { background: rgba(92, 184, 138, 0.20); }
+.v7 .day.spent-med { background: rgba(212, 168, 67, 0.36); }
+.v7 .day.spent-high { background: rgba(224, 85, 69, 0.46); color: var(--z-white); }
+.v7 .day.future { opacity: 0.32; }
+.v7 .day.today {
+  outline: 2px solid var(--z-white);
+  outline-offset: -2px;
+}
+.v7 .cal-legend {
+  display: flex;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--z-sage-dark);
+}
+.v7 .cal-legend .sw {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
 </style>
 </head>
 <body>
@@ -558,6 +723,109 @@ body {
     </div>
   </div>
 
+</div>
+
+<div class="intro" style="margin-top:64px; max-width:1320px;">
+  <div class="pill" style="border-color: var(--z-brass); background: var(--z-brass); color: var(--z-ink);">La elegida</div>
+  <h1>Variante 7 — Híbrida V2 + V5 <span class="chosen-badge">Pick</span></h1>
+  <p>
+    "Hoy puedes gastar" como ancla, con barra de progreso del <em>período</em> (desde el último ingreso o del mes) que tiñe de verde→amber→rojo según gastas. La grilla del mes vive escondida bajo un toque — patrón secundario para entender el shape, no la respuesta primaria.
+  </p>
+</div>
+
+<div style="max-width: 920px; margin: 0 auto; padding: 0 24px;">
+  <div class="v7-row">
+    <!-- Collapsed -->
+    <div class="card v7">
+      <div class="card-header">
+        <h2>Estado colapsado</h2>
+        <h3>Lo primero que el usuario ve</h3>
+        <p>Respuesta inmediata + sensación del período. El chevron al pie revela el patrón cuando quiere profundizar.</p>
+      </div>
+      <div class="phone">
+        <div class="v7-state-label">Hero · día 21</div>
+        <div class="hero">
+          <div class="eyebrow">Hoy puedes gastar</div>
+          <div class="amount">$45.000</div>
+          <div class="sub">y aún llegas a fin de mes con tu colchón.</div>
+          <div class="period-bar">
+            <div class="period-fill"></div>
+          </div>
+          <div class="period-legend">
+            <span>$1.42M gastados · $580k restantes</span>
+            <span class="right">71% del período</span>
+          </div>
+          <button class="expand-btn">
+            <span>Ver patrón del mes</span>
+            <span class="chev">▾</span>
+          </button>
+        </div>
+      </div>
+      <div class="tradeoffs">
+        <strong>Anchor:</strong> The <em>permission</em> number leads. The bar grounds it in reality (you've already spent 71% of what's available this period).<br>
+        <strong>Color shift:</strong> bar goes <span style="color:var(--z-excellent)">verde</span> → <span style="color:var(--z-alert)">amber</span> → <span style="color:var(--z-debt)">rojo</span> as you approach 100%. Threshold by spent-fraction, not by day-of-month — penalises over-spending early.
+      </div>
+    </div>
+
+    <!-- Expanded -->
+    <div class="card v7 expanded">
+      <div class="card-header">
+        <h2>Estado expandido</h2>
+        <h3>"Ver patrón del mes" abre la grilla</h3>
+        <p>El calendario es secundario. Sirve para reconocer patrones (semanas caras, fines de semana, días de pago) sin saturar la primera vista.</p>
+      </div>
+      <div class="phone">
+        <div class="v7-state-label">Hero · expandido</div>
+        <div class="hero">
+          <div class="eyebrow">Hoy puedes gastar</div>
+          <div class="amount">$45.000</div>
+          <div class="sub">y aún llegas a fin de mes con tu colchón.</div>
+          <div class="period-bar">
+            <div class="period-fill"></div>
+          </div>
+          <div class="period-legend">
+            <span>$1.42M gastados · $580k restantes</span>
+            <span class="right">71% del período</span>
+          </div>
+          <button class="expand-btn">
+            <span>Ocultar patrón del mes</span>
+            <span class="chev">▾</span>
+          </button>
+          <div class="pattern">
+            <div class="pattern-label">Patrón de gasto · mayo</div>
+            <div class="grid-cal">
+              <div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div>
+              <div class="day spent-low">1</div><div class="day spent-low">2</div><div class="day spent-med">3</div>
+              <div class="day spent-low">4</div><div class="day spent-high">5</div><div class="day spent-med">6</div><div class="day spent-low">7</div><div class="day spent-med">8</div><div class="day spent-low">9</div><div class="day spent-low">10</div>
+              <div class="day spent-low">11</div><div class="day spent-med">12</div><div class="day spent-low">13</div><div class="day spent-low">14</div><div class="day spent-high">15</div><div class="day spent-high">16</div><div class="day spent-med">17</div>
+              <div class="day spent-low">18</div><div class="day spent-low">19</div><div class="day spent-low">20</div><div class="day spent-med today">21</div><div class="day future">22</div><div class="day future">23</div><div class="day future">24</div>
+              <div class="day future">25</div><div class="day future">26</div><div class="day future">27</div><div class="day future">28</div><div class="day future">29</div><div class="day future">30</div><div class="day future">31</div>
+            </div>
+            <div class="cal-legend">
+              <span><i class="sw" style="background:rgba(92,184,138,0.20)"></i>Día tranquilo</span>
+              <span><i class="sw" style="background:rgba(212,168,67,0.36)"></i>Día normal</span>
+              <span><i class="sw" style="background:rgba(224,85,69,0.46)"></i>Día caro</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tradeoffs">
+        <strong>Cuándo expandir:</strong> el usuario quiere entender el SHAPE — semanas caras, días de pago, fines de semana. La grilla revela esto sin desplazar la respuesta inmediata.<br>
+        <strong>Persistencia:</strong> el estado expandido/colapsado se recuerda por usuario (preferred view).
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top: 32px; padding: 18px 22px; background: var(--z-surface); border: 1px solid rgba(147, 120, 68, 0.18); border-radius: 14px; font-size: 13px; color: var(--z-sage-light); line-height: 1.55;">
+    <strong style="color: var(--z-brass);">Detalles de la implementación (Option A — predictive runway canonical):</strong>
+    <ul style="margin: 10px 0 0 18px; padding: 0;">
+      <li><strong>"Hoy puedes gastar" =</strong> (balance líquido disponible − ocurrencias pendientes que vencen en este período) ÷ días restantes del período. Si hoy ya gastaste algo, descontado.</li>
+      <li><strong>"Período" =</strong> desde el último ingreso (último INFLOW &gt;= cierta cantidad — heurística salary-breakdown) o, si no hay paycheck claro, mes calendario en curso.</li>
+      <li><strong>Barra de progreso =</strong> gastado_en_período / disponible_en_período. Llena ≥ 100% = en rojo profundo, con "Hoy puedes gastar" cambiando a $0 / negativo.</li>
+      <li><strong>Calendario =</strong> sólo el mes en curso. Buckets: low (&lt; 25% del avg diario), med (25-150%), high (&gt; 150%). Día sin gasto = sin tinte.</li>
+      <li><strong>Cross-platform:</strong> mismo render en webapp móvil y en iOS via React Native — la lógica vive en <code>packages/shared/src/utils/ritmo.ts</code>.</li>
+    </ul>
+  </div>
 </div>
 
 </body>
