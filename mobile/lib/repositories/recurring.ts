@@ -351,6 +351,15 @@ function computeMatchScore(
  * filtered to same account + direction (mirrors webapp without the
  * cross-account debt-payment case — mobile doesn't yet promote those).
  * Returned sorted by descending match score.
+ *
+ * Two intentional deviations from webapp `getCandidateOccurrencesForTransaction`:
+ * 1. Skips `isCrossAccountDebtPayment` branch — debt-payment transactions
+ *    on a source checking account will see an empty candidate list even
+ *    when their backing CREDIT_CARD/LOAN template has a pending occurrence.
+ *    BACKLOG tracks this UX gap (user sees Vincular button but no rows).
+ * 2. Adds `AND t.is_active = 1` so deactivated templates don't surface
+ *    stale candidates. Webapp doesn't filter `is_active` here; in practice
+ *    deactivated templates rarely have leftover pending occurrences.
  */
 export async function getCandidateOccurrencesForTransaction(
   transactionId: string

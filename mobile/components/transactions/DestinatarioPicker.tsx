@@ -67,7 +67,7 @@ export function DestinatarioPicker({
               onPress={handleClose}
               accessibilityLabel="Cerrar"
               accessibilityRole="button"
-              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
             >
               <X size={18} color="#938C7E" />
             </Pressable>
@@ -89,9 +89,11 @@ export function DestinatarioPicker({
           {/* Clear option */}
           <Pressable
             onPress={() => handleSelect(null, null)}
-            className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-z-surface-2/5"
+            accessibilityLabel="Quitar destinatario"
+            accessibilityRole="button"
+            className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-black-10"
           >
-            <View className="w-7 h-7 rounded-full bg-z-surface-2/15 items-center justify-center mr-3">
+            <View className="w-7 h-7 rounded-full bg-white-6 items-center justify-center mr-3">
               <UserRound size={14} color="#938C7E" />
             </View>
             <Text className="text-muted-foreground font-inter text-sm flex-1">
@@ -109,9 +111,11 @@ export function DestinatarioPicker({
               return (
                 <Pressable
                   onPress={() => handleSelect(item.id, item.name)}
-                  className="flex-row items-center px-4 py-3.5 active:bg-z-surface-2/5"
+                  accessibilityLabel={`Seleccionar ${item.name}`}
+                  accessibilityRole="button"
+                  className="flex-row items-center px-4 py-3.5 active:bg-black-10"
                 >
-                  <View className="w-7 h-7 rounded-full bg-z-brass/15 items-center justify-center mr-3">
+                  <View className="w-7 h-7 rounded-full bg-z-brass-15 items-center justify-center mr-3">
                     <UserRound size={14} color="#C8B560" />
                   </View>
                   <View className="flex-1">
@@ -133,7 +137,7 @@ export function DestinatarioPicker({
               );
             }}
             ItemSeparatorComponent={() => (
-              <View className="h-px bg-z-surface-2-6 ml-4" />
+              <View className="h-px bg-white-6 ml-4" />
             )}
             ListEmptyComponent={
               <View className="py-8 px-6">

@@ -62,7 +62,7 @@ export function VincularPicker({
               onPress={onClose}
               accessibilityLabel="Cerrar"
               accessibilityRole="button"
-              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
             >
               <X size={18} color="#938C7E" />
             </Pressable>
@@ -85,10 +85,12 @@ export function VincularPicker({
                   key={c.id}
                   onPress={() => onSelect(c.id)}
                   disabled={submitting}
-                  className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-z-surface-2/5"
+                  accessibilityLabel={`Vincular a ${c.merchant}`}
+                  accessibilityRole="button"
+                  className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-black-10"
                   style={submitting ? { opacity: 0.5 } : undefined}
                 >
-                  <View className="w-9 h-9 rounded-full bg-z-brass/15 items-center justify-center mr-3">
+                  <View className="w-9 h-9 rounded-full bg-z-brass-15 items-center justify-center mr-3">
                     <CalendarClock size={16} color="#C8B560" />
                   </View>
                   <View className="flex-1">

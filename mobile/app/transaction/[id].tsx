@@ -53,6 +53,7 @@ import {
 } from "../../lib/transaction-semantics";
 import { parseLocalizedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
+import { SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 
 type TransactionDetail = {
   id: string;
@@ -354,16 +355,12 @@ export default function TransactionDetailScreen() {
     };
   }, [id]);
 
-  const handleOpenVincular = async () => {
-    if (!id) return;
-    try {
-      const candidates = await getCandidateOccurrencesForTransaction(id);
-      setVincularCandidates(candidates);
-      setShowVincularPicker(true);
-    } catch (err) {
-      console.error("Failed to load candidates:", err);
-      Alert.alert("Error", "No se pudieron cargar las ocurrencias pendientes.");
-    }
+  // Candidates are already loaded in `vincularCandidates` from the mount
+  // effect; nothing on this screen invalidates `recurring_occurrences`
+  // between mount and tap, and `linkedToRecurring=true` hides the button
+  // after a successful link. So just open the sheet.
+  const handleOpenVincular = () => {
+    setShowVincularPicker(true);
   };
 
   const handleConfirmVincular = async (occurrenceId: string) => {
@@ -486,7 +483,7 @@ export default function TransactionDetailScreen() {
             onPress={() => router.back()}
             accessibilityLabel="Volver"
             accessibilityRole="button"
-            className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+            className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
           >
             <X size={18} color="#938C7E" />
           </Pressable>
@@ -555,7 +552,7 @@ export default function TransactionDetailScreen() {
               onPress={() => router.back()}
               accessibilityLabel="Volver"
               accessibilityRole="button"
-              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
             >
               <X size={18} color="#938C7E" />
             </Pressable>
@@ -567,7 +564,7 @@ export default function TransactionDetailScreen() {
                 onPress={enterEditMode}
                 accessibilityLabel="Editar transacción"
                 accessibilityRole="button"
-                className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+                className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
               >
                 <Pencil size={16} color="#938C7E" />
               </Pressable>
@@ -575,7 +572,7 @@ export default function TransactionDetailScreen() {
                 onPress={handleDelete}
                 accessibilityLabel="Eliminar transacción"
                 accessibilityRole="button"
-                className="w-8 h-8 items-center justify-center rounded-full bg-z-debt/10 active:bg-z-debt/20"
+                className="w-8 h-8 items-center justify-center rounded-full bg-z-debt-12 active:bg-z-debt-20"
               >
                 <Trash2 size={16} color={COLORS.debt} />
               </Pressable>
@@ -586,7 +583,7 @@ export default function TransactionDetailScreen() {
 
       {/* Success banner */}
       {successVisible && (
-        <View className="mx-4 mb-2 bg-z-income/10 rounded-xl px-4 py-2.5">
+        <View className="mx-4 mb-2 bg-z-income-10 rounded-xl px-4 py-2.5">
           <Text className="text-z-income font-inter-medium text-sm">
             Cambios guardados correctamente
           </Text>
@@ -644,7 +641,7 @@ export default function TransactionDetailScreen() {
             <FormField label="Fecha" required>
               <Pressable
                 onPress={() => setShowDatePicker(true)}
-                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-z-surface-2/10"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-black-20"
               >
                 <Text className="text-foreground font-inter text-sm">
                   {editDate.toLocaleDateString("es-CO", {
@@ -671,7 +668,7 @@ export default function TransactionDetailScreen() {
               ) : (
                 <Pressable
                   onPress={() => setShowCategoryPicker(true)}
-                  className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-z-surface-2/10"
+                  className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-black-20"
                 >
                   <Text
                     className={`font-inter text-sm ${
@@ -691,7 +688,7 @@ export default function TransactionDetailScreen() {
                 onPress={() => setShowDestinatarioPicker(true)}
                 accessibilityLabel="Cambiar destinatario"
                 accessibilityRole="button"
-                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-z-surface-2/10"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-black-20"
               >
                 <Text
                   className={`font-inter text-sm ${
@@ -821,7 +818,7 @@ export default function TransactionDetailScreen() {
                   {transactionTags.map((t) => (
                     <View
                       key={t.id}
-                      className="rounded-full border border-z-brass/20 bg-z-brass/10 px-2.5 py-0.5"
+                      className="rounded-full border border-z-brass-20 bg-z-brass-10 px-2.5 py-0.5"
                     >
                       <Text className="text-z-brass font-inter-medium text-xs">
                         {t.name}
@@ -853,16 +850,14 @@ export default function TransactionDetailScreen() {
 
             {/* Acciones */}
             <View className="pt-5 gap-2">
-              <Text className="text-[10px] font-inter-semibold uppercase tracking-[4px] text-z-sage-dark mb-1">
-                Acciones
-              </Text>
+              <Text className={`${SECTION_EYEBROW_CLASS} mb-1`}>Acciones</Text>
               {!isDebtPayment && !linkedToRecurring && (
                 <Pressable
                   onPress={handlePromoteToRecurring}
                   disabled={promoting}
                   accessibilityLabel="Hacer recurrente"
                   accessibilityRole="button"
-                  className="flex-row items-center justify-center gap-2 rounded-xl border border-z-brass/30 bg-z-brass/10 px-4 py-3 active:bg-z-brass/20"
+                  className="flex-row items-center justify-center gap-2 rounded-xl border border-z-brass-30 bg-z-brass-10 px-4 py-3 active:bg-z-brass-20"
                   style={promoting ? { opacity: 0.6 } : undefined}
                 >
                   <CalendarClock size={14} color={COLORS.brass} />
@@ -879,7 +874,7 @@ export default function TransactionDetailScreen() {
                     disabled={linking}
                     accessibilityLabel="Vincular a recurrente"
                     accessibilityRole="button"
-                    className="flex-row items-center justify-center gap-2 rounded-xl border border-white-6 bg-z-surface-2/10 px-4 py-3 active:bg-z-surface-2/20"
+                    className="flex-row items-center justify-center gap-2 rounded-xl border border-white-6 bg-black-10 px-4 py-3 active:bg-black-20"
                     style={linking ? { opacity: 0.6 } : undefined}
                   >
                     <Link2 size={14} color={COLORS.foreground} />
@@ -889,7 +884,7 @@ export default function TransactionDetailScreen() {
                   </Pressable>
                 )}
               {linkedToRecurring && (
-                <View className="flex-row items-center justify-center gap-2 rounded-xl border border-z-brass/20 bg-z-brass/8 px-4 py-3">
+                <View className="flex-row items-center justify-center gap-2 rounded-xl border border-z-brass-20 bg-z-brass-8 px-4 py-3">
                   <CalendarClock size={14} color={COLORS.brass} />
                   <Text className="text-z-brass font-inter-medium text-sm">
                     Vinculada a recurrente
@@ -900,7 +895,7 @@ export default function TransactionDetailScreen() {
                 onPress={handleDelete}
                 accessibilityLabel="Eliminar transacción"
                 accessibilityRole="button"
-                className="flex-row items-center justify-center gap-2 rounded-xl border border-z-debt/20 bg-z-debt/8 px-4 py-3 active:bg-z-debt/15"
+                className="flex-row items-center justify-center gap-2 rounded-xl border border-z-debt-20 bg-z-debt-6 px-4 py-3 active:bg-z-debt-12"
               >
                 <Trash2 size={14} color={COLORS.debt} />
                 <Text className="text-z-debt font-inter-semibold text-sm">
@@ -912,46 +907,52 @@ export default function TransactionDetailScreen() {
         </ScrollView>
       )}
 
-      {/* Category picker */}
-      <CategoryPicker
-        visible={showCategoryPicker}
-        onClose={() => setShowCategoryPicker(false)}
-        onSelect={(catId, catName) => {
-          setEditCategoryId(catId);
-          setEditCategoryName(catName);
-        }}
-        selectedId={editCategoryId}
-        categories={categories}
-      />
+      {/* Category picker — deferred mount until first open */}
+      {showCategoryPicker && (
+        <CategoryPicker
+          visible={showCategoryPicker}
+          onClose={() => setShowCategoryPicker(false)}
+          onSelect={(catId, catName) => {
+            setEditCategoryId(catId);
+            setEditCategoryName(catName);
+          }}
+          selectedId={editCategoryId}
+          categories={categories}
+        />
+      )}
 
-      {/* Destinatario picker */}
-      <DestinatarioPicker
-        visible={showDestinatarioPicker}
-        onClose={() => setShowDestinatarioPicker(false)}
-        onSelect={(destId, destName) => {
-          setEditDestinatarioId(destId);
-          setEditDestinatarioName(destName);
-        }}
-        selectedId={editDestinatarioId}
-        destinatarios={destinatarios}
-      />
+      {/* Destinatario picker — deferred mount until first open */}
+      {showDestinatarioPicker && (
+        <DestinatarioPicker
+          visible={showDestinatarioPicker}
+          onClose={() => setShowDestinatarioPicker(false)}
+          onSelect={(destId, destName) => {
+            setEditDestinatarioId(destId);
+            setEditDestinatarioName(destName);
+          }}
+          selectedId={editDestinatarioId}
+          destinatarios={destinatarios}
+        />
+      )}
 
-      {/* Vincular picker */}
-      <VincularPicker
-        visible={showVincularPicker}
-        onClose={() => setShowVincularPicker(false)}
-        candidates={vincularCandidates}
-        onSelect={handleConfirmVincular}
-        submitting={linking}
-        txSubtitle={
-          transaction
-            ? `${transaction.merchant_name ?? transaction.description ?? ""} · ${formatCurrency(
-                Math.abs(transaction.amount),
-                (transaction.currency_code as CurrencyCode) || "COP"
-              )}`
-            : undefined
-        }
-      />
+      {/* Vincular picker — deferred mount until first open */}
+      {showVincularPicker && (
+        <VincularPicker
+          visible={showVincularPicker}
+          onClose={() => setShowVincularPicker(false)}
+          candidates={vincularCandidates}
+          onSelect={handleConfirmVincular}
+          submitting={linking}
+          txSubtitle={
+            transaction
+              ? `${transaction.merchant_name ?? transaction.description ?? ""} · ${formatCurrency(
+                  Math.abs(transaction.amount),
+                  (transaction.currency_code as CurrencyCode) || "COP"
+                )}`
+              : undefined
+          }
+        />
+      )}
 
       {/* Date picker — iOS: spinner in bottom sheet; Android: native dialog */}
       {showDatePicker && Platform.OS === "ios" ? (
