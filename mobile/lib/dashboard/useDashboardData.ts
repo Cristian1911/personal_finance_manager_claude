@@ -7,6 +7,7 @@ import {
   getPendingOccurrences,
   type OccurrenceWithTemplate,
 } from "../repositories/recurring";
+import { getPendingEmailTransactionsCount } from "../repositories/pending-email";
 import {
   DEBT_ACCOUNT_TYPES,
   isDebtAccountType,
@@ -131,11 +132,12 @@ export function useDashboardData() {
       const dayOfMonth = now.getDate();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
-      const [accounts, transactionsRaw, pendingOccs, preferredCurrency] = await Promise.all([
+      const [accounts, transactionsRaw, pendingOccs, preferredCurrency, pendingEmailsCount] = await Promise.all([
         getAllAccounts(),
         getTransactions({ month: currentMonth, limit: 500 }),
         getPendingOccurrences(),
         getPreferredCurrency(),
+        getPendingEmailTransactionsCount(),
       ]);
 
       const txRows = transactionsRaw as any[];
@@ -362,7 +364,7 @@ export function useDashboardData() {
         attention: {
           overdue: overdueCount,
           upcoming: upcomingCount,
-          pendingEmails: 0,
+          pendingEmails: pendingEmailsCount,
         },
       });
     } catch (err) {

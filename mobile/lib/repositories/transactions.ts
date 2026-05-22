@@ -376,10 +376,12 @@ export async function getTransactionById(id: string, includeReconciled = true) {
   const visibility = includeReconciled ? "" : "AND t.reconciled_into_transaction_id IS NULL";
   return db.getFirstAsync(
     `SELECT t.*, c.name as category_name, c.name_es as category_name_es, c.icon as category_icon, c.color as category_color,
-            a.name as account_name, a.icon as account_icon, a.color as account_color, a.account_type as account_type
+            a.name as account_name, a.icon as account_icon, a.color as account_color, a.account_type as account_type,
+            d.name as destinatario_name
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
      LEFT JOIN accounts a ON t.account_id = a.id
+     LEFT JOIN destinatarios d ON t.destinatario_id = d.id
      WHERE t.id = ? ${visibility}`,
     [id]
   );

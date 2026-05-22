@@ -47,7 +47,7 @@ export default function MenuScreen() {
         <HubEntry
           icon={Settings}
           title="Ajustes"
-          hint="Perfil, sincronizacion, seguridad"
+          hint="Perfil, sincronización, seguridad"
           onPress={() => router.push("/settings" as any)}
         />
       </ScrollView>

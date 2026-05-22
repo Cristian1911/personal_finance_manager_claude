@@ -1,6 +1,40 @@
-# HANDOVER — 2026-05-21 — Hero V7 + Resumen aggregates + parity walkthrough
+# HANDOVER — 2026-05-21 — Hero V7 + Resumen aggregates + parity walkthrough + TX detail parity
 
 > Supersedes the 2026-05-03 (Phase 3 wrap) handover. Earlier handovers in git history (`HANDOVER.md@HEAD~N`).
+
+## Latest session (2026-05-21, late) — Mobile TX detail + parity quick wins
+
+Closed 7 of the 10 parity findings from the 5/21 live walkthrough (BACKLOG entry "Mobile ↔ Webapp parity — live walkthrough findings"). Webapp build clean; mobile `tsc --noEmit` clean. Branch off `main`.
+
+**Mobile TX detail** (`mobile/app/transaction/[id].tsx`) is now at feature parity with webapp `webapp/src/app/(dashboard)/transactions/[id]/transaction-detail-client.tsx` for the core actions:
+- **Destinatario picker** — new `mobile/components/transactions/DestinatarioPicker.tsx` (bottom-sheet, mirrors `CategoryPicker` style). Read-only row in detail view; full picker in edit form. `getTransactionById` LEFT JOINs `destinatarios` so `destinatario_name` is shown without an extra fetch.
+- **Etiquetas/tags UI** — tag chips render in the read-only view (brass tone, matches webapp); the previously-unused `TagSelector` is now rendered inside the edit form between Notes and Exclude.
+- **Hacer recurrente** — inline action button creates a MONTHLY `recurring_transaction_templates` row from the current tx (account, amount, currency, day_of_month, merchant_name, category_id, destinatario_id all prefilled). Hidden for debt-payment tx (would need transfer_source_account_id picker).
+- **Vincular a recurrente** — new repo fns in `mobile/lib/repositories/recurring.ts`: `getCandidateOccurrencesForTransaction`, `linkExistingTransactionToOccurrence`, `getAccountIdsWithPendingOccurrences`, `isTransactionLinkedToOccurrence`. The link function ports webapp's `computeRecurringGroupUuid` (SHA-256 via `expo-crypto`, RFC v4 version/variant bits) and stamps `recurrence_group_id` on the tx + inherits the template's category if the tx has none + auto-deactivates ONCE templates. New `VincularPicker` bottom-sheet displays candidates sorted by match score (date proximity 0.6 + amount proximity 0.4, ±30-day window, same account + direction).
+  - **Known gap (documented in BACKLOG):** cross-account debt-payment vinculación (webapp's `isCrossAccountDebtPayment` branch) is not supported on mobile yet.
+- **Destructive Eliminar button** — rendered prominently in detail body with proper `text-z-debt / border-z-debt/20 / bg-z-debt/8` styling and `accessibilityLabel`. The header trash icon also got `accessibilityLabel + accessibilityRole`.
+- **Label parity** — "Excluir de totales" → "Excluir de métricas" (matches webapp).
+
+**Quick wins** (same session):
+- Mobile `(tabs)/menu.tsx` Ajustes hint: "sincronizacion" → "sincronización".
+- Mobile dashboard `summary.attention.pendingEmails` no longer hardcoded to 0 — new `mobile/lib/repositories/pending-email.ts::getPendingEmailTransactionsCount()` issues a remote Supabase count (head: true) and returns 0 on offline/auth failure.
+- `MovimientosUtilidades.tsx` Filtrar + Limpiar pills now have `accessibilityLabel`.
+
+**Files changed (mobile):**
+- `mobile/app/transaction/[id].tsx` — destinatario, tags, promote, vincular, destructive Eliminar, a11y labels, label fix.
+- `mobile/app/(tabs)/menu.tsx` — typo fix.
+- `mobile/components/movimientos/MovimientosUtilidades.tsx` — a11y labels on filter pills.
+- `mobile/components/transactions/DestinatarioPicker.tsx` — new.
+- `mobile/components/transactions/VincularPicker.tsx` — new.
+- `mobile/lib/dashboard/useDashboardData.ts` — call new pending-email count.
+- `mobile/lib/repositories/pending-email.ts` — new.
+- `mobile/lib/repositories/recurring.ts` — `getCandidateOccurrencesForTransaction`, `linkExistingTransactionToOccurrence`, `getAccountIdsWithPendingOccurrences`, `isTransactionLinkedToOccurrence`, `computeRecurringGroupUuid` (private).
+- `mobile/lib/repositories/transactions.ts` — `getTransactionById` LEFT JOIN destinatarios for `destinatario_name`.
+
+**Remaining 3 walkthrough items (still in BACKLOG):**
+- #4 Row-expand affordances asymmetric — webapp row expand has destinatario + tag picker + Vincular; mobile has only category chip + Editar. Now that mobile TX detail is at parity, the cleaner fix may be to slim the webapp expand to just category and let the deeper drawer be the canonical surface. Decide direction before implementing.
+- #7 Mobile import wizard 4 vs webapp 6 — Destinatarios step missing on mobile.
+- #9 Webapp /accounts vs /transactions "uncategorized" count drift — webapp-internal, same definition problem as the resolved Resumen findings.
 
 ## What landed since the last handover (2026-05-03)
 
