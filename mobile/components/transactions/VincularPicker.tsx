@@ -42,7 +42,7 @@ export function VincularPicker({
       transparent
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-end bg-black/35">
+      <View className="flex-1 justify-end bg-black-40">
         <View className="max-h-[72%] min-h-[280px] rounded-t-2xl bg-z-surface-2-55">
           <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-white-6">
             <View>

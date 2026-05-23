@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useRef, useState } from "react";
+// (useMemo already imported; used below to derive a stable Set from linkableIds)
 import { View, Text, RefreshControl, FlatList, ActivityIndicator, Platform } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { formatDate, type CurrencyCode } from "@zeta/shared";
@@ -14,6 +15,17 @@ import {
 } from "../../lib/repositories/transactions";
 import { getAllAccounts, type AccountRow } from "../../lib/repositories/accounts";
 import { getAllCategories, type CategoryRow } from "../../lib/repositories/categories";
+import {
+  getAllDestinatarios,
+  type DestinatarioWithCount,
+} from "../../lib/repositories/destinatarios";
+import {
+  getAccountIdsWithPendingOccurrences,
+  getCandidateOccurrencesForTransaction,
+  linkExistingTransactionToOccurrence,
+  type CandidateOccurrence,
+} from "../../lib/repositories/recurring";
+import { saveTransactionTags } from "../../lib/repositories/tags";
 import { getPreferredCurrency } from "../../lib/profile";
 import { toLocalMonthString } from "../../lib/utils/date";
 import { COLORS } from "../../lib/constants/colors";
@@ -29,6 +41,9 @@ import {
 } from "./MovimientosUtilidades";
 import { MovimientosTransactionRow } from "./MovimientosTransactionRow";
 import { CategoryPickerSheet } from "../categorizar/CategoryPickerSheet";
+import { DestinatarioPicker } from "../transactions/DestinatarioPicker";
+import { TagPickerSheet } from "../transactions/TagPickerSheet";
+import { VincularPicker } from "../transactions/VincularPicker";
 import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 
 type ToolId = "categorizar" | "importar";
@@ -64,6 +79,17 @@ export function MovimientosRoot() {
   });
   const [currentMonth, setCurrentMonth] = useState(() => toLocalMonthString());
   const [pickerTxId, setPickerTxId] = useState<string | null>(null);
+  const [destinatarioPickerTxId, setDestinatarioPickerTxId] = useState<string | null>(null);
+  const [tagPickerTxId, setTagPickerTxId] = useState<string | null>(null);
+  const [vincularPickerTxId, setVincularPickerTxId] = useState<string | null>(null);
+  const [vincularCandidates, setVincularCandidates] = useState<CandidateOccurrence[]>([]);
+  const [vincularLoading, setVincularLoading] = useState(false);
+  const [destinatarios, setDestinatarios] = useState<DestinatarioWithCount[]>([]);
+  // Store as string[] so the array reference is stable when the contents don't
+  // change. Deriving the Set via useMemo keeps the Set identity stable too,
+  // which keeps renderItem (and therefore the memoized rows) from re-rendering
+  // on every loadData reset.
+  const [linkableAccountIds, setLinkableAccountIds] = useState<string[]>([]);
   const [currency, setCurrency] = useState<CurrencyCode>("COP");
 
   /** Bumped on every loadData call; stale in-flight results drop their setState. */
@@ -87,10 +113,12 @@ export function MovimientosRoot() {
         };
 
         if (reset) {
-          const [txs, accts, cats, agg, sample, preferredCurrency] = await Promise.all([
+          const [txs, accts, cats, dests, linkableIds, agg, sample, preferredCurrency] = await Promise.all([
             getTransactions(queryOpts),
             getAllAccounts(),
             getAllCategories(),
+            getAllDestinatarios(),
+            getAccountIdsWithPendingOccurrences(),
             getMonthlyAggregates({
               month: currentMonth,
               accountId: filters.accountId ?? undefined,
@@ -106,6 +134,8 @@ export function MovimientosRoot() {
           setTransactions(txs);
           setAccounts(accts);
           setCategories(cats);
+          setDestinatarios(dests);
+          setLinkableAccountIds(linkableIds);
           setAggregates(agg);
           setUncategorizedSample(sample);
           setCurrency(preferredCurrency);
@@ -161,6 +191,12 @@ export function MovimientosRoot() {
     });
   }, [transactions, filters.direction, filters.showExcluded]);
 
+  /** Derived Set — identity stable when linkableAccountIds reference is stable. */
+  const linkableAccountIdsSet = useMemo(
+    () => new Set(linkableAccountIds),
+    [linkableAccountIds]
+  );
+
   // Summary totals come from SQL aggregates, not the paginated feed.
   // Fixes the "numbers grow as you scroll" bug — Lectura + Herramientas now
   // reflect the full month regardless of how much feed is loaded.
@@ -198,6 +234,28 @@ export function MovimientosRoot() {
     setPickerTxId(txId);
   }, []);
 
+  const handleRequestDestinatarioPicker = useCallback((txId: string) => {
+    setDestinatarioPickerTxId(txId);
+  }, []);
+
+  const handleRequestTagPicker = useCallback((txId: string) => {
+    setTagPickerTxId(txId);
+  }, []);
+
+  const handleRequestVincular = useCallback(async (txId: string) => {
+    setVincularPickerTxId(txId);
+    setVincularLoading(true);
+    setVincularCandidates([]);
+    try {
+      const candidates = await getCandidateOccurrencesForTransaction(txId);
+      setVincularCandidates(candidates);
+    } catch (err) {
+      console.error("Failed to load vincular candidates:", err);
+    } finally {
+      setVincularLoading(false);
+    }
+  }, []);
+
   const handleToggleTool = useCallback(
     (tool: ToolId) => toggle(`tool-${tool}`),
     [toggle]
@@ -206,6 +264,78 @@ export function MovimientosRoot() {
   const handleToggleLectura = useCallback(() => toggle("lectura"), [toggle]);
 
   const handleClosePicker = useCallback(() => setPickerTxId(null), []);
+
+  const handleDestinatarioSelect = useCallback(
+    async (destinatarioId: string | null, destinatarioName: string | null) => {
+      const txId = destinatarioPickerTxId;
+      if (!txId) return;
+      setDestinatarioPickerTxId(null);
+      // Optimistic — keep the row mounted and update the chip immediately.
+      // Mirror webapp `assignDestinatario`: also stamp `merchant_name` so the
+      // row header reads the curated payee name (not the raw bank string).
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === txId
+            ? {
+                ...t,
+                destinatario_id: destinatarioId,
+                destinatario_name: destinatarioName,
+                merchant_name: destinatarioName ?? t.merchant_name,
+              }
+            : t
+        )
+      );
+      try {
+        await updateTransaction(txId, {
+          destinatario_id: destinatarioId,
+          // Only override when assigning; un-assigning leaves merchant_name
+          // alone so the row doesn't lose its label entirely.
+          ...(destinatarioName ? { merchant_name: destinatarioName } : {}),
+        });
+      } catch (error) {
+        console.error("Failed to assign destinatario:", error);
+        await loadData({ reset: true });
+      }
+      // Note: webapp `assignDestinatario` also upserts a `destinatario_rule`
+      // and backfills `category_id` from the destinatario's default category
+      // when the tx has no category. Both are deferred to the next sync pull
+      // — the rule upsert is webapp-import-only infrastructure, and the
+      // category backfill is a one-time convenience the user can do
+      // separately via the category chip.
+    },
+    [destinatarioPickerTxId, loadData]
+  );
+
+  const handleTagsSave = useCallback(
+    async (tagIds: string[]) => {
+      const txId = tagPickerTxId;
+      if (!txId) return;
+      try {
+        await saveTransactionTags(txId, tagIds);
+      } catch (error) {
+        console.error("Failed to save tags:", error);
+      }
+    },
+    [tagPickerTxId]
+  );
+
+  const handleVincularConfirm = useCallback(
+    async (occurrenceId: string) => {
+      const txId = vincularPickerTxId;
+      if (!txId) return;
+      setVincularLoading(true);
+      try {
+        await linkExistingTransactionToOccurrence(occurrenceId, txId);
+        setVincularPickerTxId(null);
+        await loadData({ reset: true });
+      } catch (error) {
+        console.error("Failed to link transaction to occurrence:", error);
+      } finally {
+        setVincularLoading(false);
+      }
+    },
+    [vincularPickerTxId, loadData]
+  );
 
   const handleCategorySelect = useCallback(
     async (categoryId: string) => {
@@ -251,11 +381,21 @@ export function MovimientosRoot() {
       return (
         <MovimientosTransactionRow
           transaction={item.tx}
+          canLink={linkableAccountIdsSet.has(item.tx.account_id)}
           onRequestCategoryPicker={handleRequestPicker}
+          onRequestDestinatarioPicker={handleRequestDestinatarioPicker}
+          onRequestTagPicker={handleRequestTagPicker}
+          onRequestVincular={handleRequestVincular}
         />
       );
     },
-    [handleRequestPicker]
+    [
+      handleRequestPicker,
+      handleRequestDestinatarioPicker,
+      handleRequestTagPicker,
+      handleRequestVincular,
+      linkableAccountIdsSet,
+    ]
   );
 
   const listHeader = useMemo(
@@ -373,6 +513,42 @@ export function MovimientosRoot() {
           onClose={handleClosePicker}
         />
       )}
+
+      {destinatarioPickerTxId !== null && (
+        <DestinatarioPicker
+          visible
+          destinatarios={destinatarios}
+          selectedId={
+            transactions.find((t) => t.id === destinatarioPickerTxId)
+              ?.destinatario_id ?? null
+          }
+          onClose={() => setDestinatarioPickerTxId(null)}
+          onSelect={handleDestinatarioSelect}
+        />
+      )}
+
+      {tagPickerTxId !== null && (
+        <TagPickerSheet
+          visible
+          transactionId={tagPickerTxId}
+          onClose={() => setTagPickerTxId(null)}
+          onSave={handleTagsSave}
+        />
+      )}
+
+      {vincularPickerTxId !== null && (() => {
+        const tx = transactions.find((t) => t.id === vincularPickerTxId);
+        return (
+          <VincularPicker
+            visible
+            candidates={vincularCandidates}
+            submitting={vincularLoading}
+            txSubtitle={tx?.merchant_name ?? tx?.description ?? undefined}
+            onClose={() => setVincularPickerTxId(null)}
+            onSelect={handleVincularConfirm}
+          />
+        );
+      })()}
     </View>
   );
 }

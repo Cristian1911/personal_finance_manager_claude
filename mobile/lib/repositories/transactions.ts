@@ -44,6 +44,7 @@ export type TransactionRow = {
   installment_group_id: string | null;
   is_subscription: number;
   is_recurring: number;
+  destinatario_id: string | null;
   recurrence_group_id: string | null;
   categorization_source: string | null;
   categorization_confidence: number | null;
@@ -59,6 +60,7 @@ export type TransactionListRow = TransactionRow & {
   account_type: string | null;
   account_name: string | null;
   account_color: string | null;
+  destinatario_name: string | null;
 };
 
 export type CreateTransactionParams = {
@@ -284,10 +286,12 @@ export async function getTransactions(options?: {
 
   return db.getAllAsync<TransactionListRow>(
     `SELECT t.*, c.name as category_name, c.name_es as category_name_es, c.icon as category_icon, c.color as category_color,
-            a.account_type as account_type, a.name as account_name, a.color as account_color
+            a.account_type as account_type, a.name as account_name, a.color as account_color,
+            d.name as destinatario_name
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
      LEFT JOIN accounts a ON t.account_id = a.id
+     LEFT JOIN destinatarios d ON t.destinatario_id = d.id
      WHERE ${conditions.join(" AND ")}
      ORDER BY t.transaction_date DESC, t.created_at DESC
      LIMIT ? OFFSET ?`,
