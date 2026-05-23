@@ -123,6 +123,12 @@ function MovimientosTransactionRowBase({
           {onRequestDestinatarioPicker && (
             <Pressable
               onPress={() => onRequestDestinatarioPicker(tx.id)}
+              accessibilityLabel={
+                destinatarioName
+                  ? `Cambiar destinatario ${destinatarioName}`
+                  : "Asignar destinatario"
+              }
+              accessibilityRole="button"
               className={`flex-row items-center gap-1 rounded-full border px-2.5 py-1 ${
                 destinatarioName
                   ? "border-z-brass-20 bg-z-brass-8"
@@ -145,6 +151,8 @@ function MovimientosTransactionRowBase({
           {onRequestTagPicker && (
             <Pressable
               onPress={() => onRequestTagPicker(tx.id)}
+              accessibilityLabel="Editar etiquetas"
+              accessibilityRole="button"
               className="flex-row items-center gap-1 rounded-full border border-white-8 bg-black-10 px-2.5 py-1"
             >
               <Tag size={10} color={COLORS.sageDark} />
@@ -159,6 +167,8 @@ function MovimientosTransactionRowBase({
           {canLink && onRequestVincular && (
             <Pressable
               onPress={() => onRequestVincular(tx.id)}
+              accessibilityLabel="Vincular a recurrente"
+              accessibilityRole="button"
               className="flex-row items-center gap-1 rounded-full border border-z-brass-20 bg-z-brass-8 px-2.5 py-1 active:bg-z-brass-12"
             >
               <Link2 size={10} color={COLORS.brass} />

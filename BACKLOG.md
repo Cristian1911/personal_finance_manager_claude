@@ -516,21 +516,29 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 ## Tech Debt
 
 ### Mobile ↔ Webapp parity — live walkthrough findings (2026-05-21)
-- **Priority:** Medium (remaining items)
+- **Priority:** Resolved (10/10 closed) — follow-ups split out into separate entries below.
 - **Where:** captured during the live walkthrough phase of `docs/parity-audit-2026-05-21.md` after PR #257 / #258 / #259 merged. Real-account auth on both surfaces, iPhone 16e simulator + Chrome at iPhone viewport.
-- **Status:** Findings 1, 2, 3, 5, 6, 8, 10 resolved; 4, 7, 9 still open.
+- **Status:** All 10 findings closed (2026-05-23). See `HANDOVER.md` for the PR sequence (#267, #268, #269, #270).
 - **What:**
   1. ✅ **Resumen del mes aggregates** — resolved by PR #262 (`computeMonthlyAggregates` in `@zeta/shared`).
   2. ✅ **Dashboard hero "ritmo"** — resolved by PR #264 (V7 hybrid hero + shared `computeRitmo`).
   3. ✅ **Transaction detail screen feature gap (M4/M5/M6/M7)** — resolved 2026-05-21 (this branch). Mobile TX detail now has: destinatario picker (read-only row + edit form picker), etiquetas chips read-only + TagSelector in edit form, "Hacer recurrente" inline action (creates a MONTHLY template prefilled from tx), "Vincular a recurrente" (queries ±30-day pending occurrences, SHA-256 group_id stamping mirrors webapp `linkExistingTransactionToOccurrence`, supports cross-account debt-payment vinculación), destructive "Eliminar transacción" button in body, header icons have `accessibilityLabel`, label changed to "Excluir de métricas".
-  4. **⚠️ Row-expand affordances asymmetric.** Both surfaces expand the same inline category-edit chip on row tap (parity ✓), but webapp also surfaces destinatario picker, tag picker, and a "Vincular" button in the expand. Mobile only shows the category chip and an "Editar" link. Now that mobile TX detail is at full parity (#3), the natural fix is to widen mobile's row-expand to mirror webapp — or accept the deeper drawer as the canonical surface and slim the webapp expand to just category. Decide direction first.
+  4. ✅ **Row-expand affordances** — resolved by PR #270 (2026-05-23). Mobile row-expand now has destinatario chip, etiquetas chip, Vincular button (gated on `canLink`) plus the existing category chip and Editar link. New `TagPickerSheet` wraps existing `TagSelector`; destinatario assign optimistically stamps `merchant_name` to mirror webapp `assignDestinatario`. Bundled perf fixes: `linkableAccountIds` stored as `string[]` + `useMemo`-derived `Set` to keep `renderItem` stable across reloads; `DestinatarioPicker` `renderItem` memoized.
   5. ✅ **POR RESOLVER pending email count** — resolved 2026-05-21 (this branch). `mobile/lib/repositories/pending-email.ts::getPendingEmailTransactionsCount()` issues a remote count via Supabase (offline → 0); `useDashboardData` now feeds the real number into `summary.attention.pendingEmails`.
   6. ✅ **Header avatar divergence** — already resolved on main. `AvatarMenuTrigger` (`mobile/components/ui/AvatarMenu.tsx`) renders the same initials-circle treatment as webapp across Inicio/Movimientos/Plan/Deudas/Presupuestos/Ajustes. Audit observation was stale.
-  7. **⚠️ Mobile import wizard 4 steps; webapp 6 (audit C9 confirmed live).** Mobile shows "PASO 1 DE 4" with 4-segment progress; webapp wizard has Upload → Review → Destinatarios → Confirm → Reconcile → Results. Mobile is missing the Destinatarios step.
+  7. ✅ **Mobile import destinatario auto-match** — resolved by PR #269 (2026-05-23). The "wizard 4 vs 6 steps" audit observation was already stale (webapp refactored to mobile-first 4-step wizard in PR #209). The real gap was the silent destinatario auto-assignment webapp does during the review step. Mobile import now loads destinatario rules + runs `matchDestinatario` per parsed tx; stamps `destinatario_id`, inherits the destinatario's default category with `USER_LEARNED` + `0.8` confidence, overrides `merchant_name`. Forced debt-payment category still wins. New SQLite migration v14 adds `categorization_confidence` column locally.
   8. ✅ **Accessibility labels on mobile TX detail + Movimientos header** — resolved 2026-05-21 (this branch). Back / edit / trash now have `accessibilityLabel + accessibilityRole`; Movimientos "Filtrar" + "Limpiar" pills labeled.
-  9. **⚠️ Webapp internal inconsistency.** /accounts shows "681 transacciones sin categorizar"; /transactions shows "0 Categorizar". Both webapp, same session. Either the two surfaces use different scopes (all-time vs current-month) or different definitions of "uncategorized". Not a mobile parity issue but the same underlying definition problem as #1.
+  9. ✅ **Webapp uncategorized scope drift** — resolved by PR #268 (2026-05-23). `/accounts` AttentionCard signal now scoped to current-month OUTFLOW (matches `computeMonthlyAggregates`'s definition used by `/transactions` Resumen). Both surfaces agree. Label changed to "X gastos sin categoría este mes" to make the scope explicit. Bundled fix: lifted `todayStr` and Bogotá month bounds out of the cached fn into the wrapper so cache key participates correctly and overdue boundary doesn't drift around midnight Bogotá.
   10. ✅ **Mobile Ajustes typo** — resolved 2026-05-21 (this branch). "Perfil, sincronización, seguridad" now has the missing accent.
 - **Found:** Live mobile↔webapp walkthrough, 2026-05-21, after #257/#258/#259 merged.
+
+### Mobile movimientos row-expand — follow-ups from PR #270 review agents
+- **Priority:** Low
+- **What:** Items flagged during PR #270 review but intentionally deferred to keep that PR tight.
+  - **Tag chip never flips to brass-assigned state.** Mobile's row-expand Etiquetas chip stays muted regardless of whether tags are assigned, because `TransactionListRow` has no tag count. Webapp's chip flips brass when any tag exists. Fix needs adding `tag_count` to the `getTransactions` SELECT (subquery against `transaction_tags`) and wiring brass tint when `> 0`.
+  - **Destinatario assign — auto-category backfill + rule upsert.** Webapp `assignDestinatario` (a) backfills `category_id` from the destinatario's `default_category_id` when the tx has no category, (b) upserts a `destinatario_rule` so the pattern future-imports auto-assigns. Mobile mirrors neither — user has to set category separately and re-imports won't learn the new pattern.
+  - **`bg-z-surface-2-5` is not a registered Tailwind token.** Used in 5+ existing files (`MovimientosTransactionRow`, `MovimientosHerramientas`, `MovimientosUtilidades`, `TagPickerSheet`) as `active:bg-z-surface-2-5`. NativeWind v3 silently drops the class. Either register the token in `tailwind.config.js` or sweep the codebase to use `active:bg-black-10`.
+- **Found:** zetas-front-guy + mobile-sync-doctor reviews of PR #270, 2026-05-23.
 
 ### Transaction time + location — follow-ups from review agents
 - **Priority:** Medium

@@ -84,6 +84,7 @@ export function MovimientosRoot() {
   const [vincularPickerTxId, setVincularPickerTxId] = useState<string | null>(null);
   const [vincularCandidates, setVincularCandidates] = useState<CandidateOccurrence[]>([]);
   const [vincularLoading, setVincularLoading] = useState(false);
+  const [vincularError, setVincularError] = useState<string | null>(null);
   const [destinatarios, setDestinatarios] = useState<DestinatarioWithCount[]>([]);
   // Store as string[] so the array reference is stable when the contents don't
   // change. Deriving the Set via useMemo keeps the Set identity stable too,
@@ -245,12 +246,16 @@ export function MovimientosRoot() {
   const handleRequestVincular = useCallback(async (txId: string) => {
     setVincularPickerTxId(txId);
     setVincularLoading(true);
+    setVincularError(null);
     setVincularCandidates([]);
     try {
       const candidates = await getCandidateOccurrencesForTransaction(txId);
       setVincularCandidates(candidates);
     } catch (err) {
       console.error("Failed to load vincular candidates:", err);
+      setVincularError(
+        "No se pudieron cargar las ocurrencias. Inténtalo de nuevo."
+      );
     } finally {
       setVincularLoading(false);
     }
@@ -310,10 +315,13 @@ export function MovimientosRoot() {
     async (tagIds: string[]) => {
       const txId = tagPickerTxId;
       if (!txId) return;
+      // Rethrow on failure so TagPickerSheet keeps the modal open and the
+      // user sees their pending toggles weren't committed.
       try {
         await saveTransactionTags(txId, tagIds);
       } catch (error) {
         console.error("Failed to save tags:", error);
+        throw error;
       }
     },
     [tagPickerTxId]
@@ -543,6 +551,7 @@ export function MovimientosRoot() {
             visible
             candidates={vincularCandidates}
             submitting={vincularLoading}
+            error={vincularError}
             txSubtitle={tx?.merchant_name ?? tx?.description ?? undefined}
             onClose={() => setVincularPickerTxId(null)}
             onSelect={handleVincularConfirm}
