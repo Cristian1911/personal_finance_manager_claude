@@ -71,6 +71,18 @@ export type CreateTransactionParams = {
   raw_description?: string | null;
   category_id?: string | null;
   destinatario_id?: string | null;
+  /**
+   * Override the default `categorization_source` derivation. When omitted,
+   * falls back to `USER_CREATED` (with `category_id`) or `SYSTEM_DEFAULT`.
+   * Import flow passes `USER_LEARNED` when a destinatario rule provides
+   * the category (mirrors webapp `step-review.tsx`).
+   */
+  categorization_source?: string | null;
+  /**
+   * 0..1 confidence the category is correct. Import flow passes `0.8` when a
+   * destinatario rule supplies the category (mirrors webapp).
+   */
+  categorization_confidence?: number | null;
   notes?: string | null;
   provider?: DataProvider;
   capture_method?: TransactionCaptureMethod;
@@ -115,8 +127,12 @@ function buildInsertPayload(id: string, now: string, params: CreateTransactionPa
     // Mirror webapp persistTransaction (webapp/src/actions/transactions.ts):
     // mark as USER_CREATED only when the caller passes a category; otherwise
     // fall back to SYSTEM_DEFAULT so dashboards that filter on this column
-    // count mobile-created rows the same as webapp-created rows.
-    categorization_source: params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
+    // count mobile-created rows the same as webapp-created rows. Callers
+    // (e.g. PDF import) can override when the source is more specific.
+    categorization_source:
+      params.categorization_source ??
+      (params.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT"),
+    categorization_confidence: params.categorization_confidence ?? null,
     destinatario_id: params.destinatario_id ?? null,
     amount: params.amount,
     currency_code: params.currency_code,
@@ -170,17 +186,19 @@ export async function createTransaction(params: CreateTransactionParams): Promis
   await db.withTransactionAsync(async () => {
     await db.runAsync(
       `INSERT INTO transactions
-        (id, user_id, account_id, category_id, categorization_source, destinatario_id, amount, currency_code, direction,
+        (id, user_id, account_id, category_id, categorization_source, categorization_confidence, destinatario_id,
+         amount, currency_code, direction,
          description, merchant_name, raw_description, transaction_date, transaction_time, location_id, status, idempotency_key,
          is_excluded, is_subscription, notes, provider, capture_method, capture_input_text, reconciled_into_transaction_id,
          reconciliation_score, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         payload.id,
         payload.user_id,
         payload.account_id,
         payload.category_id,
         payload.categorization_source,
+        payload.categorization_confidence,
         payload.destinatario_id,
         payload.amount,
         payload.currency_code,

@@ -1,4 +1,5 @@
 import * as Crypto from "expo-crypto";
+import type { DestinatarioRule } from "@zeta/shared";
 import { getDatabase } from "../db/database";
 import { enqueueInsert } from "../sync/queue";
 
@@ -72,6 +73,44 @@ export async function getRulesForDestinatario(
      ORDER BY priority DESC`,
     [destinatarioId]
   );
+}
+
+/**
+ * Join active destinatarios + rules into the `DestinatarioRule[]` shape that
+ * `prepareDestinatarioRules` / `matchDestinatario` (from `@zeta/shared`) accept.
+ * Used by the PDF import flow to silently auto-assign destinatarios + their
+ * preferred category (parity with webapp `step-review.tsx`).
+ */
+export async function getDestinatarioRulesForMatching(): Promise<DestinatarioRule[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    destinatario_id: string;
+    destinatario_name: string;
+    default_category_id: string | null;
+    match_type: string;
+    pattern: string;
+    priority: number;
+  }>(
+    `SELECT
+       d.id AS destinatario_id,
+       d.name AS destinatario_name,
+       d.default_category_id,
+       r.match_type,
+       r.pattern,
+       r.priority
+     FROM destinatario_rules r
+     JOIN destinatarios d ON r.destinatario_id = d.id
+     WHERE d.is_active = 1
+     ORDER BY r.priority DESC`
+  );
+  return rows.map((r) => ({
+    destinatario_id: r.destinatario_id,
+    destinatario_name: r.destinatario_name,
+    default_category_id: r.default_category_id,
+    match_type: r.match_type === "exact" ? "exact" : "contains",
+    pattern: r.pattern,
+    priority: r.priority,
+  }));
 }
 
 export type CreateDestinatarioParams = {
