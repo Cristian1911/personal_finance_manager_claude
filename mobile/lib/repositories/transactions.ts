@@ -45,6 +45,8 @@ export type TransactionRow = {
   is_subscription: number;
   is_recurring: number;
   recurrence_group_id: string | null;
+  categorization_source: string | null;
+  categorization_confidence: number | null;
   created_at: string;
   updated_at: string;
 };

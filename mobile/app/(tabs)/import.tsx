@@ -776,15 +776,23 @@ export default function ImportScreen() {
         // category — the user's CC payment is semantically the debt category,
         // even if a rule happened to match the description.
         const effectiveCategoryId = forcedCategoryId ?? matchedCategoryId;
-        // Mirror webapp: USER_LEARNED when category comes from a destinatario
-        // rule match. Other cases fall through to createTransaction's default
-        // (USER_CREATED / SYSTEM_DEFAULT).
+        // Mirror webapp step-review.tsx lines 246-250: USER_LEARNED when the
+        // category and a destinatario both came from the match. Webapp's
+        // USER_OVERRIDE branch is effectively dead in import (its `categoryId`
+        // only ever comes from a destinatario hit, so a categoryId without a
+        // destinatarioId can't happen). Mobile additionally has a forced
+        // debt-payment category — when paired with a destinatario match the
+        // result is still USER_LEARNED; when no destinatario matched, we leave
+        // the source undefined so createTransaction's default (USER_CREATED)
+        // fires, matching how a manual debt-payment entry would look.
         const categorizationSource =
-          !forcedCategoryId && matchedCategoryId ? "USER_LEARNED" : undefined;
+          effectiveCategoryId && destinatarioId ? "USER_LEARNED" : undefined;
         // Webapp stamps 0.8 when category AND destinatario both came from the
-        // match (step-review.tsx). Mirror here so cross-platform rows agree.
+        // match (step-review.tsx line 251). Mirror exactly — forced debt
+        // category + matched destinatario gets 0.8 too, since webapp uses the
+        // effective categoryId in its check.
         const categorizationConfidence =
-          !forcedCategoryId && matchedCategoryId && destinatarioId ? 0.8 : null;
+          effectiveCategoryId && destinatarioId ? 0.8 : null;
 
         try {
           const txId = await createTransaction({
