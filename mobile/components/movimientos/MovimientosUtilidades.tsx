@@ -68,6 +68,7 @@ export function MovimientosUtilidades({
         <Pressable
           onPress={() => setFilterOpen(true)}
           hitSlop={PILL_HIT_SLOP}
+          accessibilityLabel={`Filtrar${activeCount > 0 ? ` (${activeCount} activos)` : ""}`}
           className={`${PILL_BASE} gap-1.5 px-3 py-1.5 ${activeCount > 0 ? "border-z-brass-30 bg-z-brass-10" : ""}`}
         >
           <SlidersHorizontal size={12} color={activeCount > 0 ? COLORS.brass : COLORS.sageDark} />
@@ -84,6 +85,7 @@ export function MovimientosUtilidades({
               onFiltersChange({ accountId: null, direction: "all", showExcluded: false })
             }
             hitSlop={PILL_HIT_SLOP}
+            accessibilityLabel="Limpiar filtros"
             className="flex-row items-center gap-1 rounded-full border border-white-6 bg-black-10 px-3 py-1.5"
           >
             <X size={11} color={COLORS.sageDark} />

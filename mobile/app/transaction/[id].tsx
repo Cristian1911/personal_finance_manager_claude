@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Calendar, Pencil, Tag, Trash2, X } from "lucide-react-native";
+import { CalendarClock, Calendar, Link2, Pencil, Tag, Trash2, UserRound, X } from "lucide-react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   deleteTransaction,
@@ -22,13 +22,28 @@ import {
 } from "../../lib/repositories/transactions";
 import { getAllCategories } from "../../lib/repositories/categories";
 import {
+  getAllDestinatarios,
+  type DestinatarioWithCount,
+} from "../../lib/repositories/destinatarios";
+import {
   getTagsForTransaction,
   saveTransactionTags,
 } from "../../lib/repositories/tags";
 import {
+  createRecurringTemplate,
+  getAccountIdsWithPendingOccurrences,
+  getCandidateOccurrencesForTransaction,
+  isTransactionLinkedToOccurrence,
+  linkExistingTransactionToOccurrence,
+  type CandidateOccurrence,
+} from "../../lib/repositories/recurring";
+import { VincularPicker } from "../../components/transactions/VincularPicker";
+import { useAuth } from "../../lib/auth";
+import {
   CategoryPicker,
   type CategoryRow,
 } from "../../components/transactions/CategoryPicker";
+import { DestinatarioPicker } from "../../components/transactions/DestinatarioPicker";
 import { TagSelector } from "../../components/transactions/TagSelector";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import {
@@ -38,6 +53,7 @@ import {
 } from "../../lib/transaction-semantics";
 import { parseLocalizedAmount } from "../../lib/amount";
 import { COLORS } from "../../lib/constants/colors";
+import { SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 
 type TransactionDetail = {
   id: string;
@@ -59,6 +75,8 @@ type TransactionDetail = {
   account_type: string | null;
   notes: string | null;
   is_excluded: number; // SQLite stores boolean as 0/1
+  destinatario_id: string | null;
+  destinatario_name: string | null;
 };
 
 function DetailRow({
@@ -125,11 +143,13 @@ function getHeroAmountColorClass(
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { session } = useAuth();
 
   // Data state
   const [transaction, setTransaction] = useState<TransactionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [destinatarios, setDestinatarios] = useState<DestinatarioWithCount[]>([]);
 
   // UI state
   const [isEditing, setIsEditing] = useState(false);
@@ -139,6 +159,7 @@ export default function TransactionDetailScreen() {
 
   // Picker visibility
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showDestinatarioPicker, setShowDestinatarioPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Edit form state
@@ -148,12 +169,17 @@ export default function TransactionDetailScreen() {
   const [editDate, setEditDate] = useState(new Date());
   const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
   const [editCategoryName, setEditCategoryName] = useState<string | null>(null);
+  const [editDestinatarioId, setEditDestinatarioId] = useState<string | null>(null);
+  const [editDestinatarioName, setEditDestinatarioName] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState("");
   const [editIsExcluded, setEditIsExcluded] = useState(false);
   const [editTagIds, setEditTagIds] = useState<string[]>([]);
 
-  // Read-only tag names for detail view
-  const [transactionTagNames, setTransactionTagNames] = useState<string[]>([]);
+  // Read-only tag list for detail view (id + name so we can show chips and
+  // mirror the webapp pattern where chips link to the etiquetas-filtered view).
+  const [transactionTags, setTransactionTags] = useState<
+    { id: string; name: string }[]
+  >([]);
 
   useEffect(() => {
     if (!id) return;
@@ -164,7 +190,7 @@ export default function TransactionDetailScreen() {
           getTagsForTransaction(id),
         ]);
         setTransaction(result);
-        setTransactionTagNames(tags.map((t) => t.name));
+        setTransactionTags(tags.map((t) => ({ id: t.id, name: t.name })));
       } catch (err) {
         console.error("Failed to load transaction:", err);
       } finally {
@@ -185,6 +211,15 @@ export default function TransactionDetailScreen() {
       setCategories(cats as CategoryRow[]);
     } catch (err) {
       console.error("Failed to load categories:", err);
+    }
+  };
+
+  const loadDestinatarios = async () => {
+    try {
+      const list = await getAllDestinatarios();
+      setDestinatarios(list);
+    } catch (err) {
+      console.error("Failed to load destinatarios:", err);
     }
   };
 
@@ -214,6 +249,8 @@ export default function TransactionDetailScreen() {
         ? "Abono a deuda"
         : transaction.category_name_es
     );
+    setEditDestinatarioId(transaction.destinatario_id);
+    setEditDestinatarioName(transaction.destinatario_name);
     setEditNotes(transaction.notes ?? "");
     setEditIsExcluded(!!transaction.is_excluded);
 
@@ -227,6 +264,7 @@ export default function TransactionDetailScreen() {
 
     setIsEditing(true);
     if (categories.length === 0) loadCategories();
+    if (destinatarios.length === 0) loadDestinatarios();
   };
 
   const cancelEdit = () => setIsEditing(false);
@@ -246,6 +284,7 @@ export default function TransactionDetailScreen() {
         amount: amountNum,
         transaction_date: toDateString(editDate),
         category_id: isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : editCategoryId,
+        destinatario_id: editDestinatarioId,
         notes: editNotes.trim() || null,
         is_excluded: editIsExcluded,
       });
@@ -255,8 +294,12 @@ export default function TransactionDetailScreen() {
       // Mirrors the webapp transaction-form `saveTags` call.
       await saveTransactionTags(id, editTagIds);
       // Reload from DB to get fresh joined data (category_name_es, etc.)
-      const updated = (await getTransactionById(id)) as TransactionDetail;
+      const [updated, tags] = await Promise.all([
+        getTransactionById(id) as Promise<TransactionDetail>,
+        getTagsForTransaction(id),
+      ]);
       setTransaction(updated);
+      setTransactionTags(tags.map((t) => ({ id: t.id, name: t.name })));
       setIsEditing(false);
       showSuccess();
     } catch (err) {
@@ -277,6 +320,127 @@ export default function TransactionDetailScreen() {
       console.error("Toggle exclude error:", err);
       Alert.alert("Error", "No se pudo actualizar la transaccion.");
     }
+  };
+
+  const [promoting, setPromoting] = useState(false);
+
+  // ── Vincular (link existing tx to pending occurrence) ────────────────
+  const [linkableAccountIds, setLinkableAccountIds] = useState<string[]>([]);
+  const [showVincularPicker, setShowVincularPicker] = useState(false);
+  const [vincularCandidates, setVincularCandidates] = useState<
+    CandidateOccurrence[]
+  >([]);
+  const [linking, setLinking] = useState(false);
+  const [linkedToRecurring, setLinkedToRecurring] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [ids, candidates, alreadyLinked] = await Promise.all([
+          getAccountIdsWithPendingOccurrences(),
+          id ? getCandidateOccurrencesForTransaction(id) : Promise.resolve([]),
+          id ? isTransactionLinkedToOccurrence(id) : Promise.resolve(false),
+        ]);
+        if (cancelled) return;
+        setLinkableAccountIds(ids);
+        setVincularCandidates(candidates);
+        setLinkedToRecurring(alreadyLinked);
+      } catch (err) {
+        console.error("Failed to load vincular candidates:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  // Candidates are already loaded in `vincularCandidates` from the mount
+  // effect; nothing on this screen invalidates `recurring_occurrences`
+  // between mount and tap, and `linkedToRecurring=true` hides the button
+  // after a successful link. So just open the sheet.
+  const handleOpenVincular = () => {
+    setShowVincularPicker(true);
+  };
+
+  const handleConfirmVincular = async (occurrenceId: string) => {
+    if (!id) return;
+    setLinking(true);
+    try {
+      await linkExistingTransactionToOccurrence(occurrenceId, id);
+      setShowVincularPicker(false);
+      setLinkedToRecurring(true);
+      Alert.alert("Vinculada", "La transacción se vinculó al recurrente.");
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "No se pudo vincular.";
+      Alert.alert("Error", msg);
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const handlePromoteToRecurring = () => {
+    if (!transaction || !session?.user?.id) return;
+    const userId = session.user.id;
+    const txDate = parseLocalDate(transaction.transaction_date);
+    const dayOfMonth = txDate.getDate();
+    const merchant =
+      transaction.merchant_name ??
+      transaction.description ??
+      "Pago recurrente";
+    Alert.alert(
+      "Hacer recurrente",
+      `Se creará un pago mensual de ${formatCurrency(
+        Math.abs(transaction.amount),
+        (transaction.currency_code as CurrencyCode) || "COP"
+      )} el día ${dayOfMonth} de cada mes. Puedes ajustarlo en Recurrentes.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Crear",
+          onPress: async () => {
+            setPromoting(true);
+            try {
+              await createRecurringTemplate({
+                user_id: userId,
+                account_id: transaction.account_id,
+                amount: Math.abs(transaction.amount),
+                currency_code: transaction.currency_code,
+                direction: transaction.direction,
+                frequency: "MONTHLY",
+                start_date: transaction.transaction_date,
+                day_of_month: dayOfMonth,
+                merchant_name: merchant,
+                description: transaction.description ?? null,
+                category_id: transaction.category_id,
+                destinatario_id: transaction.destinatario_id,
+                account_type: transaction.account_type,
+              });
+              Alert.alert(
+                "Recurrente creada",
+                "Se programó el próximo pago. Ajústala en Recurrentes.",
+                [
+                  { text: "OK", style: "default" },
+                  {
+                    text: "Ver recurrentes",
+                    onPress: () => router.push("/recurrentes" as any),
+                  },
+                ]
+              );
+            } catch (err) {
+              const msg =
+                err instanceof Error
+                  ? err.message
+                  : "No se pudo crear el recurrente.";
+              Alert.alert("Error", msg);
+            } finally {
+              setPromoting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleDelete = () => {
@@ -317,7 +481,9 @@ export default function TransactionDetailScreen() {
         <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
           <Pressable
             onPress={() => router.back()}
-            className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+            accessibilityLabel="Volver"
+            accessibilityRole="button"
+            className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
           >
             <X size={18} color="#938C7E" />
           </Pressable>
@@ -384,7 +550,9 @@ export default function TransactionDetailScreen() {
           <>
             <Pressable
               onPress={() => router.back()}
-              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+              accessibilityLabel="Volver"
+              accessibilityRole="button"
+              className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
             >
               <X size={18} color="#938C7E" />
             </Pressable>
@@ -394,13 +562,17 @@ export default function TransactionDetailScreen() {
             <View className="flex-row gap-2">
               <Pressable
                 onPress={enterEditMode}
-                className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-z-surface-2/10"
+                accessibilityLabel="Editar transacción"
+                accessibilityRole="button"
+                className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
               >
                 <Pencil size={16} color="#938C7E" />
               </Pressable>
               <Pressable
                 onPress={handleDelete}
-                className="w-8 h-8 items-center justify-center rounded-full bg-z-debt/10 active:bg-z-debt/20"
+                accessibilityLabel="Eliminar transacción"
+                accessibilityRole="button"
+                className="w-8 h-8 items-center justify-center rounded-full bg-z-debt-12 active:bg-z-debt-20"
               >
                 <Trash2 size={16} color={COLORS.debt} />
               </Pressable>
@@ -411,7 +583,7 @@ export default function TransactionDetailScreen() {
 
       {/* Success banner */}
       {successVisible && (
-        <View className="mx-4 mb-2 bg-z-income/10 rounded-xl px-4 py-2.5">
+        <View className="mx-4 mb-2 bg-z-income-10 rounded-xl px-4 py-2.5">
           <Text className="text-z-income font-inter-medium text-sm">
             Cambios guardados correctamente
           </Text>
@@ -469,7 +641,7 @@ export default function TransactionDetailScreen() {
             <FormField label="Fecha" required>
               <Pressable
                 onPress={() => setShowDatePicker(true)}
-                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-z-surface-2/10"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-black-20"
               >
                 <Text className="text-foreground font-inter text-sm">
                   {editDate.toLocaleDateString("es-CO", {
@@ -496,7 +668,7 @@ export default function TransactionDetailScreen() {
               ) : (
                 <Pressable
                   onPress={() => setShowCategoryPicker(true)}
-                  className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-z-surface-2/10"
+                  className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-black-20"
                 >
                   <Text
                     className={`font-inter text-sm ${
@@ -508,6 +680,25 @@ export default function TransactionDetailScreen() {
                   <Tag size={16} color="#938C7E" />
                 </Pressable>
               )}
+            </FormField>
+
+            {/* Destinatario */}
+            <FormField label="Destinatario">
+              <Pressable
+                onPress={() => setShowDestinatarioPicker(true)}
+                accessibilityLabel="Cambiar destinatario"
+                accessibilityRole="button"
+                className="bg-black-10 border border-white-6 rounded-xl px-4 py-3 flex-row items-center justify-between active:bg-black-20"
+              >
+                <Text
+                  className={`font-inter text-sm ${
+                    editDestinatarioName ? "text-foreground" : "text-muted-fg-50"
+                  }`}
+                >
+                  {editDestinatarioName ?? "Sin destinatario"}
+                </Text>
+                <UserRound size={16} color="#938C7E" />
+              </Pressable>
             </FormField>
 
             {/* Notes */}
@@ -523,11 +714,16 @@ export default function TransactionDetailScreen() {
               />
             </FormField>
 
+            {/* Etiquetas */}
+            <FormField label="Etiquetas">
+              <TagSelector selectedTagIds={editTagIds} onChange={setEditTagIds} />
+            </FormField>
+
             {/* Exclude from totals */}
             <View className="flex-row items-center justify-between bg-black-10 border border-white-6 rounded-xl px-4 py-3 mb-4">
               <View className="flex-1 mr-4">
                 <Text className="text-foreground font-inter-medium text-sm">
-                  Excluir de totales
+                  Excluir de métricas
                 </Text>
                 <Text className="text-muted-foreground font-inter text-xs mt-0.5">
                   No contabilizar en estadísticas
@@ -600,6 +796,10 @@ export default function TransactionDetailScreen() {
               label="Categoria"
               value={isDebtPayment ? "Abono a deuda" : transaction.category_name_es}
             />
+            <DetailRow
+              label="Destinatario"
+              value={transaction.destinatario_name ?? "Sin destinatario"}
+            />
             <DetailRow label="Estado" value={statusLabel} />
             <DetailRow label="Descripcion" value={transaction.description} />
             <DetailRow
@@ -608,11 +808,32 @@ export default function TransactionDetailScreen() {
             />
             <DetailRow label="Notas" value={transaction.notes} />
 
+            {/* Etiquetas — chips, mirrors webapp pattern */}
+            {transactionTags.length > 0 && (
+              <View className="flex-row items-start py-3 border-b border-white-6">
+                <Text className="text-muted-foreground font-inter text-sm w-20 mt-0.5">
+                  Etiquetas
+                </Text>
+                <View className="flex-1 ml-4 flex-row flex-wrap justify-end gap-1.5">
+                  {transactionTags.map((t) => (
+                    <View
+                      key={t.id}
+                      className="rounded-full border border-z-brass-20 bg-z-brass-10 px-2.5 py-0.5"
+                    >
+                      <Text className="text-z-brass font-inter-medium text-xs">
+                        {t.name}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Exclude toggle */}
             <View className="flex-row items-center justify-between py-3 border-b border-white-6">
               <View>
                 <Text className="text-muted-foreground font-inter text-sm">
-                  Excluir de totales
+                  Excluir de métricas
                 </Text>
                 <Text className="text-muted-fg-50 font-inter text-xs mt-0.5">
                   No afecta estadísticas ni presupuestos
@@ -626,21 +847,112 @@ export default function TransactionDetailScreen() {
                 ios_backgroundColor="#3A3A3A"
               />
             </View>
+
+            {/* Acciones */}
+            <View className="pt-5 gap-2">
+              <Text className={`${SECTION_EYEBROW_CLASS} mb-1`}>Acciones</Text>
+              {!isDebtPayment && !linkedToRecurring && (
+                <Pressable
+                  onPress={handlePromoteToRecurring}
+                  disabled={promoting}
+                  accessibilityLabel="Hacer recurrente"
+                  accessibilityRole="button"
+                  className="flex-row items-center justify-center gap-2 rounded-xl border border-z-brass-30 bg-z-brass-10 px-4 py-3 active:bg-z-brass-20"
+                  style={promoting ? { opacity: 0.6 } : undefined}
+                >
+                  <CalendarClock size={14} color={COLORS.brass} />
+                  <Text className="text-z-brass font-inter-semibold text-sm">
+                    {promoting ? "Creando..." : "Hacer recurrente"}
+                  </Text>
+                </Pressable>
+              )}
+              {!linkedToRecurring &&
+                linkableAccountIds.includes(transaction.account_id) &&
+                vincularCandidates.length > 0 && (
+                  <Pressable
+                    onPress={handleOpenVincular}
+                    disabled={linking}
+                    accessibilityLabel="Vincular a recurrente"
+                    accessibilityRole="button"
+                    className="flex-row items-center justify-center gap-2 rounded-xl border border-white-6 bg-black-10 px-4 py-3 active:bg-black-20"
+                    style={linking ? { opacity: 0.6 } : undefined}
+                  >
+                    <Link2 size={14} color={COLORS.foreground} />
+                    <Text className="text-foreground font-inter-semibold text-sm">
+                      Vincular a recurrente
+                    </Text>
+                  </Pressable>
+                )}
+              {linkedToRecurring && (
+                <View className="flex-row items-center justify-center gap-2 rounded-xl border border-z-brass-20 bg-z-brass-8 px-4 py-3">
+                  <CalendarClock size={14} color={COLORS.brass} />
+                  <Text className="text-z-brass font-inter-medium text-sm">
+                    Vinculada a recurrente
+                  </Text>
+                </View>
+              )}
+              <Pressable
+                onPress={handleDelete}
+                accessibilityLabel="Eliminar transacción"
+                accessibilityRole="button"
+                className="flex-row items-center justify-center gap-2 rounded-xl border border-z-debt-20 bg-z-debt-6 px-4 py-3 active:bg-z-debt-12"
+              >
+                <Trash2 size={14} color={COLORS.debt} />
+                <Text className="text-z-debt font-inter-semibold text-sm">
+                  Eliminar transacción
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </ScrollView>
       )}
 
-      {/* Category picker */}
-      <CategoryPicker
-        visible={showCategoryPicker}
-        onClose={() => setShowCategoryPicker(false)}
-        onSelect={(catId, catName) => {
-          setEditCategoryId(catId);
-          setEditCategoryName(catName);
-        }}
-        selectedId={editCategoryId}
-        categories={categories}
-      />
+      {/* Category picker — deferred mount until first open */}
+      {showCategoryPicker && (
+        <CategoryPicker
+          visible={showCategoryPicker}
+          onClose={() => setShowCategoryPicker(false)}
+          onSelect={(catId, catName) => {
+            setEditCategoryId(catId);
+            setEditCategoryName(catName);
+          }}
+          selectedId={editCategoryId}
+          categories={categories}
+        />
+      )}
+
+      {/* Destinatario picker — deferred mount until first open */}
+      {showDestinatarioPicker && (
+        <DestinatarioPicker
+          visible={showDestinatarioPicker}
+          onClose={() => setShowDestinatarioPicker(false)}
+          onSelect={(destId, destName) => {
+            setEditDestinatarioId(destId);
+            setEditDestinatarioName(destName);
+          }}
+          selectedId={editDestinatarioId}
+          destinatarios={destinatarios}
+        />
+      )}
+
+      {/* Vincular picker — deferred mount until first open */}
+      {showVincularPicker && (
+        <VincularPicker
+          visible={showVincularPicker}
+          onClose={() => setShowVincularPicker(false)}
+          candidates={vincularCandidates}
+          onSelect={handleConfirmVincular}
+          submitting={linking}
+          txSubtitle={
+            transaction
+              ? `${transaction.merchant_name ?? transaction.description ?? ""} · ${formatCurrency(
+                  Math.abs(transaction.amount),
+                  (transaction.currency_code as CurrencyCode) || "COP"
+                )}`
+              : undefined
+          }
+        />
+      )}
 
       {/* Date picker — iOS: spinner in bottom sheet; Android: native dialog */}
       {showDatePicker && Platform.OS === "ios" ? (
