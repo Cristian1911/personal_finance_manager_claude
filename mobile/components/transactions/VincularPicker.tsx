@@ -1,6 +1,7 @@
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { CalendarClock, X } from "lucide-react-native";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
+import { COLORS } from "../../lib/constants/colors";
 import type { CandidateOccurrence } from "../../lib/repositories/recurring";
 
 type Props = {
@@ -10,6 +11,10 @@ type Props = {
   onSelect: (occurrenceId: string) => void;
   submitting?: boolean;
   txSubtitle?: string;
+  /** Optional error message rendered above the candidate list — useful when
+   *  the parent failed to fetch candidates and wants to surface that instead
+   *  of an empty list. */
+  error?: string | null;
 };
 
 function formatOccurrenceDate(d: string): string {
@@ -34,6 +39,7 @@ export function VincularPicker({
   onSelect,
   submitting,
   txSubtitle,
+  error,
 }: Props) {
   return (
     <Modal
@@ -42,7 +48,7 @@ export function VincularPicker({
       transparent
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-end bg-black/35">
+      <View className="flex-1 justify-end bg-black-40">
         <View className="max-h-[72%] min-h-[280px] rounded-t-2xl bg-z-surface-2-55">
           <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-white-6">
             <View>
@@ -64,11 +70,17 @@ export function VincularPicker({
               accessibilityRole="button"
               className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
             >
-              <X size={18} color="#938C7E" />
+              <X size={18} color={COLORS.sageDark} />
             </Pressable>
           </View>
 
-          {candidates.length === 0 ? (
+          {error ? (
+            <View className="py-10 px-6">
+              <Text className="text-z-debt font-inter text-sm text-center">
+                {error}
+              </Text>
+            </View>
+          ) : candidates.length === 0 ? (
             <View className="py-10 px-6">
               <Text className="text-muted-fg-50 font-inter text-sm text-center">
                 No hay ocurrencias pendientes en la misma cuenta y rango de
@@ -91,7 +103,7 @@ export function VincularPicker({
                   style={submitting ? { opacity: 0.5 } : undefined}
                 >
                   <View className="w-9 h-9 rounded-full bg-z-brass-15 items-center justify-center mr-3">
-                    <CalendarClock size={16} color="#C8B560" />
+                    <CalendarClock size={16} color={COLORS.brass} />
                   </View>
                   <View className="flex-1">
                     <Text

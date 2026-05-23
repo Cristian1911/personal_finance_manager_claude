@@ -1,6 +1,6 @@
 import { memo, useState } from "react";
 import { View, Text, Pressable } from "react-native";
-import { ArrowDownLeft, ArrowUpRight, Pencil } from "lucide-react-native";
+import { ArrowDownLeft, ArrowUpRight, Link2, Pencil, Tag, UserRound } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { formatCurrency, type CurrencyCode } from "@zeta/shared";
 import { COLORS } from "../../lib/constants/colors";
@@ -9,12 +9,22 @@ import type { TransactionListRow } from "../../lib/repositories/transactions";
 
 interface MovimientosTransactionRowProps {
   transaction: TransactionListRow;
+  /** True if the tx's account has at least one pending recurring occurrence
+   *  (direct or via transfer_source_account_id) — gates the Vincular chip. */
+  canLink?: boolean;
   onRequestCategoryPicker: (txId: string) => void;
+  onRequestDestinatarioPicker?: (txId: string) => void;
+  onRequestTagPicker?: (txId: string) => void;
+  onRequestVincular?: (txId: string) => void;
 }
 
 function MovimientosTransactionRowBase({
   transaction: tx,
+  canLink,
   onRequestCategoryPicker,
+  onRequestDestinatarioPicker,
+  onRequestTagPicker,
+  onRequestVincular,
 }: MovimientosTransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
   const router = useRouter();
@@ -23,6 +33,7 @@ function MovimientosTransactionRowBase({
   const isInflow = tx.direction === "INFLOW";
   const isExcluded = Boolean(tx.is_excluded);
   const categoryName = tx.category_name_es ?? tx.category_name;
+  const destinatarioName = tx.destinatario_name;
 
   return (
     <View className={expanded ? "border-l-2 border-l-z-brass pl-2" : ""}>
@@ -86,7 +97,7 @@ function MovimientosTransactionRowBase({
         </Text>
       </Pressable>
 
-      <AnimatedAccordion expanded={expanded} estimatedHeight={52}>
+      <AnimatedAccordion expanded={expanded} estimatedHeight={100}>
         <View className="flex-row flex-wrap items-center gap-1.5 px-2 pb-2 pt-0.5">
           <Pressable
             onPress={() => onRequestCategoryPicker(tx.id)}
@@ -109,7 +120,63 @@ function MovimientosTransactionRowBase({
             </Text>
           </Pressable>
 
+          {onRequestDestinatarioPicker && (
+            <Pressable
+              onPress={() => onRequestDestinatarioPicker(tx.id)}
+              accessibilityLabel={
+                destinatarioName
+                  ? `Cambiar destinatario ${destinatarioName}`
+                  : "Asignar destinatario"
+              }
+              accessibilityRole="button"
+              className={`flex-row items-center gap-1 rounded-full border px-2.5 py-1 ${
+                destinatarioName
+                  ? "border-z-brass-20 bg-z-brass-8"
+                  : "border-white-8 bg-black-10"
+              }`}
+            >
+              <UserRound
+                size={10}
+                color={destinatarioName ? COLORS.brass : COLORS.sageDark}
+              />
+              <Text
+                className={`text-[10px] font-inter-semibold ${destinatarioName ? "text-z-brass" : "text-muted-foreground"}`}
+                numberOfLines={1}
+              >
+                {destinatarioName ?? "Destinatario"}
+              </Text>
+            </Pressable>
+          )}
+
+          {onRequestTagPicker && (
+            <Pressable
+              onPress={() => onRequestTagPicker(tx.id)}
+              accessibilityLabel="Editar etiquetas"
+              accessibilityRole="button"
+              className="flex-row items-center gap-1 rounded-full border border-white-8 bg-black-10 px-2.5 py-1"
+            >
+              <Tag size={10} color={COLORS.sageDark} />
+              <Text className="text-[10px] font-inter-semibold text-muted-foreground">
+                Etiquetas
+              </Text>
+            </Pressable>
+          )}
+
           <View className="flex-1" />
+
+          {canLink && onRequestVincular && (
+            <Pressable
+              onPress={() => onRequestVincular(tx.id)}
+              accessibilityLabel="Vincular a recurrente"
+              accessibilityRole="button"
+              className="flex-row items-center gap-1 rounded-full border border-z-brass-20 bg-z-brass-8 px-2.5 py-1 active:bg-z-brass-12"
+            >
+              <Link2 size={10} color={COLORS.brass} />
+              <Text className="text-[10px] font-inter-semibold text-z-brass">
+                Vincular
+              </Text>
+            </Pressable>
+          )}
 
           <Pressable
             onPress={() => router.push(`/transaction/${tx.id}` as any)}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Modal,
@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { Check, UserRound, X } from "lucide-react-native";
+import { COLORS } from "../../lib/constants/colors";
 import type { DestinatarioWithCount } from "../../lib/repositories/destinatarios";
 
 type Props = {
@@ -17,6 +18,9 @@ type Props = {
   selectedId: string | null;
   destinatarios: DestinatarioWithCount[];
 };
+
+const keyExtractor = (item: DestinatarioWithCount) => item.id;
+const Separator = () => <View className="h-px bg-white-6 ml-4" />;
 
 /**
  * Bottom-sheet destinatario picker. Mirrors `CategoryPicker` for visual
@@ -43,11 +47,48 @@ export function DestinatarioPicker({
     onClose();
   };
 
-  const handleSelect = (id: string | null, name: string | null) => {
-    setSearch("");
-    onSelect(id, name);
-    onClose();
-  };
+  const handleSelect = useCallback(
+    (id: string | null, name: string | null) => {
+      setSearch("");
+      onSelect(id, name);
+      onClose();
+    },
+    [onSelect, onClose]
+  );
+
+  const renderRow = useCallback(
+    ({ item }: { item: DestinatarioWithCount }) => {
+      const isSelected = item.id === selectedId;
+      return (
+        <Pressable
+          onPress={() => handleSelect(item.id, item.name)}
+          accessibilityLabel={`Seleccionar ${item.name}`}
+          accessibilityRole="button"
+          className="flex-row items-center px-4 py-3.5 active:bg-black-10"
+        >
+          <View className="w-7 h-7 rounded-full bg-z-brass-15 items-center justify-center mr-3">
+            <UserRound size={14} color={COLORS.brass} />
+          </View>
+          <View className="flex-1">
+            <Text
+              className={`font-inter text-sm ${
+                isSelected ? "text-primary font-inter-medium" : "text-foreground"
+              }`}
+            >
+              {item.name}
+            </Text>
+            {item.category_name && (
+              <Text className="text-muted-fg-50 font-inter text-xs mt-0.5">
+                {item.category_name}
+              </Text>
+            )}
+          </View>
+          {isSelected && <Check size={16} color={COLORS.income} />}
+        </Pressable>
+      );
+    },
+    [selectedId, handleSelect]
+  );
 
   return (
     <Modal
@@ -56,7 +97,7 @@ export function DestinatarioPicker({
       transparent
       onRequestClose={handleClose}
     >
-      <View className="flex-1 justify-end bg-black/35">
+      <View className="flex-1 justify-end bg-black-40">
         <View className="max-h-[72%] min-h-[320px] rounded-t-2xl bg-z-surface-2-55">
           {/* Header */}
           <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-white-6">
@@ -69,7 +110,7 @@ export function DestinatarioPicker({
               accessibilityRole="button"
               className="w-8 h-8 items-center justify-center rounded-full bg-black-10 active:bg-black-20"
             >
-              <X size={18} color="#938C7E" />
+              <X size={18} color={COLORS.sageDark} />
             </Pressable>
           </View>
 
@@ -78,7 +119,7 @@ export function DestinatarioPicker({
             <TextInput
               className="bg-black-10 rounded-xl px-4 py-2.5 text-foreground font-inter text-sm"
               placeholder="Buscar destinatario..."
-              placeholderTextColor="#938C7E"
+              placeholderTextColor={COLORS.sageDark}
               value={search}
               onChangeText={setSearch}
               autoCorrect={false}
@@ -94,51 +135,20 @@ export function DestinatarioPicker({
             className="flex-row items-center px-4 py-3.5 border-b border-white-6 active:bg-black-10"
           >
             <View className="w-7 h-7 rounded-full bg-white-6 items-center justify-center mr-3">
-              <UserRound size={14} color="#938C7E" />
+              <UserRound size={14} color={COLORS.sageDark} />
             </View>
             <Text className="text-muted-foreground font-inter text-sm flex-1">
               Sin destinatario
             </Text>
-            {selectedId === null && <Check size={16} color="#10B981" />}
+            {selectedId === null && <Check size={16} color={COLORS.income} />}
           </Pressable>
 
           <FlatList
             data={filtered}
-            keyExtractor={(item) => item.id}
+            keyExtractor={keyExtractor}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => {
-              const isSelected = item.id === selectedId;
-              return (
-                <Pressable
-                  onPress={() => handleSelect(item.id, item.name)}
-                  accessibilityLabel={`Seleccionar ${item.name}`}
-                  accessibilityRole="button"
-                  className="flex-row items-center px-4 py-3.5 active:bg-black-10"
-                >
-                  <View className="w-7 h-7 rounded-full bg-z-brass-15 items-center justify-center mr-3">
-                    <UserRound size={14} color="#C8B560" />
-                  </View>
-                  <View className="flex-1">
-                    <Text
-                      className={`font-inter text-sm ${
-                        isSelected ? "text-primary font-inter-medium" : "text-foreground"
-                      }`}
-                    >
-                      {item.name}
-                    </Text>
-                    {item.category_name && (
-                      <Text className="text-muted-fg-50 font-inter text-xs mt-0.5">
-                        {item.category_name}
-                      </Text>
-                    )}
-                  </View>
-                  {isSelected && <Check size={16} color="#10B981" />}
-                </Pressable>
-              );
-            }}
-            ItemSeparatorComponent={() => (
-              <View className="h-px bg-white-6 ml-4" />
-            )}
+            renderItem={renderRow}
+            ItemSeparatorComponent={Separator}
             ListEmptyComponent={
               <View className="py-8 px-6">
                 <Text className="text-muted-fg-50 font-inter text-sm text-center">
