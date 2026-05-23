@@ -4,14 +4,17 @@ import "server-only";
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
-import { toColombiaDateString } from "@/lib/utils/date";
+import { monthEndStr, monthStartStr, parseMonth, toColombiaDateString } from "@/lib/utils/date";
 import type { AttentionSignal, AttentionSnapshot, AttentionPage } from "@/types/attention";
 
 // ─── Cached inner function ────────────────────────────────────────────────────
 
 async function getAttentionSnapshotCached(
   accessToken: string,
-  userId: string
+  userId: string,
+  monthStart: string,
+  monthEnd: string,
+  todayStr: string,
 ): Promise<AttentionSnapshot> {
   "use cache";
   cacheTag("attention");
@@ -21,11 +24,19 @@ async function getAttentionSnapshotCached(
 
   // Run queries in parallel
   const [uncategorizedRes, destinatarioRes, overdueRemindersRes] = await Promise.all([
-    // Signal 1: Uncategorized transactions
+    // Signal 1: Uncategorized OUTFLOW transactions in the current month.
+    // Matches `computeMonthlyAggregates.uncategorizedCount` (the Resumen del
+    // mes / Movimientos definition) so /accounts and /transactions agree.
+    // INFLOW is excluded — income rarely needs a category and would inflate
+    // the signal. Backlog beyond the current month is surfaced inside
+    // /categorizar (the action surface), not in the attention card.
     supabase
       .from("transactions")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
+      .eq("direction", "OUTFLOW")
+      .gte("transaction_date", monthStart)
+      .lte("transaction_date", monthEnd)
       .is("category_id", null)
       .eq("is_excluded", false)
       .is("reconciled_into_transaction_id", null),
@@ -47,12 +58,12 @@ async function getAttentionSnapshotCached(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("is_completed", false)
-      .lt("due_date", toColombiaDateString(new Date())),
+      .lt("due_date", todayStr),
   ]);
 
   const signals: AttentionSignal[] = [];
 
-  // Signal 1: Uncategorized transactions
+  // Signal 1: Uncategorized OUTFLOW transactions (current month).
   const uncategorizedCount = uncategorizedRes.count ?? 0;
   if (uncategorizedCount > 0) {
     signals.push({
@@ -61,8 +72,8 @@ async function getAttentionSnapshotCached(
       count: uncategorizedCount,
       label:
         uncategorizedCount === 1
-          ? "1 transacción sin categoría"
-          : `${uncategorizedCount} transacciones sin categoría`,
+          ? "1 gasto sin categoría este mes"
+          : `${uncategorizedCount} gastos sin categoría este mes`,
       priority: "action",
       actionHref: "/categorizar",
     });
@@ -134,7 +145,21 @@ export async function getAttentionSnapshot(): Promise<AttentionSnapshot> {
     return { signals: [], totalAction: 0, totalSuggestion: 0, perPage: {} };
   }
   try {
-    return await getAttentionSnapshotCached(accessToken, user.id);
+    // Anchor month bounds to Bogotá's calendar, not the server's TZ (UTC in
+    // Docker). On the last day of the month, server UTC has already rolled to
+    // the next month while Bogotá is still in the prior one — without this
+    // anchor, monthStart/monthEnd would silently shift and the uncategorized
+    // count would jump to next-month's (empty) bucket.
+    const now = new Date();
+    const todayStr = toColombiaDateString(now);
+    const monthAnchor = parseMonth(todayStr.substring(0, 7));
+    return await getAttentionSnapshotCached(
+      accessToken,
+      user.id,
+      monthStartStr(monthAnchor),
+      monthEndStr(monthAnchor),
+      todayStr,
+    );
   } catch (err) {
     console.error("Error computing attention snapshot:", err);
     return { signals: [], totalAction: 0, totalSuggestion: 0, perPage: {} };
