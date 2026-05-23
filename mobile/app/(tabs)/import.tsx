@@ -62,6 +62,12 @@ import {
   getReconciliationCandidateById,
   getReconciliationCandidates,
 } from "../../lib/repositories/transactions";
+import { getDestinatarioRulesForMatching } from "../../lib/repositories/destinatarios";
+import {
+  matchDestinatario,
+  prepareDestinatarioRules,
+  type PreparedDestinatarioRule,
+} from "@zeta/shared";
 import {
   DEBT_PAYMENT_CATEGORY_ID,
   isDebtInflow,
@@ -737,6 +743,17 @@ export default function ImportScreen() {
         (reconciliationPreview?.review ?? []).map((item) => [item.importIndex, item])
       );
 
+      // Pre-prepare destinatario rules once — mirrors webapp `step-review.tsx`
+      // silent destinatario assignment. If the user has no rules yet, prepared
+      // is empty and the per-tx match returns null (no-op).
+      let preparedRules: PreparedDestinatarioRule[] = [];
+      try {
+        const rules = await getDestinatarioRulesForMatching();
+        preparedRules = prepareDestinatarioRules(rules);
+      } catch (err) {
+        console.warn("Skipping destinatario auto-match (rules load failed):", err);
+      }
+
       for (const index of Array.from(selected).sort((a, b) => a - b)) {
         const t = parsedData.transactions[index];
         if (!t) continue;
@@ -746,16 +763,53 @@ export default function ImportScreen() {
         });
         const forcedCategoryId = isDebtPayment ? DEBT_PAYMENT_CATEGORY_ID : null;
 
+        // Destinatario auto-match — webapp runs this unconditionally for every
+        // tx (including debt-payment inflows). When the user has no rules
+        // (`preparedRules.length === 0`) the match is a guaranteed no-op.
+        const destMatch =
+          preparedRules.length > 0
+            ? matchDestinatario(t.description, preparedRules)
+            : null;
+        const destinatarioId = destMatch?.destinatario_id ?? null;
+        const matchedCategoryId = destMatch?.category_id ?? null;
+        // Forced debt-payment category wins over a destinatario-suggested
+        // category — the user's CC payment is semantically the debt category,
+        // even if a rule happened to match the description.
+        const effectiveCategoryId = forcedCategoryId ?? matchedCategoryId;
+        // Mirror webapp step-review.tsx lines 246-250: USER_LEARNED when the
+        // category and a destinatario both came from the match. Webapp's
+        // USER_OVERRIDE branch is effectively dead in import (its `categoryId`
+        // only ever comes from a destinatario hit, so a categoryId without a
+        // destinatarioId can't happen). Mobile additionally has a forced
+        // debt-payment category — when paired with a destinatario match the
+        // result is still USER_LEARNED; when no destinatario matched, we leave
+        // the source undefined so createTransaction's default (USER_CREATED)
+        // fires, matching how a manual debt-payment entry would look.
+        const categorizationSource =
+          effectiveCategoryId && destinatarioId ? "USER_LEARNED" : undefined;
+        // Webapp stamps 0.8 when category AND destinatario both came from the
+        // match (step-review.tsx line 251). Mirror exactly — forced debt
+        // category + matched destinatario gets 0.8 too, since webapp uses the
+        // effective categoryId in its check.
+        const categorizationConfidence =
+          effectiveCategoryId && destinatarioId ? 0.8 : null;
+
         try {
           const txId = await createTransaction({
             user_id: userId,
             account_id: selectedAccount.id,
-            category_id: forcedCategoryId,
+            category_id: effectiveCategoryId,
+            categorization_source: categorizationSource,
+            categorization_confidence: categorizationConfidence,
+            destinatario_id: destinatarioId,
             amount: t.amount,
             currency_code: parsedData.currency ?? selectedAccount.currency_code ?? "COP",
             direction: t.direction,
             description: t.description,
-            merchant_name: t.description,
+            // Match webapp: merchant_name is only set when a destinatario rule
+            // supplies a clean name. Otherwise null (raw_description carries
+            // the bank's string).
+            merchant_name: destMatch?.destinatario_name ?? null,
             raw_description: t.description,
             transaction_date: t.date,
             provider: "OCR",
@@ -770,7 +824,7 @@ export default function ImportScreen() {
               manualTransaction: autoMatch.candidate,
               pdfTransactionId: txId,
               score: autoMatch.score,
-              pdfCategoryId: forcedCategoryId,
+              pdfCategoryId: effectiveCategoryId,
               pdfNotes: null,
             });
             autoMerged++;
@@ -783,7 +837,7 @@ export default function ImportScreen() {
               manualTransaction: reviewMatch.candidate,
               pdfTransactionId: txId,
               score: reviewMatch.score,
-              pdfCategoryId: forcedCategoryId,
+              pdfCategoryId: effectiveCategoryId,
               pdfNotes: null,
             });
             manualMerged++;

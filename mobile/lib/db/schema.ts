@@ -479,6 +479,16 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_location_pings_consumed ON location_pings(consumed, captured_at)`,
     ],
   },
+  {
+    version: 14,
+    statements: [
+      // Categorization confidence (REAL 0..1) — populated by the import flow
+      // when a destinatario rule supplies the category (mirrors webapp's
+      // step-review.tsx, which stamps 0.8 for category+destinatario matches).
+      // Pushed to Supabase via sync_queue so cross-platform rows agree.
+      `ALTER TABLE transactions ADD COLUMN categorization_confidence REAL`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =
