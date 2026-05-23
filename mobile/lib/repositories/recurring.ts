@@ -347,19 +347,16 @@ function computeMatchScore(
 }
 
 /**
- * Pending occurrences in a ±30-day window around the transaction's date,
- * filtered to same account + direction (mirrors webapp without the
- * cross-account debt-payment case — mobile doesn't yet promote those).
- * Returned sorted by descending match score.
+ * Pending occurrences in a ±30-day window around the transaction's date.
+ * Matches webapp `getCandidateOccurrencesForTransaction`:
+ * - Same account + direction (direct match), OR
+ * - Cross-account debt payment: an OUTFLOW tx from a source checking account
+ *   matches an INFLOW template on a CREDIT_CARD/LOAN whose
+ *   `transfer_source_account_id` points back to the tx's account.
  *
- * Two intentional deviations from webapp `getCandidateOccurrencesForTransaction`:
- * 1. Skips `isCrossAccountDebtPayment` branch — debt-payment transactions
- *    on a source checking account will see an empty candidate list even
- *    when their backing CREDIT_CARD/LOAN template has a pending occurrence.
- *    BACKLOG tracks this UX gap (user sees Vincular button but no rows).
- * 2. Adds `AND t.is_active = 1` so deactivated templates don't surface
- *    stale candidates. Webapp doesn't filter `is_active` here; in practice
- *    deactivated templates rarely have leftover pending occurrences.
+ * One intentional deviation: adds `AND t.is_active = 1` so deactivated
+ * templates don't surface stale candidates. Webapp doesn't filter is_active;
+ * in practice deactivated templates rarely have leftover pending occurrences.
  */
 export async function getCandidateOccurrencesForTransaction(
   transactionId: string
@@ -398,12 +395,27 @@ export async function getCandidateOccurrencesForTransaction(
        t.merchant_name, t.description, t.currency_code
      FROM recurring_occurrences o
      JOIN recurring_transaction_templates t ON o.template_id = t.id
+     LEFT JOIN accounts a ON t.account_id = a.id
      WHERE o.status = 'pending'
        AND o.occurrence_date BETWEEN ? AND ?
-       AND t.account_id = ?
-       AND t.direction = ?
-       AND t.is_active = 1`,
-    [fmt(rangeStart), fmt(rangeEnd), tx.account_id, tx.direction]
+       AND t.is_active = 1
+       AND (
+         (t.account_id = ? AND t.direction = ?)
+         OR (
+           ? = 'OUTFLOW'
+           AND t.direction = 'INFLOW'
+           AND t.transfer_source_account_id = ?
+           AND a.account_type IN ('CREDIT_CARD', 'LOAN')
+         )
+       )`,
+    [
+      fmt(rangeStart),
+      fmt(rangeEnd),
+      tx.account_id,
+      tx.direction,
+      tx.direction,
+      tx.account_id,
+    ]
   );
 
   const candidates: CandidateOccurrence[] = rows.map((r) => ({
@@ -498,11 +510,15 @@ export async function linkExistingTransactionToOccurrence(
     direction: TransactionDirection;
     frequency: string;
     category_id: string | null;
+    transfer_source_account_id: string | null;
+    account_type: string | null;
   }>(
     `SELECT o.id, o.template_id, o.occurrence_date, o.status,
-            t.account_id, t.direction, t.frequency, t.category_id
+            t.account_id, t.direction, t.frequency, t.category_id,
+            t.transfer_source_account_id, a.account_type
      FROM recurring_occurrences o
      JOIN recurring_transaction_templates t ON o.template_id = t.id
+     LEFT JOIN accounts a ON t.account_id = a.id
      WHERE o.id = ?`,
     [occurrenceId]
   );
@@ -520,7 +536,16 @@ export async function linkExistingTransactionToOccurrence(
     [transactionId]
   );
   if (!tx) throw new Error("Transacción no encontrada");
-  if (tx.account_id !== occ.account_id || tx.direction !== occ.direction) {
+
+  const directMatch =
+    tx.account_id === occ.account_id && tx.direction === occ.direction;
+  const crossAccountDebt =
+    occ.direction === "INFLOW" &&
+    tx.direction === "OUTFLOW" &&
+    occ.transfer_source_account_id === tx.account_id &&
+    !!occ.account_type &&
+    DEBT_ACCOUNT_TYPES.has(occ.account_type);
+  if (!directMatch && !crossAccountDebt) {
     throw new Error("La transacción no coincide con la cuenta o dirección");
   }
 
