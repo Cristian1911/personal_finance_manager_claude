@@ -4,7 +4,7 @@ import "server-only";
 import { cacheTag, cacheLife } from "next/cache";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
-import { monthEndStr, monthStartStr, toColombiaDateString } from "@/lib/utils/date";
+import { monthEndStr, monthStartStr, parseMonth, toColombiaDateString } from "@/lib/utils/date";
 import type { AttentionSignal, AttentionSnapshot, AttentionPage } from "@/types/attention";
 
 // ─── Cached inner function ────────────────────────────────────────────────────
@@ -145,13 +145,20 @@ export async function getAttentionSnapshot(): Promise<AttentionSnapshot> {
     return { signals: [], totalAction: 0, totalSuggestion: 0, perPage: {} };
   }
   try {
+    // Anchor month bounds to Bogotá's calendar, not the server's TZ (UTC in
+    // Docker). On the last day of the month, server UTC has already rolled to
+    // the next month while Bogotá is still in the prior one — without this
+    // anchor, monthStart/monthEnd would silently shift and the uncategorized
+    // count would jump to next-month's (empty) bucket.
     const now = new Date();
+    const todayStr = toColombiaDateString(now);
+    const monthAnchor = parseMonth(todayStr.substring(0, 7));
     return await getAttentionSnapshotCached(
       accessToken,
       user.id,
-      monthStartStr(now),
-      monthEndStr(now),
-      toColombiaDateString(now),
+      monthStartStr(monthAnchor),
+      monthEndStr(monthAnchor),
+      todayStr,
     );
   } catch (err) {
     console.error("Error computing attention snapshot:", err);
