@@ -1,7 +1,7 @@
 import * as Crypto from "expo-crypto";
 import type { RecurrenceFrequency, TransactionDirection } from "@zeta/shared";
 import { getDatabase } from "../db/database";
-import { enqueueInsert } from "../sync/queue";
+import { enqueueInsert, enqueueUpdate } from "../sync/queue";
 
 /** Convert a recurring amount to its monthly equivalent based on frequency. */
 export function toMonthlyAmount(amount: number, frequency: string): number {
@@ -357,6 +357,11 @@ function computeMatchScore(
  * One intentional deviation: adds `AND t.is_active = 1` so deactivated
  * templates don't surface stale candidates. Webapp doesn't filter is_active;
  * in practice deactivated templates rarely have leftover pending occurrences.
+ *
+ * Note: LEFT JOIN on `accounts` means if the account row hasn't synced yet,
+ * `a.account_type` is NULL and the cross-account branch is silently excluded
+ * (degraded mode). User just won't see the Vincular candidate until accounts
+ * sync; no false positives.
  */
 export async function getCandidateOccurrencesForTransaction(
   transactionId: string
@@ -425,11 +430,14 @@ export async function getCandidateOccurrencesForTransaction(
     occurrenceDate: r.occurrence_date,
     expectedAmount: r.expected_amount,
     currencyCode: r.currency_code,
+    // Argument order matches webapp `getCandidateOccurrencesForTransaction`:
+    // tx is the "candidate" (numerator), occurrence is the "reference"
+    // (denominator). Swapping these makes amount-tie-breaking diverge.
     matchScore: computeMatchScore(
-      r.occurrence_date,
-      r.expected_amount,
       tx.transaction_date,
-      tx.amount
+      tx.amount,
+      r.occurrence_date,
+      r.expected_amount
     ),
   }));
 
@@ -570,10 +578,7 @@ export async function linkExistingTransactionToOccurrence(
       `UPDATE transactions SET ${setClauses.join(", ")} WHERE id = ?`,
       [...(txValues as any[]), transactionId]
     );
-    await db.runAsync(
-      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,
-      ["transactions", transactionId, "UPDATE", JSON.stringify(txUpdates), now]
-    );
+    await enqueueUpdate(db, "transactions", transactionId, txUpdates, now);
 
     // Mark occurrence paid
     const occPayload = {
@@ -588,16 +593,7 @@ export async function linkExistingTransactionToOccurrence(
          WHERE id = ?`,
       [transactionId, now, occurrenceId]
     );
-    await db.runAsync(
-      `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,
-      [
-        "recurring_occurrences",
-        occurrenceId,
-        "UPDATE",
-        JSON.stringify(occPayload),
-        now,
-      ]
-    );
+    await enqueueUpdate(db, "recurring_occurrences", occurrenceId, occPayload, now);
 
     // Auto-deactivate ONCE templates
     if (occ.frequency === "ONCE") {
@@ -605,15 +601,12 @@ export async function linkExistingTransactionToOccurrence(
         "UPDATE recurring_transaction_templates SET is_active = 0, updated_at = ? WHERE id = ?",
         [now, occ.template_id]
       );
-      await db.runAsync(
-        `INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)`,
-        [
-          "recurring_transaction_templates",
-          occ.template_id,
-          "UPDATE",
-          JSON.stringify({ is_active: false, updated_at: now }),
-          now,
-        ]
+      await enqueueUpdate(
+        db,
+        "recurring_transaction_templates",
+        occ.template_id,
+        { is_active: false, updated_at: now },
+        now
       );
     }
   });
