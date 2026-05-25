@@ -64,19 +64,38 @@ function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
  * constrained scroll body lets the user reach every field (top fields included)
  * instead of the whole drawer translating off-screen and drag-to-scroll firing
  * the dismiss gesture.
+ *
+ * `safeArea` reserves the device home-indicator inset at the bottom of the
+ * scroll. Pass `safeArea={false}` when a `DrawerFooter` follows the body — the
+ * footer is the bottom-most element and already reserves the inset, so leaving
+ * it on the body would double the padding.
  */
-function DrawerBody({ className, ...props }: React.ComponentProps<"div">) {
+function DrawerBody({
+  className,
+  safeArea = true,
+  ...props
+}: React.ComponentProps<"div"> & { safeArea?: boolean }) {
   return (
     <div
       data-slot="drawer-body"
-      className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-4", MOBILE_SHEET_SAFE_AREA_CLASS, className)}
+      className={cn(
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4",
+        safeArea && MOBILE_SHEET_SAFE_AREA_CLASS,
+        className,
+      )}
       {...props}
     />
   );
 }
 
 function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="drawer-footer" className={cn("mt-auto flex shrink-0 flex-col gap-2 p-4", className)} {...props} />;
+  return (
+    <div
+      data-slot="drawer-footer"
+      className={cn("mt-auto flex shrink-0 flex-col gap-2 p-4", MOBILE_SHEET_SAFE_AREA_CLASS, className)}
+      {...props}
+    />
+  );
 }
 
 function DrawerTitle({ className, ...props }: React.ComponentProps<typeof DrawerPrimitive.Title>) {

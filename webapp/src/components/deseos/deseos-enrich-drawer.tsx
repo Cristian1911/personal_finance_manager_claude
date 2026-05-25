@@ -10,10 +10,9 @@ import {
   Drawer,
   DrawerContent,
   DrawerHeader,
+  DrawerBody,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
-import { cn } from "@/lib/utils";
 
 type DeseosEnrichDrawerProps = {
   item: ScoredWishlistItem;
@@ -95,16 +94,11 @@ export function DeseosEnrichDrawer({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>Completar: {item.name}</DrawerTitle>
-        </DrawerHeader>
-        <form
-          onSubmit={handleSubmit}
-          className={cn(
-            "min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4",
-            MOBILE_SHEET_SAFE_AREA_CLASS,
-          )}
-        >
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DrawerHeader>
+            <DrawerTitle>Completar: {item.name}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody className="space-y-5">
           {/* Why */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
@@ -256,6 +250,7 @@ export function DeseosEnrichDrawer({
           >
             {isPending ? "Guardando..." : "Guardar y evaluar"}
           </Button>
+          </DrawerBody>
         </form>
       </DrawerContent>
     </Drawer>
