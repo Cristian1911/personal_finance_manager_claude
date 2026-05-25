@@ -62,36 +62,38 @@ export function StatementSummaryCard({
         )}
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-          {statement.summary && (
-            <>
-              <div>
-                <p className="text-muted-foreground text-xs">Saldo anterior</p>
-                <p className="font-medium">
-                  {fmt(statement.summary.previous_balance)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Abonos</p>
-                <p className="font-medium text-z-income">
-                  {fmt(statement.summary.total_credits)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Cargos</p>
-                <p className="font-medium text-z-debt">
-                  {fmt(statement.summary.total_debits)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Saldo final</p>
-                <p className="font-medium">
-                  {fmt(statement.summary.final_balance)}
-                </p>
-              </div>
-            </>
-          )}
-        </div>
+        {/* Loans are metadata-only: previous_balance/credits/debits come back
+            null and final_balance just duplicates Saldo capital, so the
+            transactional summary block is empty noise. The loan_metadata grid
+            below carries the real figures. */}
+        {statement.statement_type !== "loan" && statement.summary && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div>
+              <p className="text-muted-foreground text-xs">Saldo anterior</p>
+              <p className="font-medium">
+                {fmt(statement.summary.previous_balance)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Abonos</p>
+              <p className="font-medium text-z-income">
+                {fmt(statement.summary.total_credits)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Cargos</p>
+              <p className="font-medium text-z-debt">
+                {fmt(statement.summary.total_debits)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Saldo final</p>
+              <p className="font-medium">
+                {fmt(statement.summary.final_balance)}
+              </p>
+            </div>
+          </div>
+        )}
         {statement.credit_card_metadata && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm mt-3 pt-3 border-t">
             {statement.credit_card_metadata.credit_limit != null && (
@@ -145,7 +147,9 @@ export function StatementSummaryCard({
           </div>
         )}
         {statement.loan_metadata && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm mt-3 pt-3 border-t">
+          // No top divider for loans — the transactional summary block above is
+          // suppressed, so this grid sits directly under the header.
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
             {statement.loan_metadata.loan_number && (
               <div>
                 <p className="text-muted-foreground text-xs">Obligación</p>

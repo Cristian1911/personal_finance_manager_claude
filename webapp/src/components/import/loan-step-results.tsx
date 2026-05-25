@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils/currency";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { WizardActionBar } from "./wizard-action-bar";
-import { DiffRow } from "./snapshot-diff-row";
+import { LoanEvolution } from "./loan-evolution";
 import type { ImportResult } from "@/types/import";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -77,8 +77,6 @@ export function LoanStepResults({
     };
   })();
 
-  const hasEvolution = (update?.diffs.length ?? 0) > 0;
-
   return (
     <div className="space-y-6">
       {/* Hero */}
@@ -111,17 +109,12 @@ export function LoanStepResults({
               : "Cambios respecto al extracto anterior."}
           </p>
           <div className="mt-3">
-            {hasEvolution ? (
-              <div className="space-y-0.5">
-                {update.diffs.map((diff) => (
-                  <DiffRow key={diff.field} diff={diff} currency={currency} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-z-sage-dark">
-                Sin cambios respecto al anterior.
-              </p>
-            )}
+            <LoanEvolution
+              diffs={update.diffs}
+              isFirstImport={update.isFirstImport}
+              currency={currency}
+              emptyLabel="Sin cambios respecto al anterior."
+            />
           </div>
         </section>
       )}
