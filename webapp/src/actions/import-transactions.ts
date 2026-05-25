@@ -572,11 +572,12 @@ async function processStatementMeta(params: {
   skipped: number;
   statementMeta?: StatementMetaForImport[];
   details: string[];
-}): Promise<AccountUpdateResult[]> {
+}): Promise<{ accountUpdates: AccountUpdateResult[]; errors: number }> {
   const { supabase, userId, imported, skipped, statementMeta, details } = params;
   const accountUpdates: AccountUpdateResult[] = [];
+  let errors = 0;
 
-  if (!statementMeta || statementMeta.length === 0) return accountUpdates;
+  if (!statementMeta || statementMeta.length === 0) return { accountUpdates, errors };
 
   const uniqueAccountIds = [...new Set(statementMeta.map((m) => m.accountId))];
   const { data: accountRows } = await supabase
@@ -729,6 +730,19 @@ async function processStatementMeta(params: {
           .eq("id", existingSnapshot.id)
       : await supabase.from("statement_snapshots").insert(snapshotRow);
 
+    // Handle the snapshot failure immediately — BEFORE mutating pendingBalances
+    // or writing the account. Otherwise we'd leave a partial state (account
+    // balance updated with no matching snapshot) and leak this currency's entry
+    // into other statements of the same account in the payload.
+    if (snapshotError) {
+      errors++;
+      const accountName = accountMap.get(meta.accountId)?.name ?? meta.accountId;
+      details.push(
+        `No se pudo aplicar el extracto de ${accountName} (${meta.currency}): ${snapshotError.message}`,
+      );
+      continue;
+    }
+
     const currencyEntry: Record<string, number | null> = {};
     if (meta.creditCardMetadata) {
       const cc = meta.creditCardMetadata;
@@ -816,17 +830,16 @@ async function processStatementMeta(params: {
       .eq("user_id", userId)
       .eq("id", meta.accountId);
 
-    // If either write failed, the statement wasn't applied. Skip pushing a
-    // phantom accountUpdate (and the recurring sync below) so callers don't
-    // treat a silently-failed import as success — e.g. the email-queue clear
-    // gate, which for metadata-only loan imports relies solely on
-    // accountUpdates.length as the success signal.
-    if (snapshotError || accountError) {
+    // The account write failed (snapshot already succeeded). Count it as an
+    // error and skip the phantom accountUpdate + recurring sync, so callers
+    // don't treat a failed import as success — e.g. the email-queue clear gate
+    // and the per-statement errors counter, which for metadata-only loan
+    // imports are the only success signal.
+    if (accountError) {
+      errors++;
       const accountName = account?.name ?? meta.accountId;
       details.push(
-        `No se pudo aplicar el extracto de ${accountName} (${meta.currency}): ${
-          (snapshotError ?? accountError)!.message
-        }`,
+        `No se pudo aplicar el extracto de ${accountName} (${meta.currency}): ${accountError.message}`,
       );
       continue;
     }
@@ -865,7 +878,7 @@ async function processStatementMeta(params: {
     }
   }
 
-  return accountUpdates;
+  return { accountUpdates, errors };
 }
 
 export async function importTransactions(
@@ -1133,7 +1146,7 @@ export async function importTransactions(
     details.push(`${adjustmentsExcluded} ajuste(s) manual(es) reemplazado(s) por transacciones del extracto`);
   }
 
-  const accountUpdates = await processStatementMeta({
+  const { accountUpdates, errors: metaErrors } = await processStatementMeta({
     supabase,
     userId: user.id,
     imported,
@@ -1141,6 +1154,9 @@ export async function importTransactions(
     statementMeta: normalizedStatementMeta,
     details,
   });
+  // Snapshot/account write failures must surface in the result so the email
+  // queue isn't cleared on a failed import and the results screen reports it.
+  errors += metaErrors;
 
   // Ensure occurrence rows are generated for any newly created/updated templates
   await ensureCurrentOccurrences();
