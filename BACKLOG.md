@@ -107,6 +107,7 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
   - Submit button uses `BRASS_BUTTON_CLASS` (brass + `text-z-ink`, per token rule).
 - **Deferred / follow-ups:**
   - Tags picker inline (today requires entity id; `TagZonePicker` needs a "pending tags" mode). Users add tags via transaction detail after save.
+  - **[P2] Evolve the inline tag system** (deferred 2026-05-25): inline tag create is name+group only. When this is reworked, reuse `DestinatarioCreateForm` (`components/destinatarios/destinatario-create-form.tsx`) as the template — a seeded, responsive create surface with chip-based composition + on-demand test. The destinatario-from-transaction wizard shipped 2026-05-25 (tx detail + list rows + import review); tags should follow the same pattern.
   - Cuenta + Fecha paired side-by-side (reverted — layout clipped at narrow viewports; stacked stays).
   - Missing `htmlFor` on DatePicker / CategoryZonePicker / DestinatarioZonePicker labels (sub-components don't expose `id`; a11y gap is loose labeling only).
   - Desktop `TransactionFormDialog` (unchanged — out of scope per user decision).
