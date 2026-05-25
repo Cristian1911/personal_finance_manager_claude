@@ -132,7 +132,7 @@ export function DestinatarioCreateForm({
   }
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="w-full min-w-0 space-y-4">
       {!state.success && state.error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {state.error}
@@ -230,9 +230,9 @@ export function DestinatarioCreateForm({
                 {testResult.samples.map((s) => (
                   <li
                     key={s.id}
-                    className="flex justify-between gap-2 text-xs text-muted-foreground"
+                    className="flex min-w-0 justify-between gap-2 text-xs text-muted-foreground"
                   >
-                    <span className="truncate">{s.rawDescription}</span>
+                    <span className="min-w-0 flex-1 truncate">{s.rawDescription}</span>
                     <span className="shrink-0 tabular-nums">
                       {formatCurrency(s.amount, s.currencyCode as CurrencyCode)}
                     </span>

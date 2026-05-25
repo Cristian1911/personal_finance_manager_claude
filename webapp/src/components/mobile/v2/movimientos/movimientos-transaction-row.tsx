@@ -240,6 +240,11 @@ export function MovimientosTransactionRow({
             selectedName={localDestinatario?.name}
             variant="drawer"
             compact
+            categories={categories}
+            rawDescription={tx.raw_description}
+            merchantName={tx.merchant_name}
+            amount={tx.amount}
+            currencyCode={tx.currency_code as CurrencyCode}
             triggerClassName={cn(
               "rounded-full text-[10px] h-auto py-1 px-2.5 font-medium",
               localDestinatario
