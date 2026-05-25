@@ -93,7 +93,7 @@ export function DestinatarioCreateForm({
   // Keep the latest onCreated without retriggering the success effect when the
   // parent passes a fresh inline callback each render.
   const onCreatedRef = React.useRef(onCreated);
-  React.useLayoutEffect(() => {
+  React.useEffect(() => {
     onCreatedRef.current = onCreated;
   });
 
