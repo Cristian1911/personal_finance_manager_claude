@@ -289,6 +289,11 @@ export function StepReview({
       const destinatarioId = destMatch?.id ?? null;
       const merchantName = destMatch?.name ?? null;
 
+      let categorizationSource: "USER_LEARNED" | "USER_OVERRIDE" | undefined;
+      if (categoryId) {
+        categorizationSource = destinatarioId ? "USER_LEARNED" : "USER_OVERRIDE";
+      }
+
       return {
         import_key: `${row.stmtIdx}:${row.txIdx}`,
         account_id: row.accountId,
@@ -298,11 +303,7 @@ export function StepReview({
         transaction_date: row.tx.date,
         raw_description: row.tx.description,
         category_id: categoryId,
-        categorization_source: categoryId
-          ? destinatarioId
-            ? "USER_LEARNED"
-            : "USER_OVERRIDE"
-          : undefined,
+        categorization_source: categorizationSource,
         categorization_confidence: categoryId && destinatarioId ? 0.8 : null,
         installment_current: row.tx.installment_current,
         installment_total: row.tx.installment_total,
