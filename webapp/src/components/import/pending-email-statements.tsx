@@ -209,50 +209,59 @@ export function PendingEmailStatements({
 
             return (
               <div key={stmt.id} className="px-6 py-4 space-y-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/5">
                     <FileText className="size-4 text-muted-foreground" />
                   </div>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {stmt.original_filename ?? "extracto.pdf"}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                      <span>{formatRelativeDate(stmt.created_at)}</span>
-                      {stmt.file_size_bytes && (
-                        <>
-                          <span>·</span>
-                          <span>{formatFileSize(stmt.file_size_bytes)}</span>
-                        </>
+                  {/* Filename + meta share a row with the status pill on wide
+                      screens; on mobile the pill drops below so the filename
+                      isn't crushed to "Ex..." by the pill's intrinsic width. */}
+                  <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {stmt.original_filename ?? "extracto.pdf"}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                        <span className="whitespace-nowrap">
+                          {formatRelativeDate(stmt.created_at)}
+                        </span>
+                        {stmt.file_size_bytes && (
+                          <>
+                            <span>·</span>
+                            <span className="whitespace-nowrap">
+                              {formatFileSize(stmt.file_size_bytes)}
+                            </span>
+                          </>
+                        )}
+                        {stmt.from_address && (
+                          <>
+                            <span>·</span>
+                            <span className="min-w-0 truncate">{stmt.from_address}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div
+                      className={cn(
+                        "flex w-fit max-w-full shrink-0 items-center gap-1.5 self-start rounded-full border px-2.5 py-1 text-xs font-medium",
+                        config.className,
                       )}
-                      {stmt.from_address && (
-                        <>
-                          <span>·</span>
-                          <span className="truncate">{stmt.from_address}</span>
-                        </>
+                    >
+                      <StatusIcon
+                        className={cn(
+                          "size-3 shrink-0",
+                          stmt.status === "parsing" && "animate-spin",
+                        )}
+                      />
+                      <span className="truncate">{config.label}</span>
+                      {statementsCount != null && (
+                        <span className="whitespace-nowrap text-muted-foreground">
+                          · {statementsCount} {statementsCount === 1 ? "extracto" : "extractos"}
+                        </span>
                       )}
                     </div>
-                  </div>
-
-                  <div
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
-                      config.className,
-                    )}
-                  >
-                    <StatusIcon
-                      className={cn(
-                        "size-3",
-                        stmt.status === "parsing" && "animate-spin",
-                      )}
-                    />
-                    {config.label}
-                    {statementsCount != null && (
-                      <span className="text-muted-foreground">
-                        · {statementsCount} {statementsCount === 1 ? "extracto" : "extractos"}
-                      </span>
-                    )}
                   </div>
                 </div>
 
