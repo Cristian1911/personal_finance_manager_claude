@@ -114,12 +114,14 @@ export function StepReview({
 
   // Auto-match + in-review overrides combined; overrides win.
   const mergedDestMap = useMemo(() => {
+    if (destOverrides.size === 0) return destMap;
     const merged = new Map(destMap);
     for (const [key, value] of destOverrides) merged.set(key, value);
     return merged;
   }, [destMap, destOverrides]);
 
   const mergedCatMap = useMemo(() => {
+    if (catOverrides.size === 0) return catMap;
     const merged = new Map(catMap);
     for (const [key, value] of catOverrides) merged.set(key, value);
     return merged;
@@ -470,6 +472,7 @@ export function StepReview({
           if (!tx) return null;
           return (
             <DestinatarioCreateDialog
+              key={`${destDialogTarget.stmtIdx}-${destDialogTarget.txIdx}`}
               open
               onOpenChange={(o) => {
                 if (!o) setDestDialogTarget(null);

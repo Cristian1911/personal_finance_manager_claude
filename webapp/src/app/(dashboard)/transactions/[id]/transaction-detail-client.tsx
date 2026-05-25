@@ -187,6 +187,7 @@ export function TransactionDetailClient({
   const [titleLocked, setTitleLocked] = useState<boolean>(tx.title_locked ?? false);
   const [titleEditing, setTitleEditing] = useState(false);
   const [titleDirty, setTitleDirty] = useState(false);
+  const [, startTitleSave] = useTransition();
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   function handleTitleOpen() {
@@ -194,20 +195,22 @@ export function TransactionDetailClient({
     requestAnimationFrame(() => titleInputRef.current?.focus());
   }
 
-  async function handleTitleBlur() {
+  function handleTitleBlur() {
     setTitleEditing(false);
     if (!titleDirty) return;
     const next = title.trim();
-    const result = await updateTransactionTitle(tx.id, next || null);
-    if (result.success) {
-      setTitleDirty(false);
-      setTitleLocked(next.length > 0);
-      toast.success("Título actualizado");
-    } else {
-      setTitle(titleFallback);
-      setTitleDirty(false);
-      toast.error(result.error ?? "No se pudo guardar el título");
-    }
+    startTitleSave(async () => {
+      const result = await updateTransactionTitle(tx.id, next || null);
+      if (result.success) {
+        setTitleDirty(false);
+        setTitleLocked(next.length > 0);
+        toast.success("Título actualizado");
+      } else {
+        setTitle(titleFallback);
+        setTitleDirty(false);
+        toast.error(result.error ?? "No se pudo guardar el título");
+      }
+    });
   }
 
   /* ─── Optimistic destinatario ────────────────────────────────────── */
