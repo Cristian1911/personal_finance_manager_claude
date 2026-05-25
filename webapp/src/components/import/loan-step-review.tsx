@@ -248,7 +248,10 @@ export function LoanStepReview({
             {accountId && (
               <>
                 <SectionDivider label="Cambios desde el mes anterior" />
-                <div className="rounded-2xl border border-white/6 bg-z-surface-2/65 p-4">
+                <div
+                  className="rounded-2xl border border-white/6 bg-z-surface-2/65 p-4"
+                  aria-live="polite"
+                >
                   <LoanEvolution
                     diffs={evolutionDiffs}
                     isFirstImport={isFirstImport}

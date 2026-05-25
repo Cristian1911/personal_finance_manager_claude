@@ -38,7 +38,7 @@ export function DiffRow({
   return (
     <div className="flex items-center justify-between py-0.5 text-xs">
       <span className="text-z-sage-dark">{diff.field}</span>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 tabular-nums">
         {diff.previousValue !== null && (
           <>
             <span className="text-z-sage-dark">{fmt(diff.previousValue)}</span>
