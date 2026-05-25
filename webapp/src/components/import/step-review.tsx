@@ -24,6 +24,8 @@ import { CreateAccountDialog } from "./create-account-dialog";
 import { ParsedTransactionTable } from "./parsed-transaction-table";
 import { AccountAssignControl } from "./account-assign-control";
 import { WizardActionBar } from "./wizard-action-bar";
+import { DestinatarioCreateDialog } from "@/components/destinatarios/destinatario-create-form";
+import { useCategories } from "@/components/providers/app-data-provider";
 import { computeInstallmentGroupId } from "@/lib/utils/idempotency";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { cn } from "@/lib/utils";
@@ -77,6 +79,22 @@ export function StepReview({
     return initial;
   });
 
+  const categories = useCategories();
+  // Destinatarios created during review (keyed `${stmtIdx}-${txIdx}`). These
+  // override the page-loaded auto-match, which can't know about new ones.
+  const [destOverrides, setDestOverrides] = useState<
+    Map<string, { id: string; name: string }>
+  >(new Map());
+  // Category from a destinatario created in-review (its default_category_id),
+  // so the imported row gets categorized — the auto-match catMap can't know it.
+  const [catOverrides, setCatOverrides] = useState<Map<string, string | null>>(
+    new Map(),
+  );
+  const [destDialogTarget, setDestDialogTarget] = useState<{
+    stmtIdx: number;
+    txIdx: number;
+  } | null>(null);
+
   const { destMap, catMap } = useMemo(() => {
     const prepared = prepareDestinatarioRules(destinatarioRules);
     const dest = new Map<string, { id: string; name: string }>();
@@ -93,6 +111,41 @@ export function StepReview({
     });
     return { destMap: dest, catMap: cat };
   }, [parseResult, destinatarioRules]);
+
+  // Auto-match + in-review overrides combined; overrides win.
+  const mergedDestMap = useMemo(() => {
+    const merged = new Map(destMap);
+    for (const [key, value] of destOverrides) merged.set(key, value);
+    return merged;
+  }, [destMap, destOverrides]);
+
+  const mergedCatMap = useMemo(() => {
+    const merged = new Map(catMap);
+    for (const [key, value] of catOverrides) merged.set(key, value);
+    return merged;
+  }, [catMap, catOverrides]);
+
+  function openDestDialog(stmtIdx: number, txIdx: number) {
+    setDestDialogTarget({ stmtIdx, txIdx });
+  }
+
+  function handleDestinatarioCreated(dest: {
+    id: string;
+    name: string;
+    defaultCategoryId: string | null;
+  }) {
+    if (!destDialogTarget) return;
+    const key = `${destDialogTarget.stmtIdx}-${destDialogTarget.txIdx}`;
+    setDestOverrides((prev) =>
+      new Map(prev).set(key, { id: dest.id, name: dest.name }),
+    );
+    // Apply the destinatario's default category to this row if it has one and
+    // the row isn't already categorized by auto-match.
+    if (dest.defaultCategoryId && !catMap.get(key)) {
+      setCatOverrides((prev) => new Map(prev).set(key, dest.defaultCategoryId));
+    }
+    setDestDialogTarget(null);
+  }
 
   const [prevMappings, setPrevMappings] = useState(mappings);
   if (mappings !== prevMappings) {
@@ -229,8 +282,8 @@ export function StepReview({
 
     return rows.map((row, i) => {
       const key = `${row.stmtIdx}-${row.txIdx}`;
-      const categoryId = catMap.get(key) ?? null;
-      const destMatch = destMap.get(key);
+      const categoryId = mergedCatMap.get(key) ?? null;
+      const destMatch = mergedDestMap.get(key);
       const destinatarioId = destMatch?.id ?? null;
       const merchantName = destMatch?.name ?? null;
 
@@ -348,6 +401,8 @@ export function StepReview({
           onToggleExpanded={(idx) =>
             setExpandedStatement((p) => (p === idx ? null : idx))
           }
+          destinatarioMap={mergedDestMap}
+          onCreateDestinatario={openDestDialog}
         />
       ) : (
         parseResult.statements.map((stmt, idx) => {
@@ -393,6 +448,9 @@ export function StepReview({
               currencies={accountCurrencies}
               primaryCurrency={primaryCurrency}
               onPrimaryCurrencyChange={(c) => updatePrimaryCurrency(accountId, c)}
+              stmtIdx={idx}
+              destinatarioMap={mergedDestMap}
+              onCreateDestinatario={(txIdx) => openDestDialog(idx, txIdx)}
             />
           );
         })
@@ -404,6 +462,27 @@ export function StepReview({
         onOpenChange={setDialogOpen}
         onCreated={handleAccountCreated}
       />
+
+      {destDialogTarget &&
+        (() => {
+          const stmt = parseResult.statements[destDialogTarget.stmtIdx];
+          const tx = stmt?.transactions[destDialogTarget.txIdx];
+          if (!tx) return null;
+          return (
+            <DestinatarioCreateDialog
+              open
+              onOpenChange={(o) => {
+                if (!o) setDestDialogTarget(null);
+              }}
+              categories={categories}
+              rawDescription={tx.description}
+              amount={tx.original_amount ?? tx.amount}
+              currencyCode={stmt.currency as CurrencyCode}
+              onCreated={handleDestinatarioCreated}
+              onCancel={() => setDestDialogTarget(null)}
+            />
+          );
+        })()}
 
       <WizardActionBar>
         <Button variant="outline" onClick={onBack}>
@@ -493,6 +572,9 @@ function StatementBlock({
   currencies,
   primaryCurrency,
   onPrimaryCurrencyChange,
+  stmtIdx,
+  destinatarioMap,
+  onCreateDestinatario,
 }: {
   stmt: ParseResponse["statements"][number];
   accounts: Account[];
@@ -511,6 +593,9 @@ function StatementBlock({
   currencies: string[];
   primaryCurrency: string;
   onPrimaryCurrencyChange: (c: string) => void;
+  stmtIdx: number;
+  destinatarioMap: Map<string, { id: string; name: string }>;
+  onCreateDestinatario: (txIdx: number) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -572,6 +657,9 @@ function StatementBlock({
             selected={selections}
             onToggle={onToggleTransaction}
             onToggleAll={onToggleAll}
+            stmtIdx={stmtIdx}
+            destinatarioMap={destinatarioMap}
+            onCreateDestinatario={onCreateDestinatario}
           />
         )}
       </div>
@@ -593,6 +681,8 @@ function MultiCreditCardGroup({
   onToggleAll,
   expandedStatement,
   onToggleExpanded,
+  destinatarioMap,
+  onCreateDestinatario,
 }: {
   statements: ParseResponse["statements"];
   mappings: StatementAccountMapping[];
@@ -607,6 +697,8 @@ function MultiCreditCardGroup({
   onToggleAll: (stmtIdx: number) => void;
   expandedStatement: number | null;
   onToggleExpanded: (stmtIdx: number) => void;
+  destinatarioMap: Map<string, { id: string; name: string }>;
+  onCreateDestinatario: (stmtIdx: number, txIdx: number) => void;
 }) {
   const firstMapping = mappings[0];
   const accountId = firstMapping?.accountId ?? "";
@@ -693,6 +785,9 @@ function MultiCreditCardGroup({
                     selected={sel}
                     onToggle={(txIdx) => onToggleTransaction(idx, txIdx)}
                     onToggleAll={() => onToggleAll(idx)}
+                    stmtIdx={idx}
+                    destinatarioMap={destinatarioMap}
+                    onCreateDestinatario={(txIdx) => onCreateDestinatario(idx, txIdx)}
                   />
                 </div>
               )}

@@ -45,7 +45,11 @@ export interface DestinatarioCreateSeed {
 export interface DestinatarioCreateFormProps extends DestinatarioCreateSeed {
   categories: CategoryWithChildren[];
   /** Called with the created destinatario; caller handles assignment + close. */
-  onCreated: (dest: { id: string; name: string }) => void;
+  onCreated: (dest: {
+    id: string;
+    name: string;
+    defaultCategoryId: string | null;
+  }) => void;
   onCancel: () => void;
 }
 
@@ -87,7 +91,13 @@ export function DestinatarioCreateForm({
   }
 
   React.useEffect(() => {
-    if (state.success) onCreated({ id: state.data.id, name: state.data.name });
+    if (state.success) {
+      onCreated({
+        id: state.data.id,
+        name: state.data.name,
+        defaultCategoryId: state.data.default_category_id ?? null,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 

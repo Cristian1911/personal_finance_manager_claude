@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
+import { UserPlus, UserRound } from "lucide-react";
 import type { CurrencyCode, CategoryWithChildren } from "@/types/domain";
 import type { ParsedTransaction } from "@/types/import";
 
@@ -27,6 +28,38 @@ interface Props {
   categoryMap?: Map<string, string | null>;
   stmtIdx?: number;
   onCategoryChange?: (txIdx: number, categoryId: string | null) => void;
+  /** Keyed `${stmtIdx}-${txIdx}` → assigned destinatario (auto-matched or created here). */
+  destinatarioMap?: Map<string, { id: string; name: string }>;
+  /** Open the seeded create form for a parsed row. */
+  onCreateDestinatario?: (txIdx: number) => void;
+}
+
+/** A row's assigned-destinatario chip, or a "create" button when unassigned. */
+function DestinatarioCell({
+  name,
+  onCreate,
+}: {
+  name: string | null;
+  onCreate: () => void;
+}) {
+  if (name) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-z-brass/12 px-2 py-0.5 text-[11px] font-medium text-z-brass">
+        <UserRound className="size-3" />
+        {name}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onCreate}
+      className="inline-flex items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-z-brass"
+    >
+      <UserPlus className="size-3" />
+      Destinatario
+    </button>
+  );
 }
 
 function getCategoryName(
@@ -62,6 +95,8 @@ function MobileList({
   categoryMap,
   stmtIdx,
   onCategoryChange,
+  destinatarioMap,
+  onCreateDestinatario,
 }: Props) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const allSelected =
@@ -69,6 +104,8 @@ function MobileList({
   const someSelected = selected.size > 0 && !allSelected;
   const showCategories =
     categories && categoryMap && stmtIdx !== undefined && onCategoryChange;
+  const showDestinatarios =
+    destinatarioMap && stmtIdx !== undefined && onCreateDestinatario;
 
   return (
     <div className="rounded-md border sm:hidden">
@@ -183,6 +220,17 @@ function MobileList({
                       />
                     </div>
                   )}
+                  {showDestinatarios && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        Destinatario:
+                      </span>
+                      <DestinatarioCell
+                        name={destinatarioMap.get(`${stmtIdx}-${i}`)?.name ?? null}
+                        onCreate={() => onCreateDestinatario(i)}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -203,12 +251,16 @@ function DesktopTable({
   categoryMap,
   stmtIdx,
   onCategoryChange,
+  destinatarioMap,
+  onCreateDestinatario,
 }: Props) {
   const allSelected =
     transactions.length > 0 && selected.size === transactions.length;
   const someSelected = selected.size > 0 && !allSelected;
   const showCategories =
     categories && categoryMap && stmtIdx !== undefined && onCategoryChange;
+  const showDestinatarios =
+    destinatarioMap && stmtIdx !== undefined && onCreateDestinatario;
 
   return (
     <div className="hidden sm:block rounded-md border overflow-x-auto">
@@ -225,6 +277,7 @@ function DesktopTable({
             <TableHead>Fecha</TableHead>
             <TableHead>Descripción</TableHead>
             {showCategories && <TableHead>Categoría</TableHead>}
+            {showDestinatarios && <TableHead>Destinatario</TableHead>}
             <TableHead>Tipo</TableHead>
             <TableHead>Cuotas</TableHead>
             <TableHead className="text-right">Monto</TableHead>
@@ -263,6 +316,14 @@ function DesktopTable({
                       onValueChange={(v) => onCategoryChange(i, v)}
                       direction={tx.direction}
                       triggerClassName="w-full sm:w-[180px] h-8 text-xs"
+                    />
+                  </TableCell>
+                )}
+                {showDestinatarios && (
+                  <TableCell>
+                    <DestinatarioCell
+                      name={destinatarioMap.get(`${stmtIdx}-${i}`)?.name ?? null}
+                      onCreate={() => onCreateDestinatario(i)}
                     />
                   </TableCell>
                 )}
