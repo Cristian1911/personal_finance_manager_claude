@@ -119,7 +119,13 @@ export default async function ImportPage() {
         pendingStatements={pendingStatements}
         initialVaultSuggestions={vaultSuggestions}
         mobileAboutPanel={
-          <details className="group lg:hidden rounded-2xl border border-white/6 bg-z-surface-2/55">
+          // Keyed because this element is created here but rendered as a
+          // sibling in an array inside ImportPageClient (next to the keyed
+          // PendingEmailStatements). Cross-render prop-elements don't get
+          // React's static-children validation, so without a key React emits
+          // "Each child in a list should have a unique key" attributed to this
+          // owner (ImportPage) / ImportPageClient's render.
+          <details key="import-about" className="group lg:hidden rounded-2xl border border-white/6 bg-z-surface-2/55">
             <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium text-z-sage-light marker:content-none [&::-webkit-details-marker]:hidden">
               Más sobre este flujo
               <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />

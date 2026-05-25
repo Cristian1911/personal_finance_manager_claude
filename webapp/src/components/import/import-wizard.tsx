@@ -20,6 +20,8 @@ import { StepUpload } from "./step-upload";
 import { StepReview } from "./step-review";
 import { ReconciliationStep } from "./reconciliation-step";
 import { StepResults } from "./step-results";
+import { LoanStepReview } from "./loan-step-review";
+import { LoanStepResults } from "./loan-step-results";
 import { trackClientEvent } from "@/lib/utils/analytics";
 import { accountMaskSuffixMatches, normalizeAccountMaskSuffix } from "@/lib/utils/account-mask";
 import { useHideTabBar } from "@/components/mobile/v2/tab-bar-visibility-provider";
@@ -27,10 +29,18 @@ import { cn } from "@/lib/utils";
 
 type Step = "upload" | "review" | "reconcile" | "results";
 
-const STEPS: { key: Step; label: string }[] = [
+// Standard (credit-card / savings) flow: transaction-centric, includes reconcile.
+const STANDARD_STEPS: { key: Step; label: string }[] = [
   { key: "upload", label: "Subir" },
   { key: "review", label: "Revisar" },
   { key: "reconcile", label: "Reconciliar" },
+  { key: "results", label: "Listo" },
+];
+
+// Loan flow: metadata-only, no movimientos to select or reconcile.
+const LOAN_STEPS: { key: Step; label: string }[] = [
+  { key: "upload", label: "Subir" },
+  { key: "review", label: "Confirmar" },
   { key: "results", label: "Listo" },
 ];
 
@@ -39,6 +49,13 @@ const STEP_DESCRIPTIONS: Record<Step, string> = {
   review: "Confirma la cuenta destino. Categorías y destinatarios se asignan en silencio.",
   reconcile: "Resuelve duplicados y ambigüedades. Cada chip abre el detalle.",
   results: "Qué entró, qué se saltó, y qué necesita seguimiento.",
+};
+
+const LOAN_STEP_DESCRIPTIONS: Record<Step, string> = {
+  upload: "Sube tu extracto. Detectamos el banco automáticamente.",
+  review: "Confirma el préstamo destino. Aplicamos saldo, cuota y tasa al estado.",
+  reconcile: "",
+  results: "Cómo evolucionó tu préstamo desde el extracto anterior.",
 };
 
 export function ImportWizard({
@@ -77,8 +94,19 @@ export function ImportWizard({
     useState<ReconciliationPreviewResult | null>(null);
   const activeEmailStatementIdRef = useRef<string | null>(pendingEmailStatementId ?? null);
 
-  const currentIndex = STEPS.findIndex((s) => s.key === step);
-  const currentStep = STEPS[currentIndex];
+  // Loan path: every parsed statement is a loan. Loan statements are
+  // metadata-only (no movimientos), so we mount a lean confirm flow and skip
+  // the reconcile step. Mixed PDFs (loan + credit card) fall back to the
+  // standard flow, which already renders loan summary cards.
+  const isLoanOnly =
+    !!parseResult &&
+    parseResult.statements.length > 0 &&
+    parseResult.statements.every((s) => s.statement_type === "loan");
+
+  const steps = isLoanOnly ? LOAN_STEPS : STANDARD_STEPS;
+  const stepDescriptions = isLoanOnly ? LOAN_STEP_DESCRIPTIONS : STEP_DESCRIPTIONS;
+  const currentIndex = steps.findIndex((s) => s.key === step);
+  const currentStep = steps[currentIndex];
 
   useEffect(() => {
     onStepChange?.(step);
@@ -200,7 +228,15 @@ export function ImportWizard({
     const emailId = activeEmailStatementIdRef.current;
     // Clear the queue row once the user completes the flow without errors.
     // Skipped-only still counts: the statement's data is already in the system.
-    if (emailId && result.errors === 0 && (result.imported > 0 || result.skipped > 0)) {
+    // accountUpdates>0 covers metadata-only imports (loans, savings with no new
+    // tx) where imported=skipped=0 but the statement was applied to the account.
+    if (
+      emailId &&
+      result.errors === 0 &&
+      (result.imported > 0 ||
+        result.skipped > 0 ||
+        (result.accountUpdates?.length ?? 0) > 0)
+    ) {
       activeEmailStatementIdRef.current = null;
       void markEmailPdfStatementImported(emailId).then((res) => {
         if (res.success) {
@@ -246,20 +282,26 @@ export function ImportWizard({
       <section className="space-y-3 lg:overflow-hidden lg:rounded-3xl lg:border lg:border-white/6 lg:bg-z-surface-2/65 lg:p-6 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
-            Paso {currentIndex + 1} de {STEPS.length}
+            Paso {currentIndex + 1} de {steps.length}
           </p>
           <h2 className="mt-0.5 text-lg font-semibold tracking-tight text-z-white lg:text-2xl">
-            {currentStep.label}
+            {currentStep?.label}
           </h2>
         </div>
 
         <p className="hidden text-sm leading-6 text-z-sage-light lg:block">
-          {STEP_DESCRIPTIONS[step]}
+          {stepDescriptions[step]}
         </p>
 
-        {/* Single progress indicator: 4 pill-bars on mobile, labelled cards on desktop */}
-        <nav aria-label="Progreso" className="flex items-center gap-1.5 lg:grid lg:grid-cols-4 lg:gap-2">
-          {STEPS.map((s, i) => {
+        {/* Single progress indicator: pill-bars on mobile, labelled cards on desktop */}
+        <nav
+          aria-label="Progreso"
+          className={cn(
+            "flex items-center gap-1.5 lg:grid lg:gap-2",
+            isLoanOnly ? "lg:grid-cols-3" : "lg:grid-cols-4",
+          )}
+        >
+          {steps.map((s, i) => {
             const done = i < currentIndex;
             const active = i === currentIndex;
             return (
@@ -310,7 +352,19 @@ export function ImportWizard({
             initialVaultSuggestions={initialVaultSuggestions}
           />
         )}
-        {step === "review" && parseResult && (
+        {step === "review" && parseResult && isLoanOnly && (
+          <LoanStepReview
+            parseResult={parseResult}
+            accounts={accountsList}
+            mappings={mappings}
+            captureMethod={pendingEmailStatementId ? "EMAIL_PDF_IMPORT" : "PDF_IMPORT"}
+            onMappingsChange={setMappings}
+            onComplete={handleImportComplete}
+            onBack={() => setStep("upload")}
+            onAccountCreated={handleAccountCreated}
+          />
+        )}
+        {step === "review" && parseResult && !isLoanOnly && (
           <StepReview
             parseResult={parseResult}
             accounts={accountsList}
@@ -333,7 +387,14 @@ export function ImportWizard({
             onBack={() => setStep("review")}
           />
         )}
-        {step === "results" && importResult && (
+        {step === "results" && importResult && isLoanOnly && (
+          <LoanStepResults
+            result={importResult}
+            currency={(parseResult?.statements[0]?.currency ?? "COP") as CurrencyCode}
+            onReset={handleReset}
+          />
+        )}
+        {step === "results" && importResult && !isLoanOnly && (
           <StepResults
             result={importResult}
             currency={(parseResult?.statements[0]?.currency ?? "COP") as CurrencyCode}
