@@ -2766,6 +2766,7 @@ export type Database = {
           secondary_category_id: string | null
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[] | null
+          title_locked: boolean
           transaction_date: string
           transaction_time: string | null
           transfer_group_id: string | null
@@ -2813,6 +2814,7 @@ export type Database = {
           secondary_category_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
+          title_locked?: boolean
           transaction_date: string
           transaction_time?: string | null
           transfer_group_id?: string | null
@@ -2860,6 +2862,7 @@ export type Database = {
           secondary_category_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
+          title_locked?: boolean
           transaction_date?: string
           transaction_time?: string | null
           transfer_group_id?: string | null
@@ -2981,6 +2984,7 @@ export type Database = {
           secondary_category_id: string | null
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[] | null
+          title_locked: boolean
           transaction_date: string
           transaction_time: string | null
           transfer_group_id: string | null
@@ -3028,6 +3032,7 @@ export type Database = {
           secondary_category_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
+          title_locked?: boolean
           transaction_date: string
           transaction_time?: string | null
           transfer_group_id?: string | null
@@ -3075,6 +3080,7 @@ export type Database = {
           secondary_category_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[] | null
+          title_locked?: boolean
           transaction_date?: string
           transaction_time?: string | null
           transfer_group_id?: string | null
