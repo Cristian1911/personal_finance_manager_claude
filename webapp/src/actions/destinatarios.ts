@@ -436,7 +436,7 @@ export async function createDestinatario(
     const lowerPatterns = patterns.map((pattern) => pattern.toLowerCase());
     const { data: unmatchedTxs, error: unmatchedTxsError } = await supabase
       .from("transactions")
-      .select("id, raw_description, category_id")
+      .select("id, raw_description, category_id, title_locked")
       .eq("user_id", user.id)
       .is("destinatario_id", null)
       .not("raw_description", "is", null)
@@ -452,6 +452,8 @@ export async function createDestinatario(
     } else if (unmatchedTxs && unmatchedTxs.length > 0) {
       const matchingIds: string[] = [];
       const uncategorizedIds: string[] = [];
+      // Matches whose title is NOT user-locked — only these may be renamed.
+      const renameIds: string[] = [];
 
       for (const tx of unmatchedTxs) {
         const cleaned = cleanDescription(tx.raw_description ?? "").toLowerCase();
@@ -464,18 +466,27 @@ export async function createDestinatario(
         ) {
           matchingIds.push(tx.id);
           if (!tx.category_id) uncategorizedIds.push(tx.id);
+          if (!tx.title_locked) renameIds.push(tx.id);
         }
       }
 
       if (matchingIds.length > 0) {
         await supabase
           .from("transactions")
-          .update({
-            destinatario_id: data.id,
-            merchant_name: data.name,
-          })
+          .update({ destinatario_id: data.id })
           .eq("user_id", user.id)
           .in("id", matchingIds);
+
+        if (renameIds.length > 0) {
+          const { error: renameError } = await supabase
+            .from("transactions")
+            .update({ merchant_name: data.name })
+            .eq("user_id", user.id)
+            .in("id", renameIds);
+          if (renameError) {
+            console.error("Error renaming linked transactions:", renameError);
+          }
+        }
 
         if (parsed.data.default_category_id && uncategorizedIds.length > 0) {
           await supabase
@@ -1149,14 +1160,21 @@ export async function bulkLinkToDestinatario(
   // Link all selected transactions
   const { error: linkError, count: linkedCount } = await supabase
     .from("transactions")
-    .update({
-      destinatario_id: destinatarioId,
-      merchant_name: dest.name,
-    }, { count: "exact" })
+    .update({ destinatario_id: destinatarioId }, { count: "exact" })
     .eq("user_id", user.id)
     .in("id", transactionIds);
 
   if (linkError) return { success: false, error: linkError.message };
+
+  // Rename only transactions whose title the user hasn't locked.
+  const { error: renameError } = await supabase
+    .from("transactions")
+    .update({ merchant_name: dest.name })
+    .eq("user_id", user.id)
+    .in("id", transactionIds)
+    .eq("title_locked", false);
+
+  if (renameError) return { success: false, error: renameError.message };
 
   // If destinatario has default category, apply to uncategorized transactions
   let categorized = 0;
@@ -1348,17 +1366,24 @@ export async function applyDestinatarioRules(
     return { success: true, data: { linked: 0, categorized: 0 } };
   }
 
-  // Bulk update: set destinatario_id + merchant_name
+  // Bulk update: link all matches, but rename only transactions whose title
+  // the user hasn't locked (preserve user-edited titles).
   const { error: linkError } = await supabase
     .from("transactions")
-    .update({
-      destinatario_id: destinatarioId,
-      merchant_name: dest.name,
-    })
+    .update({ destinatario_id: destinatarioId })
     .eq("user_id", user.id)
     .in("id", matchingIds);
 
   if (linkError) return { success: false, error: linkError.message };
+
+  const { error: renameError } = await supabase
+    .from("transactions")
+    .update({ merchant_name: dest.name })
+    .eq("user_id", user.id)
+    .in("id", matchingIds)
+    .eq("title_locked", false);
+
+  if (renameError) return { success: false, error: renameError.message };
 
   // Apply default category to uncategorized matches if available
   let categorized = 0;

@@ -7,6 +7,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { extractPattern, matchDestinatario, prepareDestinatarioRules } from "@zeta/shared";
 import { fetchDestinatarioRules } from "./destinatarios";
 import { uuidStr } from "@/lib/validators/shared";
+import { shouldOverwriteTitle } from "@/lib/utils/title-overwrite";
 import { z } from "zod";
 import type { ActionResult } from "@/types/actions";
 import type { TransactionWithAccount } from "@/types/domain";
@@ -424,7 +425,8 @@ export async function bulkCategorize(
  */
 export async function assignDestinatario(
   transactionId: string,
-  destinatarioId: string
+  destinatarioId: string,
+  overwriteTitle = false
 ): Promise<ActionResult> {
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
@@ -433,7 +435,7 @@ export async function assignDestinatario(
   const [txResult, destResult] = await Promise.all([
     supabase
       .from("transactions")
-      .select("raw_description, category_id")
+      .select("raw_description, category_id, title_locked")
       .eq("user_id", user.id)
       .eq("id", transactionId)
       .single(),
@@ -455,16 +457,20 @@ export async function assignDestinatario(
     return { success: false, error: "Destinatario no encontrado" };
   }
 
-  // 3. Build update payload
+  // 3. Build update payload. merchant_name is the display title — preserve a
+  // user-locked title unless the caller explicitly opted into replacing it.
   const updatePayload: {
     destinatario_id: string;
-    merchant_name: string;
+    merchant_name?: string;
     category_id?: string;
     categorization_source?: "USER_LEARNED";
   } = {
     destinatario_id: destinatarioId,
-    merchant_name: dest.name,
   };
+
+  if (shouldOverwriteTitle({ titleLocked: tx.title_locked ?? false, overwriteTitle })) {
+    updatePayload.merchant_name = dest.name;
+  }
 
   // If the destinatario has a default category and the transaction has none, apply it
   if (dest.default_category_id && !tx.category_id) {

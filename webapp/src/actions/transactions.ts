@@ -1061,6 +1061,34 @@ export async function updateTransactionNotes(
   return { success: true, data: undefined };
 }
 
+export async function updateTransactionTitle(
+  id: string,
+  title: string | null,
+): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const normalized = title?.trim() ? title.trim() : null;
+  if (normalized && normalized.length > 200) {
+    return { success: false, error: "El título es demasiado largo (máx 200 caracteres)" };
+  }
+
+  // merchant_name is the display title. title_locked records that the user set
+  // it so destinatario auto-assign won't clobber it. Clearing the title (null)
+  // also unlocks → the row falls back to clean_description and can be
+  // re-normalised by future matches.
+  const { error } = await supabase
+    .from("transactions")
+    .update({ merchant_name: normalized, title_locked: normalized !== null })
+    .eq("user_id", user.id)
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+
+  updateTag("transactions");
+  return { success: true, data: undefined };
+}
+
 export async function deleteTransaction(id: string): Promise<ActionResult> {
   const { supabase, user } = await getAuthenticatedClient();
 
