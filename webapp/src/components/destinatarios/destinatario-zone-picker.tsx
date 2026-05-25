@@ -76,7 +76,11 @@ export function DestinatarioZonePicker({
   amount,
   currencyCode,
 }: DestinatarioZonePickerProps) {
-  const seeded = Boolean(categories && (rawDescription || merchantName));
+  // When categories are provided, "Crear nuevo" opens the full seeded form
+  // (token chips when seed text exists, otherwise a plain rich form). The bare
+  // name+pattern mini-form remains only as the fallback for callers that don't
+  // pass categories.
+  const seeded = Boolean(categories);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
