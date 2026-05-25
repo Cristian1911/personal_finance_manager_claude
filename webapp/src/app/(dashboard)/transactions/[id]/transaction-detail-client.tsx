@@ -13,6 +13,7 @@ import {
   Eye,
   Link2,
   MapPin,
+  Pencil,
   Plus,
   Repeat,
   Tag,
@@ -26,6 +27,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
 import {
+  BRASS_BUTTON_CLASS,
   DESTRUCTIVE_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   SECTION_EYEBROW_CLASS,
@@ -55,6 +57,7 @@ import {
   getTransactionLocation,
   toggleExcludeTransaction,
   updateTransactionNotes,
+  updateTransactionTitle,
 } from "@/actions/transactions";
 import { removeTagFromEntity } from "@/actions/tags";
 import {
@@ -178,29 +181,73 @@ export function TransactionDetailClient({
     });
   }
 
+  /* ─── Editable title ─────────────────────────────────────────────── */
+  const titleFallback = tx.merchant_name || tx.clean_description || "";
+  const [title, setTitle] = useState(titleFallback);
+  const [titleLocked, setTitleLocked] = useState<boolean>(tx.title_locked ?? false);
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [titleDirty, setTitleDirty] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+
+  function handleTitleOpen() {
+    setTitleEditing(true);
+    requestAnimationFrame(() => titleInputRef.current?.focus());
+  }
+
+  async function handleTitleBlur() {
+    setTitleEditing(false);
+    if (!titleDirty) return;
+    const next = title.trim();
+    const result = await updateTransactionTitle(tx.id, next || null);
+    if (result.success) {
+      setTitleDirty(false);
+      setTitleLocked(next.length > 0);
+      toast.success("Título actualizado");
+    } else {
+      setTitle(titleFallback);
+      setTitleDirty(false);
+      toast.error(result.error ?? "No se pudo guardar el título");
+    }
+  }
+
   /* ─── Optimistic destinatario ────────────────────────────────────── */
   const [optDestId, setOptDestId] = useState<string | null>(tx.destinatario_id);
   const [optDestName, setOptDestName] = useState<string | null>(currentDestinatarioName);
   const [destOpen, setDestOpen] = useState(false);
   const [, startDestTransition] = useTransition();
+  // When the user has a locked (manually edited) title, assigning a destinatario
+  // whose name differs prompts before replacing the title.
+  const [pendingAssign, setPendingAssign] = useState<{ id: string; name: string } | null>(null);
 
-  function handleDestSelect(id: string | null, name: string | null) {
+  function runAssign(id: string, name: string | null, overwriteTitle: boolean) {
     const prevId = optDestId;
     const prevName = optDestName;
     setOptDestId(id);
     setOptDestName(name);
-    setDestOpen(false);
-    if (!id) return;
     startDestTransition(async () => {
-      const result = await assignDestinatario(tx.id, id);
+      const result = await assignDestinatario(tx.id, id, overwriteTitle);
       if (result.success) {
         toast.success(`Destinatario: ${name}`);
+        if (overwriteTitle && name) {
+          setTitle(name);
+          setTitleLocked(true);
+        }
       } else {
         setOptDestId(prevId);
         setOptDestName(prevName);
         toast.error(result.error ?? "No se pudo asignar destinatario");
       }
     });
+  }
+
+  function handleDestSelect(id: string | null, name: string | null) {
+    setDestOpen(false);
+    if (!id) return;
+    if (titleLocked && name && name !== title) {
+      setPendingAssign({ id, name });
+      return;
+    }
+    runAssign(id, name, false);
   }
 
   /* ─── Tags — optimistic add/remove ────────────────────────────────── */
@@ -365,9 +412,38 @@ export function TransactionDetailClient({
           )}
         </div>
 
-        <h1 className="mt-2 text-lg font-semibold text-z-white">
-          {tx.merchant_name || tx.clean_description || "Transacción"}
-        </h1>
+        {titleEditing ? (
+          <input
+            ref={titleInputRef}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setTitleDirty(true);
+            }}
+            onBlur={handleTitleBlur}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                titleInputRef.current?.blur();
+              }
+            }}
+            maxLength={200}
+            placeholder="Título de la transacción"
+            className="mt-2 w-full border-b border-z-brass/40 bg-transparent text-lg font-semibold text-z-white outline-none placeholder:text-muted-foreground focus:border-z-brass"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={handleTitleOpen}
+            aria-label="Editar título"
+            className="group mt-2 flex items-center gap-1.5 text-left"
+          >
+            <h1 className="text-lg font-semibold text-z-white">
+              {title || "Transacción"}
+            </h1>
+            <Pencil className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
+        )}
 
         <p
           className={cn(
@@ -740,6 +816,45 @@ export function TransactionDetailClient({
           isPending={isLinkingPending}
         />
       )}
+
+      {/* ── Replace-title confirm (locked title + differing destinatario) ── */}
+      <Dialog
+        open={!!pendingAssign}
+        onOpenChange={(open) => {
+          if (!open) setPendingAssign(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Actualizar el título?</DialogTitle>
+            <DialogDescription>
+              Reemplazar el título «{title}» por «{pendingAssign?.name}».
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              className={GHOST_BUTTON_CLASS}
+              onClick={() => {
+                if (pendingAssign) runAssign(pendingAssign.id, pendingAssign.name, false);
+                setPendingAssign(null);
+              }}
+            >
+              Mantener título
+            </Button>
+            <Button
+              type="button"
+              className={cn(BRASS_BUTTON_CLASS, "font-semibold")}
+              onClick={() => {
+                if (pendingAssign) runAssign(pendingAssign.id, pendingAssign.name, true);
+                setPendingAssign(null);
+              }}
+            >
+              Reemplazar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Delete confirm ────────────────────────────────────────── */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

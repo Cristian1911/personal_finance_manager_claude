@@ -54,7 +54,7 @@ function DestinatarioCell({
     <button
       type="button"
       onClick={onCreate}
-      className="inline-flex items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-z-brass"
+      className="inline-flex items-center gap-1 rounded-full border border-white/6 bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-z-brass"
     >
       <UserPlus className="size-3" />
       Destinatario

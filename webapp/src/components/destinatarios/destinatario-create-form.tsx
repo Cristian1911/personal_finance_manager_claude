@@ -170,14 +170,14 @@ export function DestinatarioCreateForm({
                   "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
                   selected.includes(token)
                     ? "border-z-brass/30 bg-z-brass/10 text-z-brass"
-                    : "border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
+                    : "border-white/6 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
                 )}
               >
                 {token}
               </button>
             ))}
             {amount != null && currencyCode && (
-              <span className="rounded-full border border-white/8 bg-white/[0.02] px-2.5 py-1 text-[11px] text-muted-foreground/70">
+              <span className="rounded-full border border-white/6 bg-white/[0.02] px-2.5 py-1 text-[11px] text-muted-foreground/70">
                 {formatCurrency(amount, currencyCode)}
               </span>
             )}
@@ -196,8 +196,8 @@ export function DestinatarioCreateForm({
           />
           <Button
             type="button"
-            variant="outline"
             size="icon"
+            className={GHOST_BUTTON_CLASS}
             onClick={handleTest}
             disabled={!patterns.trim() || isTesting}
             title="Probar patrón"
@@ -213,7 +213,7 @@ export function DestinatarioCreateForm({
           Toca las palabras de esta transacción para crear patrones de detección.
         </p>
         {testResult && (
-          <div className="space-y-2 rounded-lg border border-z-border-strong bg-z-surface-2 p-3">
+          <div className="space-y-2 rounded-lg border border-white/6 bg-z-surface-2 p-3">
             <p className="text-xs font-medium">
               {testResult.matchCount === 0
                 ? "Sin coincidencias en transacciones sin asignar"
