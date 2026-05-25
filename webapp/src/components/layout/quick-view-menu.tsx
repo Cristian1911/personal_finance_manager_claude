@@ -30,6 +30,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerHeader,
+  DrawerBody,
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useCloseOnNavigate } from "@/hooks/use-close-on-navigate";
@@ -114,9 +115,9 @@ export function QuickViewMenu({ profile }: QuickViewMenuProps) {
           <DrawerHeader className="sr-only">
             <DrawerTitle>Vista rápida</DrawerTitle>
           </DrawerHeader>
-          <div className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <DrawerBody className="px-0">
             {content}
-          </div>
+          </DrawerBody>
         </DrawerContent>
       </Drawer>
     </>

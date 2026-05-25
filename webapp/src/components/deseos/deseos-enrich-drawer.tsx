@@ -100,7 +100,10 @@ export function DeseosEnrichDrawer({
         </DrawerHeader>
         <form
           onSubmit={handleSubmit}
-          className={cn("overflow-y-auto space-y-5 px-4", MOBILE_SHEET_SAFE_AREA_CLASS)}
+          className={cn(
+            "min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4",
+            MOBILE_SHEET_SAFE_AREA_CLASS,
+          )}
         >
           {/* Why */}
           <div className="space-y-1.5">

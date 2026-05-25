@@ -8,6 +8,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerHeader,
+  DrawerBody,
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
@@ -83,7 +84,7 @@ export function LinkPickerSheet({
           <DrawerDescription>{subtitle}</DrawerDescription>
         </DrawerHeader>
 
-        <div className="px-4 pb-2">
+        <div className="shrink-0 px-4 pb-2">
           <Input
             placeholder="Buscar..."
             value={search}
@@ -92,7 +93,7 @@ export function LinkPickerSheet({
           />
         </div>
 
-        <div className="max-h-[50vh] overflow-y-auto px-4">
+        <DrawerBody className="px-4">
           {filtered.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
               No se encontraron coincidencias
@@ -166,7 +167,7 @@ export function LinkPickerSheet({
               </div>
             </button>
           )}
-        </div>
+        </DrawerBody>
 
         <DrawerFooter>
           <Button

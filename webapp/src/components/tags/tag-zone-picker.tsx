@@ -13,6 +13,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerHeader,
+  DrawerBody,
   DrawerTitle,
 } from "@/components/ui/drawer";
 import {
@@ -415,9 +416,9 @@ export function TagZonePicker({
               Etiquetas
             </DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <DrawerBody className="px-2">
             {body}
-          </div>
+          </DrawerBody>
         </DrawerContent>
       </Drawer>
     </>
