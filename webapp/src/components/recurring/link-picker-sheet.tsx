@@ -8,13 +8,14 @@ import {
   Drawer,
   DrawerContent,
   DrawerHeader,
+  DrawerBody,
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { BRASS_BUTTON_CLASS, MOBILE_SHEET_SAFE_AREA_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
 export interface LinkCandidate {
@@ -77,13 +78,13 @@ export function LinkPickerSheet({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className={MOBILE_SHEET_SAFE_AREA_CLASS}>
+      <DrawerContent>
         <DrawerHeader className="text-left">
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerDescription>{subtitle}</DrawerDescription>
         </DrawerHeader>
 
-        <div className="px-4 pb-2">
+        <div className="shrink-0 px-4 pb-2">
           <Input
             placeholder="Buscar..."
             value={search}
@@ -92,7 +93,7 @@ export function LinkPickerSheet({
           />
         </div>
 
-        <div className="max-h-[50vh] overflow-y-auto px-4">
+        <DrawerBody safeArea={false}>
           {filtered.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
               No se encontraron coincidencias
@@ -166,7 +167,7 @@ export function LinkPickerSheet({
               </div>
             </button>
           )}
-        </div>
+        </DrawerBody>
 
         <DrawerFooter>
           <Button

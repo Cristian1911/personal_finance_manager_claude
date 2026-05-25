@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { cn } from "@/lib/utils";
+import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
 
 function Drawer({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
   return <DrawerPrimitive.Root data-slot="drawer" {...props} />;
@@ -37,7 +38,7 @@ function DrawerContent({ className, children, ...props }: React.ComponentProps<t
       <DrawerPrimitive.Content
         data-slot="drawer-content"
         className={cn(
-          "bg-background fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[85dvh] flex-col rounded-t-2xl border-t",
+          "bg-background fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t",
           className
         )}
         {...props}
@@ -50,11 +51,51 @@ function DrawerContent({ className, children, ...props }: React.ComponentProps<t
 }
 
 function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="drawer-header" className={cn("flex flex-col gap-1.5 px-4 pb-2", className)} {...props} />;
+  return <div data-slot="drawer-header" className={cn("flex shrink-0 flex-col gap-1.5 px-4 pb-2", className)} {...props} />;
+}
+
+/**
+ * Scrollable body for a Drawer. Owns the single internal scroll surface so the
+ * header (and an optional DrawerFooter) stay pinned while content scrolls.
+ *
+ * `min-h-0 flex-1` is required: without it the body refuses to shrink below its
+ * content height, so it never scrolls internally. When the soft keyboard opens,
+ * vaul shrinks the drawer and pins it above the keyboard — only a properly
+ * constrained scroll body lets the user reach every field (top fields included)
+ * instead of the whole drawer translating off-screen and drag-to-scroll firing
+ * the dismiss gesture.
+ *
+ * `safeArea` reserves the device home-indicator inset at the bottom of the
+ * scroll. Pass `safeArea={false}` when a `DrawerFooter` follows the body — the
+ * footer is the bottom-most element and already reserves the inset, so leaving
+ * it on the body would double the padding.
+ */
+function DrawerBody({
+  className,
+  safeArea = true,
+  ...props
+}: React.ComponentProps<"div"> & { safeArea?: boolean }) {
+  return (
+    <div
+      data-slot="drawer-body"
+      className={cn(
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4",
+        safeArea && MOBILE_SHEET_SAFE_AREA_CLASS,
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="drawer-footer" className={cn("mt-auto flex flex-col gap-2 p-4", className)} {...props} />;
+  return (
+    <div
+      data-slot="drawer-footer"
+      className={cn("mt-auto flex shrink-0 flex-col gap-2 p-4", MOBILE_SHEET_SAFE_AREA_CLASS, className)}
+      {...props}
+    />
+  );
 }
 
 function DrawerTitle({ className, ...props }: React.ComponentProps<typeof DrawerPrimitive.Title>) {
@@ -65,4 +106,4 @@ function DrawerDescription({ className, ...props }: React.ComponentProps<typeof 
   return <DrawerPrimitive.Description data-slot="drawer-description" className={cn("text-muted-foreground text-sm", className)} {...props} />;
 }
 
-export { Drawer, DrawerTrigger, DrawerClose, DrawerContent, DrawerHeader, DrawerFooter, DrawerTitle, DrawerDescription, DrawerOverlay, DrawerPortal };
+export { Drawer, DrawerTrigger, DrawerClose, DrawerContent, DrawerHeader, DrawerBody, DrawerFooter, DrawerTitle, DrawerDescription, DrawerOverlay, DrawerPortal };

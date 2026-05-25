@@ -17,6 +17,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerHeader,
+  DrawerBody,
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
@@ -31,7 +32,6 @@ import { tokenizeDescription } from "@/lib/utils/tokenize-description";
 import { formatCurrency } from "@/lib/utils/currency";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
-import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
 import type { ActionResult } from "@/types/actions";
 import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
@@ -313,9 +313,9 @@ export function DestinatarioCreateDialog({
           </DrawerTitle>
           <DrawerDescription>{description}</DrawerDescription>
         </DrawerHeader>
-        <div className={cn("overflow-y-auto px-4", MOBILE_SHEET_SAFE_AREA_CLASS)}>
+        <DrawerBody>
           <DestinatarioCreateForm {...formProps} />
-        </div>
+        </DrawerBody>
       </DrawerContent>
     </Drawer>
   );
