@@ -721,15 +721,13 @@ async function processStatementMeta(params: {
       : existingQuery.is("period_to", null);
     const { data: existingSnapshot } = await existingQuery.maybeSingle();
 
-    if (existingSnapshot) {
-      await supabase
-        .from("statement_snapshots")
-        .update(snapshotRow)
-        .eq("user_id", userId)
-        .eq("id", existingSnapshot.id);
-    } else {
-      await supabase.from("statement_snapshots").insert(snapshotRow);
-    }
+    const { error: snapshotError } = existingSnapshot
+      ? await supabase
+          .from("statement_snapshots")
+          .update(snapshotRow)
+          .eq("user_id", userId)
+          .eq("id", existingSnapshot.id)
+      : await supabase.from("statement_snapshots").insert(snapshotRow);
 
     const currencyEntry: Record<string, number | null> = {};
     if (meta.creditCardMetadata) {
@@ -812,7 +810,26 @@ async function processStatementMeta(params: {
 
     accountUpdate.currency_balances = balances;
 
-    await supabase.from("accounts").update(accountUpdate).eq("user_id", userId).eq("id", meta.accountId);
+    const { error: accountError } = await supabase
+      .from("accounts")
+      .update(accountUpdate)
+      .eq("user_id", userId)
+      .eq("id", meta.accountId);
+
+    // If either write failed, the statement wasn't applied. Skip pushing a
+    // phantom accountUpdate (and the recurring sync below) so callers don't
+    // treat a silently-failed import as success — e.g. the email-queue clear
+    // gate, which for metadata-only loan imports relies solely on
+    // accountUpdates.length as the success signal.
+    if (snapshotError || accountError) {
+      const accountName = account?.name ?? meta.accountId;
+      details.push(
+        `No se pudo aplicar el extracto de ${accountName} (${meta.currency}): ${
+          (snapshotError ?? accountError)!.message
+        }`,
+      );
+      continue;
+    }
 
     const diffs = computeSnapshotDiffs(prevSnapshot, snapshotRow);
     accountUpdates.push({

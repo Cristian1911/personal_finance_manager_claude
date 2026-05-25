@@ -20,8 +20,11 @@ const STATEMENT_TYPE_LABELS: Record<string, string> = {
 
 export function StatementSummaryCard({
   statement,
+  hideTransactionCount = false,
 }: {
   statement: ParsedStatement;
+  /** Loan statements are metadata-only — the "N transacciones" footer is always 0 and misleading. */
+  hideTransactionCount?: boolean;
 }) {
   const currency = statement.currency as CurrencyCode;
   const fmt = (n: number | null) =>
@@ -201,9 +204,11 @@ export function StatementSummaryCard({
             )}
           </div>
         )}
-        <p className="text-xs text-muted-foreground mt-3">
-          {statement.transactions.length} transacciones encontradas
-        </p>
+        {!hideTransactionCount && (
+          <p className="text-xs text-muted-foreground mt-3">
+            {statement.transactions.length} transacciones encontradas
+          </p>
+        )}
       </CardContent>
     </Card>
   );
