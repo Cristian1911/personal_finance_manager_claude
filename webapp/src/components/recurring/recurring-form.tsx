@@ -495,6 +495,7 @@ export function RecurringForm({
           value={destinatarioId}
           onValueChange={(id) => setDestinatarioId(id)}
           placeholder="Vincular a un destinatario"
+          categories={categories}
         />
         <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
         <p className="text-xs text-muted-foreground">

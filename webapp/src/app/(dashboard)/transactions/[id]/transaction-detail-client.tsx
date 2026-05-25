@@ -204,6 +204,9 @@ export function TransactionDetailClient({
       if (result.success) {
         setTitleDirty(false);
         setTitleLocked(next.length > 0);
+        // Cleared title → DB falls back to clean_description; match it locally
+        // so the UI doesn't flash the generic placeholder until reload.
+        if (!next) setTitle(tx.clean_description || "");
         toast.success("Título actualizado");
       } else {
         setTitle(titleFallback);

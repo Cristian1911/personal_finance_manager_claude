@@ -341,6 +341,8 @@ export function MobileTransactionForm({
               selectedName={destinatarioSelectedName}
               placeholder="Elegir o crear destinatario"
               triggerClassName="w-full"
+              categories={categories}
+              merchantName={merchantName}
             />
             <input type="hidden" name="destinatario_id" value={destinatarioId ?? ""} />
           </div>

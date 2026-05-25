@@ -532,6 +532,10 @@ export function InicioActivity({ transactions }: InicioActivityProps) {
           selectedName={nestedPickerTx.destinatario_name}
           onValueChange={handleAssignDestinatario}
           variant="drawer"
+          categories={categories}
+          rawDescription={nestedPickerTx.description}
+          amount={nestedPickerTx.amount}
+          currencyCode={nestedPickerTx.currency_code}
         />
       )}
       {nestedPickerTx && nestedPicker?.kind === "tags" && (

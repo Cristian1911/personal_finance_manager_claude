@@ -76,8 +76,15 @@ export function DestinatarioZonePicker({
   amount,
   currencyCode,
 }: DestinatarioZonePickerProps) {
-  const seeded = Boolean(categories && (rawDescription || merchantName));
+  // When categories are provided, "Crear nuevo" opens the full seeded form
+  // (token chips when seed text exists, otherwise a plain rich form). The bare
+  // name+pattern mini-form remains only as the fallback for callers that don't
+  // pass categories.
+  const seeded = Boolean(categories);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  // Carries the typed search term into the create form's Nombre field, since
+  // closing the picker clears `search`.
+  const [dialogPrefillName, setDialogPrefillName] = useState<string | undefined>(undefined);
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -129,6 +136,7 @@ export function DestinatarioZonePicker({
   // Seeded: open the rich create form. Unseeded: legacy quick-create / mini-form.
   function openCreate(prefillName?: string) {
     if (seeded) {
+      setDialogPrefillName(prefillName);
       setOpen(false);
       setShowCreateDialog(true);
     } else if (prefillName) {
@@ -330,7 +338,7 @@ export function DestinatarioZonePicker({
         onOpenChange={setShowCreateDialog}
         categories={categories}
         rawDescription={rawDescription}
-        merchantName={merchantName}
+        merchantName={merchantName || dialogPrefillName}
         amount={amount}
         currencyCode={currencyCode}
         onCreated={(d) => {
