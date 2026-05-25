@@ -467,6 +467,11 @@ export function TransactionDetailClient({
             hideTrigger
             controlledOpen={destOpen}
             onControlledOpenChange={setDestOpen}
+            categories={categories}
+            rawDescription={tx.raw_description}
+            merchantName={tx.merchant_name}
+            amount={tx.amount}
+            currencyCode={tx.currency_code as CurrencyCode}
           />
         </div>
 

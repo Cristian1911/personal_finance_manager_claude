@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -22,11 +23,12 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateTime } from "@/lib/utils/date";
 import { toggleExcludeTransaction } from "@/actions/transactions";
-import { categorizeTransaction, uncategorizeTransaction } from "@/actions/categorize";
+import { categorizeTransaction, uncategorizeTransaction, assignDestinatario } from "@/actions/categorize";
+import { DestinatarioCreateDialog } from "@/components/destinatarios/destinatario-create-form";
 import { toast } from "sonner";
-import type { TransactionWithAccount, Category, CategoryWithChildren } from "@/types/domain";
+import type { TransactionWithAccount, Category, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, FileText } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, FileText, UserPlus } from "lucide-react";
 import { flattenCategories } from "@/lib/utils/categories";
 
 export function TransactionTable({
@@ -67,7 +69,7 @@ export function TransactionTable({
       {/* Mobile: card layout */}
       <div className="sm:hidden space-y-2">
         {transactions.map((tx) => (
-          <MobileTransactionCard key={tx.id} tx={tx} categoryMap={categoryMap} />
+          <MobileTransactionCard key={tx.id} tx={tx} categoryMap={categoryMap} categories={categories} />
         ))}
       </div>
 
@@ -97,12 +99,77 @@ export function TransactionTable({
   );
 }
 
+/** Row action: create a destinatario seeded from this transaction, then assign
+ *  it. Only rendered when the transaction has no destinatario yet. */
+function CreateDestinatarioAction({
+  tx,
+  categories,
+  className,
+}: {
+  tx: TransactionWithAccount;
+  categories: CategoryWithChildren[];
+  className?: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [, startTransition] = useTransition();
+
+  if (tx.destinatario_id) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Crear destinatario"
+        title="Crear destinatario"
+        className={cn(
+          "inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-z-brass",
+          className,
+        )}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(true);
+        }}
+      >
+        <UserPlus className="size-4" />
+      </button>
+      {open && (
+        <DestinatarioCreateDialog
+          open={open}
+          onOpenChange={setOpen}
+          categories={categories}
+          rawDescription={tx.raw_description}
+          merchantName={tx.merchant_name}
+          amount={tx.amount}
+          currencyCode={tx.currency_code as CurrencyCode}
+          onCreated={(d) => {
+            setOpen(false);
+            startTransition(async () => {
+              const result = await assignDestinatario(tx.id, d.id);
+              if (result.success) {
+                toast.success(`Destinatario "${d.name}" creado y asignado`);
+                router.refresh();
+              } else {
+                toast.error(result.error ?? "No se pudo asignar el destinatario");
+              }
+            });
+          }}
+          onCancel={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
 function MobileTransactionCard({
   tx,
   categoryMap,
+  categories,
 }: {
   tx: TransactionWithAccount;
   categoryMap: Map<string, Category>;
+  categories: CategoryWithChildren[];
 }) {
   const description =
     tx.merchant_name ||
@@ -112,9 +179,12 @@ function MobileTransactionCard({
   const category = tx.category_id ? categoryMap.get(tx.category_id) : null;
 
   return (
-    <Link href={`/transactions/${tx.id}`}>
-      <div
-        className={cn("flex items-center gap-3 rounded-lg border p-3", tx.is_excluded && "opacity-40")}
+    <div
+      className={cn("flex items-center gap-3 rounded-lg border p-3", tx.is_excluded && "opacity-40")}
+    >
+      <Link
+        href={`/transactions/${tx.id}`}
+        className="flex min-w-0 flex-1 items-center gap-3"
       >
         <div className="shrink-0">
           {tx.direction === "INFLOW" ? (
@@ -152,14 +222,15 @@ function MobileTransactionCard({
             {tx.is_excluded && <span> · Excluida</span>}
           </p>
         </div>
-        <span
-          className={cn("text-sm font-semibold shrink-0", tx.direction === "INFLOW" && "text-green-600", tx.is_excluded && "line-through")}
-        >
-          {tx.direction === "INFLOW" ? "+" : "-"}
-          {formatCurrency(tx.amount, tx.currency_code)}
-        </span>
-      </div>
-    </Link>
+      </Link>
+      <span
+        className={cn("text-sm font-semibold shrink-0", tx.direction === "INFLOW" && "text-green-600", tx.is_excluded && "line-through")}
+      >
+        {tx.direction === "INFLOW" ? "+" : "-"}
+        {formatCurrency(tx.amount, tx.currency_code)}
+      </span>
+      <CreateDestinatarioAction tx={tx} categories={categories} className="shrink-0" />
+    </div>
   );
 }
 
@@ -245,30 +316,33 @@ function TransactionRow({
         </span>
       </TableCell>
       <TableCell>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleToggleExclude}
-                disabled={isPending}
-              >
-                {tx.is_excluded ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {tx.is_excluded
-                ? "Incluir en cálculos"
-                : "Excluir de cálculos"}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center justify-end gap-0.5">
+          <CreateDestinatarioAction tx={tx} categories={categories} />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleToggleExclude}
+                  disabled={isPending}
+                >
+                  {tx.is_excluded ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {tx.is_excluded
+                  ? "Incluir en cálculos"
+                  : "Excluir de cálculos"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </TableCell>
     </TableRow>
   );

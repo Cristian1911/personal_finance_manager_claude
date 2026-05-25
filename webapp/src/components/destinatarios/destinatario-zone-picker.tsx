@@ -25,6 +25,8 @@ import { GHOST_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/st
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { createDestinatario, getRecentDestinatarios, addDestinatarioRule } from "@/actions/destinatarios";
+import { DestinatarioCreateDialog } from "@/components/destinatarios/destinatario-create-form";
+import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
 import { toast } from "sonner";
 
 type DestinatarioOption = {
@@ -48,6 +50,13 @@ interface DestinatarioZonePickerProps {
   onControlledOpenChange?: (open: boolean) => void;
   /** Hide the default trigger button — parent opens via controlledOpen. */
   hideTrigger?: boolean;
+  /** When provided, "Crear nuevo" opens the seeded create form instead of the
+   *  bare name/pattern mini-form. */
+  categories?: CategoryWithChildren[];
+  rawDescription?: string | null;
+  merchantName?: string | null;
+  amount?: number | null;
+  currencyCode?: CurrencyCode | null;
 }
 
 export function DestinatarioZonePicker({
@@ -61,7 +70,14 @@ export function DestinatarioZonePicker({
   controlledOpen,
   onControlledOpenChange,
   hideTrigger = false,
+  categories,
+  rawDescription,
+  merchantName,
+  amount,
+  currencyCode,
 }: DestinatarioZonePickerProps) {
+  const seeded = Boolean(categories && (rawDescription || merchantName));
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -108,6 +124,18 @@ export function DestinatarioZonePicker({
   function handleSelect(dest: DestinatarioOption) {
     onValueChange(dest.id, dest.name);
     setOpen(false);
+  }
+
+  // Seeded: open the rich create form. Unseeded: legacy quick-create / mini-form.
+  function openCreate(prefillName?: string) {
+    if (seeded) {
+      setOpen(false);
+      setShowCreateDialog(true);
+    } else if (prefillName) {
+      handleCreate(prefillName);
+    } else {
+      setCreating(true);
+    }
   }
 
   function handleCreate(name: string, pattern: string | null = null) {
@@ -207,7 +235,7 @@ export function DestinatarioZonePicker({
           <div className="px-3 py-4">
             <button
               type="button"
-              onClick={() => handleCreate(search)}
+              onClick={() => openCreate(search)}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-z-brass transition-colors hover:bg-white/5"
             >
               <Plus className="size-3.5" />
@@ -282,10 +310,7 @@ export function DestinatarioZonePicker({
         ) : (
           <button
             type="button"
-            onClick={() => {
-              if (search) handleCreate(search);
-              else setCreating(true);
-            }}
+            onClick={() => openCreate(search || undefined)}
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-z-brass transition-colors hover:bg-white/5"
           >
             <Plus className="size-3.5" />
@@ -298,18 +323,39 @@ export function DestinatarioZonePicker({
 
   // ── Render ───────────────────────────────────────────────────────────────
 
+  const createDialog =
+    seeded && categories && showCreateDialog ? (
+      <DestinatarioCreateDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        categories={categories}
+        rawDescription={rawDescription}
+        merchantName={merchantName}
+        amount={amount}
+        currencyCode={currencyCode}
+        onCreated={(d) => {
+          onValueChange(d.id, d.name);
+          setShowCreateDialog(false);
+        }}
+        onCancel={() => setShowCreateDialog(false)}
+      />
+    ) : null;
+
   if (variant === "popover") {
     return (
-      <Popover open={open} onOpenChange={setOpen}>
-        {!hideTrigger && <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>}
-        <PopoverContent
-          className="w-[280px] p-0"
-          align="start"
-          sideOffset={8}
-        >
-          {body}
-        </PopoverContent>
-      </Popover>
+      <>
+        <Popover open={open} onOpenChange={setOpen}>
+          {!hideTrigger && <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>}
+          <PopoverContent
+            className="w-[280px] p-0"
+            align="start"
+            sideOffset={8}
+          >
+            {body}
+          </PopoverContent>
+        </Popover>
+        {createDialog}
+      </>
     );
   }
 
@@ -330,6 +376,7 @@ export function DestinatarioZonePicker({
             </div>
           </DialogContent>
         </Dialog>
+        {createDialog}
       </>
     );
   }
@@ -351,6 +398,7 @@ export function DestinatarioZonePicker({
           </div>
         </DrawerContent>
       </Drawer>
+      {createDialog}
     </>
   );
 }
