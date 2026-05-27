@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BRASS_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
@@ -50,6 +51,7 @@ export function RecurringForm({
   accounts,
   categories,
   onSuccess,
+  initialIsSubscription,
 }: {
   template?: RecurringTemplate;
   /** Seed state when creating a new template with known data (e.g. promoting a transaction). Ignored when `template` is present. */
@@ -61,6 +63,8 @@ export function RecurringForm({
   /** Called with the saved template on success. Receives undefined when the
    * action succeeded but didn't return the row (legacy actions). */
   onSuccess?: (template: RecurringTemplate | undefined) => void;
+  /** Whether this template is currently tracked as a subscription. Seeded by the edit page. */
+  initialIsSubscription?: boolean;
 }) {
   const action = template
     ? updateRecurringTemplate.bind(null, template.id)
@@ -71,6 +75,9 @@ export function RecurringForm({
     FormData
   >(
     async (prevState, formData) => {
+      if (formData.get("is_subscription") === "true" && !destinatarioId) {
+        return { success: false, error: "Una suscripción necesita un destinatario." };
+      }
       const result = await action(prevState, formData);
       if (result.success) onSuccess?.(result.data);
       return result;
@@ -99,6 +106,7 @@ export function RecurringForm({
   const [destinatarioId, setDestinatarioId] = useState<string | null>(
     seed?.destinatario_id ?? null
   );
+  const [isSubscription, setIsSubscription] = useState(initialIsSubscription ?? false);
   const [frequency, setFrequency] = useState<string>(
     seed?.frequency ?? "MONTHLY"
   );
@@ -502,6 +510,15 @@ export function RecurringForm({
           Al pagar, la matcher anclará al destinatario antes de comparar por monto — evita que una transferencia del mismo valor se vincule por error.
         </p>
       </div>
+
+      <div className="flex items-center justify-between rounded-lg border border-white/6 bg-z-surface-2 px-3 py-2.5">
+        <div className="space-y-0.5">
+          <Label htmlFor="is_subscription_toggle" className="text-z-sage-light">Es una suscripción</Label>
+          <p className="text-xs text-z-sage-light/60">Spotify, streaming, apps — opcional y cancelable.</p>
+        </div>
+        <Switch id="is_subscription_toggle" checked={isSubscription} onCheckedChange={setIsSubscription} />
+      </div>
+      <input type="hidden" name="is_subscription" value={isSubscription ? "true" : "false"} />
 
       <div className="space-y-2">
         <Label htmlFor="description">Notas</Label>

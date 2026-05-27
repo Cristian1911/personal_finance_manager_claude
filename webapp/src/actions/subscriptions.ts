@@ -166,6 +166,23 @@ export async function updateSubscription(
 }
 
 /**
+ * Returns true if there is an active (non-cancelled, non-dismissed) subscription
+ * linked to the given recurring template.
+ */
+export async function getSubscriptionForTemplate(templateId: string): Promise<boolean> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return false;
+  const { data } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("recurring_template_id", templateId)
+    .not("status", "in", "(cancelled,dismissed)")
+    .maybeSingle();
+  return !!data;
+}
+
+/**
  * Helper called from recurring-templates.ts (Task 5).
  * NOT a form-action target.
  */

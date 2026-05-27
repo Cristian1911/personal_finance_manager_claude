@@ -19,6 +19,7 @@ import {
 } from "@zeta/shared";
 import { addDays, endOfMonth, startOfMonth } from "date-fns";
 import { toISODateString } from "@/lib/utils/date";
+import { upsertSubscriptionFromTemplate } from "@/actions/subscriptions";
 import { z } from "zod";
 import { uuidStr } from "@/lib/validators/shared";
 import type { ActionResult } from "@/types/actions";
@@ -315,6 +316,17 @@ export async function createRecurringTemplate(
   const result = await insertRecurringTemplateFromFormData(formData, user, supabase);
   if (!result.success) return result;
 
+  const isSubscription = formData.get("is_subscription") === "true";
+  if (isSubscription && !result.data.destinatario_id) {
+    return { success: false, error: "Una suscripción necesita un destinatario." };
+  }
+  await upsertSubscriptionFromTemplate(
+    supabase,
+    user.id,
+    { id: result.data.id, destinatario_id: result.data.destinatario_id, currency_code: result.data.currency_code },
+    isSubscription,
+  );
+
   await ensureCurrentOccurrences();
   // Full fan-out: a new template affects charts, budgets, debt projections,
   // and account metrics — not just recurring/occurrences.
@@ -459,6 +471,17 @@ export async function updateRecurringTemplate(
     .single();
 
   if (error) return { success: false, error: error.message };
+
+  const isSubscription = formData.get("is_subscription") === "true";
+  if (isSubscription && !data.destinatario_id) {
+    return { success: false, error: "Una suscripción necesita un destinatario." };
+  }
+  await upsertSubscriptionFromTemplate(
+    supabase,
+    user.id,
+    { id: data.id, destinatario_id: data.destinatario_id, currency_code: data.currency_code },
+    isSubscription,
+  );
 
   await ensureCurrentOccurrences();
 
