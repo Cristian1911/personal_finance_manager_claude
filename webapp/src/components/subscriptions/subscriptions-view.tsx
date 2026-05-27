@@ -1,8 +1,11 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils/currency";
-import { MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
+import {
+  MOBILE_TAB_BAR_CLEARANCE_CLASS,
+  PANEL_SURFACE_CLASS,
+} from "@/lib/constants/styles";
+import { cn } from "@/lib/utils";
 import { SubscriptionRow } from "./subscription-row";
 import type { SubscriptionWithDetails, CurrencyCode } from "@/types/domain";
 import type { RecurringOccurrence } from "@/actions/occurrences";
@@ -33,20 +36,20 @@ export function SubscriptionsView({
 
   return (
     <div className={`space-y-4 ${MOBILE_TAB_BAR_CLEARANCE_CLASS}`}>
-      <Card className="p-5">
+      <div className={cn(PANEL_SURFACE_CLASS, "p-5")}>
         <p className="text-sm text-z-sage-light/70">Gasto mensual en suscripciones</p>
-        <p className="text-3xl font-semibold text-z-sage-light">
+        <p className="text-3xl font-semibold tabular-nums text-z-sage-light">
           {formatCurrency(authoritativeMonthly, currency)}
         </p>
-        <p className="text-sm text-z-sage-light/60">
+        <p className="text-sm tabular-nums text-z-sage-light/60">
           {formatCurrency(authoritativeMonthly * 12, currency)} al año
         </p>
         {estimatedMonthly > 0 && (
-          <p className="mt-1 text-xs text-z-sage-light/50">
+          <p className="mt-1 text-xs tabular-nums text-z-sage-light/50">
             + {formatCurrency(estimatedMonthly, currency)}/mes estimado (sin programar)
           </p>
         )}
-      </Card>
+      </div>
 
       <div className="space-y-2">
         {tracked.map((s) => (

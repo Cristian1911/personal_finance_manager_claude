@@ -511,7 +511,7 @@ export function RecurringForm({
         </p>
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-white/6 bg-z-surface-2 px-3 py-2.5">
+      <div className="flex items-center justify-between rounded-xl border border-white/6 bg-z-surface-2 px-3 py-2.5">
         <div className="space-y-0.5">
           <Label htmlFor="is_subscription_toggle" className="text-z-sage-light">Es una suscripción</Label>
           <p className="text-xs text-z-sage-light/60">Spotify, streaming, apps — opcional y cancelable.</p>

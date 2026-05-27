@@ -6,6 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { cancelSubscription, markForCancellation } from "@/actions/subscriptions";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
+import { cn } from "@/lib/utils";
+import {
+  GHOST_BUTTON_CLASS,
+  DESTRUCTIVE_GHOST_BUTTON_CLASS,
+} from "@/lib/constants/styles";
 import type { SubscriptionWithDetails, CurrencyCode } from "@/types/domain";
 
 interface SubscriptionRowProps {
@@ -13,6 +18,9 @@ interface SubscriptionRowProps {
   currency: CurrencyCode;
   nextDate: string | null;
 }
+
+const ROW_ACTION_CLASS =
+  "rounded-lg border px-2.5 py-1 text-xs transition-colors disabled:opacity-50";
 
 export function SubscriptionRow({
   subscription: s,
@@ -31,7 +39,7 @@ export function SubscriptionRow({
     });
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-white/6 bg-z-surface-2 p-3">
+    <div className="flex items-center justify-between rounded-xl border border-white/6 bg-z-surface-2 px-3 py-2.5">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-z-sage-light">{s.destinatario_name}</span>
@@ -39,24 +47,28 @@ export function SubscriptionRow({
             <Badge variant="outline">estimado</Badge>
           )}
           {s.status === "marked_for_cancellation" && (
-            <Badge variant="outline">por cancelar</Badge>
+            <Badge variant="outline" className="surface-expense">
+              por cancelar
+            </Badge>
           )}
           {s.status === "trial" && (
-            <Badge variant="outline">prueba</Badge>
+            <Badge variant="outline" className="surface-alert">
+              prueba
+            </Badge>
           )}
         </div>
-        <p className="text-sm text-z-sage-light/60">
+        <p className="text-sm tabular-nums text-z-sage-light/60">
           {formatCurrency(amount, currency)}
           {nextDate ? ` · próx. ${formatDate(nextDate)}` : ""}
         </p>
       </div>
 
-      <div className="ml-3 flex shrink-0 gap-3">
+      <div className="ml-3 flex shrink-0 gap-2">
         {s.status !== "marked_for_cancellation" && (
           <button
             disabled={pending}
             onClick={() => run(() => markForCancellation(s.id))}
-            className="text-xs text-z-sage-light/70 hover:text-z-sage-light disabled:opacity-50"
+            className={cn(ROW_ACTION_CLASS, GHOST_BUTTON_CLASS)}
           >
             Marcar
           </button>
@@ -64,7 +76,7 @@ export function SubscriptionRow({
         <button
           disabled={pending}
           onClick={() => run(() => cancelSubscription(s.id))}
-          className="text-xs text-z-expense hover:underline disabled:opacity-50"
+          className={cn(ROW_ACTION_CLASS, DESTRUCTIVE_GHOST_BUTTON_CLASS)}
         >
           Cancelar
         </button>

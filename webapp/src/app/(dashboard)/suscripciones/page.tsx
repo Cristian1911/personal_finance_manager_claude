@@ -31,7 +31,9 @@ export default async function SuscripcionesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-z-sage-light">Suscripciones</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-z-sage-light lg:text-3xl">
+        Suscripciones
+      </h1>
       <SubscriptionsView
         subscriptions={subs}
         occurrences={occurrences}

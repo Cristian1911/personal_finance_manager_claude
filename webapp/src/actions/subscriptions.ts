@@ -23,7 +23,9 @@ async function getSubscriptionsCached(
   const { data, error } = await supabase
     .from("subscriptions")
     .select(`
-      *,
+      id, status, recurring_template_id, estimated_amount,
+      destinatario_id, currency_code, trial_ends_on, cancel_url,
+      created_at, updated_at, detected_at, dismissed_at,
       destinatario:destinatarios!subscriptions_destinatario_id_fkey ( name, default_category_id ),
       template:recurring_transaction_templates!subscriptions_recurring_template_id_fkey ( amount, frequency )
     `)
