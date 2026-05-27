@@ -31,7 +31,8 @@ async function getSubscriptionsCached(
     .not("status", "in", "(dismissed,cancelled)")
     .order("created_at", { ascending: false });
 
-  if (error || !data) return [];
+  if (error) throw error; // surfaces to getSubscriptions() catch -> Spanish error
+  if (!data) return [];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data.map((row: any) => ({
@@ -86,13 +87,16 @@ export async function markForCancellation(
   if (!user) return { success: false, error: "No autenticado" };
   if (!subscriptionIdSchema.safeParse(id).success)
     return { success: false, error: "ID inválido" };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("subscriptions")
     .update({ status: "marked_for_cancellation" })
     .eq("id", id)
     .eq("user_id", user.id)
-    .in("status", ["active", "trial"]);
+    .in("status", ["active", "trial"])
+    .select("id");
   if (error) return { success: false, error: error.message };
+  if (!data || data.length === 0)
+    return { success: false, error: "La suscripción no está activa" };
   updateTag("subscriptions");
   return { success: true, data: undefined };
 }
@@ -207,4 +211,5 @@ export async function upsertSubscriptionFromTemplate(
       .eq("recurring_template_id", template.id)
       .not("status", "in", "(cancelled,dismissed)");
   }
+  updateTag("subscriptions");
 }

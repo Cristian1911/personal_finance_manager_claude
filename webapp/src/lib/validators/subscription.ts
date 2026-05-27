@@ -9,7 +9,7 @@ export const updateSubscriptionSchema = z.object({
   ),
   cancel_url: z.preprocess(
     (v) => (v === "" || v == null ? undefined : v),
-    z.string().url().optional(),
+    z.url().optional(),
   ),
 });
 
