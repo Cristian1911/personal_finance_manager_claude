@@ -280,6 +280,30 @@ export async function formalizeSubscription(
   if (!sub) return { success: false, error: "Suscripción no encontrada" };
   if (sub.recurring_template_id) return { success: true, data: undefined };
 
+  // If the user already has an active recurring template for this destinatario, link it
+  // instead of creating a second one (which would double the occurrence generation).
+  const { data: existingTpl } = await supabase
+    .from("recurring_transaction_templates")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("destinatario_id", sub.destinatario_id)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+  if (existingTpl) {
+    const { error: linkExistingErr } = await supabase
+      .from("subscriptions")
+      .update({ recurring_template_id: existingTpl.id, status: "active" })
+      .eq("id", id)
+      .eq("user_id", user.id);
+    if (linkExistingErr)
+      return { success: false, error: linkExistingErr.message };
+    await ensureCurrentOccurrences();
+    updateTag("subscriptions");
+    revalidateFinancialViews();
+    return { success: true, data: undefined };
+  }
+
   // Prefer a non-debt account: an OUTFLOW subscription template on a CREDIT_CARD/LOAN
   // would be misread as a debt payment. Fall back to any active account only if needed.
   const { data: acct } = await supabase
@@ -362,13 +386,20 @@ export async function upsertSubscriptionFromTemplate(
         .eq("id", existing.id)
         .eq("user_id", userId);
     } else {
-      await supabase.from("subscriptions").insert({
+      const { error: insertErr } = await supabase.from("subscriptions").insert({
         user_id: userId,
         destinatario_id: template.destinatario_id,
         recurring_template_id: template.id,
         status: "active",
         currency_code: template.currency_code,
       });
+      // 23505 = a concurrent detection row already covers this destinatario — benign.
+      if (insertErr && insertErr.code !== "23505") {
+        console.error(
+          "[upsertSubscriptionFromTemplate] insert failed",
+          insertErr.message,
+        );
+      }
     }
   } else {
     await supabase
