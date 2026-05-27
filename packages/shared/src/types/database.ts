@@ -587,6 +587,69 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          cancel_url: string | null
+          created_at: string
+          currency_code: string
+          destinatario_id: string
+          detected_at: string | null
+          dismissed_at: string | null
+          estimated_amount: number | null
+          id: string
+          recurring_template_id: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          trial_ends_on: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_url?: string | null
+          created_at?: string
+          currency_code?: string
+          destinatario_id: string
+          detected_at?: string | null
+          dismissed_at?: string | null
+          estimated_amount?: number | null
+          id?: string
+          recurring_template_id?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          trial_ends_on?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_url?: string | null
+          created_at?: string
+          currency_code?: string
+          destinatario_id?: string
+          detected_at?: string | null
+          dismissed_at?: string | null
+          estimated_amount?: number | null
+          id?: string
+          recurring_template_id?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          trial_ends_on?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_recurring_template_id_fkey"
+            columns: ["recurring_template_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transaction_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string
@@ -843,6 +906,13 @@ export type Database = {
         | "ONCE"
       transaction_direction: "INFLOW" | "OUTFLOW"
       transaction_status: "PENDING" | "POSTED" | "CANCELLED"
+      subscription_status:
+        | "suggested"
+        | "active"
+        | "trial"
+        | "marked_for_cancellation"
+        | "cancelled"
+        | "dismissed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1008,6 +1078,14 @@ export const Constants = {
       ],
       transaction_direction: ["INFLOW", "OUTFLOW"],
       transaction_status: ["PENDING", "POSTED", "CANCELLED"],
+      subscription_status: [
+        "suggested",
+        "active",
+        "trial",
+        "marked_for_cancellation",
+        "cancelled",
+        "dismissed",
+      ],
     },
   },
 } as const
