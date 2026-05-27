@@ -42,6 +42,19 @@ export type PendingEmailStatement = Tables<"pending_email_statements">;
 export type WishlistItem = Tables<"wishlist_items">;
 export type WishlistReflection = Tables<"wishlist_reflections">;
 
+export type Subscription = Tables<"subscriptions">;
+export type SubscriptionStatus = Enums<"subscription_status">;
+
+export type SubscriptionWithDetails = Subscription & {
+  destinatario_name: string;
+  default_category_id: string | null;
+  category_name: string | null;
+  template_amount: number | null;
+  template_frequency: string | null;
+  next_occurrence_date: string | null;
+  monthly_expected: number | null;
+};
+
 // Cashflow planner
 export type PlanningPeriodPreset = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM";
 export type PlanningEntryType = "INCOME" | "EXPENSE";
