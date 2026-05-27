@@ -1,7 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { cancelSubscription, markForCancellation } from "@/actions/subscriptions";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -11,6 +9,7 @@ import {
   GHOST_BUTTON_CLASS,
   DESTRUCTIVE_GHOST_BUTTON_CLASS,
 } from "@/lib/constants/styles";
+import { ROW_ACTION_CLASS, useRowAction } from "./use-row-action";
 import type { SubscriptionWithDetails, CurrencyCode } from "@/types/domain";
 
 interface SubscriptionRowProps {
@@ -19,24 +18,14 @@ interface SubscriptionRowProps {
   nextDate: string | null;
 }
 
-const ROW_ACTION_CLASS =
-  "rounded-lg border px-2.5 py-1 text-xs transition-colors disabled:opacity-50";
-
 export function SubscriptionRow({
   subscription: s,
   currency,
   nextDate,
 }: SubscriptionRowProps) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
+  const { pending, run } = useRowAction();
 
   const amount = s.template_amount ?? s.estimated_amount ?? 0;
-
-  const run = (fn: () => Promise<unknown>) =>
-    start(async () => {
-      await fn();
-      router.refresh();
-    });
 
   return (
     <div className="flex items-center justify-between rounded-xl border border-white/6 bg-z-surface-2 px-3 py-2.5">

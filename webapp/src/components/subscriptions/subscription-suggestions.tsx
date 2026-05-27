@@ -1,7 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import {
@@ -10,6 +8,7 @@ import {
   SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { confirmSubscription, dismissSubscription } from "@/actions/subscriptions";
+import { ROW_ACTION_CLASS, useRowAction } from "./use-row-action";
 import type { SubscriptionWithDetails, CurrencyCode } from "@/types/domain";
 
 interface SubscriptionSuggestionsProps {
@@ -17,23 +16,13 @@ interface SubscriptionSuggestionsProps {
   currency: CurrencyCode;
 }
 
-const ROW_ACTION_CLASS =
-  "rounded-lg border px-2.5 py-1 text-xs transition-colors disabled:opacity-50";
-
 export function SubscriptionSuggestions({
   suggestions,
   currency,
 }: SubscriptionSuggestionsProps) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
+  const { pending, run } = useRowAction();
 
   if (suggestions.length === 0) return null;
-
-  const run = (fn: () => Promise<unknown>) =>
-    start(async () => {
-      await fn();
-      router.refresh();
-    });
 
   return (
     <div className="space-y-2">

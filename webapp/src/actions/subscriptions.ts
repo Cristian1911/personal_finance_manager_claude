@@ -9,6 +9,7 @@ import {
   updateSubscriptionSchema,
 } from "@/lib/validators/subscription";
 import { ensureCurrentOccurrences } from "@/actions/occurrences";
+import { toColombiaDateString } from "@/lib/utils/date";
 import type { ActionResult } from "@/types/actions";
 import type { SubscriptionWithDetails } from "@/types/domain";
 import type { Database } from "@/types/database";
@@ -206,7 +207,7 @@ export async function runSubscriptionDetection(): Promise<ActionResult<{ created
     .eq("user_id", user.id)
     .eq("direction", "OUTFLOW")
     .not("destinatario_id", "is", null)
-    .gte("transaction_date", since.toISOString().slice(0, 10));
+    .gte("transaction_date", toColombiaDateString(since));
 
   // Destinatarios that already have ANY subscriptions row (any status) — never re-suggest
   // (preserves sticky dismissal AND avoids duplicating active/cancelled ones).
@@ -305,8 +306,8 @@ export async function formalizeSubscription(
   }
 
   // Prefer a non-debt account: an OUTFLOW subscription template on a CREDIT_CARD/LOAN
-  // would be misread as a debt payment. Fall back to any active account only if needed.
-  const { data: acct } = await supabase
+  // would be misread as a debt payment.
+  let { data: acct } = await supabase
     .from("accounts")
     .select("id")
     .eq("user_id", user.id)
@@ -314,6 +315,17 @@ export async function formalizeSubscription(
     .not("account_type", "in", "(CREDIT_CARD,LOAN)")
     .limit(1)
     .maybeSingle();
+  // Fall back to any active account if the user only has debt accounts.
+  if (!acct) {
+    const { data: fallbackAcct } = await supabase
+      .from("accounts")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+    acct = fallbackAcct;
+  }
   if (!acct)
     return {
       success: false,
@@ -322,7 +334,7 @@ export async function formalizeSubscription(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dest = sub.destinatario as any;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toColombiaDateString(new Date());
   const { data: tpl, error: tErr } = await supabase
     .from("recurring_transaction_templates")
     .insert({

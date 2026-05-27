@@ -503,7 +503,7 @@ export const DB_MIGRATIONS: DbMigration[] = [
         recurring_template_id TEXT,
         status TEXT NOT NULL DEFAULT 'active',
         estimated_amount REAL,
-        currency_code TEXT,
+        currency_code TEXT NOT NULL DEFAULT 'COP',
         trial_ends_on TEXT,
         cancel_url TEXT,
         detected_at TEXT,
