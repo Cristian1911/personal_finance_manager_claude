@@ -510,7 +510,7 @@ export function MarketingLandingPage() {
           </div>
           <div className="cta-stores">
             <a
-              href="https://apps.apple.com/co/app/zeta-finanzas-personales/id6763683831"
+              href="https://apps.apple.com/app/zeta-finanzas-personales/id6763683831"
               target="_blank"
               rel="noopener noreferrer"
               className="store-badge"
