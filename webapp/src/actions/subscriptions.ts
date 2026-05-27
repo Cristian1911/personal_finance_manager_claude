@@ -10,6 +10,7 @@ import {
 } from "@/lib/validators/subscription";
 import type { ActionResult } from "@/types/actions";
 import type { SubscriptionWithDetails } from "@/types/domain";
+import { detectSubscriptions, type DetectorTransaction } from "@zeta/shared";
 
 async function getSubscriptionsCached(
   accessToken: string,
@@ -182,6 +183,58 @@ export async function getSubscriptionForTemplate(templateId: string): Promise<bo
     .not("status", "in", "(cancelled,dismissed)")
     .maybeSingle();
   return !!data;
+}
+
+/**
+ * Runs subscription auto-detection over the last 12 months of OUTFLOW transactions.
+ * Called after every PDF/email import — best-effort, failures never surface to the user.
+ * Destinatarios that already have ANY subscriptions row (any status) are excluded so
+ * dismissed/cancelled suggestions are never re-surfaced and active ones are not duplicated.
+ */
+export async function runSubscriptionDetection(): Promise<ActionResult<{ created: number }>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const since = new Date();
+  since.setMonth(since.getMonth() - 12);
+
+  const { data: txs } = await supabase
+    .from("transactions")
+    .select("destinatario_id, transaction_date, amount, currency_code, direction")
+    .eq("user_id", user.id)
+    .eq("direction", "OUTFLOW")
+    .not("destinatario_id", "is", null)
+    .gte("transaction_date", since.toISOString().slice(0, 10));
+
+  // Destinatarios that already have ANY subscriptions row (any status) — never re-suggest
+  // (preserves sticky dismissal AND avoids duplicating active/cancelled ones).
+  const { data: existing } = await supabase
+    .from("subscriptions")
+    .select("destinatario_id")
+    .eq("user_id", user.id);
+  const excluded = new Set((existing ?? []).map((r) => r.destinatario_id));
+
+  const candidates = detectSubscriptions((txs ?? []) as DetectorTransaction[], excluded);
+  if (candidates.length === 0) return { success: true, data: { created: 0 } };
+
+  const rows = candidates.map((c) => ({
+    user_id: user.id,
+    destinatario_id: c.destinatario_id,
+    status: "suggested" as const,
+    estimated_amount: c.median_amount,
+    currency_code: c.currency_code,
+    detected_at: new Date().toISOString(),
+  }));
+
+  const { data: inserted, error } = await supabase
+    .from("subscriptions")
+    .insert(rows)
+    .select("id");
+  if (error && error.code !== "23505")
+    return { success: false, error: error.message };
+
+  updateTag("subscriptions");
+  return { success: true, data: { created: inserted?.length ?? 0 } };
 }
 
 /**
