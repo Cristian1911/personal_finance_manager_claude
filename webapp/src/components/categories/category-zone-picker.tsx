@@ -413,13 +413,23 @@ export function CategoryPickerBody({
     return parent?.id ?? null;
   });
   const [showInlineCreate, setShowInlineCreate] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const expandedRowRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll expanded zone row to top of scrollable area
+  // Bring the expanded zone row near the top of the scroll surface. Scoped to
+  // this container only — `scrollIntoView` would bubble to every scrollable
+  // ancestor (DrawerBody, Dialog, window/visual viewport) and pin the row to
+  // their top too, shoving the sheet header/search off-screen and cropping it.
   useEffect(() => {
-    if (expandedZoneId && expandedRowRef.current) {
-      expandedRowRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    if (!expandedZoneId) return;
+    const container = scrollContainerRef.current;
+    const row = expandedRowRef.current;
+    if (!container || !row) return;
+    const target =
+      row.getBoundingClientRect().top -
+      container.getBoundingClientRect().top +
+      container.scrollTop;
+    container.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
   }, [expandedZoneId]);
 
   const query = search.trim().toLowerCase();
@@ -544,7 +554,7 @@ export function CategoryPickerBody({
       </div>
 
       {/* Content */}
-      <div className="overflow-y-auto max-h-[min(24rem,50dvh)]">
+      <div ref={scrollContainerRef} className="overflow-y-auto max-h-[min(24rem,50dvh)]">
         {query ? (
           // ----- Search results mode -----
           <div className="p-3 space-y-3">
