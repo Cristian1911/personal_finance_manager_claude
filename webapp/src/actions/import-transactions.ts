@@ -27,6 +27,7 @@ import { trackProductEvent } from "@/actions/product-events";
 import { linkTransactionToOccurrence, ensureCurrentOccurrences } from "@/actions/occurrences";
 import { parseSubPayments as parseSubPaymentsShared } from "@/lib/utils/sub-payments";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { runSubscriptionDetection } from "@/actions/subscriptions";
 
 type DebtKind = "credit_card" | "loan";
 type CurrencyCode = Database["public"]["Enums"]["currency_code"];
@@ -1241,6 +1242,13 @@ export async function importTransactions(
       console.error("Failed to auto-tag imported transactions:", tagError.message);
       details.push(`Auto-etiquetado parcial: ${tagError.message}`);
     }
+  }
+
+  // Best-effort subscription detection — never fails the import
+  try {
+    await runSubscriptionDetection();
+  } catch {
+    // detection is best-effort; never fail the import on it
   }
 
   revalidateFinancialViews();

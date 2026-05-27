@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { RecurringForm } from "@/components/recurring/recurring-form";
 import { getRecurringTemplate } from "@/actions/recurring-templates";
+import { getSubscriptionForTemplate } from "@/actions/subscriptions";
 import { getAccounts } from "@/actions/accounts";
 import { getCategories } from "@/actions/categories";
 import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PAGE_STACK_CLASS } from "@/lib/constants/styles";
@@ -13,11 +14,13 @@ export default async function EditRecurrentePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [templateResult, accountsResult, categoriesResult] = await Promise.all([
-    getRecurringTemplate(id),
-    getAccounts(),
-    getCategories(),
-  ]);
+  const [templateResult, accountsResult, categoriesResult, isSubscription] =
+    await Promise.all([
+      getRecurringTemplate(id),
+      getAccounts(),
+      getCategories(),
+      getSubscriptionForTemplate(id),
+    ]);
 
   if (!templateResult.success) notFound();
 
@@ -35,6 +38,7 @@ export default async function EditRecurrentePage({
       <div className={cn("px-4", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
         <RecurringForm
           template={template}
+          initialIsSubscription={isSubscription}
           accounts={accounts}
           categories={categories}
         />

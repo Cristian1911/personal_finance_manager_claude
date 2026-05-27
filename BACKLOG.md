@@ -1204,3 +1204,10 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 - **[P2] Import AUTO_MERGE scoring drift** — webapp #250 fixed 1/1-cuota detection and cross-source AUTO_MERGE scoring; RN ad-hoc reconciliation builder (`import.tsx:609–720`) pre-dates these fixes.
 
 **ORPHANS to decide:** `/subscriptions` (port to webapp recommended), `capture-screenshot` + `capture-voice` + `annotate-screenshot` (RN-only by design — verify they share shared utils).
+
+## Subscriptions feature (2026-05-27, branch feat/subscriptions)
+- **[P2] `ensureCurrentOccurrences()` on render** — `/suscripciones` (and `/plan`) call it every load to idempotently generate occurrences. Acceptable now (idempotent, fast after first daily run). When recurring usage grows, move occurrence generation to a cron/scheduled function and drop the ensure from all render paths. (perf-auditor, 2026-05-27)
+
+### Subscriptions follow-ups (deferred from feat/subscriptions, 2026-05-27)
+- **[P2] Task 10 — no-destinatario detection fallback** — surface `getDestinatarioSuggestions()` repeating-charge candidates on `/suscripciones` as a "crea un destinatario para rastrear esto" nudge (links to existing destinatario-create flow; no new mutation). Catches subscriptions for merchants with no destinatario yet. NOT built — core feature ships without it.
+- **[P3] Mobile subscriptions write-path prep** (when mobile gains subscription UI): (a) recreate SQLite `subscriptions` with `currency_code TEXT NOT NULL DEFAULT 'COP'`; (b) add `"subscriptions"` to `SyncTableName` union in `mobile/lib/sync/push.ts`; (c) mirror the `subscriptions_one_live_per_destinatario` partial-unique guard locally to prevent duplicate live rows before a sync cycle. (mobile-sync-doctor, 2026-05-27)

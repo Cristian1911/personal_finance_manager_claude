@@ -489,6 +489,34 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE transactions ADD COLUMN categorization_confidence REAL`,
     ],
   },
+  {
+    version: 15,
+    statements: [
+      // ── Subscriptions: read-only pull-only sync ───────────────────────────
+      // Mirrors the plain (non-encrypted) `subscriptions` Supabase table.
+      // Mobile has no UI for subscriptions yet — only synced for future reads.
+      // Do NOT add to push.ts (mobile produces no subscription mutations).
+      `CREATE TABLE IF NOT EXISTS subscriptions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        destinatario_id TEXT NOT NULL,
+        recurring_template_id TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        estimated_amount REAL,
+        currency_code TEXT NOT NULL DEFAULT 'COP',
+        trial_ends_on TEXT,
+        cancel_url TEXT,
+        detected_at TEXT,
+        dismissed_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (destinatario_id) REFERENCES destinatarios(id),
+        FOREIGN KEY (recurring_template_id) REFERENCES recurring_transaction_templates(id)
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_subscriptions_user_status ON subscriptions(user_id, status)`,
+      `CREATE INDEX IF NOT EXISTS idx_subscriptions_destinatario ON subscriptions(destinatario_id)`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =

@@ -23,6 +23,7 @@ const SYNC_TABLES = [
   "planning_periods",
   "planning_entries",
   "planning_assignments",
+  "subscriptions",
 ] as const;
 
 type SyncTable = (typeof SYNC_TABLES)[number];
