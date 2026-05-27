@@ -283,14 +283,28 @@ export async function formalizeSubscription(
 
   // If the user already has an active recurring template for this destinatario, link it
   // instead of creating a second one (which would double the occurrence generation).
-  const { data: existingTpl } = await supabase
+  // Skip templates that already back a live subscription — a merchant can have
+  // several subscriptions, but each is anchored to a distinct template, so
+  // re-using one would collide with subscriptions_one_live_per_template.
+  const { data: liveSubs } = await supabase
+    .from("subscriptions")
+    .select("recurring_template_id")
+    .eq("user_id", user.id)
+    .eq("destinatario_id", sub.destinatario_id)
+    .not("recurring_template_id", "is", null)
+    .not("status", "in", "(cancelled,dismissed)");
+  const usedTemplateIds = new Set(
+    (liveSubs ?? []).map((r) => r.recurring_template_id),
+  );
+  const { data: activeTpls } = await supabase
     .from("recurring_transaction_templates")
     .select("id")
     .eq("user_id", user.id)
     .eq("destinatario_id", sub.destinatario_id)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle();
+    .eq("is_active", true);
+  const existingTpl = (activeTpls ?? []).find(
+    (t) => !usedTemplateIds.has(t.id),
+  );
   if (existingTpl) {
     const { error: linkExistingErr } = await supabase
       .from("subscriptions")
@@ -384,33 +398,62 @@ export async function upsertSubscriptionFromTemplate(
 ): Promise<void> {
   if (isSubscription) {
     if (!template.destinatario_id) return;
-    const { data: existing } = await supabase
+
+    // A subscription is anchored to its recurring template, not the merchant —
+    // one merchant (destinatario) can bill several distinct products, each its
+    // own template + subscription (e.g. Google Play: YouTube Premium + One).
+
+    // 1. This template already has a live subscription — keep it active.
+    const { data: byTemplate } = await supabase
       .from("subscriptions")
-      .select("id, status")
+      .select("id")
       .eq("user_id", userId)
-      .eq("destinatario_id", template.destinatario_id)
+      .eq("recurring_template_id", template.id)
       .not("status", "in", "(cancelled,dismissed)")
       .maybeSingle();
-    if (existing) {
+    if (byTemplate) {
       await supabase
         .from("subscriptions")
-        .update({ recurring_template_id: template.id, status: "active" })
-        .eq("id", existing.id)
+        .update({ status: "active" })
+        .eq("id", byTemplate.id)
         .eq("user_id", userId);
     } else {
-      const { error: insertErr } = await supabase.from("subscriptions").insert({
-        user_id: userId,
-        destinatario_id: template.destinatario_id,
-        recurring_template_id: template.id,
-        status: "active",
-        currency_code: template.currency_code,
-      });
-      // 23505 = a concurrent detection row already covers this destinatario — benign.
-      if (insertErr && insertErr.code !== "23505") {
-        console.error(
-          "[upsertSubscriptionFromTemplate] insert failed",
-          insertErr.message,
-        );
+      // 2. Adopt an un-linked detection suggestion for this merchant (if any)
+      //    so a detected charge becomes this template's subscription instead of
+      //    leaving a duplicate suggestion behind.
+      const { data: orphan } = await supabase
+        .from("subscriptions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("destinatario_id", template.destinatario_id)
+        .is("recurring_template_id", null)
+        .not("status", "in", "(cancelled,dismissed)")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (orphan) {
+        await supabase
+          .from("subscriptions")
+          .update({ recurring_template_id: template.id, status: "active" })
+          .eq("id", orphan.id)
+          .eq("user_id", userId);
+      } else {
+        // 3. Fresh subscription row for this template.
+        const { error: insertErr } = await supabase.from("subscriptions").insert({
+          user_id: userId,
+          destinatario_id: template.destinatario_id,
+          recurring_template_id: template.id,
+          status: "active",
+          currency_code: template.currency_code,
+        });
+        // 23505 = a concurrent write already created the live row for this
+        // template — benign, the row we wanted exists.
+        if (insertErr && insertErr.code !== "23505") {
+          console.error(
+            "[upsertSubscriptionFromTemplate] insert failed",
+            insertErr.message,
+          );
+        }
       }
     }
   } else {
