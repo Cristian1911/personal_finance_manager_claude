@@ -4,7 +4,11 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import {
+  GHOST_BUTTON_CLASS,
+  BRASS_GHOST_BUTTON_CLASS,
+  SECTION_EYEBROW_CLASS,
+} from "@/lib/constants/styles";
 import { confirmSubscription, dismissSubscription } from "@/actions/subscriptions";
 import type { SubscriptionWithDetails, CurrencyCode } from "@/types/domain";
 
@@ -15,9 +19,6 @@ interface SubscriptionSuggestionsProps {
 
 const ROW_ACTION_CLASS =
   "rounded-lg border px-2.5 py-1 text-xs transition-colors disabled:opacity-50";
-
-const MUTED_GHOST_CLASS =
-  "border-white/6 bg-black/10 text-z-sage-light/50 hover:bg-white/5 hover:text-z-sage-light/70";
 
 export function SubscriptionSuggestions({
   suggestions,
@@ -36,9 +37,7 @@ export function SubscriptionSuggestions({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-z-sage-light/50">
-        Sugerencias
-      </p>
+      <p className={SECTION_EYEBROW_CLASS}>Sugerencias</p>
       {suggestions.map((s) => (
         <div
           key={s.id}
@@ -49,7 +48,7 @@ export function SubscriptionSuggestions({
             <p className="text-sm tabular-nums text-z-sage-light/60">
               {formatCurrency(s.estimated_amount ?? 0, currency)}
               {" · "}
-              <span className="text-z-sage-light/40">Parece una suscripción</span>
+              <span className="text-z-sage-dark">Parece una suscripción</span>
             </p>
           </div>
 
@@ -57,14 +56,14 @@ export function SubscriptionSuggestions({
             <button
               disabled={pending}
               onClick={() => run(() => confirmSubscription(s.id))}
-              className={cn(ROW_ACTION_CLASS, GHOST_BUTTON_CLASS)}
+              className={cn(ROW_ACTION_CLASS, BRASS_GHOST_BUTTON_CLASS)}
             >
               Rastrear
             </button>
             <button
               disabled={pending}
               onClick={() => run(() => dismissSubscription(s.id))}
-              className={cn(ROW_ACTION_CLASS, MUTED_GHOST_CLASS)}
+              className={cn(ROW_ACTION_CLASS, GHOST_BUTTON_CLASS)}
             >
               Descartar
             </button>
