@@ -8,8 +8,10 @@ import {
   subscriptionIdSchema,
   updateSubscriptionSchema,
 } from "@/lib/validators/subscription";
+import { ensureCurrentOccurrences } from "@/actions/occurrences";
 import type { ActionResult } from "@/types/actions";
 import type { SubscriptionWithDetails } from "@/types/domain";
+import type { Database } from "@/types/database";
 import { detectSubscriptions, type DetectorTransaction } from "@zeta/shared";
 
 async function getSubscriptionsCached(
@@ -235,6 +237,96 @@ export async function runSubscriptionDetection(): Promise<ActionResult<{ created
 
   updateTag("subscriptions");
   return { success: true, data: { created: inserted?.length ?? 0 } };
+}
+
+export async function confirmSubscription(
+  id: string,
+): Promise<ActionResult<undefined>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  if (!subscriptionIdSchema.safeParse(id).success)
+    return { success: false, error: "ID inválido" };
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .update({ status: "active" })
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .eq("status", "suggested")
+    .select("id");
+  if (error) return { success: false, error: error.message };
+  if (!data || data.length === 0)
+    return { success: false, error: "La sugerencia ya no está disponible" };
+  updateTag("subscriptions");
+  return { success: true, data: undefined };
+}
+
+export async function formalizeSubscription(
+  id: string,
+): Promise<ActionResult<undefined>> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+  if (!subscriptionIdSchema.safeParse(id).success)
+    return { success: false, error: "ID inválido" };
+
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select(`
+      id, destinatario_id, estimated_amount, currency_code, recurring_template_id,
+      destinatario:destinatarios!subscriptions_destinatario_id_fkey ( name, default_category_id )
+    `)
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+  if (!sub) return { success: false, error: "Suscripción no encontrada" };
+  if (sub.recurring_template_id) return { success: true, data: undefined };
+
+  const { data: acct } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+  if (!acct)
+    return {
+      success: false,
+      error: "No hay una cuenta disponible para programar la suscripción",
+    };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dest = sub.destinatario as any;
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: tpl, error: tErr } = await supabase
+    .from("recurring_transaction_templates")
+    .insert({
+      user_id: user.id,
+      account_id: acct.id,
+      destinatario_id: sub.destinatario_id,
+      category_id: (dest?.default_category_id ?? null) as string | null,
+      merchant_name: (dest?.name ?? "Suscripción") as string,
+      amount: sub.estimated_amount ?? 0,
+      currency_code: sub.currency_code as Database["public"]["Enums"]["currency_code"],
+      direction: "OUTFLOW" as Database["public"]["Enums"]["transaction_direction"],
+      frequency: "MONTHLY" as Database["public"]["Enums"]["recurrence_frequency"],
+      start_date: today,
+      is_active: true,
+    })
+    .select("id")
+    .single();
+  if (tErr || !tpl)
+    return { success: false, error: tErr?.message ?? "Error al crear la plantilla" };
+
+  const { error: linkErr } = await supabase
+    .from("subscriptions")
+    .update({ recurring_template_id: tpl.id, status: "active" })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (linkErr) return { success: false, error: linkErr.message };
+
+  await ensureCurrentOccurrences();
+  updateTag("subscriptions");
+  revalidateFinancialViews();
+  return { success: true, data: undefined };
 }
 
 /**

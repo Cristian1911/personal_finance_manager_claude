@@ -7,6 +7,7 @@ import {
 } from "@/lib/constants/styles";
 import { cn } from "@/lib/utils";
 import { SubscriptionRow } from "./subscription-row";
+import { SubscriptionSuggestions } from "./subscription-suggestions";
 import type { SubscriptionWithDetails, CurrencyCode } from "@/types/domain";
 import type { RecurringOccurrence } from "@/actions/occurrences";
 
@@ -32,6 +33,7 @@ export function SubscriptionsView({
     }
   }
 
+  const suggested = subscriptions.filter((s) => s.status === "suggested");
   const tracked = subscriptions.filter((s) => s.status !== "suggested");
 
   return (
@@ -50,6 +52,10 @@ export function SubscriptionsView({
           </p>
         )}
       </div>
+
+      {suggested.length > 0 && (
+        <SubscriptionSuggestions suggestions={suggested} currency={currency} />
+      )}
 
       <div className="space-y-2">
         {tracked.map((s) => (
