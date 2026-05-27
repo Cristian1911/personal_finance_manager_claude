@@ -415,6 +415,10 @@ export function CategoryPickerBody({
   const [showInlineCreate, setShowInlineCreate] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const expandedRowRef = useRef<HTMLDivElement>(null);
+  // On mount the zone of the pre-selected category is already expanded, so this
+  // effect runs immediately — scroll instantly then, and only animate later
+  // user-initiated expansions, to avoid double-animating with the sheet's open.
+  const didMount = useRef(false);
 
   // Bring the expanded zone row near the top of the scroll surface. Scoped to
   // this container only — `scrollIntoView` would bubble to every scrollable
@@ -429,8 +433,15 @@ export function CategoryPickerBody({
       row.getBoundingClientRect().top -
       container.getBoundingClientRect().top +
       container.scrollTop;
-    container.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+    container.scrollTo({
+      top: Math.max(0, target),
+      behavior: didMount.current ? "smooth" : "auto",
+    });
   }, [expandedZoneId]);
+
+  useEffect(() => {
+    didMount.current = true;
+  }, []);
 
   const query = search.trim().toLowerCase();
 
