@@ -280,11 +280,14 @@ export async function formalizeSubscription(
   if (!sub) return { success: false, error: "Suscripción no encontrada" };
   if (sub.recurring_template_id) return { success: true, data: undefined };
 
+  // Prefer a non-debt account: an OUTFLOW subscription template on a CREDIT_CARD/LOAN
+  // would be misread as a debt payment. Fall back to any active account only if needed.
   const { data: acct } = await supabase
     .from("accounts")
     .select("id")
     .eq("user_id", user.id)
     .eq("is_active", true)
+    .not("account_type", "in", "(CREDIT_CARD,LOAN)")
     .limit(1)
     .maybeSingle();
   if (!acct)
