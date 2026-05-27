@@ -509,7 +509,13 @@ export function MarketingLandingPage() {
             </Link>
           </div>
           <div className="cta-stores">
-            <a href="#" className="store-badge" aria-label="Descargar en App Store">
+            <a
+              href="https://apps.apple.com/app/zeta-finanzas-personales/id6763683831"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="store-badge"
+              aria-label="Descargar en App Store"
+            >
               <svg className="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
               </svg>
@@ -518,12 +524,18 @@ export function MarketingLandingPage() {
                 <span className="b">App Store</span>
               </div>
             </a>
-            <a href="#" className="store-badge" aria-label="Consíguelo en Google Play">
+            <a
+              href="https://play.google.com/apps/testing/com.venti5.zeta"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="store-badge"
+              aria-label="Únete a la beta en Google Play"
+            >
               <svg className="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M3.6 2.1c-.37.4-.6.99-.6 1.75v16.3c0 .77.23 1.36.62 1.75L12 13.51v-.99L3.6 2.1zm10.6 10.36l-2.79 2.79 8.86 5.04c.97-.18 1.73-1.09 1.73-2.08 0-.66-.4-1.28-1-1.58l-6.8-4.17zm6.8-4.75c.6-.3 1-.92 1-1.58 0-.99-.76-1.9-1.73-2.08L11.4 9.08l2.81 2.84 6.79-3.9v-.31zM4.37 22.2l8.94-5.12-2.82-2.82L4.37 22.2z" />
               </svg>
               <div className="txt">
-                <span className="s">Consíguelo en</span>
+                <span className="s">Únete a la beta en</span>
                 <span className="b">Google Play</span>
               </div>
             </a>
