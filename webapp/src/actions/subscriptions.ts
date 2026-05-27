@@ -286,23 +286,26 @@ export async function formalizeSubscription(
   // Skip templates that already back a live subscription — a merchant can have
   // several subscriptions, but each is anchored to a distinct template, so
   // re-using one would collide with subscriptions_one_live_per_template.
-  const { data: liveSubs } = await supabase
-    .from("subscriptions")
-    .select("recurring_template_id")
-    .eq("user_id", user.id)
-    .eq("destinatario_id", sub.destinatario_id)
-    .not("recurring_template_id", "is", null)
-    .not("status", "in", "(cancelled,dismissed)");
+  // Both reads are independent — run them in parallel to cut a round-trip.
+  const [liveSubsRes, activeTplsRes] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("recurring_template_id")
+      .eq("user_id", user.id)
+      .eq("destinatario_id", sub.destinatario_id)
+      .not("recurring_template_id", "is", null)
+      .not("status", "in", "(cancelled,dismissed)"),
+    supabase
+      .from("recurring_transaction_templates")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("destinatario_id", sub.destinatario_id)
+      .eq("is_active", true),
+  ]);
   const usedTemplateIds = new Set(
-    (liveSubs ?? []).map((r) => r.recurring_template_id),
+    (liveSubsRes.data ?? []).map((r) => r.recurring_template_id),
   );
-  const { data: activeTpls } = await supabase
-    .from("recurring_transaction_templates")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("destinatario_id", sub.destinatario_id)
-    .eq("is_active", true);
-  const existingTpl = (activeTpls ?? []).find(
+  const existingTpl = (activeTplsRes.data ?? []).find(
     (t) => !usedTemplateIds.has(t.id),
   );
   if (existingTpl) {
