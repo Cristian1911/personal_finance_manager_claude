@@ -661,6 +661,7 @@ async function getAccountTransactionsCached(
     .eq("is_excluded", false)
     .is("reconciled_into_transaction_id", null)
     .order("transaction_date", { ascending: false })
+    .order("transaction_time", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
