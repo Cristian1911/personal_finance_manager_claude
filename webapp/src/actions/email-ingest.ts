@@ -41,10 +41,9 @@ type ReprocessResult = "imported" | "queued" | "duplicate";
  */
 function normalizeEmailTime(raw: string | null | undefined): string | null {
   if (typeof raw !== "string") return null;
-  const trimmed = raw.trim();
-  if (/^([01]\d|2[0-3]):[0-5]\d$/.test(trimmed)) return `${trimmed}:00`;
-  if (/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(trimmed)) return trimmed;
-  return null;
+  const match = raw.trim().match(/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+  if (!match) return null;
+  return `${match[1]}:${match[2]}:${match[3] ?? "00"}`;
 }
 
 function stripHtml(html: string): string {
