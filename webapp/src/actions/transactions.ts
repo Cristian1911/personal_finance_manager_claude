@@ -475,6 +475,7 @@ async function getTransactionsCached(
     .eq("user_id", userId)
     .in("account_id", demoAccountIds)
     .order("transaction_date", { ascending: false })
+    .order("transaction_time", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(from, to);
 
@@ -774,6 +775,7 @@ async function getRecentTransactionsCached(
     .eq("is_excluded", false)
     .is("reconciled_into_transaction_id", null)
     .order("transaction_date", { ascending: false })
+    .order("transaction_time", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(5);
 
