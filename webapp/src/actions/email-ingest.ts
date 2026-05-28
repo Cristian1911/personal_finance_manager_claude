@@ -32,6 +32,20 @@ type AuthenticatedSupabase = Awaited<
 
 type ReprocessResult = "imported" | "queued" | "duplicate";
 
+/**
+ * Bancolombia emails carry the execution time as "HH:mm" (e.g. "11:20").
+ * Postgres TIME wants "HH:mm:ss" — normalise at the write boundary so email
+ * imports land with the same precision as the manual form / mobile sync.
+ * Returns null for anything that isn't a well-formed time so we never write
+ * garbage into the column.
+ */
+function normalizeEmailTime(raw: string | null | undefined): string | null {
+  if (typeof raw !== "string") return null;
+  const match = raw.trim().match(/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+  if (!match) return null;
+  return `${match[1]}:${match[2]}:${match[3] ?? "00"}`;
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
@@ -118,6 +132,7 @@ async function persistParsedEmail(params: {
       currency_code: currencyCode,
       direction: parsed.direction,
       transaction_date: parsed.transaction_date,
+      transaction_time: normalizeEmailTime(parsed.transaction_time),
       raw_description: parsed.raw_line,
       clean_description: parsed.merchant ?? parsed.destination ?? parsed.raw_line,
       merchant_name: parsed.merchant,
@@ -742,6 +757,7 @@ export async function approveEmailTransaction(
       currency_code: account.currency_code,
       direction: parsed.direction,
       transaction_date: parsed.transaction_date,
+      transaction_time: normalizeEmailTime(parsed.transaction_time),
       raw_description: rawDescription,
       clean_description: cleanDescription,
       merchant_name: merchantName,
