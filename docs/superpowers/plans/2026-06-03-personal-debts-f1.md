@@ -151,7 +151,8 @@ CREATE POLICY "personal_debts_select" ON public.personal_debts FOR SELECT
 CREATE POLICY "personal_debts_insert" ON public.personal_debts FOR INSERT
   WITH CHECK ((select auth.uid()) = user_id);
 CREATE POLICY "personal_debts_update" ON public.personal_debts FOR UPDATE
-  USING ((select auth.uid()) = user_id);
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 CREATE POLICY "personal_debts_delete" ON public.personal_debts FOR DELETE
   USING ((select auth.uid()) = user_id);
 
