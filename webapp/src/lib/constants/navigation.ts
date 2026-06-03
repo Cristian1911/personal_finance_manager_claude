@@ -7,6 +7,7 @@ import {
   Landmark,
   Inbox,
   Contact,
+  Users,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -51,6 +52,7 @@ export const WORKSPACE_NAV: NavItem[] = [
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
   { title: "Deudas", href: "/deudas", icon: Landmark },
+  { title: "Personas", href: "/personas", icon: Users },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [
