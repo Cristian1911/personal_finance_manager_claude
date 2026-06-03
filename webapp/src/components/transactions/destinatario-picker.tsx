@@ -49,12 +49,13 @@ import {
 } from "@/actions/destinatarios";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { ActionResult } from "@/types/actions";
-import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
+import type { CategoryWithChildren, CurrencyCode, DestinatarioKind } from "@/types/domain";
 
 type DestinatarioOption = {
   id: string;
   name: string;
   is_active: boolean;
+  kind?: DestinatarioKind;
 };
 
 interface DestinatarioPickerProps {
@@ -63,6 +64,8 @@ interface DestinatarioPickerProps {
   destinatarios: DestinatarioOption[];
   rawDescription?: string | null;
   categories?: CategoryWithChildren[];
+  /** Restrict the list to these destinatario kinds (e.g. ["person"]). Omit = all. */
+  kindFilter?: DestinatarioKind[];
 }
 
 export function DestinatarioPicker({
@@ -71,13 +74,16 @@ export function DestinatarioPicker({
   destinatarios,
   rawDescription,
   categories,
+  kindFilter,
 }: DestinatarioPickerProps) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [selectedId, setSelectedId] = React.useState(currentDestinatarioId);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
 
-  const activeDestinatarios = destinatarios.filter((d) => d.is_active);
+  const activeDestinatarios = destinatarios.filter(
+    (d) => d.is_active && (!kindFilter || (d.kind != null && kindFilter.includes(d.kind)))
+  );
   const selected = destinatarios.find((d) => d.id === selectedId);
 
   async function handleSelect(destinatarioId: string) {

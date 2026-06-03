@@ -14,6 +14,7 @@ export const destinatarioSchema = z.object({
     .nullable()
     .transform((v) => v || null),
   is_active: z.boolean().default(true),
+  kind: z.enum(["merchant", "person"]).default("merchant"),
 });
 
 export const destinatarioRuleSchema = z.object({
