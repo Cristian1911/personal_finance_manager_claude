@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +43,7 @@ export function RecordRepaymentDialog({
 }: RecordRepaymentDialogProps) {
   const router = useRouter();
   const accounts = useAccounts();
-  const today = new Date().toISOString().split("T")[0];
+  const today = format(new Date(), "yyyy-MM-dd");
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [date, setDate] = useState(today);
   const [pending, startTransition] = useTransition();

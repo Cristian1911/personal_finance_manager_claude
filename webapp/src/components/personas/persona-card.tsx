@@ -48,7 +48,7 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
   }
 
   return (
-    <div className="rounded-xl border border-white/6 bg-z-surface-2">
+    <div className="rounded-xl border border-white/6 bg-[#111]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -61,7 +61,7 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-medium">{persona.destinatario_name}</span>
             {persona.is_overdue && (
-              <Badge className="border-transparent bg-z-danger/15 text-z-danger">Vencida</Badge>
+              <Badge className="border-transparent bg-z-debt/15 text-z-debt">Vencida</Badge>
             )}
             {!isActive && (
               <Badge variant="secondary">
@@ -77,7 +77,7 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
           <p
             className={cn(
               "text-sm font-semibold tabular-nums",
-              isBorrowed ? "text-z-danger" : "text-z-sage-light",
+              isBorrowed ? "text-z-debt" : "text-z-sage-light",
             )}
           >
             {formatCurrency(persona.outstanding_amount, code)}

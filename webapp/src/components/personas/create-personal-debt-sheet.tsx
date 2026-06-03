@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ export function CreatePersonalDebtSheet({
   currency,
 }: CreatePersonalDebtSheetProps) {
   const router = useRouter();
-  const today = new Date().toISOString().split("T")[0];
+  const today = format(new Date(), "yyyy-MM-dd");
   const [destinatarioId, setDestinatarioId] = useState<string | null>(null);
   const [destinatarioName, setDestinatarioName] = useState<string | null>(null);
   const [direction, setDirection] = useState<"borrowed" | "lent">("borrowed");

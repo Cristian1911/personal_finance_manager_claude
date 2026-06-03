@@ -88,12 +88,12 @@ function SummaryStat({
   tone: "danger" | "positive";
 }) {
   return (
-    <div className="rounded-xl border border-white/6 bg-z-surface-2 p-4">
-      <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+    <div className="rounded-2xl border border-white/6 bg-black/10 p-4">
+      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p
         className={cn(
           "mt-1 text-lg font-semibold tabular-nums",
-          tone === "danger" ? "text-z-danger" : "text-z-sage-light",
+          tone === "danger" ? "text-z-debt" : "text-z-sage-light",
         )}
       >
         {value}
@@ -119,7 +119,7 @@ function Section({
     <section className="space-y-3">
       <h2
         className={cn(
-          "text-xs font-semibold uppercase tracking-[0.16em]",
+          "text-xs font-semibold uppercase tracking-[0.18em]",
           muted ? "text-muted-foreground" : "text-z-sage-light",
         )}
       >
@@ -140,7 +140,7 @@ function Section({
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 py-14 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/6 py-14 text-center">
       <span className="flex size-12 items-center justify-center rounded-full bg-z-brass/12 text-z-brass">
         <Users className="size-6" />
       </span>
