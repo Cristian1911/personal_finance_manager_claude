@@ -184,7 +184,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 **Files:**
 - Create: `supabase/migrations/<ts>_add_kind_to_destinatarios.sql`
 
-Copy the 6-step skeleton from `20260417170859_add_destinatario_id_to_recurring_templates.sql`, substituting `destinatarios`/`destinatarios_enc`, and copy the **exact** trigger bodies from `20260408143004_encrypt_destinatarios.sql`. `kind` is **non-PII → plain passthrough** (no `zeta_decrypt`, no hmac). The destinatarios triggers do **NOT** use COALESCE — keep bodies minimal, only adding `kind`.
+**CORRECTION (applied during execution):** the destinatarios trigger functions were refactored AFTER the original encrypt migration — the current `has_auth`-guarded bodies live in `20260417193237_has_auth_guard_encrypted_triggers.sql` (insert fn) + `20260417203708_has_auth_guard_select_into_refactor.sql` (update fn). Base the new triggers on THOSE, not the original `20260408143004` minimal bodies, or you regress the `has_auth` guard (encrypted columns get NULLed in anon/admin context). The view is unchanged since `20260408143004` (9 cols). `kind` is **non-PII → plain passthrough** (no `zeta_decrypt`, no hmac), but it is `NOT NULL`, and since the insert trigger lists `kind` explicitly it MUST default a NULL `NEW.kind` via `NEW.kind := COALESCE(NEW.kind, 'merchant')` (alongside the existing id/created_at/is_active COALESCE defaults) — otherwise a PostgREST insert that omits `kind` hits a NOT NULL violation. The shipped migration `20260603214613_add_kind_to_destinatarios.sql` is the source of truth.
 
 - [ ] **Step 1: Create the migration file** (`npx supabase migration new add_kind_to_destinatarios`) with this exact content:
 
