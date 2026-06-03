@@ -171,7 +171,8 @@ async function getMonthlyCashflowCached(
     .lte("transaction_date", monthEndStr(target))
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
-    .is("transfer_group_id", null);
+    .is("transfer_group_id", null)
+    .or("personal_debt_id.is.null,pd_role.neq.origin");
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
@@ -237,7 +238,8 @@ async function getDailySpendingCached(
     .lte("transaction_date", monthEndStr(target))
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
-    .is("transfer_group_id", null);
+    .is("transfer_group_id", null)
+    .or("personal_debt_id.is.null,pd_role.neq.origin");
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
@@ -299,7 +301,8 @@ async function getMonthMetricsCached(
     .gte("transaction_date", monthStartStr(target))
     .lte("transaction_date", monthEndStr(target))
     .is("reconciled_into_transaction_id", null)
-    .is("transfer_group_id", null);
+    .is("transfer_group_id", null)
+    .or("personal_debt_id.is.null,pd_role.neq.origin");
 
   if (error) throw error;
   if (!transactions) return { income: 0, expenses: 0 };
@@ -351,7 +354,8 @@ async function getDailyCashflowCached(
     .lte("transaction_date", endStr)
     .order("transaction_date")
     .is("reconciled_into_transaction_id", null)
-    .is("transfer_group_id", null);
+    .is("transfer_group_id", null)
+    .or("personal_debt_id.is.null,pd_role.neq.origin");
 
   if (error) throw error;
   if (!transactions || transactions.length === 0) return [];
