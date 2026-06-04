@@ -17,6 +17,7 @@ import {
   getCurrentPermissionLevel,
   startBackgroundLocationTracking,
 } from "./services/location";
+import { reschedulePaymentReminders } from "./services/notifications";
 
 type AuthContextType = {
   session: Session | null;
@@ -94,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     autoSyncedUserRef.current = userId;
     syncAll()
       .then(() => maybeResumeLocationTracking())
+      .then(() => reschedulePaymentReminders())
       .catch((error) => {
         console.warn(logLabel, error);
       });

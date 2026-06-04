@@ -63,6 +63,7 @@ import {
   getReconciliationCandidates,
 } from "../../lib/repositories/transactions";
 import { getDestinatarioRulesForMatching } from "../../lib/repositories/destinatarios";
+import { trackProductEvent } from "../../lib/analytics/product-events";
 import {
   matchDestinatario,
   prepareDestinatarioRules,
@@ -851,6 +852,16 @@ export default function ImportScreen() {
 
       setImportedCount(count);
       setImportSummary({ autoMerged, manualMerged, leftAsSeparate });
+      trackProductEvent({
+        event_name: "import_completed",
+        flow: "import",
+        success: true,
+        metadata: {
+          imported: count,
+          auto_merged: autoMerged,
+          manual_merged: manualMerged,
+        },
+      });
       setStep("result");
     } catch (error) {
       console.error("Import error:", error);

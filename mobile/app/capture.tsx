@@ -45,6 +45,7 @@ import {
   type CategoryRow,
 } from "../lib/repositories/categories";
 import { createTransaction } from "../lib/repositories/transactions";
+import { trackProductEvent } from "../lib/analytics/product-events";
 import { getLocalProfile } from "../lib/profile";
 import {
   captureCurrentLocation,
@@ -384,6 +385,16 @@ export default function CaptureScreen() {
         provider: "MANUAL",
         capture_method: "MANUAL_FORM",
         is_subscription: isSubscription,
+      });
+
+      trackProductEvent({
+        event_name: "transaction_created",
+        success: true,
+        metadata: {
+          capture_method: "MANUAL_FORM",
+          direction,
+          is_subscription: isSubscription,
+        },
       });
 
       // Best-effort: link a recent location ping if the user has opted in.

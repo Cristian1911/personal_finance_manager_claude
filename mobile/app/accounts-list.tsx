@@ -4,7 +4,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -38,7 +37,6 @@ export default function AccountsListScreen() {
   const router = useRouter();
   const { sync } = useSync();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadAccounts = useCallback(async () => {
@@ -47,8 +45,6 @@ export default function AccountsListScreen() {
       setAccounts(result);
     } catch (error) {
       console.error("Failed to load accounts:", error);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -104,17 +100,6 @@ export default function AccountsListScreen() {
     ),
     [netWorth, isNegative, accounts.length, router],
   );
-
-  if (loading) {
-    return (
-      <View className="flex-1 bg-background">
-        <MobileHeader variant="sub" title="Mis cuentas" />
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={COLORS.brass} />
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View className="flex-1 bg-background">

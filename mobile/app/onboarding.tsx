@@ -28,6 +28,7 @@ import {
 } from "../lib/constants/styles";
 import { useTheme, themeSurfaceClasses } from "../lib/theme";
 import { parseMoney } from "../lib/utils/money";
+import { trackProductEvent } from "../lib/analytics/product-events";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useOnboardingStatus } from "../lib/onboarding-status";
@@ -281,7 +282,15 @@ export default function MobileOnboardingScreen() {
     if (!canAdvance) return;
     if (step === 4) {
       const ok = await persistOnboarding();
-      if (ok) setStep(5);
+      if (ok) {
+        trackProductEvent({
+          event_name: "onboarding_completed",
+          flow: "onboarding",
+          success: true,
+          metadata: { purpose: data.purpose },
+        });
+        setStep(5);
+      }
       return;
     }
     if (step < TOTAL_STEPS) setStep((step + 1) as StepIndex);

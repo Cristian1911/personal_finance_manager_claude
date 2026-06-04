@@ -116,7 +116,9 @@ export function QuickActionsBar({ account, onEdit, onDelete }: Props) {
   function handlePress(action: ActionDef) {
     switch (action.type) {
       case "add":
-        router.push(`/transactions/new?account=${accountId}`);
+        // `/capture` is the working manual-entry form. It ignores the account
+        // param today; kept forward-compatible for when capture honors a preset.
+        router.push(`/capture?account=${accountId}`);
         return;
       case "more":
         handleMore();
