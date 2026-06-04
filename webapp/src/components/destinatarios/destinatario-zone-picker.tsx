@@ -60,6 +60,13 @@ interface DestinatarioZonePickerProps {
   currencyCode?: CurrencyCode | null;
   /** Restrict the list to these destinatario kinds (e.g. ["person"]). Omit = all. */
   kindFilter?: DestinatarioKind[];
+  /**
+   * Kind to assign when creating a new destinatario from this picker. Without
+   * it, createDestinatario defaults to "merchant" — which a person-only
+   * kindFilter would then immediately hide, making creation appear to fail.
+   * Defaults to the sole kindFilter entry when exactly one is given.
+   */
+  createKind?: DestinatarioKind;
 }
 
 export function DestinatarioZonePicker({
@@ -79,7 +86,12 @@ export function DestinatarioZonePicker({
   amount,
   currencyCode,
   kindFilter,
+  createKind,
 }: DestinatarioZonePickerProps) {
+  // When exactly one kind is being filtered, default new rows to that kind so
+  // creation isn't immediately hidden by the same filter.
+  const effectiveCreateKind =
+    createKind ?? (kindFilter?.length === 1 ? kindFilter[0] : undefined);
   // When categories are provided, "Crear nuevo" opens the full seeded form
   // (token chips when seed text exists, otherwise a plain rich form). The bare
   // name+pattern mini-form remains only as the fallback for callers that don't
@@ -157,6 +169,7 @@ export function DestinatarioZonePicker({
     startCreateTransition(async () => {
       const fd = new FormData();
       fd.set("name", name);
+      if (effectiveCreateKind) fd.set("kind", effectiveCreateKind);
       const result = await createDestinatario({ success: false, error: "" }, fd);
       if (result.success) {
         if (pattern?.trim()) {

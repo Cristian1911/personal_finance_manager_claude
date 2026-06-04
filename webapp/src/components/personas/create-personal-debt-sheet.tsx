@@ -104,6 +104,7 @@ export function CreatePersonalDebtSheet({
               placeholder="Elegir o crear persona"
               triggerClassName="w-full"
               kindFilter={["person"]}
+              createKind="person"
             />
           </div>
 

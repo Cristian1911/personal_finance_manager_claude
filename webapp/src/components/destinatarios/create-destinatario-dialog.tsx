@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
+import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import type { ActionResult } from "@/types/actions";
 import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
@@ -34,6 +35,7 @@ export function CreateDestinatarioDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [kind, setKind] = useState<"merchant" | "person">("merchant");
   const [isActive, setIsActive] = useState(true);
   const [patterns, setPatterns] = useState("");
   const [testResult, setTestResult] = useState<PatternTestResult | null>(null);
@@ -48,6 +50,7 @@ export function CreateDestinatarioDialog({
     router.refresh();
     setOpen(false);
     setCategoryId(null);
+    setKind("merchant");
     setIsActive(true);
     setPatterns("");
     setTestResult(null);
@@ -100,6 +103,37 @@ export function CreateDestinatarioDialog({
               required
             />
           </div>
+
+          <div className="space-y-2">
+            <Label>Tipo</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setKind("merchant")}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                  kind === "merchant"
+                    ? "border-z-brass/40 bg-z-brass/10"
+                    : "border-white/6 bg-z-surface-2",
+                )}
+              >
+                Comercio
+              </button>
+              <button
+                type="button"
+                onClick={() => setKind("person")}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                  kind === "person"
+                    ? "border-z-brass/40 bg-z-brass/10"
+                    : "border-white/6 bg-z-surface-2",
+                )}
+              >
+                Persona
+              </button>
+            </div>
+          </div>
+          <input type="hidden" name="kind" value={kind} />
 
           <div className="space-y-2">
             <Label>Categoría por defecto</Label>
