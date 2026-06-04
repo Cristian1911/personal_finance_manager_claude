@@ -177,10 +177,7 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
             <AlertDialogAction
               className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS)}
               disabled={pending}
-              onClick={(e) => {
-                e.preventDefault();
-                runAction(() => deletePersonalDebt(persona.id), "Deuda eliminada");
-              }}
+              onClick={() => runAction(() => deletePersonalDebt(persona.id), "Deuda eliminada")}
             >
               Eliminar
             </AlertDialogAction>
