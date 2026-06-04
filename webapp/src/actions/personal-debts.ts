@@ -234,6 +234,32 @@ export async function cancelPersonalDebt(id: string): Promise<ActionResult<undef
   return { success: true, data: undefined };
 }
 
+// ============================================================
+// Delete (hard) — removes the debt record entirely. Linked transactions are
+// auto-unlinked via FK (transactions.personal_debt_id ON DELETE SET NULL); they
+// remain as regular transactions.
+// ============================================================
+export async function deletePersonalDebt(id: string): Promise<ActionResult<undefined>> {
+  if (!personalDebtIdSchema.safeParse(id).success) {
+    return { success: false, error: "ID inválido" };
+  }
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data, error } = await supabase
+    .from("personal_debts")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select("id");
+  if (error) return { success: false, error: "Error al eliminar la deuda" };
+  if (!data || data.length === 0) return { success: false, error: "Deuda no encontrada" };
+
+  revalidateFinancialViews();
+  updateTag("personal-debts");
+  return { success: true, data: undefined };
+}
+
 export async function settlePersonalDebt(id: string): Promise<ActionResult<undefined>> {
   if (!personalDebtIdSchema.safeParse(id).success) {
     return { success: false, error: "ID inválido" };
