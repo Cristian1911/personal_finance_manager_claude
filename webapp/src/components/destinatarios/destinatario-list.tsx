@@ -32,9 +32,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { chipBackground, zoneTextColor } from "@/lib/utils/zone-colors";
 import { formatCurrency } from "@/lib/utils/currency";
-import type { CategoryWithChildren, CurrencyCode, Tag, TagGroupWithTags } from "@/types/domain";
+import type { CategoryWithChildren, CurrencyCode, DestinatarioKind, Tag, TagGroupWithTags } from "@/types/domain";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ type DestinatarioCardItem = {
   rule_count: number;
   transaction_count: number;
   avg_monthly_spend?: number;
+  kind?: DestinatarioKind; // defaults to 'merchant' when absent
 };
 
 type SortOption = "name" | "most_used" | "recent";
@@ -170,8 +172,35 @@ export function DestinatarioList({
 
     const active = items.filter((d) => d.is_active).sort(sortFn);
     const inactive = items.filter((d) => !d.is_active).sort(sortFn);
-    return [...active, ...inactive];
+    const ordered = [...active, ...inactive];
+    const isPerson = (d: DestinatarioCardItem) => d.kind === "person";
+    return {
+      personas: ordered.filter(isPerson),
+      comercios: ordered.filter((d) => !isPerson(d)),
+    };
   }, [destinatarios, search, sort, categoryFilter, categories]);
+
+  const filteredCount = filtered.personas.length + filtered.comercios.length;
+  const hasPersonas = filtered.personas.length > 0;
+
+  // Flatten into a single render list with section headings so the grid stays a
+  // single map. With no Personas this is just the merchant cards (unchanged
+  // behavior). Headings span the full grid row via col-span-full.
+  type RenderItem =
+    | { type: "heading"; label: string }
+    | { type: "card"; d: DestinatarioCardItem };
+  const renderList = useMemo<RenderItem[]>(() => {
+    const list: RenderItem[] = [];
+    if (hasPersonas) {
+      list.push({ type: "heading", label: "Personas" });
+      for (const d of filtered.personas) list.push({ type: "card", d });
+      if (filtered.comercios.length > 0) {
+        list.push({ type: "heading", label: "Comercios" });
+      }
+    }
+    for (const d of filtered.comercios) list.push({ type: "card", d });
+    return list;
+  }, [filtered, hasPersonas]);
 
   // ── Selection ────────────────────────────────────────────────────────────
 
@@ -389,12 +418,12 @@ export function DestinatarioList({
       {/* Results count */}
       {search.trim() && (
         <p className="text-sm text-muted-foreground">
-          {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+          {filteredCount} resultado{filteredCount !== 1 ? "s" : ""}
         </p>
       )}
 
       {/* No search results */}
-      {filtered.length === 0 && (search.trim() || categoryFilter) && (
+      {filteredCount === 0 && (search.trim() || categoryFilter) && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-muted-foreground">
             {search.trim()
@@ -404,10 +433,21 @@ export function DestinatarioList({
         </div>
       )}
 
-      {/* Card grid */}
-      {filtered.length > 0 && (
+      {/* Card grid — segregated by kind (Personas vs Comercios) */}
+      {filteredCount > 0 && (
         <div className="grid grid-cols-1 items-start sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {filtered.map((d) => {
+          {renderList.map((item) => {
+            if (item.type === "heading") {
+              return (
+                <h2
+                  key={`heading-${item.label}`}
+                  className={cn(SECTION_EYEBROW_CLASS, "col-span-full mt-2 first:mt-0")}
+                >
+                  {item.label}
+                </h2>
+              );
+            }
+            const d = item.d;
             const isExpanded = expandedId === d.id;
             const parent = findParentForCategory(
               categories,
