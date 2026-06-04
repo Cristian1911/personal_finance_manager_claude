@@ -76,6 +76,14 @@
 - **Fix:** on create-sheet dismiss-without-create, re-open `personaPickerOpen`, or render the create sheet over the picker instead of swapping.
 - **Found:** zetas-front-guy, branch feat/personas-usability, 2026-06-04.
 
+### Deudas personales — deferred cleanups (from /code-review + /simplify, 2026-06-04)
+- **Priority:** Low (P3)
+- **Central "modal-inside-Sheet" handling:** the z fix (force `variant="dialog"` + `Z_DIALOG_ABOVE_SHEET` on content+overlay) is wired per call site. A `SheetContext` that `DialogContent`/`Popover` read to auto-bump z (and pick dialog-not-drawer) would stop every future picker-in-a-Sheet re-hitting the trap. Touches `ui/sheet.tsx` + `ui/dialog.tsx`.
+- **Shared `ConfirmDialog`:** the destructive-confirm AlertDialog block is now a 3rd copy (persona-card + settings/delete-account + settings/reset-data). Extract a reusable `<ConfirmDialog>` and retrofit all three.
+- **`runPersonalDebtMutation` helper:** `cancel`/`settle`/`deletePersonalDebt` share the validate→auth→mutate→rowcheck→revalidate skeleton; collapse into one helper (watch Supabase query-builder generics). Note `settlePersonalDebt` omits `revalidateFinancialViews()` though it zeroes `outstanding_amount` — confirm intended when refactoring.
+- **`pd_role` hygiene on delete:** FK `ON DELETE SET NULL` clears `personal_debt_id` but leaves a dangling `pd_role` on the unlinked tx. Harmless today (income predicate also checks `personal_debt_id != null`); NULL it out (or a sweep migration) if any future query keys on `pd_role` alone.
+- **Found:** /code-review + /simplify, branch feat/personas-usability, 2026-06-04.
+
 ### Mobile — yearly budgets not displayed
 - **Priority:** Low
 - **What:** `getBudgetProgress` in `mobile/lib/repositories/budgets.ts` filters `b.period = 'monthly'` (hardcoded). Webapp accepts `"monthly" | "yearly"` via `budgetSchema`. Any yearly budget created on webapp is invisible on mobile.
