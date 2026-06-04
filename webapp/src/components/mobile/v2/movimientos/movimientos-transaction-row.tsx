@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Pencil, ArrowDownLeft, ArrowUpRight, Link2, Repeat, Users } from "lucide-react";
+import { Pencil, ArrowDownLeft, ArrowUpRight, Link2, Repeat, Users, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -30,6 +30,10 @@ const DestinatarioZonePicker = dynamic(
 );
 const TagZonePicker = dynamic(
   () => import("@/components/tags/tag-zone-picker").then(m => ({ default: m.TagZonePicker })),
+  { ssr: false }
+);
+const CreatePersonalDebtSheet = dynamic(
+  () => import("@/components/personas/create-personal-debt-sheet").then(m => ({ default: m.CreatePersonalDebtSheet })),
   { ssr: false }
 );
 
@@ -59,9 +63,10 @@ export function MovimientosTransactionRow({
   const [occurrenceCandidates, setOccurrenceCandidates] = useState<CandidateOccurrence[]>([]);
   const [isLinking, startLinkTransition] = useTransition();
 
-  // Link to persona (personal debt) state — reuses isLinking/startLinkTransition
+  // Link to deuda personal (personal debt) state — reuses isLinking/startLinkTransition
   const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
   const [personaCandidates, setPersonaCandidates] = useState<LinkCandidate[]>([]);
+  const [personaCreateOpen, setPersonaCreateOpen] = useState(false);
 
   const canLink = linkableAccountIds?.has(tx.account_id) && !tx.recurrence_group_id;
   const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id;
@@ -117,14 +122,28 @@ export function MovimientosTransactionRow({
     });
   }
 
-  function handleConfirmPersonaLink(debtId: string) {
+  function handleConfirmPersonaLink(debtId: string, fromCreate = false) {
     setPersonaPickerOpen(false);
+    // The debt may already be created (fromCreate); always give feedback so the
+    // user isn't left with a dangling debt and no breadcrumb — including when the
+    // link action throws (network) rather than returning { success: false }.
+    const danglingMsg =
+      "Deuda creada, pero no se pudo vincular. Búscala en Deudas personales para vincularla.";
     startLinkTransition(async () => {
-      const result = await linkTransactionToPersonalDebt(debtId, tx.id);
-      if (result.success) {
-        toast.success("Transacción vinculada a persona");
-      } else {
-        toast.error(result.error ?? "No se pudo vincular");
+      try {
+        const result = await linkTransactionToPersonalDebt(debtId, tx.id);
+        if (result.success) {
+          toast.success("Transacción vinculada a deuda personal");
+          router.refresh();
+        } else if (fromCreate) {
+          toast.error(danglingMsg);
+          router.refresh();
+        } else {
+          toast.error(result.error ?? "No se pudo vincular");
+        }
+      } catch {
+        toast.error(fromCreate ? danglingMsg : "No se pudo vincular");
+        if (fromCreate) router.refresh();
       }
     });
   }
@@ -331,7 +350,7 @@ export function MovimientosTransactionRow({
               className={cn(MOBILE_ACTION_BUTTON_CLASS, "inline-flex items-center gap-1 rounded-full hover:bg-z-brass/12")}
             >
               <Users className="size-2.5" />
-              Vincular a persona
+              Vincular a deuda personal
             </button>
           )}
 
@@ -371,16 +390,33 @@ export function MovimientosTransactionRow({
         />
       )}
 
-      {/* Link to persona picker sheet */}
+      {/* Link to deuda personal picker sheet */}
       {personaPickerOpen && (
         <LinkPickerSheet
           open={personaPickerOpen}
           onOpenChange={setPersonaPickerOpen}
-          title="Vincular a persona"
+          title="Vincular a deuda personal"
           subtitle={`${description} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}`}
           candidates={personaCandidates}
           onConfirm={handleConfirmPersonaLink}
           isPending={isLinking}
+          onCreateNew={() => {
+            setPersonaPickerOpen(false);
+            setPersonaCreateOpen(true);
+          }}
+          createNewLabel="Crear deuda personal nueva"
+          createNewSublabel="Registra la deuda y vincula esta transacción"
+          createNewIcon={<UserPlus className="size-4 text-z-brass" aria-hidden="true" />}
+        />
+      )}
+
+      {/* Create deuda personal + auto-link this transaction */}
+      {personaCreateOpen && (
+        <CreatePersonalDebtSheet
+          open={personaCreateOpen}
+          onOpenChange={setPersonaCreateOpen}
+          currency={tx.currency_code as CurrencyCode}
+          onCreated={(debtId) => handleConfirmPersonaLink(debtId, true)}
         />
       )}
     </div>

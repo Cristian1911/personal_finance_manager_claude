@@ -58,6 +58,32 @@
 - **Fix:** DB_MIGRATIONS v11 → `ALTER TABLE budgets ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0`. Then add `budgets: ["is_demo"]` to `BOOLEAN_FIELDS` in `mobile/lib/sync/pull.ts` so pull converts `true/false → 1/0` on write.
 - **Found:** mobile-sync-doctor on PR #223, 2026-04-22.
 
+### Mobile — income metrics don't exclude personal-debt `origin` inflows (web/mobile divergence)
+- **Priority:** Medium
+- **What:** Webapp `charts.ts` excludes `pd_role='origin'` inflows from income via `.or("personal_debt_id.is.null,pd_role.neq.origin")` (a `borrowed` debt's origin INFLOW is not income). Mobile `getMonthlyAggregates` (`mobile/lib/repositories/transactions.ts`) does NOT — it selects no `personal_debt_id`/`pd_role`, and `computeMonthlyAggregates`/`AggregatableTransaction` in `packages/shared/src/utils/monthly-aggregates.ts` can't filter on them. Result: once a user links an origin INFLOW to a personal debt on web, it syncs down (schema v16 added the columns) and inflates the mobile "Resumen del mes" income vs web. Data is NOT corrupted — display-only divergence, bounded to users with `pd_role='origin'` inflows.
+- **Fix:** add `personal_debt_id: string | null` + `pd_role: string | null` to `AggregatableTransaction`; skip `isPersonalDebtOrigin(tx)` rows inside `computeMonthlyAggregates` (reuse the shared predicate); SELECT the two columns in the mobile `getMonthlyAggregates` SQL. Verify the webapp doesn't double-exclude (web filters at query level, not via this shared helper). REQUIRED before the mobile write-parity phase below.
+- **Found:** mobile-webapp-parity gate, branch feat/personal-debts, 2026-06-04.
+
+### Personal Debts (Personas) — mobile write parity (Phase 2)
+- **Priority:** Medium
+- **What:** Mobile Personas v1 is READ-ONLY (pulls + displays personal debts; not in push.ts — mirrors the subscriptions precedent). Web is the only place to create debts / record abonos for now. Phase 2 = add mobile write parity.
+- **Fix:** (1) repo `createPersonalDebt` (copy `destinatarios.ts` createXWithPattern: `Crypto.randomUUID` + `db.withTransactionAsync` INSERT + `enqueueInsert(db,"personal_debts",…)`) and `recordRepayment` — mirror the full webapp action chain: insert the repayment transaction (with `personal_debt_id`+`pd_role='repayment'`, `enqueueInsert`) AND recompute `outstanding_amount`/`status` via shared `computeOutstanding` (`enqueueUpdate`). **CRITICAL:** the repayment-tx insert must mirror `createTransaction` exactly — do NOT write local `accounts.current_balance` (mobile lets the server balance delta flow back on next pull; a local write double-applies). (2) re-add `| "personal_debts"` to `SyncTableName` in `mobile/lib/sync/push.ts`. (3) UI in `mobile/components/personas/PersonasRoot.tsx`: create-debt sheet (person picker filtered to `kind='person'` + inline person create with `kind='person'`) + record-abono modal (account picker + amount + date). (4) device-verify the sync round-trip (web↔mobile) + the v16 migration. Do the income-exclusion bug above first.
+- **Found:** scope decision, branch feat/personal-debts, 2026-06-04.
+
+### Deudas personales — Vincular "Crear deuda" cancel doesn't re-open the picker (web)
+- **Priority:** Low (P3)
+- **What:** In `movimientos-transaction-row.tsx`, "Vincular a deuda personal" → "Crear deuda personal nueva" closes the LinkPickerSheet and opens `CreatePersonalDebtSheet`. If the user dismisses the create sheet without saving, the picker stays closed — they must re-tap the chip. Acceptable for v1.
+- **Fix:** on create-sheet dismiss-without-create, re-open `personaPickerOpen`, or render the create sheet over the picker instead of swapping.
+- **Found:** zetas-front-guy, branch feat/personas-usability, 2026-06-04.
+
+### Deudas personales — deferred cleanups (from /code-review + /simplify, 2026-06-04)
+- **Priority:** Low (P3)
+- **Central "modal-inside-Sheet" handling:** the z fix (force `variant="dialog"` + `Z_DIALOG_ABOVE_SHEET` on content+overlay) is wired per call site. A `SheetContext` that `DialogContent`/`Popover` read to auto-bump z (and pick dialog-not-drawer) would stop every future picker-in-a-Sheet re-hitting the trap. Touches `ui/sheet.tsx` + `ui/dialog.tsx`.
+- **Shared `ConfirmDialog`:** the destructive-confirm AlertDialog block is now a 3rd copy (persona-card + settings/delete-account + settings/reset-data). Extract a reusable `<ConfirmDialog>` and retrofit all three.
+- **`runPersonalDebtMutation` helper:** `cancel`/`settle`/`deletePersonalDebt` share the validate→auth→mutate→rowcheck→revalidate skeleton; collapse into one helper (watch Supabase query-builder generics). Note `settlePersonalDebt` omits `revalidateFinancialViews()` though it zeroes `outstanding_amount` — confirm intended when refactoring.
+- **`pd_role` hygiene on delete:** FK `ON DELETE SET NULL` clears `personal_debt_id` but leaves a dangling `pd_role` on the unlinked tx. Harmless today (income predicate also checks `personal_debt_id != null`); NULL it out (or a sweep migration) if any future query keys on `pd_role` alone.
+- **Found:** /code-review + /simplify, branch feat/personas-usability, 2026-06-04.
+
 ### Mobile — yearly budgets not displayed
 - **Priority:** Low
 - **What:** `getBudgetProgress` in `mobile/lib/repositories/budgets.ts` filters `b.period = 'monthly'` (hardcoded). Webapp accepts `"monthly" | "yearly"` via `budgetSchema`. Any yearly budget created on webapp is invisible on mobile.
@@ -69,6 +95,23 @@
 - **What:** PR #227 took five hardening passes (`obligation_skips`, `profiles.updated_at` type, NOT NULL currency/locale, `design_reviews`, CI `clearDatabase` FK order) because the RPC hard-codes the table list and every schema change risks silent drift. Today it's resilient to dropped tables via `to_regclass` guards, but new tables added after 2026-04-24 won't be wiped unless someone remembers to touch the RPC.
 - **Fix options:** (a) CI check that diffs `information_schema.tables WHERE table_schema='public'` against the RPC's table list and fails the build on drift; (b) rewrite the RPC to iterate `information_schema` dynamically with an allowlist of system tables to preserve; (c) accept manual upkeep and add a pre-commit reminder when `supabase/migrations/*.sql` adds a `CREATE TABLE`.
 - **Found:** 2026-04-24, PR #227.
+
+### RLS UPDATE policies missing `WITH CHECK` (defense-in-depth)
+- **Priority:** Low
+- **What:** Several per-op RLS UPDATE policies use only `USING ((select auth.uid()) = user_id)` with no matching `WITH CHECK`, so a user could UPDATE their own row and reassign `user_id` to another user (the new-row values aren't validated). Confirmed on `subscriptions` (`20260527151641_create_subscriptions.sql`); the same copy-paste pattern likely exists on other tables. `personal_debts` (20260603) was fixed at creation.
+- **Fix:** Add `WITH CHECK ((select auth.uid()) = user_id)` to every `FOR UPDATE` policy. Audit all migrations for `FOR UPDATE\n  USING` without a following `WITH CHECK`.
+- **Found:** Automated security review on PR / branch feat/personal-debts, 2026-06-03.
+
+### FAB "Nueva transacción" — premature submit + re-fires "Guardado" on every reopen (mobile webapp)
+- **Priority:** High (breaks the primary tx-creation entry point on mobile web)
+- **What:** From the mobile-web FAB → "Nueva transacción": (1) the first time, the form submits/closes before the user finishes; (2) afterward, every reopen immediately closes and fires the `toast.success("Guardado")` with no input.
+- **Confirmed (static):** single `type="submit"` button; the success handler `useEffect(() => { if (state.success) onSuccess?.(); }, [state.success])` in `mobile-transaction-form.tsx:103-107` **never resets `state.success`** — it relies entirely on full unmount to clear it. `onSuccess` = `new-transaction-page-content.tsx:25-32` (`toast` + `router.back()`). FAB uses `router.replace("/transactions/new")` + a `history.pushState`/`history.back()` sentinel (`fab-menu.tsx:42-83`). No intercepting/parallel routes; no programmatic `requestSubmit`/`.submit()`; `AmountInput` has no Enter handler.
+- **NOT yet root-caused — two candidate vectors needing one repro to disambiguate:**
+  - **Vector P (persistence):** form reappears with `state.success` still `true` (Next Router Cache reuse / bfcache / no real unmount on `router.replace`↔`router.back`) → effect re-runs `onSuccess` on open. Fix: make success fire once + reset action state (e.g. guard via a `handledRef`, or reset `state` after `onSuccess`). Related to the existing bfcache bug above (import wizard, line ~27).
+  - **Vector S (premature/implicit submit):** Enter on the mobile soft keyboard implicitly submits the single-submit-button form mid-typing. Fix: prevent implicit submission on text inputs / require explicit submit.
+- **Next step:** add temp `[FAB-DEBUG]` mount/unmount + effect logs to `mobile-transaction-form.tsx`, reproduce once on mobile-width, read console → confirm P vs S, then fix the confirmed vector. Both fixes are cheap once the vector is known.
+- **Touches:** `webapp/src/components/mobile/mobile-transaction-form.tsx`, `new-transaction-page-content.tsx`, `fab-menu.tsx`.
+- **Found:** User report, 2026-06-03 (investigation deferred — "fix later").
 
 ## Claude Design — Wireframe Handoff
 

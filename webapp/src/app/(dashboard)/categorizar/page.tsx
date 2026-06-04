@@ -111,6 +111,15 @@ export default async function CategorizarPage() {
             </Button>
           </CardContent>
         </Card>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button asChild className={`w-full ${GHOST_BUTTON_CLASS}`}>
+            <Link href="/destinatarios">Destinatarios</Link>
+          </Button>
+          <Button asChild className={`w-full ${GHOST_BUTTON_CLASS}`}>
+            <Link href="/deudas-personales">Deudas personales</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="hidden lg:block space-y-6">
@@ -129,6 +138,9 @@ export default async function CategorizarPage() {
               className={GHOST_BUTTON_CLASS}
             >
               <Link href="/destinatarios">Ver destinatarios</Link>
+            </Button>
+            <Button asChild className={GHOST_BUTTON_CLASS}>
+              <Link href="/deudas-personales">Deudas personales</Link>
             </Button>
             <Button asChild className={BRASS_BUTTON_CLASS}>
               <Link href={actionCard.href}>

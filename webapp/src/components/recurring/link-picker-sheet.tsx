@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { CalendarPlus, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,10 @@ interface LinkPickerSheetProps {
   isLoadingAll?: boolean;
   /** Secondary action: offer to create a brand-new template from this tx. */
   onCreateNew?: () => void;
+  /** Copy + icon for the create-new affordance (defaults to the recurrente case). */
+  createNewLabel?: string;
+  createNewSublabel?: string;
+  createNewIcon?: ReactNode;
 }
 
 export function LinkPickerSheet({
@@ -55,6 +59,9 @@ export function LinkPickerSheet({
   onShowAll,
   isLoadingAll,
   onCreateNew,
+  createNewLabel = "Crear nueva recurrente",
+  createNewSublabel = "Promueve esta transacción a una plantilla mensual",
+  createNewIcon,
 }: LinkPickerSheetProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -155,14 +162,16 @@ export function LinkPickerSheet({
               className="mt-3 flex w-full items-center gap-3 rounded-lg border border-dashed border-z-brass/30 bg-z-brass/5 px-3 py-3 text-left transition-colors hover:bg-z-brass/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-z-brass/60"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-full border border-z-brass/30 bg-z-brass/10">
-                <CalendarPlus className="size-4 text-z-brass" aria-hidden="true" />
+                {createNewIcon ?? (
+                  <CalendarPlus className="size-4 text-z-brass" aria-hidden="true" />
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-z-brass">
-                  Crear nueva recurrente
+                  {createNewLabel}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  Promueve esta transacción a una plantilla mensual
+                  {createNewSublabel}
                 </p>
               </div>
             </button>

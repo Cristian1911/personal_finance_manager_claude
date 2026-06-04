@@ -3,15 +3,25 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { GHOST_BUTTON_CLASS, DESTRUCTIVE_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
-import { settlePersonalDebt, cancelPersonalDebt } from "@/actions/personal-debts";
+import { settlePersonalDebt, cancelPersonalDebt, deletePersonalDebt } from "@/actions/personal-debts";
 import { RecordRepaymentDialog } from "./record-repayment-dialog";
 import type { PersonalDebtWithDetails, CurrencyCode } from "@/types/domain";
 
@@ -24,6 +34,7 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [repayOpen, setRepayOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const code = (persona.currency_code ?? currency) as CurrencyCode;
@@ -102,34 +113,45 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
           </dl>
           {persona.notes && <p className="text-xs text-muted-foreground">{persona.notes}</p>}
 
-          {isActive && (
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button
-                size="sm"
-                className={cn(GHOST_BUTTON_CLASS)}
-                disabled={pending}
-                onClick={() => setRepayOpen(true)}
-              >
-                Registrar abono
-              </Button>
-              <Button
-                size="sm"
-                className={cn(GHOST_BUTTON_CLASS)}
-                disabled={pending}
-                onClick={() => runAction(() => settlePersonalDebt(persona.id), "Cuenta saldada")}
-              >
-                Saldar
-              </Button>
-              <Button
-                size="sm"
-                className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS)}
-                disabled={pending}
-                onClick={() => runAction(() => cancelPersonalDebt(persona.id), "Cuenta cancelada")}
-              >
-                Cancelar
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {isActive && (
+              <>
+                <Button
+                  size="sm"
+                  className={cn(GHOST_BUTTON_CLASS)}
+                  disabled={pending}
+                  onClick={() => setRepayOpen(true)}
+                >
+                  Registrar abono
+                </Button>
+                <Button
+                  size="sm"
+                  className={cn(GHOST_BUTTON_CLASS)}
+                  disabled={pending}
+                  onClick={() => runAction(() => settlePersonalDebt(persona.id), "Cuenta saldada")}
+                >
+                  Saldar
+                </Button>
+                <Button
+                  size="sm"
+                  className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS)}
+                  disabled={pending}
+                  onClick={() => runAction(() => cancelPersonalDebt(persona.id), "Cuenta cancelada")}
+                >
+                  Cancelar
+                </Button>
+              </>
+            )}
+            <Button
+              size="sm"
+              className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS)}
+              disabled={pending}
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="mr-1 size-3.5" />
+              Eliminar
+            </Button>
+          </div>
         </div>
       )}
 
@@ -139,6 +161,29 @@ export function PersonaCard({ persona, currency }: PersonaCardProps) {
         personalDebtId={persona.id}
         personName={persona.destinatario_name}
       />
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar esta deuda?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará la deuda con {persona.destinatario_name} de forma permanente.
+              Las transacciones vinculadas se conservan, pero dejarán de estar asociadas a
+              esta deuda. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className={cn(DESTRUCTIVE_GHOST_BUTTON_CLASS)}
+              disabled={pending}
+              onClick={() => runAction(() => deletePersonalDebt(persona.id), "Deuda eliminada")}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   PiggyBank,
   Settings,
   Tag,
+  Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -42,6 +43,11 @@ const ORGANIZAR_GROUP: Group = {
 
 const PLAN_TILE: Tile = { href: "/plan", icon: PiggyBank, label: "Plan" };
 const DEUDAS_TILE: Tile = { href: "/deudas", icon: Landmark, label: "Deudas" };
+const DEUDAS_PERSONALES_TILE: Tile = {
+  href: "/deudas-personales",
+  icon: Users,
+  label: "Deudas personales",
+};
 const RECURRENTES_TILE: Tile = {
   href: "/plan?tab=recurrentes",
   icon: CalendarClock,
@@ -61,6 +67,7 @@ export function MobileLinkGrid() {
   // The active third tab lives in the bottom nav — surface the OTHER one in the grid.
   const planificarTiles: Tile[] = [
     focus === "DEBT" ? PLAN_TILE : DEUDAS_TILE,
+    DEUDAS_PERSONALES_TILE,
     RECURRENTES_TILE,
     DESEOS_TILE,
     PUEDO_PAGAR_TILE,

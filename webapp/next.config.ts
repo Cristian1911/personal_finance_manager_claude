@@ -20,6 +20,12 @@ const nextConfig: NextConfig = {
         destination: "/deudas/planificador",
         permanent: true,
       },
+      {
+        // Module reframed "Personas" → "Deudas personales".
+        source: "/personas",
+        destination: "/deudas-personales",
+        permanent: true,
+      },
     ];
   },
 };

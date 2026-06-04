@@ -18,7 +18,7 @@ export default async function PersonasPage() {
   return (
     <div className={`space-y-6 ${MOBILE_TAB_BAR_CLEARANCE_CLASS}`}>
       <h1 className="text-2xl font-semibold tracking-tight text-z-sage-light lg:text-3xl">
-        Personas
+        Deudas personales
       </h1>
       <PersonasRoot debts={debts} overview={overview} currency={currency} />
     </div>
