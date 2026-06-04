@@ -113,7 +113,7 @@ export async function fetchDestinatarioRules(
   const { data, error } = await supabase
     .from("destinatario_rules")
     .select(
-      "destinatario_id, match_type, pattern, priority, destinatarios!inner(name, default_category_id, is_active)"
+      "destinatario_id, match_type, pattern, priority, destinatarios!inner(name, default_category_id, is_active, kind)"
     )
     .eq("user_id", userId)
     .order("priority", { ascending: true });
@@ -123,7 +123,7 @@ export async function fetchDestinatarioRules(
   const rules: DestinatarioRule[] = [];
   for (const row of data ?? []) {
     const dest = row.destinatarios;
-    if (!dest || !dest.is_active) continue;
+    if (!dest || !dest.is_active || dest.kind === "person") continue;
 
     rules.push({
       destinatario_id: row.destinatario_id,
@@ -389,6 +389,7 @@ export async function createDestinatario(
     default_category_id: formData.get("default_category_id") || undefined,
     notes: formData.get("notes") || undefined,
     is_active: formData.get("is_active") !== "false",
+    kind: formData.get("kind") || undefined,
   });
 
   if (!parsed.success) {
@@ -526,6 +527,7 @@ export async function updateDestinatario(
     default_category_id: formData.get("default_category_id") || undefined,
     notes: formData.get("notes") || undefined,
     is_active: formData.get("is_active") !== "false",
+    kind: formData.get("kind") || undefined,
   });
 
   if (!parsed.success) {

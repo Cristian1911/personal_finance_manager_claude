@@ -27,7 +27,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { createDestinatario, getRecentDestinatarios, addDestinatarioRule } from "@/actions/destinatarios";
 import { DestinatarioCreateDialog } from "@/components/destinatarios/destinatario-create-form";
-import type { CategoryWithChildren, CurrencyCode } from "@/types/domain";
+import type { CategoryWithChildren, CurrencyCode, DestinatarioKind } from "@/types/domain";
 import { toast } from "sonner";
 
 type DestinatarioOption = {
@@ -58,6 +58,8 @@ interface DestinatarioZonePickerProps {
   merchantName?: string | null;
   amount?: number | null;
   currencyCode?: CurrencyCode | null;
+  /** Restrict the list to these destinatario kinds (e.g. ["person"]). Omit = all. */
+  kindFilter?: DestinatarioKind[];
 }
 
 export function DestinatarioZonePicker({
@@ -76,6 +78,7 @@ export function DestinatarioZonePicker({
   merchantName,
   amount,
   currencyCode,
+  kindFilter,
 }: DestinatarioZonePickerProps) {
   // When categories are provided, "Crear nuevo" opens the full seeded form
   // (token chips when seed text exists, otherwise a plain rich form). The bare
@@ -116,8 +119,11 @@ export function DestinatarioZonePicker({
   }, [open]);
 
   const active = useMemo(
-    () => destinatarios.filter((d) => d.is_active),
-    [destinatarios]
+    () =>
+      destinatarios.filter(
+        (d) => d.is_active && (!kindFilter || kindFilter.includes(d.kind))
+      ),
+    [destinatarios, kindFilter]
   );
 
   const filtered = useMemo(() => {

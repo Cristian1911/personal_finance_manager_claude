@@ -4,6 +4,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type {
   Account,
   CategoryWithChildren,
+  DestinatarioKind,
   Tag,
   TagGroupWithTags,
 } from "@/types/domain";
@@ -12,6 +13,7 @@ type DestinatarioOption = {
   id: string;
   name: string;
   is_active: boolean;
+  kind: DestinatarioKind;
 };
 
 interface AppData {

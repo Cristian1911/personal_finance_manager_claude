@@ -55,6 +55,22 @@ export type SubscriptionWithDetails = Subscription & {
   monthly_expected: number | null;
 };
 
+export type PersonalDebt = Tables<"personal_debts">;
+export type PersonalDebtDirection = Enums<"personal_debt_direction">;
+export type PersonalDebtStatus = Enums<"personal_debt_status">;
+export type PdRole = Enums<"pd_role">;
+export type DestinatarioKind = Enums<"destinatario_kind">;
+
+/** Flattened shape returned by getPersonalDebtsCached (FK-joined destinatario). */
+export type PersonalDebtWithDetails = PersonalDebt & {
+  destinatario_name: string;
+  destinatario_default_category_id: string | null;
+  /** Sum of linked repayment transaction amounts (>= 0). */
+  total_repaid: number;
+  /** True when due_date is past and status is 'active'. */
+  is_overdue: boolean;
+};
+
 // Cashflow planner
 export type PlanningPeriodPreset = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM";
 export type PlanningEntryType = "INCOME" | "EXPENSE";

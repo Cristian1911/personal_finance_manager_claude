@@ -5,14 +5,14 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Pencil, ArrowDownLeft, ArrowUpRight, Link2, Repeat } from "lucide-react";
+import { Pencil, ArrowDownLeft, ArrowUpRight, Link2, Repeat, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
 import { CategoryZonePicker } from "@/components/categories/category-zone-picker";
 import { TagChip } from "@/components/tags/tag-chip";
 import { CategoryIcon } from "@/components/categories/category-icon";
-import { LinkPickerSheet } from "@/components/recurring/link-picker-sheet";
+import { LinkPickerSheet, type LinkCandidate } from "@/components/recurring/link-picker-sheet";
 import { MOBILE_ACTION_BUTTON_CLASS } from "@/lib/constants/styles";
 import { categorizeTransaction, assignDestinatario, removeDestinatarioFromTransaction } from "@/actions/categorize";
 import {
@@ -20,6 +20,7 @@ import {
   linkExistingTransactionToOccurrence,
 } from "@/actions/occurrences";
 import type { CandidateOccurrence } from "@/actions/occurrences";
+import { getPersonalDebts, linkTransactionToPersonalDebt } from "@/actions/personal-debts";
 import { toast } from "sonner";
 import type { TransactionWithAccount, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
@@ -58,7 +59,12 @@ export function MovimientosTransactionRow({
   const [occurrenceCandidates, setOccurrenceCandidates] = useState<CandidateOccurrence[]>([]);
   const [isLinking, startLinkTransition] = useTransition();
 
+  // Link to persona (personal debt) state — reuses isLinking/startLinkTransition
+  const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
+  const [personaCandidates, setPersonaCandidates] = useState<LinkCandidate[]>([]);
+
   const canLink = linkableAccountIds?.has(tx.account_id) && !tx.recurrence_group_id;
+  const canLinkPersona = !tx.personal_debt_id && !tx.transfer_group_id;
 
   function handleOpenLinkPicker() {
     setLinkPickerOpen(true);
@@ -78,6 +84,45 @@ export function MovimientosTransactionRow({
       const result = await linkExistingTransactionToOccurrence(occurrenceId, tx.id);
       if (result.success) {
         toast.success("Transacción vinculada a recurrente");
+      } else {
+        toast.error(result.error ?? "No se pudo vincular");
+      }
+    });
+  }
+
+  function handleOpenPersonaPicker() {
+    setPersonaPickerOpen(true);
+    getPersonalDebts().then((result) => {
+      if (!result.success) {
+        toast.error(result.error ?? "Error al buscar personas");
+        setPersonaPickerOpen(false);
+        return;
+      }
+      const candidates: LinkCandidate[] = result.data
+        .filter((d) => d.status === "active")
+        .map((d) => ({
+          id: d.id,
+          label: d.destinatario_name,
+          sublabel: d.direction === "borrowed" ? "Le debes" : "Te debe",
+          amount: d.outstanding_amount,
+          currencyCode: d.currency_code,
+          direction: d.direction === "borrowed" ? "OUTFLOW" : "INFLOW",
+          matchScore: 0,
+        }));
+      setPersonaCandidates(candidates);
+    }).catch((err) => {
+      console.error("Failed to fetch personal debts:", err);
+      toast.error("Error de red al buscar personas");
+      setPersonaPickerOpen(false);
+    });
+  }
+
+  function handleConfirmPersonaLink(debtId: string) {
+    setPersonaPickerOpen(false);
+    startLinkTransition(async () => {
+      const result = await linkTransactionToPersonalDebt(debtId, tx.id);
+      if (result.success) {
+        toast.success("Transacción vinculada a persona");
       } else {
         toast.error(result.error ?? "No se pudo vincular");
       }
@@ -277,6 +322,19 @@ export function MovimientosTransactionRow({
             </button>
           )}
 
+          {/* Link to persona (personal debt) */}
+          {canLinkPersona && (
+            <button
+              type="button"
+              onClick={handleOpenPersonaPicker}
+              disabled={isLinking}
+              className={cn(MOBILE_ACTION_BUTTON_CLASS, "inline-flex items-center gap-1 rounded-full hover:bg-z-brass/12")}
+            >
+              <Users className="size-2.5" />
+              Vincular a persona
+            </button>
+          )}
+
           {/* Edit link */}
           <Link
             href={`/transactions/${tx.id}`}
@@ -310,6 +368,19 @@ export function MovimientosTransactionRow({
             setLinkPickerOpen(false);
             router.push(`/transactions/${tx.id}?promote=1`);
           }}
+        />
+      )}
+
+      {/* Link to persona picker sheet */}
+      {personaPickerOpen && (
+        <LinkPickerSheet
+          open={personaPickerOpen}
+          onOpenChange={setPersonaPickerOpen}
+          title="Vincular a persona"
+          subtitle={`${description} · ${formatCurrency(tx.amount, tx.currency_code as CurrencyCode)}`}
+          candidates={personaCandidates}
+          onConfirm={handleConfirmPersonaLink}
+          isPending={isLinking}
         />
       )}
     </div>

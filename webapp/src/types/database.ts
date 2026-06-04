@@ -888,6 +888,7 @@ export type Database = {
           is_active: boolean
           name: string
           name_hmac: string | null
+          kind: Database["public"]["Enums"]["destinatario_kind"]
           notes: string | null
           updated_at: string
           user_id: string
@@ -899,6 +900,7 @@ export type Database = {
           is_active?: boolean
           name: string
           name_hmac?: string | null
+          kind?: Database["public"]["Enums"]["destinatario_kind"]
           notes?: string | null
           updated_at?: string
           user_id: string
@@ -910,6 +912,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           name_hmac?: string | null
+          kind?: Database["public"]["Enums"]["destinatario_kind"]
           notes?: string | null
           updated_at?: string
           user_id?: string
@@ -946,6 +949,7 @@ export type Database = {
           is_active: boolean
           name: string
           name_hmac: string | null
+          kind: Database["public"]["Enums"]["destinatario_kind"]
           notes: string | null
           updated_at: string
           user_id: string
@@ -957,6 +961,7 @@ export type Database = {
           is_active?: boolean
           name: string
           name_hmac?: string | null
+          kind?: Database["public"]["Enums"]["destinatario_kind"]
           notes?: string | null
           updated_at?: string
           user_id: string
@@ -968,6 +973,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           name_hmac?: string | null
+          kind?: Database["public"]["Enums"]["destinatario_kind"]
           notes?: string | null
           updated_at?: string
           user_id?: string
@@ -1547,6 +1553,75 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts_enc"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personal_debts: {
+        Row: {
+          created_at: string
+          currency_code: string
+          destinatario_id: string
+          direction: Database["public"]["Enums"]["personal_debt_direction"]
+          due_date: string | null
+          id: string
+          is_demo: boolean
+          notes: string | null
+          opened_on: string
+          origin_transaction_id: string | null
+          outstanding_amount: number
+          principal_amount: number
+          status: Database["public"]["Enums"]["personal_debt_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency_code?: string
+          destinatario_id: string
+          direction: Database["public"]["Enums"]["personal_debt_direction"]
+          due_date?: string | null
+          id?: string
+          is_demo?: boolean
+          notes?: string | null
+          opened_on: string
+          origin_transaction_id?: string | null
+          outstanding_amount: number
+          principal_amount: number
+          status?: Database["public"]["Enums"]["personal_debt_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          destinatario_id?: string
+          direction?: Database["public"]["Enums"]["personal_debt_direction"]
+          due_date?: string | null
+          id?: string
+          is_demo?: boolean
+          notes?: string | null
+          opened_on?: string
+          origin_transaction_id?: string | null
+          outstanding_amount?: number
+          principal_amount?: number
+          status?: Database["public"]["Enums"]["personal_debt_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_debts_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_debts_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "destinatarios_enc"
             referencedColumns: ["id"]
           },
         ]
@@ -2847,6 +2922,8 @@ export type Database = {
           transaction_date: string
           transaction_time: string | null
           transfer_group_id: string | null
+          personal_debt_id: string | null
+          pd_role: Database["public"]["Enums"]["pd_role"] | null
           updated_at: string
           user_id: string
         }
@@ -2895,6 +2972,8 @@ export type Database = {
           transaction_date: string
           transaction_time?: string | null
           transfer_group_id?: string | null
+          personal_debt_id?: string | null
+          pd_role?: Database["public"]["Enums"]["pd_role"] | null
           updated_at?: string
           user_id: string
         }
@@ -2943,6 +3022,8 @@ export type Database = {
           transaction_date?: string
           transaction_time?: string | null
           transfer_group_id?: string | null
+          personal_debt_id?: string | null
+          pd_role?: Database["public"]["Enums"]["pd_role"] | null
           updated_at?: string
           user_id?: string
         }
@@ -3065,6 +3146,8 @@ export type Database = {
           transaction_date: string
           transaction_time: string | null
           transfer_group_id: string | null
+          personal_debt_id: string | null
+          pd_role: Database["public"]["Enums"]["pd_role"] | null
           updated_at: string
           user_id: string
         }
@@ -3113,6 +3196,8 @@ export type Database = {
           transaction_date: string
           transaction_time?: string | null
           transfer_group_id?: string | null
+          personal_debt_id?: string | null
+          pd_role?: Database["public"]["Enums"]["pd_role"] | null
           updated_at?: string
           user_id: string
         }
@@ -3161,6 +3246,8 @@ export type Database = {
           transaction_date?: string
           transaction_time?: string | null
           transfer_group_id?: string | null
+          personal_debt_id?: string | null
+          pd_role?: Database["public"]["Enums"]["pd_role"] | null
           updated_at?: string
           user_id?: string
         }
@@ -3693,6 +3780,10 @@ export type Database = {
         | "CSV_IMPORT"
         | "OCR"
         | "EMAIL"
+      destinatario_kind: "merchant" | "person"
+      pd_role: "origin" | "repayment"
+      personal_debt_direction: "borrowed" | "lent"
+      personal_debt_status: "active" | "settled" | "cancelled"
       planning_entry_status: "PLANNED" | "COMPLETED" | "SKIPPED"
       planning_entry_type: "INCOME" | "EXPENSE"
       planning_period_preset: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM"
@@ -3877,6 +3968,10 @@ export const Constants = {
         "OCR",
         "EMAIL",
       ],
+      destinatario_kind: ["merchant", "person"],
+      pd_role: ["origin", "repayment"],
+      personal_debt_direction: ["borrowed", "lent"],
+      personal_debt_status: ["active", "settled", "cancelled"],
       planning_entry_status: ["PLANNED", "COMPLETED", "SKIPPED"],
       planning_entry_type: ["INCOME", "EXPENSE"],
       planning_period_preset: ["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"],

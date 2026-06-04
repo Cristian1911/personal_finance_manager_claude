@@ -78,7 +78,7 @@ export default async function DashboardLayout({
     categories,
     outflowCategories: outflowCategoriesResult.success ? outflowCategoriesResult.data ?? [] : [],
     destinatarios: (destinatariosResult.success ? destinatariosResult.data : []).map(
-      (d) => ({ id: d.id, name: d.name, is_active: d.is_active })
+      (d) => ({ id: d.id, name: d.name, is_active: d.is_active, kind: d.kind })
     ),
     tagGroups: tagGroupsResult.success ? tagGroupsResult.data : [],
   };

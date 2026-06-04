@@ -6,6 +6,7 @@ import {
   Settings,
   PiggyBank,
   Repeat,
+  Users,
 } from "lucide-react-native";
 import { MobileHeader } from "../../components/ui/MobileHeader";
 import { HubEntry } from "../../components/ui/HubEntry";
@@ -43,6 +44,12 @@ export default function MenuScreen() {
           title="Suscripciones"
           hint="Pagos recurrentes"
           onPress={() => router.push("/subscriptions" as any)}
+        />
+        <HubEntry
+          icon={Users}
+          title="Personas"
+          hint="Deudas con amigos y familia"
+          onPress={() => router.push("/personas" as any)}
         />
         <HubEntry
           icon={Settings}

@@ -59,6 +59,7 @@ export function revalidateAllUserData() {
   updateTag("cashflow-planner");
   updateTag("categories");
   updateTag("impact");
+  updateTag("personal-debts");
 }
 
 /**
