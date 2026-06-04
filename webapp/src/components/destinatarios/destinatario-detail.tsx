@@ -280,11 +280,13 @@ function EditForm({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Tipo</Label>
+          <div className="space-y-2" role="radiogroup" aria-labelledby="dest-detail-tipo-label">
+            <Label id="dest-detail-tipo-label">Tipo</Label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                role="radio"
+                aria-checked={kind === "merchant"}
                 onClick={() => setKind("merchant")}
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
@@ -297,6 +299,8 @@ function EditForm({
               </button>
               <button
                 type="button"
+                role="radio"
+                aria-checked={kind === "person"}
                 onClick={() => setKind("person")}
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
