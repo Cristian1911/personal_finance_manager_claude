@@ -45,7 +45,7 @@ export function PersonasRoot({ debts, overview, currency }: PersonasRootProps) {
       <div className="flex justify-end">
         <Button className={cn(BRASS_BUTTON_CLASS)} onClick={() => setCreateOpen(true)}>
           <Plus className="mr-1.5 size-4" />
-          Nueva cuenta con persona
+          Nueva deuda personal
         </Button>
       </div>
 

@@ -20,12 +20,16 @@ interface CreatePersonalDebtSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currency: CurrencyCode;
+  /** When provided, called with the new debt id instead of toasting success —
+   *  lets callers (e.g. "Vincular a deuda personal") link a transaction to it. */
+  onCreated?: (debtId: string) => void;
 }
 
 export function CreatePersonalDebtSheet({
   open,
   onOpenChange,
   currency,
+  onCreated,
 }: CreatePersonalDebtSheetProps) {
   const router = useRouter();
   const today = format(new Date(), "yyyy-MM-dd");
@@ -57,12 +61,18 @@ export function CreatePersonalDebtSheet({
     startTransition(async () => {
       const res = await createPersonalDebt(undefined, formData);
       if (res.success) {
-        toast.success("Cuenta creada");
         reset();
         onOpenChange(false);
-        router.refresh();
+        if (onCreated) {
+          // Caller (auto-link flow) runs its own server action + revalidation —
+          // don't refresh here or the row renders before the link resolves.
+          onCreated(res.data.id);
+        } else {
+          toast.success("Deuda creada");
+          router.refresh();
+        }
       } else {
-        toast.error(res.error ?? "Error al crear la cuenta");
+        toast.error(res.error ?? "Error al crear la deuda");
       }
     });
   }
@@ -74,7 +84,7 @@ export function CreatePersonalDebtSheet({
         className={cn("max-h-[90dvh] overflow-y-auto", MOBILE_SHEET_SAFE_AREA_CLASS)}
       >
         <SheetHeader>
-          <SheetTitle>Nueva cuenta con persona</SheetTitle>
+          <SheetTitle>Nueva deuda personal</SheetTitle>
         </SheetHeader>
         <form action={handleSubmit} className="space-y-4 pt-2">
           <div className="grid grid-cols-2 gap-2">
@@ -130,7 +140,7 @@ export function CreatePersonalDebtSheet({
           </div>
 
           <Button type="submit" className={cn(BRASS_BUTTON_CLASS, "w-full")} disabled={pending}>
-            {pending ? "Guardando..." : "Crear cuenta"}
+            {pending ? "Guardando..." : "Crear deuda"}
           </Button>
         </form>
       </SheetContent>

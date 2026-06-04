@@ -52,7 +52,7 @@ export const WORKSPACE_NAV: NavItem[] = [
   { title: "Importar", href: "/import", icon: FileUp },
   { title: "Cuentas", href: "/accounts", icon: Wallet },
   { title: "Deudas", href: "/deudas", icon: Landmark },
-  { title: "Personas", href: "/personas", icon: Users },
+  { title: "Deudas personales", href: "/deudas-personales", icon: Users },
 ];
 
 export const BOTTOM_NAV: NavItem[] = [
