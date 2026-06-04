@@ -115,6 +115,11 @@ export function CreatePersonalDebtSheet({
               triggerClassName="w-full"
               kindFilter={["person"]}
               createKind="person"
+              // This sheet is a radix Dialog (modal); the picker's default mobile
+              // vaul Drawer renders as a sibling portal that the modal's
+              // pointer-events lock makes unreachable. A nested radix Dialog
+              // stacks correctly inside the sheet.
+              variant="dialog"
             />
           </div>
 
