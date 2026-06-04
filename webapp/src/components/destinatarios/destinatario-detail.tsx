@@ -13,6 +13,7 @@ import {
   Link2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -162,6 +163,7 @@ function EditForm({
   categoryMap: Record<string, string>;
 }) {
   const [isActive, setIsActive] = useState(destinatario.is_active);
+  const [kind, setKind] = useState<"merchant" | "person">(destinatario.kind ?? "merchant");
   const [ruleImpact, setRuleImpact] = useState<{ matchCount: number } | null>(null);
   const [applyingRules, startApplyTransition] = useTransition();
 
@@ -277,6 +279,44 @@ function EditForm({
               placeholder="Notas opcionales..."
             />
           </div>
+
+          <div className="space-y-2" role="radiogroup" aria-labelledby="dest-detail-tipo-label">
+            <Label id="dest-detail-tipo-label">Tipo</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={kind === "merchant"}
+                onClick={() => setKind("merchant")}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                  kind === "merchant"
+                    ? "border-z-brass/40 bg-z-brass/10"
+                    : "border-white/6 bg-z-surface-2",
+                )}
+              >
+                Comercio
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={kind === "person"}
+                onClick={() => setKind("person")}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                  kind === "person"
+                    ? "border-z-brass/40 bg-z-brass/10"
+                    : "border-white/6 bg-z-surface-2",
+                )}
+              >
+                Persona
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Las personas aparecen en cuentas personales; los comercios se usan para categorizar.
+            </p>
+          </div>
+          <input type="hidden" name="kind" value={kind} />
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
