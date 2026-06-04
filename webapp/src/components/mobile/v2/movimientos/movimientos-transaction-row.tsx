@@ -122,12 +122,20 @@ export function MovimientosTransactionRow({
     });
   }
 
-  function handleConfirmPersonaLink(debtId: string) {
+  function handleConfirmPersonaLink(debtId: string, fromCreate = false) {
     setPersonaPickerOpen(false);
     startLinkTransition(async () => {
       const result = await linkTransactionToPersonalDebt(debtId, tx.id);
       if (result.success) {
         toast.success("Transacción vinculada a deuda personal");
+        router.refresh();
+      } else if (fromCreate) {
+        // The debt was already created; surface that so the user isn't left with
+        // a dangling debt and no breadcrumb.
+        toast.error(
+          "Deuda creada, pero no se pudo vincular. Búscala en Deudas personales para vincularla.",
+        );
+        router.refresh();
       } else {
         toast.error(result.error ?? "No se pudo vincular");
       }
@@ -402,7 +410,7 @@ export function MovimientosTransactionRow({
           open={personaCreateOpen}
           onOpenChange={setPersonaCreateOpen}
           currency={tx.currency_code as CurrencyCode}
-          onCreated={handleConfirmPersonaLink}
+          onCreated={(debtId) => handleConfirmPersonaLink(debtId, true)}
         />
       )}
     </div>
