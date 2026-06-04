@@ -204,6 +204,7 @@ export function DestinatarioZonePicker({
     </button>
   ) : (
     <Button
+      type="button"
       variant="outline"
       role="combobox"
       aria-expanded={open}
