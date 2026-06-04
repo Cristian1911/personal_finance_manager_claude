@@ -505,10 +505,14 @@ async function recomputeOutstanding(
     .eq("pd_role", "repayment");
   const amounts: number[] = (repayments ?? []).map((t: { amount: number }) => t.amount);
   const { outstanding, status } = computeOutstanding(principal, amounts);
-  await supabase
+  const { error: updateErr } = await supabase
     .from("personal_debts")
     .update({ outstanding_amount: outstanding, status })
     .eq("id", personalDebtId)
     .eq("user_id", userId)
     .neq("status", "cancelled");
+  // Surface a failed recompute instead of silently returning success with a
+  // stale outstanding — better a thrown mutation error the user can retry
+  // (inserts are idempotent) than a false success with drifted state.
+  if (updateErr) throw updateErr;
 }

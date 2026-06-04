@@ -39,6 +39,8 @@ export function PersonasRoot() {
     try {
       await sync();
       await loadData();
+    } catch (error) {
+      console.error("Failed to refresh personal debts:", error);
     } finally {
       setRefreshing(false);
     }

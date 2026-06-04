@@ -110,6 +110,10 @@ export function MovimientosTransactionRow({
           matchScore: 0,
         }));
       setPersonaCandidates(candidates);
+    }).catch((err) => {
+      console.error("Failed to fetch personal debts:", err);
+      toast.error("Error de red al buscar personas");
+      setPersonaPickerOpen(false);
     });
   }
 

@@ -552,6 +552,9 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `ALTER TABLE destinatarios ADD COLUMN kind TEXT NOT NULL DEFAULT 'merchant'`,
       `ALTER TABLE transactions ADD COLUMN personal_debt_id TEXT`,
       `ALTER TABLE transactions ADD COLUMN pd_role TEXT`,
+      // Index the repayment-sum lookup (getActivePersonalDebts subquery) so it
+      // doesn't full-scan transactions per active debt on large histories.
+      `CREATE INDEX IF NOT EXISTS idx_transactions_personal_debt ON transactions(personal_debt_id)`,
     ],
   },
 ];
