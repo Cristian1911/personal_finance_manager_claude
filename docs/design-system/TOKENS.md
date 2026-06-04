@@ -145,3 +145,15 @@ Muted text:       text-muted-foreground
 
 - Never use hardcoded hex for semantic colors (no `#3a3a3a`, no `#c44`)
 - Use CSS variables via Tailwind classes
+
+## Z-index layers
+
+| Layer | Class | Used by |
+|---|---|---|
+| Tab bar | `z-40` | mobile bottom tab bar |
+| Modals | `z-50` | shadcn primitives — Dialog, AlertDialog, Drawer, Popover, Dropdown, Select, Tooltip (must sit above the tab bar) |
+| Top surfaces | `z-[10000]` | `Sheet` + `FabMenu` — cover other modals |
+| Dialog-in-Sheet | `Z_DIALOG_ABOVE_SHEET` (`z-[10001]`) | a primitive opened from **inside** a Sheet (e.g. the destinatario picker in "Nueva deuda personal") — must clear `z-[10000]`. Import from `@/lib/constants/styles`; apply to both `DialogContent` and its `overlayClassName`. |
+| Toasts | sonner default (`z≈10^9`) | always on top |
+
+Rule: don't invent new raw z-values. A modal opened from inside a Sheet uses `Z_DIALOG_ABOVE_SHEET`; everything else uses the tiers above.

@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { GHOST_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
+import { GHOST_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS, Z_DIALOG_ABOVE_SHEET } from "@/lib/constants/styles";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { createDestinatario, getRecentDestinatarios, addDestinatarioRule } from "@/actions/destinatarios";
@@ -393,9 +393,16 @@ export function DestinatarioZonePicker({
       <>
         {!hideTrigger && triggerButton}
         <Dialog open={open} onOpenChange={setOpen}>
-          {/* z-[10001]: this variant is used inside the create-deuda Sheet
-              (z-10000); the default Dialog z-50 would render behind it. */}
-          <DialogContent className="z-[10001] flex max-h-[70vh] w-full max-w-sm flex-col gap-0 overflow-hidden p-0">
+          {/* This variant is used inside the create-deuda Sheet (z-[10000]); the
+              default Dialog z-50 would render behind it. Lift both content and
+              overlay above the sheet. */}
+          <DialogContent
+            overlayClassName={Z_DIALOG_ABOVE_SHEET}
+            className={cn(
+              Z_DIALOG_ABOVE_SHEET,
+              "flex max-h-[70vh] w-full max-w-sm flex-col gap-0 overflow-hidden p-0",
+            )}
+          >
             <DialogHeader className="border-b px-4 py-3">
               <DialogTitle className="flex items-center gap-2">
                 <UserRound className="size-4 text-z-brass" />

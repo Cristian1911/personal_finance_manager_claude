@@ -21,6 +21,18 @@ export const DESTRUCTIVE_BUTTON_CLASS =
 export const DESTRUCTIVE_GHOST_BUTTON_CLASS =
   "border-z-debt/25 bg-black/10 text-z-expense hover:bg-z-debt/10";
 
+/**
+ * Z-index layers (see CLAUDE.md "z-index discipline"):
+ *   z-40            mobile tab bar
+ *   z-50            shadcn primitives (Dialog, Popover, Drawer, Select, …)
+ *   z-[10000]       Sheet + FabMenu (top layer — cover other modals)
+ *   Z_DIALOG_ABOVE_SHEET  a primitive opened from INSIDE a Sheet must clear z-[10000].
+ * Use this for any Dialog/Popover/Drawer rendered within a Sheet (e.g. the
+ * destinatario picker inside "Nueva deuda personal"). Toasts (sonner, z≈10^9)
+ * still sit above it.
+ */
+export const Z_DIALOG_ABOVE_SHEET = "z-[10001]";
+
 /** Shared page shell spacing */
 export const PAGE_STACK_CLASS = "space-y-6 lg:space-y-8";
 
