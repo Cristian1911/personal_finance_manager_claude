@@ -1,23 +1,25 @@
 # Next session — start here (Personal Debts F1)
 
-You're continuing the **Personas (lend/borrow tracker)** feature. The web part is done; finish the rest.
+Continuing the **Personas (lend/borrow tracker)** feature. Web is done; mobile shipped **read-only**; writes deferred to Phase 2.
 
-## First 3 steps
-1. `git checkout feat/personal-debts` then `cd webapp && pnpm build` — must be green.
-2. Read `HANDOVER.md` (full status + gotchas) and the plan `docs/superpowers/plans/2026-06-03-personal-debts-f1.md`.
-3. Pick up the remaining tasks below (in order).
+## Status (2026-06-04 session) — all green, NOTHING committed/pushed
+
+Verification: `webapp pnpm build` ✓ · `mobile npx tsc --noEmit` ✓ · shared vitest (`personal-debt.test.ts`) ✓ · webapp vitest (`src/`) ✓. 4 review gates ran (zetas-front-guy, mobile-sync-doctor, mobile-webapp-parity, mobile-perf-doctor) — blocking findings fixed inline, rest backlogged.
+
+Done this session (uncommitted, working tree only):
+- **Task 11 — Vincular a persona** ✅ `movimientos-transaction-row.tsx`: sibling chip + 2nd `LinkPickerSheet`, gate `!personal_debt_id && !transfer_group_id`, reuses `isLinking`. (No `onCreateNew` — LinkPickerSheet hardcodes "recurrente" copy.)
+- **Task 12 Step 6 — Personas/Comercios split** ✅ `destinatario-list.tsx`: `filtered`→`{personas,comercios}`, single render-list with `col-span-full` `SECTION_EYEBROW_CLASS` headings. `kind` already flows from action+page.
+- **Task 14 — Mobile parity (READ-ONLY v1)** ✅ schema v16 (`personal_debts` + `destinatarios.kind` + `transactions.personal_debt_id/pd_role`), pull.ts registration (`is_demo` boolean), read-only repo `personal-debts.ts`, `PersonasRoot.tsx` (Debo/Me deben display), route + `_layout` + menu HubEntry. **push.ts intentionally NOT touched** (mirrors subscriptions pull-only precedent).
+- **Task 15 — gates** ✅ (build/tests/tsc + 4 agents).
 
 ## What's left
-- **Task 14 — Mobile parity** (the big one): plan L1630. Add `personal_debts` + the new columns (`transactions.personal_debt_id/pd_role`, `destinatarios.kind`) to mobile SQLite schema + sync + repo + a `/personas` route. Gates: `mobile-webapp-parity` + `mobile-sync-doctor`.
-- **Task 11 — Vincular UI**: plan L1424. The action already exists (`linkTransactionToPersonalDebt`); just wire it into the movimientos row's existing "Vincular" menu.
-- **Task 15 — Finish**: `perf-auditor` on `/personas`, then merge/PR.
-- Optional polish: Task 12 Step 6 (mgmt-list Personas/Comercios split) + the UI items noted in HANDOVER.
+1. **Decide: commit + PR.** Tree also has unrelated pre-session dirty files (`app.json`, `eas.json`, `mobile/lib/analytics/`, `mobile/lib/services/notifications/`, `weekly-digest*`, docs) — stage ONLY the personas files (listed above) for atomic commits; don't sweep the rest. Then dry-merge vs `origin/main` (likely conflicts: `database.ts`, `domain.ts`, mobile `schema.ts`) before PR.
+2. **BACKLOG (do before mobile writes):** "Mobile — income metrics don't exclude personal-debt `origin` inflows" — live web/mobile divergence; fix `monthly-aggregates.ts` + mobile `getMonthlyAggregates`.
+3. **BACKLOG Phase 2:** "Personal Debts (Personas) — mobile write parity" — repo create/recordRepayment (NO local balance write) + re-add push.ts + create/abono UI + device-verify round-trip.
+4. Optional web polish (from prior HANDOVER): Vincular create-with-origin deep-link, V5 `TOGGLE_*` constant, R1 `stat-tile` reuse, W5 double-clearance check.
 
 ## Rules (do not skip)
-- **NEVER full-regen `webapp/src/types/database.ts`** — it breaks encrypted-view inserts app-wide. Hand-add new columns.
-- Migrations for Tasks 1–3 are **already applied to remote** — do NOT re-push them.
-- **Implement inline.** Use the custom agents (supabase-migrator, server-action-reviewer, mobile-*-doctor, zetas-front-guy) only as **review gates**, not to write the code.
-- For `_enc` column adds, copy the **latest** has_auth-guarded trigger bodies (not the original `encrypt_*` migration). See HANDOVER for the exact migration files.
+- **NEVER full-regen `webapp/src/types/database.ts`** — hand-add columns.
+- Migrations Tasks 1–3 are **already applied to remote** — do NOT re-push.
+- **Implement inline.** Custom agents = review gates only.
 - Spanish UI, `pnpm` (not npm), build must pass before claiming done.
-
-When everything's green, delete this file.
