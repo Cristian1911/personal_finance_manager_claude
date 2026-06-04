@@ -75,6 +75,10 @@
         "appleId": "venti5.labs@gmail.com",
         "ascAppId": "6763683831",
         "appleTeamId": "F5GQBU5JPS"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./credentials/google-play-service-account.json",
+        "track": "alpha"
       }
     },
     "production-ios": {
