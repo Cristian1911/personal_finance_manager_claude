@@ -517,6 +517,43 @@ export const DB_MIGRATIONS: DbMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_subscriptions_destinatario ON subscriptions(destinatario_id)`,
     ],
   },
+  {
+    version: 16,
+    statements: [
+      // ── Personal debts (lend/borrow tracker) — synced table ───────────────
+      // Mirrors the plain (non-encrypted) `personal_debts` Supabase table/view.
+      // Columns mirror the webapp's getPersonalDebtsCached select exactly — any
+      // drift silently drops rows on every pull. Phase 1 is READ-ONLY (pull +
+      // display), so it is NOT in push.ts — mirrors the subscriptions
+      // precedent. Mobile write parity (create + repayment) ships in Phase 2.
+      `CREATE TABLE IF NOT EXISTS personal_debts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        destinatario_id TEXT NOT NULL,
+        direction TEXT NOT NULL,
+        principal_amount REAL NOT NULL,
+        currency_code TEXT NOT NULL DEFAULT 'COP',
+        outstanding_amount REAL NOT NULL,
+        opened_on TEXT NOT NULL,
+        due_date TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        origin_transaction_id TEXT,
+        notes TEXT,
+        is_demo INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (destinatario_id) REFERENCES destinatarios(id)
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_personal_debts_user_status ON personal_debts(user_id, status)`,
+      `CREATE INDEX IF NOT EXISTS idx_personal_debts_destinatario ON personal_debts(destinatario_id)`,
+      // New columns on existing tables (mirror the Supabase view columns).
+      // destinatarios/transactions CREATE TABLE (v5) never included these, so a
+      // plain ADD COLUMN on existing installs is safe (migrations run once).
+      `ALTER TABLE destinatarios ADD COLUMN kind TEXT NOT NULL DEFAULT 'merchant'`,
+      `ALTER TABLE transactions ADD COLUMN personal_debt_id TEXT`,
+      `ALTER TABLE transactions ADD COLUMN pd_role TEXT`,
+    ],
+  },
 ];
 
 export const LATEST_DB_VERSION =
