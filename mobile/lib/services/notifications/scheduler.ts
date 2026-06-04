@@ -94,10 +94,10 @@ export async function reschedulePaymentReminders(): Promise<void> {
     horizon.setDate(horizon.getDate() + HORIZON_DAYS);
 
     const occurrences = await getPendingOccurrences();
-    let scheduled = 0;
+    const requests: Notifications.NotificationRequestInput[] = [];
 
     for (const occ of occurrences) {
-      if (scheduled >= MAX_SCHEDULED) break;
+      if (requests.length >= MAX_SCHEDULED) break;
 
       const reminder = reminderDateFor(occ.occurrence_date);
       if (!reminder || reminder <= now) continue; // reminder time already passed
@@ -111,7 +111,7 @@ export async function reschedulePaymentReminders(): Promise<void> {
         (occ.currency_code as CurrencyCode) || "COP",
       );
 
-      await Notifications.scheduleNotificationAsync({
+      requests.push({
         content: {
           title: `💸 Mañana vence ${label}`,
           body: amount,
@@ -125,8 +125,13 @@ export async function reschedulePaymentReminders(): Promise<void> {
             : {}),
         },
       });
-      scheduled += 1;
     }
+
+    // Fire the schedule calls in parallel — each is an independent RN bridge
+    // round-trip; allSettled keeps it best-effort (one failure doesn't drop the rest).
+    await Promise.allSettled(
+      requests.map((req) => Notifications.scheduleNotificationAsync(req)),
+    );
   } catch (err) {
     if (__DEV__) console.warn("reschedulePaymentReminders failed:", err);
   } finally {
