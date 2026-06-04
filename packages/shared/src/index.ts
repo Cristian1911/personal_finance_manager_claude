@@ -26,5 +26,4 @@ export * from "./utils/account-balance";
 export * from "./utils/monthly-aggregates";
 export * from "./utils/ritmo";
 export * from "./utils/subscription-detector";
-export * from "./utils/weekly-digest";
 export * from "./utils/personal-debt";
