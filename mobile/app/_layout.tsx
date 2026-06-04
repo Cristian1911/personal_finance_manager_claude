@@ -35,6 +35,12 @@ import {
 import { BiometricLockScreen } from "../components/common/BiometricLockScreen";
 import { ZetaThemeProvider } from "../lib/theme";
 import { OnboardingStatusContext } from "../lib/onboarding-status";
+import * as Notifications from "expo-notifications";
+import {
+  configureNotificationHandler,
+  reschedulePaymentReminders,
+} from "../lib/services/notifications";
+import { trackProductEvent } from "../lib/analytics/product-events";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -105,6 +111,8 @@ function RootLayoutNav() {
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [biometricLocked, setBiometricLocked] = useState(false);
   const appState = useRef(AppState.currentState);
+  const appOpenedRef = useRef(false);
+  const routerRef = useRef(router);
 
   useEffect(() => {
     let mounted = true;
@@ -201,11 +209,42 @@ function RootLayoutNav() {
         isBackgroundReauthEnabled().then((enabled) => {
           if (enabled) setBiometricLocked(true);
         });
+        // Newly-synced occurrences (or ones that became due) are reflected on
+        // resume — reschedule is a no-op when reminders are off.
+        reschedulePaymentReminders();
       }
       appState.current = nextState;
     });
     return () => subscription.remove();
   }, [session, demoMode]);
+
+  // Keep the latest router in a ref so the notification listener can deep-link
+  // without re-subscribing on every navigation (router identity changes).
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
+
+  // Configure notification presentation once + deep-link on tap. Registered a
+  // single time (empty deps) — re-registering per navigation churned listeners.
+  useEffect(() => {
+    configureNotificationHandler();
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const route = response.notification.request.content.data?.route;
+        if (typeof route === "string") routerRef.current.push(route as never);
+      },
+    );
+    return () => sub.remove();
+  }, []);
+
+  // Fire once per launch when an authenticated session resolves — the basic
+  // engagement signal ("are people using the app"). Real users only.
+  useEffect(() => {
+    if (loading || demoMode || !session) return;
+    if (appOpenedRef.current) return;
+    appOpenedRef.current = true;
+    trackProductEvent({ event_name: "app_opened" });
+  }, [loading, session, demoMode]);
 
   const handleBiometricUnlock = useCallback(() => {
     setBiometricLocked(false);

@@ -18,6 +18,7 @@ import { MCard } from "../ui/MCard";
 import { MOBILE_TAB_BAR_CLEARANCE, SECTION_EYEBROW_CLASS } from "../../lib/constants/styles";
 import { UncategorizedRow } from "./UncategorizedRow";
 import { CategoryPickerSheet } from "./CategoryPickerSheet";
+import { trackProductEvent } from "../../lib/analytics/product-events";
 
 export function CategorizarRoot() {
   const { sync } = useSync();
@@ -71,6 +72,11 @@ export function CategorizarRoot() {
 
       try {
         await updateTransaction(selectedTxId, { category_id: categoryId });
+        trackProductEvent({
+          event_name: "categorize_applied",
+          flow: "categorize",
+          success: true,
+        });
         // Remove from list optimistically
         setTransactions((prev: TransactionListRow[]) =>
           prev.filter((tx: TransactionListRow) => tx.id !== selectedTxId)

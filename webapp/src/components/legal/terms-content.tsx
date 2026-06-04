@@ -106,7 +106,7 @@ export function TermsContentEs() {
       <h2>11. Contacto</h2>
       <p>
         Para dudas sobre estos términos, escribe a{" "}
-        <a href="mailto:legal@zeta.app">legal@zeta.app</a>.
+        <a href="mailto:giraldo.0302@gmail.com">giraldo.0302@gmail.com</a>.
       </p>
     </>
   );
@@ -217,7 +217,7 @@ export function TermsContentEn() {
       <h2>11. Contact</h2>
       <p>
         For questions about these terms, email{" "}
-        <a href="mailto:legal@zeta.app">legal@zeta.app</a>.
+        <a href="mailto:giraldo.0302@gmail.com">giraldo.0302@gmail.com</a>.
       </p>
     </>
   );

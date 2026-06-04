@@ -1,33 +1,17 @@
-import { ScrollView, Text, View } from "react-native";
-import { Stack } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MobileHeader } from "../../components/ui/MobileHeader";
-import { useHideTabBar } from "../../components/nav/TabBarVisibilityProvider";
-import { PANEL_INSET_CLASS } from "../../lib/constants/styles";
+import { Redirect } from "expo-router";
 
 /**
- * Manual full transaction form. Mirrors webapp `MobileTransactionForm`.
- * Scaffold only — fields, validation, and submission land in Phase 3.
+ * Manual full transaction form route.
+ *
+ * The dedicated full-form screen is not built yet (Phase 3 webapp parity). Until
+ * it lands, redirect to the working quick-capture screen so this route is never a
+ * dead end — `/capture` already supports expense/income with account, category,
+ * destinatario, notes and recurring-template creation.
+ *
+ * TODO(parity): build the full MobileTransactionForm here and make `/capture`
+ * honor an optional `?account` / `?type` preset so account-detail "Agregar"
+ * pre-selects the originating account.
  */
 export default function NewTransactionScreen() {
-  useHideTabBar();
-  const insets = useSafeAreaInsets();
-  return (
-    <View className="flex-1 bg-background">
-      <Stack.Screen options={{ headerShown: false }} />
-      <MobileHeader variant="sub" title="Nuevo movimiento" />
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom }}>
-        <View className={`${PANEL_INSET_CLASS} p-4 gap-2`}>
-          <Text className="text-sm font-inter-semibold text-foreground">
-            Formulario en construcción
-          </Text>
-          <Text className="text-[12px] font-inter text-muted-foreground leading-5">
-            Esta pantalla reemplazará la captura rápida con un formulario completo: monto,
-            cuenta, categoría, destinatario, etiquetas, notas, y opción de crear plantilla
-            recurrente. Llega en la siguiente entrega de paridad con la webapp.
-          </Text>
-        </View>
-      </ScrollView>
-    </View>
-  );
+  return <Redirect href="/capture" />;
 }

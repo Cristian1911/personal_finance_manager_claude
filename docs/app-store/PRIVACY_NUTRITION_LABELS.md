@@ -49,13 +49,40 @@ For Zeta, the answer is uniformly: **Linked = Yes, Tracking = No, Purpose = App 
 - [ ] Device ID — **NO** (no IDFA, no device fingerprint)
 
 ### User Content
-- [x] **Photos or Videos** — receipt screenshots / PDFs uploaded for OCR import
+- [x] **Photos or Videos** — receipt/statement photos uploaded for OCR import
   - Linked: Yes · Tracking: No · Purpose: App Functionality
-- [x] **Audio Data** — voice transcription for quick-capture (`expo-speech-recognition`)
-  - Linked: Yes · Tracking: No · Purpose: App Functionality
-  - **Important:** voice is transcribed on-device by iOS Speech framework. Only the transcribed text is sent to our backend — never raw audio.
+  - **Confirmed transmitted off-device:** the capture flow uploads the image via
+    `FileSystem.uploadAsync(\`${API_URL}/api/parse-image\`, …)` (`mobile/app/capture-screenshot.tsx:151-162`).
+- [ ] **Audio Data** — **NO** (do NOT declare — over-declaration)
+  - Voice quick-capture transcribes **on-device** (`requiresOnDeviceRecognition: true`,
+    `mobile/app/capture-voice.tsx:214-222`) and persists only the transcribed text
+    (`capture_input_text`, `capture-voice.tsx:270`). Raw audio never leaves the device, so under
+    Apple's definition Audio Data is **not collected**. (The mic permission is still requested for
+    the local recognizer — that is a permission, not a collected data type.)
+  - **✅ Resolved (2026-06-04):** the `AudioData` entry was removed from `mobile/app.json`'s iOS
+    `privacyManifests.NSPrivacyCollectedDataTypes`; the manifest now lists Precise/Coarse Location
+    instead. No further app.json action needed for audio.
 - [x] **Other User Content** — transaction notes, custom categories, destinatario tags, manual entries
   - Linked: Yes · Tracking: No · Purpose: App Functionality
+
+### Location
+- [x] **Coarse Location** — opt-in location tagging of transactions (off by default)
+  - Linked: Yes · Tracking: No · Purpose: App Functionality
+- [x] **Precise Location** — one-shot precise fix taken right before saving a transaction
+  - Linked: Yes · Tracking: No · Purpose: App Functionality
+  - **Opt-in / off by default:** toggled in Settings (`mobile/app/settings.tsx:834-844`);
+    background task uses `Accuracy.Balanced` significant-change monitoring (`tracker.ts:17-35`),
+    with a one-shot `getCurrentPositionAsync` sample before each save (`tracker.ts:52-63`).
+    iOS background mode is declared (`UIBackgroundModes: ["location"]`).
+
+### Usage Data
+- [x] **Product Interaction** — first-party funnel analytics (`product_events` table)
+  - Linked: Yes · Tracking: No · Purpose: Analytics
+  - Mobile logs anonymous-in-content interaction events (e.g. `app_opened`, `import_completed`,
+    onboarding/capture/categorize steps) via `trackProductEvent`
+    (`mobile/lib/analytics/product-events.ts`), inserted into the user-scoped, RLS-gated
+    `product_events` Supabase table. No third-party analytics SDK, no IDFA, no cross-app/site
+    tracking — data stays in the user's own backend, so **Tracking: No**.
 
 ### Diagnostics
 - [ ] **Crash Data** — **NO** (no Sentry/Crashlytics)
@@ -64,12 +91,12 @@ For Zeta, the answer is uniformly: **Linked = Yes, Tracking = No, Purpose = App 
 
 ### Everything else: NOT collected
 - [ ] Health & Fitness — NO
-- [ ] Location — NO
+- [ ] Audio Data — NO (on-device transcription only — see User Content above)
 - [ ] Sensitive Info (race, religion, sexual orientation, etc.) — NO
 - [ ] Contacts — NO
 - [ ] Browsing History — NO
 - [ ] Search History — NO
-- [ ] Usage Data — NO (no analytics SDK)
+- [x] Usage Data — **YES** (Product Interaction — first-party analytics; see "Usage Data" above)
 - [ ] Purchases — NO
 - [ ] Surroundings — NO
 - [ ] Body Data — NO
@@ -94,9 +121,29 @@ This means the **App Tracking Transparency (ATT) prompt is NOT required**. Do no
 | Other Financial Info | ✓ | Yes | No | App Functionality |
 | User ID | ✓ | Yes | No | App Functionality |
 | Photos or Videos | ✓ | Yes | No | App Functionality |
-| Audio Data | ✓ | Yes | No | App Functionality |
+| Coarse Location | ✓ | Yes | No | App Functionality |
+| Precise Location | ✓ | Yes | No | App Functionality |
 | Other User Content | ✓ | Yes | No | App Functionality |
+| Audio Data | — (on-device only) | — | — | — |
 | (everything else) | — | — | — | — |
+
+---
+
+## ⚠️ Divergence vs. `mobile/app.json` iOS privacy manifest (reconcile before submit)
+
+The `ios.privacyManifests.NSPrivacyCollectedDataTypes` array in `mobile/app.json` must match
+this doc. Two fixes are required there (app.json edits are out of scope for this doc task —
+listed here + in Action items):
+
+1. **MISSING — add Location.** The manifest currently lists EmailAddress, UserID,
+   OtherFinancialInfo, OtherUserContent, PhotosOrVideos, AudioData — but **no Location entry**.
+   Add a `NSPrivacyCollectedDataType` for location
+   (`NSPrivacyCollectedDataTypeLocation` / coarse + precise) with `Linked=true`, `Tracking=false`,
+   purpose `AppFunctionality`, to match the declared `NSLocation*UsageDescription` strings,
+   `UIBackgroundModes: ["location"]`, and the collected-types declared above.
+2. **OVER-DECLARED — remove AudioData.** `AudioData` is listed in the manifest but audio is
+   transcribed on-device and never transmitted (see User Content). Recommend **removing** it so
+   the manifest, this ASC label set, and the actual data flow stay consistent.
 
 ---
 
@@ -122,5 +169,9 @@ Reviewer rejects builds whose permission strings are missing or generic ("This a
 
 The privacy labels become part of every future version automatically. You only need to revisit if:
 - A new SDK is added (Sentry, analytics, etc.) → re-audit
-- A new data type is collected (location, contacts, health) → update before submit
+- A new data type is collected (contacts, health, etc.) → update before submit
 - Tracking starts being used (you'd need ATT prompt + SKAdNetwork) → big policy change
+
+**✅ Resolved (2026-06-04):** `mobile/app.json`'s iOS privacy manifest is reconciled — Precise +
+Coarse Location added, AudioData removed. Remember to also declare **Usage Data → Product
+Interaction** (Analytics, Linked, no Tracking) in ASC for the first-party `product_events` funnel.

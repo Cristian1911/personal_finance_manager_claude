@@ -26,6 +26,7 @@ import {
   Wallet,
   X,
   Bug,
+  Bell,
 } from "lucide-react-native";
 import { getAllAccounts, type AccountRow } from "../lib/repositories/accounts";
 import {
@@ -54,6 +55,12 @@ import {
   startBackgroundLocationTracking,
   stopBackgroundLocationTracking,
 } from "../lib/services/location";
+import {
+  isPaymentRemindersEnabled,
+  setPaymentRemindersEnabled,
+  requestNotificationPermission,
+  reschedulePaymentReminders,
+} from "../lib/services/notifications";
 import { useTheme, type ThemeMode } from "../lib/theme";
 import { COLORS } from "../lib/constants/colors";
 import { LEGAL_URLS, SUPPORT_EMAIL } from "../lib/constants/urls";
@@ -418,12 +425,76 @@ export default function SettingsScreen() {
     };
   }, []);
 
+  const [remindersOn, setRemindersOn] = useState(false);
+  const [remindersBusy, setRemindersBusy] = useState(false);
+
+  useEffect(() => {
+    isPaymentRemindersEnabled()
+      .then(setRemindersOn)
+      .catch(() => {});
+  }, []);
+
+  const handleToggleReminders = useCallback(
+    async (next: boolean) => {
+      if (remindersBusy) return;
+      setRemindersBusy(true);
+      try {
+        if (next) {
+          const granted = await requestNotificationPermission();
+          if (!granted) {
+            setRemindersOn(false);
+            Alert.alert(
+              "Permiso requerido",
+              "Activa las notificaciones en los Ajustes del sistema para recibir recordatorios de pago.",
+            );
+            return;
+          }
+          await setPaymentRemindersEnabled(true);
+          setRemindersOn(true);
+          await reschedulePaymentReminders();
+          Alert.alert(
+            "Recordatorios activados",
+            "Te avisaremos un día antes de cada pago programado.",
+          );
+        } else {
+          await setPaymentRemindersEnabled(false);
+          setRemindersOn(false);
+          await reschedulePaymentReminders();
+        }
+      } catch (err) {
+        console.error("Toggle payment reminders failed:", err);
+        Alert.alert("No se pudo cambiar", "Inténtalo de nuevo en un momento.");
+      } finally {
+        setRemindersBusy(false);
+      }
+    },
+    [remindersBusy],
+  );
+
   const handleToggleLocation = useCallback(
     async (next: boolean) => {
       if (locationBusy) return;
       setLocationBusy(true);
       try {
         if (next) {
+          // Google Play prominent-disclosure requirement: obtain explicit in-app
+          // consent describing background location collection + use BEFORE the OS
+          // permission prompt. A toggle label alone is not sufficient.
+          const consented = await new Promise<boolean>((resolve) => {
+            Alert.alert(
+              "Ubicación en segundo plano",
+              `Si lo activas, Zeta guarda tu ubicación aproximada y precisa —incluso con la app cerrada— y la enlaza al movimiento más cercano para ayudarte a recordar dónde gastaste. Es opcional, está apagada por defecto y los datos se guardan cifrados en tu cuenta. Consulta cómo tratamos tus datos en ${LEGAL_URLS.privacy}.`,
+              [
+                { text: "Cancelar", style: "cancel", onPress: () => resolve(false) },
+                { text: "Aceptar y continuar", onPress: () => resolve(true) },
+              ],
+              { cancelable: false },
+            );
+          });
+          if (!consented) {
+            setLocationOn(false);
+            return;
+          }
           const level = await requestLocationPermissions();
           if (level === "denied") {
             setLocationOn(false);
@@ -827,6 +898,22 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+
+        <View>
+          <SectionHeading label="Notificaciones" />
+          <View className="gap-2">
+            <ToggleRow
+              icon={<Bell size={18} color={COLORS.sageDark} />}
+              label="Recordatorios de pago"
+              value={remindersOn}
+              onValueChange={handleToggleReminders}
+            />
+            <Text className="px-2 -mt-1 text-[11px] font-inter text-muted-foreground">
+              Te avisamos un día antes de cada pago programado (recurrentes y
+              suscripciones). Las notificaciones se programan en tu dispositivo.
+            </Text>
+          </View>
+        </View>
 
         <View>
           <SectionHeading label="Privacidad y soporte" />

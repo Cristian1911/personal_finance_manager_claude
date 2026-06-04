@@ -25,12 +25,27 @@ async function getMonthlyIncome(): Promise<number> {
   return row?.estimated_monthly_income ?? 0;
 }
 
+/**
+ * Zero-state so the screen renders its real layout (with zeros) on first paint
+ * instead of a blank ScrollView while the SQLite read resolves. The read is
+ * fast (<5ms) but async — starting from `null` flashed an empty body on every
+ * focus.
+ */
+const EMPTY_OVERVIEW: DebtOverviewData = {
+  totalMonthlyPayment: 0,
+  monthlyInterest: 0,
+  overallUtilization: 0,
+  totalCreditLimit: 0,
+  totalCreditUsed: 0,
+  accounts: [],
+};
+
 export function DeudasRoot() {
   const { sync } = useSync();
   const { activeZone, toggle } = useExpandableZone<string>();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [data, setData] = useState<DebtOverviewData | null>(null);
+  const [data, setData] = useState<DebtOverviewData>(EMPTY_OVERVIEW);
   const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [currency, setCurrency] = useState<CurrencyCode>("COP");
 
