@@ -34,7 +34,7 @@ export function AmountInput({
         placeholder="0"
         className={cn(
           "border-none bg-transparent text-center shadow-none",
-          "text-[32px] font-extrabold tracking-tight",
+          "text-[32px] font-extrabold tracking-tight tabular-nums",
           "h-auto py-2",
           "focus-visible:ring-0 focus-visible:border-none",
           "placeholder:text-muted-foreground/30",
