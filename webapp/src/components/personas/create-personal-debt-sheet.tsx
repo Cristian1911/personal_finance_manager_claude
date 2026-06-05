@@ -58,14 +58,6 @@ export function CreatePersonalDebtSheet({
   const [dueDate, setDueDate] = useState<string>("");
   const [pending, startTransition] = useTransition();
 
-  function reset() {
-    setDestinatarioId(defaultDestinatarioId);
-    setDestinatarioName(defaultDestinatarioName);
-    setDirection(defaultDirection);
-    setOpenedOn(initialOpenedOn);
-    setDueDate("");
-  }
-
   function handleSubmit(formData: FormData) {
     if (!destinatarioId) {
       toast.error("Elige una persona");
@@ -79,7 +71,8 @@ export function CreatePersonalDebtSheet({
     startTransition(async () => {
       const res = await createPersonalDebt(undefined, formData);
       if (res.success) {
-        reset();
+        // Both callers mount this sheet conditionally, so it unmounts on close
+        // and re-initializes from defaults on the next open — no manual reset.
         onOpenChange(false);
         if (onCreated) {
           // Caller (auto-link flow) runs its own server action + revalidation —

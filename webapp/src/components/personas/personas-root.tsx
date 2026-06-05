@@ -73,7 +73,10 @@ export function PersonasRoot({ debts, overview, currency }: PersonasRootProps) {
         </>
       )}
 
-      <CreatePersonalDebtSheet open={createOpen} onOpenChange={setCreateOpen} currency={currency} />
+      {/* Conditionally mounted so internal state resets on every open. */}
+      {createOpen && (
+        <CreatePersonalDebtSheet open={createOpen} onOpenChange={setCreateOpen} currency={currency} />
+      )}
     </div>
   );
 }
