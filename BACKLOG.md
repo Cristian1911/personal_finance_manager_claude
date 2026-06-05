@@ -82,7 +82,8 @@
 - **Shared `ConfirmDialog`:** the destructive-confirm AlertDialog block is now a 3rd copy (persona-card + settings/delete-account + settings/reset-data). Extract a reusable `<ConfirmDialog>` and retrofit all three.
 - **`runPersonalDebtMutation` helper:** `cancel`/`settle`/`deletePersonalDebt` share the validate→auth→mutate→rowcheck→revalidate skeleton; collapse into one helper (watch Supabase query-builder generics). Note `settlePersonalDebt` omits `revalidateFinancialViews()` though it zeroes `outstanding_amount` — confirm intended when refactoring.
 - **`pd_role` hygiene on delete:** FK `ON DELETE SET NULL` clears `personal_debt_id` but leaves a dangling `pd_role` on the unlinked tx. Harmless today (income predicate also checks `personal_debt_id != null`); NULL it out (or a sweep migration) if any future query keys on `pd_role` alone.
-- **Found:** /code-review + /simplify, branch feat/personas-usability, 2026-06-04.
+- **`AppDataProvider` value not memoized (perf, app-wide):** `webapp/src/components/providers/app-data-provider.tsx` passes the raw `data` object straight to `Context.Provider`, so any parent re-render makes a new reference and re-renders every consumer — including every `MovimientosTransactionRow` subscribing via `useDestinatarios()`. Wrap `data` in `useMemo` keyed on its arrays. Surfaced by /simplify efficiency pass when the row started reading `useDestinatarios()`; pre-existing infra, not specific to deudas-personales.
+- **Found:** /code-review + /simplify, branch feat/personas-usability, 2026-06-04 (AppDataProvider note added 2026-06-05).
 
 ### Mobile — yearly budgets not displayed
 - **Priority:** Low

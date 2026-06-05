@@ -21,6 +21,7 @@ import {
 } from "@/actions/occurrences";
 import type { CandidateOccurrence } from "@/actions/occurrences";
 import { getPersonalDebts, linkTransactionToPersonalDebt } from "@/actions/personal-debts";
+import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { toast } from "sonner";
 import type { TransactionWithAccount, CategoryWithChildren, CurrencyCode } from "@/types/domain";
 
@@ -151,6 +152,17 @@ export function MovimientosTransactionRow({
   // Optimistic local state
   const [localCategory, setLocalCategory] = useState(tx.category);
   const [localDestinatario, setLocalDestinatario] = useState(tx.destinatario);
+
+  // Prefill source for the "crear deuda personal" sheet: only seed the persona
+  // when the assigned destinatario is actually a person — merchants/companies
+  // aren't valid debt counterparties. (Direction/amount/date are read straight
+  // off the tx at the call site below.)
+  const destinatarios = useDestinatarios();
+  const debtCounterparty =
+    localDestinatario &&
+    destinatarios.some((d) => d.id === localDestinatario.id && d.kind === "person")
+      ? localDestinatario
+      : null;
 
   const description =
     tx.merchant_name ||
@@ -293,7 +305,7 @@ export function MovimientosTransactionRow({
               "text-[10px] h-auto py-1 px-2.5 rounded-full border font-medium",
               categoryName
                 ? "border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12"
-                : "border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
+                : "border-white/6 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]",
             )}
           />
 
@@ -313,7 +325,7 @@ export function MovimientosTransactionRow({
               "rounded-full text-[10px] h-auto py-1 px-2.5 font-medium",
               localDestinatario
                 ? "border-z-brass/20 bg-z-brass/8 text-z-brass hover:bg-z-brass/12"
-                : "border-white/8 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
+                : "border-white/6 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]"
             )}
           />
 
@@ -357,7 +369,7 @@ export function MovimientosTransactionRow({
           {/* Edit link */}
           <Link
             href={`/transactions/${tx.id}`}
-            className="inline-flex items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-white/[0.06]"
+            className="inline-flex items-center gap-1 rounded-full border border-white/6 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-white/[0.06]"
           >
             <Pencil className="size-2.5" />
             Editar
@@ -416,6 +428,12 @@ export function MovimientosTransactionRow({
           open={personaCreateOpen}
           onOpenChange={setPersonaCreateOpen}
           currency={tx.currency_code as CurrencyCode}
+          // INFLOW = money came in → someone lent it to me → I owe them ("borrowed").
+          defaultDirection={tx.direction === "INFLOW" ? "borrowed" : "lent"}
+          defaultAmount={tx.amount}
+          defaultDestinatarioId={debtCounterparty?.id ?? null}
+          defaultDestinatarioName={debtCounterparty?.name ?? null}
+          defaultOpenedOn={tx.transaction_date}
           onCreated={(debtId) => handleConfirmPersonaLink(debtId, true)}
         />
       )}

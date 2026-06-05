@@ -12,7 +12,12 @@ import { AmountInput } from "@/components/ui/amount-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { DestinatarioZonePicker } from "@/components/destinatarios/destinatario-zone-picker";
 import { cn } from "@/lib/utils";
-import { BRASS_BUTTON_CLASS, MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
+import {
+  BRASS_BUTTON_CLASS,
+  BRASS_GHOST_BUTTON_CLASS,
+  GHOST_BUTTON_CLASS,
+  MOBILE_SHEET_SAFE_AREA_CLASS,
+} from "@/lib/constants/styles";
 import { createPersonalDebt } from "@/actions/personal-debts";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -23,6 +28,13 @@ interface CreatePersonalDebtSheetProps {
   /** When provided, called with the new debt id instead of toasting success —
    *  lets callers (e.g. "Vincular a deuda personal") link a transaction to it. */
   onCreated?: (debtId: string) => void;
+  /** Prefill — used when creating from a transaction. */
+  defaultDirection?: "borrowed" | "lent";
+  defaultAmount?: number;
+  defaultDestinatarioId?: string | null;
+  defaultDestinatarioName?: string | null;
+  /** yyyy-MM-dd — defaults to today. */
+  defaultOpenedOn?: string;
 }
 
 export function CreatePersonalDebtSheet({
@@ -30,23 +42,21 @@ export function CreatePersonalDebtSheet({
   onOpenChange,
   currency,
   onCreated,
+  defaultDirection = "borrowed",
+  defaultAmount,
+  defaultDestinatarioId = null,
+  defaultDestinatarioName = null,
+  defaultOpenedOn,
 }: CreatePersonalDebtSheetProps) {
   const router = useRouter();
   const today = format(new Date(), "yyyy-MM-dd");
-  const [destinatarioId, setDestinatarioId] = useState<string | null>(null);
-  const [destinatarioName, setDestinatarioName] = useState<string | null>(null);
-  const [direction, setDirection] = useState<"borrowed" | "lent">("borrowed");
-  const [openedOn, setOpenedOn] = useState(today);
+  const initialOpenedOn = defaultOpenedOn ?? today;
+  const [destinatarioId, setDestinatarioId] = useState<string | null>(defaultDestinatarioId);
+  const [destinatarioName, setDestinatarioName] = useState<string | null>(defaultDestinatarioName);
+  const [direction, setDirection] = useState<"borrowed" | "lent">(defaultDirection);
+  const [openedOn, setOpenedOn] = useState(initialOpenedOn);
   const [dueDate, setDueDate] = useState<string>("");
   const [pending, startTransition] = useTransition();
-
-  function reset() {
-    setDestinatarioId(null);
-    setDestinatarioName(null);
-    setDirection("borrowed");
-    setOpenedOn(today);
-    setDueDate("");
-  }
 
   function handleSubmit(formData: FormData) {
     if (!destinatarioId) {
@@ -61,7 +71,8 @@ export function CreatePersonalDebtSheet({
     startTransition(async () => {
       const res = await createPersonalDebt(undefined, formData);
       if (res.success) {
-        reset();
+        // Both callers mount this sheet conditionally, so it unmounts on close
+        // and re-initializes from defaults on the next open — no manual reset.
         onOpenChange(false);
         if (onCreated) {
           // Caller (auto-link flow) runs its own server action + revalidation —
@@ -83,10 +94,11 @@ export function CreatePersonalDebtSheet({
         side="bottom"
         className={cn("max-h-[90dvh] overflow-y-auto", MOBILE_SHEET_SAFE_AREA_CLASS)}
       >
-        <SheetHeader>
-          <SheetTitle>Nueva deuda personal</SheetTitle>
-        </SheetHeader>
-        <form action={handleSubmit} className="space-y-4 pt-2">
+        <div className="mx-auto w-full max-w-md px-5">
+          <SheetHeader className="px-0 pt-1">
+            <SheetTitle>Nueva deuda personal</SheetTitle>
+          </SheetHeader>
+          <form action={handleSubmit} className="space-y-4 pb-4 pt-2">
           <div className="grid grid-cols-2 gap-2">
             <DirectionButton
               active={direction === "borrowed"}
@@ -123,7 +135,7 @@ export function CreatePersonalDebtSheet({
             />
           </div>
 
-          <AmountInput name="principal_amount" currency={currency} />
+          <AmountInput name="principal_amount" currency={currency} defaultValue={defaultAmount} />
 
           <div className="space-y-2">
             <Label>Fecha de apertura</Label>
@@ -147,7 +159,8 @@ export function CreatePersonalDebtSheet({
           <Button type="submit" className={cn(BRASS_BUTTON_CLASS, "w-full")} disabled={pending}>
             {pending ? "Guardando..." : "Crear deuda"}
           </Button>
-        </form>
+          </form>
+        </div>
       </SheetContent>
     </Sheet>
   );
@@ -170,7 +183,7 @@ function DirectionButton({
       onClick={onClick}
       className={cn(
         "rounded-lg border px-3 py-2 text-left transition-colors",
-        active ? "border-z-brass/40 bg-z-brass/10" : "border-white/6 bg-z-surface-2",
+        active ? BRASS_GHOST_BUTTON_CLASS : GHOST_BUTTON_CLASS,
       )}
     >
       <span className="block text-sm font-medium">{label}</span>
