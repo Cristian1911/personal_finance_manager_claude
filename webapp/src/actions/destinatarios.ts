@@ -123,7 +123,7 @@ export async function fetchDestinatarioRules(
   const rules: DestinatarioRule[] = [];
   for (const row of data ?? []) {
     const dest = row.destinatarios;
-    if (!dest || !dest.is_active || dest.kind === "person") continue;
+    if (!dest || !dest.is_active) continue;
 
     rules.push({
       destinatario_id: row.destinatario_id,
