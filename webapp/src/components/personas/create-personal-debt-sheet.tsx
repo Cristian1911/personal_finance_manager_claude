@@ -17,6 +17,7 @@ import {
   BRASS_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   MOBILE_SHEET_SAFE_AREA_CLASS,
+  Z_DIALOG_ABOVE_SHEET,
 } from "@/lib/constants/styles";
 import { createPersonalDebt } from "@/actions/personal-debts";
 import type { CurrencyCode } from "@/types/domain";
@@ -137,18 +138,26 @@ export function CreatePersonalDebtSheet({
 
           <AmountInput name="principal_amount" currency={currency} defaultValue={defaultAmount} />
 
-          <div className="space-y-2">
-            <Label>Fecha de apertura</Label>
-            <DatePicker value={openedOn} onChange={(v) => setOpenedOn(v ?? today)} />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Fecha de vencimiento (opcional)</Label>
-            <DatePicker
-              value={dueDate || undefined}
-              onChange={(v) => setDueDate(v ?? "")}
-              placeholder="Sin fecha"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Apertura</Label>
+              <DatePicker
+                value={openedOn}
+                onChange={(v) => setOpenedOn(v ?? today)}
+                className="w-full"
+                contentClassName={Z_DIALOG_ABOVE_SHEET}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Vencimiento</Label>
+              <DatePicker
+                value={dueDate || undefined}
+                onChange={(v) => setDueDate(v ?? "")}
+                placeholder="Sin fecha"
+                className="w-full"
+                contentClassName={Z_DIALOG_ABOVE_SHEET}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
