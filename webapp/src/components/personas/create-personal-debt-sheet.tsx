@@ -95,7 +95,7 @@ export function CreatePersonalDebtSheet({
         side="bottom"
         className={cn("max-h-[90dvh] overflow-y-auto", MOBILE_SHEET_SAFE_AREA_CLASS)}
       >
-        <div className="mx-auto w-full max-w-md px-5">
+        <div className="mx-auto w-full max-w-md px-7">
           <SheetHeader className="px-0 pt-1">
             <SheetTitle>Nueva deuda personal</SheetTitle>
           </SheetHeader>
