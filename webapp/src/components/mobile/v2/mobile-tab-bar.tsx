@@ -59,9 +59,9 @@ export function MobileTabBar() {
   return (
     <nav
       data-fab-bar
-      // z-40 sits below shadcn primitives (Sheet/Drawer/Dialog/Popover/Dropdown
-      // are z-50+) so modal surfaces naturally cover the bar. FabMenu is
-      // z-[10000] for the same reason.
+      // --z-layer-nav (40) sits below the modal tier (--z-layer-modal, 1000) so
+      // every overlay surface — Sheet/Drawer/Dialog/Popover/FabMenu — covers the
+      // bar. See docs/design-system/Z_INDEX.md.
       className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
       style={SAFE_AREA_BOTTOM_STYLE}
     >

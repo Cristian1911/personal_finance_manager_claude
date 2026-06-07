@@ -1,7 +1,10 @@
 # Z-Index — Research, Diagnosis & Remediation Plan
 
-> Status: **proposal**. The "Target model" and "Migration plan" are not yet
-> implemented. The current state is documented under "Diagnosis".
+> Status: **Phases 0–2 implemented** (2026-06-07). The `--z-layer-*` token
+> scale is live in `globals.css`, every shadcn/overlay primitive references it,
+> Sonner is pulled into scale, and the `Z_DIALOG_ABOVE_SHEET` hack is deleted.
+> Phases 3–4 (app-level fixed surfaces + ESLint guardrail) remain open. §2
+> "Diagnosis" describes the pre-refactor state that motivated the change.
 
 This note answers a focused question: **how do mature design systems manage
 z-index, and where does Zeta's current approach diverge?** It then gives a
@@ -118,17 +121,15 @@ the `Z_DIALOG_ABOVE_SHEET` hack structurally: a calendar opened inside a sheet
 outranks it because *every* popover outranks *every* modal, by design.
 
 ```css
-/* globals.css @theme */
---z-hide:    -1;   /* intentionally behind */
---z-base:     0;
---z-raised:  10;   /* in-flow: badges, gradient masks, sticky sub-headers, treemap */
---z-sticky:  30;   /* page topbars / sticky section headers */
---z-nav:     40;   /* mobile tab bar, bottom nav, fixed bottom action bars */
---z-modal:  1000;  /* Dialog, AlertDialog, Sheet, Drawer, FabMenu — overlay + content */
---z-popover:1100;  /* Popover, Dropdown, Select, Combobox, ContextMenu, date-picker */
---z-toast:  1200;  /* Sonner */
---z-tooltip:1300;  /* Tooltip */
---z-dev:    9000;  /* dev-only inspector/overlays */
+/* globals.css :root — referenced via z-[var(--z-layer-*)] */
+--z-layer-raised:    10; /* in-flow: badges, gradient masks, sticky sub-headers */
+--z-layer-sticky:    30; /* page topbars / sticky section headers */
+--z-layer-nav:       40; /* mobile tab bar, bottom nav, fixed bottom action bars */
+--z-layer-modal:   1000; /* Dialog, AlertDialog, Sheet, Drawer, FabMenu — overlay + content */
+--z-layer-popover: 1100; /* Popover, Dropdown, Select, ContextMenu, date-picker */
+--z-layer-toast:   1200; /* Sonner toasts */
+--z-layer-tooltip: 1300; /* Tooltip */
+--z-layer-dev:     9000; /* dev-only inspector/overlays */
 ```
 
 Why this specific shape:
@@ -159,12 +160,12 @@ rule below enforces it.
 
 ## 4. Migration plan (phased, low-risk)
 
-**Phase 0 — define the scale (no behavior change yet).**
+**Phase 0 — define the scale (no behavior change yet). ✅ Done.**
 - Add the tokens above to `globals.css` `@theme` and expose `z-*` utilities.
 - Add TS mirrors to `styles.ts` (`Z_NAV`, `Z_MODAL`, `Z_POPOVER`, `Z_TOAST`,
   `Z_TOOLTIP`, `Z_DEV`). Update the doc-comment block.
 
-**Phase 1 — primitives (the high-value swap).** Replace raw values in:
+**Phase 1 — primitives (the high-value swap). ✅ Done.** Replace raw values in:
 `ui/sheet.tsx`, `ui/dialog.tsx`, `ui/alert-dialog.tsx`, `ui/drawer.tsx`,
 `ui/popover.tsx`, `ui/select.tsx`, `ui/dropdown-menu.tsx`, `ui/tooltip.tsx`,
 `mobile/fab-menu.tsx`, and the Sonner `<Toaster>` config.
@@ -172,7 +173,7 @@ rule below enforces it.
 - Popover/Select/Dropdown/ContextMenu/date-picker → `--z-popover`.
 - Tooltip → `--z-tooltip`; Sonner → `--z-toast`.
 
-**Phase 2 — delete the hack.** Remove `Z_DIALOG_ABOVE_SHEET` and its usages
+**Phase 2 — delete the hack. ✅ Done.** Remove `Z_DIALOG_ABOVE_SHEET` and its usages
 (`destinatario-zone-picker.tsx`, `date-picker.tsx` `contentClassName`,
 `create-personal-debt-sheet.tsx`). The `variant="dialog"` workaround in the
 destinatario picker can stay (it's also a pointer-events/focus fix), but no

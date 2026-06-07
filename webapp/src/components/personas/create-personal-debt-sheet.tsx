@@ -17,7 +17,6 @@ import {
   BRASS_GHOST_BUTTON_CLASS,
   GHOST_BUTTON_CLASS,
   MOBILE_SHEET_SAFE_AREA_CLASS,
-  Z_DIALOG_ABOVE_SHEET,
 } from "@/lib/constants/styles";
 import { createPersonalDebt } from "@/actions/personal-debts";
 import type { CurrencyCode } from "@/types/domain";
@@ -145,7 +144,6 @@ export function CreatePersonalDebtSheet({
                 value={openedOn}
                 onChange={(v) => setOpenedOn(v ?? today)}
                 className="w-full"
-                contentClassName={Z_DIALOG_ABOVE_SHEET}
               />
             </div>
             <div className="space-y-2">
@@ -155,7 +153,6 @@ export function CreatePersonalDebtSheet({
                 onChange={(v) => setDueDate(v ?? "")}
                 placeholder="Sin fecha"
                 className="w-full"
-                contentClassName={Z_DIALOG_ABOVE_SHEET}
               />
             </div>
           </div>

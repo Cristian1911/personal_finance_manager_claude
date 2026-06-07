@@ -20,9 +20,6 @@ interface DatePickerProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
-  /** Extra classes for the popover content — e.g. `Z_DIALOG_ABOVE_SHEET`
-   *  when the picker is opened from inside a Sheet (z-[10000]). */
-  contentClassName?: string;
   /** HTML name attribute for form submission */
   name?: string;
 }
@@ -33,7 +30,6 @@ export function DatePicker({
   placeholder = "Seleccionar fecha",
   disabled = false,
   className,
-  contentClassName,
   name,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
@@ -79,7 +75,7 @@ export function DatePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className={cn("w-auto p-0", contentClassName)} align="start">
+        <PopoverContent className="w-auto p-0" align="start">
           <Calendar
             mode="single"
             selected={selected}

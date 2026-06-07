@@ -148,12 +148,24 @@ Muted text:       text-muted-foreground
 
 ## Z-index layers
 
-| Layer | Class | Used by |
-|---|---|---|
-| Tab bar | `z-40` | mobile bottom tab bar |
-| Modals | `z-50` | shadcn primitives — Dialog, AlertDialog, Drawer, Popover, Dropdown, Select, Tooltip (must sit above the tab bar) |
-| Top surfaces | `z-[10000]` | `Sheet` + `FabMenu` — cover other modals |
-| Dialog-in-Sheet | `Z_DIALOG_ABOVE_SHEET` (`z-[10001]`) | a primitive opened from **inside** a Sheet (e.g. the destinatario picker in "Nueva deuda personal") — must clear `z-[10000]`. Import from `@/lib/constants/styles`; apply to both `DialogContent` and its `overlayClassName`. |
-| Toasts | sonner default (`z≈10^9`) | always on top |
+Single ascending, spaced token scale, defined in `globals.css` as `--z-layer-*`
+and referenced via `z-[var(--z-layer-*)]`. Overlay order follows the industry
+convention (**popover & tooltip sit ABOVE modal/sheet**) so a child surface
+opened inside a modal is never hidden behind it. Full rationale and sources:
+[`Z_INDEX.md`](./Z_INDEX.md).
 
-Rule: don't invent new raw z-values. A modal opened from inside a Sheet uses `Z_DIALOG_ABOVE_SHEET`; everything else uses the tiers above.
+| Token | Value | Class | Used by |
+|---|---|---|---|
+| `--z-layer-raised` | 10 | `z-[var(--z-layer-raised)]` | in-flow: badges, gradient masks, sticky sub-headers |
+| `--z-layer-sticky` | 30 | `z-[var(--z-layer-sticky)]` | page topbars / sticky section headers |
+| `--z-layer-nav` | 40 | `z-40` | mobile tab bar, bottom nav, fixed bottom action bars |
+| `--z-layer-modal` | 1000 | `z-[var(--z-layer-modal)]` | Dialog, AlertDialog, Sheet, Drawer, FabMenu (overlay + content) |
+| `--z-layer-popover` | 1100 | `z-[var(--z-layer-popover)]` | Popover, Dropdown, Select, ContextMenu, date-picker — **above modal** |
+| `--z-layer-toast` | 1200 | `[data-sonner-toaster]` | Sonner toasts |
+| `--z-layer-tooltip` | 1300 | `z-[var(--z-layer-tooltip)]` | Tooltip |
+| `--z-layer-dev` | 9000 | `z-[var(--z-layer-dev)]` | dev-only inspector/overlays |
+
+Rule: don't invent new raw z-values — every z-index comes from a `--z-layer-*`
+token. A Popover/Dialog opened from inside a Sheet needs **no** z-bump: every
+popover outranks every modal by design, and modal-over-modal nesting is resolved
+by Radix DOM insertion order at the shared `--z-layer-modal` tier.

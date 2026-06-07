@@ -22,16 +22,20 @@ export const DESTRUCTIVE_GHOST_BUTTON_CLASS =
   "border-z-debt/25 bg-black/10 text-z-expense hover:bg-z-debt/10";
 
 /**
- * Z-index layers (see CLAUDE.md "z-index discipline"):
- *   z-40            mobile tab bar
- *   z-50            shadcn primitives (Dialog, Popover, Drawer, Select, …)
- *   z-[10000]       Sheet + FabMenu (top layer — cover other modals)
- *   Z_DIALOG_ABOVE_SHEET  a primitive opened from INSIDE a Sheet must clear z-[10000].
- * Use this for any Dialog/Popover/Drawer rendered within a Sheet (e.g. the
- * destinatario picker inside "Nueva deuda personal"). Toasts (sonner, z≈10^9)
- * still sit above it.
+ * Z-index — single ascending, spaced token scale (defined in globals.css as
+ * `--z-layer-*`, referenced via `z-[var(--z-layer-*)]`). Overlay order follows
+ * the industry convention so a child surface opened inside a modal is never
+ * hidden behind it — see docs/design-system/Z_INDEX.md.
+ *
+ *   --z-layer-nav      40    mobile tab bar, bottom nav, fixed bottom bars
+ *   --z-layer-modal    1000  Dialog, AlertDialog, Sheet, Drawer, FabMenu
+ *   --z-layer-popover  1100  Popover, Dropdown, Select, date-picker (ABOVE modal)
+ *   --z-layer-toast    1200  Sonner toasts
+ *   --z-layer-tooltip  1300  Tooltip
+ *
+ * Because every popover outranks every modal, a Popover/Dialog opened from
+ * inside a Sheet sits above it automatically — no per-call-site z-bump needed.
  */
-export const Z_DIALOG_ABOVE_SHEET = "z-[10001]";
 
 /** Shared page shell spacing */
 export const PAGE_STACK_CLASS = "space-y-6 lg:space-y-8";
@@ -88,7 +92,7 @@ export const MOBILE_TAB_BAR_HEIGHT = "3.5rem";
  *  - any inline bottom-anchored action bar that should sit above the tab bar
  *
  * Do NOT apply inside `Sheet`/`Drawer` content — those float over the tab bar
- * (Sheet is z-[10000]; Drawer at z-50 sits above the bar at z-40). Inside
+ * (modal tier --z-layer-modal sits above the bar at --z-layer-nav). Inside
  * sheets/drawers, use `pb-[calc(1rem+env(safe-area-inset-bottom))]` instead so
  * you only reserve the safe area, not the tab bar height.
  */

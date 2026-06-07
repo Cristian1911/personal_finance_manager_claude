@@ -145,6 +145,19 @@
   --z-mobile-tab-bar-h: 3.5rem;  /* ≈56px — matches tab bar rendered height */
   --z-mobile-fab-overshoot: 1rem; /* brass FAB protrudes ~16px above the bar; reserve space so submit buttons clear it */
 
+  /* Z-index layers — single ascending, spaced scale. Overlay order follows the
+     industry convention (popover & tooltip sit ABOVE modal/sheet) so a child
+     surface opened inside a modal is never hidden behind it. Reference via
+     z-[var(--z-layer-*)]. See docs/design-system/Z_INDEX.md. */
+  --z-layer-raised:    10; /* in-flow: badges, gradient masks, sticky sub-headers */
+  --z-layer-sticky:    30; /* page topbars / sticky section headers */
+  --z-layer-nav:       40; /* mobile tab bar, bottom nav, fixed bottom action bars */
+  --z-layer-modal:   1000; /* Dialog, AlertDialog, Sheet, Drawer, FabMenu (overlay + content) */
+  --z-layer-popover: 1100; /* Popover, Dropdown, Select, ContextMenu, date-picker calendar */
+  --z-layer-toast:   1200; /* Sonner toasts */
+  --z-layer-tooltip: 1300; /* Tooltip */
+  --z-layer-dev:     9000; /* dev-only inspector/overlays */
+
   /* shadcn/ui variable mapping — dark mode first */
   --radius: 0.75rem;
   --background: var(--z-ink);
@@ -232,6 +245,12 @@
   .surface-debt    { color: var(--z-debt);    border-color: color-mix(in srgb, var(--z-debt) 20%, transparent);    background: color-mix(in srgb, var(--z-debt) 8%, transparent); }
   .surface-alert   { color: var(--z-alert);   border-color: color-mix(in srgb, var(--z-alert) 20%, transparent);   background: color-mix(in srgb, var(--z-alert) 8%, transparent); }
   .surface-neutral { color: var(--z-sage-dark); border-color: color-mix(in srgb, var(--z-sage-dark) 20%, transparent); background: color-mix(in srgb, var(--z-sage-dark) 8%, transparent); }
+}
+
+/* Sonner ships a ~10^9 z-index by default; pull it into the layer scale so it
+   sits just above modals/popovers but below tooltips and dev overlays. */
+[data-sonner-toaster] {
+  z-index: var(--z-layer-toast) !important;
 }
 
 @keyframes page-enter {

@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { GHOST_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS, Z_DIALOG_ABOVE_SHEET } from "@/lib/constants/styles";
+import { GHOST_BUTTON_CLASS, BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDestinatarios } from "@/components/providers/app-data-provider";
 import { createDestinatario, getRecentDestinatarios, addDestinatarioRule } from "@/actions/destinatarios";
@@ -393,13 +393,13 @@ export function DestinatarioZonePicker({
       <>
         {!hideTrigger && triggerButton}
         <Dialog open={open} onOpenChange={setOpen}>
-          {/* This variant is used inside the create-deuda Sheet (z-[10000]); the
-              default Dialog z-50 would render behind it. Lift both content and
-              overlay above the sheet. */}
+          {/* The "dialog" variant (not the mobile vaul Drawer) is used inside
+              the create-deuda Sheet: a nested radix Dialog stacks correctly
+              within the sheet's modal, while a sibling Drawer portal is left
+              pointer-events-locked. The z-order is handled by the layer scale —
+              same --z-layer-modal tier, later in the DOM, so it sits above. */}
           <DialogContent
-            overlayClassName={Z_DIALOG_ABOVE_SHEET}
             className={cn(
-              Z_DIALOG_ABOVE_SHEET,
               "flex max-h-[70vh] w-full max-w-sm flex-col gap-0 overflow-hidden p-0",
             )}
           >

@@ -25,7 +25,7 @@ function DrawerOverlay({ className, ...props }: React.ComponentProps<typeof Draw
   return (
     <DrawerPrimitive.Overlay
       data-slot="drawer-overlay"
-      className={cn("fixed inset-0 z-50 bg-black/50", className)}
+      className={cn("fixed inset-0 z-[var(--z-layer-modal)] bg-black/50", className)}
       {...props}
     />
   );
@@ -38,7 +38,7 @@ function DrawerContent({ className, children, ...props }: React.ComponentProps<t
       <DrawerPrimitive.Content
         data-slot="drawer-content"
         className={cn(
-          "bg-background fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t",
+          "bg-background fixed inset-x-0 bottom-0 z-[var(--z-layer-modal)] mt-24 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t",
           className
         )}
         {...props}
