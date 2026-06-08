@@ -25,7 +25,7 @@ export function DevFAB({ onAction, activeAction }: DevFABProps) {
   if (!enabled) return null;
 
   return (
-    <div className="fixed bottom-28 left-4 z-[9999] lg:bottom-6">
+    <div className="fixed bottom-28 left-4 z-[var(--z-layer-dev)] lg:bottom-6">
       {/* Radial menu */}
       {menuOpen && (
         <div className="absolute bottom-14 left-0 flex flex-col gap-3 lg:gap-2">

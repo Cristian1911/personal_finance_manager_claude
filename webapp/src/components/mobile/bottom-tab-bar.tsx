@@ -62,7 +62,7 @@ export function BottomTabBar({ attentionSnapshot }: BottomTabBarProps) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/92 backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-[var(--z-layer-nav)] border-t border-border/80 bg-background/92 backdrop-blur-xl lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       data-testid="bottom-tab-bar"
     >

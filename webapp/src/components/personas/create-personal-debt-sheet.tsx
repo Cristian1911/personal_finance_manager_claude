@@ -94,7 +94,7 @@ export function CreatePersonalDebtSheet({
         side="bottom"
         className={cn("max-h-[90dvh] overflow-y-auto", MOBILE_SHEET_SAFE_AREA_CLASS)}
       >
-        <div className="mx-auto w-full max-w-md px-5">
+        <div className="mx-auto w-full max-w-md px-7">
           <SheetHeader className="px-0 pt-1">
             <SheetTitle>Nueva deuda personal</SheetTitle>
           </SheetHeader>
@@ -137,18 +137,24 @@ export function CreatePersonalDebtSheet({
 
           <AmountInput name="principal_amount" currency={currency} defaultValue={defaultAmount} />
 
-          <div className="space-y-2">
-            <Label>Fecha de apertura</Label>
-            <DatePicker value={openedOn} onChange={(v) => setOpenedOn(v ?? today)} />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Fecha de vencimiento (opcional)</Label>
-            <DatePicker
-              value={dueDate || undefined}
-              onChange={(v) => setDueDate(v ?? "")}
-              placeholder="Sin fecha"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Apertura</Label>
+              <DatePicker
+                value={openedOn}
+                onChange={(v) => setOpenedOn(v ?? today)}
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Vencimiento</Label>
+              <DatePicker
+                value={dueDate || undefined}
+                onChange={(v) => setDueDate(v ?? "")}
+                placeholder="Sin fecha"
+                className="w-full"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

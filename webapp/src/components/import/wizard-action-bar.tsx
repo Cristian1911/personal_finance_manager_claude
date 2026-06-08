@@ -31,7 +31,7 @@ export function WizardActionBar({
     <div
       className={cn(
         "flex items-center justify-between gap-3",
-        "fixed inset-x-0 bottom-0 z-40 border-t border-white/6 bg-z-ink/90 px-4 pt-3 backdrop-blur-md",
+        "fixed inset-x-0 bottom-0 z-[var(--z-layer-nav)] border-t border-white/6 bg-z-ink/90 px-4 pt-3 backdrop-blur-md",
         "pb-[calc(env(safe-area-inset-bottom)_+_0.75rem)]",
         "lg:static lg:bg-transparent lg:px-0 lg:pb-4 lg:pt-4 lg:backdrop-blur-none",
         className,

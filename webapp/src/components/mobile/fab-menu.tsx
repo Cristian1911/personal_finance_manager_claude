@@ -23,9 +23,9 @@ interface FabMenuProps {
   contextActions?: ContextAction[];
 }
 
-/** z-index above the tab bar (z-40) and shadcn primitives (z-50) so the FAB
- * menu's modal overlay covers everything else on screen. */
-const FAB_MENU_Z = "z-[10000]";
+/** Modal tier — sits above the tab bar (--z-layer-nav) so the FAB menu's
+ * overlay covers the screen. See docs/design-system/Z_INDEX.md. */
+const FAB_MENU_Z = "z-[var(--z-layer-modal)]";
 
 export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMenuProps) {
   const pathname = usePathname();
@@ -86,8 +86,8 @@ export function FabMenu({ open, onOpenChange, onAction, contextActions }: FabMen
     <div className="lg:hidden">
       {/* modal={true} gives us: overlay click-to-close, swipe-to-close,
           escape-to-close, focus trapping, body scroll lock — all built-in.
-          z-[10000] on overlay + content keeps the FAB menu above every other
-          floating surface (tab bar at z-40, shadcn modals at z-50). */}
+          FAB_MENU_Z (--z-layer-modal) on overlay + content keeps the menu above
+          the tab bar (--z-layer-nav) and at the modal tier with other sheets. */}
       <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange}>
         <DrawerPrimitive.Portal>
           <DrawerPrimitive.Overlay

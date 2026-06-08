@@ -38,7 +38,7 @@ type MobileHeaderProps = MainHeaderProps | SubHeaderProps;
 
 export function MobileHeader(props: MobileHeaderProps) {
   const base = cn(
-    "sticky top-0 z-30 flex h-12 items-center border-b border-white/6 px-4 backdrop-blur-md lg:hidden",
+    "sticky top-0 z-[var(--z-layer-sticky)] flex h-12 items-center border-b border-white/6 px-4 backdrop-blur-md lg:hidden",
     MOBILE_BG_CLASS,
     "supports-[backdrop-filter]:bg-background/90"
   );

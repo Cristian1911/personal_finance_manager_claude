@@ -78,7 +78,7 @@
 
 ### Deudas personales — deferred cleanups (from /code-review + /simplify, 2026-06-04)
 - **Priority:** Low (P3)
-- **Central "modal-inside-Sheet" handling:** the z fix (force `variant="dialog"` + `Z_DIALOG_ABOVE_SHEET` on content+overlay) is wired per call site. A `SheetContext` that `DialogContent`/`Popover` read to auto-bump z (and pick dialog-not-drawer) would stop every future picker-in-a-Sheet re-hitting the trap. Touches `ui/sheet.tsx` + `ui/dialog.tsx`.
+- ~~**Central "modal-inside-Sheet" handling:** the z fix (force `variant="dialog"` + `Z_DIALOG_ABOVE_SHEET` on content+overlay) is wired per call site.~~ **RESOLVED (2026-06-07):** replaced the inverted z-scale with a token-based `--z-layer-*` scale where popover/tooltip outrank modal globally, so a primitive opened inside a Sheet sits above it with no per-call-site bump. `Z_DIALOG_ABOVE_SHEET` deleted. See `docs/design-system/Z_INDEX.md`.
 - **Shared `ConfirmDialog`:** the destructive-confirm AlertDialog block is now a 3rd copy (persona-card + settings/delete-account + settings/reset-data). Extract a reusable `<ConfirmDialog>` and retrofit all three.
 - **`runPersonalDebtMutation` helper:** `cancel`/`settle`/`deletePersonalDebt` share the validate→auth→mutate→rowcheck→revalidate skeleton; collapse into one helper (watch Supabase query-builder generics). Note `settlePersonalDebt` omits `revalidateFinancialViews()` though it zeroes `outstanding_amount` — confirm intended when refactoring.
 - **`pd_role` hygiene on delete:** FK `ON DELETE SET NULL` clears `personal_debt_id` but leaves a dangling `pd_role` on the unlinked tx. Harmless today (income predicate also checks `personal_debt_id != null`); NULL it out (or a sweep migration) if any future query keys on `pd_role` alone.
