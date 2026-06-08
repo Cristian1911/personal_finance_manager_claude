@@ -97,7 +97,7 @@ export function ReviewSaveDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/60 lg:items-center">
+    <div className="fixed inset-0 z-[var(--z-layer-dev)] flex items-end justify-center bg-black/60 lg:items-center">
       <div className="w-full max-w-none rounded-t-2xl border border-white/6 bg-z-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl lg:max-w-sm lg:rounded-2xl lg:pb-5">
         <h3 className="text-base font-semibold text-z-white">
           Guardar revisión

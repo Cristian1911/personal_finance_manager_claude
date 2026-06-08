@@ -22,7 +22,7 @@ export function FocusModeAccent() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-x-0 z-50 h-0.5 bg-z-brass lg:hidden"
+      className="pointer-events-none fixed inset-x-0 z-[var(--z-layer-nav)] h-0.5 bg-z-brass lg:hidden"
       style={{ top: "env(safe-area-inset-top)" }}
     />
   );

@@ -62,7 +62,7 @@ export function MobileTabBar() {
       // --z-layer-nav (40) sits below the modal tier (--z-layer-modal, 1000) so
       // every overlay surface — Sheet/Drawer/Dialog/Popover/FabMenu — covers the
       // bar. See docs/design-system/Z_INDEX.md.
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-[var(--z-layer-nav)] lg:hidden"
       style={SAFE_AREA_BOTTOM_STYLE}
     >
       <div

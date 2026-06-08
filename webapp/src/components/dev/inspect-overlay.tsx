@@ -108,9 +108,9 @@ export function InspectOverlay({ onSelectComponent, onClose }: InspectOverlayPro
   }, [handlePointerMove, handleClick, handleKeyDown]);
 
   return (
-    <div ref={overlayRef} className="fixed inset-0 z-[9998] cursor-crosshair">
+    <div ref={overlayRef} className="fixed inset-0 z-[var(--z-layer-dev)] cursor-crosshair">
       {/* Instruction bar */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 rounded-full bg-z-surface-3 border border-white/6 px-4 py-2 text-xs text-z-sage-light shadow-lg">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[calc(var(--z-layer-dev)+1)] flex items-center gap-2 rounded-full bg-z-surface-3 border border-white/6 px-4 py-2 text-xs text-z-sage-light shadow-lg">
         <span>Inspeccionar — toca un componente</span>
         <kbd className="hidden text-z-brass lg:inline">Esc</kbd>
         <button
@@ -135,7 +135,7 @@ export function InspectOverlay({ onSelectComponent, onClose }: InspectOverlayPro
           />
           {/* Label */}
           <div
-            className="pointer-events-none fixed z-[9999] rounded-md bg-z-brass px-2 py-1 text-[11px] font-semibold text-z-ink shadow-lg"
+            className="pointer-events-none fixed z-[calc(var(--z-layer-dev)+1)] rounded-md bg-z-brass px-2 py-1 text-[11px] font-semibold text-z-ink shadow-lg"
             style={{
               top: Math.max(0, hovered.rect.top - 28),
               left: hovered.rect.left,
@@ -154,7 +154,7 @@ export function InspectOverlay({ onSelectComponent, onClose }: InspectOverlayPro
       {/* Context menu on click */}
       {contextMenu && (
         <div
-          className="fixed z-[10000] rounded-xl border border-white/6 bg-z-surface-2 p-1.5 shadow-xl"
+          className="fixed z-[calc(var(--z-layer-dev)+2)] rounded-xl border border-white/6 bg-z-surface-2 p-1.5 shadow-xl"
           style={{
             top: Math.max(8, Math.min(contextMenu.y, window.innerHeight - 220)),
             left: Math.max(8, Math.min(contextMenu.x, window.innerWidth - 220)),

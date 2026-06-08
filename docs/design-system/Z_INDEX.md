@@ -1,10 +1,11 @@
 # Z-Index — Research, Diagnosis & Remediation Plan
 
-> Status: **Phases 0–2 implemented** (2026-06-07). The `--z-layer-*` token
-> scale is live in `globals.css`, every shadcn/overlay primitive references it,
-> Sonner is pulled into scale, and the `Z_DIALOG_ABOVE_SHEET` hack is deleted.
-> Phases 3–4 (app-level fixed surfaces + ESLint guardrail) remain open. §2
-> "Diagnosis" describes the pre-refactor state that motivated the change.
+> Status: **Phases 0–4 implemented** (2026-06-07 → 08). The `--z-layer-*` token
+> scale is live in `globals.css`, every shadcn/overlay primitive and app-shell
+> chrome surface references it, Sonner is pulled into scale, the
+> `Z_DIALOG_ABOVE_SHEET` hack is deleted, and an ESLint guardrail forbids raw
+> z-index escalation literals. §2 "Diagnosis" describes the pre-refactor state
+> that motivated the change.
 
 This note answers a focused question: **how do mature design systems manage
 z-index, and where does Zeta's current approach diverge?** It then gives a
@@ -179,12 +180,26 @@ rule below enforces it.
 destinatario picker can stay (it's also a pointer-events/focus fix), but no
 longer needs the z-bump.
 
-**Phase 3 — app-level fixed surfaces.** Map `z-30→--z-sticky`, `z-40→--z-nav`,
-`z-10→--z-raised`, dev tools `9998–10000→--z-dev`. Mechanical.
+**Phase 3 — app-level fixed surfaces. ✅ Done.** Tokenized the chrome/overlay
+surfaces: sticky topbars (`z-30 → z-[var(--z-layer-sticky)]`), the mobile tab
+bar / bottom nav / fixed bottom action bars (`z-40`/`z-50 → --z-layer-nav`), and
+the dev inspector/overlays (`9998–10001 → --z-layer-dev`, using
+`calc(var(--z-layer-dev)+N)` where dev tools stack internally). Purely in-flow
+micro-stacking was intentionally left as standard Tailwind utilities — `z-10`
+for sticky section headers / gradient masks / avatar badges, `z-[1]`/`z-[2]` for
+treemap label layering — since those are local (well below every overlay) and
+don't belong in the global scale.
 
-**Phase 4 — guardrail.** Add an ESLint rule (or `zetas-front-guy` check)
-forbidding raw `z-[…]`/`z-<n>` outside `styles.ts`/`globals.css`, so the scale
-can't rot again.
+**Phase 4 — guardrail. ✅ Done.** Added a `no-restricted-syntax` ESLint rule
+(`webapp/eslint.config.mjs`) that flags any `z-[<2+ digits>]` Tailwind literal —
+catching every escalation (`z-[50]`, `z-[9999]`, `z-[10000]`) while allowing
+standard utilities (`z-10`/`z-40`), single-digit local stacking (`z-[1]`), and
+token/calc references (`z-[var(--z-layer-*)]`, `z-[calc(var(--z-layer-dev)+2)]`).
+The `zetas-front-guy` review gate carries the same rule for PR review.
+> Note: the repo's `pnpm lint` currently reports ~59 pre-existing, unrelated
+> errors, so lint is not yet a clean CI gate — the rule fires correctly (zero
+> z-index violations after this refactor) and is enforced at review time via the
+> agent until the broader lint baseline is cleaned up.
 
 **Verification per phase:** `pnpm build`, then manually exercise the known
 nesting hotspots — date picker + destinatario picker inside *Nueva deuda

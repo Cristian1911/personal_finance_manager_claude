@@ -175,14 +175,14 @@ export function AnnotateCanvas({
 
   if (!Excalidraw) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
+      <div className="fixed inset-0 z-[var(--z-layer-dev)] flex items-center justify-center bg-black/80">
         <p className="text-z-sage-light text-sm">Cargando editor...</p>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-black">
+    <div className="fixed inset-0 z-[var(--z-layer-dev)] flex flex-col bg-black">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-white/6 bg-z-surface px-4 py-2">
         <span className="w-full text-sm font-medium text-z-sage-light lg:w-auto">

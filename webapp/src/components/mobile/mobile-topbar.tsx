@@ -10,7 +10,7 @@ export function MobileTopbar({ profile }: MobileTopbarProps) {
   const greeting = firstName ? `Hola, ${firstName}` : "Hola";
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur lg:hidden">
+    <header className="sticky top-0 z-[var(--z-layer-sticky)] flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur lg:hidden">
       <span className="text-sm font-medium text-muted-foreground">
         {greeting}
       </span>

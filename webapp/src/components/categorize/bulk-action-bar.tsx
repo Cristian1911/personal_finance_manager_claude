@@ -30,7 +30,7 @@ export function BulkActionBar({
       // bottom uses the same calc as MOBILE_TAB_BAR_CLEARANCE_CLASS so this bar
       // sits exactly above the tab bar + FAB overshoot. Safe-area inset is
       // already part of the calc; the inline marginBottom override is gone.
-      className="fixed bottom-[calc(var(--z-mobile-tab-bar-h)_+_var(--z-mobile-fab-overshoot)_+_env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-lg"
+      className="fixed bottom-[calc(var(--z-mobile-tab-bar-h)_+_var(--z-mobile-fab-overshoot)_+_env(safe-area-inset-bottom))] left-1/2 z-[var(--z-layer-nav)] -translate-x-1/2 flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-lg"
       style={{
         bottom: keyboardInset > 0
           ? `${keyboardInset + 12}px`
