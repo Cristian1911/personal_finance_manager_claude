@@ -263,9 +263,9 @@ Only three button variants are permitted in the entire application. Read `webapp
 
 ---
 
-## Check 7: Mobile Tab-Bar Clearance & z-index
+## Check 7: Mobile Tab-Bar Clearance
 
-The mobile tab bar (`MobileTabBar` in `webapp/src/components/mobile/v2/mobile-tab-bar.tsx`) is `fixed bottom-0` at `z-40`, with a brass FAB that overshoots ~16px above the bar. Two CSS variables govern clearance: `--z-mobile-tab-bar-h` (3.5rem) and `--z-mobile-fab-overshoot` (1rem) in `webapp/src/app/globals.css`. Two utility constants in `webapp/src/lib/constants/styles.ts`:
+The mobile tab bar (`MobileTabBar` in `webapp/src/components/mobile/v2/mobile-tab-bar.tsx`) is `fixed bottom-0` at the `nav` tier (`z-[var(--z-layer-nav)]`), with a brass FAB that overshoots ~16px above the bar. Two CSS variables govern clearance: `--z-mobile-tab-bar-h` (3.5rem) and `--z-mobile-fab-overshoot` (1rem) in `webapp/src/app/globals.css`. Two utility constants in `webapp/src/lib/constants/styles.ts`:
 
 - `MOBILE_TAB_BAR_CLEARANCE_CLASS` — for **page-level scroll containers and bottom-anchored bars**. Reserves tab-bar height + FAB overshoot + safe-area inset.
 - `MOBILE_SHEET_SAFE_AREA_CLASS` — for **content INSIDE Sheet/Drawer**. Reserves only safe-area inset (the sheet itself floats above the tab bar).
@@ -274,7 +274,6 @@ The mobile tab bar (`MobileTabBar` in `webapp/src/components/mobile/v2/mobile-ta
 - Any page or scroll container using raw `pb-20`, `pb-24`, `pb-28`, `pb-32` for tab-bar clearance — those magic numbers don't track FAB overshoot or safe-area inset. Replace with `MOBILE_TAB_BAR_CLEARANCE_CLASS`.
 - Any new fixed-bottom bar (action bar, snackbar, picker chip) using `bottom-20`/`bottom-16`/etc. instead of `bottom-[calc(var(--z-mobile-tab-bar-h)_+_var(--z-mobile-fab-overshoot)_+_env(safe-area-inset-bottom))]`.
 - Sheet or Drawer content using `MOBILE_TAB_BAR_CLEARANCE_CLASS` on its inner scroll — wastes space because the sheet itself floats above the bar. Use `MOBILE_SHEET_SAFE_AREA_CLASS`.
-- Any raw z-index literal (`z-50`, `z-[10000]`, `z-[9999]`, …) on an overlay/portal surface instead of a `--z-layer-*` token (`z-[var(--z-layer-modal)]`, etc.). The scale lives in `globals.css`; see `docs/design-system/Z_INDEX.md`. Order is `nav` (40) < `modal` (1000) < `popover` (1100) < `toast` (1200) < `tooltip` (1300) < `dev` (9000). Tab bar must stay at the `nav` tier (`z-40`) so the modal tier covers it. Do NOT re-introduce a per-call-site z-bump (the old `Z_DIALOG_ABOVE_SHEET`) for a primitive opened inside a Sheet — popover/tooltip already outrank modal by design.
 - Bottom sheets (Drawer-based pickers like destinatario/tag/category) without ANY safe-area padding on their inner scroll — on iOS the gesture indicator can overlap the last row.
 
 **Flag as Warning:**
@@ -284,6 +283,39 @@ The mobile tab bar (`MobileTabBar` in `webapp/src/components/mobile/v2/mobile-ta
   - Calling `useHideTabBar(active)` from `@/components/mobile/v2/tab-bar-visibility-provider` (conditional/runtime).
 
   Required for any focus-mode screen: `MobileHeader variant="sub"` with a real `backHref` — without an explicit back affordance the user is trapped.
+
+---
+
+## Check 8: Z-Index Layer Discipline
+
+The whole stacking order is one ascending, spaced token scale defined in `webapp/src/app/globals.css` as `--z-layer-*`, referenced via `z-[var(--z-layer-*)]`. Full rationale + sources: `docs/design-system/Z_INDEX.md`.
+
+| Token | Value | Used by |
+|---|---|---|
+| `--z-layer-raised` | 10 | in-flow: badges, gradient masks, sticky sub-headers (use plain `z-10`) |
+| `--z-layer-sticky` | 30 | page topbars / sticky section headers |
+| `--z-layer-nav` | 40 | mobile tab bar, bottom nav, fixed bottom action bars |
+| `--z-layer-modal` | 1000 | Dialog, AlertDialog, Sheet, Drawer, FabMenu (overlay + content) |
+| `--z-layer-popover` | 1100 | Popover, Dropdown, Select, ContextMenu, date-picker — **above modal** |
+| `--z-layer-toast` | 1200 | Sonner toasts |
+| `--z-layer-tooltip` | 1300 | Tooltip |
+| `--z-layer-dev` | 9000 | dev-only inspector/overlays |
+
+**The load-bearing rule:** popover and tooltip sit **above** modal/sheet. So a primitive opened from *inside* a Sheet (date picker, Select, the destinatario dialog) renders above it automatically — there is **no** per-call-site z-bump. Modal-over-modal nesting (a Dialog opened from a Sheet, FabMenu over a sheet) resolves via Radix DOM insertion order at the shared `--z-layer-modal` tier. This is why the old `Z_DIALOG_ABOVE_SHEET` hack was deleted.
+
+**Flag as Violation:**
+- Any raw arbitrary z-index literal `z-[<2+ digits>]` anywhere in `src/` — `z-[50]`, `z-[9999]`, `z-[10000]`, `z-[10001]`. It's an escalation. Replace with the matching `z-[var(--z-layer-*)]` token. (The `no-restricted-syntax` rule in `webapp/eslint.config.mjs` also catches this.)
+- A new shadcn/portal primitive (Dialog/AlertDialog/Drawer/Popover/Select/Dropdown/Tooltip/Sheet/FabMenu) hardcoding `z-50`/`z-[10000]` instead of its token tier.
+- Re-introducing `Z_DIALOG_ABOVE_SHEET`, an `overlayClassName` z-bump, or any "+1 above the sheet" trick for a picker/dialog/popover opened inside a Sheet. The scale already orders popover above modal — the bump is the bug, not the fix.
+- Raising the mobile tab bar above the `nav` tier — re-creates the bug where modals get clipped by / rendered under the bar.
+- Pushing any product surface into the `dev` tier (9000), or dropping Sonner/toasts below the `toast` tier.
+
+**Allowed — do NOT flag:**
+- Standard Tailwind utilities (`z-10`/`z-20`/`z-30`/`z-40`) for purely-local, in-flow stacking that lives well below every overlay (sticky section headers, gradient masks, avatar badges, focus rings).
+- Single-digit arbitrary local stacking like `z-[1]`/`z-[2]` (e.g. treemap label over watermark).
+- Token / calc references: `z-[var(--z-layer-*)]`, `z-[calc(var(--z-layer-dev)+2)]`.
+
+**Quick check:** `grep -rnE 'z-\[[0-9]{2,}\]' webapp/src` must return nothing.
 
 ---
 
@@ -315,7 +347,7 @@ If there are no findings in a section, write `None.` — never omit the section 
 
 Before writing the final report, verify:
 
-1. Have you checked ALL six categories for EVERY file in scope?
+1. Have you checked ALL eight categories (Checks 1–8) for EVERY file in scope?
 2. Did you distinguish violations (rule is broken) from warnings (best practice deviated)?
 3. Did you check `styles.ts` for existing constants before calling a button a violation?
 4. Did you avoid flagging `bg-[#111]` as a violation inside Tier 2 compact card contexts?
