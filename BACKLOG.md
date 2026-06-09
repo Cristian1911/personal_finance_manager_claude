@@ -560,6 +560,18 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Tech Debt
 
+### Deudas lenses — deferred review findings (2026-06-09, branch feat/deudas-lenses)
+- **Priority:** Low–Medium
+- **From:** perf-auditor + zetas-front-guy gates on the /deudas 3-lens redesign.
+- **What:**
+  1. **Index for getDebtTrend payments query** (Medium) — `transactions_enc` has no index covering `(user_id, account_id, direction, transaction_date)`. Query is cached, so only cold-start/post-mutation cost. Migration: `CREATE INDEX CONCURRENTLY idx_transactions_enc_account_direction_date ON public.transactions_enc (user_id, account_id, direction, transaction_date DESC);` — spawn supabase-migrator.
+  2. **getNonDebtAccounts still fetched eagerly** (Low) — now cached, but it's only needed when the user opens the Plata extra sheet (Plan lens). Move out of MobileDebtSection/DesktopDebtSection `Promise.all`; let `ExtraPaymentTrigger` fetch on interaction or wrap in Suspense.
+  3. **Nested PANEL_INSET_CLASS in deudas-hero breakdown** (Low) — double rounded-2xl borders; inner surface should step down to rounded-xl (zetas-front-guy W4).
+
+### packages/shared — pre-existing test failures on main (found 2026-06-09)
+- **Priority:** Medium
+- **What:** `pnpm test` in packages/shared fails on main: `auto-categorize.test.ts` 39 failed, `debt-stats.test.ts` 1 failed. Pre-date the deudas-lenses branch (verified via stash). CI presumably doesn't run shared tests or would have caught it. Triage whether the tests or the implementation drifted (likely category kit/keyword changes).
+
 ### Mobile ↔ Webapp parity — live walkthrough findings (2026-05-21)
 - **Priority:** Resolved (10/10 closed) — follow-ups split out into separate entries below.
 - **Where:** captured during the live walkthrough phase of `docs/parity-audit-2026-05-21.md` after PR #257 / #258 / #259 merged. Real-account auth on both surfaces, iPhone 16e simulator + Chrome at iPhone viewport.
