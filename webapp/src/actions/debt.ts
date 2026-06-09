@@ -279,14 +279,20 @@ async function getDebtTrendCached(
 
   const monthStart = `${toColombiaDateString(new Date()).slice(0, 7)}-01`;
 
+  // Bound snapshots by date (sparkline needs 6 months) — a bare row limit
+  // could let one snapshot-heavy account starve another's recent months.
+  const horizon = new Date();
+  horizon.setMonth(horizon.getMonth() - 7);
+  const horizonStr = toColombiaDateString(horizon);
+
   const [snapshotsResult, paymentsResult] = await Promise.all([
     supabase
       .from("statement_snapshots")
       .select("account_id, total_payment_due, minimum_payment, period_to")
       .eq("user_id", userId)
       .in("account_id", debtIds)
-      .order("period_to", { ascending: false })
-      .limit(debtIds.length * 8),
+      .gte("period_to", horizonStr)
+      .order("period_to", { ascending: false }),
     supabase
       .from("transactions")
       .select("account_id, amount, transaction_date")

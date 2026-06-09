@@ -1,10 +1,12 @@
-"use client";
-
 import Link from "next/link";
 import { Banknote, Calculator } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import {
+  PANEL_INSET_CLASS,
+  MOBILE_EYEBROW_CLASS,
+  CHIP_NEUTRAL_CLASS,
+} from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 import type { CurrencyCode } from "@/types/domain";
 import type { DebtStats, DebtInsight } from "@zeta/shared";
@@ -39,14 +41,11 @@ export function DeudasPlanLens({
     ? stats.loans.payments.find((p) => p.accountName === closestLoan.accountName)
     : null;
 
-  const chipClass =
-    "inline-flex items-center gap-2 rounded-full border border-white/6 bg-white/[0.03] px-3 py-1.5 text-xs transition-colors";
-
   return (
     <div className="space-y-3">
       {/* Horizon hero */}
       <div className={cn(PANEL_INSET_CLASS, "p-3.5")}>
-        <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+        <p className={MOBILE_EYEBROW_CLASS}>
           Libre de deudas
         </p>
         {countdown ? (
@@ -57,7 +56,7 @@ export function DeudasPlanLens({
             <p className="mt-1 text-[11px] text-muted-foreground">
               {countdown.monthsToFree} meses al ritmo actual
             </p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/6">
               <div
                 className="h-full rounded-full bg-z-brass/80"
                 style={{ width: `${countdown.progressPercent}%` }}
@@ -68,8 +67,11 @@ export function DeudasPlanLens({
             </p>
             {countdown.extraPaymentScenario && (
               <p className="mt-2 text-[10px] text-z-income">
-                Con {formatCurrency(countdown.extraPaymentScenario.extraAmount, currency)} extra/mes
-                terminarías {countdown.extraPaymentScenario.monthsSaved} meses antes
+                Con{" "}
+                <span className="tabular-nums">
+                  {formatCurrency(countdown.extraPaymentScenario.extraAmount, currency)}
+                </span>{" "}
+                extra/mes terminarías {countdown.extraPaymentScenario.monthsSaved} meses antes
               </p>
             )}
           </>
@@ -83,7 +85,7 @@ export function DeudasPlanLens({
       {/* Próximo hito */}
       {closestLoan && (
         <div className={cn(PANEL_INSET_CLASS, "p-3.5")}>
-          <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+          <p className={MOBILE_EYEBROW_CLASS}>
             Próximo hito
           </p>
           <div className="mt-2 flex items-center justify-between gap-3">
@@ -91,7 +93,7 @@ export function DeudasPlanLens({
               <p className="truncate text-sm font-semibold text-z-sage-light">
                 {closestLoan.accountName}
               </p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
+              <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
                 {closestProgress ? `${closestProgress.percentage.toFixed(0)}% pagado` : ""}
                 {closestPayment
                   ? ` · ${formatCurrency(closestPayment.amount, currency)}/mes`
@@ -106,12 +108,15 @@ export function DeudasPlanLens({
       {/* Action row — Plata extra + Simular live here */}
       <div className="flex flex-wrap gap-2 px-1">
         {extraPaymentTrigger && (
-          <div className={chipClass}>
+          <div className={CHIP_NEUTRAL_CLASS}>
             <Banknote className="size-3.5 text-z-brass" />
             {extraPaymentTrigger}
           </div>
         )}
-        <Link href="/deudas/planificador" className={`${chipClass} active:bg-white/[0.06]`}>
+        <Link
+          href="/deudas/planificador"
+          className={cn(CHIP_NEUTRAL_CLASS, "active:bg-white/[0.06]")}
+        >
           <Calculator className="size-3.5 text-z-brass" />
           <span>Simular pagos</span>
         </Link>
@@ -149,7 +154,7 @@ function MilestoneRing({ months }: { months: number }) {
   return (
     <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
       <svg width="44" height="44" viewBox="0 0 40 40" className="-rotate-90">
-        <circle cx="20" cy="20" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
+        <circle cx="20" cy="20" r={r} fill="none" className="stroke-white/6" strokeWidth="3" />
         <circle
           cx="20"
           cy="20"

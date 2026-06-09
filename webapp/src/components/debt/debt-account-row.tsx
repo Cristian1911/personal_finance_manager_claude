@@ -68,7 +68,7 @@ export function DebtAccountRow({
       </div>
 
       {utilization != null && (
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/8">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/6">
           <div
             className={cn(
               "h-full rounded-full",

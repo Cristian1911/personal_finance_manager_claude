@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import {
+  SEGMENTED_TAB_CLASS,
+  SEGMENTED_TAB_ACTIVE_CLASS,
+} from "@/lib/constants/styles";
 import { DeudasHero } from "./deudas-hero";
 import { DebtTrendCard } from "./debt-trend-card";
 import { DeudasSalaryBar } from "./deudas-salary-bar";
@@ -87,12 +90,7 @@ export function DeudasLensRoot({
             role="tab"
             aria-selected={lens === l.id}
             onClick={() => selectLens(l.id)}
-            className={cn(
-              "flex-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              lens === l.id
-                ? "border border-z-brass/30 bg-z-brass/15 text-z-brass"
-                : "text-muted-foreground active:bg-white/[0.06]"
-            )}
+            className={lens === l.id ? SEGMENTED_TAB_ACTIVE_CLASS : SEGMENTED_TAB_CLASS}
           >
             {l.label}
           </button>

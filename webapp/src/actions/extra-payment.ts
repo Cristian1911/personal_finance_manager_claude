@@ -1,5 +1,6 @@
 "use server";
 
+import { cacheTag, cacheLife } from "next/cache";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   TRANSFER_CATEGORY_ID,
@@ -7,6 +8,7 @@ import {
   getDebtPaymentCategoryId,
 } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
 import type { ActionResult } from "@/types/actions";
 
@@ -33,6 +35,28 @@ export interface ExtraPaymentInput {
 
 // ── getNonDebtAccounts ────────────────────────────────────────────────────────
 
+async function getNonDebtAccountsCached(
+  userId: string,
+  accessToken: string
+): Promise<NonDebtAccount[]> {
+  "use cache";
+  cacheTag("accounts");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("id, name, current_balance, currency_code, account_type")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .not("account_type", "in", "(CREDIT_CARD,LOAN)")
+    .order("name");
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 /**
  * Returns active non-debt accounts (checking, savings, etc.) for the
  * source account dropdown in the extra debt payment sheet.
@@ -40,21 +64,18 @@ export interface ExtraPaymentInput {
 export async function getNonDebtAccounts(): Promise<
   ActionResult<NonDebtAccount[]>
 > {
-  const { supabase, user } = await getAuthenticatedClient();
+  const { user, accessToken } = await getAuthenticatedClient();
 
-  if (!user) return { success: false, error: "No autenticado" };
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
 
-  const { data, error } = await supabase
-    .from("accounts")
-    .select("id, name, current_balance, currency_code, account_type")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .not("account_type", "in", "(CREDIT_CARD,LOAN)")
-    .order("name");
-
-  if (error) return { success: false, error: error.message };
-
-  return { success: true, data: data ?? [] };
+  try {
+    return { success: true, data: await getNonDebtAccountsCached(user.id, accessToken) };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error cargando cuentas",
+    };
+  }
 }
 
 // ── applyExtraDebtPayment ─────────────────────────────────────────────────────

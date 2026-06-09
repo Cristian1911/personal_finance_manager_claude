@@ -1,8 +1,6 @@
-"use client";
-
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, MOBILE_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { StateChip } from "@/components/mobile/v2/state-chip";
 import type { DebtTrendData } from "@/actions/debt";
 import type { CurrencyCode } from "@/types/domain";
@@ -27,7 +25,7 @@ export function DebtTrendCard({
     <div className={cn(PANEL_INSET_CLASS, "p-3.5")}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+          <p className={MOBILE_EYEBROW_CLASS}>
             Tendencia
           </p>
           {trend.deltaPct != null ? (

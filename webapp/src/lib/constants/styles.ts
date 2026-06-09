@@ -110,3 +110,15 @@ export const MOBILE_SHEET_SAFE_AREA_CLASS =
 /** Mobile v2 action button (brass ghost) */
 export const MOBILE_ACTION_BUTTON_CLASS =
   "rounded-lg border border-z-brass/20 bg-z-brass/8 px-2.5 py-1 text-[10px] font-semibold text-z-brass";
+
+/** Segmented tab control — inactive tab (e.g. /deudas Carga·Plan·Cuentas) */
+export const SEGMENTED_TAB_CLASS =
+  "flex-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors text-muted-foreground active:bg-white/[0.06]";
+
+/** Segmented tab control — active tab */
+export const SEGMENTED_TAB_ACTIVE_CLASS =
+  "flex-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors border border-z-brass/30 bg-z-brass/15 text-z-brass";
+
+/** Neutral pill chip for inline actions (brass icon + label inside) */
+export const CHIP_NEUTRAL_CLASS =
+  "inline-flex items-center gap-2 rounded-full border border-white/6 bg-white/[0.03] px-3 py-1.5 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-z-brass/50";

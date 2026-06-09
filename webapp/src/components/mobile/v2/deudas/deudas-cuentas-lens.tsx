@@ -1,10 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, MOBILE_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { DebtAccountRow } from "@/components/debt/debt-account-row";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
 import type { CurrencyCode } from "@/types/domain";
@@ -40,7 +38,7 @@ export function DeudasCuentasLens({
       <div className="grid grid-cols-2 gap-3">
         <div className={cn(PANEL_INSET_CLASS, "flex flex-col items-center p-3.5")}>
           <UtilizationRing percentage={overview.overallUtilization} />
-          <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+          <p className={cn(MOBILE_EYEBROW_CLASS, "mt-2")}>
             Uso del cupo
           </p>
         </div>
@@ -48,7 +46,7 @@ export function DeudasCuentasLens({
           <p className="text-[18px] font-[680] tabular-nums tracking-[-0.03em]">
             {formatCurrency(overview.totalDebt, currency)}
           </p>
-          <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+          <p className={cn(MOBILE_EYEBROW_CLASS, "mt-2")}>
             Deuda total
           </p>
         </div>
@@ -128,7 +126,7 @@ function UtilizationRing({ percentage }: { percentage: number }) {
   return (
     <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
       <svg width="44" height="44" viewBox="0 0 40 40" className="-rotate-90">
-        <circle cx="20" cy="20" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
+        <circle cx="20" cy="20" r={r} fill="none" className="stroke-white/6" strokeWidth="3" />
         <circle
           cx="20"
           cy="20"
