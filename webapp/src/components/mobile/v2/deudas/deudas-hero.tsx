@@ -3,7 +3,6 @@
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
-import { StateChip } from "@/components/mobile/v2/state-chip";
 import type { CurrencyCode } from "@/types/domain";
 
 interface DebtAccountBreakdown {
@@ -38,16 +37,6 @@ export function DeudasHero({
     ? Math.round((capital / totalMonthlyPayment) * 100)
     : 100;
   const interestPct = 100 - capitalPct;
-
-  // Pressure: >30% interest = aprieta, >20% = atención, else = manejable
-  const pressure =
-    interestPct > 30 ? "warn" as const
-    : interestPct > 20 ? "brass" as const
-    : "sage" as const;
-  const pressureLabel =
-    interestPct > 30 ? "Aprieta"
-    : interestPct > 20 ? "Atención"
-    : "Manejable";
 
   return (
     <button
@@ -90,11 +79,10 @@ export function DeudasHero({
       </div>
 
       {/* Footer */}
-      <div className="mt-2 flex items-center justify-between">
+      <div className="mt-2">
         <span className="text-[10px] text-muted-foreground">
           {capitalPct}% capital · {interestPct}% costo financiero
         </span>
-        <StateChip label={pressureLabel} variant={pressure} />
       </div>
 
       {/* Expandable breakdown */}
