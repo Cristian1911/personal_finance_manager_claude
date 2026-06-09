@@ -9,8 +9,11 @@ import {
   estimateMonthlyInterest,
   generateInsights,
   sanitizeInterestRate,
+  computeDebtTrend,
+  detectExtraPayments,
   type DebtOverview,
   type DebtAccount,
+  type DebtTrendStatus,
 } from "@zeta/shared";
 import type { CurrencyCode } from "@zeta/shared";
 import { toColombiaDateString } from "@/lib/utils/date";
@@ -226,4 +229,145 @@ export async function getDebtOverview(
     return EMPTY_DEBT_OVERVIEW;
   }
   return getDebtOverviewForMonthCached(user.id, baseCurrency, month!, accessToken);
+}
+
+// ─── Debt trend (honest MoM cuota comparison) ────────────────────────────────
+
+export interface DebtTrendData {
+  deltaPct: number | null;
+  status: DebtTrendStatus | null;
+  currentCuota: number | null;
+  previousCuota: number | null;
+  /** Ascending by period (YYYY-MM), up to 6 entries. */
+  sparkline: { period: string; total: number }[];
+  extraPayments: { count: number; totalExtra: number };
+}
+
+const EMPTY_DEBT_TREND: DebtTrendData = {
+  deltaPct: null,
+  status: null,
+  currentCuota: null,
+  previousCuota: null,
+  sparkline: [],
+  extraPayments: { count: 0, totalExtra: 0 },
+};
+
+async function getDebtTrendCached(
+  userId: string,
+  currency: CurrencyCode,
+  accessToken: string
+): Promise<DebtTrendData> {
+  "use cache";
+  cacheTag("debt", "snapshots");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  const { data: accounts, error: accountsError } = await supabase
+    .from("accounts")
+    .select("id, monthly_payment, currency_code")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .in("account_type", ["CREDIT_CARD", "LOAN"]);
+
+  if (accountsError) throw accountsError;
+
+  const debtIds = (accounts ?? [])
+    .filter((a) => a.currency_code === currency)
+    .map((a) => a.id);
+  if (debtIds.length === 0) return EMPTY_DEBT_TREND;
+
+  const monthStart = `${toColombiaDateString(new Date()).slice(0, 7)}-01`;
+
+  const [snapshotsResult, paymentsResult] = await Promise.all([
+    supabase
+      .from("statement_snapshots")
+      .select("account_id, total_payment_due, minimum_payment, period_to")
+      .eq("user_id", userId)
+      .in("account_id", debtIds)
+      .order("period_to", { ascending: false })
+      .limit(debtIds.length * 8),
+    supabase
+      .from("transactions")
+      .select("account_id, amount, transaction_date")
+      .eq("user_id", userId)
+      .eq("direction", "INFLOW")
+      .in("account_id", debtIds)
+      .gte("transaction_date", monthStart),
+  ]);
+
+  if (snapshotsResult.error) throw snapshotsResult.error;
+  if (paymentsResult.error) throw paymentsResult.error;
+
+  const snapshots = snapshotsResult.data ?? [];
+
+  // Latest snapshot cuota per (account, month) — first seen wins (ordered DESC).
+  const cuotaByMonthAccount = new Map<string, Map<string, number>>();
+  for (const snap of snapshots) {
+    if (!snap.period_to) continue;
+    const month = snap.period_to.slice(0, 7);
+    const cuota = snap.total_payment_due ?? snap.minimum_payment;
+    if (cuota == null) continue;
+    let perAccount = cuotaByMonthAccount.get(month);
+    if (!perAccount) {
+      perAccount = new Map();
+      cuotaByMonthAccount.set(month, perAccount);
+    }
+    if (!perAccount.has(snap.account_id)) {
+      perAccount.set(snap.account_id, Math.abs(cuota));
+    }
+  }
+
+  const sparkline = [...cuotaByMonthAccount.entries()]
+    .map(([period, perAccount]) => ({
+      period,
+      total: [...perAccount.values()].reduce((s, v) => s + v, 0),
+    }))
+    .sort((a, b) => a.period.localeCompare(b.period))
+    .slice(-6);
+
+  const currentCuota = sparkline.at(-1)?.total ?? null;
+  const previousCuota = sparkline.at(-2)?.total ?? null;
+  const { deltaPct, status } = computeDebtTrend(currentCuota, previousCuota);
+
+  // Expected cuota per account = latest snapshot cuota, fallback account.monthly_payment.
+  const latestCuotaByAccount = new Map<string, number>();
+  for (const snap of snapshots) {
+    const cuota = snap.total_payment_due ?? snap.minimum_payment;
+    if (cuota != null && !latestCuotaByAccount.has(snap.account_id)) {
+      latestCuotaByAccount.set(snap.account_id, Math.abs(cuota));
+    }
+  }
+  const expected = debtIds.map((id) => ({
+    accountId: id,
+    cuota:
+      latestCuotaByAccount.get(id) ??
+      Math.abs((accounts ?? []).find((a) => a.id === id)?.monthly_payment ?? 0),
+  }));
+
+  const extraPayments = detectExtraPayments(
+    (paymentsResult.data ?? []).map((tx) => ({
+      accountId: tx.account_id,
+      amount: Math.abs(tx.amount),
+      date: tx.transaction_date,
+    })),
+    expected
+  );
+
+  return { deltaPct, status, currentCuota, previousCuota, sparkline, extraPayments };
+}
+
+export async function getDebtTrend(
+  currency?: CurrencyCode
+): Promise<DebtTrendData> {
+  const baseCurrency = currency ?? "COP";
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return EMPTY_DEBT_TREND;
+
+  try {
+    return await getDebtTrendCached(user.id, baseCurrency, accessToken);
+  } catch (error) {
+    console.error("Error computing debt trend:", error);
+    return EMPTY_DEBT_TREND;
+  }
 }
