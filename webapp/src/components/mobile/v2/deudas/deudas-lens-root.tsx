@@ -31,8 +31,8 @@ export interface PersonasSummary {
 
 export interface ExchangeRateInfo {
   rate: number;
-  avg30d: number;
-  percentVsAvg: number;
+  avg30d: number | null;
+  percentVsAvg: number | null;
   from: CurrencyCode;
 }
 

@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { getDebtOverview } from "@/actions/debt";
+import { getDebtOverview, getDebtTrend } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { getNonDebtAccounts } from "@/actions/extra-payment";
 import { ExtraPaymentTrigger } from "@/components/debt/extra-payment-trigger";
@@ -12,10 +12,12 @@ import { DebtQuickStats } from "@/components/debt/debt-quick-stats";
 import { SalaryBar } from "@/components/debt/salary-bar";
 import { MonthSelector } from "@/components/month-selector";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
-import { DeudasRoot } from "@/components/mobile/v2/deudas/deudas-root";
+import { DeudasLensRoot } from "@/components/mobile/v2/deudas/deudas-lens-root";
+import { getDebtFreeCountdown } from "@/actions/debt-countdown";
+import { getPersonalDebtsOverview } from "@/actions/personal-debts";
 import { PageHeaderRow } from "@/components/ui/page-header-row";
 import { Button } from "@/components/ui/button";
-import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS, MOBILE_TAB_BAR_CLEARANCE_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getRecentImpactEvents } from "@/actions/impact-events";
@@ -24,7 +26,7 @@ import { AccountsSection } from "@/components/accounts/accounts-section";
 import { computeDebtStats, getCurrentSalaryBreakdown, getMinPayment } from "@zeta/shared";
 import { getExchangeRate } from "@/actions/exchange-rate";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
-import { formatCurrency } from "@/lib/utils/currency";
+import { toColombiaDateString } from "@/lib/utils/date";
 import {
   DebtOverviewSkeleton,
   DebtQuickStatsSkeleton,
@@ -33,7 +35,7 @@ import {
 } from "@/components/debt/debt-skeletons";
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Mobile debt section — uses new DeudasRoot
+// Mobile debt section — 3-lens root (Carga / Plan / Cuentas)
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function MobileDebtSection({
@@ -43,11 +45,25 @@ async function MobileDebtSection({
   currency: CurrencyCode;
   month: string | undefined;
 }) {
-  const [overview, incomeEstimate, sourceAccountsResult, usdRateResult] = await Promise.all([
+  const isCurrentMonth =
+    !month || month >= toColombiaDateString(new Date()).slice(0, 7);
+
+  const [
+    overview,
+    incomeEstimate,
+    sourceAccountsResult,
+    usdRateResult,
+    trend,
+    countdown,
+    personasResult,
+  ] = await Promise.all([
     getDebtOverview(currency, month),
     getEstimatedIncome(currency, month),
     getNonDebtAccounts(),
     currency !== "USD" ? getExchangeRate("USD", currency) : Promise.resolve(null),
+    isCurrentMonth ? getDebtTrend(currency) : Promise.resolve(null),
+    getDebtFreeCountdown(currency),
+    getPersonalDebtsOverview(),
   ]);
   const sourceAccounts = sourceAccountsResult.success ? sourceAccountsResult.data : [];
   const usdToCopRate = usdRateResult?.rate ?? null;
@@ -81,24 +97,49 @@ async function MobileDebtSection({
 
   const stats = computeDebtStats(overview.accounts);
 
-  return (
-    <>
-      <DeudasRoot
-        stats={stats}
-        overview={overview}
-        salaryBreakdown={salaryBreakdown}
-        currency={currency}
-        extraPaymentTrigger={
-          <ExtraPaymentTrigger
-            debtAccounts={overview.accounts}
-            sourceAccounts={sourceAccounts}
-            currency={currency}
-            usdToCopRate={usdToCopRate}
-            variant="compact"
-          />
+  const personasSummary = personasResult.success
+    ? {
+        activeCount:
+          personasResult.data.iOwe.byPerson.length +
+          personasResult.data.owedToMe.byPerson.length,
+        iOweTotal: personasResult.data.iOwe.total,
+        owedToMeTotal: personasResult.data.owedToMe.total,
+      }
+    : null;
+
+  const secondaryCurrencies = overview.debtByCurrency.filter(
+    (d) => d.currency !== currency && d.totalDebt > 0
+  );
+  const exchangeRate =
+    usdRateResult && secondaryCurrencies.length > 0
+      ? {
+          rate: usdRateResult.rate,
+          avg30d: usdRateResult.avg30d,
+          percentVsAvg: usdRateResult.percentVsAvg,
+          from: secondaryCurrencies[0].currency as CurrencyCode,
         }
-      />
-    </>
+      : null;
+
+  return (
+    <DeudasLensRoot
+      stats={stats}
+      overview={overview}
+      salaryBreakdown={salaryBreakdown}
+      trend={trend}
+      countdown={countdown}
+      personasSummary={personasSummary}
+      exchangeRate={exchangeRate}
+      currency={currency}
+      extraPaymentTrigger={
+        <ExtraPaymentTrigger
+          debtAccounts={overview.accounts}
+          sourceAccounts={sourceAccounts}
+          currency={currency}
+          usdToCopRate={usdToCopRate}
+          variant="compact"
+        />
+      }
+    />
   );
 }
 
@@ -264,7 +305,7 @@ export default async function DeudasPage({
         >
           <MobileDebtSection currency={currency} month={month} />
         </Suspense>
-        <AccountsSection />
+        <AccountsSection hideDebt />
       </div>
 
       {/* ── Desktop ── */}
@@ -311,50 +352,3 @@ export default async function DeudasPage({
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Mobile utilization ring — smaller, inline variant
-// ──────────────────────────────────────────────────────────────────────────────
-
-function UtilizationRingMobile({
-  percentage,
-  color,
-}: {
-  percentage: number;
-  color: string;
-}) {
-  const r = 16;
-  const circumference = 2 * Math.PI * r;
-  const offset = circumference * (1 - percentage / 100);
-
-  return (
-    <div className="relative shrink-0" style={{ width: 40, height: 40 }}>
-      <svg width="40" height="40" viewBox="0 0 40 40" className="-rotate-90">
-        <circle
-          cx="20"
-          cy="20"
-          r={r}
-          fill="none"
-          stroke="hsl(var(--muted))"
-          strokeWidth="3"
-        />
-        <circle
-          cx="20"
-          cy="20"
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="3"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div
-        className="absolute inset-0 flex items-center justify-center text-[10px] font-bold"
-        style={{ color }}
-      >
-        {percentage.toFixed(0)}%
-      </div>
-    </div>
-  );
-}
