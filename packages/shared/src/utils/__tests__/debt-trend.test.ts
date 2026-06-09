@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeDebtTrend } from "../debt-trend";
+import { computeDebtTrend, detectExtraPayments } from "../debt-trend";
 
 describe("computeDebtTrend", () => {
   it("returns mejorando when cuota dropped more than 5%", () => {
@@ -32,5 +32,58 @@ describe("computeDebtTrend", () => {
     expect(computeDebtTrend(1_000_000, null)).toEqual({ deltaPct: null, status: null });
     expect(computeDebtTrend(1_000_000, 0)).toEqual({ deltaPct: null, status: null });
     expect(computeDebtTrend(null, 1_000_000)).toEqual({ deltaPct: null, status: null });
+  });
+});
+
+describe("detectExtraPayments", () => {
+  const expected = [
+    { accountId: "cc-1", cuota: 500_000 },
+    { accountId: "loan-1", cuota: 700_000 },
+  ];
+
+  it("counts payments made after the cuota was already covered", () => {
+    const r = detectExtraPayments(
+      [
+        { accountId: "cc-1", amount: 500_000, date: "2026-06-02" },
+        { accountId: "cc-1", amount: 300_000, date: "2026-06-15" }, // extra
+        { accountId: "loan-1", amount: 700_000, date: "2026-06-05" },
+      ],
+      expected
+    );
+    expect(r.count).toBe(1);
+    expect(r.totalExtra).toBe(300_000);
+  });
+
+  it("sorts by date before deciding which payment is extra", () => {
+    const r = detectExtraPayments(
+      [
+        { accountId: "cc-1", amount: 300_000, date: "2026-06-15" },
+        { accountId: "cc-1", amount: 500_000, date: "2026-06-02" },
+      ],
+      expected
+    );
+    expect(r.count).toBe(1); // the June 15 payment is the extra one
+  });
+
+  it("reports zero when payments only cover the cuota", () => {
+    const r = detectExtraPayments(
+      [{ accountId: "cc-1", amount: 500_000, date: "2026-06-02" }],
+      expected
+    );
+    expect(r).toEqual({ count: 0, totalExtra: 0 });
+  });
+
+  it("treats any payment as extra when the account has no expected cuota", () => {
+    const r = detectExtraPayments(
+      [{ accountId: "cc-2", amount: 200_000, date: "2026-06-03" }],
+      expected
+    );
+    expect(r.count).toBe(1);
+    expect(r.totalExtra).toBe(200_000);
+  });
+
+  it("handles empty inputs", () => {
+    expect(detectExtraPayments([], expected)).toEqual({ count: 0, totalExtra: 0 });
+    expect(detectExtraPayments([], [])).toEqual({ count: 0, totalExtra: 0 });
   });
 });
