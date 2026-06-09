@@ -7,7 +7,7 @@ import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { ArrowRight } from "lucide-react";
 
-export function AccountsSection() {
+export function AccountsSection({ hideDebt = false }: { hideDebt?: boolean }) {
   const accounts = useAccounts();
 
   if (accounts.length === 0) return null;
@@ -48,7 +48,7 @@ export function AccountsSection() {
         </div>
       )}
 
-      {debtAccounts.length > 0 && (
+      {!hideDebt && debtAccounts.length > 0 && (
         <div>
           <p className="mb-2 text-xs font-medium text-z-sage-dark">Deuda</p>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
