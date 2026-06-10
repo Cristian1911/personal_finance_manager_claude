@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, use, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Users } from "lucide-react";
+import { Archive, ChevronDown, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/utils/currency";
+import { formatDate } from "@/lib/utils/date";
+import type { ArchivedObligation } from "@/actions/debt";
 import {
   PANEL_INSET_CLASS,
   MOBILE_EYEBROW_CLASS,
@@ -25,6 +27,8 @@ interface DeudasCuentasLensProps {
   personasSummary: PersonasSummary | null;
   exchangeRate: ExchangeRateInfo | null;
   currency: CurrencyCode;
+  /** Fully paid, archived obligations — streamed promise (non-critical data). */
+  archived?: Promise<ArchivedObligation[]>;
   /** Opens the shared extra-payment sheet (rendered once in DeudasLensRoot). */
   onAbonar?: () => void;
 }
@@ -35,6 +39,7 @@ export function DeudasCuentasLens({
   personasSummary,
   exchangeRate,
   currency,
+  archived,
   onAbonar,
 }: DeudasCuentasLensProps) {
   const remainingByName = new Map(
@@ -95,6 +100,13 @@ export function DeudasCuentasLens({
         </>
       )}
 
+      {/* Closed obligations — history, collapsed by default, streamed */}
+      {archived && (
+        <Suspense fallback={null}>
+          <ClosedObligationsResolver promise={archived} />
+        </Suspense>
+      )}
+
       {/* Multi-currency context */}
       {exchangeRate && secondaryCurrencies.length > 0 && (
         <ExchangeRateNudge
@@ -105,6 +117,73 @@ export function DeudasCuentasLens({
           to={currency}
         />
       )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Obligaciones cerradas — paid-off history
+// ──────────────────────────────────────────────────────────────────────────────
+
+function ClosedObligationsResolver({ promise }: { promise: Promise<ArchivedObligation[]> }) {
+  const archived = use(promise);
+  if (archived.length === 0) return null;
+  return <ClosedObligations archived={archived} />;
+}
+
+function ClosedObligations({ archived }: { archived: ArchivedObligation[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={cn(PANEL_INSET_CLASS, open && "border-z-brass/30")}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 p-3.5 text-left"
+      >
+        <Archive className="size-4 shrink-0 text-z-income" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-z-sage-light">Obligaciones cerradas</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            {archived.length} pagada{archived.length !== 1 ? "s" : ""} por completo
+          </p>
+        </div>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+      <Expand open={open}>
+        <div className="space-y-1.5 px-3.5 pb-3.5">
+          {archived.map((a) => (
+            <Link
+              key={a.id}
+              href={`/accounts/${a.id}`}
+              className="flex items-center gap-2.5 rounded-xl border border-white/6 bg-[#111] px-3 py-2 active:opacity-80"
+            >
+              <BankBadge name={a.name} className="size-7 text-[11px]" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-z-sage-light">{a.name}</p>
+                {a.archivedAt && (
+                  <p className="mt-0.5 text-[9px] text-muted-foreground">
+                    cerrada el {formatDate(a.archivedAt.slice(0, 10))}
+                  </p>
+                )}
+              </div>
+              {a.totalPaid > 0 && (
+                <div className="shrink-0 text-right">
+                  <p className="text-xs font-bold tabular-nums text-z-income">
+                    {formatCurrency(a.totalPaid, a.currency)}
+                  </p>
+                  <p className="mt-0.5 text-[9px] text-muted-foreground">pagado en total</p>
+                </div>
+              )}
+            </Link>
+          ))}
+        </div>
+      </Expand>
     </div>
   );
 }

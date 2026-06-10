@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { getDebtOverview, getDebtTrend } from "@/actions/debt";
+import { getDebtOverview, getDebtTrend, getArchivedDebtObligations } from "@/actions/debt";
 import { getEstimatedIncome } from "@/actions/income";
 import { getNonDebtAccounts } from "@/actions/extra-payment";
 import { ExtraPaymentTrigger } from "@/components/debt/extra-payment-trigger";
@@ -65,6 +65,9 @@ async function MobileDebtSection({
     getDebtFreeCountdown(currency),
     getPersonalDebtsOverview(),
   ]);
+  // Below-the-fold, collapsed history — streamed via Suspense inside the lens,
+  // never blocks the hero/trend render (perf rule: non-critical → defer).
+  const archivedObligationsPromise = getArchivedDebtObligations();
   const sourceAccounts = sourceAccountsResult.success ? sourceAccountsResult.data : [];
   const usdToCopRate = usdRateResult?.rate ?? null;
 
@@ -138,6 +141,7 @@ async function MobileDebtSection({
       personasSummary={personasSummary}
       exchangeRate={exchangeRate}
       currency={currency}
+      archivedObligations={archivedObligationsPromise}
       sourceAccounts={sourceAccounts}
       usdToCopRate={usdToCopRate}
     />

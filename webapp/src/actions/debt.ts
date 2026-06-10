@@ -234,12 +234,20 @@ export async function getDebtOverview(
 // ─── Debt trend (honest MoM cuota comparison) ────────────────────────────────
 
 export interface DebtTrendData {
+  /** Month-over-month delta of ACTUAL payments (drives the header line). */
   deltaPct: number | null;
+  /** Cuota-trend chip (mejorando/estable/mes_pesado) from the expected series. */
   status: DebtTrendStatus | null;
   currentCuota: number | null;
   previousCuota: number | null;
-  /** Ascending by period (YYYY-MM), up to 6 entries. */
-  sparkline: { period: string; total: number }[];
+  /**
+   * Ascending by period (YYYY-MM), up to 6 entries.
+   * `total` = actual payments made that month (INFLOW to debt accounts,
+   * including extra payments and archived obligations).
+   * `expected` = sum of cuotas due that month per recurring occurrences
+   * (null when no occurrence data exists for that month).
+   */
+  sparkline: { period: string; total: number; expected: number | null }[];
   extraPayments: { count: number; totalExtra: number };
 }
 
@@ -263,23 +271,32 @@ async function getDebtTrendCached(
 
   const supabase = createCachedClient(accessToken);
 
+  // Include ARCHIVED debt accounts: their payment history is part of the
+  // trend even after the obligation is closed.
   const { data: accounts, error: accountsError } = await supabase
     .from("accounts")
-    .select("id, monthly_payment, currency_code")
+    .select("id, monthly_payment, currency_code, is_active")
     .eq("user_id", userId)
-    .eq("is_active", true)
     .in("account_type", ["CREDIT_CARD", "LOAN"]);
 
   if (accountsError) throw accountsError;
 
-  const debtIds = (accounts ?? [])
-    .filter((a) => a.currency_code === currency)
-    .map((a) => a.id);
+  const debtAccounts = (accounts ?? []).filter((a) => a.currency_code === currency);
+  const debtIds = debtAccounts.map((a) => a.id);
+  const activeDebtIds = debtAccounts.filter((a) => a.is_active).map((a) => a.id);
   if (debtIds.length === 0) return EMPTY_DEBT_TREND;
 
   const monthStart = `${toColombiaDateString(new Date()).slice(0, 7)}-01`;
 
-  // Bound snapshots by date (sparkline needs 6 months) — a bare row limit
+  // 6-month window in Colombia time.
+  const currentMonth = toColombiaDateString(new Date()).slice(0, 7);
+  const [curYear, curMonthNum] = currentMonth.split("-").map(Number);
+  const windowStart = new Date(curYear, curMonthNum - 1 - 5, 1);
+  const windowStartStr = `${windowStart.getFullYear()}-${String(windowStart.getMonth() + 1).padStart(2, "0")}-01`;
+  const nextMonth = new Date(curYear, curMonthNum, 1);
+  const nextMonthStr = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`;
+
+  // Bound snapshots by date (expected-cuota fallback) — a bare row limit
   // could let one snapshot-heavy account starve another's recent months.
   const horizon = new Date();
   horizon.setMonth(horizon.getMonth() - 7);
@@ -293,13 +310,18 @@ async function getDebtTrendCached(
       .in("account_id", debtIds)
       .gte("period_to", horizonStr)
       .order("period_to", { ascending: false }),
+    // Whole window: feeds both the monthly paid series and this month's
+    // extra-payment detection.
     supabase
       .from("transactions")
       .select("account_id, amount, transaction_date")
       .eq("user_id", userId)
       .eq("direction", "INFLOW")
+      .eq("is_excluded", false)
+      .is("reconciled_into_transaction_id", null)
       .in("account_id", debtIds)
-      .gte("transaction_date", monthStart),
+      .gte("transaction_date", windowStartStr)
+      .lt("transaction_date", nextMonthStr),
   ]);
 
   if (snapshotsResult.error) throw snapshotsResult.error;
@@ -307,10 +329,15 @@ async function getDebtTrendCached(
 
   const snapshots = snapshotsResult.data ?? [];
 
-  // Sparkline source of truth: recurring_occurrences (the canonical "cuota
-  // needed per obligation per month"). Paid-off/archived obligations stop
-  // generating occurrences, so they naturally fade out of the trend — unlike
-  // statement snapshots, whose coverage varies with which PDFs were imported.
+  // Sparkline = ACTUAL payments per month (covers extra abonos and archived
+  // obligations — sourced from each debt account's transaction history).
+  // Overlay = expected cuota per month from recurring_occurrences.
+  const paidByMonth = new Map<string, number>();
+  for (const tx of paymentsResult.data ?? []) {
+    const month = tx.transaction_date.slice(0, 7);
+    paidByMonth.set(month, (paidByMonth.get(month) ?? 0) + Math.abs(tx.amount));
+  }
+
   const { data: debtTemplates } = await supabase
     .from("recurring_transaction_templates")
     .select("id")
@@ -318,12 +345,7 @@ async function getDebtTrendCached(
     .in("account_id", debtIds);
   const debtTemplateIds = (debtTemplates ?? []).map((t) => t.id);
 
-  const currentMonth = toColombiaDateString(new Date()).slice(0, 7);
-  const [curYear, curMonthNum] = currentMonth.split("-").map(Number);
-  const windowStart = new Date(curYear, curMonthNum - 1 - 5, 1);
-  const windowStartStr = `${windowStart.getFullYear()}-${String(windowStart.getMonth() + 1).padStart(2, "0")}-01`;
-
-  const totalsByMonth = new Map<string, number>();
+  const expectedByMonth = new Map<string, number>();
   if (debtTemplateIds.length > 0) {
     const { data: occurrences, error: occError } = await supabase
       .from("recurring_occurrences")
@@ -331,15 +353,15 @@ async function getDebtTrendCached(
       .eq("user_id", userId)
       .in("template_id", debtTemplateIds)
       .gte("occurrence_date", windowStartStr)
-      .lte("occurrence_date", `${currentMonth}-31`);
+      .lt("occurrence_date", nextMonthStr);
     if (occError) throw occError;
 
     for (const occ of occurrences ?? []) {
       if (occ.status === "skipped") continue;
       const month = occ.occurrence_date.slice(0, 7);
-      totalsByMonth.set(
+      expectedByMonth.set(
         month,
-        (totalsByMonth.get(month) ?? 0) + Math.abs(occ.expected_amount ?? 0)
+        (expectedByMonth.get(month) ?? 0) + Math.abs(occ.expected_amount ?? 0)
       );
     }
   }
@@ -347,16 +369,26 @@ async function getDebtTrendCached(
   const fullWindow = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(curYear, curMonthNum - 1 - (5 - i), 1);
     const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    return { period, total: totalsByMonth.get(period) ?? 0 };
+    return {
+      period,
+      total: paidByMonth.get(period) ?? 0,
+      expected: expectedByMonth.get(period) ?? null,
+    };
   });
-  // Trim leading months with no occurrence data (pre-adoption) so they don't
-  // read as "debt was zero".
-  const firstWithData = fullWindow.findIndex((m) => m.total > 0);
+  // Trim leading months with no data at all (pre-adoption) so they don't
+  // read as "no debt".
+  const firstWithData = fullWindow.findIndex((m) => m.total > 0 || (m.expected ?? 0) > 0);
   const sparkline = firstWithData === -1 ? [] : fullWindow.slice(firstWithData);
 
-  const currentCuota = sparkline.at(-1)?.total ?? null;
-  const previousCuota = sparkline.at(-2)?.total ?? null;
-  const { deltaPct, status } = computeDebtTrend(currentCuota, previousCuota);
+  // Header delta: actual payments month-over-month.
+  const paidCurrent = sparkline.at(-1)?.total ?? null;
+  const paidPrevious = sparkline.at(-2)?.total ?? null;
+  const { deltaPct } = computeDebtTrend(paidCurrent, paidPrevious);
+
+  // Chip keeps the spec'd cuota-trend semantics: expected series MoM.
+  const currentCuota = sparkline.at(-1)?.expected ?? null;
+  const previousCuota = sparkline.at(-2)?.expected ?? null;
+  const { status } = computeDebtTrend(currentCuota, previousCuota);
 
   // Expected cuota per account = latest snapshot cuota, fallback account.monthly_payment.
   const latestCuotaByAccount = new Map<string, number>();
@@ -366,19 +398,22 @@ async function getDebtTrendCached(
       latestCuotaByAccount.set(snap.account_id, Math.abs(cuota));
     }
   }
-  const expected = debtIds.map((id) => ({
+  const expected = activeDebtIds.map((id) => ({
     accountId: id,
     cuota:
       latestCuotaByAccount.get(id) ??
       Math.abs((accounts ?? []).find((a) => a.id === id)?.monthly_payment ?? 0),
   }));
 
+  // Extra-payment detection only looks at the CURRENT month's payments.
   const extraPayments = detectExtraPayments(
-    (paymentsResult.data ?? []).map((tx) => ({
-      accountId: tx.account_id,
-      amount: Math.abs(tx.amount),
-      date: tx.transaction_date,
-    })),
+    (paymentsResult.data ?? [])
+      .filter((tx) => tx.transaction_date >= monthStart)
+      .map((tx) => ({
+        accountId: tx.account_id,
+        amount: Math.abs(tx.amount),
+        date: tx.transaction_date,
+      })),
     expected
   );
 
@@ -397,5 +432,78 @@ export async function getDebtTrend(
   } catch (error) {
     console.error("Error computing debt trend:", error);
     return EMPTY_DEBT_TREND;
+  }
+}
+
+// ─── Archived (fully paid) obligations ───────────────────────────────────────
+
+export interface ArchivedObligation {
+  id: string;
+  name: string;
+  type: "CREDIT_CARD" | "LOAN";
+  currency: CurrencyCode;
+  /** Lifetime payments made to this obligation (INFLOW transactions). */
+  totalPaid: number;
+  /** When the obligation was archived (account row's last update). */
+  archivedAt: string | null;
+}
+
+async function getArchivedDebtObligationsCached(
+  userId: string,
+  accessToken: string
+): Promise<ArchivedObligation[]> {
+  "use cache";
+  cacheTag("debt", "accounts");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  const { data: accounts, error } = await supabase
+    .from("accounts")
+    .select("id, name, account_type, currency_code, updated_at")
+    .eq("user_id", userId)
+    .eq("is_active", false)
+    .in("account_type", ["CREDIT_CARD", "LOAN"]);
+
+  if (error) throw error;
+  if (!accounts || accounts.length === 0) return [];
+
+  const ids = accounts.map((a) => a.id);
+  const { data: payments, error: payError } = await supabase
+    .from("transactions")
+    .select("account_id, amount")
+    .eq("user_id", userId)
+    .eq("direction", "INFLOW")
+    .eq("is_excluded", false)
+    .is("reconciled_into_transaction_id", null)
+    .in("account_id", ids);
+
+  if (payError) throw payError;
+
+  const paidById = new Map<string, number>();
+  for (const tx of payments ?? []) {
+    paidById.set(tx.account_id, (paidById.get(tx.account_id) ?? 0) + Math.abs(tx.amount));
+  }
+
+  return accounts
+    .map((a) => ({
+      id: a.id,
+      name: a.name ?? "Obligación",
+      type: a.account_type as "CREDIT_CARD" | "LOAN",
+      currency: (a.currency_code ?? "COP") as CurrencyCode,
+      totalPaid: paidById.get(a.id) ?? 0,
+      archivedAt: a.updated_at ?? null,
+    }))
+    .sort((a, b) => (b.archivedAt ?? "").localeCompare(a.archivedAt ?? ""));
+}
+
+export async function getArchivedDebtObligations(): Promise<ArchivedObligation[]> {
+  const { user, accessToken } = await getAuthenticatedClient();
+  if (!user || !accessToken) return [];
+  try {
+    return await getArchivedDebtObligationsCached(user.id, accessToken);
+  } catch (error) {
+    console.error("Error fetching archived obligations:", error);
+    return [];
   }
 }

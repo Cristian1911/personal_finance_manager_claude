@@ -43,12 +43,12 @@ function DeltaInline({
   const prev = sparkline[index - 1].total;
   if (prev <= 0) return <span className={cn("text-muted-foreground", className)}>—</span>;
   const d = ((sparkline[index].total - prev) / prev) * 100;
-  const good = d < 0;
+  // Payments framing: paying MORE than last month is progress.
   return (
     <span
       className={cn(
         "tabular-nums font-semibold",
-        good ? "text-z-income" : d > 0 ? "text-z-debt" : "text-muted-foreground",
+        d > 0 ? "text-z-income" : "text-muted-foreground",
         className
       )}
     >
@@ -87,7 +87,7 @@ export function DebtTrendCard({
         className={cn("w-full text-left", hasChart && "cursor-pointer")}
       >
         <div className="flex items-center justify-between gap-3">
-          <p className={MOBILE_EYEBROW_CLASS}>Tendencia · cuota mensual</p>
+          <p className={MOBILE_EYEBROW_CLASS}>Tendencia · pagos a deudas</p>
           <span className="flex items-center gap-2">
             {meta && <StateChip label={meta.label} variant={meta.variant} />}
             {hasChart && (
@@ -113,20 +113,30 @@ export function DebtTrendCard({
         </div>
 
         <div className="mt-1 flex items-end justify-between gap-4">
-          {trend.deltaPct != null ? (
-            <p
-              className={cn(
-                "text-[16px] font-semibold tabular-nums",
-                trend.deltaPct > 10
-                  ? "text-z-debt"
-                  : trend.deltaPct <= -5
-                    ? "text-z-income"
-                    : "text-foreground"
-              )}
-            >
-              {trend.deltaPct > 0 ? "▲" : trend.deltaPct < 0 ? "▼" : "·"}{" "}
-              {Math.abs(trend.deltaPct).toFixed(0)}% vs mes pasado
-            </p>
+          {hasChart ? (
+            <div>
+              <p className="text-[16px] font-semibold tabular-nums">
+                {formatCurrency(points.at(-1)?.total ?? 0, currency)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                pagados este mes
+                {trend.deltaPct != null && (
+                  <>
+                    {" · "}
+                    <span
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        trend.deltaPct > 0 ? "text-z-income" : "text-muted-foreground"
+                      )}
+                    >
+                      {trend.deltaPct > 0 ? "▲" : trend.deltaPct < 0 ? "▼" : "·"}{" "}
+                      {Math.abs(trend.deltaPct).toFixed(0)}%
+                    </span>{" "}
+                    vs mes pasado
+                  </>
+                )}
+              </p>
+            </div>
           ) : (
             <p className="text-xs text-muted-foreground">Sin historial suficiente</p>
           )}
@@ -225,22 +235,37 @@ export function DebtTrendCard({
               );
             })}
 
-            {/* Selected month detail */}
+            {/* Selected month detail — pagado vs mínimo */}
             <Expand open={sel !== null}>
               {sel !== null && (
-                <div className="mt-2 flex items-center justify-between rounded-xl border border-white/6 bg-[#111] px-3 py-2">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
-                      {monthParts(points[sel].period).label} {monthParts(points[sel].period).year}
-                    </p>
-                    <p className="text-sm font-bold tabular-nums">
-                      {formatCurrency(points[sel].total, currency)}
-                    </p>
+                <div className="mt-2 rounded-xl border border-white/6 bg-[#111] px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+                        {monthParts(points[sel].period).label} {monthParts(points[sel].period).year}
+                      </p>
+                      <p className="text-sm font-bold tabular-nums">
+                        {formatCurrency(points[sel].total, currency)}
+                        <span className="ml-1 text-[10px] font-medium text-muted-foreground">pagado</span>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground">vs mes anterior</p>
+                      <DeltaInline sparkline={points} index={sel} className="text-xs" />
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-muted-foreground">vs mes anterior</p>
-                    <DeltaInline sparkline={points} index={sel} className="text-xs" />
-                  </div>
+                  {points[sel].expected != null && (
+                    <div className="mt-1.5 flex items-center justify-between border-t border-white/6 pt-1.5">
+                      <p className="text-[10px] tabular-nums text-muted-foreground">
+                        mínimo {formatCurrency(points[sel].expected ?? 0, currency)}
+                      </p>
+                      {points[sel].total > (points[sel].expected ?? 0) && (
+                        <p className="text-[10px] font-semibold tabular-nums text-z-income">
+                          +{formatCurrency(points[sel].total - (points[sel].expected ?? 0), currency)} extra
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </Expand>

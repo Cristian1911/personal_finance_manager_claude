@@ -14,7 +14,7 @@ import { ExtraPaymentSheet } from "@/components/debt/extra-payment-sheet";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import type { CurrencyCode } from "@/types/domain";
 import type { DebtStats, DebtOverview, MonthlyBreakdown } from "@zeta/shared";
-import type { DebtTrendData } from "@/actions/debt";
+import type { DebtTrendData, ArchivedObligation } from "@/actions/debt";
 import type { DebtCountdownData } from "@/actions/debt-countdown";
 
 const LENSES = [
@@ -52,6 +52,8 @@ interface DeudasLensRootProps {
   personasSummary: PersonasSummary | null;
   exchangeRate: ExchangeRateInfo | null;
   currency: CurrencyCode;
+  /** Fully paid, archived obligations — streamed promise, resolved via use() inside Suspense. */
+  archivedObligations?: Promise<ArchivedObligation[]>;
   /** Funding accounts for the shared extra-payment sheet. */
   sourceAccounts: {
     id: string;
@@ -71,6 +73,7 @@ export function DeudasLensRoot({
   personasSummary,
   exchangeRate,
   currency,
+  archivedObligations,
   sourceAccounts,
   usdToCopRate,
 }: DeudasLensRootProps) {
@@ -161,6 +164,7 @@ export function DeudasLensRoot({
           personasSummary={personasSummary}
           exchangeRate={exchangeRate}
           currency={currency}
+          archived={archivedObligations}
           onAbonar={onAbonar}
         />
       )}
