@@ -24,10 +24,13 @@ function monthParts(period: string) {
   return { label: MONTHS_ES[Number(mm) - 1] ?? period, year };
 }
 
-/** Range-scaled bar size so month-to-month changes stay legible. */
-function rangePct(v: number, min: number, max: number, floor = 25) {
-  if (max <= min) return 60;
-  return floor + ((v - min) / (max - min)) * (100 - floor);
+function LegendDot({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
+      <span className={cn("size-1.5 rounded-full", className)} aria-hidden />
+      {label}
+    </span>
+  );
 }
 
 function DeltaInline({
@@ -70,8 +73,24 @@ export function DebtTrendCard({
   const meta = trend.status ? STATUS_META[trend.status] : null;
   const points = trend.sparkline;
   const hasChart = points.length >= 2;
-  const min = hasChart ? Math.min(...points.map((p) => p.total)) : 0;
-  const max = hasChart ? Math.max(...points.map((p) => p.total)) : 1;
+  // Linear scale from 0 so the mínimo/extra segments are proportional to the
+  // amounts (range-scaling would distort the split).
+  const maxVal = hasChart
+    ? Math.max(...points.map((p) => Math.max(p.total, p.expected ?? 0)), 1)
+    : 1;
+  const scalePct = (v: number) => (v / maxVal) * 100;
+
+  /** Split a month into the bar segments: mínimo covered | extra | faltante. */
+  const segmentsOf = (p: { total: number; expected: number | null }) => {
+    if (p.expected == null) {
+      return { base: p.total, extra: 0, short: 0 };
+    }
+    return {
+      base: Math.min(p.total, p.expected),
+      extra: Math.max(0, p.total - p.expected),
+      short: Math.max(0, p.expected - p.total),
+    };
+  };
 
   const selectBar = (i: number) => {
     setSel(sel === i ? null : i);
@@ -141,33 +160,44 @@ export function DebtTrendCard({
             <p className="text-xs text-muted-foreground">Sin historial suficiente</p>
           )}
 
-          {/* Compact sparkline — each bar tappable */}
+          {/* Compact sparkline — stacked mínimo|extra|faltante, each bar tappable */}
           {hasChart && (
             <div className="flex h-9 w-[140px] shrink-0 items-end gap-1">
               {points.map((p, i) => {
-                const isLast = i === points.length - 1;
                 const isSel = sel === i;
+                const seg = segmentsOf(p);
                 return (
                   <button
                     key={p.period}
                     type="button"
-                    aria-label={`${monthParts(p.period).label}: ${formatCurrency(p.total, currency)}`}
+                    aria-label={`${monthParts(p.period).label}: ${formatCurrency(p.total, currency)} pagados`}
                     aria-pressed={isSel}
                     onClick={(e) => {
                       e.stopPropagation();
                       selectBar(i);
                     }}
                     className={cn(
-                      "flex-1 rounded-t-sm transition-opacity duration-150",
-                      isSel
-                        ? "bg-z-brass"
-                        : isLast && trend.status === "mes_pesado"
-                          ? "bg-z-debt/70"
-                          : "bg-z-brass/35",
+                      "flex h-full flex-1 flex-col justify-end overflow-hidden rounded-t-sm transition-opacity duration-150",
                       sel !== null && !isSel && "opacity-40"
                     )}
-                    style={{ height: `${rangePct(p.total, min, max, 30)}%` }}
-                  />
+                  >
+                    {seg.short > 0 && (
+                      <span
+                        className="w-full shrink-0 bg-z-alert/30"
+                        style={{ height: `${Math.max(scalePct(seg.short), 2)}%` }}
+                      />
+                    )}
+                    {seg.extra > 0 && (
+                      <span
+                        className="w-full shrink-0 bg-z-income"
+                        style={{ height: `${Math.max(scalePct(seg.extra), 2)}%` }}
+                      />
+                    )}
+                    <span
+                      className={cn("w-full shrink-0", isSel ? "bg-z-brass" : "bg-z-brass/50")}
+                      style={{ height: `${Math.max(scalePct(seg.base), 3)}%` }}
+                    />
+                  </button>
                 );
               })}
             </div>
@@ -211,14 +241,33 @@ export function DebtTrendCard({
                   >
                     {label}
                   </span>
-                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/6">
-                    <span
-                      className={cn(
-                        "block h-full rounded-full",
-                        isSel ? "bg-z-brass" : "bg-z-brass/45"
-                      )}
-                      style={{ width: `${rangePct(p.total, min, max)}%` }}
-                    />
+                  <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-white/6">
+                    {(() => {
+                      const seg = segmentsOf(p);
+                      return (
+                        <>
+                          <span
+                            className={cn(
+                              "h-full shrink-0 rounded-l-full",
+                              isSel ? "bg-z-brass" : "bg-z-brass/60"
+                            )}
+                            style={{ width: `${Math.max(scalePct(seg.base), 1.5)}%` }}
+                          />
+                          {seg.extra > 0 && (
+                            <span
+                              className="h-full shrink-0 rounded-r-full bg-z-income"
+                              style={{ width: `${scalePct(seg.extra)}%` }}
+                            />
+                          )}
+                          {seg.short > 0 && (
+                            <span
+                              className="h-full shrink-0 rounded-r-full bg-z-alert/30"
+                              style={{ width: `${scalePct(seg.short)}%` }}
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
                   </span>
                   <span
                     className={cn(
@@ -234,6 +283,17 @@ export function DebtTrendCard({
                 </button>
               );
             })}
+
+            {/* Legend */}
+            <div className="flex items-center gap-3 px-2.5 pt-1.5">
+              <LegendDot className="bg-z-brass/60" label="mínimo" />
+              {points.some((p) => segmentsOf(p).extra > 0) && (
+                <LegendDot className="bg-z-income" label="extra" />
+              )}
+              {points.some((p) => segmentsOf(p).short > 0) && (
+                <LegendDot className="bg-z-alert/40" label="bajo el mínimo" />
+              )}
+            </div>
 
             {/* Selected month detail — pagado vs mínimo */}
             <Expand open={sel !== null}>
