@@ -23,9 +23,14 @@ export const DESTRUCTIVE_GHOST_BUTTON_CLASS =
 
 /**
  * Z-index — single ascending, spaced token scale (defined in globals.css as
- * `--z-layer-*`, referenced via `z-[var(--z-layer-*)]`). Overlay order follows
+ * `--z-layer-*` tokens, referenced via the arbitrary form, e.g.
+ * `z-[var(--z-layer-modal)]`). Overlay order follows
  * the industry convention so a child surface opened inside a modal is never
  * hidden behind it — see docs/design-system/Z_INDEX.md.
+ *
+ * NOTE: never write a wildcard class-shaped example in this file (z-[var(
+ * --z-layer-star)] with a literal asterisk) — Tailwind v4 scans this file for
+ * class candidates and emits it as invalid CSS, crashing the dev server.
  *
  *   --z-layer-nav      40    mobile tab bar, bottom nav, fixed bottom bars
  *   --z-layer-modal    1000  Dialog, AlertDialog, Sheet, Drawer, FabMenu
