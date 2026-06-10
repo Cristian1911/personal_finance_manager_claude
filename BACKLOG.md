@@ -1296,3 +1296,10 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 
 ### Pre-existing (observed 2026-05-30)
 - **[P2] `@zeta/shared` test suite is red on the current tree** (40 failures = the two stale files above). CI may be failing — triage with the two test items above.
+
+### PDF parser service — unrecognized-files storage broken in prod (found 2026-06-10)
+- **[P1] Parser container can't reach Supabase Storage** — the `unrecognized-statements` bucket is empty even though "enviar para soporte" was used from prod. `save_unrecognized()` (services/pdf_parser/storage.py) falls back to the container's local disk, which is ephemeral — submitted samples are lost on redeploy. Fix: pass the Supabase URL + service key env vars to the parser service in `docker-compose.prod.yml` (check `_get_client()` for the exact var names) and verify an upload lands in the bucket.
+- **[P3] `save_unrecognized()` hardcodes `.pdf` extension** — screenshots get saved as `*.pdf`-named PNGs. Preserve the original extension.
+
+### Import multi-screenshot — deferred polish (2026-06-10, from import-flow-doctor review)
+- **[P3] Results-step hint for OCR_BATCH skips** — when an OCR_BATCH import reports `skipped > 0`, add a soft note: "Si faltó alguna transacción, puede deberse a capturas superpuestas". Dedup key already includes authorization_number; this covers the residual identical-rows edge.
