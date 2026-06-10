@@ -10,6 +10,7 @@ import { DebtTrendCard } from "./debt-trend-card";
 import { DeudasSalaryBar } from "./deudas-salary-bar";
 import { DeudasPlanLens } from "./deudas-plan-lens";
 import { DeudasCuentasLens } from "./deudas-cuentas-lens";
+import { ExtraPaymentSheet } from "@/components/debt/extra-payment-sheet";
 import { useExpandableZone } from "@/components/mobile/v2/use-expandable-zone";
 import type { CurrencyCode } from "@/types/domain";
 import type { DebtStats, DebtOverview, MonthlyBreakdown } from "@zeta/shared";
@@ -30,6 +31,9 @@ export interface PersonasSummary {
   activeCount: number;
   iOweTotal: number;
   owedToMeTotal: number;
+  /** Per-person detail for the expandable card (E1). */
+  owedToMe: { name: string; amount: number }[];
+  iOwe: { name: string; amount: number }[];
 }
 
 export interface ExchangeRateInfo {
@@ -48,7 +52,14 @@ interface DeudasLensRootProps {
   personasSummary: PersonasSummary | null;
   exchangeRate: ExchangeRateInfo | null;
   currency: CurrencyCode;
-  extraPaymentTrigger?: React.ReactNode;
+  /** Funding accounts for the shared extra-payment sheet. */
+  sourceAccounts: {
+    id: string;
+    name: string;
+    current_balance: number;
+    currency_code: string;
+  }[];
+  usdToCopRate: number | null;
 }
 
 export function DeudasLensRoot({
@@ -60,10 +71,15 @@ export function DeudasLensRoot({
   personasSummary,
   exchangeRate,
   currency,
-  extraPaymentTrigger,
+  sourceAccounts,
+  usdToCopRate,
 }: DeudasLensRootProps) {
   // SSR-safe: render "carga" first, then adopt the persisted lens after mount.
   const [lens, setLens] = useState<DeudasLens>("carga");
+  // One shared extra-payment sheet for every "Abonar" CTA across the lenses.
+  const [extraOpen, setExtraOpen] = useState(false);
+  const hasActiveDebt = overview.accounts.some((a) => a.balance > 0);
+  const onAbonar = hasActiveDebt ? () => setExtraOpen(true) : undefined;
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === "plan" || saved === "cuentas") setLens(saved);
@@ -128,9 +144,10 @@ export function DeudasLensRoot({
         <DeudasPlanLens
           countdown={countdown}
           stats={stats}
+          accounts={overview.accounts}
           insights={overview.insights}
           currency={currency}
-          extraPaymentTrigger={extraPaymentTrigger}
+          onAbonar={onAbonar}
         />
       )}
 
@@ -142,6 +159,19 @@ export function DeudasLensRoot({
           personasSummary={personasSummary}
           exchangeRate={exchangeRate}
           currency={currency}
+          onAbonar={onAbonar}
+        />
+      )}
+
+      {/* Single shared sheet — every "Abonar" CTA opens this one instance */}
+      {hasActiveDebt && (
+        <ExtraPaymentSheet
+          debtAccounts={overview.accounts}
+          sourceAccounts={sourceAccounts}
+          currency={currency}
+          usdToCopRate={usdToCopRate}
+          open={extraOpen}
+          onOpenChange={setExtraOpen}
         />
       )}
     </div>

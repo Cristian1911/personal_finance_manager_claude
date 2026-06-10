@@ -104,6 +104,14 @@ async function MobileDebtSection({
           personasResult.data.owedToMe.byPerson.length,
         iOweTotal: personasResult.data.iOwe.total,
         owedToMeTotal: personasResult.data.owedToMe.total,
+        owedToMe: personasResult.data.owedToMe.byPerson.map((p) => ({
+          name: p.destinatario_name,
+          amount: p.amount,
+        })),
+        iOwe: personasResult.data.iOwe.byPerson.map((p) => ({
+          name: p.destinatario_name,
+          amount: p.amount,
+        })),
       }
     : null;
 
@@ -130,15 +138,8 @@ async function MobileDebtSection({
       personasSummary={personasSummary}
       exchangeRate={exchangeRate}
       currency={currency}
-      extraPaymentTrigger={
-        <ExtraPaymentTrigger
-          debtAccounts={overview.accounts}
-          sourceAccounts={sourceAccounts}
-          currency={currency}
-          usdToCopRate={usdToCopRate}
-          variant="compact"
-        />
-      }
+      sourceAccounts={sourceAccounts}
+      usdToCopRate={usdToCopRate}
     />
   );
 }
@@ -305,7 +306,6 @@ export default async function DeudasPage({
         >
           <MobileDebtSection currency={currency} month={month} />
         </Suspense>
-        <AccountsSection hideDebt />
       </div>
 
       {/* ── Desktop ── */}
