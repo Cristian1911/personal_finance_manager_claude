@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { toColombiaDateString } from "@/lib/utils/date";
+import { applyAccountBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
 
 /**
  * Payoff lifecycle: when a debt obligation is fully paid (balance reaches 0)
@@ -11,6 +12,70 @@ import { toColombiaDateString } from "@/lib/utils/date";
  *
  * Returns the number of templates deactivated.
  */
+/**
+ * Apply a payment (INFLOW) to a debt account's stored balances: current_balance,
+ * available_balance, and the currency_balances JSONB that /deudas reads via
+ * extractDebtAccounts. Deactivates the account's recurring templates when the
+ * balance reaches 0 (payoff lifecycle).
+ */
+export async function applyDebtPaymentToBalances(params: {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+  accountId: string;
+  amount: number;
+  currencyCode: string;
+}): Promise<void> {
+  const { supabase, userId, accountId, amount, currencyCode } = params;
+
+  const { data: account, error } = await supabase
+    .from("accounts")
+    .select("id, account_type, current_balance, credit_limit, currency_balances")
+    .eq("user_id", userId)
+    .eq("id", accountId)
+    .single();
+
+  if (error || !account || !isDebtAccountType(account.account_type)) return;
+
+  const nextBalance = applyAccountBalanceDelta({
+    currentBalance: account.current_balance,
+    accountType: account.account_type,
+    direction: "INFLOW",
+    amount,
+  });
+
+  const nextAvailable =
+    account.credit_limit != null ? Math.max(account.credit_limit - nextBalance, 0) : undefined;
+
+  const updatePayload: Record<string, unknown> = { current_balance: nextBalance };
+  if (nextAvailable !== undefined) updatePayload.available_balance = nextAvailable;
+
+  const cb = account.currency_balances as Record<string, Record<string, unknown>> | null;
+  if (cb && cb[currencyCode]) {
+    cb[currencyCode] = {
+      ...cb[currencyCode],
+      current_balance: nextBalance,
+      total_payment_due: Math.max(nextBalance, 0),
+      ...(nextAvailable !== undefined ? { available_balance: nextAvailable } : {}),
+    };
+    updatePayload.currency_balances = cb;
+  }
+
+  const { error: updateError } = await supabase
+    .from("accounts")
+    .update(updatePayload)
+    .eq("id", accountId)
+    .eq("user_id", userId);
+
+  if (updateError) {
+    console.error("[payoff] debt balance update failed", { accountId, error: updateError.message });
+    return;
+  }
+
+  if (nextBalance <= 0) {
+    await deactivateTemplatesForPaidOffAccount({ supabase, userId, accountId });
+  }
+}
+
 export async function deactivateTemplatesForPaidOffAccount(params: {
   supabase: SupabaseClient<Database>;
   userId: string;
