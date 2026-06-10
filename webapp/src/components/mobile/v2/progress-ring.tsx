@@ -25,7 +25,8 @@ export function ProgressRing({
 }) {
   const r = 16;
   const circumference = 2 * Math.PI * r;
-  const clamped = Math.max(0, Math.min(100, pct));
+  // NaN (missing limit / division by zero upstream) renders as empty ring.
+  const clamped = Number.isNaN(pct) ? 0 : Math.max(0, Math.min(100, pct));
   return (
     <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
       <svg width="44" height="44" viewBox="0 0 40 40" className="-rotate-90">

@@ -50,7 +50,7 @@ def parse_colombian_number(s: str) -> float:
     s = re.sub(r"(\d)\s+(\d{2})$", r"\1,\2", s)
 
     # Replace Colombian format: periods (thousands) → "", comma (decimal) → "."
-    cleaned = s.replace(".", "").replace(",", ".")
+    cleaned = s.replace(".", "").replace(",", ".").replace(" ", "")  # strip spaces ("- 69.800,00")
     return float(cleaned)
 
 

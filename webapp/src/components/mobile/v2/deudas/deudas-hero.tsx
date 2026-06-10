@@ -33,8 +33,10 @@ export function DeudasHero({
   onToggle,
 }: DeudasHeroProps) {
   const capital = totalMonthlyPayment - monthlyInterest;
+  // Clamp: negative amortization (interest > cuota) would yield a negative
+  // capital share and a >100% interest bar.
   const capitalPct = totalMonthlyPayment > 0
-    ? Math.round((capital / totalMonthlyPayment) * 100)
+    ? Math.max(0, Math.min(100, Math.round((capital / totalMonthlyPayment) * 100)))
     : 100;
   const interestPct = 100 - capitalPct;
 

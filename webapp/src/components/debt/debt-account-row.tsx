@@ -34,7 +34,7 @@ export function DebtAccountRow({
   const isCC = account.type === "CREDIT_CARD";
   const utilization =
     isCC && account.creditLimit && account.creditLimit > 0
-      ? Math.min(100, (account.balance / account.creditLimit) * 100)
+      ? Math.max(0, Math.min(100, (account.balance / account.creditLimit) * 100))
       : null;
 
   const metaParts: string[] = [];

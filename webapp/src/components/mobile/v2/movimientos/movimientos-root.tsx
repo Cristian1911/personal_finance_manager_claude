@@ -77,8 +77,14 @@ export function MovimientosRoot({
 
   const transactions = useMemo(() => {
     if (extraPages.length === 0) return initialTransactions;
-    const seen = new Set(initialTransactions.map((tx) => tx.id));
-    return [...initialTransactions, ...extraPages.filter((tx) => !seen.has(tx.id))];
+    // Dedup the WHOLE combined list: page shifting (new rows inserted while
+    // paginating) can duplicate ids across appended pages too.
+    const seen = new Set<string>();
+    return [...initialTransactions, ...extraPages].filter((tx) => {
+      if (seen.has(tx.id)) return false;
+      seen.add(tx.id);
+      return true;
+    });
   }, [initialTransactions, extraPages]);
 
   const hasMorePages = currentPage < maxPages;

@@ -51,10 +51,10 @@ export function DeudasPlanLens({
     ? accounts.find((a) => a.name === closestLoan.accountName) ?? null
     : null;
   const closestProgress = closestLoan
-    ? stats.loans.progressList.find((p) => p.accountName === closestLoan.accountName)
+    ? stats.loans.progressList?.find((p) => p.accountName === closestLoan.accountName)
     : null;
   const closestPayment = closestLoan
-    ? stats.loans.payments.find((p) => p.accountName === closestLoan.accountName)
+    ? stats.loans.payments?.find((p) => p.accountName === closestLoan.accountName)
     : null;
 
   return (

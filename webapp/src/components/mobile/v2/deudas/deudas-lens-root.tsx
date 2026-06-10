@@ -84,13 +84,22 @@ export function DeudasLensRoot({
   const hasActiveDebt = overview.accounts.some((a) => a.balance > 0);
   const onAbonar = hasActiveDebt ? () => setExtraOpen(true) : undefined;
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === "plan" || saved === "cuentas") setLens(saved);
+    // localStorage can throw in private/sandboxed contexts — never block mount.
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === "plan" || saved === "cuentas") setLens(saved);
+    } catch {
+      // non-critical: fall back to the default lens
+    }
   }, []);
 
   const selectLens = (next: DeudasLens) => {
     setLens(next);
-    localStorage.setItem(STORAGE_KEY, next);
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      // non-critical: selection just won't persist
+    }
   };
 
   const { activeZone, toggle } = useExpandableZone<string>();

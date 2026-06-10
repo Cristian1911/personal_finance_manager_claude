@@ -81,10 +81,15 @@ export function detectExtraPayments(
       continue;
     }
 
+    // Count any payment that contributes past the cuota — including the one
+    // that crosses it. Counting only payments made AFTER full coverage hid
+    // real extra (count 0, totalExtra > 0) when e.g. two half-cuota payments
+    // together exceeded it.
     let paid = 0;
     for (const tx of sorted) {
-      if (paid >= cuota) count += 1;
-      paid += tx.amount;
+      const nextPaid = paid + tx.amount;
+      if (nextPaid > cuota) count += 1;
+      paid = nextPaid;
     }
     if (paid > cuota) totalExtra += paid - cuota;
   }
