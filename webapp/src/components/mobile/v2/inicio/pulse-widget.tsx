@@ -177,7 +177,7 @@ export function PulseWidget({
       className={cn(
         PANEL_SURFACE_SUBTLE_CLASS,
         HERO_CARD_GRADIENT_CLASS,
-        "w-full p-5 text-left"
+        "block w-full p-5 text-left"
       )}
       aria-expanded={expanded}
       aria-label="Expandir desglose del disponible diario"

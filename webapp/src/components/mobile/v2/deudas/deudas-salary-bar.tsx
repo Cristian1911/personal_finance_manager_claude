@@ -22,7 +22,7 @@ export function DeudasSalaryBar({ breakdown, currency }: DeudasSalaryBarProps) {
       type="button"
       onClick={() => toggle("salary")}
       className={cn(
-        "w-full text-left transition-colors",
+        "block w-full text-left transition-colors",
         PANEL_INSET_CLASS,
         "p-3"
       )}
