@@ -1,5 +1,6 @@
 "use server";
 
+import { cacheTag, cacheLife } from "next/cache";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   TRANSFER_CATEGORY_ID,
@@ -7,7 +8,12 @@ import {
   getDebtPaymentCategoryId,
 } from "@zeta/shared";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
+import { createCachedClient } from "@/lib/supabase/cached";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import {
+  buildDebtBalanceUpdatePayload,
+  deactivateTemplatesForPaidOffAccount,
+} from "@/lib/debt/payoff";
 import type { ActionResult } from "@/types/actions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -33,6 +39,28 @@ export interface ExtraPaymentInput {
 
 // ── getNonDebtAccounts ────────────────────────────────────────────────────────
 
+async function getNonDebtAccountsCached(
+  userId: string,
+  accessToken: string
+): Promise<NonDebtAccount[]> {
+  "use cache";
+  cacheTag("accounts");
+  cacheLife("zeta");
+
+  const supabase = createCachedClient(accessToken);
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("id, name, current_balance, currency_code, account_type")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .not("account_type", "in", "(CREDIT_CARD,LOAN)")
+    .order("name");
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 /**
  * Returns active non-debt accounts (checking, savings, etc.) for the
  * source account dropdown in the extra debt payment sheet.
@@ -40,21 +68,18 @@ export interface ExtraPaymentInput {
 export async function getNonDebtAccounts(): Promise<
   ActionResult<NonDebtAccount[]>
 > {
-  const { supabase, user } = await getAuthenticatedClient();
+  const { user, accessToken } = await getAuthenticatedClient();
 
-  if (!user) return { success: false, error: "No autenticado" };
+  if (!user || !accessToken) return { success: false, error: "No autenticado" };
 
-  const { data, error } = await supabase
-    .from("accounts")
-    .select("id, name, current_balance, currency_code, account_type")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .not("account_type", "in", "(CREDIT_CARD,LOAN)")
-    .order("name");
-
-  if (error) return { success: false, error: error.message };
-
-  return { success: true, data: data ?? [] };
+  try {
+    return { success: true, data: await getNonDebtAccountsCached(user.id, accessToken) };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error cargando cuentas",
+    };
+  }
 }
 
 // ── applyExtraDebtPayment ─────────────────────────────────────────────────────
@@ -227,39 +252,23 @@ export async function applyExtraDebtPayment(
       });
       debtAccount.current_balance = newDebtBalance;
 
-      // Also update currency_balances + available_balance (debt page reads from these)
-      const accountUpdate: Record<string, unknown> = { current_balance: newDebtBalance };
-
-      // Credit cards: recalculate available_balance
-      if (debtAccount.account_type === "CREDIT_CARD" && debtAccount.credit_limit != null) {
-        accountUpdate.available_balance = Math.max(
-          Number(debtAccount.credit_limit) - newDebtBalance,
-          0
-        );
-      }
-
-      // Sync currency_balances JSONB if present
-      const cb = debtAccount.currency_balances as Record<string, Record<string, unknown>> | null;
-      if (cb && cb[currencyCode]) {
-        const newAvailable = debtAccount.account_type === "CREDIT_CARD" && debtAccount.credit_limit != null
-          ? Math.max(Number(debtAccount.credit_limit) - newDebtBalance, 0)
-          : undefined;
-        const updatedCb: Record<string, unknown> = {
-          ...cb[currencyCode],
-          current_balance: newDebtBalance,
-          // Sync all balance-derived fields so extractDebtAccounts reads correct values
-          total_payment_due: Math.max(newDebtBalance, 0),
-          ...(newAvailable !== undefined ? { available_balance: newAvailable } : {}),
-        };
-        accountUpdate.currency_balances = { ...cb, [currencyCode]: updatedCb };
-      }
-
+      // Shared payload builder: current_balance + available_balance +
+      // currency_balances JSONB (debt page reads from these).
       const { error: debtBalErr } = await supabase
         .from("accounts")
-        .update(accountUpdate)
+        .update(buildDebtBalanceUpdatePayload(debtAccount, newDebtBalance, currencyCode))
         .eq("id", allocation.accountId)
         .eq("user_id", user.id);
       if (debtBalErr) console.error("[extraPayment] debt balance update failed:", debtBalErr);
+
+      // Payoff lifecycle: a debt that just reached 0 stops generating cuotas.
+      if (!debtBalErr && newDebtBalance <= 0) {
+        await deactivateTemplatesForPaidOffAccount({
+          supabase,
+          userId: user.id,
+          accountId: allocation.accountId,
+        });
+      }
     }
 
     // Count as applied even if idempotency skip (transaction already exists)

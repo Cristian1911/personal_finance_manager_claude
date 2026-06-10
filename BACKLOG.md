@@ -560,6 +560,18 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
 
 ## Tech Debt
 
+### Deudas lenses — deferred review findings (2026-06-09, branch feat/deudas-lenses)
+- **Priority:** Low–Medium
+- **From:** perf-auditor + zetas-front-guy gates on the /deudas 3-lens redesign.
+- **What:**
+  1. **Index for getDebtTrend payments query** (Medium) — `transactions_enc` has no index covering `(user_id, account_id, direction, transaction_date)`. Query is cached, so only cold-start/post-mutation cost. Migration: `CREATE INDEX CONCURRENTLY idx_transactions_enc_account_direction_date ON public.transactions_enc (user_id, account_id, direction, transaction_date DESC);` — spawn supabase-migrator.
+  2. **getNonDebtAccounts still fetched eagerly** (Low) — now cached, but it's only needed when the user opens the Plata extra sheet (Plan lens). Move out of MobileDebtSection/DesktopDebtSection `Promise.all`; let `ExtraPaymentTrigger` fetch on interaction or wrap in Suspense.
+  3. **Nested PANEL_INSET_CLASS in deudas-hero breakdown** (Low) — double rounded-2xl borders; inner surface should step down to rounded-xl (zetas-front-guy W4).
+
+### packages/shared — pre-existing test failures on main (found 2026-06-09)
+- **Priority:** Medium
+- **What:** `pnpm test` in packages/shared fails on main: `auto-categorize.test.ts` 39 failed, `debt-stats.test.ts` 1 failed. Pre-date the deudas-lenses branch (verified via stash). CI presumably doesn't run shared tests or would have caught it. Triage whether the tests or the implementation drifted (likely category kit/keyword changes).
+
 ### Mobile ↔ Webapp parity — live walkthrough findings (2026-05-21)
 - **Priority:** Resolved (10/10 closed) — follow-ups split out into separate entries below.
 - **Where:** captured during the live walkthrough phase of `docs/parity-audit-2026-05-21.md` after PR #257 / #258 / #259 merged. Real-account auth on both surfaces, iPhone 16e simulator + Chrome at iPhone viewport.
@@ -1284,3 +1296,30 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 
 ### Pre-existing (observed 2026-05-30)
 - **[P2] `@zeta/shared` test suite is red on the current tree** (40 failures = the two stale files above). CI may be failing — triage with the two test items above.
+
+### PDF parser service — unrecognized-files storage broken in prod (found 2026-06-10)
+- **[P1] Parser container can't reach Supabase Storage** — the `unrecognized-statements` bucket is empty even though "enviar para soporte" was used from prod. `save_unrecognized()` (services/pdf_parser/storage.py) falls back to the container's local disk, which is ephemeral — submitted samples are lost on redeploy. Fix: pass the Supabase URL + service key env vars to the parser service in `docker-compose.prod.yml` (check `_get_client()` for the exact var names) and verify an upload lands in the bucket.
+- **[P3] `save_unrecognized()` hardcodes `.pdf` extension** — screenshots get saved as `*.pdf`-named PNGs. Preserve the original extension.
+
+### Import multi-screenshot — deferred polish (2026-06-10, from import-flow-doctor review)
+- **[P3] Results-step hint for OCR_BATCH skips** — when an OCR_BATCH import reports `skipped > 0`, add a soft note: "Si faltó alguna transacción, puede deberse a capturas superpuestas". Dedup key already includes authorization_number; this covers the residual identical-rows edge.
+
+### Deudas/recurring — /simplify follow-ups (2026-06-10, deferred by design)
+- **[P2] Unified `registerDebtPaymentLeg` service** — three paths insert a debt-payment INFLOW independently (checklist leg B in recurring-templates.ts, extra-payment.ts inflow, ensureDebtCompanionLeg in occurrences.ts), each with its own idempotency-provider string and copy. Extract to `lib/debt/` so strings/category fallback can't drift; consider a dedicated SYSTEM-tier capture_method (DB enum migration) instead of MANUAL_FORM for system-generated legs. Unifying idempotency keys naively would change dedup for existing rows — needs care.
+- **[P2] Month-level occurrence uniqueness as DB constraint** — the guard in ensureOccurrencesForRange is app-level only (TOCTOU under concurrent ensureCurrentOccurrences). Real fix: `period_key` column ('YYYY-MM' for MONTHLY) + UNIQUE(template_id, period_key), backfill migration, all insert paths (webapp + mobile sync) updated together.
+- **[P2] BankBadge → existing bank identity system** — bank-badge.tsx regex-matches names + hardcodes brand hexes, duplicating `accounts.bank_key` + `BANK_LOGOS` (lib/icons/bank-logos) + `LetterMark`/`AccountIcon`. Thread bank_key through extractDebtAccounts (shared type change) and render the real SVG marks.
+- **[P3] Batch screenshot OCR concurrency** — step-upload posts images sequentially (10 × ~2-5s). Bounded concurrency (3) needs a parser-side check first (single uvicorn worker; tesseract CPU-bound).
+- **[P3] Image detection double-OCR** — detect_and_parse_image runs ocr_image() for detection, then bancolombia_web runs image_to_data again. Use image_to_data once: join words for detection text, reuse boxes for parsing.
+- **[P3] Shared `useLoadMore` hook** — movimientos-root + recent-transactions each hand-roll the load-more state machine.
+- **[P3] Shared `ExpandableCard` shell** — six new deudas components repeat PANEL_INSET + aria-expanded button + Expand + brass border scaffolding.
+
+### Final-review findings deferred (2026-06-10, /code-review on PR #288)
+- **[P1] Companion-leg cleanup on revert/delete** — revertOccurrence's `linked_manually=true` branch only nulls the recurrence group; deleteTransaction reverses only its own delta. Reverting/deleting the source OUTFLOW orphans the synthetic debt INFLOW + its balance delta; re-paying mints a second companion (new source tx id ⇒ new idempotency key). Fix: both paths must locate the companion (same recurrence_group, debt-account INFLOW) and delete + reverse via the payoff helpers.
+- **[P2] Personal-debts totals mix currencies** — getPersonalDebtsOverview sums outstanding_amount across currency_code; PersonasCard formats with page currency. Needs per-currency totals or FX normalization (CreatePersonalDebtSheet already creates USD debts from USD transactions).
+- **[P2] /deudas dual server sections** — mobile (lg:hidden) and desktop (hidden lg:block) both render every request: ~7 device-specific queries wasted per request + doubled HTML. Extract one shared loader; stream lens-specific data (countdown/personas) like archivedObligations.
+- **[P2] Demo mode never filtered on debt page** — pre-existing page-wide gap (no getIsDemoFilter anywhere in actions/debt.ts) now extended to trend + archived history. Fix at the account-fetch boundary for the whole file.
+- **[P3] Deudas lens unaddressable** — localStorage-only persistence ('zeta:deudas-lens'): no deep links, hydration flash to Carga. Hybrid ?lens= param (fallback localStorage) + history.replaceState.
+- **[P3] Month-window math** — hand-rolled `${getFullYear()}-${padStart}` strings in debt.ts/occurrences.ts; lib/utils/date.ts already exports monthsBeforeStart/monthStartStr/formatMonthParam. Also MONTHS_ES in debt-trend-card vs formatMonthLabelShort; initialsOf 3rd copy; GroupDivider 3rd divider.
+- **[P3] Dead code from the lens rewrite** — DebtAccountRow (0 consumers, stale 'canonical' docstring) + CHIP_NEUTRAL_CLASS (0 consumers): delete or re-adopt.
+- **[P3] runSubscriptionDetection blocks importTransactions tail** — 12-month scan + subscriptions fetch run serially at the end of every import; parallelize or fire-and-forget. Also upsertSubscriptionFromTemplate runs (and busts the subscriptions cache) on every non-subscription template edit.
+- **Note:** migration 20260610140559's updated_at tie-break already ran in prod with user-confirmed survivors; residual risk limited to other environments restored from pre-migration dumps.

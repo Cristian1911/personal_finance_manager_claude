@@ -4,18 +4,21 @@ import Link from "next/link";
 import { useAccounts } from "@/components/providers/app-data-provider";
 import { AccountCard } from "@/components/accounts/account-card";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
-import { isDebtAccountType } from "@/lib/utils/account-balance";
 import { ArrowRight } from "lucide-react";
+import type { AccountType } from "@/types/domain";
 
-export function AccountsSection() {
+/** Display groups in render order. OTHER is intentionally excluded. */
+const ACCOUNT_GROUPS: { label: string; types: AccountType[]; isDebt: boolean }[] = [
+  { label: "Liquidez", types: ["CHECKING", "CASH"], isDebt: false },
+  { label: "Ahorro e inversión", types: ["SAVINGS", "INVESTMENT"], isDebt: false },
+  { label: "Tarjetas de crédito", types: ["CREDIT_CARD"], isDebt: true },
+  { label: "Préstamos", types: ["LOAN"], isDebt: true },
+];
+
+export function AccountsSection({ hideDebt = false }: { hideDebt?: boolean }) {
   const accounts = useAccounts();
 
   if (accounts.length === 0) return null;
-
-  const debtAccounts = accounts.filter((a) => isDebtAccountType(a.account_type));
-  const liquidAccounts = accounts.filter(
-    (a) => !isDebtAccountType(a.account_type) && a.account_type !== "OTHER"
-  );
 
   const allMinimal = accounts.map((a) => ({
     id: a.id,
@@ -23,6 +26,16 @@ export function AccountsSection() {
     account_type: a.account_type,
     currency_code: a.currency_code,
   }));
+
+  const groups = ACCOUNT_GROUPS
+    .filter((g) => !(hideDebt && g.isDebt))
+    .map((g) => ({
+      ...g,
+      accounts: accounts.filter((a) => g.types.includes(a.account_type)),
+    }))
+    .filter((g) => g.accounts.length > 0);
+
+  if (groups.length === 0) return null;
 
   return (
     <section className="space-y-4">
@@ -37,27 +50,16 @@ export function AccountsSection() {
         </Link>
       </div>
 
-      {liquidAccounts.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-medium text-z-sage-dark">Liquidez y ahorro</p>
+      {groups.map((group) => (
+        <div key={group.label}>
+          <p className="mb-2 text-xs font-medium text-z-sage-dark">{group.label}</p>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {liquidAccounts.map((account) => (
+            {group.accounts.map((account) => (
               <AccountCard key={account.id} account={account} allAccounts={allMinimal} />
             ))}
           </div>
         </div>
-      )}
-
-      {debtAccounts.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-medium text-z-sage-dark">Deuda</p>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {debtAccounts.map((account) => (
-              <AccountCard key={account.id} account={account} allAccounts={allMinimal} />
-            ))}
-          </div>
-        </div>
-      )}
+      ))}
     </section>
   );
 }

@@ -53,7 +53,7 @@ export function PlanBudgetHero({
     <button
       type="button"
       onClick={onToggle}
-      className={cn(PANEL_INSET_CLASS, "w-full p-3.5 text-left")}
+      className={cn(PANEL_INSET_CLASS, "block w-full p-3.5 text-left")}
       aria-expanded={expanded}
     >
       {/* Eyebrow */}

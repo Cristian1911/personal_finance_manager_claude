@@ -58,7 +58,7 @@ type Props = {
   parseResult: ParseResponse;
   accounts: Account[];
   mappings: StatementAccountMapping[];
-  captureMethod?: "PDF_IMPORT" | "EMAIL_PDF_IMPORT";
+  captureMethod?: "PDF_IMPORT" | "EMAIL_PDF_IMPORT" | "OCR_SINGLE" | "OCR_BATCH";
   onMappingsChange: (mappings: StatementAccountMapping[]) => void;
   onComplete: (result: ImportResult) => void;
   onBack: () => void;

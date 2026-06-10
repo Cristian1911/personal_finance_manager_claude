@@ -319,6 +319,29 @@ The whole stacking order is one ascending, spaced token scale defined in `webapp
 
 ---
 
+## Expandable Card Buttons Must Be `block`
+
+Any `<button>` that HOSTS a collapsed expandable zone (the `grid` +
+`gridTemplateRows: 0fr/1fr` + `overflow-hidden` pattern with always-mounted
+content) MUST include `block` in its className.
+
+**Why:** buttons default to `display: inline-block`. An inline-block's
+baseline is taken from the last text line inside it — including clipped,
+`opacity-0` expandable content. The surrounding line box stretches to fit
+that buried baseline, leaving phantom empty space (≈ the hidden content's
+height) below the visible card and pushing every following sibling down.
+Found 2026-06-09 on /deudas (cuota hero + salary bar) and /plan (budget
+hero); fixed by adding `block`.
+
+**Flag:** any `<button>` whose JSX subtree contains `gridTemplateRows` and
+whose className lacks `block`. Buttons that merely *toggle* a sibling
+expandable (header-row pattern) are immune — only the host matters.
+
+**Quick check:** for files matching `gridTemplateRows`, verify the wrapping
+`<button` (if any) includes `block`.
+
+---
+
 ## Output Format
 
 Always produce the review in this exact structure:

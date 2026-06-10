@@ -9,6 +9,10 @@ import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
+import {
+  buildDebtBalanceUpdatePayload,
+  deactivateTemplatesForPaidOffAccount,
+} from "@/lib/debt/payoff";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
 import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
@@ -313,13 +317,16 @@ export async function createRecurringTemplate(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
+  // Validate BEFORE writing — a post-insert error would leave an orphan
+  // template that duplicates on retry.
+  const isSubscription = formData.get("is_subscription") === "true";
+  if (isSubscription && !formData.get("destinatario_id")) {
+    return { success: false, error: "Una suscripción necesita un destinatario." };
+  }
+
   const result = await insertRecurringTemplateFromFormData(formData, user, supabase);
   if (!result.success) return result;
 
-  const isSubscription = formData.get("is_subscription") === "true";
-  if (isSubscription && !result.data.destinatario_id) {
-    return { success: false, error: "Una suscripción necesita un destinatario." };
-  }
   await upsertSubscriptionFromTemplate(
     supabase,
     user.id,
@@ -462,6 +469,13 @@ export async function updateRecurringTemplate(
     ...(subPaymentsValue !== null ? { sub_payments: subPaymentsValue } : {}),
   };
 
+  // Validate BEFORE writing — a post-update error would persist the change
+  // while skipping occurrence regeneration and cache revalidation.
+  const isSubscription = formData.get("is_subscription") === "true";
+  if (isSubscription && !payload.destinatario_id) {
+    return { success: false, error: "Una suscripción necesita un destinatario." };
+  }
+
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .update(updatePayload)
@@ -472,10 +486,6 @@ export async function updateRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
-  const isSubscription = formData.get("is_subscription") === "true";
-  if (isSubscription && !data.destinatario_id) {
-    return { success: false, error: "Una suscripción necesita un destinatario." };
-  }
   await upsertSubscriptionFromTemplate(
     supabase,
     user.id,
@@ -574,6 +584,7 @@ type PaymentAccountRow = {
   account_type: string;
   current_balance: number;
   credit_limit: number | null;
+  currency_balances: Record<string, Record<string, unknown>> | null;
 };
 type RecurringTxDraft = {
   account_id: string;
@@ -693,7 +704,7 @@ async function loadPaymentAccounts(params: {
 
   const { data: accountRows, error } = await params.supabase
     .from("accounts")
-    .select("id, name, account_type, current_balance, credit_limit")
+    .select("id, name, account_type, current_balance, credit_limit, currency_balances")
     .in("id", accountIds)
     .eq("user_id", params.userId);
 
@@ -829,6 +840,7 @@ async function insertRecurringTransactions(params: {
       idempotency_key: idempotencyKey,
       provider: "MANUAL",
       status: "POSTED",
+      capture_method: "MANUAL_FORM",
       is_recurring: true,
       recurrence_group_id: params.recurrenceGroupId,
       categorization_source: tx.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
@@ -858,6 +870,7 @@ async function updateBalancesForCreatedTransactions(params: {
   userId: string;
   accountMap: Map<string, PaymentAccountRow>;
   createdTxs: CreatedTxDelta[];
+  currencyCode: string;
 }): Promise<void> {
   for (const tx of params.createdTxs) {
     const account = params.accountMap.get(tx.account_id);
@@ -872,9 +885,18 @@ async function updateBalancesForCreatedTransactions(params: {
 
     account.current_balance = nextBalance;
 
-    const updatePayload: Record<string, number> = { current_balance: nextBalance };
-    if (isDebtAccountType(account.account_type) && account.credit_limit != null) {
-      updatePayload.available_balance = account.credit_limit - nextBalance;
+    const updatePayload: Record<string, unknown> = isDebtAccountType(account.account_type)
+      ? buildDebtBalanceUpdatePayload(account, nextBalance, params.currencyCode)
+      : { current_balance: nextBalance };
+    if (
+      isDebtAccountType(account.account_type) &&
+      account.currency_balances &&
+      !account.currency_balances[params.currencyCode]
+    ) {
+      console.warn(
+        "[updateBalancesForCreatedTransactions] currency_balances missing key — /deudas may read stale debt",
+        { accountId: account.id, currencyCode: params.currencyCode }
+      );
     }
 
     const { error: balanceError } = await params.supabase
@@ -888,6 +910,16 @@ async function updateBalancesForCreatedTransactions(params: {
         "[updateBalancesForCreatedTransactions] balance update failed",
         { accountId: account.id, error: balanceError.message }
       );
+      continue;
+    }
+
+    // Payoff lifecycle: a debt that just reached 0 stops generating cuotas.
+    if (isDebtAccountType(account.account_type) && nextBalance <= 0) {
+      await deactivateTemplatesForPaidOffAccount({
+        supabase: params.supabase,
+        userId: params.userId,
+        accountId: account.id,
+      });
     }
   }
 }
@@ -1045,6 +1077,7 @@ export async function recordRecurringOccurrencePayment(input: {
     userId: user.id,
     accountMap: loadedAccounts.accountMap,
     createdTxs: inserted.createdTxs,
+    currencyCode: template.currency_code,
   });
 
   revalidateFinancialViews();

@@ -13,6 +13,7 @@ export * from "./utils/reconciliation";
 export * from "./utils/debt";
 export * from "./utils/debt-simulator";
 export * from "./utils/debt-stats";
+export * from "./utils/debt-trend";
 export * from "./utils/purchase-decision";
 export * from "./utils/snapshot-diff";
 export * from "./utils/destinatario-matcher";

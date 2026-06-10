@@ -16,7 +16,7 @@ import type {
   StatementMetaForImport,
   TransactionToImport,
 } from "@/types/import";
-import { StepUpload } from "./step-upload";
+import { StepUpload, type ParsedSourceMeta } from "./step-upload";
 import { StepReview } from "./step-review";
 import { ReconciliationStep } from "./reconciliation-step";
 import { StepResults } from "./step-results";
@@ -92,6 +92,8 @@ export function ImportWizard({
   const [preparedStatementMeta, setPreparedStatementMeta] = useState<StatementMetaForImport[]>([]);
   const [reconciliationPreview, setReconciliationPreview] =
     useState<ReconciliationPreviewResult | null>(null);
+  // Screenshot imports are tier-2 (semi-structured), not bank-verified PDFs.
+  const [ocrCaptureMethod, setOcrCaptureMethod] = useState<"OCR_SINGLE" | "OCR_BATCH" | null>(null);
   const activeEmailStatementIdRef = useRef<string | null>(pendingEmailStatementId ?? null);
 
   // Loan path: every parsed statement is a loan. Loan statements are
@@ -196,11 +198,22 @@ export function ImportWizard({
     });
   }
 
-  function handleParsed(result: ParseResponse) {
+  function handleParsed(result: ParseResponse, meta?: ParsedSourceMeta) {
+    setOcrCaptureMethod(
+      meta?.source === "image"
+        ? meta.fileCount > 1
+          ? "OCR_BATCH"
+          : "OCR_SINGLE"
+        : null
+    );
     setParseResult(result);
     setMappings(autoMatchAccounts(result, accountsList));
     setStep("review");
   }
+
+  const effectiveCaptureMethod = pendingEmailStatementId
+    ? ("EMAIL_PDF_IMPORT" as const)
+    : ocrCaptureMethod ?? ("PDF_IMPORT" as const);
 
   function handleAccountCreated(account: Account) {
     const updatedAccounts = [...accountsList, account];
@@ -249,6 +262,7 @@ export function ImportWizard({
   const handleReset = useCallback(() => {
     setStep("upload");
     setParseResult(null);
+    setOcrCaptureMethod(null);
     setMappings([]);
     setImportResult(null);
     setPreparedTransactions([]);
@@ -357,7 +371,7 @@ export function ImportWizard({
             parseResult={parseResult}
             accounts={accountsList}
             mappings={mappings}
-            captureMethod={pendingEmailStatementId ? "EMAIL_PDF_IMPORT" : "PDF_IMPORT"}
+            captureMethod={effectiveCaptureMethod}
             onMappingsChange={setMappings}
             onComplete={handleImportComplete}
             onBack={() => setStep("upload")}
@@ -382,7 +396,7 @@ export function ImportWizard({
             statementMeta={preparedStatementMeta}
             preview={reconciliationPreview}
             currency={(parseResult?.statements[0]?.currency ?? "COP") as CurrencyCode}
-            captureMethod={pendingEmailStatementId ? "EMAIL_PDF_IMPORT" : "PDF_IMPORT"}
+            captureMethod={effectiveCaptureMethod}
             onComplete={handleImportComplete}
             onBack={() => setStep("review")}
           />

@@ -11,6 +11,7 @@ import {
   Ellipsis,
   Pencil,
   Trash2,
+  Archive,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,7 +32,7 @@ import { QuickPaymentDialog } from "./quick-payment-dialog";
 import { ReconcileBalanceDialog } from "./reconcile-balance-dialog";
 import { SpecializedAccountForm } from "./specialized-account-form";
 import { TransferDialog } from "./transfer-dialog";
-import { deleteAccount } from "@/actions/accounts";
+import { deleteAccount, archiveDebtObligation } from "@/actions/accounts";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Account } from "@/types/domain";
@@ -145,6 +146,8 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   const accountType = account.account_type ?? "OTHER";
   const accountId = account.id ?? "";
@@ -161,6 +164,21 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
       setDeleteOpen(false);
       router.push("/accounts");
       toast.success("Cuenta eliminada");
+    } else {
+      toast.error(result.error);
+    }
+  }
+
+  const isDebt = accountType === "CREDIT_CARD" || accountType === "LOAN";
+
+  async function handleArchive() {
+    setArchiving(true);
+    const result = await archiveDebtObligation(accountId);
+    setArchiving(false);
+    if (result.success) {
+      setArchiveOpen(false);
+      router.push("/accounts");
+      toast.success("Obligación archivada — el historial se conserva");
     } else {
       toast.error(result.error);
     }
@@ -227,11 +245,17 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
                   <Ellipsis className="h-4 w-4" />
                 </span>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => setEditOpen(true)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Editar
                 </DropdownMenuItem>
+                {isDebt && (
+                  <DropdownMenuItem onClick={() => setArchiveOpen(true)}>
+                    <Archive className="mr-2 h-4 w-4" />
+                    Archivar (pagada)
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => setDeleteOpen(true)}
                   className="text-destructive focus:text-destructive"
@@ -271,6 +295,29 @@ export function QuickActionsBar({ account, allAccounts }: QuickActionsBarProps) 
             account={account}
             onSuccess={() => setEditOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive confirmation dialog (debt obligations only) */}
+      <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Archivar obligación</DialogTitle>
+            <DialogDescription>
+              Marca esta obligación como pagada por completo: el saldo queda en
+              0, sale de tus vistas activas y sus cuotas recurrentes se
+              detienen. Las transacciones y pagos históricos se conservan para
+              tus métricas.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArchiveOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleArchive} disabled={archiving}>
+              {archiving ? "Archivando..." : "Archivar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -9,6 +9,9 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import { isDebtAccountType, reverseAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { applyDebtPaymentToBalances } from "@/lib/debt/payoff";
+import { computeIdempotencyKey } from "@/lib/utils/idempotency";
+import { getDebtPaymentCategoryId } from "@zeta/shared";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { UUID_RE } from "@/lib/validators/shared";
 import {
@@ -419,13 +422,49 @@ export async function ensureOccurrencesForRange(
 
   if (rows.length === 0) return { success: true, data: undefined };
 
+  // Month-level idempotency for MONTHLY templates: the unique constraint is on
+  // (template_id, occurrence_date), so a day_of_month change (e.g. a statement
+  // import updating the due day) would otherwise create a SECOND occurrence in
+  // a month that already has one. One obligation = one needed payment per month.
+  const monthlyIds = new Set(
+    templates.filter((t) => t.frequency === "MONTHLY").map((t) => t.id)
+  );
+  let rowsToInsert = rows;
+  if (monthlyIds.size > 0) {
+    const monthStart = `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, "0")}-01`;
+    // Bound to the generated range's months — an unbounded scan over all
+    // future occurrences can exceed PostgREST's max_rows (1000) and silently
+    // truncate, re-enabling same-month duplicates for heavy users.
+    const afterRange = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth() + 1, 1);
+    const afterRangeStr = `${afterRange.getFullYear()}-${String(afterRange.getMonth() + 1).padStart(2, "0")}-01`;
+    const { data: existing, error: existingError } = await supabase
+      .from("recurring_occurrences")
+      .select("template_id, occurrence_date")
+      .eq("user_id", user.id)
+      .in("template_id", [...monthlyIds])
+      .gte("occurrence_date", monthStart)
+      .lt("occurrence_date", afterRangeStr);
+    if (existingError) return { success: false, error: existingError.message };
+
+    const existingMonths = new Set(
+      (existing ?? []).map((o) => `${o.template_id}|${o.occurrence_date.slice(0, 7)}`)
+    );
+    rowsToInsert = rows.filter(
+      (r) =>
+        !monthlyIds.has(r.template_id) ||
+        !existingMonths.has(`${r.template_id}|${r.occurrence_date.slice(0, 7)}`)
+    );
+  }
+
+  if (rowsToInsert.length === 0) return { success: true, data: undefined };
+
   const { error: upsertError } = await supabase
     .from("recurring_occurrences")
-    .upsert(rows, { onConflict: "template_id,occurrence_date", ignoreDuplicates: true });
+    .upsert(rowsToInsert, { onConflict: "template_id,occurrence_date", ignoreDuplicates: true });
 
   if (upsertError) {
     console.error(
-      `[ensureOccurrencesForRange] upsert failed for user=${user.id} generated=${rows.length}:`,
+      `[ensureOccurrencesForRange] upsert failed for user=${user.id} generated=${rowsToInsert.length}:`,
       upsertError.message,
     );
     return { success: false, error: upsertError.message };
@@ -954,6 +993,7 @@ export async function linkTransactionToOccurrence(
   direction: "INFLOW" | "OUTFLOW",
   transactionId: string,
   destinatarioId: string | null = null,
+  options: { skipDebtCompanionLeg?: boolean } = {},
 ): Promise<void> {
   const matchId = await findMatchingOccurrence(
     accountId,
@@ -964,6 +1004,20 @@ export async function linkTransactionToOccurrence(
   );
   if (matchId) {
     await markOccurrencePaid(matchId, transactionId);
+    // A debt-payment occurrence paid from another account (e.g. an email-
+    // captured transfer) only registers the source OUTFLOW — without the
+    // companion INFLOW the debt account's balance never moves. Statement
+    // imports opt out: the card statement carries its own abono row.
+    if (!options.skipDebtCompanionLeg) {
+      await ensureDebtCompanionLeg({
+        occurrenceId: matchId,
+        sourceTransactionId: transactionId,
+        sourceAccountId: accountId,
+        transactionDate,
+        amount,
+        direction,
+      });
+    }
     return;
   }
 
@@ -974,6 +1028,128 @@ export async function linkTransactionToOccurrence(
     direction,
     transactionId,
   );
+}
+
+/**
+ * Create the companion INFLOW on the debt account when a payment occurrence
+ * is auto-linked to an OUTFLOW from another account (email ingest, manual
+ * form). Mirrors leg B of the recurring-checklist flow: idempotent (key
+ * derived from the source transaction), tier-3 capture, balances synced via
+ * applyDebtPaymentToBalances. No-op for non-debt templates or same-account
+ * payments.
+ */
+async function ensureDebtCompanionLeg(params: {
+  occurrenceId: string;
+  sourceTransactionId: string;
+  sourceAccountId: string;
+  transactionDate: string;
+  amount: number;
+  direction: "INFLOW" | "OUTFLOW";
+}): Promise<void> {
+  if (params.direction !== "OUTFLOW" || params.amount <= 0) return;
+
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return;
+
+  try {
+    const { data: occurrence } = await supabase
+      .from("recurring_occurrences")
+      .select(
+        `id,
+         template:recurring_transaction_templates!recurring_occurrences_template_id_fkey!inner(
+           id, account_id, currency_code, merchant_name, description, category_id
+         )`
+      )
+      .eq("id", params.occurrenceId)
+      .eq("user_id", user.id)
+      .single();
+
+    const template = occurrence?.template as {
+      id: string;
+      account_id: string;
+      currency_code: import("@/types/domain").CurrencyCode;
+      merchant_name: string | null;
+      description: string | null;
+      category_id: string | null;
+    } | null;
+    if (!template || template.account_id === params.sourceAccountId) return;
+
+    const [{ data: debtAccount }, { data: sourceAccount }, { data: sourceTx }] =
+      await Promise.all([
+        supabase
+          .from("accounts")
+          .select("id, name, account_type")
+          .eq("user_id", user.id)
+          .eq("id", template.account_id)
+          .single(),
+        supabase
+          .from("accounts")
+          .select("id, name")
+          .eq("user_id", user.id)
+          .eq("id", params.sourceAccountId)
+          .single(),
+        supabase
+          .from("transactions")
+          .select("recurrence_group_id")
+          .eq("user_id", user.id)
+          .eq("id", params.sourceTransactionId)
+          .single(),
+      ]);
+
+    if (!debtAccount || !isDebtAccountType(debtAccount.account_type)) return;
+
+    const label = template.merchant_name || template.description || "Pago recurrente";
+    const rawDescription = `Abono deuda desde ${sourceAccount?.name ?? "cuenta"} - ${label}`;
+
+    // Stable per source transaction: re-linking or retries hit 23505 → skip.
+    const idempotencyKey = await computeIdempotencyKey({
+      provider: "DEBT_COMPANION_LEG",
+      providerTransactionId: params.sourceTransactionId,
+      transactionDate: params.transactionDate,
+      amount: params.amount,
+      rawDescription,
+    });
+
+    const { error: insertError } = await supabase.from("transactions").insert({
+      user_id: user.id,
+      account_id: template.account_id,
+      amount: params.amount,
+      currency_code: template.currency_code,
+      direction: "INFLOW",
+      transaction_date: params.transactionDate,
+      raw_description: rawDescription,
+      clean_description: label,
+      merchant_name: label,
+      category_id:
+        template.category_id ?? getDebtPaymentCategoryId(debtAccount.account_type),
+      notes: "Abono de deuda generado automáticamente al vincular el pago",
+      idempotency_key: idempotencyKey,
+      provider: "MANUAL",
+      status: "POSTED",
+      capture_method: "MANUAL_FORM",
+      is_recurring: true,
+      recurrence_group_id: sourceTx?.recurrence_group_id ?? null,
+      categorization_source: template.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
+    });
+
+    if (insertError) {
+      if (insertError.code !== "23505") {
+        console.error("[ensureDebtCompanionLeg] insert failed", insertError.message);
+      }
+      return;
+    }
+
+    await applyDebtPaymentToBalances({
+      supabase,
+      userId: user.id,
+      accountId: template.account_id,
+      amount: params.amount,
+      currencyCode: template.currency_code,
+    });
+  } catch (error) {
+    // Linking must never fail the primary transaction insert.
+    console.error("[ensureDebtCompanionLeg] failed", error);
+  }
 }
 
 /**
@@ -1046,7 +1222,10 @@ async function swapPhantomOccurrenceIfMatched(
     .eq("user_id", user.id);
 
   if (!groupTxs || groupTxs.length !== 1) {
-    // Multi-leg phantom — leave for manual reconciliation
+    // Multi-leg phantom (e.g. source OUTFLOW + debt companion INFLOW from
+    // ensureDebtCompanionLeg) — a later bank-verified import of either leg
+    // intentionally falls through to manual reconciliation instead of an
+    // automatic swap.
     return;
   }
 

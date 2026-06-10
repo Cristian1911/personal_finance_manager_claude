@@ -5,8 +5,10 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { accountSchema } from "@/lib/validators/account";
 import { computeIdempotencyKey } from "@zeta/shared";
-import { getDirectionForBalanceDelta } from "@/lib/utils/account-balance";
+import { getDirectionForBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
 import { toColombiaDateString } from "@/lib/utils/date";
+import { deactivateTemplatesForPaidOffAccount } from "@/lib/debt/payoff";
+import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   parseCurrencyBalanceMap,
   resolveCurrencyBalanceCurrentValue,
@@ -243,6 +245,54 @@ export async function deleteAccount(id: string): Promise<ActionResult> {
   updateTag("dashboard:hero");
   updateTag("debt");
   updateTag("attention");
+  return { success: true, data: undefined };
+}
+
+/**
+ * Archive a fully-paid debt obligation: zero its balance, deactivate it, stop
+ * its recurring cuotas. The account row, its transactions, snapshots and
+ * paid occurrences are preserved as history (insights/metrics read them) —
+ * nothing is deleted except PENDING occurrences.
+ */
+export async function archiveDebtObligation(id: string): Promise<ActionResult> {
+  const { supabase, user } = await getAuthenticatedClient();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const { data: account, error: fetchError } = await supabase
+    .from("accounts")
+    .select("id, account_type, credit_limit")
+    .eq("user_id", user.id)
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !account) {
+    return { success: false, error: "No se encontró la cuenta." };
+  }
+  if (!isDebtAccountType(account.account_type)) {
+    return { success: false, error: "Solo se pueden archivar obligaciones (tarjetas o préstamos)." };
+  }
+
+  const { error: updateError } = await supabase
+    .from("accounts")
+    .update({
+      current_balance: 0,
+      currency_balances: null,
+      available_balance: account.credit_limit ?? null,
+      is_active: false,
+    })
+    .eq("user_id", user.id)
+    .eq("id", id);
+
+  if (updateError) return { success: false, error: updateError.message };
+
+  await deactivateTemplatesForPaidOffAccount({
+    supabase,
+    userId: user.id,
+    accountId: id,
+  });
+
+  // FINANCIAL_TAGS already covers accounts/debt/occurrences/recurring/attention.
+  revalidateFinancialViews();
   return { success: true, data: undefined };
 }
 

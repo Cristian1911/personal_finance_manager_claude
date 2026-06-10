@@ -5,9 +5,11 @@ import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   computeSnapshotDiffs,
   findReconciliationCandidates,
+  isBankVerifiedCapture,
   mergeTransactionMetadata,
   type ReconciliationCandidate,
 } from "@zeta/shared";
+import type { TransactionCaptureMethod } from "@/types/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
@@ -573,10 +575,17 @@ async function processStatementMeta(params: {
   skipped: number;
   statementMeta?: StatementMetaForImport[];
   details: string[];
+  captureMethod: TransactionCaptureMethod;
 }): Promise<{ accountUpdates: AccountUpdateResult[]; errors: number }> {
   const { supabase, userId, imported, skipped, statementMeta, details } = params;
   const accountUpdates: AccountUpdateResult[] = [];
   let errors = 0;
+
+  // Only bank-verified statements (tier 1: PDF/EMAIL_PDF) may set account
+  // balances, limits and snapshots directly. OCR screenshots (tier 2) are
+  // partial captures — their balances flow through the per-transaction
+  // applyAccountBalanceDelta path instead.
+  if (!isBankVerifiedCapture(params.captureMethod)) return { accountUpdates, errors };
 
   if (!statementMeta || statementMeta.length === 0) return { accountUpdates, errors };
 
@@ -600,7 +609,13 @@ async function processStatementMeta(params: {
       .in("account_id", uniqueAccountIds)
       .eq("direction", "INFLOW")
       .eq("frequency", "MONTHLY")
-      .is("category_id", null)
+      // No category_id filter: the dedup key is the account. Filtering by
+      // category_id IS NULL made the lookup miss user-categorized templates
+      // and insert a duplicate template for the same debt account.
+      // Inactive templates are INTENTIONALLY included (is_active DESC puts
+      // active first): importing a statement for a paid-off-then-reopened
+      // card resurrects its archived template instead of creating a second
+      // one — the partial unique index only allows one ACTIVE per account.
       .order("is_active", { ascending: false })
       .order("updated_at", { ascending: false });
 
@@ -1034,6 +1049,10 @@ export async function importTransactions(
       tx.account_id, tx.transaction_date,
       tx.amount, tx.direction, insertedTx.id,
       tx.destinatario_id ?? null,
+      // Statement imports carry the debt-account side themselves (the card
+      // statement's own abono row) — synthesizing a companion INFLOW here
+      // would duplicate it when both statements are imported.
+      { skipDebtCompanionLeg: true },
     );
 
     const decision = tx.import_key
@@ -1154,6 +1173,7 @@ export async function importTransactions(
     skipped,
     statementMeta: normalizedStatementMeta,
     details,
+    captureMethod,
   });
   // Snapshot/account write failures must surface in the result so the email
   // queue isn't cleared on a failed import and the results screen reports it.
@@ -1162,12 +1182,17 @@ export async function importTransactions(
   // Ensure occurrence rows are generated for any newly created/updated templates
   await ensureCurrentOccurrences();
 
-  // Screenshot imports lack statement metadata — fall back to per-tx balance deltas.
+  // Tier-2 imports fall back to per-tx balance deltas. The meta-balance
+  // exclusion only applies when processStatementMeta actually RAN (tier 1) —
+  // otherwise a screenshot whose parser emitted metadata would skip BOTH
+  // balance paths and leave the account stale.
   if (balanceDeltaTxs.length > 0) {
     const accountsWithMetaBalance = new Set<string>();
-    for (const meta of normalizedStatementMeta ?? []) {
-      if (meta.creditCardMetadata || meta.loanMetadata || meta.summary?.final_balance != null) {
-        accountsWithMetaBalance.add(meta.accountId);
+    if (isBankVerifiedCapture(captureMethod)) {
+      for (const meta of normalizedStatementMeta ?? []) {
+        if (meta.creditCardMetadata || meta.loanMetadata || meta.summary?.final_balance != null) {
+          accountsWithMetaBalance.add(meta.accountId);
+        }
       }
     }
 

@@ -60,6 +60,8 @@ export interface DebtInsight {
   type: "warning" | "info" | "success";
   title: string;
   description: string;
+  /** When the insight is about one specific account, lets the UI expand with its numbers. */
+  accountId?: string;
 }
 
 /**
@@ -321,6 +323,7 @@ export function generateInsights(accounts: DebtAccount[]): DebtInsight[] {
       type: "info",
       title: "Prioriza la deuda más cara",
       description: `"${highest.name}" tiene la tasa más alta (${highest.interestRate?.toFixed(1)}% EA). Pagar primero esta deuda te ahorra más en intereses.`,
+      accountId: highest.id,
     });
   }
 
@@ -333,6 +336,7 @@ export function generateInsights(accounts: DebtAccount[]): DebtInsight[] {
           type: "warning",
           title: `Uso alto en ${acct.name}`,
           description: `Estás usando el ${util.toFixed(0)}% de tu cupo. Mantenerlo por debajo del 30% ayuda a tu salud financiera.`,
+          accountId: acct.id,
         });
       }
     }
@@ -363,6 +367,7 @@ export function generateInsights(accounts: DebtAccount[]): DebtInsight[] {
           days === 0
             ? "El pago es hoy."
             : `Faltan ${days} día${days === 1 ? "" : "s"} para el pago.`,
+        accountId: acct.id,
       });
     }
   }

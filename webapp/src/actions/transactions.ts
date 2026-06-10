@@ -875,6 +875,9 @@ export async function createTransaction(
     parsed.data.amount, parsed.data.direction, transactionResult.data.id,
     finalDestinatarioId,
   );
+  // Re-invalidate: linking may have created a debt companion leg and updated
+  // the debt account's balance AFTER persistTransaction already revalidated.
+  revalidateFinancialViews();
 
   return transactionResult;
 }
@@ -934,6 +937,9 @@ export async function createQuickCaptureTransaction(
       parsed.data.amount, parsed.data.direction, result.data.id,
       destinatarioId,
     );
+    // Re-invalidate: linking may have created a debt companion leg and updated
+    // the debt account's balance AFTER persistTransaction already revalidated.
+    revalidateFinancialViews();
   }
 
   return result;

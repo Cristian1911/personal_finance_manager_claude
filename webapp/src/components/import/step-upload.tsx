@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2, ImageIcon, KeyRound } from "lucide-react";
+import { Upload, FileText, Loader2, Lock, HelpCircle, CheckCircle2, ImageIcon, KeyRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BRASS_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
@@ -36,6 +36,79 @@ const PDF_EXTENSIONS = new Set([".pdf"]);
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20 MB
+const MAX_IMAGE_COUNT = 10;
+
+export interface ParsedSourceMeta {
+  source: "pdf" | "image";
+  fileCount: number;
+}
+
+/**
+ * Merge the ParseResponses of several partial screenshots into one.
+ * Statements from the same bank/account are combined; transactions that
+ * appear in more than one screenshot (overlapping captures) are deduped by
+ * (date, amount, direction, description, installment).
+ */
+function mergeImageResponses(responses: ParseResponse[]): ParseResponse {
+  const groups = new Map<string, ParseResponse["statements"][number]>();
+  const seenTx = new Map<string, Set<string>>();
+
+  for (const response of responses) {
+    for (const statement of response.statements) {
+      const key = [
+        statement.bank,
+        statement.statement_type,
+        statement.account_number ?? statement.card_last_four ?? "",
+      ].join("|");
+
+      const existing = groups.get(key);
+      if (!existing) {
+        groups.set(key, { ...statement, transactions: [...statement.transactions] });
+        seenTx.set(
+          key,
+          new Set(statement.transactions.map(txDedupKey))
+        );
+        continue;
+      }
+
+      const seen = seenTx.get(key)!;
+      for (const tx of statement.transactions) {
+        const txKey = txDedupKey(tx);
+        if (seen.has(txKey)) continue;
+        seen.add(txKey);
+        existing.transactions.push(tx);
+      }
+      // Widen the covered period; prefer the first non-null metadata.
+      if (statement.period_from && (!existing.period_from || statement.period_from < existing.period_from)) {
+        existing.period_from = statement.period_from;
+      }
+      if (statement.period_to && (!existing.period_to || statement.period_to > existing.period_to)) {
+        existing.period_to = statement.period_to;
+      }
+      existing.summary = existing.summary ?? statement.summary;
+      existing.credit_card_metadata = existing.credit_card_metadata ?? statement.credit_card_metadata;
+      existing.loan_metadata = existing.loan_metadata ?? statement.loan_metadata;
+    }
+  }
+
+  for (const statement of groups.values()) {
+    statement.transactions.sort((a, b) => a.date.localeCompare(b.date));
+  }
+  return { statements: [...groups.values()] };
+}
+
+function txDedupKey(tx: ParseResponse["statements"][number]["transactions"][number]): string {
+  return [
+    tx.date,
+    tx.amount,
+    tx.direction,
+    tx.description.trim().toLowerCase(),
+    tx.installment_current ?? "",
+    // Disambiguates legitimately identical same-day transactions (two equal
+    // ATM withdrawals) so overlap-dedup doesn't swallow one of them.
+    tx.authorization_number ?? "",
+  ].join("|");
+}
 
 function getFileExtension(name: string): string {
   const dotIndex = name.lastIndexOf(".");
@@ -55,11 +128,12 @@ export function StepUpload({
   initialFile,
   initialVaultSuggestions,
 }: {
-  onParsed: (data: ParseResponse) => void;
+  onParsed: (data: ParseResponse, meta: ParsedSourceMeta) => void;
   initialFile?: File | null;
   initialVaultSuggestions?: PdfPasswordSuggestion[];
 }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [processingIndex, setProcessingIndex] = useState<number | null>(null);
   const [password, setPassword] = useState("");
   const [passwordFromVault, setPasswordFromVault] = useState(false);
   const [savePassword, setSavePassword] = useState(false);
@@ -101,60 +175,94 @@ export function StepUpload({
     }
   }
 
-  function handleFile(f: File) {
+  function addFiles(incoming: File[]) {
     setError("");
     setUnsupportedFile(null);
     setSavedForSupport(false);
 
-    const isImage = isImageFile(f.name);
-    const isPdf = isPdfFile(f.name);
+    const valid: File[] = [];
+    for (const f of incoming) {
+      const isImage = isImageFile(f.name);
+      const isPdf = isPdfFile(f.name);
+      if (!isImage && !isPdf) {
+        setError("Formato no soportado. Se aceptan PDF, PNG, JPG o WEBP.");
+        return;
+      }
+      const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_PDF_SIZE;
+      if (f.size > maxSize) {
+        setError(`"${f.name}" excede el tamaño máximo de ${maxSize / (1024 * 1024)}MB`);
+        return;
+      }
+      valid.push(f);
+    }
+    if (valid.length === 0) return;
 
-    if (!isImage && !isPdf) {
-      setError("Formato no soportado. Se aceptan PDF, PNG, JPG o WEBP.");
-      return;
+    // PDFs stay single-file (password flow is per-statement). Images can be
+    // batched — bank apps often can't take long screenshots, so one statement
+    // arrives as several partial captures.
+    const firstPdf = valid.find((f) => isPdfFile(f.name));
+    let next: File[];
+    if (firstPdf) {
+      next = [firstPdf];
+      // Selecting a PDF replaces everything staged — never silently.
+      if (valid.length > 1 || files.length > 0) {
+        toast.info("Los PDF se procesan de a uno — reemplacé la selección con el PDF.");
+      }
+    } else {
+      const stagedPdf = files.find((f) => isPdfFile(f.name));
+      if (stagedPdf) {
+        toast.info(`"${stagedPdf.name}" se quitó: PDF e imágenes no se procesan juntos.`);
+        setPassword("");
+        setPasswordFromVault(false);
+        setSavePassword(false);
+      }
+      const merged = [...files.filter((f) => isImageFile(f.name)), ...valid];
+      const unique = merged.filter(
+        (f, i) => merged.findIndex((o) => o.name === f.name && o.size === f.size) === i
+      );
+      if (unique.length > MAX_IMAGE_COUNT) {
+        toast.info(`Máximo ${MAX_IMAGE_COUNT} imágenes por importación.`);
+      }
+      next = unique.slice(0, MAX_IMAGE_COUNT);
     }
-    const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_PDF_SIZE;
-    if (f.size > maxSize) {
-      setError(`El archivo excede el tamaño máximo de ${maxSize / (1024 * 1024)}MB`);
-      return;
+    setFiles(next);
+
+    for (const f of valid) {
+      void trackClientEvent({
+        event_name: "import_file_selected",
+        flow: "import",
+        step: "upload",
+        entry_point: "cta",
+        success: true,
+        metadata: {
+          filename: f.name,
+          file_size_bytes: f.size,
+          file_type: isImageFile(f.name) ? "image" : "pdf",
+          batch_size: next.length,
+        },
+      });
     }
-    setFile(f);
-    void trackClientEvent({
-      event_name: "import_file_selected",
-      flow: "import",
-      step: "upload",
-      entry_point: "cta",
-      success: true,
-      metadata: {
-        filename: f.name,
-        file_size_bytes: f.size,
-        file_type: isImage ? "image" : "pdf",
-      },
-    });
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   // Handle initialFile from FAB screenshot flow
   useEffect(() => {
     if (initialFile && !initialFileProcessed.current) {
       initialFileProcessed.current = true;
-      handleFile(initialFile);
+      addFiles([initialFile]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFile]);
 
   async function handleUpload() {
-    if (!file) return;
+    if (files.length === 0) return;
     setLoading(true);
     setError("");
 
-    const isImage = isImageFile(file.name);
-    const endpoint = isImage ? "/api/parse-image" : "/api/parse-statement";
-
-    const formData = new FormData();
-    formData.append("file", file);
-    if (!isImage && password) {
-      formData.append("password", password);
-    }
+    const isImage = isImageFile(files[0].name);
 
     try {
       void trackClientEvent({
@@ -163,44 +271,65 @@ export function StepUpload({
         step: "parse",
         entry_point: "cta",
         success: true,
-        metadata: { has_password: !isImage && !!password, file_type: isImage ? "image" : "pdf" },
+        metadata: {
+          has_password: !isImage && !!password,
+          file_type: isImage ? "image" : "pdf",
+          batch_size: files.length,
+        },
       });
 
-      const res = await fetch(endpoint, {
-        method: "POST",
-        body: formData,
-      });
+      const responses: ParseResponse[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const current = files[i];
+        if (files.length > 1) setProcessingIndex(i);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.errorType === "unsupported_format") {
-          void trackClientEvent({
-            event_name: "import_parse_failed",
-            flow: "import",
-            step: "parse",
-            entry_point: "cta",
-            success: false,
-            error_code: "unsupported_format",
-          });
-          setUnsupportedFile(file);
-          setSavedForSupport(false);
-        } else {
-          void trackClientEvent({
-            event_name: "import_parse_failed",
-            flow: "import",
-            step: "parse",
-            entry_point: "cta",
-            success: false,
-            error_code: "parse_api_error",
-          });
-          setError(data.error || (isImage ? "Error procesando la imagen" : "Error procesando el PDF"));
+        const formData = new FormData();
+        formData.append("file", current);
+        if (!isImage && password) {
+          formData.append("password", password);
         }
-        setLoading(false);
-        return;
-      }
 
-      const parsed = data as ParseResponse;
+        const res = await fetch(isImage ? "/api/parse-image" : "/api/parse-statement", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (data.errorType === "unsupported_format") {
+            void trackClientEvent({
+              event_name: "import_parse_failed",
+              flow: "import",
+              step: "parse",
+              entry_point: "cta",
+              success: false,
+              error_code: "unsupported_format",
+            });
+            setUnsupportedFile(current);
+            setSavedForSupport(false);
+          } else {
+            void trackClientEvent({
+              event_name: "import_parse_failed",
+              flow: "import",
+              step: "parse",
+              entry_point: "cta",
+              success: false,
+              error_code: "parse_api_error",
+            });
+            const baseMsg = data.error || (isImage ? "Error procesando la imagen" : "Error procesando el PDF");
+            setError(files.length > 1 ? `"${current.name}": ${baseMsg}. Quítala de la lista o intenta de nuevo.` : baseMsg);
+          }
+          setLoading(false);
+          setProcessingIndex(null);
+          return;
+        }
+
+        responses.push(data as ParseResponse);
+      }
+      setProcessingIndex(null);
+
+      const parsed =
+        responses.length > 1 ? mergeImageResponses(responses) : responses[0];
       const totalTx = parsed.statements.reduce(
         (sum: number, s: ParseResponse["statements"][number]) =>
           sum + s.transactions.length,
@@ -220,7 +349,7 @@ export function StepUpload({
         });
         setError(
           isImage
-            ? "No se encontraron transacciones en esta imagen. Verifica que sea una captura de movimientos bancarios de un formato compatible."
+            ? "No se encontraron transacciones en las imágenes. Verifica que sean capturas de movimientos bancarios de un formato compatible."
             : "No se encontraron transacciones ni metadatos en este PDF. Verifica que sea un extracto bancario de un formato compatible."
         );
         setLoading(false);
@@ -237,6 +366,7 @@ export function StepUpload({
           statements_count: parsed.statements.length,
           transactions_detected: totalTx,
           has_metadata: hasMetadata,
+          batch_size: files.length,
         },
       });
 
@@ -267,7 +397,10 @@ export function StepUpload({
         }
       }
 
-      onParsed(data as ParseResponse);
+      onParsed(parsed, {
+        source: isImage ? "image" : "pdf",
+        fileCount: files.length,
+      });
     } catch {
       void trackClientEvent({
         event_name: "import_parse_failed",
@@ -280,6 +413,7 @@ export function StepUpload({
       setError("Error de conexión. Intenta de nuevo.");
     } finally {
       setLoading(false);
+      setProcessingIndex(null);
     }
   }
 
@@ -289,7 +423,7 @@ export function StepUpload({
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
           Archivo
         </p>
-        <p className="text-[10px] italic text-z-sage-dark">PDF · PNG · JPG</p>
+        <p className="text-[10px] italic text-z-sage-dark">PDF · PNG · JPG (varias imágenes)</p>
       </div>
 
       <button
@@ -309,8 +443,8 @@ export function StepUpload({
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          const droppedFile = e.dataTransfer.files[0];
-          if (droppedFile) handleFile(droppedFile);
+          const dropped = Array.from(e.dataTransfer.files);
+          if (dropped.length > 0) addFiles(dropped);
         }}
       >
         <Upload className="h-10 w-10 text-z-brass" />
@@ -319,57 +453,78 @@ export function StepUpload({
             Arrastra o toca para subir
           </p>
           <p className="mt-1 text-xs text-z-sage-dark">
-            PDF hasta 10MB · imagen hasta 20MB
+            PDF hasta 10MB · imágenes hasta 20MB c/u — puedes subir varias capturas parciales
           </p>
         </div>
         <input
           ref={inputRef}
           type="file"
           accept=".pdf,.png,.jpg,.jpeg,.webp"
+          multiple
           className="hidden"
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleFile(f);
+            const selected = Array.from(e.target.files ?? []);
+            if (selected.length > 0) addFiles(selected);
+            e.target.value = "";
           }}
         />
       </button>
 
-      {!file && (
+      {files.length === 0 && (
         <p className="text-center text-xs italic text-z-sage-dark">
           Detectamos el banco automáticamente — no tienes que elegirlo.
         </p>
       )}
 
-      {file && (
+      {files.length > 0 && (
         <div className="space-y-3">
-          <div className="flex items-center gap-3 rounded-md border p-3">
-            {isImageFile(file.name) ? (
-              <ImageIcon className="h-5 w-5 text-muted-foreground" />
-            ) : (
-              <FileText className="h-5 w-5 text-muted-foreground" />
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{file.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {(file.size / 1024).toFixed(0)} KB
-              </p>
-            </div>
-            <Button
-              className={BRASS_BUTTON_CLASS}
-              onClick={handleUpload}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                "Procesar"
-              )}
-            </Button>
+          <div className="space-y-2">
+            {files.map((f, i) => (
+              <div key={`${f.name}-${f.size}`} className="flex items-center gap-3 rounded-md border p-3">
+                {isImageFile(f.name) ? (
+                  <ImageIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                ) : (
+                  <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{f.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(f.size / 1024).toFixed(0)} KB
+                    {loading && processingIndex === i && " · procesando…"}
+                  </p>
+                </div>
+                {!loading && (
+                  <button
+                    type="button"
+                    onClick={() => removeFile(i)}
+                    aria-label={`Quitar ${f.name}`}
+                    className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-          {!isImageFile(file.name) && (
+          <Button
+            className={cn(BRASS_BUTTON_CLASS, "w-full")}
+            onClick={handleUpload}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {files.length > 1 && processingIndex != null
+                  ? `Procesando ${processingIndex + 1} de ${files.length}…`
+                  : "Procesando..."}
+              </>
+            ) : files.length > 1 ? (
+              `Procesar ${files.length} imágenes`
+            ) : (
+              "Procesar"
+            )}
+          </Button>
+          {!isImageFile(files[0].name) && (
             <>
               <div className="flex items-center gap-3 rounded-md border p-3">
                 <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -471,7 +626,7 @@ export function StepUpload({
                 Formato no compatible
               </p>
               <p className="text-sm text-z-alert">
-                Este PDF no pudo ser procesado. ¿Quieres enviarlo para que podamos añadir soporte para este banco o formato?
+                Este archivo no pudo ser procesado. ¿Quieres enviarlo para que podamos añadir soporte para este banco o formato?
               </p>
             </div>
           </div>

@@ -2,8 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { PANEL_INSET_CLASS } from "@/lib/constants/styles";
-import { StateChip } from "@/components/mobile/v2/state-chip";
+import { PANEL_INSET_CLASS, MOBILE_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { CurrencyCode } from "@/types/domain";
 
 interface DebtAccountBreakdown {
@@ -34,43 +33,35 @@ export function DeudasHero({
   onToggle,
 }: DeudasHeroProps) {
   const capital = totalMonthlyPayment - monthlyInterest;
+  // Clamp: negative amortization (interest > cuota) would yield a negative
+  // capital share and a >100% interest bar.
   const capitalPct = totalMonthlyPayment > 0
-    ? Math.round((capital / totalMonthlyPayment) * 100)
+    ? Math.max(0, Math.min(100, Math.round((capital / totalMonthlyPayment) * 100)))
     : 100;
   const interestPct = 100 - capitalPct;
-
-  // Pressure: >30% interest = aprieta, >20% = atención, else = manejable
-  const pressure =
-    interestPct > 30 ? "warn" as const
-    : interestPct > 20 ? "brass" as const
-    : "sage" as const;
-  const pressureLabel =
-    interestPct > 30 ? "Aprieta"
-    : interestPct > 20 ? "Atención"
-    : "Manejable";
 
   return (
     <button
       type="button"
       onClick={onToggle}
-      className={cn(PANEL_INSET_CLASS, "w-full p-3.5 text-left")}
+      className={cn(PANEL_INSET_CLASS, "block w-full p-3.5 text-left")}
       aria-expanded={expanded}
       aria-label="Expandir desglose de cuota mensual"
     >
-      <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-z-sage-dark">
+      <p className={MOBILE_EYEBROW_CLASS}>
         Cuota mensual
       </p>
 
       {/* Hero amounts */}
       <div className="mt-2 flex items-baseline justify-between gap-3">
         <div>
-          <span className="text-[32px] font-[680] leading-none tracking-[-0.05em]">
+          <span className="text-[32px] font-[680] leading-none tracking-[-0.05em] tabular-nums">
             {formatCurrency(totalMonthlyPayment, currency)}
           </span>
           <span className="ml-1 text-[12px] text-muted-foreground">este mes</span>
         </div>
         <div className="text-right">
-          <span className="text-[16px] font-semibold text-z-debt">
+          <span className="text-[16px] font-semibold text-z-debt tabular-nums">
             {formatCurrency(monthlyInterest, currency)}
           </span>
           <p className="text-[10px] text-z-debt/70">en intereses</p>
@@ -80,7 +71,7 @@ export function DeudasHero({
       {/* Split bar */}
       <div className="mt-3 flex h-2.5 overflow-hidden rounded-full">
         <div
-          className="bg-gradient-to-r from-[#f3eee1] to-[rgba(243,238,225,0.7)]"
+          className="bg-gradient-to-r from-z-white/95 to-z-white/70"
           style={{ width: `${capitalPct}%` }}
         />
         <div
@@ -90,11 +81,10 @@ export function DeudasHero({
       </div>
 
       {/* Footer */}
-      <div className="mt-2 flex items-center justify-between">
+      <div className="mt-2">
         <span className="text-[10px] text-muted-foreground">
           {capitalPct}% capital · {interestPct}% costo financiero
         </span>
-        <StateChip label={pressureLabel} variant={pressure} />
       </div>
 
       {/* Expandable breakdown */}
@@ -110,7 +100,7 @@ export function DeudasHero({
             )}
           >
             {accounts && accounts.length > 0 && (
-              <div className={cn(PANEL_INSET_CLASS, "border-white/8 bg-black/20 p-3 space-y-2")}>
+              <div className={cn(PANEL_INSET_CLASS, "bg-black/20 p-3 space-y-2")}>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-z-brass">
                   Desglose por cuenta
                 </p>
@@ -124,7 +114,7 @@ export function DeudasHero({
                           {isCC ? "Tarjeta" : "Préstamo"} · {acct.interestRate > 0 ? `${acct.interestRate.toFixed(1)}% EA` : "Sin tasa"}
                         </p>
                       </div>
-                      <p className="shrink-0 font-semibold text-foreground">
+                      <p className="shrink-0 font-semibold text-foreground tabular-nums">
                         {formatCurrency(acct.monthlyPayment, currency)}
                       </p>
                     </div>
