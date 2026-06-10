@@ -80,15 +80,18 @@ export function DebtTrendCard({
     : 1;
   const scalePct = (v: number) => (v / maxVal) * 100;
 
-  /** Split a month into the bar segments: mínimo covered | extra | faltante. */
+  /** Split a month into the bar segments: mínimo covered | extra | faltante.
+   *  `unknown` = no mínimo registered that month (pre-adoption history) —
+   *  the bar can't be split, so it renders in a distinct muted style. */
   const segmentsOf = (p: { total: number; expected: number | null }) => {
     if (p.expected == null) {
-      return { base: p.total, extra: 0, short: 0 };
+      return { base: p.total, extra: 0, short: 0, unknown: true };
     }
     return {
       base: Math.min(p.total, p.expected),
       extra: Math.max(0, p.total - p.expected),
       short: Math.max(0, p.expected - p.total),
+      unknown: false,
     };
   };
 
@@ -194,7 +197,16 @@ export function DebtTrendCard({
                       />
                     )}
                     <span
-                      className={cn("w-full shrink-0", isSel ? "bg-z-brass" : "bg-z-brass/50")}
+                      className={cn(
+                        "w-full shrink-0",
+                        seg.unknown
+                          ? isSel
+                            ? "bg-z-sage-dark/70"
+                            : "bg-z-sage-dark/35"
+                          : isSel
+                            ? "bg-z-brass"
+                            : "bg-z-brass/50"
+                      )}
                       style={{ height: `${Math.max(scalePct(seg.base), 3)}%` }}
                     />
                   </button>
@@ -249,7 +261,13 @@ export function DebtTrendCard({
                           <span
                             className={cn(
                               "h-full shrink-0 rounded-l-full",
-                              isSel ? "bg-z-brass" : "bg-z-brass/60"
+                              seg.unknown
+                                ? isSel
+                                  ? "bg-z-sage-dark/70"
+                                  : "bg-z-sage-dark/35"
+                                : isSel
+                                  ? "bg-z-brass"
+                                  : "bg-z-brass/60"
                             )}
                             style={{ width: `${Math.max(scalePct(seg.base), 1.5)}%` }}
                           />
@@ -285,13 +303,16 @@ export function DebtTrendCard({
             })}
 
             {/* Legend */}
-            <div className="flex items-center gap-3 px-2.5 pt-1.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2.5 pt-1.5">
               <LegendDot className="bg-z-brass/60" label="mínimo" />
               {points.some((p) => segmentsOf(p).extra > 0) && (
                 <LegendDot className="bg-z-income" label="extra" />
               )}
               {points.some((p) => segmentsOf(p).short > 0) && (
                 <LegendDot className="bg-z-alert/40" label="bajo el mínimo" />
+              )}
+              {points.some((p) => segmentsOf(p).unknown) && (
+                <LegendDot className="bg-z-sage-dark/40" label="sin mínimo registrado" />
               )}
             </div>
 
@@ -314,16 +335,33 @@ export function DebtTrendCard({
                       <DeltaInline sparkline={points} index={sel} className="text-xs" />
                     </div>
                   </div>
-                  {points[sel].expected != null && (
-                    <div className="mt-1.5 flex items-center justify-between border-t border-white/6 pt-1.5">
-                      <p className="text-[10px] tabular-nums text-muted-foreground">
-                        mínimo {formatCurrency(points[sel].expected ?? 0, currency)}
-                      </p>
-                      {points[sel].total > (points[sel].expected ?? 0) && (
+                  <div className="mt-1.5 flex items-center justify-between border-t border-white/6 pt-1.5">
+                    <p className="text-[10px] tabular-nums text-muted-foreground">
+                      {points[sel].expected != null
+                        ? `mínimo ${formatCurrency(points[sel].expected ?? 0, currency)}`
+                        : "mínimo no registrado ese mes"}
+                    </p>
+                    {points[sel].expected != null &&
+                      points[sel].total > (points[sel].expected ?? 0) && (
                         <p className="text-[10px] font-semibold tabular-nums text-z-income">
                           +{formatCurrency(points[sel].total - (points[sel].expected ?? 0), currency)} extra
                         </p>
                       )}
+                  </div>
+
+                  {/* Per-debt breakdown of the month's payments */}
+                  {points[sel].payments.length > 0 && (
+                    <div className="mt-1.5 space-y-1 border-t border-white/6 pt-1.5">
+                      {points[sel].payments.map((pay, j) => (
+                        <div key={`${pay.name}-${j}`} className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-[10px] text-z-sage-light">
+                            {pay.name}
+                          </span>
+                          <span className="shrink-0 text-[10px] font-semibold tabular-nums text-z-sage-light">
+                            {formatCurrency(pay.amount, currency)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

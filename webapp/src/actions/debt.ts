@@ -246,8 +246,14 @@ export interface DebtTrendData {
    * including extra payments and archived obligations).
    * `expected` = sum of cuotas due that month per recurring occurrences
    * (null when no occurrence data exists for that month).
+   * `payments` = per-debt breakdown of that month's payments, sorted desc.
    */
-  sparkline: { period: string; total: number; expected: number | null }[];
+  sparkline: {
+    period: string;
+    total: number;
+    expected: number | null;
+    payments: { name: string; amount: number }[];
+  }[];
   extraPayments: { count: number; totalExtra: number };
 }
 
@@ -275,7 +281,7 @@ async function getDebtTrendCached(
   // trend even after the obligation is closed.
   const { data: accounts, error: accountsError } = await supabase
     .from("accounts")
-    .select("id, monthly_payment, currency_code, is_active")
+    .select("id, name, monthly_payment, currency_code, is_active")
     .eq("user_id", userId)
     .in("account_type", ["CREDIT_CARD", "LOAN"]);
 
@@ -332,10 +338,18 @@ async function getDebtTrendCached(
   // Sparkline = ACTUAL payments per month (covers extra abonos and archived
   // obligations — sourced from each debt account's transaction history).
   // Overlay = expected cuota per month from recurring_occurrences.
+  const nameById = new Map(debtAccounts.map((a) => [a.id, a.name ?? "Obligación"]));
   const paidByMonth = new Map<string, number>();
+  const paidByMonthAccount = new Map<string, Map<string, number>>();
   for (const tx of paymentsResult.data ?? []) {
     const month = tx.transaction_date.slice(0, 7);
     paidByMonth.set(month, (paidByMonth.get(month) ?? 0) + Math.abs(tx.amount));
+    let perAccount = paidByMonthAccount.get(month);
+    if (!perAccount) {
+      perAccount = new Map();
+      paidByMonthAccount.set(month, perAccount);
+    }
+    perAccount.set(tx.account_id, (perAccount.get(tx.account_id) ?? 0) + Math.abs(tx.amount));
   }
 
   const { data: debtTemplates } = await supabase
@@ -369,10 +383,17 @@ async function getDebtTrendCached(
   const fullWindow = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(curYear, curMonthNum - 1 - (5 - i), 1);
     const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const payments = [...(paidByMonthAccount.get(period) ?? new Map<string, number>())]
+      .map(([accountId, amount]) => ({
+        name: nameById.get(accountId) ?? "Obligación",
+        amount,
+      }))
+      .sort((a, b) => b.amount - a.amount);
     return {
       period,
       total: paidByMonth.get(period) ?? 0,
       expected: expectedByMonth.get(period) ?? null,
+      payments,
     };
   });
   // Trim leading months with no data at all (pre-adoption) so they don't
