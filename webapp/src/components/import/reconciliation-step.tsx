@@ -95,7 +95,7 @@ export function ReconciliationStep({
   statementMeta: StatementMetaForImport[];
   preview: ReconciliationPreviewResult;
   currency: CurrencyCode;
-  captureMethod?: "PDF_IMPORT" | "EMAIL_PDF_IMPORT";
+  captureMethod?: "PDF_IMPORT" | "EMAIL_PDF_IMPORT" | "OCR_SINGLE" | "OCR_BATCH";
   onComplete: (result: ImportResult) => void;
   onBack: () => void;
 }) {

@@ -5,6 +5,7 @@ import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   computeSnapshotDiffs,
   findReconciliationCandidates,
+  getCaptureTier,
   mergeTransactionMetadata,
   type ReconciliationCandidate,
 } from "@zeta/shared";
@@ -1149,14 +1150,21 @@ export async function importTransactions(
     details.push(`${adjustmentsExcluded} ajuste(s) manual(es) reemplazado(s) por transacciones del extracto`);
   }
 
-  const { accountUpdates, errors: metaErrors } = await processStatementMeta({
-    supabase,
-    userId: user.id,
-    imported,
-    skipped,
-    statementMeta: normalizedStatementMeta,
-    details,
-  });
+  // Tier guard: only bank-verified statements (tier 1: PDF/EMAIL_PDF) may set
+  // account balances, limits and snapshots directly. OCR screenshots (tier 2)
+  // are partial captures — their balances flow through the per-transaction
+  // applyAccountBalanceDelta path below instead.
+  const isBankVerified = getCaptureTier(captureMethod) === 1;
+  const { accountUpdates, errors: metaErrors } = isBankVerified
+    ? await processStatementMeta({
+        supabase,
+        userId: user.id,
+        imported,
+        skipped,
+        statementMeta: normalizedStatementMeta,
+        details,
+      })
+    : { accountUpdates: [] as AccountUpdateResult[], errors: 0 };
   // Snapshot/account write failures must surface in the result so the email
   // queue isn't cleared on a failed import and the results screen reports it.
   errors += metaErrors;
