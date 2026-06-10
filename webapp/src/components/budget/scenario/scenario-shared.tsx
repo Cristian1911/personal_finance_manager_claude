@@ -67,6 +67,14 @@ const AFFORD_CHIP_CLASSES: Record<string, string> = {
   NOT_RECOMMENDED: "border-z-debt/35 bg-z-debt/8 text-z-debt",
 };
 
+/** Border-color twin of the chip tones, for the timeline verdict dots. */
+export const VERDICT_DOT: Record<string, string> = {
+  BUY: "border-z-income",
+  BUY_WITH_CAUTION: "border-z-alert",
+  WAIT: "border-z-expense",
+  NOT_RECOMMENDED: "border-z-debt",
+};
+
 export function AffordChip({ verdict }: { verdict: BudgetScenarioStartupItem["verdict"] }) {
   if (!verdict) return null;
   return (

@@ -3,7 +3,7 @@
 import { Scissors, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { PANEL_SURFACE_CLASS } from "@/lib/constants/styles";
+import { PANEL_SURFACE_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type {
   BudgetScenarioSummary,
   ScenarioCutCandidate,
@@ -89,7 +89,7 @@ export function ScenarioVerdict({
   income: number;
   cuts: ScenarioCutCandidate[];
   defers: ScenarioDeferCandidate[];
-  appliedCutIds: Set<string>;
+  appliedCutIds: string[];
   currency: CurrencyCode;
   onApplyCut: (cut: ScenarioCutCandidate) => void;
   onDeferItem: (itemId: string) => void;
@@ -115,13 +115,13 @@ export function ScenarioVerdict({
     },
   ].filter((r) => r.show);
 
-  const visibleCuts = cuts.filter((c) => !appliedCutIds.has(c.categoryId)).slice(0, 3);
+  const visibleCuts = cuts.filter((c) => !appliedCutIds.includes(c.categoryId)).slice(0, 3);
   const visibleDefers = fits ? [] : defers.slice(0, 1);
 
   return (
     <div className={cn(PANEL_SURFACE_CLASS, "p-4")}>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+        <p className={SECTION_EYEBROW_CLASS}>
           Escenario · 50 / 30 / 20
         </p>
         <span

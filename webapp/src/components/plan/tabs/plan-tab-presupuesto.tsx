@@ -23,7 +23,8 @@ import { PlanAllocationChip } from "@/components/mobile/v2/plan/plan-allocation-
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
-import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
+import { categoryBudgetGroup, isFixedBudgetCategory } from "@zeta/shared";
 import { ScenarioSection, ScenarioEntryPoint } from "@/components/budget/scenario/scenario-section";
 import {
   normalizeVerdict,
@@ -93,13 +94,8 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
       color: c.color,
       budget: c.budget,
       avg3m: c.average3m > 0 ? c.average3m : null,
-      group:
-        c.slug === "ahorro-e-inversion"
-          ? ("savings" as const)
-          : c.expense_type === "fixed" || c.is_essential
-            ? ("needs" as const)
-            : ("wants" as const),
-      isFixed: c.slug === "pagos-de-deuda",
+      group: categoryBudgetGroup(c),
+      isFixed: isFixedBudgetCategory(c.slug),
     }));
 
   const accounts = accountsResult.success ? accountsResult.data : [];
@@ -187,7 +183,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
           {/* Budget hero card */}
           <div className={cn(PANEL_INSET_CLASS, "p-4")}>
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+              <p className={SECTION_EYEBROW_CLASS}>
                 Gastado este mes
               </p>
               <StateChip label={chip.label} variant={chip.variant} />
@@ -244,7 +240,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               {over.length > 0 && (
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-expense">
+                    <p className={cn(SECTION_EYEBROW_CLASS, "text-z-expense")}>
                       Sobre límite
                     </p>
                     <span className="text-[10px] text-muted-foreground">{over.length}</span>
@@ -259,7 +255,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               {near.length > 0 && (
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">
+                    <p className={cn(SECTION_EYEBROW_CLASS, "text-z-brass")}>
                       Cerca del límite
                     </p>
                     <span className="text-[10px] text-muted-foreground">{near.length}</span>
@@ -274,7 +270,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               {safe.length > 0 && (
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-income">
+                    <p className={cn(SECTION_EYEBROW_CLASS, "text-z-income")}>
                       Dentro del límite
                     </p>
                     <span className="text-[10px] text-muted-foreground">{safe.length}</span>

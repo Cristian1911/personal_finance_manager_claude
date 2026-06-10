@@ -1,9 +1,12 @@
+import { startupRateOptions } from "@zeta/shared";
 import type {
   BudgetScenarioDraft,
   BudgetScenarioLine,
   BudgetScenarioStartupItem,
+  PurchaseDecisionVerdict,
   ScenarioGroup,
 } from "@zeta/shared";
+import type { CurrencyCode } from "@/types/domain";
 
 /** Serializable category option passed from the server component. */
 export interface ScenarioCategoryOption {
@@ -55,6 +58,7 @@ export function lineFromCategory(
 export function createDraft(
   template: ScenarioTemplate,
   categories: ScenarioCategoryOption[],
+  currency: CurrencyCode,
 ): BudgetScenarioDraft {
   const lines = categories.filter((c) => (c.budget ?? 0) > 0).map((c) => lineFromCategory(c));
 
@@ -73,13 +77,17 @@ export function createDraft(
   return {
     name: template === "mudanza" ? "Mudanza" : "Mi escenario",
     lines,
-    startup: { items: [], monthlyRate: 400_000, useCushion: true },
+    startup: { items: [], monthlyRate: startupRateOptions(currency)[1], useCushion: true },
   };
 }
 
-export const STARTUP_RATE_OPTIONS = [300_000, 400_000, 500_000];
+// Currency-dependent scales live in @zeta/shared (mobile parameterizes the
+// same math) — re-exported here for the scenario components.
+export { startupRateOptions, cutStep } from "@zeta/shared";
 
-export const VERDICT_LABELS: Record<string, string> = {
+// Record keyed on the shared verdict type: adding a verdict to
+// purchase-decision.ts breaks this map at compile time instead of silently.
+export const VERDICT_LABELS: Record<PurchaseDecisionVerdict, string> = {
   BUY: "Compra",
   BUY_WITH_CAUTION: "Con cuidado",
   WAIT: "Espera",

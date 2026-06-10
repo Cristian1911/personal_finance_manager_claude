@@ -12,7 +12,7 @@ import {
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
-import { MOBILE_SHEET_SAFE_AREA_CLASS } from "@/lib/constants/styles";
+import { MOBILE_SHEET_SAFE_AREA_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { isLineTouched, type BudgetScenarioLine } from "@zeta/shared";
 import { DeltaChip, NuevoBadge, FijoBadge, PromAnchor } from "./scenario-shared";
 import type { ScenarioCategoryOption } from "./scenario-model";
@@ -227,10 +227,10 @@ export function ScenarioEditor({
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const friction = lines.filter(
-    (l) => isLineTouched(l) || (l.avg3m != null && l.avg3m > l.scenario),
-  );
-  const calm = lines.filter((l) => !friction.includes(l));
+  const hasFriction = (l: BudgetScenarioLine) =>
+    isLineTouched(l) || (l.avg3m != null && l.avg3m > l.scenario);
+  const friction = lines.filter(hasFriction);
+  const calm = lines.filter((l) => !hasFriction(l));
   const available = categories.filter((c) => !lines.some((l) => l.categoryId === c.id));
 
   return (
@@ -254,7 +254,7 @@ export function ScenarioEditor({
       {calm.length > 0 && (
         <>
           <div className="flex items-center gap-2 pt-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            <span className={SECTION_EYEBROW_CLASS}>
               Sin fricción
             </span>
             <span className="h-px flex-1 bg-white/6" />

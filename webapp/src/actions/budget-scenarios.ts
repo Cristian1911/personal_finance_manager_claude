@@ -152,25 +152,27 @@ export async function applyBudgetScenario(input: {
       is_demo: isDemo,
     }));
 
-  if (upserts.length > 0) {
-    const { error } = await supabase
-      .from("budgets")
-      .upsert(upserts, { onConflict: "user_id,category_id,period" });
-    if (error) return { success: false, error: "No se pudo aplicar el escenario" };
-  }
-
   const removedIds = draft.lines
     .filter((l) => l.scenario === 0 && (l.current ?? 0) > 0)
     .map((l) => l.categoryId);
-  if (removedIds.length > 0) {
-    const { error } = await supabase
-      .from("budgets")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("period", "monthly")
-      .eq("is_demo", isDemo)
-      .in("category_id", removedIds);
-    if (error) return { success: false, error: "No se pudo aplicar el escenario" };
+
+  // Independent writes on disjoint category sets — run in parallel
+  const [upsertResult, deleteResult] = await Promise.all([
+    upserts.length > 0
+      ? supabase.from("budgets").upsert(upserts, { onConflict: "user_id,category_id,period" })
+      : Promise.resolve({ error: null }),
+    removedIds.length > 0
+      ? supabase
+          .from("budgets")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("period", "monthly")
+          .eq("is_demo", isDemo)
+          .in("category_id", removedIds)
+      : Promise.resolve({ error: null }),
+  ]);
+  if (upsertResult.error || deleteResult.error) {
+    return { success: false, error: "No se pudo aplicar el escenario" };
   }
 
   if (id) {

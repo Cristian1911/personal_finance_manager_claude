@@ -15,7 +15,6 @@ export function ScenarioHero({
   name,
   summary,
   income,
-  currentTotal,
   currency,
   dirty,
   onDiscard,
@@ -25,13 +24,13 @@ export function ScenarioHero({
   name: string;
   summary: BudgetScenarioSummary;
   income: number;
-  currentTotal: number;
   currency: CurrencyCode;
   dirty: boolean;
   onDiscard: () => void;
   onSave: () => void;
   onApply: () => void;
 }) {
+  const { currentTotal } = summary;
   const over = summary.scenarioTotal > income;
   const max = Math.max(summary.scenarioTotal, income, 1);
   const restante = income - summary.scenarioTotal;

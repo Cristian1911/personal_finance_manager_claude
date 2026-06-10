@@ -16,6 +16,7 @@ import {
   GHOST_BUTTON_CLASS,
   BRASS_BUTTON_CLASS,
   MOBILE_SHEET_SAFE_AREA_CLASS,
+  SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { isLineTouched, type BudgetScenarioDraft, type BudgetScenarioSummary } from "@zeta/shared";
 import type { CurrencyCode } from "@/types/domain";
@@ -35,7 +36,7 @@ function TotalsCompare({
     const rest = income - assigned;
     return (
       <div className="flex-1 rounded-xl border border-white/6 bg-black/15 px-3 py-2.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+        <p className={SECTION_EYEBROW_CLASS}>
           {label}
         </p>
         <p className="mt-1 text-[15px] font-bold tabular-nums">

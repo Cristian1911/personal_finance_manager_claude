@@ -24,7 +24,7 @@ import {
   type BudgetScenarioDraft,
 } from "@zeta/shared";
 import { saveBudgetScenario, applyBudgetScenario } from "@/actions/budget-scenarios";
-import { lineFromCategory, type ScenarioCategoryOption, type ScenarioDeseoOption } from "./scenario-model";
+import { cutStep, lineFromCategory, type ScenarioCategoryOption, type ScenarioDeseoOption } from "./scenario-model";
 import { ScenarioHero } from "./scenario-hero";
 import { ScenarioEditor, ScenarioEditorFooter } from "./scenario-editor";
 import { ScenarioVerdict } from "./scenario-verdict";
@@ -76,9 +76,15 @@ export function ScenarioSandbox({
     () => computeScenarioSummary(draft, income, cushion),
     [draft, income, cushion],
   );
-  const cuts = useMemo(() => computeCutCandidates(draft), [draft]);
+  const cuts = useMemo(() => computeCutCandidates(draft, cutStep(currency)), [draft, currency]);
   const defers = useMemo(() => computeDeferCandidates(draft, cushion), [draft, cushion]);
-  const appliedSet = useMemo(() => new Set(appliedCutIds), [appliedCutIds]);
+
+  const updateStartup = (patch: Partial<BudgetScenarioDraft["startup"]>) =>
+    onDraftChange({ ...draft, startup: { ...draft.startup, ...patch } });
+  const patchItem = (itemId: string, patch: { deferred: boolean }) =>
+    updateStartup({
+      items: draft.startup.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)),
+    });
 
   const handleSave = (name: string) => {
     const named = { ...draft, name };
@@ -127,7 +133,6 @@ export function ScenarioSandbox({
           name={draft.name}
           summary={summary}
           income={income}
-          currentTotal={summary.currentTotal}
           currency={currency}
           dirty={dirty}
           onDiscard={() => (dirty ? setDiscardOpen(true) : onExit())}
@@ -140,23 +145,13 @@ export function ScenarioSandbox({
           income={income}
           cuts={cuts}
           defers={defers}
-          appliedCutIds={appliedSet}
+          appliedCutIds={appliedCutIds}
           currency={currency}
           onApplyCut={(cut) => {
             onDraftChange(applyCutToDraft(draft, cut));
             onCutApplied(cut.categoryId);
           }}
-          onDeferItem={(itemId) =>
-            onDraftChange({
-              ...draft,
-              startup: {
-                ...draft.startup,
-                items: draft.startup.items.map((i) =>
-                  i.id === itemId ? { ...i, deferred: true } : i,
-                ),
-              },
-            })
-          }
+          onDeferItem={(itemId) => patchItem(itemId, { deferred: true })}
         />
 
         <ScenarioEditor
@@ -184,45 +179,27 @@ export function ScenarioSandbox({
           cushion={cushion}
           deseos={deseos}
           currency={currency}
-          onSetRate={(rate) =>
-            onDraftChange({ ...draft, startup: { ...draft.startup, monthlyRate: rate } })
-          }
-          onToggleCushion={() =>
-            onDraftChange({
-              ...draft,
-              startup: { ...draft.startup, useCushion: !draft.startup.useCushion },
-            })
-          }
+          onSetRate={(rate) => updateStartup({ monthlyRate: rate })}
+          onToggleCushion={() => updateStartup({ useCushion: !draft.startup.useCushion })}
           onAddItem={({ name, amount, deseo }) =>
-            onDraftChange({
-              ...draft,
-              startup: {
-                ...draft.startup,
-                items: [
-                  ...draft.startup.items,
-                  {
-                    id: crypto.randomUUID(),
-                    name,
-                    amount,
-                    verdict: deseo ? normalizeVerdict(deseo.verdict) : null,
-                    wishlistItemId: deseo?.id ?? null,
-                    deferred: false,
-                  },
-                ],
-              },
+            updateStartup({
+              items: [
+                ...draft.startup.items,
+                {
+                  id: crypto.randomUUID(),
+                  name,
+                  amount,
+                  verdict: deseo ? normalizeVerdict(deseo.verdict) : null,
+                  wishlistItemId: deseo?.id ?? null,
+                  deferred: false,
+                },
+              ],
             })
           }
-          onToggleDefer={(itemId) =>
-            onDraftChange({
-              ...draft,
-              startup: {
-                ...draft.startup,
-                items: draft.startup.items.map((i) =>
-                  i.id === itemId ? { ...i, deferred: !i.deferred } : i,
-                ),
-              },
-            })
-          }
+          onToggleDefer={(itemId) => {
+            const item = draft.startup.items.find((i) => i.id === itemId);
+            if (item) patchItem(itemId, { deferred: !item.deferred });
+          }}
         />
 
         <ScenarioEditorFooter total={summary.scenarioTotal} income={income} currency={currency} />

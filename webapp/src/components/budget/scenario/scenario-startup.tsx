@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Heart, RotateCcw, CalendarClock } from "lucide-react";
 import {
   Sheet,
@@ -15,18 +15,12 @@ import {
   PANEL_SURFACE_CLASS,
   MOBILE_SHEET_SAFE_AREA_CLASS,
   BRASS_BUTTON_CLASS,
+  SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { computeFundingTimeline, computeStartupPlan, type BudgetScenarioDraft } from "@zeta/shared";
-import { AffordChip } from "./scenario-shared";
-import { STARTUP_RATE_OPTIONS, type ScenarioDeseoOption } from "./scenario-model";
+import { AffordChip, VERDICT_DOT } from "./scenario-shared";
+import { startupRateOptions, type ScenarioDeseoOption } from "./scenario-model";
 import type { CurrencyCode } from "@/types/domain";
-
-const VERDICT_DOT: Record<string, string> = {
-  BUY: "border-z-income",
-  BUY_WITH_CAUTION: "border-z-alert",
-  WAIT: "border-z-expense",
-  NOT_RECOMMENDED: "border-z-debt",
-};
 
 function monthLabels(count: number): string[] {
   const labels = ["hoy"];
@@ -82,7 +76,7 @@ function AddStartupSheet({
         <div className="space-y-4 overflow-y-auto px-4 pb-4">
           {available.length > 0 && (
             <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+              <p className={cn(SECTION_EYEBROW_CLASS, "mb-1.5")}>
                 Desde tus Deseos
               </p>
               <div className="space-y-1.5">
@@ -109,7 +103,7 @@ function AddStartupSheet({
           )}
 
           <div>
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+            <p className={cn(SECTION_EYEBROW_CLASS, "mb-1.5")}>
               Otro gasto
             </p>
             <div className="space-y-2">
@@ -178,7 +172,7 @@ export function ScenarioStartup({
   const timeline = computeFundingTimeline(draft, cushion);
   const maxMonth = Math.max(0, ...timeline.map((e) => e.readyInMonths ?? 0));
   const span = Math.max(maxMonth, 5);
-  const labels = monthLabels(span);
+  const labels = useMemo(() => monthLabels(span), [span]);
   const usedWishlistIds = new Set(
     items.map((i) => i.wishlistItemId).filter((id): id is string => id != null),
   );
@@ -188,7 +182,7 @@ export function ScenarioStartup({
     <div className="space-y-2">
       <div className={cn(PANEL_SURFACE_CLASS, "p-4")}>
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+          <p className={SECTION_EYEBROW_CLASS}>
             Gastos de arranque
           </p>
           <span className="text-[10px] text-z-sage-dark">una sola vez</span>
@@ -220,7 +214,7 @@ export function ScenarioStartup({
               aria-label="Ritmo de ahorro mensual"
               className="mt-3 flex gap-1 rounded-xl border border-white/6 bg-black/25 p-0.5"
             >
-              {STARTUP_RATE_OPTIONS.map((rate) => (
+              {startupRateOptions(currency).map((rate) => (
                 <button
                   key={rate}
                   type="button"
@@ -232,7 +226,7 @@ export function ScenarioStartup({
                       : "text-z-sage-dark",
                   )}
                 >
-                  $ {rate / 1000}K/mes
+                  {currency === "COP" ? `$ ${rate / 1000}K` : formatCurrency(rate, currency)}/mes
                 </button>
               ))}
             </div>
@@ -354,18 +348,18 @@ export function ScenarioStartup({
             <span
               className={cn(
                 "w-10 shrink-0 text-right text-[11px] font-bold tabular-nums",
-                item.deferred
+                item.deferred || entry?.readyInMonths == null
                   ? "text-z-sage-dark"
-                  : entry?.readyInMonths === 0
+                  : entry.readyInMonths === 0
                     ? "text-z-income"
                     : "text-z-sage-light",
               )}
             >
-              {item.deferred
+              {item.deferred || entry?.readyInMonths == null
                 ? "—"
-                : entry?.readyInMonths === 0
+                : entry.readyInMonths === 0
                   ? "hoy"
-                  : labels[Math.min(entry?.readyInMonths ?? 0, span)]}
+                  : labels[Math.min(entry.readyInMonths, span)]}
             </span>
             <button
               type="button"

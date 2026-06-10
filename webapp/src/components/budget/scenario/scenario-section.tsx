@@ -144,7 +144,7 @@ export function ScenarioSection({
   useHideTabBar(active);
 
   const startTemplate = (template: ScenarioTemplate) => {
-    setDraft(createDraft(template, categories));
+    setDraft(createDraft(template, categories, currency));
     setScenarioId(null);
     setDirty(true);
     setAppliedCutIds([]);

@@ -134,17 +134,24 @@ export function lineOverspend(line: BudgetScenarioLine): number {
   return Math.max(0, line.avg3m - line.scenario);
 }
 
+function planFromTotals(
+  total: number,
+  covered: number,
+  rate: number,
+): { total: number; remaining: number; months: number; reserve: number } {
+  const remaining = Math.max(0, total - covered);
+  const months = remaining > 0 && rate > 0 ? Math.ceil(remaining / rate) : 0;
+  const reserve = months > 0 ? Math.round(remaining / months) : 0;
+  return { total, remaining, months, reserve };
+}
+
 export function computeStartupPlan(
   draft: BudgetScenarioDraft,
   cushion: number,
 ): { total: number; remaining: number; months: number; reserve: number } {
   const total = activeStartupItems(draft).reduce((s, i) => s + i.amount, 0);
   const covered = draft.startup.useCushion ? Math.max(0, cushion) : 0;
-  const remaining = Math.max(0, total - covered);
-  const rate = draft.startup.monthlyRate;
-  const months = remaining > 0 && rate > 0 ? Math.ceil(remaining / rate) : 0;
-  const reserve = months > 0 ? remaining / months : 0;
-  return { total, remaining, months, reserve: Math.round(reserve) };
+  return planFromTotals(total, covered, draft.startup.monthlyRate);
 }
 
 export function computeScenarioSummary(
@@ -180,8 +187,8 @@ export function computeScenarioSummary(
   };
 }
 
-/** Round a suggested cut down to a clean step (default $10.000). */
-function roundCut(value: number, step = 10000): number {
+/** Round a suggested cut down to a clean step. */
+function roundCut(value: number, step: number): number {
   return Math.floor(value / step) * step;
 }
 
@@ -190,14 +197,20 @@ function roundCut(value: number, step = 10000): number {
  * largest scenario budget first. Suggested cut = up to half the line.
  * Relief includes any overspend that disappears when avg3m anchors the line
  * (cutting a line below avg3m forces real habit change, flagged `demanding`).
+ *
+ * `step` is the rounding granularity for suggested cuts — currency-dependent
+ * ($10.000 reads clean in COP; low-nominal currencies need a smaller step).
  */
-export function computeCutCandidates(draft: BudgetScenarioDraft): ScenarioCutCandidate[] {
+export function computeCutCandidates(
+  draft: BudgetScenarioDraft,
+  step = 10_000,
+): ScenarioCutCandidate[] {
   const order: Record<ScenarioGroup, number> = { wants: 0, savings: 1, needs: 2 };
   return draft.lines
     .filter((l) => !l.isFixed && l.scenario > 0 && l.group !== "needs")
     .sort((a, b) => order[a.group] - order[b.group] || b.scenario - a.scenario)
     .map((l) => {
-      const cut = roundCut(l.scenario / 2);
+      const cut = roundCut(l.scenario / 2, step);
       if (cut <= 0) return null;
       const to = l.scenario - cut;
       return {
@@ -226,7 +239,10 @@ export function computeDeferCandidates(
     BUY_WITH_CAUTION: 2,
     BUY: 3,
   };
-  const before = computeStartupPlan(draft, cushion).reserve;
+  const covered = draft.startup.useCushion ? Math.max(0, cushion) : 0;
+  const rate = draft.startup.monthlyRate;
+  const total = activeStartupItems(draft).reduce((s, i) => s + i.amount, 0);
+  const before = planFromTotals(total, covered, rate).reserve;
   return activeStartupItems(draft)
     .sort(
       (a, b) =>
@@ -234,14 +250,7 @@ export function computeDeferCandidates(
         b.amount - a.amount,
     )
     .map((item) => {
-      const without: BudgetScenarioDraft = {
-        ...draft,
-        startup: {
-          ...draft.startup,
-          items: draft.startup.items.map((i) => (i.id === item.id ? { ...i, deferred: true } : i)),
-        },
-      };
-      const after = computeStartupPlan(without, cushion).reserve;
+      const after = planFromTotals(total - item.amount, covered, rate).reserve;
       return { itemId: item.id, name: item.name, amount: item.amount, relief: Math.max(0, before - after) };
     })
     .filter((c) => c.relief > 0);
@@ -280,4 +289,38 @@ export function applyCutToDraft(
       l.categoryId === cut.categoryId ? { ...l, scenario: cut.to } : l,
     ),
   };
+}
+
+// ── Currency-dependent scales ─────────────────────────────────
+// COP nominals are ~4000× USD/EUR — saving rates, rounding steps and
+// labels must scale with the user's currency. Shared so mobile and
+// webapp parameterize the math identically.
+
+export function startupRateOptions(currencyCode: string): number[] {
+  return currencyCode === "COP" ? [300_000, 400_000, 500_000] : [100, 200, 500];
+}
+
+/** Rounding granularity for suggested cuts (pass to computeCutCandidates). */
+export function cutStep(currencyCode: string): number {
+  return currencyCode === "COP" ? 10_000 : 10;
+}
+
+/**
+ * Canonical 50/30/20 group for a budget category. Savings/debt detection is
+ * slug-based (seeded categories); everything else falls back to expense_type
+ * + essential flag, mirroring get503020Allocation's needs/wants split.
+ */
+export function categoryBudgetGroup(category: {
+  slug: string;
+  expense_type?: string | null;
+  is_essential?: boolean;
+}): ScenarioGroup {
+  if (category.slug === "ahorro-e-inversion") return "savings";
+  if (category.expense_type === "fixed" || category.is_essential) return "needs";
+  return "wants";
+}
+
+/** Fixed commitments (not editable, never cut candidates) by category slug. */
+export function isFixedBudgetCategory(slug: string): boolean {
+  return slug === "pagos-de-deuda";
 }

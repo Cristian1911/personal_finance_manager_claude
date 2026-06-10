@@ -15,6 +15,7 @@ import { formatRelativeDate } from "@/lib/utils/date";
 import {
   BRASS_GHOST_BUTTON_CLASS,
   MOBILE_SHEET_SAFE_AREA_CLASS,
+  SECTION_EYEBROW_CLASS,
 } from "@/lib/constants/styles";
 import { computeScenarioSummary } from "@zeta/shared";
 import type { BudgetScenarioRecord } from "@/actions/budget-scenarios";
@@ -129,7 +130,7 @@ export function SavedScenarios({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-sage-dark">
+        <span className={SECTION_EYEBROW_CLASS}>
           Simulaciones guardadas
         </span>
         <span className="h-px flex-1 bg-white/6" />
