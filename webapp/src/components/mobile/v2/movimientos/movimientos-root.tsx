@@ -63,12 +63,17 @@ export function MovimientosRoot({
   const [maxPages, setMaxPages] = useState(totalPages);
   const [isLoadingMore, startLoadingMore] = useTransition();
 
-  // New server render (month/filter change) resets the appended pages.
+  // Reset appended pages only when the FILTERS change — not on array
+  // identity: row actions call router.refresh(), which delivers a fresh
+  // initialTransactions reference for the same view and must not wipe the
+  // pages the user already loaded.
+  const filterKey = JSON.stringify(filterParams ?? {});
   useEffect(() => {
     setExtraPages([]);
     setCurrentPage(page);
     setMaxPages(totalPages);
-  }, [initialTransactions, page, totalPages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
 
   const transactions = useMemo(() => {
     if (extraPages.length === 0) return initialTransactions;

@@ -317,13 +317,16 @@ export async function createRecurringTemplate(
   const { supabase, user } = await getAuthenticatedClient();
   if (!user) return { success: false, error: "No autenticado" };
 
+  // Validate BEFORE writing — a post-insert error would leave an orphan
+  // template that duplicates on retry.
+  const isSubscription = formData.get("is_subscription") === "true";
+  if (isSubscription && !formData.get("destinatario_id")) {
+    return { success: false, error: "Una suscripción necesita un destinatario." };
+  }
+
   const result = await insertRecurringTemplateFromFormData(formData, user, supabase);
   if (!result.success) return result;
 
-  const isSubscription = formData.get("is_subscription") === "true";
-  if (isSubscription && !result.data.destinatario_id) {
-    return { success: false, error: "Una suscripción necesita un destinatario." };
-  }
   await upsertSubscriptionFromTemplate(
     supabase,
     user.id,
@@ -466,6 +469,13 @@ export async function updateRecurringTemplate(
     ...(subPaymentsValue !== null ? { sub_payments: subPaymentsValue } : {}),
   };
 
+  // Validate BEFORE writing — a post-update error would persist the change
+  // while skipping occurrence regeneration and cache revalidation.
+  const isSubscription = formData.get("is_subscription") === "true";
+  if (isSubscription && !payload.destinatario_id) {
+    return { success: false, error: "Una suscripción necesita un destinatario." };
+  }
+
   const { data, error } = await supabase
     .from("recurring_transaction_templates")
     .update(updatePayload)
@@ -476,10 +486,6 @@ export async function updateRecurringTemplate(
 
   if (error) return { success: false, error: error.message };
 
-  const isSubscription = formData.get("is_subscription") === "true";
-  if (isSubscription && !data.destinatario_id) {
-    return { success: false, error: "Una suscripción necesita un destinatario." };
-  }
   await upsertSubscriptionFromTemplate(
     supabase,
     user.id,

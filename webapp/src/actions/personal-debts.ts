@@ -205,6 +205,13 @@ export async function updatePersonalDebt(
     .eq("user_id", user.id);
   if (error) return { success: false, error: "Error al actualizar la deuda" };
 
+  // Principal changes shift outstanding_amount (= principal − repayments)
+  // and can settle/reopen the debt — recompute instead of waiting for the
+  // next repayment event.
+  if (patch.principal_amount != null) {
+    await recomputeOutstanding(supabase, user.id, id, patch.principal_amount as number);
+  }
+
   updateTag("personal-debts");
   return { success: true, data: undefined };
 }
@@ -430,6 +437,10 @@ export async function recordRepayment(
 
   const idempotencyKey = await computeIdempotencyKey({
     provider: "MANUAL",
+    // Scope the key to THIS debt: same-day equal repayments to DIFFERENT
+    // people are legitimate, not duplicates. Double-submit on the same debt
+    // still dedupes.
+    providerTransactionId: `personal-debt:${personalDebtId}`,
     transactionDate: r.transaction_date,
     amount: r.amount,
     rawDescription,

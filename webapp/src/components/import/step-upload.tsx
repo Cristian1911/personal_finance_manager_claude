@@ -204,10 +204,18 @@ export function StepUpload({
     let next: File[];
     if (firstPdf) {
       next = [firstPdf];
-      if (valid.length > 1) {
-        toast.info("Los PDF se procesan de a uno — seleccioné el primero.");
+      // Selecting a PDF replaces everything staged — never silently.
+      if (valid.length > 1 || files.length > 0) {
+        toast.info("Los PDF se procesan de a uno — reemplacé la selección con el PDF.");
       }
     } else {
+      const stagedPdf = files.find((f) => isPdfFile(f.name));
+      if (stagedPdf) {
+        toast.info(`"${stagedPdf.name}" se quitó: PDF e imágenes no se procesan juntos.`);
+        setPassword("");
+        setPasswordFromVault(false);
+        setSavePassword(false);
+      }
       const merged = [...files.filter((f) => isImageFile(f.name)), ...valid];
       const unique = merged.filter(
         (f, i) => merged.findIndex((o) => o.name === f.name && o.size === f.size) === i

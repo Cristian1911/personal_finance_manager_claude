@@ -20,6 +20,7 @@ into rows, then processes each row left-to-right. This preserves duplicate descr
 
 from __future__ import annotations
 
+import calendar
 import logging
 import re
 from datetime import date
@@ -102,8 +103,12 @@ def _extract_date_from_row_start(row_words: list[dict], last_seen_day: int | Non
             try:
                 month = MONTH_MAP[month_text.lower()]
                 year = int(year_text)
-                # Use the last_seen_day if available, otherwise default to 1
+                # Use the inferred day if available, otherwise default to 1.
+                # Clamp to the month's length so an inferred next-day past
+                # month-end (e.g. 31 + 1) mis-dates by a day instead of
+                # raising and silently dropping the row.
                 day = last_seen_day if last_seen_day else 1
+                day = min(max(day, 1), calendar.monthrange(year, month)[1])
                 return (date(year, month, day), 2)
             except (ValueError, KeyError):
                 pass
@@ -133,9 +138,14 @@ def _find_amount_and_sign(row_words: list[dict]) -> tuple[int, bool] | None:
     if last_numeric_idx is None:
         return None
 
-    # Check if there's a sign word right before it
+    # Sign can arrive combined in the amount token ("-$69.800,00") or as the
+    # word before it ("-$" / "-"). Check the token itself FIRST — otherwise a
+    # combined token reads as INFLOW with a negative amount.
     is_outflow = False
-    if last_numeric_idx > 0:
+    amount_word = row_words[last_numeric_idx]["text"].strip()
+    if re.match(r"^\s*-", amount_word):
+        is_outflow = True
+    elif last_numeric_idx > 0:
         prev_word = row_words[last_numeric_idx - 1]["text"].strip()
         if "-" in prev_word:  # "-$", "-", "$-", etc.
             is_outflow = True
@@ -228,20 +238,29 @@ def parse_bancolombia_web(image_path: str) -> ParsedStatement:
         if any(p in row_text for p in SKIP_PATTERNS):
             continue
 
-        # Infer missing day: if this row doesn't have an explicit day,
-        # assume it's 1 day after the first non-None day we find going forward
+        # Infer missing day for rows where OCR lost the day digits. The table
+        # is newest-first, so prefer the PREVIOUS row's day (same-day runs are
+        # common); fall back to next-row day + 1 only for the FIRST row, and
+        # clamp so day 31 + 1 can never raise out of date() range.
         inferred_day = None
         if explicit_days[row_idx] is None:
-            # Look ahead for the next non-None day
-            for future_idx in range(row_idx + 1, len(explicit_days)):
-                if explicit_days[future_idx] is not None:
-                    # Infer as 1 day after that
-                    inferred_day = explicit_days[future_idx] + 1
+            for prev_idx in range(row_idx - 1, -1, -1):
+                if explicit_days[prev_idx] is not None:
+                    inferred_day = explicit_days[prev_idx]
                     break
+            if inferred_day is None:
+                for future_idx in range(row_idx + 1, len(explicit_days)):
+                    if explicit_days[future_idx] is not None:
+                        inferred_day = explicit_days[future_idx] + 1
+                        break
 
         # Try to extract date from the beginning of the row
         date_result = _extract_date_from_row_start(row_words, last_seen_day=inferred_day)
         if not date_result:
+            logger.warning(
+                "Dropping row without parseable date: %s",
+                " ".join(w["text"] for w in row_words[:6]),
+            )
             continue
 
         tx_date, date_words_consumed = date_result
@@ -254,10 +273,12 @@ def parse_bancolombia_web(image_path: str) -> ParsedStatement:
 
         amount_idx, is_outflow = amount_result
 
-        # Extract the amount
+        # Extract the amount. abs(): a combined "-$69.800,00" token keeps its
+        # minus through parse_colombian_number, but ParsedTransaction.amount
+        # is always positive — the sign already drove `is_outflow`.
         amount_word = row_words[amount_idx]["text"].strip()
         try:
-            amount = parse_colombian_number(amount_word)
+            amount = abs(parse_colombian_number(amount_word))
         except ValueError:
             logger.warning("Row %s: could not parse amount: %s", row_idx, amount_word)
             continue

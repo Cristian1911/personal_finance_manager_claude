@@ -285,7 +285,6 @@ async function getDebtTrendCached(
 
   const debtAccounts = (accounts ?? []).filter((a) => a.currency_code === currency);
   const debtIds = debtAccounts.map((a) => a.id);
-  const activeDebtIds = debtAccounts.filter((a) => a.is_active).map((a) => a.id);
   if (debtIds.length === 0) return EMPTY_DEBT_TREND;
 
   // 6-month window in Colombia time.
@@ -414,7 +413,10 @@ async function getDebtTrendCached(
       latestCuotaByAccount.set(snap.account_id, Math.abs(cuota));
     }
   }
-  const expected = activeDebtIds.map((id) => ({
+  // ALL debt accounts (archived included): the payments slice covers them
+  // too, and an account with no expected cuota would make its routine final
+  // payment count as "extra" in detectExtraPayments.
+  const expected = debtIds.map((id) => ({
     accountId: id,
     cuota:
       latestCuotaByAccount.get(id) ??

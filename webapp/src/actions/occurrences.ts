@@ -432,12 +432,18 @@ export async function ensureOccurrencesForRange(
   let rowsToInsert = rows;
   if (monthlyIds.size > 0) {
     const monthStart = `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, "0")}-01`;
+    // Bound to the generated range's months — an unbounded scan over all
+    // future occurrences can exceed PostgREST's max_rows (1000) and silently
+    // truncate, re-enabling same-month duplicates for heavy users.
+    const afterRange = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth() + 1, 1);
+    const afterRangeStr = `${afterRange.getFullYear()}-${String(afterRange.getMonth() + 1).padStart(2, "0")}-01`;
     const { data: existing, error: existingError } = await supabase
       .from("recurring_occurrences")
       .select("template_id, occurrence_date")
       .eq("user_id", user.id)
       .in("template_id", [...monthlyIds])
-      .gte("occurrence_date", monthStart);
+      .gte("occurrence_date", monthStart)
+      .lt("occurrence_date", afterRangeStr);
     if (existingError) return { success: false, error: existingError.message };
 
     const existingMonths = new Set(
@@ -987,6 +993,7 @@ export async function linkTransactionToOccurrence(
   direction: "INFLOW" | "OUTFLOW",
   transactionId: string,
   destinatarioId: string | null = null,
+  options: { skipDebtCompanionLeg?: boolean } = {},
 ): Promise<void> {
   const matchId = await findMatchingOccurrence(
     accountId,
@@ -999,15 +1006,18 @@ export async function linkTransactionToOccurrence(
     await markOccurrencePaid(matchId, transactionId);
     // A debt-payment occurrence paid from another account (e.g. an email-
     // captured transfer) only registers the source OUTFLOW — without the
-    // companion INFLOW the debt account's balance never moves.
-    await ensureDebtCompanionLeg({
-      occurrenceId: matchId,
-      sourceTransactionId: transactionId,
-      sourceAccountId: accountId,
-      transactionDate,
-      amount,
-      direction,
-    });
+    // companion INFLOW the debt account's balance never moves. Statement
+    // imports opt out: the card statement carries its own abono row.
+    if (!options.skipDebtCompanionLeg) {
+      await ensureDebtCompanionLeg({
+        occurrenceId: matchId,
+        sourceTransactionId: transactionId,
+        sourceAccountId: accountId,
+        transactionDate,
+        amount,
+        direction,
+      });
+    }
     return;
   }
 

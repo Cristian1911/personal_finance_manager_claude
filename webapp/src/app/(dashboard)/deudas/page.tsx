@@ -48,6 +48,10 @@ async function MobileDebtSection({
   const isCurrentMonth =
     !month || month >= toColombiaDateString(new Date()).slice(0, 7);
 
+  // Kicked off BEFORE the awaited batch so the streamed section overlaps it.
+  // Below-the-fold, collapsed history — resolved via Suspense inside the lens.
+  const archivedObligationsPromise = getArchivedDebtObligations();
+
   const [
     overview,
     incomeEstimate,
@@ -65,9 +69,6 @@ async function MobileDebtSection({
     getDebtFreeCountdown(currency),
     getPersonalDebtsOverview(),
   ]);
-  // Below-the-fold, collapsed history — streamed via Suspense inside the lens,
-  // never blocks the hero/trend render (perf rule: non-critical → defer).
-  const archivedObligationsPromise = getArchivedDebtObligations();
   const sourceAccounts = sourceAccountsResult.success ? sourceAccountsResult.data : [];
   const usdToCopRate = usdRateResult?.rate ?? null;
 

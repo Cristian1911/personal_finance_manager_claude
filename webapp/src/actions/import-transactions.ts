@@ -1049,6 +1049,10 @@ export async function importTransactions(
       tx.account_id, tx.transaction_date,
       tx.amount, tx.direction, insertedTx.id,
       tx.destinatario_id ?? null,
+      // Statement imports carry the debt-account side themselves (the card
+      // statement's own abono row) — synthesizing a companion INFLOW here
+      // would duplicate it when both statements are imported.
+      { skipDebtCompanionLeg: true },
     );
 
     const decision = tx.import_key
@@ -1178,12 +1182,17 @@ export async function importTransactions(
   // Ensure occurrence rows are generated for any newly created/updated templates
   await ensureCurrentOccurrences();
 
-  // Screenshot imports lack statement metadata — fall back to per-tx balance deltas.
+  // Tier-2 imports fall back to per-tx balance deltas. The meta-balance
+  // exclusion only applies when processStatementMeta actually RAN (tier 1) —
+  // otherwise a screenshot whose parser emitted metadata would skip BOTH
+  // balance paths and leave the account stale.
   if (balanceDeltaTxs.length > 0) {
     const accountsWithMetaBalance = new Set<string>();
-    for (const meta of normalizedStatementMeta ?? []) {
-      if (meta.creditCardMetadata || meta.loanMetadata || meta.summary?.final_balance != null) {
-        accountsWithMetaBalance.add(meta.accountId);
+    if (isBankVerifiedCapture(captureMethod)) {
+      for (const meta of normalizedStatementMeta ?? []) {
+        if (meta.creditCardMetadata || meta.loanMetadata || meta.summary?.final_balance != null) {
+          accountsWithMetaBalance.add(meta.accountId);
+        }
       }
     }
 
