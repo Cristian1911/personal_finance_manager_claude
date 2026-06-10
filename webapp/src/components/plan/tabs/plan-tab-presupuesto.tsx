@@ -5,6 +5,9 @@ import { getCategoriesWithBudgetData, getAllCategoriesForManagement, getCategori
 import { get503020Allocation } from "@/actions/allocation";
 import { getUncategorizedTransactions } from "@/actions/categorize";
 import { getAttentionSnapshot } from "@/actions/attention";
+import { getBudgetScenarios } from "@/actions/budget-scenarios";
+import { getWishlistItems } from "@/actions/wishlist";
+import { getAccounts } from "@/actions/accounts";
 import { BudgetSummaryBar } from "@/components/budget/budget-summary-bar";
 import { BudgetCategoryGrid } from "@/components/budget/budget-category-grid";
 import { TrendComparison } from "@/components/budget/trend-comparison";
@@ -20,7 +23,14 @@ import { PlanAllocationChip } from "@/components/mobile/v2/plan/plan-allocation-
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
-import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS } from "@/lib/constants/styles";
+import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
+import { categoryBudgetGroup, isFixedBudgetCategory } from "@zeta/shared";
+import { ScenarioSection, ScenarioEntryPoint } from "@/components/budget/scenario/scenario-section";
+import {
+  normalizeVerdict,
+  type ScenarioCategoryOption,
+  type ScenarioDeseoOption,
+} from "@/components/budget/scenario/scenario-model";
 import type { CurrencyCode, CategoryBudgetData } from "@/types/domain";
 
 const BudgetWizard = dynamic(
@@ -44,6 +54,9 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
     uncategorized,
     categoryTreeResult,
     attentionSnapshot,
+    budgetScenarios,
+    wishlistItems,
+    accountsResult,
   ] = await Promise.all([
     getBudgetMode(),
     getEstimatedIncome(currency, month),
@@ -53,6 +66,9 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
     getUncategorizedTransactions(),
     getCategories(),
     getAttentionSnapshot(),
+    getBudgetScenarios(),
+    getWishlistItems(),
+    getAccounts(),
   ]);
 
   const budgetMode = modeResult.success ? modeResult.data : null;
@@ -66,6 +82,35 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
   const daysRemaining = getDaysRemainingInMonth(target);
   const monthLabel = formatMonthLabel(target);
   const withBudget = outflowCategories.filter((c) => (c.budget ?? 0) > 0).length;
+
+  // ── "Simular cambio" inputs ──
+  const scenarioCategories: ScenarioCategoryOption[] = outflowCategories
+    .filter((c) => c.is_active)
+    .map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      name: c.name_es ?? c.name,
+      icon: c.icon,
+      color: c.color,
+      budget: c.budget,
+      avg3m: c.average3m > 0 ? c.average3m : null,
+      group: categoryBudgetGroup(c),
+      isFixed: isFixedBudgetCategory(c.slug),
+    }));
+
+  const accounts = accountsResult.success ? accountsResult.data : [];
+  const cushion = accounts
+    .filter((a) => a.account_type === "CHECKING" || a.account_type === "SAVINGS")
+    .reduce((sum, a) => sum + Math.max(0, a.current_balance), 0);
+
+  const scenarioDeseos: ScenarioDeseoOption[] = wishlistItems
+    .filter((w) => w.status === "wishlist" && w.amount > 0)
+    .map((w) => ({
+      id: w.id,
+      name: w.name,
+      amount: w.amount,
+      verdict: normalizeVerdict(w.last_verdict),
+    }));
 
   // If no budget mode configured yet, show wizard
   if (!budgetMode) {
@@ -121,6 +166,14 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
   const chip = chipConfig[pressure];
 
   return (
+    <ScenarioSection
+      categories={scenarioCategories}
+      deseos={scenarioDeseos}
+      scenarios={budgetScenarios}
+      income={income}
+      cushion={cushion}
+      currency={currency}
+    >
     <div className="space-y-6">
       {/* Mobile view */}
       <div className={cn("lg:hidden", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
@@ -130,7 +183,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
           {/* Budget hero card */}
           <div className={cn(PANEL_INSET_CLASS, "p-4")}>
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-z-sage-dark">
+              <p className={SECTION_EYEBROW_CLASS}>
                 Gastado este mes
               </p>
               <StateChip label={chip.label} variant={chip.variant} />
@@ -178,13 +231,16 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
             </div>
           </div>
 
+          {/* Simular cambio — entry / mode toggle */}
+          <ScenarioEntryPoint />
+
           {/* Categories grouped by risk state — D6 */}
           {hasBudgetedCategories && (
             <div className="space-y-5">
               {over.length > 0 && (
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-z-expense">
+                    <p className={cn(SECTION_EYEBROW_CLASS, "text-z-expense")}>
                       Sobre límite
                     </p>
                     <span className="text-[10px] text-muted-foreground">{over.length}</span>
@@ -199,7 +255,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               {near.length > 0 && (
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-z-brass">
+                    <p className={cn(SECTION_EYEBROW_CLASS, "text-z-brass")}>
                       Cerca del límite
                     </p>
                     <span className="text-[10px] text-muted-foreground">{near.length}</span>
@@ -214,7 +270,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
               {safe.length > 0 && (
                 <section>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-z-income">
+                    <p className={cn(SECTION_EYEBROW_CLASS, "text-z-income")}>
                       Dentro del límite
                     </p>
                     <span className="text-[10px] text-muted-foreground">{safe.length}</span>
@@ -256,6 +312,9 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
           <MonthPlanner categories={outflowCategories} />
         </div>
 
+        {/* Simular cambio — entry / mode toggle */}
+        <ScenarioEntryPoint className="max-w-md" />
+
         <div className="grid gap-4 lg:grid-cols-2">
           <SummaryCard
             metrics={[
@@ -296,6 +355,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
         </Tabs>
       </div>
     </div>
+    </ScenarioSection>
   );
 }
 

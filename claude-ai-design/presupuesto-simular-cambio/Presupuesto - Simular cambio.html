@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Zeta · Presupuesto — Simular cambio</title>
+<link rel="stylesheet" href="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/colors_and_type.css" />
+<style>
+  html, body { margin: 0; background: #e8e4de; }
+  button { font-family: var(--font-sans); }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="_ds/zeta-design-system-019dcbea-f04a-7d4c-b73b-b05e420673e5/_ds_bundle.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="presupuesto/design-canvas.jsx"></script>
+<script type="text/babel" src="presupuesto/zeta-ui.jsx"></script>
+<script type="text/babel" src="presupuesto/data.jsx"></script>
+<script type="text/babel" src="presupuesto/section-a.jsx"></script>
+<script type="text/babel" src="presupuesto/section-b.jsx"></script>
+<script type="text/babel" src="presupuesto/section-c.jsx"></script>
+<script type="text/babel" src="presupuesto/section-d.jsx"></script>
+<script type="text/babel" src="presupuesto/section-e.jsx"></script>
+<script type="text/babel">
+
+function App() {
+  return (
+    <DesignCanvas>
+
+      {/* ── A · Entrada + modo ────────────────────────────── */}
+      <DCSection
+        id="sec-a"
+        title="A · Entrada + estado de modo"
+        subtitle="Cómo empieza la simulación y cómo la página grita 'esto no es tu presupuesto real'. Acento oro de alerta = sandbox; nada del layout real se rediseña."
+      >
+        <DCArtboard id="a1" label="A1 · El héroe se transforma" width={390} height={780} style={{ height: "auto" }}>
+          <Frame data-screen-label="A1 heroe se transforma">
+            <EntradaA1 />
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="a2" label="A2 · Banner persistente + zona sandbox" width={390} height={620} style={{ height: "auto" }}>
+          <Frame data-screen-label="A2 banner persistente">
+            <EntradaA2 />
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="a3" label="A3 · Plantillas + selector de modo" width={390} height={920} style={{ height: "auto" }}>
+          <Frame data-screen-label="A3 plantillas y selector">
+            <EntradaA3 />
+          </Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ── B · Editor del escenario ──────────────────────── */}
+      <DCSection
+        id="sec-b"
+        title="B · Editor del escenario"
+        subtitle="Borrador editable: actual → escenario, chip de delta, prom 3m como ancla de realidad. Toca un monto para editarlo en línea. Arriendo entra con 'nuevo'; Mercado sube; Restaurantes muestra un recorte."
+      >
+        <DCArtboard id="b1" label="B1 · Lista plana, edición en línea" width={390} height={900} style={{ height: "auto" }}>
+          <Frame data-screen-label="B1 editor lista plana">
+            <EditorB1 />
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="b2" label="B2 · Agrupado: Nuevos / Cambian / Igual" width={390} height={760} style={{ height: "auto" }}>
+          <Frame data-screen-label="B2 editor agrupado">
+            <EditorB2 />
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="b3" label="B3 · Ancla de realidad como barra" width={390} height={980} style={{ height: "auto" }}>
+          <Frame data-screen-label="B3 editor ancla realidad">
+            <EditorB3 />
+          </Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ── C · Veredicto ─────────────────────────────────── */}
+      <DCSection
+        id="sec-c"
+        title="C · Veredicto — la respuesta"
+        subtitle="¿Cuánto necesito, qué parte del ingreso se va, dónde recorto? C1 desglosa la cuenta completa y los recortes son de un toque (¡pruébalos!). C2 lo cuenta sobre las barras 50/30/20. C3 lo fija al pie del editor."
+      >
+        <DCArtboard id="c1" label="C1 · La cuenta completa — no alcanza" width={390} height={820} style={{ height: "auto" }}>
+          <Frame data-screen-label="C1 veredicto no alcanza">
+            <StateTag>No alcanza · toca "Aplicar" para recortar en vivo</StateTag>
+            <VerdictC1 />
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="c1b" label="C1 · La cuenta completa — funciona" width={390} height={860} style={{ height: "auto" }}>
+          <Frame data-screen-label="C1b veredicto funciona">
+            <StateTag>Funciona · todos los recortes aplicados</StateTag>
+            <VerdictC1 defaultApplied={["restaurantes", "salidas", "ahorro", "suscripciones", "muebles"]} />
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="c2" label="C2 · Sobre las barras 50/30/20" width={390} height={840} style={{ height: "auto" }}>
+          <Frame data-screen-label="C2 veredicto barras">
+            <StateTag>No alcanza · barra fantasma = actual</StateTag>
+            <VerdictC2 />
+            <StateTag>Funciona · con recortes aplicados</StateTag>
+            <VerdictC2 fits={true} />
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="c3" label="C3 · Barra fija + hoja" width={390} height={980} style={{ height: "auto" }}>
+          <Frame data-screen-label="C3 veredicto barra fija">
+            <VerdictC3 />
+          </Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ── D · Gastos de arranque ────────────────────────── */}
+      <DCSection
+        id="sec-d"
+        title="D · Gastos de arranque"
+        subtitle="Las compras de una sola vez (nevera, muebles, cocina) viven aparte de las líneas mensuales: veredicto del motor de Deseos + plan de fondeo. D2 es interactivo: cambia el ritmo de ahorro y el colchón."
+      >
+        <DCArtboard id="d1" label="D1 · Lista con plan de fondeo" width={390} height={720} style={{ height: "auto" }}>
+          <Frame data-screen-label="D1 arranque lista">
+            <ArranqueD1 />
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="d2" label="D2 · Línea de tiempo (interactiva)" width={390} height={720} style={{ height: "auto" }}>
+          <Frame data-screen-label="D2 arranque timeline">
+            <ArranqueD2 />
+          </Frame>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ── E · Aplicar / comparar ────────────────────────── */}
+      <DCSection
+        id="sec-e"
+        title="E · Aplicar / comparar"
+        subtitle="El momento de compromiso: hoja de comparación actual vs escenario con confirmación 'desde julio' (E1), o guardar la simulación como borrador con nombre para volver después (E2)."
+      >
+        <DCArtboard id="e1" label="E1 · Hoja de comparación" width={390} height={880} style={{ height: "auto" }}>
+          <Frame data-screen-label="E1 hoja comparacion">
+            <AplicarE1 />
+          </Frame>
+        </DCArtboard>
+
+        <DCArtboard id="e2" label="E2 · Borrador con nombre" width={390} height={1000} style={{ height: "auto" }}>
+          <Frame data-screen-label="E2 borrador nombrado">
+            <AplicarE2 />
+          </Frame>
+        </DCArtboard>
+      </DCSection>
+
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

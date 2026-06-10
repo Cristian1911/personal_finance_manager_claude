@@ -568,6 +568,16 @@ Source of truth: `claude-ai-design/Zeta Wireframes.html`. Variant A (Safe) ships
   2. **getNonDebtAccounts still fetched eagerly** (Low) — now cached, but it's only needed when the user opens the Plata extra sheet (Plan lens). Move out of MobileDebtSection/DesktopDebtSection `Promise.all`; let `ExtraPaymentTrigger` fetch on interaction or wrap in Suspense.
   3. **Nested PANEL_INSET_CLASS in deudas-hero breakdown** (Low) — double rounded-2xl borders; inner surface should step down to rounded-xl (zetas-front-guy W4).
 
+### Simular cambio (presupuesto) — deferred review findings (2026-06-10, branch feat/presupuesto-simular-cambio)
+- **Priority:** Low–Medium
+- **From:** server-action-reviewer + zetas-front-guy + perf-auditor gates on the budget-scenario sandbox.
+- **What:**
+  1. **Category-ownership validation in shared budget paths** (Medium) — `applyBudgetScenario` now validates line category ids against own+system categories, but the pre-existing `upsertBudgetForCategory`/`bulkUpsertBudgets` in `webapp/src/actions/budget.ts` still upsert client-supplied `category_id` without ownership check (FK only). Harden both with the same `.or(\`user_id.eq.\${user.id},user_id.is.null\`)` check.
+  2. **getCushionBalance() scalar action** (Low) — `plan-tab-presupuesto.tsx` fetches the full `getAccounts()` payload just to sum CHECKING+SAVINGS balances for the scenario colchón. Add a dedicated cached function returning only the scalar; also reusable by health-meters (same computation).
+  3. **Segmented-control class constants** (Low) — the Real/Simulación toggle (`scenario-section.tsx`) and the savings-rate control (`scenario-startup.tsx`) repeat the same pill-tab pattern inline; zetas-front-guy suggests `SEGMENTED_TAB_*` constants in `styles.ts` (plus a gold-active variant). Also the dashed gold add-row button appears twice → `SCENARIO_ADD_ROW_CLASS`.
+  4. **Vehículo template** (Low) — entry sheet ships with Mudanza + Desde cero; design also proposed Vehículo (cuota, gasolina, seguro). Add once slug mapping for vehicle categories is decided.
+  5. **Demo-mode unique-constraint collision (pre-existing)** (Low) — `budgets` unique key `(user_id, category_id, period)` doesn't include `is_demo`, so a real-mode upsert can overwrite a demo row for the same category. Affects all budget upsert paths, not just scenarios.
+
 ### packages/shared — pre-existing test failures on main (found 2026-06-09)
 - **Priority:** Medium
 - **What:** `pnpm test` in packages/shared fails on main: `auto-categorize.test.ts` 39 failed, `debt-stats.test.ts` 1 failed. Pre-date the deudas-lenses branch (verified via stash). CI presumably doesn't run shared tests or would have caught it. Triage whether the tests or the implementation drifted (likely category kit/keyword changes).
