@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/date";
 import { SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
@@ -12,6 +12,7 @@ import { MovimientosHerramientas } from "./movimientos-herramientas";
 import { MovimientosUtilidades } from "./movimientos-utilidades";
 import { MovimientosTransactionRow } from "./movimientos-transaction-row";
 import { getAccountIdsWithPendingOccurrences } from "@/actions/occurrences";
+import { getTransactions } from "@/actions/transactions";
 import type {
   TransactionWithAccount,
   PendingEmailTransaction,
@@ -32,10 +33,14 @@ interface MovimientosRootProps {
   uncategorizedCount: number;
   pendingEmails: PendingEmailTransaction[];
   currency: CurrencyCode;
+  /** Server-resolved pagination state + the filters to replay for "Cargar más". */
+  page?: number;
+  totalPages?: number;
+  filterParams?: Record<string, string | undefined>;
 }
 
 export function MovimientosRoot({
-  transactions,
+  transactions: initialTransactions,
   categories,
   accounts,
   tags,
@@ -45,9 +50,47 @@ export function MovimientosRoot({
   uncategorizedCount,
   pendingEmails,
   currency,
+  page = 1,
+  totalPages = 1,
+  filterParams,
 }: MovimientosRootProps) {
   /** Page-level accordion — one expanded section at a time */
   const { activeZone, toggle } = useExpandableZone<string>();
+
+  /* ---- "Cargar más" pagination — appends pages in place ---- */
+  const [extraPages, setExtraPages] = useState<TransactionWithAccount[]>([]);
+  const [currentPage, setCurrentPage] = useState(page);
+  const [maxPages, setMaxPages] = useState(totalPages);
+  const [isLoadingMore, startLoadingMore] = useTransition();
+
+  // New server render (month/filter change) resets the appended pages.
+  useEffect(() => {
+    setExtraPages([]);
+    setCurrentPage(page);
+    setMaxPages(totalPages);
+  }, [initialTransactions, page, totalPages]);
+
+  const transactions = useMemo(() => {
+    if (extraPages.length === 0) return initialTransactions;
+    const seen = new Set(initialTransactions.map((tx) => tx.id));
+    return [...initialTransactions, ...extraPages.filter((tx) => !seen.has(tx.id))];
+  }, [initialTransactions, extraPages]);
+
+  const hasMorePages = currentPage < maxPages;
+
+  function loadMore() {
+    if (!hasMorePages || isLoadingMore) return;
+    startLoadingMore(async () => {
+      const next = currentPage + 1;
+      const result = await getTransactions({
+        ...(filterParams ?? {}),
+        page: String(next),
+      });
+      setExtraPages((prev) => [...prev, ...result.data]);
+      setCurrentPage(result.page);
+      setMaxPages(result.totalPages);
+    });
+  }
 
   /* ---- Linkable account IDs for "Vincular a recurrente" ---- */
   const [linkableAccountIds, setLinkableAccountIds] = useState<Set<string>>(new Set());
@@ -175,6 +218,21 @@ export function MovimientosRoot({
               </div>
             </div>
           ))}
+
+          {/* Cargar más — appends the next server page in place */}
+          {hasMorePages && (
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={isLoadingMore}
+              className={cn(
+                "w-full rounded-lg py-2.5 text-xs font-medium text-z-sage-dark transition-colors active:bg-white/[0.04]",
+                isLoadingMore && "opacity-50"
+              )}
+            >
+              {isLoadingMore ? "Cargando..." : "Cargar más movimientos"}
+            </button>
+          )}
         </div>
       )}
     </div>

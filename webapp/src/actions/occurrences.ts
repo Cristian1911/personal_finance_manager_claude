@@ -1212,7 +1212,10 @@ async function swapPhantomOccurrenceIfMatched(
     .eq("user_id", user.id);
 
   if (!groupTxs || groupTxs.length !== 1) {
-    // Multi-leg phantom — leave for manual reconciliation
+    // Multi-leg phantom (e.g. source OUTFLOW + debt companion INFLOW from
+    // ensureDebtCompanionLeg) — a later bank-verified import of either leg
+    // intentionally falls through to manual reconciliation instead of an
+    // automatic swap.
     return;
   }
 

@@ -108,6 +108,9 @@ export default async function TransactionsPage({
       <div className={cn(MOBILE_TAB_BAR_CLEARANCE_CLASS, "lg:hidden lg:pb-0")}>
         <MovimientosRoot
           transactions={transactionsResult.data}
+          page={transactionsResult.page}
+          totalPages={transactionsResult.totalPages}
+          filterParams={params}
           categories={categories}
           accounts={accounts}
           tags={allTags}
