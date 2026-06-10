@@ -317,6 +317,36 @@ export type Database = {
         }
         Relationships: []
       }
+      budget_scenarios: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          draft: Json
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          draft?: Json
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          draft?: Json
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       budgets: {
         Row: {
           amount: number

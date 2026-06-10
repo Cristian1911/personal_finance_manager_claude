@@ -19,6 +19,7 @@ export * from "./utils/snapshot-diff";
 export * from "./utils/destinatario-matcher";
 export * from "./utils/scenario-types";
 export * from "./utils/scenario-engine";
+export * from "./utils/budget-scenario";
 export * from "./utils/salary-breakdown";
 export * from "./utils/extra-payment";
 export * from "./utils/cc-projection";
