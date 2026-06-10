@@ -39,9 +39,17 @@ def parse_colombian_number(s: str) -> float:
     Also handles OCR artifacts:
     - Space instead of comma for decimals: "43.627 81" → 43627.81
     - Missing comma: "43.62781" (concatenated)
+    - Dollar sign prefix: "$3,06" → 3.06
     """
+    s = s.strip()
+
+    # Remove any dollar signs
+    s = s.replace("$", "")
+
     # Handle space-separated decimals: "43.627 81" → "43.627,81"
-    s = re.sub(r"(\d)\s+(\d{2})$", r"\1,\2", s.strip())
+    s = re.sub(r"(\d)\s+(\d{2})$", r"\1,\2", s)
+
+    # Replace Colombian format: periods (thousands) → "", comma (decimal) → "."
     cleaned = s.replace(".", "").replace(",", ".")
     return float(cleaned)
 
@@ -61,6 +69,70 @@ def ocr_image(image_path: str) -> str:
     text = pytesseract.image_to_string(img, lang="spa", config="--psm 4")
     logger.info("OCR completed: image=%s chars=%s", image_path, len(text))
     return text
+
+
+def ocr_image_with_boxes(image_path: str) -> list[dict]:
+    """OCR an image and return words with bounding boxes.
+
+    Returns a list of dicts: {text, left, top, right, bottom}
+    Each dict represents a single word with its pixel coordinates.
+    Coordinates: top-left is (0, 0), x increases rightward, y increases downward.
+    """
+    img = Image.open(image_path)
+    data = pytesseract.image_to_data(img, lang="spa", output_type=pytesseract.Output.DICT)
+
+    words = []
+    for i in range(len(data["text"])):
+        word = data["text"][i].strip()
+        if word:  # Skip empty strings
+            words.append({
+                "text": word,
+                "left": data["left"][i],
+                "top": data["top"][i],
+                "width": data["width"][i],
+                "height": data["height"][i],
+            })
+
+    logger.info("OCR with boxes completed: image=%s words=%s", image_path, len(words))
+    return words
+
+
+def group_words_into_rows(words: list[dict], y_tolerance: int = 10) -> list[list[dict]]:
+    """Group words into visual rows by clustering on y-coordinate (top).
+
+    Words with similar y-coordinates (within y_tolerance pixels) are grouped together.
+    Within each row, words are sorted left-to-right by x-coordinate.
+
+    Args:
+        words: List of word dicts with keys: text, left, top, width, height
+        y_tolerance: Maximum y-distance (pixels) to group words into the same row
+
+    Returns:
+        List of rows, where each row is a list of words sorted by x-position
+    """
+    if not words:
+        return []
+
+    # Sort words by top-coordinate (y-axis) first
+    sorted_words = sorted(words, key=lambda w: w["top"])
+
+    rows = []
+    current_row = [sorted_words[0]]
+
+    for word in sorted_words[1:]:
+        # If this word's top is within tolerance of the current row's top, add to row
+        if abs(word["top"] - current_row[0]["top"]) <= y_tolerance:
+            current_row.append(word)
+        else:
+            # Start a new row
+            rows.append(sorted(current_row, key=lambda w: w["left"]))  # Sort by x within row
+            current_row = [word]
+
+    # Don't forget the last row
+    if current_row:
+        rows.append(sorted(current_row, key=lambda w: w["left"]))
+
+    return rows
 
 
 def resolve_relative_date(label: str, reference_date: date) -> date | None:

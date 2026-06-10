@@ -13,6 +13,7 @@ from datetime import date
 from models import ParsedStatement
 from parsers.image_utils import ocr_image
 from parsers.bancolombia_app_screenshot import parse_bancolombia_app
+from parsers.bancolombia_web_screenshot import parse_bancolombia_web
 from parsers.nequi_app_screenshot import parse_nequi_app
 from parsers.nu_savings_app_screenshot import parse_nu_savings_app
 from parsers.nu_credit_card_app_screenshot import parse_nu_credit_card_app
@@ -23,6 +24,16 @@ logger = logging.getLogger("pdf_parser.image_detector")
 ImageParser = None  # documentation-only marker
 
 IMAGE_DETECTORS: list[dict] = [
+    {
+        "name": "bancolombia_web",
+        "signals": [
+            (5, lambda t: bool(re.search(r"\d{1,2}\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\s+\d{4}", t, re.IGNORECASE))),
+            (4, lambda t: bool(re.search(r"[$]\s*[\d.,]+", t))),
+            (3, lambda t: "COMPRA EN" in t or "COBRO" in t or "TRANSFERENCIA" in t),
+            (3, lambda t: "ABONO INTERESES" in t or "PAGO" in t),
+        ],
+        "parse": lambda text, sd: parse_bancolombia_web(text, sd),
+    },
     {
         "name": "bancolombia_app",
         "signals": [
