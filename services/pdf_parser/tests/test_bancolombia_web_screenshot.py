@@ -34,8 +34,15 @@ def test_bancolombia_web_with_bounding_boxes():
     | 2026-06-08 | TRANSFERENCIA CTA SUC VIRTUAL | 49900001361 | 26100.00 | OUTFLOW |
     | 2026-06-07 | ABONO INTERESES AHORROS | — | 3.48 | INFLOW |
     """
-    # Parse the sample image
-    image_path = "/Users/cristian/Documents/developing/current-projects/zeta/services/pdf_parser/unrecognized/bancolombia_web_transactions_sample.png"
+    # Parse the sample image — real user data, kept out of git. Skip when absent.
+    image_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "unrecognized",
+        "bancolombia_web_transactions_sample.png",
+    )
+    if not os.path.exists(image_path):
+        print("SKIP: sample image not available (local-only fixture)")
+        return
 
     stmt = parse_bancolombia_web(
         image_path=image_path,
