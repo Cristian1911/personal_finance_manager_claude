@@ -10,6 +10,7 @@ import {
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
+import { deactivateTemplatesForPaidOffAccount } from "@/lib/debt/payoff";
 import type { ActionResult } from "@/types/actions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -281,6 +282,15 @@ export async function applyExtraDebtPayment(
         .eq("id", allocation.accountId)
         .eq("user_id", user.id);
       if (debtBalErr) console.error("[extraPayment] debt balance update failed:", debtBalErr);
+
+      // Payoff lifecycle: a debt that just reached 0 stops generating cuotas.
+      if (!debtBalErr && newDebtBalance <= 0) {
+        await deactivateTemplatesForPaidOffAccount({
+          supabase,
+          userId: user.id,
+          accountId: allocation.accountId,
+        });
+      }
     }
 
     // Count as applied even if idempotency skip (transaction already exists)

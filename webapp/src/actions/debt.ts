@@ -258,7 +258,7 @@ async function getDebtTrendCached(
   accessToken: string
 ): Promise<DebtTrendData> {
   "use cache";
-  cacheTag("debt", "snapshots");
+  cacheTag("debt", "snapshots", "occurrences");
   cacheLife("zeta");
 
   const supabase = createCachedClient(accessToken);
@@ -307,49 +307,52 @@ async function getDebtTrendCached(
 
   const snapshots = snapshotsResult.data ?? [];
 
-  // Snapshot cuota history per account, DESC by month, one entry per month
-  // (first seen wins — snapshots are ordered DESC by period_to).
-  const cuotaHistoryByAccount = new Map<string, { month: string; cuota: number }[]>();
-  for (const snap of snapshots) {
-    if (!snap.period_to) continue;
-    const month = snap.period_to.slice(0, 7);
-    const cuota = snap.total_payment_due ?? snap.minimum_payment;
-    if (cuota == null) continue;
-    let history = cuotaHistoryByAccount.get(snap.account_id);
-    if (!history) {
-      history = [];
-      cuotaHistoryByAccount.set(snap.account_id, history);
-    }
-    if (!history.some((e) => e.month === month)) {
-      history.push({ month, cuota: Math.abs(cuota) });
-    }
-  }
-
-  const fallbackCuotaByAccount = new Map(
-    (accounts ?? []).map((a) => [a.id, Math.abs(a.monthly_payment ?? 0)])
-  );
-
-  // Every month must cover ALL debt accounts — months where only some accounts
-  // got a statement would otherwise show a partial (misleadingly tiny) total.
-  // Carry forward each account's most recent known cuota; fall back to the
-  // account's monthly_payment when no snapshot exists yet.
-  const cuotaForMonth = (accountId: string, month: string): number => {
-    const history = cuotaHistoryByAccount.get(accountId);
-    const entry = history?.find((e) => e.month <= month); // DESC → most recent ≤ month
-    return entry?.cuota ?? fallbackCuotaByAccount.get(accountId) ?? 0;
-  };
+  // Sparkline source of truth: recurring_occurrences (the canonical "cuota
+  // needed per obligation per month"). Paid-off/archived obligations stop
+  // generating occurrences, so they naturally fade out of the trend — unlike
+  // statement snapshots, whose coverage varies with which PDFs were imported.
+  const { data: debtTemplates } = await supabase
+    .from("recurring_transaction_templates")
+    .select("id")
+    .eq("user_id", userId)
+    .in("account_id", debtIds);
+  const debtTemplateIds = (debtTemplates ?? []).map((t) => t.id);
 
   const currentMonth = toColombiaDateString(new Date()).slice(0, 7);
   const [curYear, curMonthNum] = currentMonth.split("-").map(Number);
-  const sparkline = Array.from({ length: 6 }, (_, i) => {
-    const offset = 5 - i;
-    const d = new Date(curYear, curMonthNum - 1 - offset, 1);
+  const windowStart = new Date(curYear, curMonthNum - 1 - 5, 1);
+  const windowStartStr = `${windowStart.getFullYear()}-${String(windowStart.getMonth() + 1).padStart(2, "0")}-01`;
+
+  const totalsByMonth = new Map<string, number>();
+  if (debtTemplateIds.length > 0) {
+    const { data: occurrences, error: occError } = await supabase
+      .from("recurring_occurrences")
+      .select("expected_amount, occurrence_date, status")
+      .eq("user_id", userId)
+      .in("template_id", debtTemplateIds)
+      .gte("occurrence_date", windowStartStr)
+      .lte("occurrence_date", `${currentMonth}-31`);
+    if (occError) throw occError;
+
+    for (const occ of occurrences ?? []) {
+      if (occ.status === "skipped") continue;
+      const month = occ.occurrence_date.slice(0, 7);
+      totalsByMonth.set(
+        month,
+        (totalsByMonth.get(month) ?? 0) + Math.abs(occ.expected_amount ?? 0)
+      );
+    }
+  }
+
+  const fullWindow = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(curYear, curMonthNum - 1 - (5 - i), 1);
     const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    return {
-      period,
-      total: debtIds.reduce((sum, id) => sum + cuotaForMonth(id, period), 0),
-    };
+    return { period, total: totalsByMonth.get(period) ?? 0 };
   });
+  // Trim leading months with no occurrence data (pre-adoption) so they don't
+  // read as "debt was zero".
+  const firstWithData = fullWindow.findIndex((m) => m.total > 0);
+  const sparkline = firstWithData === -1 ? [] : fullWindow.slice(firstWithData);
 
   const currentCuota = sparkline.at(-1)?.total ?? null;
   const previousCuota = sparkline.at(-2)?.total ?? null;

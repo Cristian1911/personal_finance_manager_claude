@@ -120,15 +120,17 @@ export function DeudasLensRoot({
             totalMonthlyPayment={stats.totalMonthlyPayment}
             monthlyInterest={overview.monthlyInterestEstimate}
             currency={currency}
-            accounts={overview.accounts.map((a) => ({
-              id: a.id,
-              name: a.name,
-              type: a.type as "CREDIT_CARD" | "LOAN",
-              monthlyPayment: a.monthlyPayment ?? 0,
-              interestRate: a.interestRate ?? 0,
-              balance: a.balance,
-              currency: a.currency,
-            }))}
+            accounts={overview.accounts
+              .filter((a) => a.balance > 0)
+              .map((a) => ({
+                id: a.id,
+                name: a.name,
+                type: a.type as "CREDIT_CARD" | "LOAN",
+                monthlyPayment: a.monthlyPayment ?? 0,
+                interestRate: a.interestRate ?? 0,
+                balance: a.balance,
+                currency: a.currency,
+              }))}
             expanded={activeZone === "hero"}
             onToggle={() => toggle("hero")}
           />

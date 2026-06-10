@@ -600,7 +600,9 @@ async function processStatementMeta(params: {
       .in("account_id", uniqueAccountIds)
       .eq("direction", "INFLOW")
       .eq("frequency", "MONTHLY")
-      .is("category_id", null)
+      // No category_id filter: the dedup key is the account. Filtering by
+      // category_id IS NULL made the lookup miss user-categorized templates
+      // and insert a duplicate template for the same debt account.
       .order("is_active", { ascending: false })
       .order("updated_at", { ascending: false });
 

@@ -9,6 +9,7 @@ import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
+import { deactivateTemplatesForPaidOffAccount } from "@/lib/debt/payoff";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
 import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
@@ -915,6 +916,16 @@ async function updateBalancesForCreatedTransactions(params: {
         "[updateBalancesForCreatedTransactions] balance update failed",
         { accountId: account.id, error: balanceError.message }
       );
+      continue;
+    }
+
+    // Payoff lifecycle: a debt that just reached 0 stops generating cuotas.
+    if (isDebtAccountType(account.account_type) && nextBalance <= 0) {
+      await deactivateTemplatesForPaidOffAccount({
+        supabase: params.supabase,
+        userId: params.userId,
+        accountId: account.id,
+      });
     }
   }
 }

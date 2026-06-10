@@ -419,13 +419,43 @@ export async function ensureOccurrencesForRange(
 
   if (rows.length === 0) return { success: true, data: undefined };
 
+  // Month-level idempotency for MONTHLY templates: the unique constraint is on
+  // (template_id, occurrence_date), so a day_of_month change (e.g. a statement
+  // import updating the due day) would otherwise create a SECOND occurrence in
+  // a month that already has one. One obligation = one needed payment per month.
+  const monthlyIds = new Set(
+    templates.filter((t) => t.frequency === "MONTHLY").map((t) => t.id)
+  );
+  let rowsToInsert = rows;
+  if (monthlyIds.size > 0) {
+    const monthStart = `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, "0")}-01`;
+    const { data: existing, error: existingError } = await supabase
+      .from("recurring_occurrences")
+      .select("template_id, occurrence_date")
+      .eq("user_id", user.id)
+      .in("template_id", [...monthlyIds])
+      .gte("occurrence_date", monthStart);
+    if (existingError) return { success: false, error: existingError.message };
+
+    const existingMonths = new Set(
+      (existing ?? []).map((o) => `${o.template_id}|${o.occurrence_date.slice(0, 7)}`)
+    );
+    rowsToInsert = rows.filter(
+      (r) =>
+        !monthlyIds.has(r.template_id) ||
+        !existingMonths.has(`${r.template_id}|${r.occurrence_date.slice(0, 7)}`)
+    );
+  }
+
+  if (rowsToInsert.length === 0) return { success: true, data: undefined };
+
   const { error: upsertError } = await supabase
     .from("recurring_occurrences")
-    .upsert(rows, { onConflict: "template_id,occurrence_date", ignoreDuplicates: true });
+    .upsert(rowsToInsert, { onConflict: "template_id,occurrence_date", ignoreDuplicates: true });
 
   if (upsertError) {
     console.error(
-      `[ensureOccurrencesForRange] upsert failed for user=${user.id} generated=${rows.length}:`,
+      `[ensureOccurrencesForRange] upsert failed for user=${user.id} generated=${rowsToInsert.length}:`,
       upsertError.message,
     );
     return { success: false, error: upsertError.message };
