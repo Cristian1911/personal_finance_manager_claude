@@ -307,30 +307,49 @@ async function getDebtTrendCached(
 
   const snapshots = snapshotsResult.data ?? [];
 
-  // Latest snapshot cuota per (account, month) — first seen wins (ordered DESC).
-  const cuotaByMonthAccount = new Map<string, Map<string, number>>();
+  // Snapshot cuota history per account, DESC by month, one entry per month
+  // (first seen wins — snapshots are ordered DESC by period_to).
+  const cuotaHistoryByAccount = new Map<string, { month: string; cuota: number }[]>();
   for (const snap of snapshots) {
     if (!snap.period_to) continue;
     const month = snap.period_to.slice(0, 7);
     const cuota = snap.total_payment_due ?? snap.minimum_payment;
     if (cuota == null) continue;
-    let perAccount = cuotaByMonthAccount.get(month);
-    if (!perAccount) {
-      perAccount = new Map();
-      cuotaByMonthAccount.set(month, perAccount);
+    let history = cuotaHistoryByAccount.get(snap.account_id);
+    if (!history) {
+      history = [];
+      cuotaHistoryByAccount.set(snap.account_id, history);
     }
-    if (!perAccount.has(snap.account_id)) {
-      perAccount.set(snap.account_id, Math.abs(cuota));
+    if (!history.some((e) => e.month === month)) {
+      history.push({ month, cuota: Math.abs(cuota) });
     }
   }
 
-  const sparkline = [...cuotaByMonthAccount.entries()]
-    .map(([period, perAccount]) => ({
+  const fallbackCuotaByAccount = new Map(
+    (accounts ?? []).map((a) => [a.id, Math.abs(a.monthly_payment ?? 0)])
+  );
+
+  // Every month must cover ALL debt accounts — months where only some accounts
+  // got a statement would otherwise show a partial (misleadingly tiny) total.
+  // Carry forward each account's most recent known cuota; fall back to the
+  // account's monthly_payment when no snapshot exists yet.
+  const cuotaForMonth = (accountId: string, month: string): number => {
+    const history = cuotaHistoryByAccount.get(accountId);
+    const entry = history?.find((e) => e.month <= month); // DESC → most recent ≤ month
+    return entry?.cuota ?? fallbackCuotaByAccount.get(accountId) ?? 0;
+  };
+
+  const currentMonth = toColombiaDateString(new Date()).slice(0, 7);
+  const [curYear, curMonthNum] = currentMonth.split("-").map(Number);
+  const sparkline = Array.from({ length: 6 }, (_, i) => {
+    const offset = 5 - i;
+    const d = new Date(curYear, curMonthNum - 1 - offset, 1);
+    const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return {
       period,
-      total: [...perAccount.values()].reduce((s, v) => s + v, 0),
-    }))
-    .sort((a, b) => a.period.localeCompare(b.period))
-    .slice(-6);
+      total: debtIds.reduce((sum, id) => sum + cuotaForMonth(id, period), 0),
+    };
+  });
 
   const currentCuota = sparkline.at(-1)?.total ?? null;
   const previousCuota = sparkline.at(-2)?.total ?? null;

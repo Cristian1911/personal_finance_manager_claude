@@ -87,7 +87,7 @@ export function DebtTrendCard({
         className={cn("w-full text-left", hasChart && "cursor-pointer")}
       >
         <div className="flex items-center justify-between gap-3">
-          <p className={MOBILE_EYEBROW_CLASS}>Tendencia</p>
+          <p className={MOBILE_EYEBROW_CLASS}>Tendencia · cuota mensual</p>
           <span className="flex items-center gap-2">
             {meta && <StateChip label={meta.label} variant={meta.variant} />}
             {hasChart && (

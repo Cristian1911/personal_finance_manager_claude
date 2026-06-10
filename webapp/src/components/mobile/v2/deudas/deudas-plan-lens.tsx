@@ -10,6 +10,7 @@ import {
   MOBILE_EYEBROW_CLASS,
   BRASS_BUTTON_CLASS,
   BRASS_GHOST_BUTTON_CLASS,
+  GHOST_BUTTON_CLASS,
 } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 import { Expand } from "@/components/mobile/v2/expand";
@@ -75,29 +76,54 @@ export function DeudasPlanLens({
             <p className="mt-1.5 text-[10px] text-muted-foreground">
               {countdown.progressPercent.toFixed(0)}% del camino recorrido
             </p>
+            {countdown.extraPaymentScenario && (
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-z-sage-light">
+                <Zap className="size-3.5 shrink-0 text-z-income" />
+                <span>
+                  Con{" "}
+                  <span className="font-semibold tabular-nums text-z-income">
+                    {formatCurrency(countdown.extraPaymentScenario.extraAmount, currency)}
+                  </span>{" "}
+                  extra/mes terminarías{" "}
+                  {countdown.extraPaymentScenario.monthsSaved === 1
+                    ? "1 mes"
+                    : `${countdown.extraPaymentScenario.monthsSaved} meses`}{" "}
+                  antes
+                </span>
+              </p>
+            )}
           </>
         ) : (
           <p className="mt-2 text-xs text-muted-foreground">
             Completa cuotas mínimas en tus cuentas para proyectar tu fecha.
           </p>
         )}
-        {onAbonar && (
-          <button
-            type="button"
-            onClick={onAbonar}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {onAbonar && (
+            <button
+              type="button"
+              onClick={onAbonar}
+              className={cn(
+                BRASS_GHOST_BUTTON_CLASS,
+                "inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-semibold"
+              )}
+            >
+              ¿Tienes plata extra? Abónala
+              <ArrowRight className="size-3.5" />
+            </button>
+          )}
+          <Link
+            href="/deudas/planificador"
             className={cn(
-              BRASS_GHOST_BUTTON_CLASS,
-              "mt-3 inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-semibold"
+              GHOST_BUTTON_CLASS,
+              "inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-semibold"
             )}
           >
-            ¿Tienes plata extra? Abónala
-            <ArrowRight className="size-3.5" />
-          </button>
-        )}
+            <Calculator className="size-3.5" />
+            Simular pagos
+          </Link>
+        </div>
       </div>
-
-      {/* Próximo hito — countdown ring, expands with the payoff math (B1) */}
-      {countdown && <MilestoneCard countdown={countdown} currency={currency} />}
 
       {/* Más cerca de cerrar — per-debt detail on tap (B1) */}
       {closestLoan && (
@@ -175,75 +201,6 @@ function AbonarButton({ onAbonar }: { onAbonar?: () => void }) {
     >
       Abonar a esta deuda
     </button>
-  );
-}
-
-function MilestoneCard({
-  countdown,
-  currency,
-}: {
-  countdown: DebtCountdownData;
-  currency: CurrencyCode;
-}) {
-  const [open, setOpen] = useState(false);
-  const scenario = countdown.extraPaymentScenario;
-
-  return (
-    <div className={cn(PANEL_INSET_CLASS, open && "border-z-brass/30")}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-3 p-3.5 text-left"
-      >
-        <MilestoneRing
-          months={countdown.monthsToFree}
-          fillPct={countdown.progressPercent / 100}
-          tone="brass"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-z-sage-light">Próximo hito</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">
-            {countdown.monthsToFree} meses para tu última cuota
-          </p>
-        </div>
-        <HeaderChevron open={open} />
-      </button>
-      <Expand open={open}>
-        <div className="space-y-2 px-3.5 pb-3.5">
-          <div className="grid grid-cols-2 gap-2">
-            <DetailCell label="Meses restantes">{countdown.monthsToFree}</DetailCell>
-            <DetailCell label="Fecha proyectada">
-              <span className="capitalize">
-                {formatMonthLabel(parseMonth(countdown.projectedDate))}
-              </span>
-            </DetailCell>
-          </div>
-          {scenario && (
-            <div className="flex items-center gap-2.5 rounded-xl border border-white/6 bg-[#111] px-3 py-2">
-              <Zap className="size-4 shrink-0 text-z-income" />
-              <p className="text-[11px] leading-snug text-z-sage-light">
-                Con{" "}
-                <span className="font-semibold tabular-nums text-z-income">
-                  {formatCurrency(scenario.extraAmount, currency)}
-                </span>{" "}
-                extra/mes terminarías {scenario.monthsSaved} meses antes
-              </p>
-            </div>
-          )}
-          <Link
-            href="/deudas/planificador"
-            className={cn(
-              BRASS_GHOST_BUTTON_CLASS,
-              "flex h-9 w-full items-center justify-center gap-2 rounded-md border text-xs font-semibold"
-            )}
-          >
-            <Calculator className="size-3.5" />
-            Simular pagos
-          </Link>
-        </div>
-      </Expand>
-    </div>
   );
 }
 

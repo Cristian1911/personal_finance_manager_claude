@@ -574,6 +574,7 @@ type PaymentAccountRow = {
   account_type: string;
   current_balance: number;
   credit_limit: number | null;
+  currency_balances: Record<string, Record<string, unknown>> | null;
 };
 type RecurringTxDraft = {
   account_id: string;
@@ -693,7 +694,7 @@ async function loadPaymentAccounts(params: {
 
   const { data: accountRows, error } = await params.supabase
     .from("accounts")
-    .select("id, name, account_type, current_balance, credit_limit")
+    .select("id, name, account_type, current_balance, credit_limit, currency_balances")
     .in("id", accountIds)
     .eq("user_id", params.userId);
 
@@ -829,6 +830,7 @@ async function insertRecurringTransactions(params: {
       idempotency_key: idempotencyKey,
       provider: "MANUAL",
       status: "POSTED",
+      capture_method: "MANUAL_FORM",
       is_recurring: true,
       recurrence_group_id: params.recurrenceGroupId,
       categorization_source: tx.category_id ? "USER_CREATED" : "SYSTEM_DEFAULT",
@@ -858,6 +860,7 @@ async function updateBalancesForCreatedTransactions(params: {
   userId: string;
   accountMap: Map<string, PaymentAccountRow>;
   createdTxs: CreatedTxDelta[];
+  currencyCode: string;
 }): Promise<void> {
   for (const tx of params.createdTxs) {
     const account = params.accountMap.get(tx.account_id);
@@ -872,9 +875,33 @@ async function updateBalancesForCreatedTransactions(params: {
 
     account.current_balance = nextBalance;
 
-    const updatePayload: Record<string, number> = { current_balance: nextBalance };
-    if (isDebtAccountType(account.account_type) && account.credit_limit != null) {
-      updatePayload.available_balance = account.credit_limit - nextBalance;
+    const updatePayload: Record<string, unknown> = { current_balance: nextBalance };
+    if (isDebtAccountType(account.account_type)) {
+      const nextAvailable =
+        account.credit_limit != null
+          ? Math.max(account.credit_limit - nextBalance, 0)
+          : undefined;
+      if (nextAvailable !== undefined) {
+        updatePayload.available_balance = nextAvailable;
+      }
+      // Sync currency_balances JSONB — /deudas reads utilization from it via
+      // extractDebtAccounts, so skipping it leaves the page showing stale debt.
+      const cb = account.currency_balances;
+      if (cb && !cb[params.currencyCode]) {
+        console.warn(
+          "[updateBalancesForCreatedTransactions] currency_balances missing key — /deudas may read stale debt",
+          { accountId: account.id, currencyCode: params.currencyCode }
+        );
+      }
+      if (cb && cb[params.currencyCode]) {
+        cb[params.currencyCode] = {
+          ...cb[params.currencyCode],
+          current_balance: nextBalance,
+          total_payment_due: Math.max(nextBalance, 0),
+          ...(nextAvailable !== undefined ? { available_balance: nextAvailable } : {}),
+        };
+        updatePayload.currency_balances = cb;
+      }
     }
 
     const { error: balanceError } = await params.supabase
@@ -1045,6 +1072,7 @@ export async function recordRecurringOccurrencePayment(input: {
     userId: user.id,
     accountMap: loadedAccounts.accountMap,
     createdTxs: inserted.createdTxs,
+    currencyCode: template.currency_code,
   });
 
   revalidateFinancialViews();
