@@ -1303,3 +1303,12 @@ Phase 3 (planificador 4-step + Deseos/Puedo-pagar parity) shipped via PRs #248 a
 
 ### Import multi-screenshot — deferred polish (2026-06-10, from import-flow-doctor review)
 - **[P3] Results-step hint for OCR_BATCH skips** — when an OCR_BATCH import reports `skipped > 0`, add a soft note: "Si faltó alguna transacción, puede deberse a capturas superpuestas". Dedup key already includes authorization_number; this covers the residual identical-rows edge.
+
+### Deudas/recurring — /simplify follow-ups (2026-06-10, deferred by design)
+- **[P2] Unified `registerDebtPaymentLeg` service** — three paths insert a debt-payment INFLOW independently (checklist leg B in recurring-templates.ts, extra-payment.ts inflow, ensureDebtCompanionLeg in occurrences.ts), each with its own idempotency-provider string and copy. Extract to `lib/debt/` so strings/category fallback can't drift; consider a dedicated SYSTEM-tier capture_method (DB enum migration) instead of MANUAL_FORM for system-generated legs. Unifying idempotency keys naively would change dedup for existing rows — needs care.
+- **[P2] Month-level occurrence uniqueness as DB constraint** — the guard in ensureOccurrencesForRange is app-level only (TOCTOU under concurrent ensureCurrentOccurrences). Real fix: `period_key` column ('YYYY-MM' for MONTHLY) + UNIQUE(template_id, period_key), backfill migration, all insert paths (webapp + mobile sync) updated together.
+- **[P2] BankBadge → existing bank identity system** — bank-badge.tsx regex-matches names + hardcodes brand hexes, duplicating `accounts.bank_key` + `BANK_LOGOS` (lib/icons/bank-logos) + `LetterMark`/`AccountIcon`. Thread bank_key through extractDebtAccounts (shared type change) and render the real SVG marks.
+- **[P3] Batch screenshot OCR concurrency** — step-upload posts images sequentially (10 × ~2-5s). Bounded concurrency (3) needs a parser-side check first (single uvicorn worker; tesseract CPU-bound).
+- **[P3] Image detection double-OCR** — detect_and_parse_image runs ocr_image() for detection, then bancolombia_web runs image_to_data again. Use image_to_data once: join words for detection text, reuse boxes for parsing.
+- **[P3] Shared `useLoadMore` hook** — movimientos-root + recent-transactions each hand-roll the load-more state machine.
+- **[P3] Shared `ExpandableCard` shell** — six new deudas components repeat PANEL_INSET + aria-expanded button + Expand + brass border scaffolding.

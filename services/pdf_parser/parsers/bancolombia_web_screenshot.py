@@ -177,30 +177,21 @@ def _format_description_with_counterparty(words: list[dict]) -> str:
     return " ".join(texts)
 
 
-def parse_bancolombia_web(
-    image_path: str | None = None,
-    ocr_text: str | None = None,
-    screenshot_date: date | None = None,
-) -> ParsedStatement:
+def parse_bancolombia_web(image_path: str) -> ParsedStatement:
     """Parse Bancolombia web screenshot into a ParsedStatement.
 
+    Requires the image file (not pre-extracted text): rows are reconstructed
+    from OCR word bounding boxes, so column association (date | description |
+    reference | amount) survives the table layout.
+
     Args:
-        image_path: Path to the image file (PNG/JPG). Either image_path or ocr_text must be provided.
-        ocr_text: Pre-extracted OCR text (legacy fallback). If image_path is provided, it's used instead.
-        screenshot_date: Optional reference date for the statement (unused, kept for API compatibility).
+        image_path: Path to the image file (PNG/JPG).
 
     Returns:
         ParsedStatement with transactions parsed from visual rows.
     """
-    # Extract words with bounding boxes
-    if image_path:
-        image_path_str = str(image_path) if isinstance(image_path, Path) else image_path
-        words = ocr_image_with_boxes(image_path_str)
-    elif ocr_text:
-        # Legacy: if only OCR text provided, fall back to the old parser
-        return _parse_from_text(ocr_text, screenshot_date)
-    else:
-        raise ValueError("Either image_path or ocr_text must be provided")
+    image_path_str = str(image_path) if isinstance(image_path, Path) else image_path
+    words = ocr_image_with_boxes(image_path_str)
 
     if not words:
         raise ValueError(
@@ -334,19 +325,4 @@ def parse_bancolombia_web(
         period_to=max(dates),
         currency="COP",
         transactions=transactions,
-    )
-
-
-def _parse_from_text(
-    ocr_text: str,
-    screenshot_date: date | None = None,
-) -> ParsedStatement:
-    """Legacy parser for OCR text input (no bounding boxes).
-
-    This is a fallback for when only raw OCR text is available.
-    Use image-based parsing (ocr_image_with_boxes) for accurate results.
-    """
-    raise NotImplementedError(
-        "Text-only parsing is not implemented for Bancolombia web screenshots. "
-        "Please provide an image file instead."
     )

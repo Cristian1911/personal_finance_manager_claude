@@ -238,8 +238,6 @@ export interface DebtTrendData {
   deltaPct: number | null;
   /** Cuota-trend chip (mejorando/estable/mes_pesado) from the expected series. */
   status: DebtTrendStatus | null;
-  currentCuota: number | null;
-  previousCuota: number | null;
   /**
    * Ascending by period (YYYY-MM), up to 6 entries.
    * `total` = actual payments made that month (INFLOW to debt accounts,
@@ -260,8 +258,6 @@ export interface DebtTrendData {
 const EMPTY_DEBT_TREND: DebtTrendData = {
   deltaPct: null,
   status: null,
-  currentCuota: null,
-  previousCuota: null,
   sparkline: [],
   extraPayments: { count: 0, totalExtra: 0 },
 };
@@ -292,10 +288,9 @@ async function getDebtTrendCached(
   const activeDebtIds = debtAccounts.filter((a) => a.is_active).map((a) => a.id);
   if (debtIds.length === 0) return EMPTY_DEBT_TREND;
 
-  const monthStart = `${toColombiaDateString(new Date()).slice(0, 7)}-01`;
-
   // 6-month window in Colombia time.
   const currentMonth = toColombiaDateString(new Date()).slice(0, 7);
+  const monthStart = `${currentMonth}-01`;
   const [curYear, curMonthNum] = currentMonth.split("-").map(Number);
   const windowStart = new Date(curYear, curMonthNum - 1 - 5, 1);
   const windowStartStr = `${windowStart.getFullYear()}-${String(windowStart.getMonth() + 1).padStart(2, "0")}-01`;
@@ -438,7 +433,7 @@ async function getDebtTrendCached(
     expected
   );
 
-  return { deltaPct, status, currentCuota, previousCuota, sparkline, extraPayments };
+  return { deltaPct, status, sparkline, extraPayments };
 }
 
 export async function getDebtTrend(

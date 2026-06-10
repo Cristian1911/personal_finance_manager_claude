@@ -44,10 +44,7 @@ def test_bancolombia_web_with_bounding_boxes():
         print("SKIP: sample image not available (local-only fixture)")
         return
 
-    stmt = parse_bancolombia_web(
-        image_path=image_path,
-        screenshot_date=date(2026, 6, 10),
-    )
+    stmt = parse_bancolombia_web(image_path)
 
     # Ground truth data: (date, description_contains, ref, amount, direction)
     ground_truth = [

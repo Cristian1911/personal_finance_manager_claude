@@ -5,7 +5,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { accountSchema } from "@/lib/validators/account";
 import { computeIdempotencyKey } from "@zeta/shared";
-import { getDirectionForBalanceDelta } from "@/lib/utils/account-balance";
+import { getDirectionForBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
 import { toColombiaDateString } from "@/lib/utils/date";
 import { deactivateTemplatesForPaidOffAccount } from "@/lib/debt/payoff";
 import { revalidateFinancialViews } from "@/lib/cache/revalidation";
@@ -268,7 +268,7 @@ export async function archiveDebtObligation(id: string): Promise<ActionResult> {
   if (fetchError || !account) {
     return { success: false, error: "No se encontró la cuenta." };
   }
-  if (account.account_type !== "CREDIT_CARD" && account.account_type !== "LOAN") {
+  if (!isDebtAccountType(account.account_type)) {
     return { success: false, error: "Solo se pueden archivar obligaciones (tarjetas o préstamos)." };
   }
 
@@ -291,12 +291,8 @@ export async function archiveDebtObligation(id: string): Promise<ActionResult> {
     accountId: id,
   });
 
+  // FINANCIAL_TAGS already covers accounts/debt/occurrences/recurring/attention.
   revalidateFinancialViews();
-  updateTag("accounts");
-  updateTag("debt");
-  updateTag("occurrences");
-  updateTag("recurring");
-  updateTag("attention");
   return { success: true, data: undefined };
 }
 

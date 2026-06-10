@@ -19,6 +19,15 @@ export function getCaptureTier(method: TransactionCaptureMethod): CaptureTier {
 }
 
 /**
+ * Only tier-1 (bank-verified statement) sources may set account balances,
+ * credit limits and statement snapshots directly. Lower tiers update balances
+ * per-transaction via applyAccountBalanceDelta.
+ */
+export function isBankVerifiedCapture(method: TransactionCaptureMethod): boolean {
+  return getCaptureTier(method) === 1;
+}
+
+/**
  * Given an incoming and existing capture method, returns which side should
  * "win" for data fields on the surviving transaction. Ties go to incoming
  * (newer data).

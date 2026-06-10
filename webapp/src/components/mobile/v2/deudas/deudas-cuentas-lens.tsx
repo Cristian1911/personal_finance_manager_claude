@@ -2,7 +2,7 @@
 
 import { Suspense, use, useState } from "react";
 import Link from "next/link";
-import { Archive, ChevronDown, Users } from "lucide-react";
+import { Archive, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -15,6 +15,9 @@ import {
   GHOST_BUTTON_CLASS,
 } from "@/lib/constants/styles";
 import { Expand } from "@/components/mobile/v2/expand";
+import { HeaderChevron } from "@/components/mobile/v2/header-chevron";
+import { ProgressRing } from "@/components/mobile/v2/progress-ring";
+import { DetailCell } from "./detail-cell";
 import { BankBadge } from "@/components/debt/bank-badge";
 import { ExchangeRateNudge } from "@/components/debt/exchange-rate-nudge";
 import type { CurrencyCode } from "@/types/domain";
@@ -148,12 +151,7 @@ function ClosedObligations({ archived }: { archived: ArchivedObligation[] }) {
             {archived.length} pagada{archived.length !== 1 ? "s" : ""} por completo
           </p>
         </div>
-        <ChevronDown
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180"
-          )}
-        />
+        <HeaderChevron open={open} />
       </button>
       <Expand open={open}>
         <div className="space-y-1.5 px-3.5 pb-3.5">
@@ -267,12 +265,7 @@ function PersonasCard({
             </>
           )}
         </div>
-        <ChevronDown
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180"
-          )}
-        />
+        <HeaderChevron open={open} />
       </button>
       <Expand open={open}>
         <div className="space-y-1.5 px-3.5 pb-3.5">
@@ -357,12 +350,7 @@ function HeaderTiles({
             <p className={MOBILE_EYEBROW_CLASS}>Uso del cupo</p>
             <UtilizationRing percentage={overview.overallUtilization} />
           </div>
-          <ChevronDown
-            className={cn(
-              "size-3.5 shrink-0 self-start text-muted-foreground transition-transform duration-200",
-              open === "cupo" && "rotate-180"
-            )}
-          />
+          <HeaderChevron open={open === "cupo"} className="size-3.5 self-start" />
         </button>
         <button
           type="button"
@@ -385,12 +373,7 @@ function HeaderTiles({
               </p>
             </div>
           </div>
-          <ChevronDown
-            className={cn(
-              "size-3.5 shrink-0 self-start text-muted-foreground transition-transform duration-200",
-              open === "deuda" && "rotate-180"
-            )}
-          />
+          <HeaderChevron open={open === "deuda"} className="size-3.5 self-start" />
         </button>
       </div>
 
@@ -595,66 +578,61 @@ function AccountRow({
             {isCC ? "usado" : "saldo"}
           </p>
         </div>
-        <ChevronDown
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180"
-          )}
-        />
+        <HeaderChevron open={open} />
       </button>
       <Expand open={open}>
         <div className="space-y-2 px-3 pb-3">
           <div className="grid grid-cols-2 gap-2">
             {isCC ? (
               <>
-                <RowCell label="Usado" tone="debt">
+                <DetailCell label="Usado" tone="debt">
                   {formatCurrency(account.balance, account.currency)}
-                </RowCell>
-                <RowCell label="Cupo">
+                </DetailCell>
+                <DetailCell label="Cupo">
                   {account.creditLimit
                     ? formatCurrency(account.creditLimit, account.currency)
                     : "—"}
-                </RowCell>
-                <RowCell label="Disponible" tone="income">
+                </DetailCell>
+                <DetailCell label="Disponible" tone="income">
                   {account.creditLimit
                     ? formatCurrency(
                         Math.max(0, account.creditLimit - account.balance),
                         account.currency
                       )
                     : "—"}
-                </RowCell>
-                <RowCell label="Tasa">
+                </DetailCell>
+                <DetailCell label="Tasa">
                   {account.interestRate != null
                     ? `${account.interestRate.toFixed(1)}% EA`
                     : "—"}
-                </RowCell>
-                <RowCell label="Cuota del mes">
+                </DetailCell>
+                <DetailCell label="Cuota del mes">
                   {account.monthlyPayment
                     ? formatCurrency(account.monthlyPayment, account.currency)
                     : "—"}
-                </RowCell>
-                <RowCell label="Corte">
+                </DetailCell>
+                <DetailCell label="Corte">
                   {account.cutoffDay ? `día ${account.cutoffDay}` : "—"}
-                </RowCell>
+                </DetailCell>
               </>
             ) : (
               <>
-                <RowCell label="Saldo restante" tone="debt">
+                <DetailCell label="Saldo restante" tone="debt">
                   {formatCurrency(account.balance, account.currency)}
-                </RowCell>
-                <RowCell label="Pagado" tone="income">
+                </DetailCell>
+                <DetailCell label="Pagado" tone="income">
                   {paidPct != null ? `${paidPct.toFixed(0)}%` : "—"}
-                </RowCell>
-                <RowCell label="Tasa">
+                </DetailCell>
+                <DetailCell label="Tasa">
                   {account.interestRate != null
                     ? `${account.interestRate.toFixed(1)}% EA`
                     : "—"}
-                </RowCell>
-                <RowCell label="Cuota mensual">
+                </DetailCell>
+                <DetailCell label="Cuota mensual">
                   {account.monthlyPayment
                     ? formatCurrency(account.monthlyPayment, account.currency)
                     : "—"}
-                </RowCell>
+                </DetailCell>
               </>
             )}
           </div>
@@ -695,60 +673,12 @@ function AccountRow({
   );
 }
 
-function RowCell({
-  label,
-  tone,
-  children,
-}: {
-  label: string;
-  tone?: "debt" | "income";
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-white/6 bg-[#111] px-3 py-2">
-      <p className="text-[10px] text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          "mt-0.5 text-[13px] font-bold tabular-nums",
-          tone === "debt" && "text-z-debt",
-          tone === "income" && "text-z-income"
-        )}
-      >
-        {children}
-      </p>
-    </div>
-  );
-}
 
 function UtilizationRing({ percentage }: { percentage: number }) {
-  const r = 16;
-  const circumference = 2 * Math.PI * r;
-  const offset = circumference * (1 - Math.min(100, percentage) / 100);
   const hot = percentage > 60;
   return (
-    <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
-      <svg width="44" height="44" viewBox="0 0 40 40" className="-rotate-90">
-        <circle cx="20" cy="20" r={r} fill="none" className="stroke-white/6" strokeWidth="3" />
-        <circle
-          cx="20"
-          cy="20"
-          r={r}
-          fill="none"
-          className={hot ? "stroke-z-debt" : "stroke-z-brass"}
-          strokeWidth="3"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div
-        className={cn(
-          "absolute inset-0 flex items-center justify-center text-[10px] font-bold",
-          hot ? "text-z-debt" : "text-z-brass"
-        )}
-      >
-        {percentage.toFixed(0)}%
-      </div>
-    </div>
+    <ProgressRing pct={percentage} tone={hot ? "debt" : "brass"}>
+      {percentage.toFixed(0)}%
+    </ProgressRing>
   );
 }

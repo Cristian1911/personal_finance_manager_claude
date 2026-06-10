@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Calculator, ChevronDown, Zap } from "lucide-react";
+import { ArrowRight, Calculator, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import {
@@ -14,6 +14,9 @@ import {
 } from "@/lib/constants/styles";
 import { formatMonthLabel, parseMonth } from "@/lib/utils/date";
 import { Expand } from "@/components/mobile/v2/expand";
+import { HeaderChevron } from "@/components/mobile/v2/header-chevron";
+import { ProgressRing } from "@/components/mobile/v2/progress-ring";
+import { DetailCell } from "./detail-cell";
 import { estimateMonthlyInterest } from "@zeta/shared";
 import type { CurrencyCode } from "@/types/domain";
 import type { DebtAccount, DebtStats, DebtInsight } from "@zeta/shared";
@@ -162,32 +165,6 @@ export function DeudasPlanLens({
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-function HeaderChevron({ open }: { open: boolean }) {
-  return (
-    <ChevronDown
-      className={cn(
-        "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
-        open && "rotate-180"
-      )}
-    />
-  );
-}
-
-function DetailCell({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-white/6 bg-[#111] px-3 py-2">
-      <p className="text-[10px] text-muted-foreground">{label}</p>
-      <div className="mt-0.5 text-sm font-bold tabular-nums">{children}</div>
-    </div>
-  );
-}
-
 function AbonarButton({ onAbonar }: { onAbonar?: () => void }) {
   if (!onAbonar) return null;
   return (
@@ -233,7 +210,7 @@ function ClosestLoanCard({
         className="flex w-full items-center gap-3 p-3.5 text-left"
         disabled={!hasDetail}
       >
-        <MilestoneRing months={months} fillPct={(percentage ?? 0) / 100} tone="income" />
+        <ProgressRing pct={percentage ?? 0} tone="income">{months}m</ProgressRing>
         <div className="min-w-0 flex-1">
           <p className={cn(MOBILE_EYEBROW_CLASS, "mb-1")}>Más cerca de cerrar</p>
           <p className="truncate text-sm font-semibold text-z-sage-light">{accountName}</p>
@@ -356,42 +333,3 @@ function InsightCard({
   );
 }
 
-function MilestoneRing({
-  months,
-  fillPct,
-  tone = "income",
-}: {
-  months: number;
-  fillPct: number;
-  tone?: "income" | "brass";
-}) {
-  const r = 16;
-  const circumference = 2 * Math.PI * r;
-  const clamped = Math.max(0, Math.min(1, fillPct));
-  return (
-    <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
-      <svg width="44" height="44" viewBox="0 0 40 40" className="-rotate-90">
-        <circle cx="20" cy="20" r={r} fill="none" className="stroke-white/6" strokeWidth="3" />
-        <circle
-          cx="20"
-          cy="20"
-          r={r}
-          fill="none"
-          className={tone === "income" ? "stroke-z-income" : "stroke-z-brass"}
-          strokeWidth="3"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - clamped)}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div
-        className={cn(
-          "absolute inset-0 flex items-center justify-center text-[10px] font-bold",
-          tone === "income" ? "text-z-income" : "text-z-brass"
-        )}
-      >
-        {months}m
-      </div>
-    </div>
-  );
-}

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/utils/currency";
 import { PANEL_INSET_CLASS, MOBILE_EYEBROW_CLASS } from "@/lib/constants/styles";
 import { StateChip } from "@/components/mobile/v2/state-chip";
 import { Expand } from "@/components/mobile/v2/expand";
+import { HeaderChevron } from "@/components/mobile/v2/header-chevron";
 import type { DebtTrendData } from "@/actions/debt";
 import type { CurrencyCode } from "@/types/domain";
 
@@ -80,10 +80,11 @@ export function DebtTrendCard({
     : 1;
   const scalePct = (v: number) => (v / maxVal) * 100;
 
-  /** Split a month into the bar segments: mínimo covered | extra | faltante.
+  /** Bar segments per month: mínimo covered | extra | faltante.
    *  `unknown` = no mínimo registered that month (pre-adoption history) —
-   *  the bar can't be split, so it renders in a distinct muted style. */
-  const segmentsOf = (p: { total: number; expected: number | null }) => {
+   *  the bar can't be split, so it renders in a distinct muted style.
+   *  Computed once per render; points.length ≤ 6. */
+  const segments = points.map((p) => {
     if (p.expected == null) {
       return { base: p.total, extra: 0, short: 0, unknown: true };
     }
@@ -93,7 +94,10 @@ export function DebtTrendCard({
       short: Math.max(0, p.expected - p.total),
       unknown: false,
     };
-  };
+  });
+  const hasExtra = segments.some((s) => s.extra > 0);
+  const hasShort = segments.some((s) => s.short > 0);
+  const hasUnknown = segments.some((s) => s.unknown);
 
   const selectBar = (i: number) => {
     setSel(sel === i ? null : i);
@@ -123,12 +127,7 @@ export function DebtTrendCard({
                 }}
                 className="-m-1 flex p-1"
               >
-                <ChevronDown
-                  className={cn(
-                    "size-4 text-muted-foreground transition-transform duration-200",
-                    open && "rotate-180"
-                  )}
-                />
+                <HeaderChevron open={open} />
               </button>
             )}
           </span>
@@ -168,7 +167,7 @@ export function DebtTrendCard({
             <div className="flex h-9 w-[140px] shrink-0 items-end gap-1">
               {points.map((p, i) => {
                 const isSel = sel === i;
-                const seg = segmentsOf(p);
+                const seg = segments[i];
                 return (
                   <button
                     key={p.period}
@@ -232,6 +231,7 @@ export function DebtTrendCard({
             {points.map((p, i) => {
               const isSel = sel === i;
               const { label } = monthParts(p.period);
+              const seg = segments[i];
               return (
                 <button
                   key={p.period}
@@ -254,38 +254,31 @@ export function DebtTrendCard({
                     {label}
                   </span>
                   <span className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-white/6">
-                    {(() => {
-                      const seg = segmentsOf(p);
-                      return (
-                        <>
-                          <span
-                            className={cn(
-                              "h-full shrink-0 rounded-l-full",
-                              seg.unknown
-                                ? isSel
-                                  ? "bg-z-sage-dark/70"
-                                  : "bg-z-sage-dark/35"
-                                : isSel
-                                  ? "bg-z-brass"
-                                  : "bg-z-brass/60"
-                            )}
-                            style={{ width: `${Math.max(scalePct(seg.base), 1.5)}%` }}
-                          />
-                          {seg.extra > 0 && (
-                            <span
-                              className="h-full shrink-0 rounded-r-full bg-z-income"
-                              style={{ width: `${scalePct(seg.extra)}%` }}
-                            />
-                          )}
-                          {seg.short > 0 && (
-                            <span
-                              className="h-full shrink-0 rounded-r-full bg-z-alert/30"
-                              style={{ width: `${scalePct(seg.short)}%` }}
-                            />
-                          )}
-                        </>
-                      );
-                    })()}
+                    <span
+                      className={cn(
+                        "h-full shrink-0 rounded-l-full",
+                        seg.unknown
+                          ? isSel
+                            ? "bg-z-sage-dark/70"
+                            : "bg-z-sage-dark/35"
+                          : isSel
+                            ? "bg-z-brass"
+                            : "bg-z-brass/60"
+                      )}
+                      style={{ width: `${Math.max(scalePct(seg.base), 1.5)}%` }}
+                    />
+                    {seg.extra > 0 && (
+                      <span
+                        className="h-full shrink-0 rounded-r-full bg-z-income"
+                        style={{ width: `${scalePct(seg.extra)}%` }}
+                      />
+                    )}
+                    {seg.short > 0 && (
+                      <span
+                        className="h-full shrink-0 rounded-r-full bg-z-alert/30"
+                        style={{ width: `${scalePct(seg.short)}%` }}
+                      />
+                    )}
                   </span>
                   <span
                     className={cn(
@@ -305,13 +298,13 @@ export function DebtTrendCard({
             {/* Legend */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2.5 pt-1.5">
               <LegendDot className="bg-z-brass/60" label="mínimo" />
-              {points.some((p) => segmentsOf(p).extra > 0) && (
+              {hasExtra && (
                 <LegendDot className="bg-z-income" label="extra" />
               )}
-              {points.some((p) => segmentsOf(p).short > 0) && (
+              {hasShort && (
                 <LegendDot className="bg-z-alert/40" label="bajo el mínimo" />
               )}
-              {points.some((p) => segmentsOf(p).unknown) && (
+              {hasUnknown && (
                 <LegendDot className="bg-z-sage-dark/40" label="sin mínimo registrado" />
               )}
             </div>

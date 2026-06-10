@@ -9,7 +9,10 @@ import { recurringTemplateSchema } from "@/lib/validators/recurring-template";
 import { parseSubPayments } from "@/lib/utils/sub-payments";
 import { computeIdempotencyKey } from "@/lib/utils/idempotency";
 import { applyAccountBalanceDelta, isDebtAccountType } from "@/lib/utils/account-balance";
-import { deactivateTemplatesForPaidOffAccount } from "@/lib/debt/payoff";
+import {
+  buildDebtBalanceUpdatePayload,
+  deactivateTemplatesForPaidOffAccount,
+} from "@/lib/debt/payoff";
 import { toMonthlyAmount } from "@/lib/utils/recurring";
 import { ensureCurrentOccurrences, ensureOccurrencesForRange, linkTransactionToOccurrence } from "@/actions/occurrences";
 import {
@@ -876,33 +879,18 @@ async function updateBalancesForCreatedTransactions(params: {
 
     account.current_balance = nextBalance;
 
-    const updatePayload: Record<string, unknown> = { current_balance: nextBalance };
-    if (isDebtAccountType(account.account_type)) {
-      const nextAvailable =
-        account.credit_limit != null
-          ? Math.max(account.credit_limit - nextBalance, 0)
-          : undefined;
-      if (nextAvailable !== undefined) {
-        updatePayload.available_balance = nextAvailable;
-      }
-      // Sync currency_balances JSONB — /deudas reads utilization from it via
-      // extractDebtAccounts, so skipping it leaves the page showing stale debt.
-      const cb = account.currency_balances;
-      if (cb && !cb[params.currencyCode]) {
-        console.warn(
-          "[updateBalancesForCreatedTransactions] currency_balances missing key — /deudas may read stale debt",
-          { accountId: account.id, currencyCode: params.currencyCode }
-        );
-      }
-      if (cb && cb[params.currencyCode]) {
-        cb[params.currencyCode] = {
-          ...cb[params.currencyCode],
-          current_balance: nextBalance,
-          total_payment_due: Math.max(nextBalance, 0),
-          ...(nextAvailable !== undefined ? { available_balance: nextAvailable } : {}),
-        };
-        updatePayload.currency_balances = cb;
-      }
+    const updatePayload: Record<string, unknown> = isDebtAccountType(account.account_type)
+      ? buildDebtBalanceUpdatePayload(account, nextBalance, params.currencyCode)
+      : { current_balance: nextBalance };
+    if (
+      isDebtAccountType(account.account_type) &&
+      account.currency_balances &&
+      !account.currency_balances[params.currencyCode]
+    ) {
+      console.warn(
+        "[updateBalancesForCreatedTransactions] currency_balances missing key — /deudas may read stale debt",
+        { accountId: account.id, currencyCode: params.currencyCode }
+      );
     }
 
     const { error: balanceError } = await params.supabase

@@ -10,7 +10,10 @@ import {
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createCachedClient } from "@/lib/supabase/cached";
 import { applyAccountBalanceDelta } from "@/lib/utils/account-balance";
-import { deactivateTemplatesForPaidOffAccount } from "@/lib/debt/payoff";
+import {
+  buildDebtBalanceUpdatePayload,
+  deactivateTemplatesForPaidOffAccount,
+} from "@/lib/debt/payoff";
 import type { ActionResult } from "@/types/actions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -249,36 +252,11 @@ export async function applyExtraDebtPayment(
       });
       debtAccount.current_balance = newDebtBalance;
 
-      // Also update currency_balances + available_balance (debt page reads from these)
-      const accountUpdate: Record<string, unknown> = { current_balance: newDebtBalance };
-
-      // Credit cards: recalculate available_balance
-      if (debtAccount.account_type === "CREDIT_CARD" && debtAccount.credit_limit != null) {
-        accountUpdate.available_balance = Math.max(
-          Number(debtAccount.credit_limit) - newDebtBalance,
-          0
-        );
-      }
-
-      // Sync currency_balances JSONB if present
-      const cb = debtAccount.currency_balances as Record<string, Record<string, unknown>> | null;
-      if (cb && cb[currencyCode]) {
-        const newAvailable = debtAccount.account_type === "CREDIT_CARD" && debtAccount.credit_limit != null
-          ? Math.max(Number(debtAccount.credit_limit) - newDebtBalance, 0)
-          : undefined;
-        const updatedCb: Record<string, unknown> = {
-          ...cb[currencyCode],
-          current_balance: newDebtBalance,
-          // Sync all balance-derived fields so extractDebtAccounts reads correct values
-          total_payment_due: Math.max(newDebtBalance, 0),
-          ...(newAvailable !== undefined ? { available_balance: newAvailable } : {}),
-        };
-        accountUpdate.currency_balances = { ...cb, [currencyCode]: updatedCb };
-      }
-
+      // Shared payload builder: current_balance + available_balance +
+      // currency_balances JSONB (debt page reads from these).
       const { error: debtBalErr } = await supabase
         .from("accounts")
-        .update(accountUpdate)
+        .update(buildDebtBalanceUpdatePayload(debtAccount, newDebtBalance, currencyCode))
         .eq("id", allocation.accountId)
         .eq("user_id", user.id);
       if (debtBalErr) console.error("[extraPayment] debt balance update failed:", debtBalErr);

@@ -5,10 +5,11 @@ import { revalidateFinancialViews } from "@/lib/cache/revalidation";
 import {
   computeSnapshotDiffs,
   findReconciliationCandidates,
-  getCaptureTier,
+  isBankVerifiedCapture,
   mergeTransactionMetadata,
   type ReconciliationCandidate,
 } from "@zeta/shared";
+import type { TransactionCaptureMethod } from "@/types/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getAuthenticatedClient } from "@/lib/supabase/auth";
@@ -574,10 +575,17 @@ async function processStatementMeta(params: {
   skipped: number;
   statementMeta?: StatementMetaForImport[];
   details: string[];
+  captureMethod: TransactionCaptureMethod;
 }): Promise<{ accountUpdates: AccountUpdateResult[]; errors: number }> {
   const { supabase, userId, imported, skipped, statementMeta, details } = params;
   const accountUpdates: AccountUpdateResult[] = [];
   let errors = 0;
+
+  // Only bank-verified statements (tier 1: PDF/EMAIL_PDF) may set account
+  // balances, limits and snapshots directly. OCR screenshots (tier 2) are
+  // partial captures — their balances flow through the per-transaction
+  // applyAccountBalanceDelta path instead.
+  if (!isBankVerifiedCapture(params.captureMethod)) return { accountUpdates, errors };
 
   if (!statementMeta || statementMeta.length === 0) return { accountUpdates, errors };
 
@@ -604,6 +612,10 @@ async function processStatementMeta(params: {
       // No category_id filter: the dedup key is the account. Filtering by
       // category_id IS NULL made the lookup miss user-categorized templates
       // and insert a duplicate template for the same debt account.
+      // Inactive templates are INTENTIONALLY included (is_active DESC puts
+      // active first): importing a statement for a paid-off-then-reopened
+      // card resurrects its archived template instead of creating a second
+      // one — the partial unique index only allows one ACTIVE per account.
       .order("is_active", { ascending: false })
       .order("updated_at", { ascending: false });
 
@@ -1150,21 +1162,15 @@ export async function importTransactions(
     details.push(`${adjustmentsExcluded} ajuste(s) manual(es) reemplazado(s) por transacciones del extracto`);
   }
 
-  // Tier guard: only bank-verified statements (tier 1: PDF/EMAIL_PDF) may set
-  // account balances, limits and snapshots directly. OCR screenshots (tier 2)
-  // are partial captures — their balances flow through the per-transaction
-  // applyAccountBalanceDelta path below instead.
-  const isBankVerified = getCaptureTier(captureMethod) === 1;
-  const { accountUpdates, errors: metaErrors } = isBankVerified
-    ? await processStatementMeta({
-        supabase,
-        userId: user.id,
-        imported,
-        skipped,
-        statementMeta: normalizedStatementMeta,
-        details,
-      })
-    : { accountUpdates: [] as AccountUpdateResult[], errors: 0 };
+  const { accountUpdates, errors: metaErrors } = await processStatementMeta({
+    supabase,
+    userId: user.id,
+    imported,
+    skipped,
+    statementMeta: normalizedStatementMeta,
+    details,
+    captureMethod,
+  });
   // Snapshot/account write failures must surface in the result so the email
   // queue isn't cleared on a failed import and the results screen reports it.
   errors += metaErrors;

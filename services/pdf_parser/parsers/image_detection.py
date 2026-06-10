@@ -32,7 +32,8 @@ IMAGE_DETECTORS: list[dict] = [
             (3, lambda t: "COMPRA EN" in t or "COBRO" in t or "TRANSFERENCIA" in t),
             (3, lambda t: "ABONO INTERESES" in t or "PAGO" in t),
         ],
-        "parse": lambda text, sd: parse_bancolombia_web(text, sd),
+        # Needs the IMAGE (bounding-box row reconstruction), not the OCR text.
+        "parse": lambda text, sd, path: parse_bancolombia_web(path),
     },
     {
         "name": "bancolombia_app",
@@ -43,7 +44,7 @@ IMAGE_DETECTORS: list[dict] = [
             (4, lambda t: "TRANSFERIR PLATA" in t),
             (4, lambda t: bool(re.search(r"\d{1,2}\s+(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)\s+\d{4}", t))),
         ],
-        "parse": lambda text, sd: parse_bancolombia_app(text, sd),
+        "parse": lambda text, sd, path: parse_bancolombia_app(text, sd),
     },
     {
         "name": "nequi_app",
@@ -53,7 +54,7 @@ IMAGE_DETECTORS: list[dict] = [
             (3, lambda t: "MÁS MOVIMIENTOS" in t or "MAS MOVIMIENTOS" in t),
             (3, lambda t: "RETIRO EN" in t or "RECARGA EN" in t or "PAGO DE" in t),
         ],
-        "parse": lambda text, sd: parse_nequi_app(text, sd),
+        "parse": lambda text, sd, path: parse_nequi_app(text, sd),
     },
     {
         "name": "nu_savings_app",
@@ -64,7 +65,7 @@ IMAGE_DETECTORS: list[dict] = [
             (4, lambda t: bool(re.search(r"\d{1,2}\s+(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)\s*-\s*\d{1,2}:\d{2}", t))),
             (3, lambda t: bool(re.search(r"[+-]\$\s*[\d.,]+", t))),
         ],
-        "parse": lambda text, sd: parse_nu_savings_app(text, sd),
+        "parse": lambda text, sd, path: parse_nu_savings_app(text, sd),
     },
     {
         "name": "nu_credit_card_app",
@@ -74,7 +75,7 @@ IMAGE_DETECTORS: list[dict] = [
             (4, lambda t: bool(re.search(r"A\s+\d+\s+MESES", t))),
             (3, lambda t: bool(re.search(r"COMISIÓN POR", t)) or bool(re.search(r"COMISION POR", t))),
         ],
-        "parse": lambda text, sd: parse_nu_credit_card_app(text, sd),
+        "parse": lambda text, sd, path: parse_nu_credit_card_app(text, sd),
     },
 ]
 
@@ -133,5 +134,5 @@ def detect_and_parse_image(
         best_score,
     )
 
-    statement = best_detector["parse"](ocr_text, screenshot_date)
+    statement = best_detector["parse"](ocr_text, screenshot_date, image_path)
     return [statement]
