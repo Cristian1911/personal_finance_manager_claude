@@ -1,4 +1,6 @@
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { Hammer } from "lucide-react";
 import { getBudgetMode } from "@/actions/budget";
 import { getEstimatedIncome } from "@/actions/income";
 import { getCategoriesWithBudgetData, getAllCategoriesForManagement } from "@/actions/categories";
@@ -24,7 +26,7 @@ import { PlanAllocationChip } from "@/components/mobile/v2/plan/plan-allocation-
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
-import { PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
+import { BRASS_GHOST_BUTTON_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { BudgetMode } from "@/types/domain";
 import { categoryBudgetGroup, isFixedBudgetCategory } from "@zeta/shared";
 import { ScenarioSection, ScenarioEntryPoint } from "@/components/budget/scenario/scenario-section";
@@ -231,6 +233,15 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
             </div>
           </div>
 
+          {/* Armar presupuesto — builder por líneas */}
+          <Link
+            href="/presupuesto/armar"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-z-brass/25 bg-z-brass/8 text-[13px] font-semibold text-z-brass transition-colors active:bg-z-brass/14"
+          >
+            <Hammer className="size-3.5" strokeWidth={2} />
+            Armar presupuesto
+          </Link>
+
           {/* Simular cambio — entry / mode toggle */}
           <ScenarioEntryPoint />
 
@@ -262,6 +273,16 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
             <p className="text-sm text-muted-foreground">{monthLabel} · {daysRemaining} días restantes</p>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/presupuesto/armar"
+              className={cn(
+                "flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors",
+                BRASS_GHOST_BUTTON_CLASS
+              )}
+            >
+              <Hammer className="size-3.5" strokeWidth={1.5} />
+              Armar presupuesto
+            </Link>
             <BudgetAjustesSheet variant="button" {...ajustesProps} />
             <MonthPlanner categories={outflowCategories} />
           </div>
