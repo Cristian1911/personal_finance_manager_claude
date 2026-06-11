@@ -141,6 +141,62 @@ export async function deleteBudget(id: string): Promise<ActionResult> {
     return { success: true, data: undefined };
 }
 
+export interface BudgetCompositionInput {
+    upserts: { category_id: string; amount: number }[];
+    deletes: string[];
+}
+
+/**
+ * Persists a builder/composer diff: batch-upserts changed lines (incl. the
+ * parent's "Base" row) and batch-deletes cleared ones. Sequential, not
+ * transactional — same atomicity level as applyBudgetScenario; the client
+ * keeps its draft on failure.
+ */
+export async function applyBudgetComposition(
+    input: BudgetCompositionInput
+): Promise<ActionResult<null>> {
+    const { supabase, user } = await getAuthenticatedClient();
+    if (!user) return { success: false, error: "No autenticado" };
+
+    const ids = [...input.upserts.map((u) => u.category_id), ...input.deletes];
+    if (ids.some((id) => !UUID_RE.test(id))) {
+        return { success: false, error: "Categoría inválida" };
+    }
+    if (input.upserts.some((u) => !Number.isFinite(u.amount) || u.amount <= 0)) {
+        return { success: false, error: "Monto inválido" };
+    }
+    if (ids.length === 0) return { success: true, data: null };
+
+    if (input.upserts.length > 0) {
+        const rows = input.upserts.map((u) => ({
+            user_id: user.id,
+            category_id: u.category_id,
+            amount: u.amount,
+            period: "monthly" as const,
+            updated_at: new Date().toISOString(),
+        }));
+        const { error } = await supabase
+            .from("budgets")
+            .upsert(rows, { onConflict: "user_id, category_id, period" });
+        if (error) return { success: false, error: error.message };
+    }
+
+    if (input.deletes.length > 0) {
+        const { error } = await supabase
+            .from("budgets")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("period", "monthly")
+            .in("category_id", input.deletes);
+        if (error) return { success: false, error: error.message };
+    }
+
+    updateTag("budgets");
+    updateTag("dashboard:budgets");
+    updateTag("attention");
+    return { success: true, data: null };
+}
+
 export async function deleteBudgetForCategory(categoryId: string): Promise<ActionResult> {
     const { supabase, user } = await getAuthenticatedClient();
 
