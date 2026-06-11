@@ -167,12 +167,17 @@ export async function applyBudgetComposition(
     }
     if (ids.length === 0) return { success: true, data: null };
 
+    // Mirror applyBudgetScenario: demo-mode rows must be written/deleted with
+    // the demo flag or they become invisible to the demo-filtered summary.
+    const isDemo = await getIsDemoFilter(user.id);
+
     if (input.upserts.length > 0) {
         const rows = input.upserts.map((u) => ({
             user_id: user.id,
             category_id: u.category_id,
             amount: u.amount,
             period: "monthly" as const,
+            is_demo: isDemo,
             updated_at: new Date().toISOString(),
         }));
         const { error } = await supabase
@@ -187,6 +192,7 @@ export async function applyBudgetComposition(
             .delete()
             .eq("user_id", user.id)
             .eq("period", "monthly")
+            .eq("is_demo", isDemo)
             .in("category_id", input.deletes);
         if (error) return { success: false, error: error.message };
     }

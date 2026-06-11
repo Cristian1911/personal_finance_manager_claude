@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { BRASS_GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import type { CategoryBudgetData, CurrencyCode } from "@/types/domain";
 
 interface BudgetGroupLinesProps {
@@ -120,7 +121,7 @@ export function BudgetGroupLines({
               key={child.id}
               type="button"
               onClick={() => onAddLine(child.id, "")}
-              className="rounded-full border border-dashed border-white/15 px-2.5 py-1 text-[10px] text-z-sage-light transition-colors active:bg-white/5"
+              className="rounded-full border border-dashed border-white/6 px-2.5 py-1 text-[10px] text-z-sage-light transition-colors active:bg-white/5"
             >
               + {child.name_es ?? child.name}
             </button>
@@ -130,7 +131,7 @@ export function BudgetGroupLines({
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="flex items-center gap-1 rounded-full border border-dashed border-white/15 px-2.5 py-1 text-[10px] text-z-sage-dark transition-colors active:bg-white/5"
+              className="flex items-center gap-1 rounded-full border border-dashed border-white/6 px-2.5 py-1 text-[10px] text-z-sage-dark transition-colors active:bg-white/5"
             >
               <Plus className="size-2.5" strokeWidth={2} /> Otra línea…
             </button>
@@ -150,7 +151,10 @@ export function BudgetGroupLines({
             type="button"
             onClick={handleCreate}
             disabled={busy || !newName.trim()}
-            className="h-9 shrink-0 rounded-md border border-z-brass/20 bg-z-brass/8 px-3 text-xs font-semibold text-z-brass disabled:opacity-50"
+            className={cn(
+              "h-9 shrink-0 rounded-md border px-3 text-xs font-semibold transition-colors disabled:opacity-50",
+              BRASS_GHOST_BUTTON_CLASS
+            )}
           >
             {busy ? "Creando..." : "Crear línea"}
           </button>
@@ -187,7 +191,7 @@ function LineRow({
       <span className="flex min-w-0 items-center gap-1.5">
         <span className="truncate text-[13px] font-medium">{label}</span>
         {badge && (
-          <span className="shrink-0 rounded-full border border-z-brass/30 bg-z-brass/12 px-1.5 text-[8.5px] font-semibold text-z-brass">
+          <span className="shrink-0 rounded-full border border-z-brass/30 bg-z-brass/12 px-1.5 text-[9px] font-semibold text-z-brass">
             {badge}
           </span>
         )}
