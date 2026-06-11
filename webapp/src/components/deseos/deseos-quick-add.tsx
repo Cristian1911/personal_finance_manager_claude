@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from "react";
 import { Plus } from "lucide-react";
 import { createWishlistItem } from "@/actions/wishlist";
 import type { CurrencyCode } from "@/types/domain";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -41,7 +42,7 @@ export function DeseosQuickAdd({ currency }: DeseosQuickAddProps) {
         className="flex w-full items-center gap-2 rounded-lg border border-dashed border-white/10 px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
       >
         <Plus className="size-4" />
-        Agregar deseo rapido...
+        Agregar deseo rápido...
       </button>
     );
   }
@@ -65,7 +66,7 @@ export function DeseosQuickAdd({ currency }: DeseosQuickAddProps) {
           disabled={isPending}
         />
       </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-z-debt">{error}</p>}
       <div className="flex gap-2">
         <Button
           type="button"
@@ -82,7 +83,7 @@ export function DeseosQuickAdd({ currency }: DeseosQuickAddProps) {
         <Button
           type="submit"
           size="sm"
-          className="bg-z-brass text-z-ink hover:bg-z-brass/90"
+          className={BRASS_BUTTON_CLASS}
           disabled={isPending}
         >
           Agregar

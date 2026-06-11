@@ -123,7 +123,7 @@ export function ScenarioSandbox({
 
       <div
         className={cn(
-          "space-y-4 px-4 pt-4 lg:mx-auto lg:max-w-md lg:px-0 lg:pt-0 pb-8",
+          "space-y-4 pt-4 lg:mx-auto lg:max-w-md lg:pt-0 pb-8",
           MOBILE_SHEET_SAFE_AREA_CLASS,
         )}
       >

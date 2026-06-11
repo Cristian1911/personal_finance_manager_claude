@@ -11,16 +11,16 @@ import { retryEmailIngestLog, dismissEmailIngestLog } from "@/actions/email-inge
 import type { EmailIngestLog } from "@/types/domain";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  imported: { label: "Importado", className: "bg-emerald-500/20 text-emerald-500" },
+  imported: { label: "Importado", className: "bg-z-income/15 text-z-income" },
   queued: { label: "En cola", className: "bg-z-brass/20 text-z-brass" },
   parsed: { label: "Parseado", className: "bg-z-brass/20 text-z-brass" },
   duplicate: { label: "Duplicado", className: "bg-white/6 text-muted-foreground" },
-  parse_failed: { label: "Error", className: "bg-red-500/20 text-red-500" },
-  sender_rejected: { label: "Remitente rechazado", className: "bg-amber-400/20 text-amber-400" },
-  rate_limited: { label: "Límite excedido", className: "bg-amber-400/20 text-amber-400" },
+  parse_failed: { label: "Error", className: "bg-z-debt/15 text-z-debt" },
+  sender_rejected: { label: "Remitente rechazado", className: "bg-z-alert/15 text-z-alert" },
+  rate_limited: { label: "Límite excedido", className: "bg-z-alert/15 text-z-alert" },
   pdf_queued: { label: "PDF en cola", className: "bg-z-brass/20 text-z-brass" },
-  pdf_parse_failed: { label: "PDF error", className: "bg-red-500/20 text-red-500" },
-  pdf_imported: { label: "PDF importado", className: "bg-emerald-500/20 text-emerald-500" },
+  pdf_parse_failed: { label: "PDF error", className: "bg-z-debt/15 text-z-debt" },
+  pdf_imported: { label: "PDF importado", className: "bg-z-income/15 text-z-income" },
   dismissed: { label: "Descartado", className: "bg-white/6 text-muted-foreground" },
 };
 

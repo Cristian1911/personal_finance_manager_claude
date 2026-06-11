@@ -5,6 +5,7 @@ import { getAuthenticatedClient } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getIsDemoFilter, getDemoAccountIds } from "@/lib/demo-filter";
 import { budgetSchema } from "@/lib/validators/budget";
+import { UUID_RE } from "@/lib/validators/shared";
 import type { ActionResult } from "@/types/actions";
 import type { Budget } from "@/types/domain";
 
@@ -135,6 +136,7 @@ export async function deleteBudgetForCategory(categoryId: string): Promise<Actio
     const { supabase, user } = await getAuthenticatedClient();
 
     if (!user) return { success: false, error: "No autenticado" };
+    if (!UUID_RE.test(categoryId)) return { success: false, error: "Categoría inválida" };
 
     const { error } = await supabase
         .from("budgets")

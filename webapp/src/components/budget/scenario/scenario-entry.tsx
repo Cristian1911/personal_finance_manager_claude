@@ -50,7 +50,7 @@ function TemplateRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-xl border border-white/6 bg-[#111] p-3 text-left transition-colors active:bg-white/5"
+      className="flex w-full items-center gap-3 rounded-xl border border-white/6 bg-black/10 p-3 text-left transition-colors active:bg-white/5"
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-z-alert/25 bg-z-alert/8 text-z-alert">
         {icon}

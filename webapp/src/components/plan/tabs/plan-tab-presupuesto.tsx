@@ -1,7 +1,7 @@
 import dynamic from "next/dynamic";
 import { getBudgetMode } from "@/actions/budget";
 import { getEstimatedIncome } from "@/actions/income";
-import { getCategoriesWithBudgetData, getAllCategoriesForManagement, getCategories } from "@/actions/categories";
+import { getCategoriesWithBudgetData, getAllCategoriesForManagement } from "@/actions/categories";
 import { get503020Allocation } from "@/actions/allocation";
 import { getUncategorizedTransactions } from "@/actions/categorize";
 import { getAttentionSnapshot } from "@/actions/attention";
@@ -24,7 +24,7 @@ import { PlanAllocationChip } from "@/components/mobile/v2/plan/plan-allocation-
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
 import { parseMonth, formatMonthLabel, getDaysRemainingInMonth } from "@/lib/utils/date";
-import { MOBILE_TAB_BAR_CLEARANCE_CLASS, PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
+import { PANEL_INSET_CLASS, SECTION_EYEBROW_CLASS } from "@/lib/constants/styles";
 import type { BudgetMode } from "@/types/domain";
 import { categoryBudgetGroup, isFixedBudgetCategory } from "@zeta/shared";
 import { ScenarioSection, ScenarioEntryPoint } from "@/components/budget/scenario/scenario-section";
@@ -54,7 +54,6 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
     allocationData,
     manageResult,
     uncategorized,
-    categoryTreeResult,
     attentionSnapshot,
     budgetScenarios,
     wishlistItems,
@@ -66,7 +65,6 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
     get503020Allocation(month, currency),
     getAllCategoriesForManagement(),
     getUncategorizedTransactions(),
-    getCategories(),
     getAttentionSnapshot(),
     getBudgetScenarios(),
     getWishlistItems(),
@@ -78,7 +76,6 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
   const categories = categoriesResult.success ? categoriesResult.data : [];
   const outflowCategories = categories.filter((c) => c.direction === "OUTFLOW");
   const allCategories = manageResult.success ? manageResult.data : [];
-  const categoryTree = categoryTreeResult.success ? categoryTreeResult.data : [];
 
   const target = parseMonth(month);
   const daysRemaining = getDaysRemainingInMonth(target);
@@ -173,7 +170,8 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
     >
     <div className="space-y-6">
       {/* Mobile view */}
-      <div className={cn("lg:hidden", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
+      {/* Layout main already applies p-4 + tab-bar clearance — don't re-apply. */}
+      <div className="lg:hidden">
         <MobileHeader
           variant="sub"
           title="Presupuesto"
@@ -181,7 +179,7 @@ export async function PlanTabPresupuesto({ month, currency }: PlanTabPresupuesto
           action={<BudgetAjustesSheet variant="icon" {...ajustesProps} />}
         />
 
-        <div className="space-y-4 px-4 pt-4">
+        <div className="space-y-4 pt-4">
           {/* Budget hero card */}
           <div className={cn(PANEL_INSET_CLASS, "p-4")}>
             <div className="flex items-center justify-between gap-2">

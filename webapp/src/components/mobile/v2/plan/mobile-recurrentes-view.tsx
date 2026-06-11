@@ -13,7 +13,6 @@ import {
   HERO_CARD_GRADIENT_CLASS,
   MOBILE_ACTION_BUTTON_CLASS,
   MOBILE_EYEBROW_CLASS,
-  MOBILE_TAB_BAR_CLEARANCE_CLASS,
 } from "@/lib/constants/styles";
 import { SubPaymentsBreakdown } from "@/components/recurring/sub-payments-breakdown";
 import { useRecurringMonth, type OccurrenceItem, type DateStatus } from "@/components/recurring/use-recurring-month";
@@ -227,7 +226,7 @@ export function MobileRecurrentesView({
   }
 
   return (
-    <div className={cn("space-y-3", MOBILE_TAB_BAR_CLEARANCE_CLASS)}>
+    <div className="space-y-3">
       {/* Hero card */}
       <div className={cn("rounded-2xl border border-white/6 p-4", HERO_CARD_GRADIENT_CLASS)}>
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-z-brass">

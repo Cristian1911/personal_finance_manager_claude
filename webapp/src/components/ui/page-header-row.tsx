@@ -7,6 +7,15 @@ interface PageHeaderRowProps {
   className?: string;
 }
 
+/**
+ * Desktop-only page title row (h1 + actions).
+ *
+ * Contract: on mobile the page title comes from `MobileHeader`, so this
+ * component renders `hidden lg:flex` by default — consumers don't need their
+ * own `hidden lg:*` gate around it. Any action that must stay reachable on
+ * mobile belongs in the page's `MobileHeader` `action` slot or an inline
+ * mobile affordance.
+ */
 export function PageHeaderRow({
   title,
   subtitle,
@@ -16,7 +25,7 @@ export function PageHeaderRow({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-end justify-between gap-3",
+        "hidden lg:flex flex-wrap items-end justify-between gap-3",
         className
       )}
     >

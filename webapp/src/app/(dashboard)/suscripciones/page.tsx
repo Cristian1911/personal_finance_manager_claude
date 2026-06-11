@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { getSubscriptions } from "@/actions/subscriptions";
 import { ensureCurrentOccurrences, getOccurrencesForMonth } from "@/actions/occurrences";
 import { getPreferredCurrency } from "@/actions/profile";
+import { MobileHeader } from "@/components/mobile/v2/mobile-header";
 import { SubscriptionsView } from "@/components/subscriptions/subscriptions-view";
 
 export default async function SuscripcionesPage() {
@@ -31,7 +32,12 @@ export default async function SuscripcionesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-z-sage-light lg:text-3xl">
+      <MobileHeader
+        variant="sub"
+        title="Suscripciones"
+        backHref="/plan?tab=recurrentes"
+      />
+      <h1 className="hidden text-3xl font-semibold tracking-tight text-z-sage-light lg:block">
         Suscripciones
       </h1>
       <SubscriptionsView

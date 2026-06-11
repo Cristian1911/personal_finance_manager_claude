@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { getAccounts } from "@/actions/accounts";
 import { getPreferredCurrency } from "@/actions/profile";
 import { getAttentionSnapshot } from "@/actions/attention";
@@ -11,6 +13,9 @@ import { RecurringList } from "@/components/recurring/recurring-list";
 import { RecurringTimelineView } from "@/components/recurring/recurring-timeline-view";
 import { MobileRecurrentesView } from "@/components/mobile/v2/plan/mobile-recurrentes-view";
 import { MobileHeader } from "@/components/mobile/v2/mobile-header";
+import { MCardTight, MListRow } from "@/components/mobile/v2/mobile-card";
+import { Button } from "@/components/ui/button";
+import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { DesktopOnly } from "@/components/ui/responsive-render";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { AttentionCard } from "@/components/ui/attention-card";
@@ -44,6 +49,14 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
       {/* Mobile — unified checklist + templates */}
       <div className="lg:hidden">
         <MobileHeader variant="sub" title="Recurrentes" backHref="/plan" />
+        <Link href="/suscripciones" className="mb-3 mt-3 block">
+          <MCardTight>
+            <MListRow>
+              <span className="text-sm font-medium">Suscripciones</span>
+              <ChevronRight className="size-4 text-muted-foreground" />
+            </MListRow>
+          </MCardTight>
+        </Link>
         <MobileRecurrentesView
           templates={templates}
           accounts={accounts}
@@ -61,7 +74,15 @@ export async function PlanTabRecurrentes({ month }: PlanTabRecurrentesProps = {}
               {summary.activeCount} plantillas activas
             </p>
           </div>
-          <RecurringFormDialog accounts={accounts} categories={categories} />
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" className={GHOST_BUTTON_CLASS}>
+              <Link href="/suscripciones">
+                Suscripciones
+                <ChevronRight className="size-4" />
+              </Link>
+            </Button>
+            <RecurringFormDialog accounts={accounts} categories={categories} />
+          </div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">

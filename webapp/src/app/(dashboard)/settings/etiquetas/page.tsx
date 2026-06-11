@@ -16,8 +16,9 @@ export default async function EtiquetasSettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 lg:space-y-8">
-      <MobileHeader variant="sub" title="Etiquetas" backHref="/settings" />
-      <div className="space-y-2">
+      {/* Sin backHref: usa historial — se llega aquí tanto desde /gestionar (vía /etiquetas) como desde /settings */}
+      <MobileHeader variant="sub" title="Etiquetas" />
+      <div className="hidden lg:block space-y-2">
         <SettingsBackLink />
         <PageHeaderRow
           title="Etiquetas"

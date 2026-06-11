@@ -23,7 +23,7 @@ export default async function IntegracionesSettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 lg:space-y-8">
       <MobileHeader variant="sub" title="Integraciones" backHref="/settings" />
-      <div className="space-y-2">
+      <div className="hidden lg:block space-y-2">
         <SettingsBackLink />
         <PageHeaderRow
           title="Integraciones"

@@ -14,7 +14,7 @@ export function DeseosInsights({ insights }: DeseosInsightsProps) {
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Lightbulb className="size-4 text-z-brass" />
-          Tu patron de compras
+          Tu patrón de compras
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">

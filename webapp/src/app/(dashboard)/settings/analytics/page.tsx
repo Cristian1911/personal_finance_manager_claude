@@ -371,7 +371,7 @@ export default async function AnalyticsPage() {
     <div className="mx-auto max-w-5xl space-y-6 lg:space-y-8">
       <MobileHeader variant="sub" title="Actividad de uso" backHref="/settings" />
 
-      <div className="space-y-2">
+      <div className="hidden lg:block space-y-2">
         <SettingsBackLink />
         <PageHeaderRow
           title="Actividad de uso"

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { enrichWishlistItem, scoreWishlistItem } from "@/actions/wishlist";
 import type { ScoredWishlistItem } from "@/actions/wishlist";
 import type { Account } from "@/types/domain";
+import { BRASS_BUTTON_CLASS } from "@/lib/constants/styles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -76,14 +77,14 @@ export function DeseosEnrichDrawer({
 
   const urgencyOptions = [
     { value: "NECESSARY", label: "Necesario" },
-    { value: "USEFUL", label: "Util" },
+    { value: "USEFUL", label: "Útil" },
     { value: "IMPULSE", label: "Impulso" },
   ];
 
   const desireTypeOptions = [
     { value: "long_held", label: "Hace rato" },
     { value: "recent", label: "Reciente" },
-    { value: "spontaneous", label: "Espontaneo" },
+    { value: "spontaneous", label: "Espontáneo" },
   ];
 
   const fundingOptions = [
@@ -102,14 +103,14 @@ export function DeseosEnrichDrawer({
           {/* Why */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              Por que lo quieres? (opcional)
+              ¿Por qué lo quieres? (opcional)
             </label>
             <textarea
               value={why}
               onChange={(e) => setWhy(e.target.value)}
               rows={2}
               maxLength={500}
-              placeholder="Describe tu motivacion..."
+              placeholder="Describe tu motivación..."
               autoComplete="off"
               className="w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-z-brass focus:outline-none"
             />
@@ -206,7 +207,7 @@ export function DeseosEnrichDrawer({
           {fundingType === "INSTALLMENTS" && (
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Numero de cuotas
+                Número de cuotas
               </label>
               <Input
                 type="number"
@@ -241,11 +242,11 @@ export function DeseosEnrichDrawer({
             </div>
           )}
 
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-z-debt">{error}</p>}
 
           <Button
             type="submit"
-            className="w-full bg-z-brass text-z-ink hover:bg-z-brass/90"
+            className={`w-full ${BRASS_BUTTON_CLASS}`}
             disabled={isPending}
           >
             {isPending ? "Guardando..." : "Guardar y evaluar"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,30 +9,30 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { GHOST_BUTTON_CLASS } from "@/lib/constants/styles";
 import { SpecializedAccountForm } from "./specialized-account-form";
 import { Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { Account } from "@/types/domain";
 
 export function AccountFormDialog({
   account,
-  triggerLabel,
-  triggerClassName,
+  trigger,
 }: {
   account?: Account;
-  triggerLabel?: string;
-  triggerClassName?: string;
+  /** Custom trigger node — defaults to a ghost "Nueva cuenta" button. */
+  trigger?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const label = triggerLabel ?? (account ? "Editar" : "Nueva cuenta");
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className={cn(triggerClassName)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {label}
-        </Button>
+        {trigger ?? (
+          <Button variant="outline" className={GHOST_BUTTON_CLASS}>
+            <Plus className="size-4" />
+            {account ? "Editar" : "Nueva cuenta"}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
