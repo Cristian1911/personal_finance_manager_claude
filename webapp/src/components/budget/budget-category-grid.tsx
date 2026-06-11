@@ -35,7 +35,7 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
 
   function handleSetBudget(categoryId: string) {
     const cat = localCategories.find((c) => c.id === categoryId);
-    setAmount(cat?.budget ? cat.budget.toString() : "");
+    setAmount(cat?.baseBudget ? cat.baseBudget.toString() : "");
     setExpenseType(cat?.expense_type ?? null);
     setSaveError(null);
     setEditingId(categoryId);
@@ -51,11 +51,19 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
       formData.append("amount", amount);
       formData.append("period", "monthly");
 
-      // Optimistic update
+      // Optimistic update — editor writes the Base row; total stays combined
       const budgetAmount = parseFloat(amount);
-      setLocalCategories(prev => prev.map(c =>
-        c.id === editingId ? { ...c, budget: budgetAmount, percentUsed: budgetAmount > 0 ? c.spent / budgetAmount * 100 : 0 } : c
-      ));
+      setLocalCategories(prev => prev.map(c => {
+        if (c.id !== editingId) return c;
+        const childSum = Object.values(c.childBudgets).reduce((s, v) => s + v, 0);
+        const combined = budgetAmount + childSum;
+        return {
+          ...c,
+          baseBudget: budgetAmount,
+          budget: combined,
+          percentUsed: combined > 0 ? (c.spent / combined) * 100 : 0,
+        };
+      }));
       setEditingId(null);
       setAmount("");
 
@@ -84,10 +92,17 @@ export function BudgetCategoryGrid({ categories }: BudgetCategoryGridProps) {
     setIsSaving(true);
     setSaveError(null);
     try {
-      // Optimistic update
-      setLocalCategories(prev => prev.map(c =>
-        c.id === targetId ? { ...c, budget: null, percentUsed: 0 } : c
-      ));
+      // Optimistic update — only the Base row is deleted; child lines survive
+      setLocalCategories(prev => prev.map(c => {
+        if (c.id !== targetId) return c;
+        const childSum = Object.values(c.childBudgets).reduce((s, v) => s + v, 0);
+        return {
+          ...c,
+          baseBudget: null,
+          budget: childSum > 0 ? childSum : null,
+          percentUsed: childSum > 0 ? (c.spent / childSum) * 100 : 0,
+        };
+      }));
       setEditingId(null);
       setAmount("");
 

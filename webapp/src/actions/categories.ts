@@ -7,6 +7,7 @@ import { createCachedClient } from "@/lib/supabase/cached";
 import { categorySchema } from "@/lib/validators/category";
 import type { ActionResult } from "@/types/actions";
 import { parseMonth, monthStartStr, monthEndStr, monthsBeforeStart } from "@/lib/utils/date";
+import { rollupGroup } from "@/lib/utils/budget-rollup";
 import type { Category, CategoryWithChildren, CategoryWithBudget, CategoryBudgetData, TransactionDirection, CurrencyCode } from "@/types/domain";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -187,12 +188,16 @@ async function getAllCategoriesForManagementCached(
     direction: cat.direction as TransactionDirection,
     expense_type: (cat.expense_type as "fixed" | "variable") ?? null,
     budget: null,
+    baseBudget: null,
     spent: 0,
     committedRecurring: 0,
     percentUsed: 0,
     average3m: 0,
     children: childrenByParent.get(cat.id) ?? [],
     childrenSpent: {},
+    childBudgets: {},
+    childAvg3m: {},
+    childRecurring: {},
   }));
 
   return result;
@@ -346,23 +351,44 @@ async function getCategoriesWithBudgetDataCached(
   const categories = catRes.data ?? [];
 
   const result: CategoryBudgetData[] = categories.map((cat) => {
-    const budget = budgetMap.get(cat.id) ?? null;
+    const baseBudget = budgetMap.get(cat.id) ?? null;
     const spent = spentMap.get(cat.id) ?? 0;
     const avg3mTotal = avgTotalMap.get(cat.id) ?? 0;
-    const committedRecurring = recurringMap.get(cat.id) ?? 0;
 
-    // Collect child spending and add to parent total
     const children = childrenByParent.get(cat.id) ?? [];
     const childrenSpent: Record<string, number> = {};
-    let childSpentTotal = 0;
+    const childBudgets: Record<string, number> = {};
+    const childAvg3m: Record<string, number> = {};
+    const childRecurring: Record<string, number> = {};
+    let childRecurringTotal = 0;
+    let childAvg3mTotal = 0;
+
     for (const child of children) {
-      const childAmount = spentMap.get(child.id) ?? 0;
-      if (childAmount > 0) {
-        childrenSpent[child.id] = childAmount;
-        childSpentTotal += childAmount;
+      const childSpent = spentMap.get(child.id) ?? 0;
+      if (childSpent > 0) childrenSpent[child.id] = childSpent;
+
+      const childBudget = budgetMap.get(child.id) ?? 0;
+      if (childBudget > 0) childBudgets[child.id] = childBudget;
+
+      const childAvgTotal = avgTotalMap.get(child.id) ?? 0;
+      if (childAvgTotal > 0) {
+        childAvg3m[child.id] = childAvgTotal / 3;
+        childAvg3mTotal += childAvgTotal;
+      }
+
+      const childRec = recurringMap.get(child.id) ?? 0;
+      if (childRec > 0) {
+        childRecurring[child.id] = childRec;
+        childRecurringTotal += childRec;
       }
     }
-    const totalSpent = spent + childSpentTotal;
+
+    const rollup = rollupGroup({
+      baseBudget,
+      childBudgets,
+      parentSpent: spent,
+      childrenSpent,
+    });
 
     return {
       id: cat.id,
@@ -375,13 +401,17 @@ async function getCategoriesWithBudgetDataCached(
       is_active: cat.is_active ?? true,
       direction: cat.direction as TransactionDirection,
       expense_type: (cat.expense_type as "fixed" | "variable") ?? null,
-      budget,
-      spent: totalSpent,
-      committedRecurring,
-      percentUsed: budget && budget > 0 ? (totalSpent / budget) * 100 : 0,
-      average3m: avg3mTotal / 3,
+      budget: rollup.totalBudget,
+      baseBudget,
+      spent: rollup.totalSpent,
+      committedRecurring: (recurringMap.get(cat.id) ?? 0) + childRecurringTotal,
+      percentUsed: rollup.percentUsed,
+      average3m: (avg3mTotal + childAvg3mTotal) / 3,
       children,
       childrenSpent,
+      childBudgets,
+      childAvg3m,
+      childRecurring,
     };
   });
 

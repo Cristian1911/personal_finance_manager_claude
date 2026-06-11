@@ -50,14 +50,15 @@ export function BudgetEditorSheet({
 
   useEffect(() => {
     if (open && category) {
-      setAmount(category.budget && category.budget > 0 ? String(category.budget) : "");
+      // Edits the parent's OWN row ("Base") — `budget` is the combined group total.
+      setAmount(category.baseBudget && category.baseBudget > 0 ? String(category.baseBudget) : "");
       setExpenseType(category.expense_type);
     }
   }, [open, category]);
 
   if (!category) return null;
 
-  const hasBudget = category.budget !== null && category.budget > 0;
+  const hasBudget = category.baseBudget !== null && category.baseBudget > 0;
   const name = category.name_es ?? category.name;
 
   async function handleSave() {
