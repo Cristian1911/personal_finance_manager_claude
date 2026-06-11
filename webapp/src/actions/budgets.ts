@@ -24,14 +24,23 @@ async function getBudgetSummaryCached(userId: string, month: string | undefined,
 
     const { data: budgets } = await supabase
         .from("budgets")
-        .select("amount, category_id")
+        .select("amount, category_id, category:categories(parent_id)")
         .eq("user_id", userId)
         .eq("is_demo", isDemo);
 
     if (!budgets || budgets.length === 0) return { totalTarget: 0, totalSpent: 0, progress: 0 };
 
     const totalTarget = budgets.reduce((sum, b) => sum + Number(b.amount), 0);
-    const budgetedCategoryIds = budgets.map((b) => b.category_id);
+    // Include parents of budgeted subcategories so spending categorized directly
+    // at the parent still counts when a group is composed without a Base row.
+    const budgetedCategoryIds = [
+        ...new Set(
+            budgets.flatMap((b) => {
+                const parentId = (b.category as { parent_id: string | null } | null)?.parent_id;
+                return parentId ? [b.category_id, parentId] : [b.category_id];
+            })
+        ),
+    ];
 
     const { monthStartStr, monthEndStr, parseMonth } = await import("@/lib/utils/date");
     const target = parseMonth(month);
